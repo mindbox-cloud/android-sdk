@@ -7,7 +7,7 @@
 
     <application>
 
-        <service android:name=".FcmMessagingService">
+        <service android:name=".MindboxMessagingService">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
