@@ -70,4 +70,10 @@ dependencies {
 
     // SharedPreference
     implementation "com.orhanobut:hawk:2.0.1"
+
+    //Ads
+    implementation 'androidx.ads:ads-identifier:1.0.0-alpha04'
+
+    //concurrent
+    implementation "androidx.concurrent:concurrent-futures-ktx:1.1.0"
 }
