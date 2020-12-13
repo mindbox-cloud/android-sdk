@@ -3,7 +3,7 @@ plugins {
     id 'kotlin-android'
     id "com.jfrog.bintray"
     id 'org.jetbrains.dokka'
-    id 'com.google.gms.google-services'
+//    id 'com.google.gms.google-services'
 }
 
 android {
@@ -72,7 +72,8 @@ dependencies {
     implementation "com.orhanobut:hawk:2.0.1"
 
     //Ads
-    implementation 'androidx.ads:ads-identifier:1.0.0-alpha04'
+//    implementation 'androidx.ads:ads-identifier:1.0.0-alpha04'
+    implementation 'com.google.android.gms:play-services-ads-identifier:17.0.0'
 
     //concurrent
     implementation "androidx.concurrent:concurrent-futures-ktx:1.1.0"

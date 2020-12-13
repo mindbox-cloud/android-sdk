@@ -1,32 +1,46 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import android.os.AsyncTask
 import android.util.Log
-import androidx.ads.identifier.AdvertisingIdClient
+import com.google.android.gms.ads.identifier.AdvertisingIdClient
+import java.util.*
+
 
 class Configuration {
 
-    internal fun generateAdid(context: Context) {
-        if (AdvertisingIdClient.isAdvertisingIdProviderAvailable(context)) {
-            val advertisingIdInfoListenableFuture =
-                AdvertisingIdClient.getAdvertisingIdInfo(context)
+    fun getAdid(context: Context) {
+        generateAdid(context)
+    }
 
-            advertisingIdInfoListenableFuture.addListener({
-                Log.d("Mindbox Debug", "Advertising load")
-                val adInfo = advertisingIdInfoListenableFuture.get()
-                val id: String? = adInfo?.id
-                val providerPackageName: String? = adInfo?.providerPackageName
-                val isLimitTrackingEnabled: Boolean? = adInfo?.isLimitAdTrackingEnabled
+    internal fun generateAdid(context: Context) {
+        AsyncTask.execute {
+            try {
+                val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
+                // You should check this in case the user disabled it from settings
+                if (!advertisingIdInfo.isLimitAdTrackingEnabled && !advertisingIdInfo.id.isNullOrEmpty()) {
+                    val id = advertisingIdInfo.id
+                    Log.d(
+                        "Mindbox Debug", "Generated: id - $id"
+                    )
+                } else {
+                    Log.d(
+                        "Mindbox Debug", "Generated: but limited id - ${generateRandomUuid()}"
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
                 Log.d(
                     "Mindbox Debug",
-                    "Advertising info: id - $id; providerPackageName - $providerPackageName; isLimitTrackingEnabled - $isLimitTrackingEnabled"
+                    "Advertising load is not available. Will be generated random"
                 )
-            },
-                { command ->
-                    command?.run()
-                }
-            )
+                Log.d(
+                    "Mindbox Debug", "Generated: id - ${generateRandomUuid()}"
+                )
+            }
         }
     }
+
+    private fun generateRandomUuid() = UUID.randomUUID().toString()
 
 }
