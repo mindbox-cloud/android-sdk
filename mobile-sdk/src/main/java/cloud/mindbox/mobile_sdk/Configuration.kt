@@ -9,15 +9,21 @@ import java.util.*
 
 class Configuration {
 
-    fun getAdid(context: Context) {
-        generateAdid(context)
+    fun getDeviceUuid(context: Context): String {
+        val adid: String = if (MindboxPreferences.userAdid == null) {
+            generateAdid(context).toString()
+            //todo save it
+        } else {
+            MindboxPreferences.userAdid.toString()
+        }
+
+        return adid
     }
 
     internal fun generateAdid(context: Context) {
         AsyncTask.execute {
             try {
                 val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
-                // You should check this in case the user disabled it from settings
                 if (!advertisingIdInfo.isLimitAdTrackingEnabled && !advertisingIdInfo.id.isNullOrEmpty()) {
                     val id = advertisingIdInfo.id
                     Log.d(
