@@ -8,12 +8,20 @@ import java.util.*
 
 class Configuration {
 
-    fun getInstallationId(): String {
-
+    fun getInstallationId(): String? {
+        return MindboxPreferences.installationId
     }
 
     fun setInstallationId(value: UUID) {
+        MindboxPreferences.installationId = value.toString()
+    }
 
+    fun getFirebaseToken(): String? {
+        return MindboxPreferences.firebaseToken
+    }
+
+    fun setFirebaseToken(value: String) {
+        MindboxPreferences.firebaseToken = value
     }
 
     fun getDeviceUuid(context: Context, onResult: (String?) -> Unit) {
