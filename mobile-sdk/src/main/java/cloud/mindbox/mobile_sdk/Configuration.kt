@@ -8,6 +8,14 @@ import java.util.*
 
 class Configuration {
 
+    fun getInstallationId(): String {
+
+    }
+
+    fun setInstallationId(value: UUID) {
+
+    }
+
     fun getDeviceUuid(context: Context, onResult: (String?) -> Unit) {
         if (MindboxPreferences.userAdid == null) {
             generateAdid(context) { uuid ->
