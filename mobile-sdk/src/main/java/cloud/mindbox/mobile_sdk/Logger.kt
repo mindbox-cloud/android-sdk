@@ -9,6 +9,10 @@ internal object Logger {
     }
 
     fun d(parent: Any, message: String) {
-        Log.i(parent.javaClass.simpleName, message)
+        Log.d(parent.javaClass.simpleName, message)
+    }
+
+    fun e(parent: Any, message: String) {
+        Log.e(parent.javaClass.simpleName, message)
     }
 }
