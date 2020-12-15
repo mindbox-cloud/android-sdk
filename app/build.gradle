@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-android-extensions'
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -44,6 +45,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation platform('com.google.firebase:firebase-bom:26.1.1')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.android.gms:play-services-basement:17.5.0'
 
     implementation project(':mobile-sdk')
 
