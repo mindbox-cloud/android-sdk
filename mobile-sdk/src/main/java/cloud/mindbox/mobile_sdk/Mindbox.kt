@@ -30,6 +30,7 @@ object Mindbox {
 
     fun getFirebaseToken(onResult: (String?) -> Unit) {
         Configuration().getFirebaseToken { token ->
+            Logger.e(this, "getting firebase token $token")
             onResult.invoke(token)
         }
     }

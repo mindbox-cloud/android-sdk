@@ -20,10 +20,12 @@ class Configuration {
 
     fun getFirebaseToken(onResult: (String?) -> Unit) {
         if (MindboxPreferences.firebaseToken.isNullOrEmpty()) {
+            Logger.e(this, "Firebase token will be registered")
             registerFirebaseToken { token ->
                 onResult.invoke(token)
             }
         } else {
+            Logger.i(this, "Firebase token gets from prefs")
             onResult.invoke(MindboxPreferences.firebaseToken)
         }
     }
@@ -45,6 +47,7 @@ class Configuration {
 
                 val token = task.result
                 if (!token.isNullOrEmpty() && token != MindboxPreferences.firebaseToken) {
+                    Logger.i(this, "Token gets or updates from firebase")
                     MindboxPreferences.firebaseToken = token
                 }
                 onResult?.invoke(token)
