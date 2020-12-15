@@ -3,7 +3,6 @@ plugins {
     id 'kotlin-android'
     id "com.jfrog.bintray"
     id 'org.jetbrains.dokka'
-//    id 'com.google.gms.google-services'
 }
 
 android {

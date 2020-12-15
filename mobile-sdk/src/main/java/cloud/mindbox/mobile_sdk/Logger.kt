@@ -15,4 +15,8 @@ internal object Logger {
     fun e(parent: Any, message: String) {
         Log.e(parent.javaClass.simpleName, message)
     }
+
+    fun w(parent: Any, message: String) {
+        Log.w(parent.javaClass.simpleName, message)
+    }
 }

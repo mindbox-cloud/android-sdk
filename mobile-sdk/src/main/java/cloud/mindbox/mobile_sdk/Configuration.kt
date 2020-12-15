@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk
 import android.content.Context
 import android.os.AsyncTask
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.messaging.FirebaseMessaging
 import java.util.*
 
 
@@ -16,12 +18,40 @@ class Configuration {
         MindboxPreferences.installationId = value.toString()
     }
 
-    fun getFirebaseToken(): String? {
-        return MindboxPreferences.firebaseToken
+    fun getFirebaseToken(onResult: (String?) -> Unit) {
+        if (MindboxPreferences.firebaseToken.isNullOrEmpty()) {
+            Logger.e(this, "Firebase token will be registered")
+            registerFirebaseToken { token ->
+                onResult.invoke(token)
+            }
+        } else {
+            Logger.i(this, "Firebase token gets from prefs")
+            onResult.invoke(MindboxPreferences.firebaseToken)
+        }
     }
 
     fun setFirebaseToken(value: String) {
-        MindboxPreferences.firebaseToken = value
+        if (value.isNotEmpty() && value != MindboxPreferences.firebaseToken) {
+            MindboxPreferences.firebaseToken = value
+        }
+    }
+
+    fun registerFirebaseToken(onResult: ((String?) -> Unit)? = null) {
+        FirebaseMessaging.getInstance().token
+            .addOnCompleteListener(OnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Logger.w(this, "Fetching FCM registration token failed ${task.exception}")
+                    onResult?.invoke(null)
+                    return@OnCompleteListener
+                }
+
+                val token = task.result
+                if (!token.isNullOrEmpty() && token != MindboxPreferences.firebaseToken) {
+                    Logger.i(this, "Token gets or updates from firebase")
+                    MindboxPreferences.firebaseToken = token
+                }
+                onResult?.invoke(token)
+            })
     }
 
     fun getDeviceUuid(context: Context, onResult: (String?) -> Unit) {

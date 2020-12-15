@@ -9,11 +9,12 @@ object Mindbox {
 
     fun init(context: Context, configuration: Configuration) {
         this.context = context
-        initializeSdk(context)
+        initializeSdk(context, configuration)
     }
 
-    private fun initializeSdk(context: Context) {
+    private fun initializeSdk(context: Context, configuration: Configuration) {
         Hawk.init(context).build()
+        configuration.registerFirebaseToken()
     }
 
     fun getDeviceUuid(onResult: (String?) -> Unit) {
@@ -24,6 +25,13 @@ object Mindbox {
             Configuration().getDeviceUuid(context!!) { deviceUuid ->
                 onResult.invoke(deviceUuid)
             }
+        }
+    }
+
+    fun getFirebaseToken(onResult: (String?) -> Unit) {
+        Configuration().getFirebaseToken { token ->
+            Logger.e(this, "getting firebase token $token")
+            onResult.invoke(token)
         }
     }
 
