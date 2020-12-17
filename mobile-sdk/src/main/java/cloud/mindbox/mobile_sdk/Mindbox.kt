@@ -2,8 +2,11 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import com.orhanobut.hawk.Hawk
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
 object Mindbox {
 
@@ -16,7 +19,12 @@ object Mindbox {
 
         Hawk.init(context).build()
         mindboxScope.launch {
-            initializeSdk(context, callback)
+            if (MindboxPreferences.isFirstInitialize) {
+                firstInitialize(context, callback)
+                MindboxPreferences.isFirstInitialize = false
+            } else {
+                secondaryInitialize()
+            }
         }
     }
 
@@ -28,14 +36,22 @@ object Mindbox {
         return MindboxPreferences.firebaseToken
     }
 
-    private suspend fun initializeSdk(context: Context, callback: (String?, String?) -> Unit) {
+    private suspend fun firstInitialize(context: Context, callback: (String?, String?) -> Unit) {
         val firebaseToken = mindboxScope.async { IdentifierManager.getFirebaseToken() }
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
 
         registerClient(firebaseToken.await(), adid.await(), callback)
     }
 
-    private fun registerClient(firebaseToken: String?, deviceUuid: String?, callback: (String?, String?) -> Unit) {
+    private suspend fun secondaryInitialize() {
+
+    }
+
+    private fun registerClient(
+        firebaseToken: String?,
+        deviceUuid: String?,
+        callback: (String?, String?) -> Unit
+    ) {
         callback.invoke(firebaseToken, deviceUuid)
     }
 
