@@ -2,40 +2,45 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import com.orhanobut.hawk.Hawk
+import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
     private var context: Context? = null
+    private val mindboxJob = Job()
+    private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun init(context: Context, configuration: Configuration) {
+    fun init(context: Context, configuration: Configuration, callback: (String?, String?) -> Unit) {
         this.context = context
-        initializeSdk(context, configuration)
-    }
 
-    private fun initializeSdk(context: Context, configuration: Configuration) {
         Hawk.init(context).build()
-        configuration.registerFirebaseToken()
-    }
-
-    fun getDeviceUuid(onResult: (String?) -> Unit) {
-        if (context == null) {
-            Logger.e(this, "Mindbox SDK is not initialized")
-            onResult.invoke(null)
-        } else {
-            Configuration().getDeviceUuid(context!!) { deviceUuid ->
-                onResult.invoke(deviceUuid)
-            }
+        mindboxScope.launch {
+            initializeSdk(context, callback)
         }
     }
 
-    fun getFirebaseToken(onResult: (String?) -> Unit) {
-        Configuration().getFirebaseToken { token ->
-            Logger.e(this, "getting firebase token $token")
-            onResult.invoke(token)
-        }
+    fun getDeviceUuid(): String? {
+        return MindboxPreferences.userAdid
+    }
+
+    fun getFirebaseToken(): String? {
+        return MindboxPreferences.firebaseToken
+    }
+
+    private suspend fun initializeSdk(context: Context, callback: (String?, String?) -> Unit) {
+        val firebaseToken = mindboxScope.async { IdentifierManager.getFirebaseToken() }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+
+        registerClient(firebaseToken.await(), adid.await(), callback)
+    }
+
+    private fun registerClient(firebaseToken: String?, deviceUuid: String?, callback: (String?, String?) -> Unit) {
+        callback.invoke(firebaseToken, deviceUuid)
     }
 
     fun release() {
         context = null
+        mindboxJob.cancel()
     }
 }
