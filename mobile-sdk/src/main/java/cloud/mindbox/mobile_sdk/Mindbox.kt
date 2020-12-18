@@ -21,7 +21,6 @@ object Mindbox {
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
                 firstInitialize(context, callback)
-                MindboxPreferences.isFirstInitialize = false
             } else {
                 secondaryInitialize()
             }
@@ -53,6 +52,7 @@ object Mindbox {
         callback: (String?, String?) -> Unit
     ) {
         callback.invoke(firebaseToken, deviceUuid)
+        MindboxPreferences.isFirstInitialize = false
     }
 
     fun release() {
