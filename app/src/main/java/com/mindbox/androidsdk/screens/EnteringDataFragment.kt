@@ -3,6 +3,8 @@ package com.mindbox.androidsdk.screens
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
+import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.Prefs
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
@@ -22,6 +24,10 @@ class EnteringDataFragment(callback: () -> Unit) :
 
     private fun setupFields() {
         loadProgress.visibility = View.VISIBLE
+        Mindbox.init(this.requireContext(), Configuration()) { deviceId, installId ->
+            deviceUuidData.setText(deviceId ?: "")
+            installationIdData.setText(installId ?: "")
+        }
 
         endpointData.setText(Prefs.enteredEndpoint)
         endpointData.setSelection(endpointData.text.toString().length)
@@ -37,5 +43,7 @@ class EnteringDataFragment(callback: () -> Unit) :
         if (endpoint.isNotEmpty() && endpoint != Prefs.enteredEndpoint) {
             Prefs.enteredEndpoint = endpoint
         }
+
+        Mindbox.setInstallationId(installationIdData.text.toString())
     }
 }

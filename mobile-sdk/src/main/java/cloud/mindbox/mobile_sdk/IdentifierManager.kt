@@ -37,7 +37,7 @@ internal object IdentifierManager {
                 MindboxPreferences.userAdid = adid
                 adid
             } else {
-                MindboxPreferences.userAdid.toString()
+                MindboxPreferences.userAdid ?: ""
             }
         }
     }

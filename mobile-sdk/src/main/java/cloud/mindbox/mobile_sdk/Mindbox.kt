@@ -4,6 +4,7 @@ import android.content.Context
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -18,13 +19,14 @@ object Mindbox {
         this.context = context
 
         Hawk.init(context).build()
-        mindboxScope.launch {
-            if (MindboxPreferences.isFirstInitialize) {
-                firstInitialize(context, callback)
-            } else {
-                secondaryInitialize()
-            }
+        mindboxScope.launch(Main) {
+            callback.invoke(initDeviceId(), MindboxPreferences.installationId)
         }
+    }
+
+    private suspend fun initDeviceId(): String? {
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        return adid.await()
     }
 
     fun getDeviceUuid(): String? {
@@ -35,11 +37,27 @@ object Mindbox {
         return MindboxPreferences.firebaseToken
     }
 
-    private suspend fun firstInitialize(context: Context, callback: (String?, String?) -> Unit) {
+    fun setInstallationId(id: String) {
+        if (id != MindboxPreferences.installationId) {
+            MindboxPreferences.installationId = id
+        }
+    }
+
+    fun registerSdl(context: Context) {
+        mindboxScope.launch {
+            if (MindboxPreferences.isFirstInitialize) {
+                firstInitialize(context)
+            } else {
+                secondaryInitialize()
+            }
+        }
+    }
+
+    private suspend fun firstInitialize(context: Context) {
         val firebaseToken = mindboxScope.async { IdentifierManager.getFirebaseToken() }
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
 
-        registerClient(firebaseToken.await(), adid.await(), callback)
+        registerClient(firebaseToken.await(), adid.await())
     }
 
     private suspend fun secondaryInitialize() {
@@ -48,10 +66,8 @@ object Mindbox {
 
     private fun registerClient(
         firebaseToken: String?,
-        deviceUuid: String?,
-        callback: (String?, String?) -> Unit
+        deviceUuid: String?
     ) {
-        callback.invoke(firebaseToken, deviceUuid)
         MindboxPreferences.isFirstInitialize = false
     }
 
