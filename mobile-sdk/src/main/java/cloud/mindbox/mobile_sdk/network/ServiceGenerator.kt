@@ -2,23 +2,22 @@ package cloud.mindbox.mobile_sdk.network
 
 import cloud.mindbox.mobile_sdk.BuildConfig
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.experimental.CoroutineCallAdapterFactory
-import okhttp3.*
+import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 
-open class ServiceGenerator() {
+object ServiceGenerator {
+
+    private const val BASE_URL = "https://api.mindbox.ru/v3/operations"
+
     private val retrofit: Retrofit
     private val client: OkHttpClient
 
     init {
         client = initClient()
         retrofit = initRetrofit()
-    }
-
-    companion object {
-        private const val BASE_URL = "https://api.mindbox.ru/v3/operations"
     }
 
     private fun initRetrofit(): Retrofit {
