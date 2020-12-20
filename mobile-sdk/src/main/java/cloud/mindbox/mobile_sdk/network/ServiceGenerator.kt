@@ -1,5 +1,6 @@
-package cloud.mindbox.mobile_sdk
+package cloud.mindbox.mobile_sdk.network
 
+import cloud.mindbox.mobile_sdk.BuildConfig
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.experimental.CoroutineCallAdapterFactory
 import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor

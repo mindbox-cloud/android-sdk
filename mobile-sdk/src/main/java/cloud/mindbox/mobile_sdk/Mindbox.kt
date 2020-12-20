@@ -29,35 +29,45 @@ object Mindbox {
         return adid.await()
     }
 
-    fun getDeviceUuid(): String? {
-        return MindboxPreferences.userAdid
-    }
-
-    fun getFirebaseToken(): String? {
-        return MindboxPreferences.firebaseToken
-    }
-
-    fun setInstallationId(id: String) {
-        if (id != MindboxPreferences.installationId) {
+    private fun setInstallationId(id: String) {
+        if (id.isNotEmpty() && id != MindboxPreferences.installationId) {
             MindboxPreferences.installationId = id
         }
     }
 
-    fun registerSdl(context: Context) {
+    //todo validate fields
+    fun registerSdk(
+        context: Context,
+        endpoint: String,
+        deviceUuid: String,
+        installationId: String
+    ) {
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
-                firstInitialize(context)
+                firstInitialize(context, endpoint, deviceUuid, installationId)
             } else {
                 secondaryInitialize()
             }
         }
     }
 
-    private suspend fun firstInitialize(context: Context) {
+    private suspend fun firstInitialize(
+        context: Context,
+        endpoint: String,
+        deviceUuid: String,
+        installationId: String
+    ) {
         val firebaseToken = mindboxScope.async { IdentifierManager.getFirebaseToken() }
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        setInstallationId(installationId)
 
-        registerClient(firebaseToken.await(), adid.await())
+        val deviceId = if (deviceUuid.isNotEmpty()) {
+            deviceUuid
+        } else {
+            adid.await()
+        }
+
+        registerClient(firebaseToken.await(), endpoint, deviceId ?: "", MindboxPreferences.installationId ?: "")
     }
 
     private suspend fun secondaryInitialize() {
@@ -65,10 +75,11 @@ object Mindbox {
     }
 
     private fun registerClient(
-        firebaseToken: String?,
-        deviceUuid: String?
+        firebaseToken: String?, endpoint: String, deviceUuid: String, installationId: String
     ) {
         MindboxPreferences.isFirstInitialize = false
+
+
     }
 
     fun release() {

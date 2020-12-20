@@ -37,13 +37,13 @@ class EnteringDataFragment(callback: () -> Unit) :
 
     private fun initSdk() {
         val endpoint = endpointData.text.toString()
-        val fbToken = deviceUuidData.text.toString()
+        val deviceId = deviceUuidData.text.toString()
         val installId = installationIdData.text.toString()
 
         if (endpoint.isNotEmpty() && endpoint != Prefs.enteredEndpoint) {
             Prefs.enteredEndpoint = endpoint
         }
 
-        Mindbox.setInstallationId(installationIdData.text.toString())
+        Mindbox.registerSdk(this.requireContext(), endpoint, deviceId, installId)
     }
 }
