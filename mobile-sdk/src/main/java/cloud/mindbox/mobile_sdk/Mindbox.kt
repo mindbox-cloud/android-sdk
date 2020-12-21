@@ -47,6 +47,13 @@ object Mindbox {
         installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
+        val validationErrors = MindboxResponse.ValidationError().apply { validateFields(endpoint, deviceUuid) }
+
+        if (validationErrors.messages.isNotEmpty()) {
+            callback.invoke(validationErrors)
+            return
+        }
+
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
                 firstInitialize(context, endpoint, deviceUuid, installationId, callback)
