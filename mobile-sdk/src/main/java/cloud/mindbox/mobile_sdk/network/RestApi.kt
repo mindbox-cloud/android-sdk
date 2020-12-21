@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.network
 
 import cloud.mindbox.mobile_sdk.models.FullInitData
+import cloud.mindbox.mobile_sdk.models.InitResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import retrofit2.Response
 import retrofit2.http.Body
@@ -15,7 +16,7 @@ interface RestApi {
         @Query("operation") operation: String,
         @Query("deviceUUID") deviceId: String,
         @Body data: FullInitData
-    ): Response<Unit>
+    ): Response<InitResponse>
 
     @POST("async")
     suspend fun secondInitSdk(
@@ -23,5 +24,5 @@ interface RestApi {
         @Query("operation") operation: String,
         @Query("deviceUUID") deviceId: String,
         @Body data: PartialInitData
-    ): Response<Unit>
+    ): Response<InitResponse>
 }

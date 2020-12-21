@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.network
 
 import cloud.mindbox.mobile_sdk.BuildConfig
-import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,7 +22,6 @@ internal object ServiceGenerator {
             .baseUrl(BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
-            .addCallAdapterFactory(CoroutineCallAdapterFactory())
             .build()
     }
 
