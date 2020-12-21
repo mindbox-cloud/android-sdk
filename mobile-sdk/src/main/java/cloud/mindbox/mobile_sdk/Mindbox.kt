@@ -28,6 +28,22 @@ object Mindbox {
         }
     }
 
+    /**
+    "Данные из SDK API"
+
+    - deviceUUID
+    - token (дата получения)
+    - версия SDK -->
+     */
+
+    fun getSdkData(onResult: (String, String, String) -> Unit) {
+        onResult.invoke(
+            MindboxPreferences.userAdid ?: "",
+            MindboxPreferences.firebaseTokenSaveDate,
+            "Some version - will be added later"
+        )
+    }
+
     private suspend fun initDeviceId(): String? {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
         return adid.await()
@@ -39,7 +55,6 @@ object Mindbox {
         }
     }
 
-    //todo validate fields
     fun registerSdk(
         context: Context,
         endpoint: String,
@@ -72,13 +87,20 @@ object Mindbox {
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
-        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        val adid = withContext(mindboxScope.coroutineContext) {
+            IdentifierManager.getAdsIdentification(context)
+        }
         setInstallationId(installationId)
 
         val deviceId = if (deviceUuid.isNotEmpty()) {
             deviceUuid
         } else {
-            adid.await()
+            adid
+        }
+
+
+        if (deviceUuid.isNotEmpty() && adid != deviceUuid) {
+            MindboxPreferences.userAdid = deviceUuid
         }
 
         MindboxPreferences.isFirstInitialize = false
@@ -110,12 +132,18 @@ object Mindbox {
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
-        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        val adid = withContext(mindboxScope.coroutineContext) {
+            IdentifierManager.getAdsIdentification(context)
+        }
 
         val deviceId = if (deviceUuid.isNotEmpty()) {
             deviceUuid
         } else {
-            adid.await()
+            adid
+        }
+
+        if (deviceUuid.isNotEmpty() && adid != deviceUuid) {
+            MindboxPreferences.userAdid = deviceUuid
         }
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
