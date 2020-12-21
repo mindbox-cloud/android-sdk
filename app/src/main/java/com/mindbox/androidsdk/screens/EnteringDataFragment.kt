@@ -11,7 +11,7 @@ import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
 import org.json.JSONObject
 
-class EnteringDataFragment(callback: () -> Unit) :
+class EnteringDataFragment(private val callback: (String, String, String) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -50,17 +50,24 @@ class EnteringDataFragment(callback: () -> Unit) :
         Mindbox.registerSdk(this.requireContext(), endpoint, deviceId, installId) { response ->
             activity?.runOnUiThread {
                 loadProgress.visibility = View.GONE
-                if (response is MindboxResponse.Error) {
-                    errorContainer.text =
-                        """code: ${response.status}
-                            |
-                            |message: ${response.message}
-                            |
-                            |error body: ${JSONObject(response.errorBody?.string())}
-                        """.trimMargin()
-                } else if (response is MindboxResponse.ValidationError) {
-                    errorContainer.text = response.messages.toString()
+                when (response) {
+                    is MindboxResponse.Error -> {
+                        errorContainer.text =
+                            """code: ${response.status}
+                                        |
+                                        |message: ${response.message}
+                                        |
+                                        |error body: ${JSONObject(response.errorBody?.string())}
+                                    """.trimMargin()
+                    }
+                    is MindboxResponse.ValidationError -> {
+                        errorContainer.text = response.messages.toString()
+                    }
+                    is MindboxResponse.SuccessResponse<*> -> {
+                        callback.invoke(endpoint, deviceId, installId)
+                    }
                 }
+                callback.invoke(endpoint, deviceId, installId)
             }
         }
     }
