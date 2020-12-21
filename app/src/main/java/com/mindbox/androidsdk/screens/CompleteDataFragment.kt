@@ -25,13 +25,6 @@ class CompleteDataFragment(private val endpoint: String, private val deviceId: S
 }
 
 /**
-
-<!-- "Параметры инициализации SDK"
-
-- endpoint
-- deviceUUID
-- installationID
-
 "Данные из SDK API"
 
 - deviceUUID

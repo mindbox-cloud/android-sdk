@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import com.orhanobut.hawk.Hawk
+import java.util.*
 
 internal object MindboxPreferences {
 
@@ -8,6 +9,7 @@ internal object MindboxPreferences {
     private const val KEY_USER_ADID = "key_user_uuid"
     private const val KEY_INSTALLATION_ID = "key_installation_id"
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
+    private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
 
     var isFirstInitialize: Boolean
         get() = Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
@@ -31,5 +33,12 @@ internal object MindboxPreferences {
         get() = Hawk.get(KEY_FIREBASE_TOKEN, null)
         set(value) {
             Hawk.put(KEY_FIREBASE_TOKEN, value)
+            firebaseTokenSaveDate = Date().toString()
+        }
+
+    var firebaseTokenSaveDate: String
+        get() = Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
+        set(value) {
+            Hawk.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
         }
 }
