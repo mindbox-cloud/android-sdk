@@ -5,7 +5,7 @@ plugins {
     id 'org.jetbrains.dokka'
 }
 apply plugin: 'maven-publish'
-group='com.github.mindbox'
+group='com.github.mindbox-moscow'
 
 apply plugin: 'com.github.dcendents.android-maven'
 
@@ -17,7 +17,7 @@ android {
         minSdkVersion 16
         targetSdkVersion 30
         versionCode 1
-        versionName "1.0.2"
+        versionName "1.0.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -86,3 +86,5 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.6.2'
     implementation "com.squareup.okhttp3:logging-interceptor:4.9.0"
 }
+
+apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'
