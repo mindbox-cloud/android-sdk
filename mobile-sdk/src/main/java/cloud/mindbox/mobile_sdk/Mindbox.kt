@@ -18,23 +18,27 @@ object Mindbox {
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun init(context: Context, configuration: Configuration, callback: (String?, String?) -> Unit) {
+    fun init(
+        context: Context,
+        endpoint: String,
+        deviceUuid: String,
+        installationId: String,
+        callback: (MindboxResponse) -> Unit
+    ) {
         this.context = context
 
         Hawk.init(context).build()
 
         mindboxScope.launch(Main) {
-            callback.invoke(initDeviceId(), MindboxPreferences.installationId)
+            val deviceId = if (deviceUuid.isEmpty()) {
+                initDeviceId()
+            } else {
+                deviceUuid
+            }
+
+            registerSdk(context, endpoint, deviceId ?: "", installationId, callback)
         }
     }
-
-    /**
-    "Данные из SDK API"
-
-    - deviceUUID
-    - token (дата получения)
-    - версия SDK -->
-     */
 
     fun getSdkData(onResult: (String, String, String) -> Unit) {
         onResult.invoke(
@@ -55,14 +59,15 @@ object Mindbox {
         }
     }
 
-    fun registerSdk(
+    private fun registerSdk(
         context: Context,
         endpoint: String,
         deviceUuid: String,
         installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
-        val validationErrors = MindboxResponse.ValidationError().apply { validateFields(endpoint, deviceUuid) }
+        val validationErrors =
+            MindboxResponse.ValidationError().apply { validateFields(endpoint, deviceUuid) }
 
         if (validationErrors.messages.isNotEmpty()) {
             callback.invoke(validationErrors)
