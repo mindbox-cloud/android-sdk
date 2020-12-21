@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import com.google.firebase.FirebaseApp
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -28,6 +29,7 @@ object Mindbox {
         this.context = context
 
         Hawk.init(context).build()
+        FirebaseApp.initializeApp(context)
 
         mindboxScope.launch(Main) {
             val deviceId = if (deviceUuid.isEmpty()) {
