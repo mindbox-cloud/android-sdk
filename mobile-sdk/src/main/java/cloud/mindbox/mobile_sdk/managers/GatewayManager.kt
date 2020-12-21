@@ -1,16 +1,19 @@
 package cloud.mindbox.mobile_sdk.managers
 
-import cloud.mindbox.mobile_sdk.models.InitData
+import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.network.RestApi
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 
 object GatewayManager {
 
+    private val mindboxApi = ServiceGenerator.initRetrofit().create(RestApi::class.java)
+
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
     private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
 
-    fun sendFirstInitialization(endpointId: String, deviceId: String, data: InitData) {
-        ServiceGenerator.mindboxApi.firstInitSdk(
+    suspend fun sendFirstInitialization(endpointId: String, deviceId: String, data: FullInitData) {
+        mindboxApi.firstInitSdk(
             endpointId = endpointId,
             operation = OPERATION_APP_INSTALLED,
             deviceId = deviceId,
@@ -18,7 +21,11 @@ object GatewayManager {
         )
     }
 
-    fun sendSecondInitialization(endpointId: String, deviceId: String, data: PartialInitData) {
+    suspend fun sendSecondInitialization(
+        endpointId: String,
+        deviceId: String,
+        data: PartialInitData
+    ) {
 
     }
 }

@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.network
 
 import cloud.mindbox.mobile_sdk.BuildConfig
-import com.jakewharton.retrofit2.adapter.kotlin.coroutines.experimental.CoroutineCallAdapterFactory
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,18 +14,11 @@ import java.io.IOException
 
 internal object ServiceGenerator {
 
-    private const val BASE_URL = "https://api.mindbox.ru/v3/operations"
+    private const val BASE_URL = "https://api.mindbox.ru/v3/operations/"
 
-    val mindboxApi = initRetrofit().create(RestApi::class.java)
-    private val retrofit: Retrofit
-    private val client: OkHttpClient
+    private val client: OkHttpClient = initClient()
 
-    init {
-        client = initClient()
-        retrofit = initRetrofit()
-    }
-
-    private fun initRetrofit(): Retrofit {
+    fun initRetrofit(): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
@@ -35,16 +28,16 @@ internal object ServiceGenerator {
     }
 
     private fun initClient(): OkHttpClient {
-        val builder = OkHttpClient.Builder()
+        return OkHttpClient.Builder().apply {
 
-        if (BuildConfig.DEBUG) {
-            builder.addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-                .addInterceptor(HeaderRequestInterceptor())
+            if (BuildConfig.DEBUG) {
+                addInterceptor(HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                })
+                addInterceptor(HeaderRequestInterceptor())
+            }
         }
-
-        return builder.build()
+            .build()
     }
 
     internal class HeaderRequestInterceptor : Interceptor {

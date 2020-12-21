@@ -4,7 +4,6 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +23,7 @@ object Mindbox {
         this.context = context
 
         Hawk.init(context).build()
+
         mindboxScope.launch(Main) {
             callback.invoke(initDeviceId(), MindboxPreferences.installationId)
         }
@@ -48,11 +48,12 @@ object Mindbox {
         installationId: String
     ) {
         mindboxScope.launch {
-            if (MindboxPreferences.isFirstInitialize) {
-                firstInitialize(context, endpoint, deviceUuid, installationId)
-            } else {
-                secondaryInitialize()
-            }
+            firstInitialize(context, endpoint, deviceUuid, installationId)
+//            if (MindboxPreferences.isFirstInitialize) {
+//                firstInitialize(context, endpoint, deviceUuid, installationId)
+//            } else {
+//                secondaryInitialize()
+//            }
         }
     }
 
@@ -90,26 +91,20 @@ object Mindbox {
         MindboxPreferences.isFirstInitialize = false
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
-        val initData = if (installationId.isNotEmpty()) {
-            FullInitData(
-                firebaseToken ?: "",
-                isTokenAvailable,
-                installationId,
-                false //fixme
-            )
-        } else {
-            PartialInitData(
-                firebaseToken ?: "",
-                isTokenAvailable,
-                false //fixme
+        val initData = FullInitData(
+            firebaseToken ?: "",
+            isTokenAvailable,
+            installationId,
+            false //fixme
+        )
+
+        mindboxScope.launch {
+            GatewayManager.sendFirstInitialization(
+                endpoint,
+                deviceUuid,
+                initData
             )
         }
-
-        GatewayManager.sendFirstInitialization(
-            endpoint,
-            deviceUuid,
-            initData
-        )
     }
 
     fun release() {
