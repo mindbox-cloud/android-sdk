@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import java.util.*
 
 

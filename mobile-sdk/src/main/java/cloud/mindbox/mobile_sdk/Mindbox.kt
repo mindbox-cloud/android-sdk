@@ -1,6 +1,11 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.IdentifierManager
+import cloud.mindbox.mobile_sdk.models.FullInitData
+import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
@@ -67,7 +72,12 @@ object Mindbox {
             adid.await()
         }
 
-        registerClient(firebaseToken.await(), endpoint, deviceId ?: "", MindboxPreferences.installationId ?: "")
+        registerClient(
+            firebaseToken.await(),
+            endpoint,
+            deviceId ?: "",
+            MindboxPreferences.installationId ?: ""
+        )
     }
 
     private suspend fun secondaryInitialize() {
@@ -79,7 +89,27 @@ object Mindbox {
     ) {
         MindboxPreferences.isFirstInitialize = false
 
+        val isTokenAvailable = !firebaseToken.isNullOrEmpty()
+        val initData = if (installationId.isNotEmpty()) {
+            FullInitData(
+                firebaseToken ?: "",
+                isTokenAvailable,
+                installationId,
+                false //fixme
+            )
+        } else {
+            PartialInitData(
+                firebaseToken ?: "",
+                isTokenAvailable,
+                false //fixme
+            )
+        }
 
+        GatewayManager.sendFirstInitialization(
+            endpoint,
+            deviceUuid,
+            initData
+        )
     }
 
     fun release() {

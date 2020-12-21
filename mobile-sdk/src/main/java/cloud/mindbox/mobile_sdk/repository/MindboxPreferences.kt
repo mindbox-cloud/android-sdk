@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk
+package cloud.mindbox.mobile_sdk.repository
 
 import com.orhanobut.hawk.Hawk
 

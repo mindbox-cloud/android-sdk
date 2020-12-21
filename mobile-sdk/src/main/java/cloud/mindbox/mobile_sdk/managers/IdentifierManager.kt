@@ -1,6 +1,8 @@
-package cloud.mindbox.mobile_sdk
+package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging

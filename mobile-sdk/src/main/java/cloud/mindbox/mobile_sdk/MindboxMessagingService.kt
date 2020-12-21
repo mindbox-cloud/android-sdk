@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
