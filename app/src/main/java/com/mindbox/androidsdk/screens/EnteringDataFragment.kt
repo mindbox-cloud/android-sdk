@@ -58,6 +58,8 @@ class EnteringDataFragment(callback: () -> Unit) :
                             |
                             |error body: ${JSONObject(response.errorBody?.string())}
                         """.trimMargin()
+                } else if (response is MindboxResponse.ValidationError) {
+                    errorContainer.text = response.messages.toString()
                 }
             }
         }
