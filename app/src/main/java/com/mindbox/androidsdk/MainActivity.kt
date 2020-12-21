@@ -1,27 +1,27 @@
 package com.mindbox.androidsdk
 
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import cloud.mindbox.mobile_sdk.Mindbox
-import kotlinx.android.synthetic.main.activity_main.*
+import com.mindbox.androidsdk.screens.EnteringDataFragment
+import com.orhanobut.hawk.Hawk
 
 class MainActivity : AppCompatActivity(R.layout.activity_main) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        Hawk.init(this).build()
 
-        Mindbox.getDeviceUuid {
-            runOnUiThread {
-                textViewMain.text = it
-            }
-            Log.i("MainActivity", "get device uuid: $it")
-        }
+        openEnteringDataScreen()
+    }
 
-        Mindbox.getFirebaseToken {
-            runOnUiThread {
-                textViewFirebase.text = it
-            }
-        }
+    private fun openEnteringDataScreen() {
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.fragmentContainer,
+                EnteringDataFragment {
+
+                })
+            .commit()
     }
 }
