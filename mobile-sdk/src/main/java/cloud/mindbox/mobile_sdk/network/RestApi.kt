@@ -4,7 +4,6 @@ import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import retrofit2.Response
 import retrofit2.http.Body
-import retrofit2.http.FormUrlEncoded
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -18,7 +17,6 @@ interface RestApi {
         @Body data: FullInitData
     ): Response<Unit>
 
-    @FormUrlEncoded
     @POST("async")
     suspend fun secondInitSdk(
         @Query("endpointId") endpointId: String,

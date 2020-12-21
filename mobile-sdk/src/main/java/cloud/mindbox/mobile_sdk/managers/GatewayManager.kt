@@ -26,6 +26,11 @@ object GatewayManager {
         deviceId: String,
         data: PartialInitData
     ) {
-
+        mindboxApi.secondInitSdk(
+            endpointId = endpointId,
+            operation = OPERATION_APP_UPDATE,
+            deviceId = deviceId,
+            data = data
+        )
     }
 }

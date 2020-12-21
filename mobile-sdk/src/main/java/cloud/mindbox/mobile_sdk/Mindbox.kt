@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
+import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.CoroutineScope
@@ -48,12 +49,11 @@ object Mindbox {
         installationId: String
     ) {
         mindboxScope.launch {
-            firstInitialize(context, endpoint, deviceUuid, installationId)
-//            if (MindboxPreferences.isFirstInitialize) {
-//                firstInitialize(context, endpoint, deviceUuid, installationId)
-//            } else {
-//                secondaryInitialize()
-//            }
+            if (MindboxPreferences.isFirstInitialize) {
+                firstInitialize(context, endpoint, deviceUuid, installationId)
+            } else {
+                secondaryInitialize(context, endpoint, deviceUuid, )
+            }
         }
     }
 
@@ -81,8 +81,25 @@ object Mindbox {
         )
     }
 
-    private suspend fun secondaryInitialize() {
+    private suspend fun secondaryInitialize(
+        context: Context,
+        endpoint: String,
+        deviceUuid: String
+    ) {
+        val firebaseToken = mindboxScope.async { IdentifierManager.getFirebaseToken() }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
 
+        val deviceId = if (deviceUuid.isNotEmpty()) {
+            deviceUuid
+        } else {
+            adid.await()
+        }
+
+        updateClient(
+            firebaseToken.await(),
+            endpoint,
+            deviceId ?: ""
+        )
     }
 
     private fun registerClient(
@@ -100,6 +117,23 @@ object Mindbox {
 
         mindboxScope.launch {
             GatewayManager.sendFirstInitialization(
+                endpoint,
+                deviceUuid,
+                initData
+            )
+        }
+    }
+
+    private fun updateClient(firebaseToken: String?, endpoint: String, deviceUuid: String) {
+        val isTokenAvailable = !firebaseToken.isNullOrEmpty()
+        val initData = PartialInitData(
+            firebaseToken ?: "",
+            isTokenAvailable,
+            false //fixme
+        )
+
+        mindboxScope.launch {
+            GatewayManager.sendSecondInitialization(
                 endpoint,
                 deviceUuid,
                 initData
