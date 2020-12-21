@@ -67,7 +67,6 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
                         callback.invoke(endpoint, deviceId, installId)
                     }
                 }
-                callback.invoke(endpoint, deviceId, installId)
             }
         }
     }
