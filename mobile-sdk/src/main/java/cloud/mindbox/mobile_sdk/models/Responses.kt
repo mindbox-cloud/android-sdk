@@ -28,7 +28,6 @@ sealed class MindboxResponse {
 
         companion object {
             private const val ERROR_EMPTY_ENDPOINT = "Endpoint must not be empty"
-            private const val ERROR_EMPTY_DEVICE_ID = "Device id must be entered"
             private const val ERROR_INVALID_DEVICE_ID = "Invalid device UUID format"
         }
 
@@ -38,14 +37,10 @@ sealed class MindboxResponse {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
 
-            if (deviceId.isEmpty()) {
-                errors.add(ERROR_EMPTY_DEVICE_ID)
-            } else {
-                try {
-                    UUID.fromString(deviceId)
-                } catch (e: Exception) {
-                    errors.add(ERROR_INVALID_DEVICE_ID)
-                }
+            try {
+                UUID.fromString(deviceId)
+            } catch (e: Exception) {
+                errors.add(ERROR_INVALID_DEVICE_ID)
             }
 
             this.messages = errors.toList()

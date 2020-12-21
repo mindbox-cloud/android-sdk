@@ -26,10 +26,6 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
 
     private fun setupFields() {
         loadProgress.visibility = View.VISIBLE
-        Mindbox.init(this.requireContext(), Configuration()) { deviceId, installId ->
-            deviceUuidData.setText(deviceId ?: "")
-            installationIdData.setText(installId ?: "")
-        }
 
         endpointData.setText(Prefs.enteredEndpoint)
         endpointData.setSelection(endpointData.text.toString().length)
@@ -47,7 +43,7 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
             Prefs.enteredEndpoint = endpoint
         }
 
-        Mindbox.registerSdk(this.requireContext(), endpoint, deviceId, installId) { response ->
+        Mindbox.init(this.requireContext(), endpoint, deviceId, installId) { response ->
             activity?.runOnUiThread {
                 loadProgress.visibility = View.GONE
                 when (response) {
