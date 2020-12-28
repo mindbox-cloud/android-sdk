@@ -32,10 +32,10 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
 
         mindboxScope.launch(Main) {
-            val deviceId = if (deviceUuid.isEmpty()) {
+            val deviceId = if (deviceUuid.trim().isEmpty()) {
                 initDeviceId()
             } else {
-                deviceUuid
+                deviceUuid.trim()
             }
 
             registerSdk(context, endpoint, deviceId ?: "", installationId, callback)
@@ -50,7 +50,7 @@ object Mindbox {
         )
     }
 
-    private suspend fun initDeviceId(): String? {
+    internal suspend fun initDeviceId(): String? {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
         return adid.await()
     }
