@@ -33,7 +33,7 @@ sealed class MindboxResponse {
 
         fun validateFields(endpoint: String, deviceId: String) {
             val errors = arrayListOf<String>()
-            if (endpoint.isEmpty()) {
+            if (endpoint.trim().isEmpty()) {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
 
