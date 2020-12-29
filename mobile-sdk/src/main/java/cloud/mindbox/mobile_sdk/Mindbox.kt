@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import com.orhanobut.hawk.Hawk
@@ -38,6 +39,7 @@ object Mindbox {
 
             registerSdk(
                 context,
+                configuration.domain,
                 configuration.endpoint,
                 deviceId ?: "",
                 configuration.installationId,
@@ -54,7 +56,7 @@ object Mindbox {
         )
     }
 
-    internal suspend fun initDeviceId(): String? {
+    private suspend fun initDeviceId(): String? {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
         return adid.await()
     }
@@ -67,18 +69,21 @@ object Mindbox {
 
     private fun registerSdk(
         context: Context,
+        domain: String,
         endpoint: String,
         deviceUuid: String,
         installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
         val validationErrors =
-            MindboxResponse.ValidationError().apply { validateFields(endpoint, deviceUuid) }
+            MindboxResponse.ValidationError().apply { validateFields(domain, endpoint, deviceUuid) }
 
         if (validationErrors.messages.isNotEmpty()) {
             callback.invoke(validationErrors)
             return
         }
+
+        GatewayManager.initClient(domain)
 
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {

@@ -31,8 +31,13 @@ sealed class MindboxResponse {
             private const val ERROR_INVALID_DEVICE_ID = "Invalid device UUID format"
         }
 
-        fun validateFields(endpoint: String, deviceId: String) {
+        fun validateFields(domain: String, endpoint: String, deviceId: String) {
             val errors = arrayListOf<String>()
+
+            if (domain.startsWith("http") || domain.startsWith("/") || domain.endsWith("/")) {
+
+            }
+
             if (endpoint.trim().isEmpty()) {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
