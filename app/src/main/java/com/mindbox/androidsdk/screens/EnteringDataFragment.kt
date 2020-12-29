@@ -43,7 +43,12 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
             Prefs.enteredEndpoint = endpoint
         }
 
-        Mindbox.init(this.requireContext(), endpoint, deviceId, installId) { response ->
+        val configs = Configuration.Builder(endpoint)
+            .setDeviceId(deviceId)
+            .setInstallationId(installId)
+            .build()
+
+        Mindbox.init(this.requireContext(), configs) { response ->
             activity?.runOnUiThread {
                 loadProgress.visibility = View.GONE
                 when (response) {

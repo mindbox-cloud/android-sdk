@@ -3,9 +3,9 @@ package cloud.mindbox.mobile_sdk
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 class Configuration(builder: Builder) {
-    private val installationId: String = builder.installationId
-    private val deviceId: String = builder.deviceId
-    private val endpoint: String = builder.endpoint
+    internal val installationId: String = builder.installationId
+    internal val deviceId: String = builder.deviceId
+    internal val endpoint: String = builder.endpoint
 
     class Builder(var endpoint: String) {
         var installationId: String = MindboxPreferences.installationId ?: ""
