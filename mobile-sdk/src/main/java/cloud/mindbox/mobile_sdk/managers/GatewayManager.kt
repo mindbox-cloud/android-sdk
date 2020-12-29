@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.InitResponse
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
@@ -10,13 +11,23 @@ import retrofit2.Response
 
 object GatewayManager {
 
-    private val mindboxApi = ServiceGenerator.initRetrofit().create(RestApi::class.java)
+    private var mindboxApi: RestApi? = null
 
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
     private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
 
-    suspend fun sendFirstInitialization(endpointId: String, deviceId: String, data: FullInitData): MindboxResponse {
-        val result = mindboxApi.firstInitSdk(
+    fun initClient(domain: String) {
+        mindboxApi = ServiceGenerator.initRetrofit(domain).create(RestApi::class.java)
+    }
+
+    suspend fun sendFirstInitialization(
+        endpointId: String,
+        deviceId: String,
+        data: FullInitData
+    ): MindboxResponse {
+        if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
+
+        val result = mindboxApi!!.firstInitSdk(
             endpointId = endpointId,
             operation = OPERATION_APP_INSTALLED,
             deviceId = deviceId,
@@ -31,7 +42,9 @@ object GatewayManager {
         deviceId: String,
         data: PartialInitData
     ): MindboxResponse {
-        val result = mindboxApi.secondInitSdk(
+        if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
+
+        val result = mindboxApi!!.secondInitSdk(
             endpointId = endpointId,
             operation = OPERATION_APP_UPDATE,
             deviceId = deviceId,
