@@ -14,7 +14,7 @@ interface RestApi {
     @Headers(
         "Mindbox-Integration: Android-SDK",
         "Mindbox-Integration-Version: hardcoded_version.1.0.5",
-        "User-Agent: test.application.dev + 1.0.1, some_os + 11, Pixel, 4a",
+        "User-Agent: test.application.dev + 1.0.1, android + 11, Pixel, 4a",
         "Content-Type: application/json; charset=utf-8"
     )
     @POST("async")
