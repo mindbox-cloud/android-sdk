@@ -11,7 +11,7 @@ import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
 import org.json.JSONObject
 
-class EnteringDataFragment(private val callback: (String, String, String) -> Unit) :
+class EnteringDataFragment(private val callback: (String, String, String, String) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
 
     companion object {
@@ -92,7 +92,7 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
                         errorContainer.text = response.messages.toString()
                     }
                     is MindboxResponse.SuccessResponse<*> -> {
-                        callback.invoke(endpoint, deviceId, installId)
+                        callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
                     }
                 }
             }
