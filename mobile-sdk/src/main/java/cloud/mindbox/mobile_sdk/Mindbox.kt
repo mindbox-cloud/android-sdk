@@ -21,9 +21,7 @@ object Mindbox {
 
     fun init(
         context: Context,
-        endpoint: String,
-        deviceUuid: String,
-        installationId: String,
+        configuration: Configuration,
         callback: (MindboxResponse) -> Unit
     ) {
         this.context = context
@@ -32,13 +30,19 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
 
         mindboxScope.launch(Main) {
-            val deviceId = if (deviceUuid.trim().isEmpty()) {
+            val deviceId = if (configuration.deviceId.trim().isEmpty()) {
                 initDeviceId()
             } else {
-                deviceUuid.trim()
+                configuration.deviceId.trim()
             }
 
-            registerSdk(context, endpoint, deviceId ?: "", installationId, callback)
+            registerSdk(
+                context,
+                configuration.endpoint,
+                deviceId ?: "",
+                configuration.installationId,
+                callback
+            )
         }
     }
 
