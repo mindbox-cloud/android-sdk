@@ -14,6 +14,10 @@ import org.json.JSONObject
 class EnteringDataFragment(private val callback: (String, String, String) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
 
+    companion object {
+        private const val DEFAULT_DOMAIN = "api.mindbox.ru"
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -35,15 +39,32 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
 
     private fun initSdk() {
         loadProgress.visibility = View.VISIBLE
+        val domain = domainData.text.toString()
         val endpoint = endpointData.text.toString()
         val deviceId = deviceUuidData.text.toString()
         val installId = installationIdData.text.toString()
+
+        if (domain.isNotEmpty() && domain != Prefs.enteredDomain) {
+            Prefs.enteredDomain = domain
+        }
 
         if (endpoint.isNotEmpty() && endpoint != Prefs.enteredEndpoint) {
             Prefs.enteredEndpoint = endpoint
         }
 
-        val configs = Configuration.Builder(endpoint)
+        val notEmptyDomain = when {
+            domain.isNotEmpty() -> {
+                domain
+            }
+            Prefs.enteredDomain.isNotEmpty() -> {
+                Prefs.enteredDomain
+            }
+            else -> {
+                DEFAULT_DOMAIN
+            }
+        }
+
+        val configs = Configuration.Builder(notEmptyDomain, endpoint)
             .setDeviceId(deviceId)
             .setInstallationId(installId)
             .build()
@@ -58,7 +79,13 @@ class EnteringDataFragment(private val callback: (String, String, String) -> Uni
                                         |
                                         |message: ${response.message}
                                         |
-                                        |error body: ${JSONObject(response.errorBody?.string())}
+                                        |error body: ${
+                                try {
+                                    JSONObject(response.errorBody?.string())
+                                } catch (e: Exception) {
+                                    "Error body has bad format: " + response.errorBody.toString()
+                                }
+                            }
                                     """.trimMargin()
                     }
                     is MindboxResponse.ValidationError -> {
