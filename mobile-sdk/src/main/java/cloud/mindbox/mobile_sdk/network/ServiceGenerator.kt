@@ -32,7 +32,8 @@ internal object ServiceGenerator {
                 addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
-                addInterceptor(HeaderRequestInterceptor())
+                // todo fix and return on next tickets
+//                addInterceptor(HeaderRequestInterceptor())
             }
         }
             .build()
@@ -54,4 +55,6 @@ internal object ServiceGenerator {
             return chain.proceed(compressedRequest)
         }
     }
+
+
 }
