@@ -31,6 +31,9 @@ class EnteringDataFragment(private val callback: (String, String, String, String
     private fun setupFields() {
         loadProgress.visibility = View.VISIBLE
 
+        domainData.setText(Prefs.enteredDomain)
+        domainData.setSelection(domainData.text.toString().length)
+
         endpointData.setText(Prefs.enteredEndpoint)
         endpointData.setSelection(endpointData.text.toString().length)
 
