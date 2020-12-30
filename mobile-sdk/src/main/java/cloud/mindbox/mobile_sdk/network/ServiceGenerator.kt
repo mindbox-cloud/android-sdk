@@ -13,13 +13,13 @@ import java.io.IOException
 
 internal object ServiceGenerator {
 
-    private const val BASE_URL = "https://api.mindbox.ru/v3/operations/"
+    private const val BASE_URL_PLACEHOLDER = "https://%s/"
 
     private val client: OkHttpClient = initClient()
 
-    fun initRetrofit(): Retrofit {
+    fun initRetrofit(domain: String): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(String.format(BASE_URL_PLACEHOLDER, domain))
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -32,7 +32,8 @@ internal object ServiceGenerator {
                 addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
-                addInterceptor(HeaderRequestInterceptor())
+                // todo fix and return on next tickets
+//                addInterceptor(HeaderRequestInterceptor())
             }
         }
             .build()
@@ -54,4 +55,6 @@ internal object ServiceGenerator {
             return chain.proceed(compressedRequest)
         }
     }
+
+
 }

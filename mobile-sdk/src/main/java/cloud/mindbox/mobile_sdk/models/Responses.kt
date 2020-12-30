@@ -27,12 +27,18 @@ sealed class MindboxResponse {
     ) : MindboxResponse() {
 
         companion object {
+            private const val ERROR_INVALID_DOMAIN = "The domain must not start with https:// and must not end with /"
             private const val ERROR_EMPTY_ENDPOINT = "Endpoint must not be empty"
             private const val ERROR_INVALID_DEVICE_ID = "Invalid device UUID format"
         }
 
-        fun validateFields(endpoint: String, deviceId: String) {
+        fun validateFields(domain: String, endpoint: String, deviceId: String) {
             val errors = arrayListOf<String>()
+
+            if (domain.startsWith("http") || domain.startsWith("/") || domain.endsWith("/")) {
+                errors.add(ERROR_INVALID_DOMAIN)
+            }
+
             if (endpoint.trim().isEmpty()) {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
