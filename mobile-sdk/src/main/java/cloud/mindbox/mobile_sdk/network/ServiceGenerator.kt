@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.network
 
+import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -60,9 +61,8 @@ internal object ServiceGenerator {
             private const val HEADER_INTEGRATION_VERSION = "Mindbox-Integration-Version"
 
             private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
-            private const val VALUE_USER_AGENT = "%1$1s + %2$1s(%3$1s), android + 11, Pixel, 4a" // format: {host.application.name + app_version(version_code), os + version, vendor, model}
+            private const val VALUE_USER_AGENT = "%1$1s + %2$1s(%3$1s), android + %4$1s, Pixel, 4a" // format: {host.application.name + app_version(version_code), os + version, vendor, model}
             private const val VALUE_INTEGRATION = "Android-SDK"
-            private const val VALUE_INTEGRATION_VERSION = "hardcoded_version.1.0.6"
         }
 
         override fun intercept(chain: Interceptor.Chain): Response {
@@ -72,10 +72,10 @@ internal object ServiceGenerator {
                 .header(HEADER_CONTENT_TYPE, VALUE_CONTENT_TYPE)
                 .header(
                     HEADER_USER_AGENT,
-                    String.format(VALUE_USER_AGENT, packageName, versionName, versionCode)
+                    String.format(VALUE_USER_AGENT, packageName, versionName, versionCode, Build.VERSION.RELEASE)
                 )
                 .header(HEADER_INTEGRATION, VALUE_INTEGRATION)
-                .header(HEADER_INTEGRATION_VERSION, VALUE_INTEGRATION_VERSION)
+                .header(HEADER_INTEGRATION_VERSION, BuildConfig.VERSION_NAME)
                 .build()
             return chain.proceed(newRequest)
         }
