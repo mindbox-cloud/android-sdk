@@ -16,8 +16,9 @@ object GatewayManager {
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
     private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
 
-    fun initClient(domain: String) {
-        mindboxApi = ServiceGenerator.initRetrofit(domain).create(RestApi::class.java)
+    fun initClient(domain: String, packageName: String, versionName: String, versionCode: String) {
+        mindboxApi = ServiceGenerator.initRetrofit(domain, packageName, versionName, versionCode)
+            .create(RestApi::class.java)
     }
 
     suspend fun sendFirstInitialization(

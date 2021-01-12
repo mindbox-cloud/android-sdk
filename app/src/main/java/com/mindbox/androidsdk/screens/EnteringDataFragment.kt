@@ -67,7 +67,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
             }
         }
 
-        val configs = Configuration.Builder(notEmptyDomain, endpoint)
+        val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
             .setDeviceId(deviceId)
             .setInstallationId(installId)
             .build()

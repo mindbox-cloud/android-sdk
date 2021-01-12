@@ -14,9 +14,14 @@ internal object ServiceGenerator {
 
     private const val BASE_URL_PLACEHOLDER = "https://%s/"
 
-    private val client: OkHttpClient = initClient()
+    fun initRetrofit(
+        domain: String,
+        packageName: String,
+        versionName: String,
+        versionCode: String
+    ): Retrofit {
+        val client: OkHttpClient = initClient(packageName, versionName, versionCode)
 
-    fun initRetrofit(domain: String): Retrofit {
         return Retrofit.Builder()
             .baseUrl(String.format(BASE_URL_PLACEHOLDER, domain))
             .client(client)
@@ -24,10 +29,14 @@ internal object ServiceGenerator {
             .build()
     }
 
-    private fun initClient(): OkHttpClient {
+    private fun initClient(
+        packageName: String,
+        versionName: String,
+        versionCode: String
+    ): OkHttpClient {
         return OkHttpClient.Builder().apply {
 
-            addInterceptor(HeaderRequestInterceptor())
+            addInterceptor(HeaderRequestInterceptor(packageName, versionName, versionCode))
 
             if (BuildConfig.DEBUG) {
                 addInterceptor(HttpLoggingInterceptor().apply {
@@ -38,7 +47,11 @@ internal object ServiceGenerator {
             .build()
     }
 
-    internal class HeaderRequestInterceptor : Interceptor {
+    internal class HeaderRequestInterceptor(
+        private val packageName: String,
+        private val versionName: String,
+        private val versionCode: String
+    ) : Interceptor {
 
         companion object {
             private const val HEADER_CONTENT_TYPE = "Content-Type"
@@ -47,7 +60,7 @@ internal object ServiceGenerator {
             private const val HEADER_INTEGRATION_VERSION = "Mindbox-Integration-Version"
 
             private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
-            private const val VALUE_USER_AGENT = "test.application.dev + 1.0.1, android + 11, Pixel, 4a"
+            private const val VALUE_USER_AGENT = "%1$1s + %2$1s(%3$1s), android + 11, Pixel, 4a"
             private const val VALUE_INTEGRATION = "Android-SDK"
             private const val VALUE_INTEGRATION_VERSION = "hardcoded_version.1.0.6"
         }
@@ -57,7 +70,10 @@ internal object ServiceGenerator {
             val newRequest: Request
             newRequest = request.newBuilder()
                 .header(HEADER_CONTENT_TYPE, VALUE_CONTENT_TYPE)
-                .header(HEADER_USER_AGENT, VALUE_USER_AGENT)
+                .header(
+                    HEADER_USER_AGENT,
+                    String.format(VALUE_USER_AGENT, packageName, versionName, versionCode)
+                )
                 .header(HEADER_INTEGRATION, VALUE_INTEGRATION)
                 .header(HEADER_INTEGRATION_VERSION, VALUE_INTEGRATION_VERSION)
                 .build()
