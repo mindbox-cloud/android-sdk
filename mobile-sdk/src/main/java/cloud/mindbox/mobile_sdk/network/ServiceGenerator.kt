@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.network
 
+import android.util.Log
 import cloud.mindbox.mobile_sdk.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -28,33 +29,29 @@ internal object ServiceGenerator {
     private fun initClient(): OkHttpClient {
         return OkHttpClient.Builder().apply {
 
+            addInterceptor(HeaderRequestInterceptor())
+
             if (BuildConfig.DEBUG) {
                 addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
-                // todo fix and return on next tickets
-//                addInterceptor(HeaderRequestInterceptor())
             }
         }
             .build()
     }
 
-    internal class HeaderRequestInterceptor : Interceptor {
-        @Throws(IOException::class)
+    internal class HeaderRequestInterceptor: Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
-            val originalRequest: Request = chain.request()
-            if (originalRequest.body == null) {
-                return chain.proceed(originalRequest)
-            }
-            val compressedRequest: Request = originalRequest.newBuilder()
-                //todo add complete headers
+            val request = chain.request()
+            val newRequest: Request
+            newRequest = request.newBuilder()
+                .header("Content-Type", "application/json; charset=utf-8")
+                .header("User-Agent", "test.application.dev + 1.0.1, android + 11, Pixel, 4a")
                 .header("Mindbox-Integration", "Android-SDK")
-                .header("Mindbox-Integration-Version", "some version")
-                .method(originalRequest.method, originalRequest.body!!)
+                .header("Mindbox-Integration-Version", "hardcoded_version.1.0.6")
                 .build()
-            return chain.proceed(compressedRequest)
+            Log.i("Interceptor debug", " its working")
+            return chain.proceed(newRequest)
         }
     }
-
-
 }

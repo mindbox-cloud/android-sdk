@@ -11,12 +11,6 @@ import retrofit2.http.Query
 
 interface RestApi {
 
-    @Headers(
-        "Mindbox-Integration: Android-SDK",
-        "Mindbox-Integration-Version: hardcoded_version.1.0.6",
-        "User-Agent: test.application.dev + 1.0.1, android + 11, Pixel, 4a",
-        "Content-Type: application/json; charset=utf-8"
-    )
     @POST("v3/operations/async")
     suspend fun firstInitSdk(
         @Query("endpointId") endpointId: String,
@@ -25,12 +19,6 @@ interface RestApi {
         @Body data: FullInitData
     ): Response<InitResponse>
 
-    @Headers(
-        "Mindbox-Integration: Android-SDK",
-        "Mindbox-Integration-Version: hardcoded_version.1.0.6",
-        "User-Agent: test.application.dev + 1.0.1, some_os + 11, Pixel, 4a",
-        "Content-Type: application/json; charset=utf-8"
-    )
     @POST("v3/operations/async")
     suspend fun secondInitSdk(
         @Query("endpointId") endpointId: String,
