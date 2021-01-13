@@ -17,6 +17,8 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -56,4 +58,6 @@ dependencies {
 
     //network
     implementation "com.squareup.okhttp3:logging-interceptor:4.9.0"
+
+    implementation 'com.android.support:multidex:1.0.3'
 }

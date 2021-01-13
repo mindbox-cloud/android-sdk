@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.network.RestApi
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import retrofit2.Response
+import java.util.*
 
 object GatewayManager {
 
@@ -16,8 +17,9 @@ object GatewayManager {
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
     private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
 
-    fun initClient(domain: String) {
-        mindboxApi = ServiceGenerator.initRetrofit(domain).create(RestApi::class.java)
+    fun initClient(domain: String, packageName: String, versionName: String, versionCode: String) {
+        mindboxApi = ServiceGenerator.initRetrofit(domain, packageName, versionName, versionCode)
+            .create(RestApi::class.java)
     }
 
     suspend fun sendFirstInitialization(
@@ -54,9 +56,16 @@ object GatewayManager {
         return parseResponse(result)
     }
 
+    private fun getTimeOffset(date: Date): Long {
+        return Date().time - date.time
+    }
+
     private fun parseResponse(response: Response<InitResponse>): MindboxResponse {
         return if (response.isSuccessful && response.code() < 300) {
             MindboxResponse.SuccessResponse(response.code(), response.body())
+        } else if (response.code() in 400..499) {
+            // separate condition for removing from the queue
+            MindboxResponse.Error(response.code(), response.message(), response.errorBody())
         } else {
             MindboxResponse.Error(response.code(), response.message(), response.errorBody())
         }
