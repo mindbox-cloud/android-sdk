@@ -6,7 +6,6 @@ import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
-import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import com.orhanobut.hawk.Hawk
@@ -39,10 +38,8 @@ object Mindbox {
 
             registerSdk(
                 context,
-                configuration.domain,
-                configuration.endpoint,
+                configuration,
                 deviceId ?: "",
-                configuration.installationId,
                 callback
             )
         }
@@ -69,27 +66,37 @@ object Mindbox {
 
     private fun registerSdk(
         context: Context,
-        domain: String,
-        endpoint: String,
+        configuration: Configuration,
         deviceUuid: String,
-        installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
         val validationErrors =
-            MindboxResponse.ValidationError().apply { validateFields(domain, endpoint, deviceUuid) }
+            MindboxResponse.ValidationError()
+                .apply { validateFields(configuration.domain, configuration.endpoint, deviceUuid) }
 
         if (validationErrors.messages.isNotEmpty()) {
             callback.invoke(validationErrors)
             return
         }
 
-        GatewayManager.initClient(domain)
+        GatewayManager.initClient(
+            configuration.domain,
+            configuration.packageName,
+            configuration.versionName,
+            configuration.versionCode
+        )
 
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
-                firstInitialize(context, endpoint, deviceUuid, installationId, callback)
+                firstInitialize(
+                    context,
+                    configuration.endpoint,
+                    deviceUuid,
+                    configuration.installationId,
+                    callback
+                )
             } else {
-                secondaryInitialize(context, endpoint, deviceUuid, callback)
+                secondaryInitialize(context, configuration.endpoint, deviceUuid, callback)
             }
         }
     }
