@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.network.RestApi
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import retrofit2.Response
+import java.util.*
 
 object GatewayManager {
 
@@ -53,6 +54,10 @@ object GatewayManager {
         )
 
         return parseResponse(result)
+    }
+
+    private fun getTimeOffset(date: Date): Long {
+        return Date().time - date.time
     }
 
     private fun parseResponse(response: Response<InitResponse>): MindboxResponse {
