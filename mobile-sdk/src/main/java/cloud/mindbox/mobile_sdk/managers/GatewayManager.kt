@@ -63,6 +63,9 @@ object GatewayManager {
     private fun parseResponse(response: Response<InitResponse>): MindboxResponse {
         return if (response.isSuccessful && response.code() < 300) {
             MindboxResponse.SuccessResponse(response.code(), response.body())
+        } else if (response.code() in 400..499) {
+            // separate condition for removing from the queue
+            MindboxResponse.Error(response.code(), response.message(), response.errorBody())
         } else {
             MindboxResponse.Error(response.code(), response.message(), response.errorBody())
         }
