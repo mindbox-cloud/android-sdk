@@ -137,13 +137,15 @@ object Mindbox {
         )
 
         mindboxScope.launch {
-            val result = GatewayManager.sendFirstInitialization(
-                endpoint,
-                deviceId ?: "",
-                initData
-            )
+//            val result = GatewayManager.sendFirstInitialization(
+//                endpoint,
+//                deviceId ?: "",
+//                initData
+//            )
 
-            callback.invoke(result)
+            GatewayManager.testRequest(context)
+
+//            callback.invoke(result)
         }
     }
 
@@ -177,13 +179,14 @@ object Mindbox {
         )
 
         mindboxScope.launch {
-            val result = GatewayManager.sendSecondInitialization(
-                endpoint,
-                deviceId ?: "",
-                initData
-            )
+//            val result = GatewayManager.sendSecondInitialization(
+//                endpoint,
+//                deviceId ?: "",
+//                initData
+//            )
+            GatewayManager.testRequest(context)
 
-            callback.invoke(result)
+//            callback.invoke(result)
         }
     }
 

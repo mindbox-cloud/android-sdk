@@ -1,7 +1,11 @@
 package cloud.mindbox.mobile_sdk.network
 
+import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
+import com.android.volley.RequestQueue
+import com.android.volley.VolleyLog
+import com.android.volley.toolbox.Volley
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -10,8 +14,43 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+// todo
+// прикрутить свое логирование запорсов
+// добавить кастомный класс для запросов
+// построение запросов и отправка
 
-internal object ServiceGenerator {
+// Service generator as emulated singleton.
+// Provides request queue and process requests
+internal class ServiceGenerator constructor(context: Context) {
+
+    //Emulated singleton
+    companion object {
+        @Volatile
+        private var INSTANCE: ServiceGenerator? = null
+        internal fun getInstance(context: Context) =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: ServiceGenerator(context).also {
+                    INSTANCE = it
+                }
+            }
+    }
+
+    init {
+        VolleyLog.DEBUG = BuildConfig.DEBUG
+    }
+
+    internal val requestQueue: RequestQueue by lazy {
+        // applicationContext is key, it keeps you from leaking the
+        // Activity or BroadcastReceiver if someone passes one in.
+        Volley.newRequestQueue(context.applicationContext)
+    }
+
+    internal fun <T> addToRequestQueue(req: com.android.volley.Request<T>) {
+        requestQueue.add(req)
+    }
+}
+
+internal object ServiceGeneratorOld {
 
     private const val BASE_URL_PLACEHOLDER = "https://%s/"
 
