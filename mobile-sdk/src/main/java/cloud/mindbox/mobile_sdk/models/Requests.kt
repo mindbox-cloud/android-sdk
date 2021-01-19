@@ -15,11 +15,24 @@ import java.nio.charset.Charset
 data class MindboxRequest(
     val methodType: Int = Method.POST,
     val fullUrl: String = "",
+    val endpointId: String,
+    val operationType: String,
+    val deviceUUID: String,
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
+    //building query parameters
+    override fun getParams(): MutableMap<String, String> {
+        val params: MutableMap<String, String> = HashMap()
+        params["endpointId"] = endpointId
+        params["operation"] = operationType
+        params["deviceUUID"] = deviceUUID
+        return params
+    }
+
+    //Logging responses
     override fun parseNetworkResponse(response: NetworkResponse?): Response<JSONObject> {
         logResponse(response)
 
@@ -45,6 +58,7 @@ data class MindboxRequest(
         }
     }
 
+    //Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         Logger.d(
             this,

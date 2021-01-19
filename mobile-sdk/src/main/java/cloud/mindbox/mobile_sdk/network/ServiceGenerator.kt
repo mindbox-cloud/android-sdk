@@ -15,7 +15,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 // todo
-// прикрутить свое логирование запорсов
 // добавить кастомный класс для запросов
 // построение запросов и отправка
 

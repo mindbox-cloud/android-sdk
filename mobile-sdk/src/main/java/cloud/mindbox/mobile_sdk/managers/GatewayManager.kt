@@ -17,6 +17,12 @@ import java.util.*
 
 object GatewayManager {
 
+    private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
+
+    internal fun buildUrl(domain: String, endpoint: String) {
+        String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
+    }
+
     private var mindboxApi: RestApi? = null
 
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
@@ -79,11 +85,8 @@ object GatewayManager {
 
     fun testRequest(context: Context) {
 
-        val url =
-            "https://api.staging.directcrm.ru/v3/operations/async?endpointId=test&operation=MobileApplicationInfoUpdated&deviceUUID=8bc7fe92-7ed9-4463-a792-b44fabb53da6"
-
         val request = MindboxRequest(
-            Request.Method.POST, url, null,
+            Request.Method.POST, buildUrl(), null,
             { response ->
 
             }, {
