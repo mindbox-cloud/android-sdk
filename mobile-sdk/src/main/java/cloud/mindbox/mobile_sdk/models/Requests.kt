@@ -39,7 +39,11 @@ data class MindboxRequest(
         private const val QUERY_ENDPOINT = "endpointId"
         private const val QUERY_OPERATION = "operation"
         private const val QUERY_DEVICE_ID = "deviceUUID"
+
+        private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
     }
+
+    private fun addParametersToUrl() = String.format(URL_PLACEHOLDER, configuration.endpoint, operationType, configuration.deviceId)
 
     //building query parameters
     override fun getParams(): MutableMap<String, String> {
@@ -142,4 +146,19 @@ data class MindboxRequest(
     private fun logEndResponse() {
         Logger.d(this, "<--- End of response")
     }
+//
+//    fun logRequest() {
+//        Logger.i(this, "---> ${getTypeOfRequest(methodType)}")
+//    }
+//
+//    private fun getTypeOfRequest(typeInt: Int): String {
+//        return when (typeInt) {
+//            Method.POST -> "POST"
+//            Method.GET -> "GET"
+//            Method.DELETE -> "DELETE"
+//            Method.PATCH -> "PATCH"
+//            Method.PUT -> "PUT"
+//            else -> "Other method type"
+//        }
+//    }
 }

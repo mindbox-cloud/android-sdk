@@ -36,6 +36,8 @@ object Mindbox {
                 configuration.deviceId.trim()
             }
 
+            //todo save deviceUUID to configurations
+
             registerSdk(
                 context,
                 configuration,
@@ -90,22 +92,20 @@ object Mindbox {
             if (MindboxPreferences.isFirstInitialize) {
                 firstInitialize(
                     context,
-                    configuration.endpoint,
+                    configuration,
                     deviceUuid,
-                    configuration.installationId,
                     callback
                 )
             } else {
-                secondaryInitialize(context, configuration.endpoint, deviceUuid, callback)
+                secondaryInitialize(context, configuration, configuration.endpoint, deviceUuid, callback)
             }
         }
     }
 
     private suspend fun firstInitialize(
         context: Context,
-        endpoint: String,
+        configuration: Configuration,
         deviceUuid: String,
-        installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
         val firebaseToken =
@@ -113,7 +113,7 @@ object Mindbox {
         val adid = withContext(mindboxScope.coroutineContext) {
             IdentifierManager.getAdsIdentification(context)
         }
-        setInstallationId(installationId)
+        setInstallationId(configuration.installationId)
 
         val deviceId = if (deviceUuid.isNotEmpty()) {
             deviceUuid
@@ -143,14 +143,16 @@ object Mindbox {
 //                initData
 //            )
 
-            GatewayManager.testRequest(context)
+            GatewayManager.testRequest(context, configuration)
 
 //            callback.invoke(result)
         }
     }
 
+    //todo refactor parameters
     private suspend fun secondaryInitialize(
         context: Context,
+        configuration: Configuration,
         endpoint: String,
         deviceUuid: String,
         callback: (MindboxResponse) -> Unit
@@ -184,7 +186,7 @@ object Mindbox {
 //                deviceId ?: "",
 //                initData
 //            )
-            GatewayManager.testRequest(context)
+            GatewayManager.testRequest(context, configuration)
 
 //            callback.invoke(result)
         }

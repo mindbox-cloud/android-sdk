@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.network
 import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.Volley
@@ -35,7 +36,7 @@ internal class ServiceGenerator constructor(context: Context) {
     }
 
     init {
-        VolleyLog.DEBUG = BuildConfig.DEBUG
+        VolleyLog.DEBUG = true
     }
 
     internal val requestQueue: RequestQueue by lazy {
@@ -44,8 +45,8 @@ internal class ServiceGenerator constructor(context: Context) {
         Volley.newRequestQueue(context.applicationContext)
     }
 
-    internal fun <T> addToRequestQueue(req: com.android.volley.Request<T>) {
-        requestQueue.add(req)
+    internal fun addToRequestQueue(request: MindboxRequest) {
+        requestQueue.add(request)
     }
 }
 

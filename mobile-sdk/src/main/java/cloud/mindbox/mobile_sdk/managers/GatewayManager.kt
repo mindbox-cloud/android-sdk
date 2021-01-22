@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
@@ -18,9 +19,11 @@ import java.util.*
 object GatewayManager {
 
     private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
+    private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
 
-    internal fun buildUrl(domain: String, endpoint: String) {
-        String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
+    internal fun buildUrl(domain: String, endpoint: String, operationType: String, configuration: Configuration): String {
+        val domain = String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
+        return String.format(URL_PLACEHOLDER, domain, configuration.endpoint, operationType, configuration.deviceId)
     }
 
     private var mindboxApi: RestApi? = null
@@ -83,10 +86,10 @@ object GatewayManager {
 //        }
     }
 
-    fun testRequest(context: Context) {
+    fun testRequest(context: Context, configuration: Configuration) {
 
         val request = MindboxRequest(
-            Request.Method.POST, buildUrl(), null,
+            Request.Method.POST, buildUrl("api.mindbox.ru", "test", OPERATION_APP_INSTALLED, configuration), configuration, OPERATION_APP_INSTALLED, JSONObject(),
             { response ->
 
             }, {
