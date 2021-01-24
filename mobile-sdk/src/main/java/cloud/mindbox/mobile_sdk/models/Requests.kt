@@ -19,7 +19,6 @@ data class MindboxRequest(
     val methodType: Int = Method.POST,
     val fullUrl: String = "",
     val configuration: Configuration,
-    val operationType: String,
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null
@@ -36,22 +35,6 @@ data class MindboxRequest(
             "%1$1s + %2$1s(%3$1s), android + %4$1s, %5$1s, %6$1s" // format: {host.application.name + app_version(version_code), os + version, vendor, model}
         private const val VALUE_INTEGRATION = "Android-SDK"
 
-        private const val QUERY_ENDPOINT = "endpointId"
-        private const val QUERY_OPERATION = "operation"
-        private const val QUERY_DEVICE_ID = "deviceUUID"
-
-        private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
-    }
-
-    private fun addParametersToUrl() = String.format(URL_PLACEHOLDER, configuration.endpoint, operationType, configuration.deviceId)
-
-    //building query parameters
-    override fun getParams(): MutableMap<String, String> {
-        val params: MutableMap<String, String> = HashMap()
-        params[QUERY_ENDPOINT] = configuration.endpoint
-        params[QUERY_OPERATION] = operationType
-        params[QUERY_DEVICE_ID] = configuration.deviceId
-        return params
     }
 
     //building headers
@@ -146,19 +129,4 @@ data class MindboxRequest(
     private fun logEndResponse() {
         Logger.d(this, "<--- End of response")
     }
-//
-//    fun logRequest() {
-//        Logger.i(this, "---> ${getTypeOfRequest(methodType)}")
-//    }
-//
-//    private fun getTypeOfRequest(typeInt: Int): String {
-//        return when (typeInt) {
-//            Method.POST -> "POST"
-//            Method.GET -> "GET"
-//            Method.DELETE -> "DELETE"
-//            Method.PATCH -> "PATCH"
-//            Method.PUT -> "PUT"
-//            else -> "Other method type"
-//        }
-//    }
 }

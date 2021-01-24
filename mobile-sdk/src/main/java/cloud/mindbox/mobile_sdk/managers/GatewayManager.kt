@@ -11,19 +11,31 @@ import cloud.mindbox.mobile_sdk.network.RestApi
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import cloud.mindbox.mobile_sdk.network.ServiceGeneratorOld
 import com.android.volley.Request
-import com.android.volley.toolbox.JsonObjectRequest
+import com.google.gson.Gson
 import org.json.JSONObject
-//import retrofit2.Response
 import java.util.*
 
 object GatewayManager {
 
+    private val gson = Gson()
+
     private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
     private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
 
-    internal fun buildUrl(domain: String, endpoint: String, operationType: String, configuration: Configuration): String {
-        val domain = String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
-        return String.format(URL_PLACEHOLDER, domain, configuration.endpoint, operationType, configuration.deviceId)
+    internal fun buildUrl(
+        domain: String,
+        endpoint: String,
+        operationType: String,
+        configuration: Configuration
+    ): String {
+        val url = String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
+        return String.format(
+            URL_PLACEHOLDER,
+            url,
+            configuration.endpoint,
+            operationType,
+            configuration.deviceId
+        )
     }
 
     private var mindboxApi: RestApi? = null
@@ -36,38 +48,55 @@ object GatewayManager {
             .create(RestApi::class.java)
     }
 
-    suspend fun sendFirstInitialization(
-        endpointId: String,
-        deviceId: String,
-        data: FullInitData
-    ): MindboxResponse? {
+    fun sendFirstInitialization(
+        context: Context,
+        configuration: Configuration,
+        data: FullInitData?
+    ) {
         if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
 
-        val result = mindboxApi!!.firstInitSdk(
-            endpointId = endpointId,
-            operation = OPERATION_APP_INSTALLED,
-            deviceId = deviceId,
-            data = data
+        val dataObject = JSONObject(gson.toJson(data))
+
+        val request = MindboxRequest(
+            Request.Method.POST,
+            buildUrl("api.mindbox.ru", "test", OPERATION_APP_INSTALLED, configuration),
+            configuration,
+            dataObject,
+            { response ->
+                parseResponse()
+            },
+            {
+
+            }
         )
 
-        return parseResponse()
+        ServiceGenerator.getInstance(context).addToRequestQueue(request)
+
     }
 
-    suspend fun sendSecondInitialization(
-        endpointId: String,
-        deviceId: String,
+    fun sendSecondInitialization(
+        context: Context,
+        configuration: Configuration,
         data: PartialInitData
-    ): MindboxResponse? {
+    ) {
         if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
 
-        val result = mindboxApi!!.secondInitSdk(
-            endpointId = endpointId,
-            operation = OPERATION_APP_UPDATE,
-            deviceId = deviceId,
-            data = data
+        val dataObject = JSONObject(gson.toJson(data))
+
+        val request = MindboxRequest(
+            Request.Method.POST,
+            buildUrl("api.mindbox.ru", "test", OPERATION_APP_UPDATE, configuration),
+            configuration,
+            dataObject,
+            { response ->
+                parseResponse()
+            },
+            {
+
+            }
         )
 
-        return parseResponse()
+        ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
     private fun getTimeOffset(date: Date): Long {
@@ -84,21 +113,5 @@ object GatewayManager {
 //        } else {
 //            MindboxResponse.Error(response.code(), response.message(), response.errorBody())
 //        }
-    }
-
-    fun testRequest(context: Context, configuration: Configuration) {
-
-        val request = MindboxRequest(
-            Request.Method.POST, buildUrl("api.mindbox.ru", "test", OPERATION_APP_INSTALLED, configuration), configuration, OPERATION_APP_INSTALLED, JSONObject(),
-            { response ->
-
-            }, {
-
-            }
-        )
-
-        ServiceGenerator.getInstance(context).addToRequestQueue(request)
-
-// Add the request to the RequestQueue.
     }
 }
