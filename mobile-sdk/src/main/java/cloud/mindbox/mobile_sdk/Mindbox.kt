@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import com.orhanobut.hawk.Hawk
+import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
@@ -27,6 +28,7 @@ object Mindbox {
         this.context = context
 
         Hawk.init(context).build()
+        Paper.init(context.applicationContext)
         FirebaseApp.initializeApp(context)
 
         mindboxScope.launch(Main) {
