@@ -78,17 +78,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
                 when (response) {
                     is MindboxResponse.Error -> {
                         errorContainer.text =
-                            """code: ${response.status}
-                                        |
-                                        |message: ${response.message}
-                                        |
-                                        |error body: ${
-                                try {
-                                    JSONObject(response.errorBody?.string())
-                                } catch (e: Exception) {
-                                    "Error body has bad format: " + response.errorBody.toString()
-                                }
-                            }
+                            """Response code: ${response.status}
                                     """.trimMargin()
                     }
                     is MindboxResponse.ValidationError -> {

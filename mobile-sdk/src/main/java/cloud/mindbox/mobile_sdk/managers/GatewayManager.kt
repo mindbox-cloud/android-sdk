@@ -2,14 +2,12 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Configuration
-import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
-import cloud.mindbox.mobile_sdk.network.RestApi
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
-import cloud.mindbox.mobile_sdk.network.ServiceGeneratorOld
+import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.google.gson.Gson
 import org.json.JSONObject
@@ -38,61 +36,59 @@ object GatewayManager {
         )
     }
 
-    private var mindboxApi: RestApi? = null
-
     private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
     private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
-
-    fun initClient(domain: String, packageName: String, versionName: String, versionCode: String) {
-        mindboxApi = ServiceGeneratorOld.initRetrofit(domain, packageName, versionName, versionCode)
-            .create(RestApi::class.java)
-    }
 
     fun sendFirstInitialization(
         context: Context,
         configuration: Configuration,
-        data: FullInitData?
+        data: FullInitData?,
+        onResult: (MindboxResponse) -> Unit
     ) {
-        if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
-
         val dataObject = JSONObject(gson.toJson(data))
 
         val request = MindboxRequest(
             Request.Method.POST,
-            buildUrl("api.mindbox.ru", "test", OPERATION_APP_INSTALLED, configuration),
+            buildUrl(
+                configuration.domain,
+                configuration.endpoint,
+                OPERATION_APP_INSTALLED,
+                configuration
+            ),
             configuration,
             dataObject,
             { response ->
-                parseResponse()
-            },
-            {
-
+                onResult.invoke(MindboxResponse.SuccessResponse(response))
+            }, {
+                onResult.invoke(parseResponse(it.networkResponse))
             }
         )
 
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
-
     }
 
     fun sendSecondInitialization(
         context: Context,
         configuration: Configuration,
-        data: PartialInitData
+        data: PartialInitData,
+        onResult: (MindboxResponse) -> Unit
     ) {
-        if (mindboxApi == null) throw InitializeMindboxException("Network client is not initialized!")
-
         val dataObject = JSONObject(gson.toJson(data))
 
         val request = MindboxRequest(
             Request.Method.POST,
-            buildUrl("api.mindbox.ru", "test", OPERATION_APP_UPDATE, configuration),
+            buildUrl(
+                configuration.domain,
+                configuration.endpoint,
+                OPERATION_APP_UPDATE,
+                configuration
+            ),
             configuration,
             dataObject,
             { response ->
-                parseResponse()
-            },
-            {
-
+                onResult.invoke(MindboxResponse.SuccessResponse(response))
+            }, {
+                onResult.invoke(parseResponse(it.networkResponse))
             }
         )
 
@@ -103,15 +99,18 @@ object GatewayManager {
         return Date().time - date.time
     }
 
-    private fun parseResponse(): MindboxResponse? {
-        return null
-//        return if (response.isSuccessful && response.code() < 300) {
-//            MindboxResponse.SuccessResponse(response.code(), response.body())
-//        } else if (response.code() in 400..499) {
-//            // separate condition for removing from the queue
-//            MindboxResponse.Error(response.code(), response.message(), response.errorBody())
-//        } else {
-//            MindboxResponse.Error(response.code(), response.message(), response.errorBody())
-//        }
+    private fun parseResponse(response: NetworkResponse): MindboxResponse {
+        return when {
+            response.statusCode < 300 -> {
+                MindboxResponse.SuccessResponse(response.data)
+            }
+            response.statusCode in 400..499 -> {
+                // separate condition for removing from the queue
+                MindboxResponse.Error(response.statusCode, response.data)
+            }
+            else -> {
+                MindboxResponse.Error(response.statusCode, response.data)
+            }
+        }
     }
 }
