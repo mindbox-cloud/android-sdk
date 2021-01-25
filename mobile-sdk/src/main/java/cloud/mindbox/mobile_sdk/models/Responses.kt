@@ -1,13 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-import okhttp3.ResponseBody
 import java.util.*
-
-
-data class InitResponse(
-    var message: String? = null,
-    var status: String? = null
-)
 
 sealed class MindboxResponse {
 
