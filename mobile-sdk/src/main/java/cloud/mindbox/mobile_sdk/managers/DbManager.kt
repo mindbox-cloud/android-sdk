@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import io.paperdb.Paper
 
@@ -19,6 +20,14 @@ internal object DbManager {
     }
 
     fun removeEventFromStack() {
+
+    }
+
+    fun setConfiguration(configuration: Configuration) {
+
+    }
+
+    fun getConfiguration() {
 
     }
 }
