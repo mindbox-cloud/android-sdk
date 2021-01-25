@@ -79,50 +79,39 @@ object Mindbox {
             return
         }
 
-        GatewayManager.initClient(
-            configuration.domain,
-            configuration.packageName,
-            configuration.versionName,
-            configuration.versionCode
-        )
-
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
+                configuration.deviceId = deviceUuid
+
                 firstInitialize(
                     context,
-                    configuration.endpoint,
+                    configuration,
                     deviceUuid,
-                    configuration.installationId,
                     callback
                 )
             } else {
-                secondaryInitialize(context, configuration.endpoint, deviceUuid, callback)
+                configuration.deviceId = MindboxPreferences.userAdid ?: ""
+
+                secondaryInitialize(
+                    context,
+                    configuration,
+                    callback
+                )
             }
         }
     }
 
     private suspend fun firstInitialize(
         context: Context,
-        endpoint: String,
+        configuration: Configuration,
         deviceUuid: String,
-        installationId: String,
         callback: (MindboxResponse) -> Unit
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
-        val adid = withContext(mindboxScope.coroutineContext) {
-            IdentifierManager.getAdsIdentification(context)
-        }
-        setInstallationId(installationId)
+        setInstallationId(configuration.installationId)
 
-        val deviceId = if (deviceUuid.isNotEmpty()) {
-            deviceUuid
-        } else {
-            adid
-        }
-
-
-        if (deviceUuid.isNotEmpty() && adid != deviceUuid) {
+        if (deviceUuid.isNotEmpty()) {
             MindboxPreferences.userAdid = deviceUuid
         }
 
@@ -137,37 +126,23 @@ object Mindbox {
         )
 
         mindboxScope.launch {
-            val result = GatewayManager.sendFirstInitialization(
-                endpoint,
-                deviceId ?: "",
+            GatewayManager.sendFirstInitialization(
+                context,
+                configuration,
                 initData
-            )
-
-            callback.invoke(result)
+            ) { result ->
+                callback.invoke(result)
+            }
         }
     }
 
     private suspend fun secondaryInitialize(
         context: Context,
-        endpoint: String,
-        deviceUuid: String,
+        configuration: Configuration,
         callback: (MindboxResponse) -> Unit
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
-        val adid = withContext(mindboxScope.coroutineContext) {
-            IdentifierManager.getAdsIdentification(context)
-        }
-
-        val deviceId = if (deviceUuid.isNotEmpty()) {
-            deviceUuid
-        } else {
-            adid
-        }
-
-        if (deviceUuid.isNotEmpty() && adid != deviceUuid) {
-            MindboxPreferences.userAdid = deviceUuid
-        }
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
         val initData = PartialInitData(
@@ -177,13 +152,13 @@ object Mindbox {
         )
 
         mindboxScope.launch {
-            val result = GatewayManager.sendSecondInitialization(
-                endpoint,
-                deviceId ?: "",
+            GatewayManager.sendSecondInitialization(
+                context,
+                configuration,
                 initData
-            )
-
-            callback.invoke(result)
+            ) { result ->
+                callback.invoke(result)
+            }
         }
     }
 

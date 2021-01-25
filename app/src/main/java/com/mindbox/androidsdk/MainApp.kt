@@ -1,8 +1,8 @@
 package com.mindbox.androidsdk
 
-import android.app.Application
+import androidx.multidex.MultiDexApplication
 
-class MainApp : Application() {
+class MainApp : MultiDexApplication() {
 
     override fun onCreate() {
         super.onCreate()

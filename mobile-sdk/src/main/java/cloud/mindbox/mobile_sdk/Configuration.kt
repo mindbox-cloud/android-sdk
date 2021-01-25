@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 class Configuration(builder: Builder) {
     internal val installationId: String = builder.installationId
-    internal val deviceId: String = builder.deviceId
+    internal var deviceId: String = builder.deviceId
     internal val endpoint: String = builder.endpoint
     internal val domain: String = builder.domain
     internal val packageName: String = builder.packageName
