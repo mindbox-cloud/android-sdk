@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.managers
 
-import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
 import io.paperdb.Paper
