@@ -88,34 +88,6 @@ internal object GatewayManager {
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
-    fun sendSecondInitialization(
-        context: Context,
-        configuration: Configuration,
-        data: PartialInitData,
-        onResult: (MindboxResponse) -> Unit
-    ) {
-        val dataObject = JSONObject(gson.toJson(data))
-
-        val request = MindboxRequest(
-            Request.Method.POST,
-            buildUrl(
-                configuration.domain,
-                configuration.endpoint,
-                OPERATION_APP_UPDATE,
-                configuration
-            ),
-            configuration,
-            dataObject,
-            { response ->
-                onResult.invoke(MindboxResponse.SuccessResponse(response))
-            }, {
-                onResult.invoke(parseResponse(it.networkResponse))
-            }
-        )
-
-        ServiceGenerator.getInstance(context).addToRequestQueue(request)
-    }
-
     fun sendEvent(context: Context, event: Event) {
         val dataObject = JSONObject(event.data)
         val configuration = DbManager.getConfigurations()
