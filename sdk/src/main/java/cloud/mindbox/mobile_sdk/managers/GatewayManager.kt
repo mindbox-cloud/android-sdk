@@ -2,10 +2,8 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Configuration
-import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.MindboxRequest
-import cloud.mindbox.mobile_sdk.models.MindboxResponse
-import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
@@ -13,7 +11,7 @@ import com.google.gson.Gson
 import org.json.JSONObject
 import java.util.*
 
-object GatewayManager {
+internal object GatewayManager {
 
     private val gson = Gson()
 
@@ -93,6 +91,10 @@ object GatewayManager {
         )
 
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
+    }
+
+    fun sendEvent(event: Event) {
+
     }
 
     private fun getTimeOffset(date: Date): Long {
