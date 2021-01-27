@@ -26,7 +26,7 @@ object Mindbox {
     fun init(
         context: Context,
         configuration: Configuration,
-        callback: (MindboxResponse) -> Unit
+        callback: ((MindboxResponse) -> Unit)?
     ) {
         this.context = context
 
@@ -75,14 +75,14 @@ object Mindbox {
         context: Context,
         configuration: Configuration,
         deviceUuid: String,
-        callback: (MindboxResponse) -> Unit
+        callback: ((MindboxResponse) -> Unit)?
     ) {
         val validationErrors =
             MindboxResponse.ValidationError()
                 .apply { validateFields(configuration.domain, configuration.endpoint, deviceUuid) }
 
         if (validationErrors.messages.isNotEmpty()) {
-            callback.invoke(validationErrors)
+            callback?.invoke(validationErrors)
             return
         }
 
@@ -99,6 +99,7 @@ object Mindbox {
                     callback
                 )
             } else {
+                callback?.invoke(MindboxResponse.SuccessResponse("Update checked"))
                 updateAppInfo(context)
             }
         }
@@ -108,7 +109,7 @@ object Mindbox {
         context: Context,
         configuration: Configuration,
         deviceUuid: String,
-        callback: (MindboxResponse) -> Unit
+        callback: ((MindboxResponse) -> Unit)?
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
@@ -138,7 +139,7 @@ object Mindbox {
                 if (result is MindboxResponse.SuccessResponse<*>) {
                     MindboxPreferences.isFirstInitialize = false
                 }
-                callback.invoke(result)
+                callback?.invoke(result)
             }
         }
     }
