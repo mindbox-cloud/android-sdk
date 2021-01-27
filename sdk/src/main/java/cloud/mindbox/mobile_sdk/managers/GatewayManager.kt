@@ -1,14 +1,12 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.google.gson.Gson
@@ -88,7 +86,7 @@ internal object GatewayManager {
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
-    fun sendEvent(context: Context, event: Event) {
+    fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
         val dataObject = JSONObject(event.data)
         val configuration = DbManager.getConfigurations()
 
@@ -107,11 +105,14 @@ internal object GatewayManager {
             ),
             configuration,
             dataObject,
-            { response ->
-                //todo
-//                onResult.invoke(MindboxResponse.SuccessResponse(response))
+            {
+                isSuccess.invoke(true)
             }, {
-//                onResult.invoke(parseResponse(it.networkResponse))
+                when (parseResponse(it.networkResponse)) {
+                    is MindboxResponse.SuccessResponse<*>,
+                        MindboxResponse.BadRequest() -> { isSuccess.invoke(true)}
+                    else -> isSuccess.invoke(false)
+                }
             }
         )
 
@@ -130,7 +131,7 @@ internal object GatewayManager {
             }
             response.statusCode in 400..499 -> {
                 // separate condition for removing from the queue
-                MindboxResponse.Error(response.statusCode, response.data)
+                MindboxResponse.BadRequest(response.statusCode)
             }
             else -> {
                 MindboxResponse.Error(response.statusCode, response.data)

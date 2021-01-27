@@ -140,8 +140,8 @@ object Mindbox {
         }
     }
 
-    private fun updateAppInfo() {
-        val firebaseToken = IdentifierManager.getFirebaseToken()
+    private suspend fun updateAppInfo() {
+        val firebaseToken = withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
         val initData = PartialInitData(

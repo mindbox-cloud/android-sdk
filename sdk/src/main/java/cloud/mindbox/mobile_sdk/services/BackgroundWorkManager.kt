@@ -10,11 +10,17 @@ class BackgroundWorkManager {
         val request = PeriodicWorkRequest.Builder(
             MindboxEventWorker::class.java,
             1, TimeUnit.HOURS
-        ).setConstraints(
-            Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-        ).build()
+        )
+            .setBackoffCriteria(
+                BackoffPolicy.LINEAR,
+                60 * 1000, // 60 sec
+                TimeUnit.MILLISECONDS
+            )
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            ).build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             MindboxEventWorker::class.java.simpleName,

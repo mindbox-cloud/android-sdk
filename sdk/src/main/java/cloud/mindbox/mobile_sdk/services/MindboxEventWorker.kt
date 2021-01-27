@@ -22,7 +22,17 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
                 Result.failure()
             } else {
                 events.forEach { event ->
-                    GatewayManager.sendEvent(appContext, event)
+                    GatewayManager.sendEvent(appContext, event) { isSended ->
+                        if (isSended) {
+                            DbManager.removeEventFromStack(event.transactionId)
+                        }
+                    }
+                }
+
+                return if (!DbManager.getEventsStack().isNullOrEmpty()) {
+                    Result.retry()
+                } else {
+                    Result.success()
                 }
             }
         } catch (e: Exception) {
