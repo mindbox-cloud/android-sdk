@@ -14,7 +14,7 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
     override fun doWork(): Result {
         Logger.d(this, "Start working...")
 
-        //todo проверить на инициализацию
+        //todo подписаться на жизненный цикл и проверить на инициализацию
         try {
             val events = DbManager.getEventsStack()
             if (events.isNullOrEmpty()) {

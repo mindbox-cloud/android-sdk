@@ -7,7 +7,6 @@ import io.paperdb.Paper
 import io.paperdb.PaperDbException
 
 //todo sync it
-//todo save configs to hawk
 internal object DbManager {
 
     private const val CONFIGURATION_KEY = "configuration_key"

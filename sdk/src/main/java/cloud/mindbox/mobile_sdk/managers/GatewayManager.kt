@@ -4,8 +4,10 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Logger
-import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.FullInitData
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
@@ -19,7 +21,8 @@ internal object GatewayManager {
 
     private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
     private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
-    private const val URL_EVENT_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
+    private const val URL_EVENT_PLACEHOLDER =
+        "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
 
     private fun buildUrl(
         domain: String,
@@ -91,7 +94,11 @@ internal object GatewayManager {
         val configuration = DbManager.getConfigurations()
 
         if (configuration == null) {
-            Logger.e(this, "Configuration was not initialized", InitializeMindboxException("Configuration was not initialized"))
+            Logger.e(
+                this,
+                "Configuration was not initialized",
+                InitializeMindboxException("Configuration was not initialized")
+            )
             return
         }
 
@@ -106,12 +113,24 @@ internal object GatewayManager {
             configuration,
             dataObject,
             {
+                Logger.d(this, "Event from background successful sended")
                 isSuccess.invoke(true)
             }, {
-                when (parseResponse(it.networkResponse)) {
+                val result = parseResponse(it.networkResponse)
+                when (result) {
                     is MindboxResponse.SuccessResponse<*>,
-                        MindboxResponse.BadRequest() -> { isSuccess.invoke(true)}
-                    else -> isSuccess.invoke(false)
+                    is MindboxResponse.BadRequest -> {
+                        Logger.d(this, "Event from background successful sended")
+                        isSuccess.invoke(true)
+                    }
+                    is MindboxResponse.Error -> {
+                        Logger.d(this, "Sending event from background was failure with code ${result.status}")
+                        isSuccess.invoke(false)
+                    }
+                    else -> {
+                        Logger.d(this, "Sending event from background was failure as unknown error")
+                        isSuccess.invoke(false)
+                    }
                 }
             }
         )
