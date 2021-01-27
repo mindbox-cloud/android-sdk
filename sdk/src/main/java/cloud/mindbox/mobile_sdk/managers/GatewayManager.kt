@@ -150,8 +150,9 @@ internal object GatewayManager {
         return Date().time - date.time
     }
 
-    private fun parseResponse(response: NetworkResponse): MindboxResponse {
+    private fun parseResponse(response: NetworkResponse?): MindboxResponse {
         return when {
+            response == null -> MindboxResponse.Error(0, byteArrayOf())
             response.statusCode < 300 -> {
                 MindboxResponse.SuccessResponse(response.data)
             }

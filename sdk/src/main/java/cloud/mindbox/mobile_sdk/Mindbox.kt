@@ -1,18 +1,23 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
+import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.firebase.FirebaseApp
+import com.google.gson.Gson
 import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
+import java.util.*
 
 object Mindbox {
 
@@ -45,6 +50,8 @@ object Mindbox {
                 callback
             )
         }
+
+        BackgroundWorkManager().start(context.applicationContext)
     }
 
     fun getSdkData(onResult: (String, String, String) -> Unit) {
@@ -117,7 +124,7 @@ object Mindbox {
             MindboxPreferences.deviceId = deviceUuid
         }
 
-        MindboxPreferences.isFirstInitialize = false
+        DbManager.saveConfigurations(configuration)
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
         val initData = FullInitData(
@@ -133,6 +140,9 @@ object Mindbox {
                 configuration,
                 initData
             ) { result ->
+                if (result is MindboxResponse.SuccessResponse<*>) {
+                    MindboxPreferences.isFirstInitialize = false
+                }
                 callback.invoke(result)
             }
         }
@@ -153,15 +163,14 @@ object Mindbox {
             false //fixme
         )
 
-        mindboxScope.launch {
-            GatewayManager.sendSecondInitialization(
-                context,
-                configuration,
-                initData
-            ) { result ->
-                callback.invoke(result)
-            }
-        }
+        val gson = Gson()
+
+        DbManager.addEventToStack(Event(
+            UUID.randomUUID().toString(),
+            -1,
+            Date().time,
+            gson.toJson(initData)
+        ))
     }
 
     fun release() {
