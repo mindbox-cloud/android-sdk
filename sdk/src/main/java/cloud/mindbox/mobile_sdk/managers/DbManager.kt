@@ -74,7 +74,6 @@ internal object DbManager {
 //        val now = Date().time
 //
 //        filteredList.forEach { event ->
-//            val diff = (((now - event.enqueueTimestamp) / 1000) / 60) / 60 / 24
 //            val date: LocalDate = ofEpochMilli(event.enqueueTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
 //            if (event.enqueueTimestamp / 1000 * 60 * 60 ==)
 //        }
