@@ -86,10 +86,10 @@ object Mindbox {
             return
         }
 
-        MindboxPreferences.isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
-
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
+                MindboxPreferences.isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+
                 configuration.deviceId = deviceUuid
 
                 firstInitialization(
