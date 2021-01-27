@@ -19,7 +19,7 @@ internal object GatewayManager {
 
     private val gson = Gson()
 
-    private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
+    private const val BASE_URL_PLACEHOLDER = "https://%1$1s/v3/operations/async"
     private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
     private const val URL_EVENT_PLACEHOLDER =
         "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
@@ -30,7 +30,7 @@ internal object GatewayManager {
         operationType: String,
         configuration: Configuration
     ): String {
-        val url = String.format(BASE_URL_PLACEHOLDER, domain, endpoint)
+        val url = String.format(BASE_URL_PLACEHOLDER, domain)
         return String.format(
             URL_PLACEHOLDER,
             url,
