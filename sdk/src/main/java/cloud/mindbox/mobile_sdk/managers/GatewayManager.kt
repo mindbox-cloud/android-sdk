@@ -131,7 +131,7 @@ internal object GatewayManager {
                 configuration,
                 OPERATION_APP_UPDATE,
                 event.transactionId,
-                (Date().time - event.enqueueTimestamp)
+                getTimeOffset(event.enqueueTimestamp)
             ),
             configuration,
             dataObject,
@@ -146,8 +146,8 @@ internal object GatewayManager {
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
-    private fun getTimeOffset(date: Date): Long {
-        return Date().time - date.time
+    private fun getTimeOffset(timeMls: Long): Long {
+        return Date().time - timeMls
     }
 
     private fun parseResponse(response: NetworkResponse?): MindboxResponse {
