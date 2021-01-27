@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.app.NotificationManager
 import android.content.Context
+import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
@@ -8,24 +11,20 @@ import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.*
 
-//todo remove logs and add docs
 internal object IdentifierManager {
 
-    fun getFirebaseToken(): String? {
-        return if (MindboxPreferences.firebaseToken.isNullOrEmpty()) {
-            Logger.i(this, "Firebase token will be registered")
-            registerFirebaseToken()
+    fun isNotificationsEnabled(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!manager.areNotificationsEnabled()) {
+                return false
+            }
+            return manager.notificationChannels.firstOrNull { channel ->
+                channel.importance == NotificationManager.IMPORTANCE_NONE
+            } == null
         } else {
-            Logger.i(this, "Firebase token gets from prefs")
-            MindboxPreferences.firebaseToken
-        }
-    }
-
-    fun checkFirebaseTokenUpdates() {
-        val oldToken = MindboxPreferences.firebaseToken
-        val newToken = registerFirebaseToken()
-        if (oldToken != newToken && newToken != null) {
-            //todo send to server
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
     }
 
@@ -44,12 +43,11 @@ internal object IdentifierManager {
         }
     }
 
-    private fun registerFirebaseToken(): String? {
+    fun registerFirebaseToken(): String? {
         return try {
             val token: String? = Tasks.await(FirebaseMessaging.getInstance().token)
             if (!token.isNullOrEmpty() && token != MindboxPreferences.firebaseToken) {
                 Logger.i(this, "Token gets or updates from firebase")
-                MindboxPreferences.firebaseToken = token
             }
             token
         } catch (e: Exception) {
