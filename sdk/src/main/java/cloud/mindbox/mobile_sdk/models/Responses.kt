@@ -8,6 +8,10 @@ sealed class MindboxResponse {
         var body: T
     ) : MindboxResponse()
 
+    data class BadRequest(
+        var status: Int? = null
+    ) : MindboxResponse()
+
     data class Error(
         var status: Int? = null,
         var data: ByteArray

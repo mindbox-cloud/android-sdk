@@ -5,9 +5,10 @@ import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
 import io.paperdb.Paper
 import io.paperdb.PaperDbException
+import java.util.*
+
 
 //todo sync it
-//todo save configs to hawk
 internal object DbManager {
 
     private const val CONFIGURATION_KEY = "configuration_key"
@@ -34,7 +35,7 @@ internal object DbManager {
             list.add(value)
         }
 
-        return list
+        return filterOldEvents(list)
     }
 
     private fun getEvent(key: String): Event? {
@@ -55,6 +56,29 @@ internal object DbManager {
         } catch (exception: PaperDbException) {
             Logger.e(this, "Error deleting item from database", exception)
         }
+    }
+
+    private fun filterOldEvents(list: ArrayList<Event>): List<Event> {
+        var filteredList = list.toList()
+
+        // filter by volume
+        if (list.size > 10000) {
+            for (i in 1..(list.size - 10000)) {
+                removeEventFromStack(list[i].transactionId)
+            }
+            filteredList = list.filterIndexed { index, _ -> index > (list.size - 10000) }
+        }
+
+        //todo
+        // filter by time
+//        val now = Date().time
+//
+//        filteredList.forEach { event ->
+//            val diff = (((now - event.enqueueTimestamp) / 1000) / 60) / 60 / 24
+//            val date: LocalDate = ofEpochMilli(event.enqueueTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+//            if (event.enqueueTimestamp / 1000 * 60 * 60 ==)
+//        }
+        return filteredList
     }
 
     fun saveConfigurations(configuration: Configuration) {

@@ -1,14 +1,14 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Logger
-import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.FullInitData
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.google.gson.Gson
@@ -21,7 +21,8 @@ internal object GatewayManager {
 
     private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
     private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
-    private const val URL_EVENT_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
+    private const val URL_EVENT_PLACEHOLDER =
+        "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
 
     private fun buildUrl(
         domain: String,
@@ -88,40 +89,16 @@ internal object GatewayManager {
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
-    fun sendSecondInitialization(
-        context: Context,
-        configuration: Configuration,
-        data: PartialInitData,
-        onResult: (MindboxResponse) -> Unit
-    ) {
-        val dataObject = JSONObject(gson.toJson(data))
-
-        val request = MindboxRequest(
-            Request.Method.POST,
-            buildUrl(
-                configuration.domain,
-                configuration.endpoint,
-                OPERATION_APP_UPDATE,
-                configuration
-            ),
-            configuration,
-            dataObject,
-            { response ->
-                onResult.invoke(MindboxResponse.SuccessResponse(response))
-            }, {
-                onResult.invoke(parseResponse(it.networkResponse))
-            }
-        )
-
-        ServiceGenerator.getInstance(context).addToRequestQueue(request)
-    }
-
-    fun sendEvent(context: Context, event: Event) {
+    fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
         val dataObject = JSONObject(event.data)
         val configuration = DbManager.getConfigurations()
 
         if (configuration == null) {
-            Logger.e(this, "Configuration was not initialized", InitializeMindboxException("Configuration was not initialized"))
+            Logger.e(
+                this,
+                "Configuration was not initialized",
+                InitializeMindboxException("Configuration was not initialized")
+            )
             return
         }
 
@@ -131,23 +108,38 @@ internal object GatewayManager {
                 configuration,
                 OPERATION_APP_UPDATE,
                 event.transactionId,
-                (Date().time - event.enqueueTimestamp)
+                getTimeOffset(event.enqueueTimestamp)
             ),
             configuration,
             dataObject,
-            { response ->
-                //todo
-//                onResult.invoke(MindboxResponse.SuccessResponse(response))
+            {
+                Logger.d(this, "Event from background successful sended")
+                isSuccess.invoke(true)
             }, {
-//                onResult.invoke(parseResponse(it.networkResponse))
+                val result = parseResponse(it.networkResponse)
+                when (result) {
+                    is MindboxResponse.SuccessResponse<*>,
+                    is MindboxResponse.BadRequest -> {
+                        Logger.d(this, "Event from background successful sended")
+                        isSuccess.invoke(true)
+                    }
+                    is MindboxResponse.Error -> {
+                        Logger.d(this, "Sending event from background was failure with code ${result.status}")
+                        isSuccess.invoke(false)
+                    }
+                    else -> {
+                        Logger.d(this, "Sending event from background was failure as unknown error")
+                        isSuccess.invoke(false)
+                    }
+                }
             }
         )
 
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
-    private fun getTimeOffset(date: Date): Long {
-        return Date().time - date.time
+    private fun getTimeOffset(timeMls: Long): Long {
+        return Date().time - timeMls
     }
 
     private fun parseResponse(response: NetworkResponse?): MindboxResponse {
@@ -158,7 +150,7 @@ internal object GatewayManager {
             }
             response.statusCode in 400..499 -> {
                 // separate condition for removing from the queue
-                MindboxResponse.Error(response.statusCode, response.data)
+                MindboxResponse.BadRequest(response.statusCode)
             }
             else -> {
                 MindboxResponse.Error(response.statusCode, response.data)

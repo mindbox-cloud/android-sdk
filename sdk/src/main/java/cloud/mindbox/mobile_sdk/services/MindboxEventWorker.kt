@@ -14,7 +14,7 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
     override fun doWork(): Result {
         Logger.d(this, "Start working...")
 
-        //todo проверить на инициализацию
+        //todo подписаться на жизненный цикл и проверить на инициализацию
         try {
             val events = DbManager.getEventsStack()
             if (events.isNullOrEmpty()) {
@@ -22,7 +22,17 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
                 Result.failure()
             } else {
                 events.forEach { event ->
-                    GatewayManager.sendEvent(appContext, event)
+                    GatewayManager.sendEvent(appContext, event) { isSended ->
+                        if (isSended) {
+                            DbManager.removeEventFromStack(event.transactionId)
+                        }
+                    }
+                }
+
+                return if (!DbManager.getEventsStack().isNullOrEmpty()) {
+                    Result.retry()
+                } else {
+                    Result.success()
                 }
             }
         } catch (e: Exception) {

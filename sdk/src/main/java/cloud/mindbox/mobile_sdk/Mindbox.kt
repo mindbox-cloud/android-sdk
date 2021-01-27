@@ -2,22 +2,20 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.EventManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
-import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.firebase.FirebaseApp
-import com.google.gson.Gson
 import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
-import java.util.*
 
 object Mindbox {
 
@@ -92,25 +90,19 @@ object Mindbox {
             if (MindboxPreferences.isFirstInitialize) {
                 configuration.deviceId = deviceUuid
 
-                firstInitialize(
+                firstInitialization(
                     context,
                     configuration,
                     deviceUuid,
                     callback
                 )
             } else {
-                configuration.deviceId = MindboxPreferences.deviceId ?: ""
-
-                secondaryInitialize(
-                    context,
-                    configuration,
-                    callback
-                )
+                updateAppInfo()
             }
         }
     }
 
-    private suspend fun firstInitialize(
+    private suspend fun firstInitialization(
         context: Context,
         configuration: Configuration,
         deviceUuid: String,
@@ -148,13 +140,8 @@ object Mindbox {
         }
     }
 
-    private suspend fun secondaryInitialize(
-        context: Context,
-        configuration: Configuration,
-        callback: (MindboxResponse) -> Unit
-    ) {
-        val firebaseToken =
-            withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
+    private suspend fun updateAppInfo() {
+        val firebaseToken = withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
         val initData = PartialInitData(
@@ -163,14 +150,7 @@ object Mindbox {
             false //fixme
         )
 
-        val gson = Gson()
-
-        DbManager.addEventToStack(Event(
-            UUID.randomUUID().toString(),
-            -1,
-            Date().time,
-            gson.toJson(initData)
-        ))
+        EventManager.appInfoUpdate(initData)
     }
 
     fun release() {
