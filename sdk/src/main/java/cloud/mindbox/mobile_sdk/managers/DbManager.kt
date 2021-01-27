@@ -56,4 +56,23 @@ internal object DbManager {
             Logger.e(this, "Error deleting item from database", exception)
         }
     }
+
+    fun saveConfigurations(configuration: Configuration) {
+        try {
+            configurationBook.write(CONFIGURATION_KEY, configuration)
+        } catch (exception: PaperDbException) {
+            Logger.e(this, "Error writing object configuration to the database", exception)
+        }
+    }
+
+    fun getConfigurations(): Configuration? {
+        return try {
+            configurationBook.read(CONFIGURATION_KEY) as Configuration?
+        } catch (exception: PaperDbException) {
+
+            // invalid data in case of exception
+            Logger.e(this, "Error reading from database", exception)
+            null
+        }
+    }
 }

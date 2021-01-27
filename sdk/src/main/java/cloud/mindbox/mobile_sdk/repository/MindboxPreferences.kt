@@ -17,7 +17,7 @@ internal object MindboxPreferences {
             Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
         }
 
-    var userAdid: String?
+    var deviceId: String?
         get() = Hawk.get(KEY_USER_ADID, null)
         set(value) {
             Hawk.put(KEY_USER_ADID, value)

@@ -89,6 +89,9 @@ dependencies {
 
     // DB
     implementation 'io.paperdb:paperdb:2.7.1'
+
+    //work manager
+    implementation "androidx.work:work-runtime-ktx:2.4.0"
 }
 
 apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'

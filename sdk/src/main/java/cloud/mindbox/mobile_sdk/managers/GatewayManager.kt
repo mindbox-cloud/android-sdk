@@ -1,26 +1,29 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import android.util.Log
 import cloud.mindbox.mobile_sdk.Configuration
-import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.MindboxRequest
-import cloud.mindbox.mobile_sdk.models.MindboxResponse
-import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
+import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.google.gson.Gson
 import org.json.JSONObject
 import java.util.*
 
-object GatewayManager {
+internal object GatewayManager {
 
     private val gson = Gson()
 
     private const val BASE_URL_PLACEHOLDER = "https://%1$1s/%2$1s"
     private const val URL_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s"
+    private const val URL_EVENT_PLACEHOLDER = "%1$1s?endpointId=%2$1s&operation=%3$1s&deviceUUID=%4$1s&transactionId=%5$1s&dateTimeOffset=%6$1s"
 
-    internal fun buildUrl(
+    private fun buildUrl(
         domain: String,
         endpoint: String,
         operationType: String,
@@ -33,6 +36,24 @@ object GatewayManager {
             configuration.endpoint,
             operationType,
             configuration.deviceId
+        )
+    }
+
+    private fun buildEventUrl(
+        configuration: Configuration,
+        operationType: String,
+        transactionId: String,
+        dateTimeOffset: Long
+    ): String {
+        val url = String.format(BASE_URL_PLACEHOLDER, configuration.domain, configuration.endpoint)
+        return String.format(
+            URL_EVENT_PLACEHOLDER,
+            url,
+            configuration.endpoint,
+            operationType,
+            configuration.deviceId,
+            transactionId,
+            dateTimeOffset
         )
     }
 
@@ -95,12 +116,43 @@ object GatewayManager {
         ServiceGenerator.getInstance(context).addToRequestQueue(request)
     }
 
+    fun sendEvent(context: Context, event: Event) {
+        val dataObject = JSONObject(event.data)
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration == null) {
+            Logger.e(this, "Configuration was not initialized", InitializeMindboxException("Configuration was not initialized"))
+            return
+        }
+
+        val request = MindboxRequest(
+            Request.Method.POST,
+            buildEventUrl(
+                configuration,
+                OPERATION_APP_UPDATE,
+                event.transactionId,
+                (Date().time - event.enqueueTimestamp)
+            ),
+            configuration,
+            dataObject,
+            { response ->
+                //todo
+//                onResult.invoke(MindboxResponse.SuccessResponse(response))
+            }, {
+//                onResult.invoke(parseResponse(it.networkResponse))
+            }
+        )
+
+        ServiceGenerator.getInstance(context).addToRequestQueue(request)
+    }
+
     private fun getTimeOffset(date: Date): Long {
         return Date().time - date.time
     }
 
-    private fun parseResponse(response: NetworkResponse): MindboxResponse {
+    private fun parseResponse(response: NetworkResponse?): MindboxResponse {
         return when {
+            response == null -> MindboxResponse.Error(0, byteArrayOf())
             response.statusCode < 300 -> {
                 MindboxResponse.SuccessResponse(response.data)
             }

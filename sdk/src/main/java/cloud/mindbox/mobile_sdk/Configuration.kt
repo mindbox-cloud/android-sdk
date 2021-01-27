@@ -14,7 +14,7 @@ class Configuration(builder: Builder) {
 
     class Builder(private val context: Context, val domain: String, val endpoint: String) {
         var installationId: String = MindboxPreferences.installationId ?: ""
-        var deviceId: String = MindboxPreferences.userAdid ?: ""
+        var deviceId: String = MindboxPreferences.deviceId ?: ""
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE

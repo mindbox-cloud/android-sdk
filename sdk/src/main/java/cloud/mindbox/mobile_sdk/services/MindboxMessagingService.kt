@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk
+package cloud.mindbox.mobile_sdk.services
 
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.messaging.FirebaseMessagingService
