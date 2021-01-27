@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import java.lang.Exception
 
-internal class MindboxEventWorker(appContext: Context, workerParams: WorkerParameters):
+internal class MindboxEventWorker(private val appContext: Context, workerParams: WorkerParameters):
     Worker(appContext, workerParams)  {
 
     override fun doWork(): Result {
@@ -22,7 +22,7 @@ internal class MindboxEventWorker(appContext: Context, workerParams: WorkerParam
                 Result.failure()
             } else {
                 events.forEach { event ->
-                    GatewayManager.sendEvent(event)
+                    GatewayManager.sendEvent(appContext, event)
                 }
             }
         } catch (e: Exception) {

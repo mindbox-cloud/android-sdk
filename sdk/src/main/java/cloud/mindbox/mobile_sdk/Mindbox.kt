@@ -49,7 +49,7 @@ object Mindbox {
 
     fun getSdkData(onResult: (String, String, String) -> Unit) {
         onResult.invoke(
-            MindboxPreferences.userAdid ?: "",
+            MindboxPreferences.deviceId ?: "",
             MindboxPreferences.firebaseTokenSaveDate,
             "Some version - will be added later"
         )
@@ -92,7 +92,7 @@ object Mindbox {
                     callback
                 )
             } else {
-                configuration.deviceId = MindboxPreferences.userAdid ?: ""
+                configuration.deviceId = MindboxPreferences.deviceId ?: ""
 
                 secondaryInitialize(
                     context,
@@ -114,7 +114,7 @@ object Mindbox {
         setInstallationId(configuration.installationId)
 
         if (deviceUuid.isNotEmpty()) {
-            MindboxPreferences.userAdid = deviceUuid
+            MindboxPreferences.deviceId = deviceUuid
         }
 
         MindboxPreferences.isFirstInitialize = false

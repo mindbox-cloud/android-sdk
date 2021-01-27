@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
 import io.paperdb.Paper
@@ -53,6 +54,25 @@ internal object DbManager {
             eventsBook.delete(key)
         } catch (exception: PaperDbException) {
             Logger.e(this, "Error deleting item from database", exception)
+        }
+    }
+
+    fun saveConfigurations(configuration: Configuration) {
+        try {
+            configurationBook.write(CONFIGURATION_KEY, configuration)
+        } catch (exception: PaperDbException) {
+            Logger.e(this, "Error writing object configuration to the database", exception)
+        }
+    }
+
+    fun getConfigurations(): Configuration? {
+        return try {
+            configurationBook.read(CONFIGURATION_KEY) as Configuration?
+        } catch (exception: PaperDbException) {
+
+            // invalid data in case of exception
+            Logger.e(this, "Error reading from database", exception)
+            null
         }
     }
 }

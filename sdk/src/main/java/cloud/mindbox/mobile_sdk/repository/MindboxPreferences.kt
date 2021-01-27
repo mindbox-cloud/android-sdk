@@ -10,6 +10,11 @@ internal object MindboxPreferences {
     private const val KEY_INSTALLATION_ID = "key_installation_id"
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
+    private const val KEY_ENDPOINT = "key_endpoint"
+    private const val KEY_DOMAIN = "key_domain"
+    private const val KEY_PACKAGE_NAME = "key_package_name"
+    private const val KEY_VERSION_NAME = "key_version_name"
+    private const val KEY_VERSION_CODE = "key_version_code"
 
     var isFirstInitialize: Boolean
         get() = Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
@@ -17,7 +22,7 @@ internal object MindboxPreferences {
             Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
         }
 
-    var userAdid: String?
+    var deviceId: String?
         get() = Hawk.get(KEY_USER_ADID, null)
         set(value) {
             Hawk.put(KEY_USER_ADID, value)
@@ -40,5 +45,35 @@ internal object MindboxPreferences {
         get() = Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
         set(value) {
             Hawk.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
+        }
+
+    var endpoint: String
+        get() = Hawk.get(KEY_ENDPOINT, "")
+        set(value) {
+            Hawk.put(KEY_ENDPOINT, value)
+        }
+
+    var domain: String
+        get() = Hawk.get(KEY_DOMAIN, "")
+        set(value) {
+            Hawk.put(KEY_DOMAIN, value)
+        }
+
+    var packageName: String
+        get() = Hawk.get(KEY_PACKAGE_NAME, "")
+        set(value) {
+            Hawk.put(KEY_PACKAGE_NAME, value)
+        }
+
+    var versionName: String
+        get() = Hawk.get(KEY_VERSION_NAME, "")
+        set(value) {
+            Hawk.put(KEY_VERSION_NAME, value)
+        }
+
+    var versionCode: String
+        get() = Hawk.get(KEY_VERSION_CODE, "")
+        set(value) {
+            Hawk.put(KEY_VERSION_CODE, value)
         }
 }
