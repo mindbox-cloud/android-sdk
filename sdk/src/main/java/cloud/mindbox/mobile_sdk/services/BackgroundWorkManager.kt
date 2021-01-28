@@ -9,7 +9,7 @@ class BackgroundWorkManager {
     fun start(context: Context) {
         val request = PeriodicWorkRequest.Builder(
             MindboxEventWorker::class.java,
-            1, TimeUnit.HOURS
+            15, TimeUnit.MINUTES
         )
             .setBackoffCriteria(
                 BackoffPolicy.LINEAR,

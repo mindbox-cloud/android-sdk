@@ -33,6 +33,7 @@ internal object DbManager {
 
     fun getEventsQueue(): List<Event> {
         synchronized(this) {
+
             val list = arrayListOf<Event>()
             val keys = eventsBook.allKeys
 
