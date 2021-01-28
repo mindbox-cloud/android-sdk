@@ -16,7 +16,7 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
 
         //todo подписаться на жизненный цикл и проверить на инициализацию
         try {
-            val events = DbManager.getEventsStack()
+            val events = DbManager.getEventsQueue()
             if (events.isNullOrEmpty()) {
                 Logger.d(this, "Events list is empty")
                 Result.failure()
@@ -24,12 +24,12 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
                 events.forEach { event ->
                     GatewayManager.sendEvent(appContext, event) { isSended ->
                         if (isSended) {
-                            DbManager.removeEventFromStack(event.transactionId)
+                            DbManager.removeEventFromQueue(event.transactionId)
                         }
                     }
                 }
 
-                return if (!DbManager.getEventsStack().isNullOrEmpty()) {
+                return if (!DbManager.getEventsQueue().isNullOrEmpty()) {
                     Result.retry()
                 } else {
                     Result.success()

@@ -13,7 +13,7 @@ class MindboxMessagingService : FirebaseMessagingService() {
         if (token.isNotEmpty() && token != MindboxPreferences.firebaseToken) {
             Paper.init(applicationContext)
             if (DbManager.getConfigurations() == null) return //todo change init db
-            Mindbox.init(applicationContext, DbManager.getConfigurations()!!, null)
+            Mindbox.init(applicationContext, DbManager.getConfigurations()!!)
         }
     }
 

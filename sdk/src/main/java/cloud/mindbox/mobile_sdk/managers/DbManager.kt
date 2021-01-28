@@ -16,7 +16,7 @@ internal object DbManager {
     private val eventsBook = Paper.book(EVENTS_BOOK_NAME)
     private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
 
-    fun addEventToStack(event: Event) {
+    fun addEventToQueue(event: Event) {
         synchronized(this) {
             try {
                 eventsBook.write(event.transactionId, event)
@@ -30,7 +30,7 @@ internal object DbManager {
         }
     }
 
-    fun getEventsStack(): List<Event> {
+    fun getEventsQueue(): List<Event> {
         synchronized(this) {
             val list = arrayListOf<Event>()
             val keys = eventsBook.allKeys
@@ -51,14 +51,14 @@ internal object DbManager {
             } catch (exception: PaperDbException) {
 
                 // invalid data in case of exception
-                removeEventFromStack(key)
+                removeEventFromQueue(key)
                 Logger.e(this, "Error reading from database", exception)
                 null
             }
         }
     }
 
-    fun removeEventFromStack(key: String) {
+    fun removeEventFromQueue(key: String) {
         synchronized(this) {
             try {
                 eventsBook.delete(key)
@@ -75,7 +75,7 @@ internal object DbManager {
             // filter by volume
             if (list.size > 10000) {
                 for (i in 1..(list.size - 10000)) {
-                    removeEventFromStack(list[i].transactionId)
+                    removeEventFromQueue(list[i].transactionId)
                 }
                 filteredList = list.filterIndexed { index, _ -> index > (list.size - 10000) }
             }

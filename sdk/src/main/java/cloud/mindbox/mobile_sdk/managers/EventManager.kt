@@ -10,7 +10,7 @@ internal object EventManager {
     private val gson = Gson()
 
     fun appInfoUpdate(initData: PartialInitData) {
-        DbManager.addEventToStack(
+        DbManager.addEventToQueue(
             Event(
                 UUID.randomUUID().toString(),
                 -1,
