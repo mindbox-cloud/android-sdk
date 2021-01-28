@@ -36,7 +36,7 @@ internal object GatewayManager {
             url,
             configuration.endpoint,
             operationType,
-            configuration.deviceId
+            configuration.deviceUuid
         )
     }
 
@@ -52,7 +52,7 @@ internal object GatewayManager {
             url,
             configuration.endpoint,
             operationType,
-            configuration.deviceId,
+            configuration.deviceUuid,
             transactionId,
             dateTimeOffset
         )

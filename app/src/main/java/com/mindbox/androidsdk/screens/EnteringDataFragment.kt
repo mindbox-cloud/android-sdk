@@ -9,7 +9,6 @@ import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import com.mindbox.androidsdk.Prefs
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
-import org.json.JSONObject
 
 class EnteringDataFragment(private val callback: (String, String, String, String) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
@@ -68,7 +67,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
         }
 
         val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
-            .setDeviceId(deviceId)
+            .setDeviceUuid(deviceId)
             .setInstallationId(installId)
             .build()
 

@@ -33,12 +33,12 @@ internal object IdentifierManager {
             Logger.e(this, "Mindbox SDK is not initialized")
             null
         } else {
-            if (MindboxPreferences.deviceId == null) {
+            if (MindboxPreferences.deviceUuid == null) {
                 val adid = generateAdsId(context)
-                MindboxPreferences.deviceId = adid
+                MindboxPreferences.deviceUuid = adid
                 adid
             } else {
-                MindboxPreferences.deviceId ?: ""
+                MindboxPreferences.deviceUuid ?: ""
             }
         }
     }

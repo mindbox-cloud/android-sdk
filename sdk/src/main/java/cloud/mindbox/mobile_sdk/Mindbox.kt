@@ -35,10 +35,10 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
 
         mindboxScope.launch(Main) {
-            val deviceId = if (configuration.deviceId.trim().isEmpty()) {
+            val deviceId = if (configuration.deviceUuid.trim().isEmpty()) {
                 initDeviceId()
             } else {
-                configuration.deviceId.trim()
+                configuration.deviceUuid.trim()
             }
 
             registerSdk(
@@ -54,7 +54,7 @@ object Mindbox {
 
     fun getSdkData(onResult: (String, String, String) -> Unit) {
         onResult.invoke(
-            MindboxPreferences.deviceId ?: "",
+            MindboxPreferences.deviceUuid ?: "",
             MindboxPreferences.firebaseTokenSaveDate,
             "Some version - will be added later"
         )
@@ -90,7 +90,7 @@ object Mindbox {
             if (MindboxPreferences.isFirstInitialize) {
                 MindboxPreferences.isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
 
-                configuration.deviceId = deviceUuid
+                configuration.deviceUuid = deviceUuid
 
                 firstInitialization(
                     context,
@@ -117,7 +117,7 @@ object Mindbox {
         setInstallationId(configuration.installationId)
 
         if (deviceUuid.isNotEmpty()) {
-            MindboxPreferences.deviceId = deviceUuid
+            MindboxPreferences.deviceUuid = deviceUuid
         }
 
         DbManager.saveConfigurations(configuration)
