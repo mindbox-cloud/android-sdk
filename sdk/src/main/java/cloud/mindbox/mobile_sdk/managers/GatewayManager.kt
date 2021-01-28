@@ -90,7 +90,7 @@ internal object GatewayManager {
     }
 
     fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
-        val dataObject = JSONObject(event.data)
+        val dataObject = JSONObject(event.body)
         val configuration = DbManager.getConfigurations()
 
         if (configuration == null) {

@@ -6,5 +6,5 @@ internal data class Event(
     val transactionId: String,
     var dateTimeOffset: Long,
     var enqueueTimestamp: Long, // date of event creating
-    val data: String //json
+    val body: String //json
 )
