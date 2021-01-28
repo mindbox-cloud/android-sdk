@@ -57,10 +57,12 @@ sealed class MindboxResponse {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
 
-            try {
-                UUID.fromString(deviceId)
-            } catch (e: Exception) {
-                errors.add(ERROR_INVALID_DEVICE_ID)
+            if (deviceId.trim().isNotEmpty()) {
+                try {
+                    UUID.fromString(deviceId)
+                } catch (e: Exception) {
+                    errors.add(ERROR_INVALID_DEVICE_ID)
+                }
             }
 
             this.messages = errors.toList()

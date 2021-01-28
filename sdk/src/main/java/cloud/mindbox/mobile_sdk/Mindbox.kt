@@ -25,14 +25,27 @@ object Mindbox {
 
     fun init(
         context: Context,
-        configuration: Configuration,
-        callback: ((MindboxResponse) -> Unit)?
+        configuration: Configuration
     ) {
         this.context = context
 
         Hawk.init(context).build()
         Paper.init(context.applicationContext)
         FirebaseApp.initializeApp(context)
+
+        val validationErrors =
+            MindboxResponse.ValidationError()
+                .apply {
+                    validateFields(
+                        configuration.domain,
+                        configuration.endpoint,
+                        configuration.deviceUuid
+                    )
+                }
+
+        if (validationErrors.messages.isNotEmpty()) {
+            throw InitializeMindboxException(validationErrors.toString())
+        }
 
         mindboxScope.launch(Main) {
             val deviceId = if (configuration.deviceUuid.trim().isEmpty()) {
@@ -45,7 +58,6 @@ object Mindbox {
                 context,
                 configuration,
                 deviceId ?: "",
-                callback
             )
         }
 
@@ -74,21 +86,13 @@ object Mindbox {
     private fun registerSdk(
         context: Context,
         configuration: Configuration,
-        deviceUuid: String,
-        callback: ((MindboxResponse) -> Unit)?
+        deviceUuid: String
     ) {
-        val validationErrors =
-            MindboxResponse.ValidationError()
-                .apply { validateFields(configuration.domain, configuration.endpoint, deviceUuid) }
-
-        if (validationErrors.messages.isNotEmpty()) {
-            callback?.invoke(validationErrors)
-            return
-        }
 
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
-                MindboxPreferences.isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+                MindboxPreferences.isNotificationEnabled =
+                    IdentifierManager.isNotificationsEnabled(context)
 
                 configuration.deviceUuid = deviceUuid
 
@@ -96,10 +100,8 @@ object Mindbox {
                     context,
                     configuration,
                     deviceUuid,
-                    callback
                 )
             } else {
-                callback?.invoke(MindboxResponse.SuccessResponse("Update checked"))
                 updateAppInfo(context)
             }
         }
@@ -108,8 +110,7 @@ object Mindbox {
     private suspend fun firstInitialization(
         context: Context,
         configuration: Configuration,
-        deviceUuid: String,
-        callback: ((MindboxResponse) -> Unit)?
+        deviceUuid: String
     ) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
@@ -139,7 +140,6 @@ object Mindbox {
                 if (result is MindboxResponse.SuccessResponse<*>) {
                     MindboxPreferences.isFirstInitialize = false
                 }
-                callback?.invoke(result)
             }
         }
     }

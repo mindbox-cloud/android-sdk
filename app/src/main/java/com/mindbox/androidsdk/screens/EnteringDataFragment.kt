@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import com.mindbox.androidsdk.Prefs
@@ -71,22 +72,14 @@ class EnteringDataFragment(private val callback: (String, String, String, String
             .setInstallationId(installId)
             .build()
 
-        Mindbox.init(this.requireContext(), configs) { response ->
+        try {
+            Mindbox.init(this.requireContext(), configs)
+            loadProgress.visibility = View.GONE
+            callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
+        } catch (e: InitializeMindboxException) {
+            loadProgress.visibility = View.GONE
             activity?.runOnUiThread {
-                loadProgress.visibility = View.GONE
-                when (response) {
-                    is MindboxResponse.Error -> {
-                        errorContainer.text =
-                            """Response code: ${response.status}
-                                    """.trimMargin()
-                    }
-                    is MindboxResponse.ValidationError -> {
-                        errorContainer.text = response.messages.toString()
-                    }
-                    is MindboxResponse.SuccessResponse<*> -> {
-                        callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
-                    }
-                }
+                errorContainer.text = e.message
             }
         }
     }
