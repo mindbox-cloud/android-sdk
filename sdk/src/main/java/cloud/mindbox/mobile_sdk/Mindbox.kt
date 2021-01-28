@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.EventManager
-import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
@@ -132,18 +131,7 @@ object Mindbox {
         )
 
         EventManager.appInstalled(initData)
-
-//        mindboxScope.launch {
-//            GatewayManager.sendFirstInitialization(
-//                context,
-//                configuration,
-//                initData
-//            ) { result ->
-//                if (result is MindboxResponse.SuccessResponse<*>) {
-//                    MindboxPreferences.isFirstInitialize = false
-//                }
-//            }
-//        }
+        MindboxPreferences.isFirstInitialize = false
     }
 
     private suspend fun updateAppInfo(context: Context) {

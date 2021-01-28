@@ -20,6 +20,7 @@ internal object DbManager {
         synchronized(this) {
             try {
                 eventsBook.write(event.transactionId, event)
+                Logger.d(this, "Event ${event.eventType.type} was added to queue")
             } catch (exception: PaperDbException) {
                 Logger.e(
                     this,
