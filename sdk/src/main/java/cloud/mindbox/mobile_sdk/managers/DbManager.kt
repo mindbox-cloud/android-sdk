@@ -23,7 +23,7 @@ internal object DbManager {
             } catch (exception: PaperDbException) {
                 Logger.e(
                     this,
-                    "Error writing object ${event.transactionId} to the database",
+                    "Error writing object to the database: ${event.body}",
                     exception
                 )
             }
