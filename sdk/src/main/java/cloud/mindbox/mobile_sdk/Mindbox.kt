@@ -131,17 +131,19 @@ object Mindbox {
             MindboxPreferences.isNotificationEnabled
         )
 
-        mindboxScope.launch {
-            GatewayManager.sendFirstInitialization(
-                context,
-                configuration,
-                initData
-            ) { result ->
-                if (result is MindboxResponse.SuccessResponse<*>) {
-                    MindboxPreferences.isFirstInitialize = false
-                }
-            }
-        }
+        EventManager.appInstalled(initData)
+
+//        mindboxScope.launch {
+//            GatewayManager.sendFirstInitialization(
+//                context,
+//                configuration,
+//                initData
+//            ) { result ->
+//                if (result is MindboxResponse.SuccessResponse<*>) {
+//                    MindboxPreferences.isFirstInitialize = false
+//                }
+//            }
+//        }
     }
 
     private suspend fun updateAppInfo(context: Context) {
