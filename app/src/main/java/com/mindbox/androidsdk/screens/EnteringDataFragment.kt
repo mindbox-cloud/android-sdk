@@ -4,12 +4,12 @@ import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import com.mindbox.androidsdk.Prefs
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
-import org.json.JSONObject
 
 class EnteringDataFragment(private val callback: (String, String, String, String) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
@@ -68,36 +68,19 @@ class EnteringDataFragment(private val callback: (String, String, String, String
         }
 
         val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
-            .setDeviceId(deviceId)
+            .setDeviceUuid(deviceId)
             .setInstallationId(installId)
             .build()
 
-        Mindbox.init(this.requireContext(), configs) { response ->
+        try {
+            Mindbox.init(this.requireContext(), configs)
+
+            loadProgress.visibility = View.GONE
+            callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
+        } catch (e: InitializeMindboxException) {
+            loadProgress.visibility = View.GONE
             activity?.runOnUiThread {
-                loadProgress.visibility = View.GONE
-                when (response) {
-                    is MindboxResponse.Error -> {
-                        errorContainer.text =
-                            """code: ${response.status}
-                                        |
-                                        |message: ${response.message}
-                                        |
-                                        |error body: ${
-                                try {
-                                    JSONObject(response.errorBody?.string())
-                                } catch (e: Exception) {
-                                    "Error body has bad format: " + response.errorBody.toString()
-                                }
-                            }
-                                    """.trimMargin()
-                    }
-                    is MindboxResponse.ValidationError -> {
-                        errorContainer.text = response.messages.toString()
-                    }
-                    is MindboxResponse.SuccessResponse<*> -> {
-                        callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
-                    }
-                }
+                errorContainer.text = e.message
             }
         }
     }

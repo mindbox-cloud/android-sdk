@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import android.util.Log
+import java.lang.Exception
 
 internal object Logger {
 
@@ -14,6 +15,10 @@ internal object Logger {
 
     fun e(parent: Any, message: String) {
         Log.e(parent.javaClass.simpleName, message)
+    }
+
+    fun e(parent: Any, message: String, exception: Exception) {
+        Log.e(parent.javaClass.simpleName, message, exception)
     }
 
     fun w(parent: Any, message: String) {

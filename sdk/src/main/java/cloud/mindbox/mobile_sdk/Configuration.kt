@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 class Configuration(builder: Builder) {
     internal val installationId: String = builder.installationId
-    internal val deviceId: String = builder.deviceId
+    internal var deviceUuid: String = builder.deviceUuid
     internal val endpoint: String = builder.endpoint
     internal val domain: String = builder.domain
     internal val packageName: String = builder.packageName
@@ -14,7 +14,7 @@ class Configuration(builder: Builder) {
 
     class Builder(private val context: Context, val domain: String, val endpoint: String) {
         var installationId: String = MindboxPreferences.installationId ?: ""
-        var deviceId: String = MindboxPreferences.userAdid ?: ""
+        var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
@@ -25,8 +25,8 @@ class Configuration(builder: Builder) {
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
         }
 
-        fun setDeviceId(deviceId: String): Builder {
-            this.deviceId = deviceId
+        fun setDeviceUuid(deviceUuid: String): Builder {
+            this.deviceUuid = deviceUuid
             return this
         }
 
