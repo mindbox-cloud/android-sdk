@@ -5,8 +5,8 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.EventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.firebase.FirebaseApp
@@ -36,7 +36,7 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
 
         val validationErrors =
-            MindboxResponse.ValidationError()
+            ValidationError()
                 .apply {
                     validateFields(
                         configuration.domain,
