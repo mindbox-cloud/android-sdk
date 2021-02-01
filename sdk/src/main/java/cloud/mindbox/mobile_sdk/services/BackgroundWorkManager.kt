@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.*
 import java.util.concurrent.TimeUnit
 
+//todo мб это будет синглтон?
 class BackgroundWorkManager {
 
     fun start(context: Context) {

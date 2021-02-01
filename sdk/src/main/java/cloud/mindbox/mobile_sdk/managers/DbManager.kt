@@ -33,9 +33,13 @@ internal object DbManager {
 
     fun getEventsQueue(): List<Event> {
         synchronized(this) {
-
             val list = arrayListOf<Event>()
             val keys = eventsBook.allKeys
+
+            //todo
+            // посмотреть - можно ли добавить ограничения в бд по времени хранения
+            // пагинированно мб читать?
+            // фильтровать по количеству до наполнения списка
 
             for (key in keys) {
                 val value = getEvent(key) ?: continue

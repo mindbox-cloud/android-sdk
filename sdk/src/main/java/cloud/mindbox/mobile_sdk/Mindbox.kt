@@ -47,6 +47,8 @@ object Mindbox {
         }
 
         mindboxScope.launch(Main) {
+            //todo rename deviceId
+
             val deviceId = if (configuration.deviceUuid.trim().isEmpty()) {
                 initDeviceId()
             } else {

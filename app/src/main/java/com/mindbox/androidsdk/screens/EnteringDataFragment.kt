@@ -74,6 +74,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
 
         try {
             Mindbox.init(this.requireContext(), configs)
+
             loadProgress.visibility = View.GONE
             callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
         } catch (e: InitializeMindboxException) {
