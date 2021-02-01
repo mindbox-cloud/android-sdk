@@ -28,21 +28,6 @@ internal object IdentifierManager {
         }
     }
 
-    fun getAdsIdentification(context: Context?): String? {
-        return if (context == null) {
-            Logger.e(this, "Mindbox SDK is not initialized")
-            null
-        } else {
-            if (MindboxPreferences.deviceUuid == null) {
-                val adid = generateAdsId(context)
-                MindboxPreferences.deviceUuid = adid
-                adid
-            } else {
-                MindboxPreferences.deviceUuid ?: ""
-            }
-        }
-    }
-
     fun registerFirebaseToken(): String? {
         return try {
             val token: String? = Tasks.await(FirebaseMessaging.getInstance().token)
@@ -56,20 +41,20 @@ internal object IdentifierManager {
         }
     }
 
-    private fun generateAdsId(context: Context): String {
+    fun getAdsIdentification(context: Context): String {
         return try {
             val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
             if (!advertisingIdInfo.isLimitAdTrackingEnabled && !advertisingIdInfo.id.isNullOrEmpty()) {
                 val id = advertisingIdInfo.id
                 Logger.d(
-                    this, "Generated: device uuid - $id"
+                    this, "Received from AdvertisingIdClient: device uuid - $id"
                 )
                 id
             } else {
                 val id = generateRandomUuid()
                 Logger.d(
                     this,
-                    "Device uuid cannot be generated from ads. Will be generated from Random - $id"
+                    "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
                 )
                 id
             }
@@ -78,7 +63,7 @@ internal object IdentifierManager {
             val id = generateRandomUuid()
             Logger.d(
                 this,
-                "Device uuid cannot be generated from ads. Will be generated from Random - $id"
+                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
             )
             id
         }

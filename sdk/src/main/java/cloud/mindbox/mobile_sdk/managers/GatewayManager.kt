@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
 import cloud.mindbox.mobile_sdk.network.ServiceGenerator
@@ -58,34 +57,6 @@ internal object GatewayManager {
         )
     }
 
-//    fun sendFirstInitialization(
-//        context: Context,
-//        configuration: Configuration,
-//        data: FullInitData?,
-//        onResult: (MindboxResponse) -> Unit
-//    ) {
-//        val dataObject = JSONObject(gson.toJson(data))
-//
-//        val request = MindboxRequest(
-//            Request.Method.POST,
-//            buildUrl(
-//                configuration.domain,
-//                configuration.endpoint,
-//                OPERATION_APP_INSTALLED,
-//                configuration
-//            ),
-//            configuration,
-//            dataObject,
-//            { response ->
-//                onResult.invoke(MindboxResponse.SuccessResponse(response))
-//            }, {
-//                onResult.invoke(parseResponse(it.networkResponse))
-//            }
-//        )
-//
-//        ServiceGenerator.getInstance(context).addToRequestQueue(request)
-//    }
-
     fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
         val dataObject = JSONObject(event.body)
         val configuration = DbManager.getConfigurations()
@@ -121,7 +92,10 @@ internal object GatewayManager {
                         isSuccess.invoke(true)
                     }
                     is MindboxResponse.Error -> {
-                        Logger.d(this, "Sending event from background was failure with code ${result.status}")
+                        Logger.d(
+                            this,
+                            "Sending event from background was failure with code ${result.status}"
+                        )
                         isSuccess.invoke(false)
                     }
                     else -> {

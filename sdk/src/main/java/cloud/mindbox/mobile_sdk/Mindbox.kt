@@ -14,7 +14,6 @@ import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.Dispatchers.Main
 
 object Mindbox {
 
@@ -51,24 +50,28 @@ object Mindbox {
             throw InitializeMindboxException(validationErrors.messages.toString())
         }
 
-        mindboxScope.launch(Main) {
-            val deviceUuid = if (configuration.deviceUuid.trim().isEmpty()) {
-                initDeviceId()
-            } else {
-                configuration.deviceUuid.trim()
-            }
+        mindboxScope.launch {
 
-            registerSdk(
-                context,
-                configuration,
-                deviceUuid ?: "",
-            )
+            if (MindboxPreferences.isFirstInitialize) {
+                MindboxPreferences.isNotificationEnabled =
+                    IdentifierManager.isNotificationsEnabled(context)
+
+                if (configuration.deviceUuid.trim().isEmpty()) {
+                    configuration.deviceUuid = initDeviceId(context)
+                } else {
+                    configuration.deviceUuid.trim()
+                }
+
+                firstInitialization(configuration)
+            } else {
+                updateAppInfo(context)
+            }
         }
 
         BackgroundWorkManager().start(context.applicationContext)
     }
 
-    private suspend fun initDeviceId(): String? {
+    private suspend fun initDeviceId(context: Context): String {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
         return adid.await()
     }
@@ -79,42 +82,14 @@ object Mindbox {
         }
     }
 
-    private fun registerSdk(
-        context: Context,
-        configuration: Configuration,
-        deviceUuid: String
-    ) {
-
-        mindboxScope.launch {
-            if (MindboxPreferences.isFirstInitialize) {
-                MindboxPreferences.isNotificationEnabled =
-                    IdentifierManager.isNotificationsEnabled(context)
-
-                configuration.deviceUuid = deviceUuid
-
-                firstInitialization(
-                    context,
-                    configuration,
-                    deviceUuid,
-                )
-            } else {
-                updateAppInfo(context)
-            }
-        }
-    }
-
-    private suspend fun firstInitialization(
-        context: Context,
-        configuration: Configuration,
-        deviceUuid: String
-    ) {
+    private suspend fun firstInitialization(configuration: Configuration) {
         val firebaseToken =
             withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
         MindboxPreferences.firebaseToken = firebaseToken
         setInstallationId(configuration.installationId)
 
-        if (deviceUuid.isNotEmpty()) {
-            MindboxPreferences.deviceUuid = deviceUuid
+        if (configuration.deviceUuid.isNotEmpty()) {
+            MindboxPreferences.deviceUuid = configuration.deviceUuid
         }
 
         DbManager.saveConfigurations(configuration)
