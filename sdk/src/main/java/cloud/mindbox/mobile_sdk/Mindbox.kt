@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.EventManager
-import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.MindboxResponse
@@ -25,8 +24,7 @@ object Mindbox {
 
     fun init(
         context: Context,
-        configuration: Configuration,
-        callback: (MindboxResponse) -> Unit
+        configuration: Configuration
     ) {
         this.context = context
 
@@ -34,18 +32,33 @@ object Mindbox {
         Paper.init(context.applicationContext)
         FirebaseApp.initializeApp(context)
 
+        val validationErrors =
+            MindboxResponse.ValidationError()
+                .apply {
+                    validateFields(
+                        configuration.domain,
+                        configuration.endpoint,
+                        configuration.deviceUuid
+                    )
+                }
+
+        if (validationErrors.messages.isNotEmpty()) {
+            throw InitializeMindboxException(validationErrors.toString())
+        }
+
         mindboxScope.launch(Main) {
-            val deviceId = if (configuration.deviceId.trim().isEmpty()) {
+            //todo rename deviceId
+
+            val deviceId = if (configuration.deviceUuid.trim().isEmpty()) {
                 initDeviceId()
             } else {
-                configuration.deviceId.trim()
+                configuration.deviceUuid.trim()
             }
 
             registerSdk(
                 context,
                 configuration,
                 deviceId ?: "",
-                callback
             )
         }
 
@@ -54,7 +67,7 @@ object Mindbox {
 
     fun getSdkData(onResult: (String, String, String) -> Unit) {
         onResult.invoke(
-            MindboxPreferences.deviceId ?: "",
+            MindboxPreferences.deviceUuid ?: "",
             MindboxPreferences.firebaseTokenSaveDate,
             "Some version - will be added later"
         )
@@ -74,30 +87,23 @@ object Mindbox {
     private fun registerSdk(
         context: Context,
         configuration: Configuration,
-        deviceUuid: String,
-        callback: (MindboxResponse) -> Unit
+        deviceUuid: String
     ) {
-        val validationErrors =
-            MindboxResponse.ValidationError()
-                .apply { validateFields(configuration.domain, configuration.endpoint, deviceUuid) }
-
-        if (validationErrors.messages.isNotEmpty()) {
-            callback.invoke(validationErrors)
-            return
-        }
 
         mindboxScope.launch {
             if (MindboxPreferences.isFirstInitialize) {
-                configuration.deviceId = deviceUuid
+                MindboxPreferences.isNotificationEnabled =
+                    IdentifierManager.isNotificationsEnabled(context)
+
+                configuration.deviceUuid = deviceUuid
 
                 firstInitialization(
                     context,
                     configuration,
                     deviceUuid,
-                    callback
                 )
             } else {
-                updateAppInfo()
+                updateAppInfo(context)
             }
         }
     }
@@ -105,15 +111,15 @@ object Mindbox {
     private suspend fun firstInitialization(
         context: Context,
         configuration: Configuration,
-        deviceUuid: String,
-        callback: (MindboxResponse) -> Unit
+        deviceUuid: String
     ) {
         val firebaseToken =
-            withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
+            withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
+        MindboxPreferences.firebaseToken = firebaseToken
         setInstallationId(configuration.installationId)
 
         if (deviceUuid.isNotEmpty()) {
-            MindboxPreferences.deviceId = deviceUuid
+            MindboxPreferences.deviceUuid = deviceUuid
         }
 
         DbManager.saveConfigurations(configuration)
@@ -123,34 +129,33 @@ object Mindbox {
             firebaseToken ?: "",
             isTokenAvailable,
             MindboxPreferences.installationId ?: "",
-            false //fixme
+            MindboxPreferences.isNotificationEnabled
         )
 
-        mindboxScope.launch {
-            GatewayManager.sendFirstInitialization(
-                context,
-                configuration,
-                initData
-            ) { result ->
-                if (result is MindboxResponse.SuccessResponse<*>) {
-                    MindboxPreferences.isFirstInitialize = false
-                }
-                callback.invoke(result)
-            }
-        }
+        EventManager.appInstalled(initData)
+        MindboxPreferences.isFirstInitialize = false
     }
 
-    private suspend fun updateAppInfo() {
-        val firebaseToken = withContext(mindboxScope.coroutineContext) { IdentifierManager.getFirebaseToken() }
-
+    private suspend fun updateAppInfo(context: Context) {
+        val firebaseToken =
+            withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
-        val initData = PartialInitData(
-            firebaseToken ?: "",
-            isTokenAvailable,
-            false //fixme
-        )
 
-        EventManager.appInfoUpdate(initData)
+        val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+
+        if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
+
+            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.firebaseToken = firebaseToken
+
+            val initData = PartialInitData(
+                firebaseToken ?: "",
+                isTokenAvailable,
+                MindboxPreferences.isNotificationEnabled
+            )
+
+            EventManager.appInfoUpdate(initData)
+        }
     }
 
     fun release() {

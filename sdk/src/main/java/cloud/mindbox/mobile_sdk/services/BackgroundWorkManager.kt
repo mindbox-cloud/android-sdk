@@ -4,12 +4,13 @@ import android.content.Context
 import androidx.work.*
 import java.util.concurrent.TimeUnit
 
+//todo мб это будет синглтон?
 class BackgroundWorkManager {
 
     fun start(context: Context) {
         val request = PeriodicWorkRequest.Builder(
             MindboxEventWorker::class.java,
-            1, TimeUnit.HOURS
+            15, TimeUnit.MINUTES
         )
             .setBackoffCriteria(
                 BackoffPolicy.LINEAR,

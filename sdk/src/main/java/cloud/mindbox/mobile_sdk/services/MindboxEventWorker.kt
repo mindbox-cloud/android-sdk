@@ -6,6 +6,7 @@ import androidx.work.WorkerParameters
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import io.paperdb.Paper
 import java.lang.Exception
 
 internal class MindboxEventWorker(private val appContext: Context, workerParams: WorkerParameters):
@@ -16,20 +17,22 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
 
         //todo подписаться на жизненный цикл и проверить на инициализацию
         try {
-            val events = DbManager.getEventsStack()
+            Paper.init(applicationContext)
+
+            val events = DbManager.getEventsQueue()
             if (events.isNullOrEmpty()) {
                 Logger.d(this, "Events list is empty")
-                Result.failure()
+                Result.retry()
             } else {
                 events.forEach { event ->
                     GatewayManager.sendEvent(appContext, event) { isSended ->
                         if (isSended) {
-                            DbManager.removeEventFromStack(event.transactionId)
+                            DbManager.removeEventFromQueue(event.transactionId)
                         }
                     }
                 }
 
-                return if (!DbManager.getEventsStack().isNullOrEmpty()) {
+                return if (!DbManager.getEventsQueue().isNullOrEmpty()) {
                     Result.retry()
                 } else {
                     Result.success()

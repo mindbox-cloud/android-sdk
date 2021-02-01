@@ -36,7 +36,7 @@ internal object GatewayManager {
             url,
             configuration.endpoint,
             operationType,
-            configuration.deviceId
+            configuration.deviceUuid
         )
     }
 
@@ -52,45 +52,42 @@ internal object GatewayManager {
             url,
             configuration.endpoint,
             operationType,
-            configuration.deviceId,
+            configuration.deviceUuid,
             transactionId,
             dateTimeOffset
         )
     }
 
-    private const val OPERATION_APP_INSTALLED = "MobileApplicationInstalled"
-    private const val OPERATION_APP_UPDATE = "MobileApplicationInfoUpdated"
-
-    fun sendFirstInitialization(
-        context: Context,
-        configuration: Configuration,
-        data: FullInitData?,
-        onResult: (MindboxResponse) -> Unit
-    ) {
-        val dataObject = JSONObject(gson.toJson(data))
-
-        val request = MindboxRequest(
-            Request.Method.POST,
-            buildUrl(
-                configuration.domain,
-                configuration.endpoint,
-                OPERATION_APP_INSTALLED,
-                configuration
-            ),
-            configuration,
-            dataObject,
-            { response ->
-                onResult.invoke(MindboxResponse.SuccessResponse(response))
-            }, {
-                onResult.invoke(parseResponse(it.networkResponse))
-            }
-        )
-
-        ServiceGenerator.getInstance(context).addToRequestQueue(request)
-    }
+//    fun sendFirstInitialization(
+//        context: Context,
+//        configuration: Configuration,
+//        data: FullInitData?,
+//        onResult: (MindboxResponse) -> Unit
+//    ) {
+//        val dataObject = JSONObject(gson.toJson(data))
+//
+//        val request = MindboxRequest(
+//            Request.Method.POST,
+//            buildUrl(
+//                configuration.domain,
+//                configuration.endpoint,
+//                OPERATION_APP_INSTALLED,
+//                configuration
+//            ),
+//            configuration,
+//            dataObject,
+//            { response ->
+//                onResult.invoke(MindboxResponse.SuccessResponse(response))
+//            }, {
+//                onResult.invoke(parseResponse(it.networkResponse))
+//            }
+//        )
+//
+//        ServiceGenerator.getInstance(context).addToRequestQueue(request)
+//    }
 
     fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
-        val dataObject = JSONObject(event.data)
+        val dataObject = JSONObject(event.body)
         val configuration = DbManager.getConfigurations()
 
         if (configuration == null) {
@@ -106,7 +103,7 @@ internal object GatewayManager {
             Request.Method.POST,
             buildEventUrl(
                 configuration,
-                OPERATION_APP_UPDATE,
+                event.eventType.type,
                 event.transactionId,
                 getTimeOffset(event.enqueueTimestamp)
             ),
