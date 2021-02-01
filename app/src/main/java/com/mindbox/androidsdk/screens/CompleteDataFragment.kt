@@ -3,17 +3,26 @@ package com.mindbox.androidsdk.screens
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
-import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
 
-class CompleteDataFragment(private val domain: String, private val endpoint: String, private val deviceId: String, private val installId: String) :
+class CompleteDataFragment(
+    private val domain: String,
+    private val endpoint: String,
+    private val deviceId: String,
+    private val installId: String
+) :
     Fragment(R.layout.fragment_complete_data) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        fillData()
+        updateButton.setOnClickListener { fillData() }
+    }
+
+    private fun fillData() {
         initParams.text = """
             domain: $domain
             
@@ -24,14 +33,12 @@ class CompleteDataFragment(private val domain: String, private val endpoint: Str
             installId: $installId
         """.trimIndent()
 
-        Mindbox.getSdkData { deviceUUID, token, sdkVersion ->
-            sdkData.text = """
-                deviceUUID: $deviceUUID
+        sdkData.text = """
+                deviceUUID: ${Mindbox.getDeviceUuid()}
                 
-                save token date: $token
+                save token date: ${Mindbox.getFmsToken()}
                 
-                SDK version: $sdkVersion
+                SDK version: ${Mindbox.getSdkVersion()}
             """.trimIndent()
-        }
     }
 }

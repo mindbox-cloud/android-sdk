@@ -22,6 +22,10 @@ object Mindbox {
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
+    fun getDeviceUuid() = MindboxPreferences.deviceUuid
+    fun getFmsToken() = MindboxPreferences.firebaseTokenSaveDate
+    fun getSdkVersion() = BuildConfig.VERSION_NAME
+
     fun init(
         context: Context,
         configuration: Configuration
@@ -62,14 +66,6 @@ object Mindbox {
         }
 
         BackgroundWorkManager().start(context.applicationContext)
-    }
-
-    fun getSdkData(onResult: (String, String, String) -> Unit) {
-        onResult.invoke(
-            MindboxPreferences.deviceUuid ?: "",
-            MindboxPreferences.firebaseTokenSaveDate,
-            BuildConfig.VERSION_NAME
-        )
     }
 
     private suspend fun initDeviceId(): String? {
