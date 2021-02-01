@@ -38,18 +38,17 @@ object Mindbox {
                     validateFields(
                         configuration.domain,
                         configuration.endpoint,
-                        configuration.deviceUuid
+                        configuration.deviceUuid,
+                        configuration.installationId
                     )
                 }
 
         if (validationErrors.messages.isNotEmpty()) {
-            throw InitializeMindboxException(validationErrors.toString())
+            throw InitializeMindboxException(validationErrors.messages.toString())
         }
 
         mindboxScope.launch(Main) {
-            //todo rename deviceId
-
-            val deviceId = if (configuration.deviceUuid.trim().isEmpty()) {
+            val deviceUuid = if (configuration.deviceUuid.trim().isEmpty()) {
                 initDeviceId()
             } else {
                 configuration.deviceUuid.trim()
@@ -58,7 +57,7 @@ object Mindbox {
             registerSdk(
                 context,
                 configuration,
-                deviceId ?: "",
+                deviceUuid ?: "",
             )
         }
 
@@ -69,7 +68,7 @@ object Mindbox {
         onResult.invoke(
             MindboxPreferences.deviceUuid ?: "",
             MindboxPreferences.firebaseTokenSaveDate,
-            "Some version - will be added later"
+            BuildConfig.VERSION_NAME
         )
     }
 

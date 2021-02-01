@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
+import android.util.Patterns
 import java.util.*
 
 sealed class MindboxResponse {
@@ -42,12 +43,14 @@ sealed class MindboxResponse {
 
         companion object {
             private const val ERROR_EMPTY_DOMAIN = "Domain must not be empty"
-            private const val ERROR_INVALID_DOMAIN = "The domain must not start with https:// and must not end with /"
+            private const val ERROR_INVALID_FORMAT_DOMAIN = "The domain must not start with https:// and must not end with /"
+            private const val ERROR_INVALID_DOMAIN = "The domain is not valid"
             private const val ERROR_EMPTY_ENDPOINT = "Endpoint must not be empty"
             private const val ERROR_INVALID_DEVICE_ID = "Invalid device UUID format"
+            private const val ERROR_INVALID_INSTALLATION_ID = "Invalid UUID format of installationId"
         }
 
-        fun validateFields(domain: String, endpoint: String, deviceId: String) {
+        fun validateFields(domain: String, endpoint: String, deviceUuid: String, installId: String) {
             val errors = arrayListOf<String>()
 
             if (domain.trim().isEmpty()) {
@@ -55,6 +58,10 @@ sealed class MindboxResponse {
             }
 
             if (domain.startsWith("http") || domain.startsWith("/") || domain.endsWith("/")) {
+                errors.add(ERROR_INVALID_FORMAT_DOMAIN)
+            }
+
+            if (domain.trim().isNotEmpty() && !Patterns.WEB_URL.matcher("https://$domain/").matches()) {
                 errors.add(ERROR_INVALID_DOMAIN)
             }
 
@@ -62,11 +69,19 @@ sealed class MindboxResponse {
                 errors.add(ERROR_EMPTY_ENDPOINT)
             }
 
-            if (deviceId.trim().isNotEmpty()) {
+            if (deviceUuid.trim().isNotEmpty()) {
                 try {
-                    UUID.fromString(deviceId)
+                    UUID.fromString(deviceUuid)
                 } catch (e: Exception) {
                     errors.add(ERROR_INVALID_DEVICE_ID)
+                }
+            }
+
+            if (installId.trim().isNotEmpty()) {
+                try {
+                    UUID.fromString(deviceUuid)
+                } catch (e: Exception) {
+                    errors.add(ERROR_INVALID_INSTALLATION_ID)
                 }
             }
 
