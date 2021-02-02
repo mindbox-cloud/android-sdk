@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import io.paperdb.Paper
 import java.lang.Exception
+import java.util.concurrent.CountDownLatch
 
 internal class MindboxEventWorker(private val appContext: Context, workerParams: WorkerParameters):
     Worker(appContext, workerParams)  {
@@ -25,10 +26,20 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
                 Result.retry()
             } else {
                 events.forEach { event ->
+                    val countDownLatch = CountDownLatch(1)
+
                     GatewayManager.sendEvent(appContext, event) { isSended ->
                         if (isSended) {
                             DbManager.removeEventFromQueue(event.transactionId)
+                            countDownLatch.countDown()
                         }
+                    }
+
+                    try {
+                        countDownLatch.await()
+                    } catch (e: InterruptedException) {
+                        Logger.e(this, "doWork -> sending was interrupted", e)
+                        return Result.failure()
                     }
                 }
 
