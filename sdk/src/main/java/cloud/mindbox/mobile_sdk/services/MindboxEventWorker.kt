@@ -31,8 +31,8 @@ internal class MindboxEventWorker(private val appContext: Context, workerParams:
                     GatewayManager.sendEvent(appContext, event) { isSended ->
                         if (isSended) {
                             DbManager.removeEventFromQueue(event.transactionId)
-                            countDownLatch.countDown()
                         }
+                        countDownLatch.countDown()
                     }
 
                     try {

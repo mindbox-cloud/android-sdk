@@ -36,7 +36,9 @@ class CompleteDataFragment(
         sdkData.text = """
                 deviceUUID: ${Mindbox.getDeviceUuid()}
                 
-                save token date: ${Mindbox.getFmsToken()}
+                save token: ${Mindbox.getFmsToken()}
+                
+                save token date: ${Mindbox.getFmsTokenSaveDate()}
                 
                 SDK version: ${Mindbox.getSdkVersion()}
             """.trimIndent()

@@ -21,9 +21,11 @@ object Mindbox {
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun getDeviceUuid() = MindboxPreferences.deviceUuid
-    fun getFmsToken() = MindboxPreferences.firebaseTokenSaveDate
+    fun getFmsToken() = MindboxPreferences.firebaseToken
+    fun getFmsTokenSaveDate() = MindboxPreferences.firebaseTokenSaveDate
     fun getSdkVersion() = BuildConfig.VERSION_NAME
+    fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
+        ?: throw InitializeMindboxException("SDK was not initialized")
 
     fun init(
         context: Context,
@@ -76,21 +78,14 @@ object Mindbox {
         return adid.await()
     }
 
-    private fun setInstallationId(id: String) {
-        if (id.isNotEmpty() && id != MindboxPreferences.installationId) {
-            MindboxPreferences.installationId = id
-        }
-    }
-
     private suspend fun firstInitialization(configuration: Configuration) {
-        val firebaseToken =
-            withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
-        MindboxPreferences.firebaseToken = firebaseToken
-        setInstallationId(configuration.installationId)
-
-        if (configuration.deviceUuid.isNotEmpty()) {
-            MindboxPreferences.deviceUuid = configuration.deviceUuid
+        val firebaseToken = withContext(mindboxScope.coroutineContext) {
+            IdentifierManager.registerFirebaseToken()
         }
+
+        MindboxPreferences.firebaseToken = firebaseToken
+        MindboxPreferences.installationId = configuration.installationId
+        MindboxPreferences.deviceUuid = configuration.deviceUuid
 
         DbManager.saveConfigurations(configuration)
 

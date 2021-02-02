@@ -49,6 +49,7 @@ internal object GatewayManager {
                     "Configuration was not initialized",
                     InitializeMindboxException("Configuration was not initialized")
                 )
+                isSuccess.invoke(false)
                 return
             }
 
