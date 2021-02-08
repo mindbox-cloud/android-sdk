@@ -70,7 +70,7 @@ object Mindbox {
             }
         }
 
-        BackgroundWorkManager().start(context.applicationContext)
+        context.schedulePeriodicService()
     }
 
     private suspend fun initDeviceId(context: Context): String {
