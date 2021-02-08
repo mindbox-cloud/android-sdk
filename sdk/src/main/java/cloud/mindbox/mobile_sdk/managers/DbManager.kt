@@ -7,11 +7,16 @@ import io.paperdb.Paper
 import io.paperdb.PaperDbException
 import java.util.*
 
+// todo add run catching
+
 internal object DbManager {
 
     private const val CONFIGURATION_KEY = "configuration_key"
     private const val EVENTS_BOOK_NAME = "mindbox_events_book"
     private const val CONFIGURATION_BOOK_NAME = "mindbox_configuration_book"
+
+    private const val MAX_EVENT_LIST_SIZE = 10000
+    private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
 
     private val eventsBook = Paper.book(EVENTS_BOOK_NAME)
     private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
@@ -19,6 +24,9 @@ internal object DbManager {
     fun addEventToQueue(event: Event) {
         synchronized(this) {
             try {
+                filterEventsBySize()
+                filterOldEvents()
+
                 eventsBook.write(event.transactionId, event)
                 Logger.d(this, "Event ${event.eventType.type} was added to queue")
             } catch (exception: PaperDbException) {
@@ -31,21 +39,11 @@ internal object DbManager {
         }
     }
 
-    fun getEventsQueue(): List<Event> {
-        synchronized(this) {
-            val list = arrayListOf<Event>()
-            val keys = eventsBook.allKeys
-
-            for (key in keys) {
-                val value = getEvent(key) ?: continue
-                list.add(value)
-            }
-
-            return filterOldEvents(list)
-        }
+    fun getEventsKeys(): List<String> = synchronized(this) {
+        return eventsBook.allKeys
     }
 
-    private fun getEvent(key: String): Event? {
+    fun getEvent(key: String): Event? {
         synchronized(this) {
             return try {
                 eventsBook.read(key) as Event?
@@ -69,29 +67,32 @@ internal object DbManager {
         }
     }
 
-    private fun filterOldEvents(list: ArrayList<Event>): List<Event> {
+    private fun filterEventsBySize() {
         synchronized(this) {
-            var filteredList = list.toList()
+            val allKeys = getEventsKeys()
 
-            // filter by volume
-            if (list.size > 10000) {
-                for (i in 1..(list.size - 10000)) {
-                    removeEventFromQueue(list[i].transactionId)
-                }
-                filteredList = list.filterIndexed { index, _ -> index > (list.size - 10000) }
+            if (allKeys.size >= MAX_EVENT_LIST_SIZE) {
+                removeEventFromQueue(allKeys.first())
             }
-
-            //todo
-            // filter by time
-//        val now = Date().time
-//
-//        filteredList.forEach { event ->
-//            val date: LocalDate = ofEpochMilli(event.enqueueTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
-//            if (event.enqueueTimestamp / 1000 * 60 * 60 ==)
-//        }
-            return filteredList
         }
     }
+
+    private fun filterOldEvents() {
+        synchronized(this) {
+            val keys = getEventsKeys()
+            keys.forEach { key ->
+                val event = getEvent(key)
+                if (event?.isTooOld() == true) {
+                    removeEventFromQueue(key)
+                } else {
+                    return@forEach
+                }
+            }
+        }
+    }
+
+    private fun Event.isTooOld(): Boolean =
+        this.enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
 
     fun saveConfigurations(configuration: Configuration) {
         synchronized(this) {
