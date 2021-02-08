@@ -30,17 +30,21 @@ internal object BackgroundWorkManager {
     }
 
     fun startOneTimeService(context: Context) {
+            val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
+                .setInitialDelay(10, TimeUnit.SECONDS)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                ).build()
 
-        val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
-            .setInitialDelay(10, TimeUnit.SECONDS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            ).build()
-
-        WorkManager
-            .getInstance(context)
-            .enqueue(request)
+            WorkManager
+                .getInstance(context)
+                .beginUniqueWork(
+                    MindboxOneTimeEventWorker::class.java.simpleName,
+                    ExistingWorkPolicy.KEEP,
+                    request
+                )
+                .enqueue()
     }
 }

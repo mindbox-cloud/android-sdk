@@ -1,13 +1,14 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import com.google.gson.Gson
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.util.*
 import java.util.concurrent.CountDownLatch
 
@@ -15,9 +16,9 @@ internal object EventManager {
 
     private val gson = Gson()
 
-    fun appInstalled(initData: FullInitData) {
+    fun appInstalled(context: Context, initData: FullInitData) {
         DbManager.addEventToQueue(
-            Event(
+            context, Event(
                 UUID.randomUUID().toString(),
                 -1,
                 Date().time,
@@ -27,9 +28,9 @@ internal object EventManager {
         )
     }
 
-    fun appInfoUpdate(initData: PartialInitData) {
+    fun appInfoUpdate(context: Context, initData: PartialInitData) {
         DbManager.addEventToQueue(
-            Event(
+            context, Event(
                 UUID.randomUUID().toString(),
                 -1,
                 Date().time,

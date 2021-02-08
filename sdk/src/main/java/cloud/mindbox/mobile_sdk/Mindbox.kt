@@ -64,7 +64,7 @@ object Mindbox {
                     configuration.deviceUuid.trim()
                 }
 
-                firstInitialization(configuration)
+                firstInitialization(context, configuration)
             } else {
                 updateAppInfo(context)
             }
@@ -78,7 +78,7 @@ object Mindbox {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(configuration: Configuration) {
+    private suspend fun firstInitialization(context: Context, configuration: Configuration) {
         val firebaseToken = withContext(mindboxScope.coroutineContext) {
             IdentifierManager.registerFirebaseToken()
         }
@@ -97,7 +97,7 @@ object Mindbox {
             MindboxPreferences.isNotificationEnabled
         )
 
-        EventManager.appInstalled(initData)
+        EventManager.appInstalled(context, initData)
         MindboxPreferences.isFirstInitialize = false
     }
 
@@ -119,7 +119,7 @@ object Mindbox {
                 MindboxPreferences.isNotificationEnabled
             )
 
-            EventManager.appInfoUpdate(initData)
+            EventManager.appInfoUpdate(context, initData)
         }
     }
 

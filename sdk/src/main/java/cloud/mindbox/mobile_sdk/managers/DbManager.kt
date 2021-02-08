@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.content.Context
 import cloud.mindbox.mobile_sdk.Configuration
 import cloud.mindbox.mobile_sdk.Logger
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import io.paperdb.Paper
 import io.paperdb.PaperDbException
 import java.util.*
@@ -21,7 +23,7 @@ internal object DbManager {
     private val eventsBook = Paper.book(EVENTS_BOOK_NAME)
     private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
 
-    fun addEventToQueue(event: Event) {
+    fun addEventToQueue(context: Context, event: Event) {
         synchronized(this) {
             try {
                 filterEventsBySize()
@@ -37,6 +39,8 @@ internal object DbManager {
                 )
             }
         }
+
+        BackgroundWorkManager.startOneTimeService(context)
     }
 
     fun getEventsKeys(): List<String> = synchronized(this) {
