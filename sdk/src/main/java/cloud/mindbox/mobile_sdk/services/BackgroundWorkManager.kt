@@ -48,3 +48,7 @@ internal object BackgroundWorkManager {
                 .enqueue()
     }
 }
+
+internal enum class WorkerType {
+    ONE_TIME_WORKER, PERIODIC_WORKER
+}

@@ -51,8 +51,6 @@ object Mindbox {
         mindboxScope.launch {
 
             if (MindboxPreferences.isFirstInitialize) {
-                MindboxPreferences.isNotificationEnabled =
-                    IdentifierManager.isNotificationsEnabled(context)
 
                 if (configuration.deviceUuid.trim().isEmpty()) {
                     configuration.deviceUuid = initDeviceId(context)
@@ -80,9 +78,7 @@ object Mindbox {
             IdentifierManager.registerFirebaseToken()
         }
 
-        MindboxPreferences.firebaseToken = firebaseToken
-        MindboxPreferences.installationId = configuration.installationId
-        MindboxPreferences.deviceUuid = configuration.deviceUuid
+        val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
 
         DbManager.saveConfigurations(configuration)
 
@@ -90,12 +86,17 @@ object Mindbox {
         val initData = FullInitData(
             firebaseToken ?: "",
             isTokenAvailable,
-            MindboxPreferences.installationId ?: "",
-            MindboxPreferences.isNotificationEnabled
+            configuration.installationId,
+            isNotificationEnabled
         )
 
         EventManager.appInstalled(context, initData)
+
         MindboxPreferences.isFirstInitialize = false
+        MindboxPreferences.firebaseToken = firebaseToken
+        MindboxPreferences.installationId = configuration.installationId
+        MindboxPreferences.deviceUuid = configuration.deviceUuid
+        MindboxPreferences.isNotificationEnabled = isNotificationEnabled
     }
 
     private suspend fun updateAppInfo(context: Context) {
@@ -107,16 +108,16 @@ object Mindbox {
 
         if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
-            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-            MindboxPreferences.firebaseToken = firebaseToken
-
             val initData = PartialInitData(
                 firebaseToken ?: "",
                 isTokenAvailable,
-                MindboxPreferences.isNotificationEnabled
+                isNotificationEnabled
             )
 
             EventManager.appInfoUpdate(context, initData)
+
+            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.firebaseToken = firebaseToken
         }
     }
 
