@@ -54,8 +54,7 @@ fun Result<Unit>.logOnException() {
     if (exception != null) {
         try {
             Logger.e(Mindbox, "Mindbox caught unhandled error", exception)
-        } catch (e: Throwable) {
             // todo log crash
-        }
+        } catch (e: Throwable) { }
     }
 }

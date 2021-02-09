@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.firebase.FirebaseApp
 import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
@@ -17,7 +16,6 @@ import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
-    private var context: Context? = null
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
@@ -31,8 +29,6 @@ object Mindbox {
         context: Context,
         configuration: Configuration
     ) {
-        this.context = context
-
         Hawk.init(context).build()
         Paper.init(context.applicationContext)
         FirebaseApp.initializeApp(context)
@@ -70,6 +66,7 @@ object Mindbox {
             }
         }
 
+        EventManager.sendEventsIfExist(context)
         context.schedulePeriodicService()
     }
 
@@ -124,7 +121,6 @@ object Mindbox {
     }
 
     fun release() {
-        context = null
         mindboxJob.cancel()
     }
 }
