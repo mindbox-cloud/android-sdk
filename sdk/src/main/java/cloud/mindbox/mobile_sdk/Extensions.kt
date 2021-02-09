@@ -6,7 +6,9 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
+import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import java.util.*
 
 internal fun Context.schedulePeriodicService() {
     val application = this.applicationContext as Application
@@ -56,5 +58,18 @@ fun Result<Unit>.logOnException() {
             Logger.e(Mindbox, "Mindbox caught unhandled error", exception)
             // todo log crash
         } catch (e: Throwable) { }
+    }
+}
+
+fun String.isUuid(): Boolean {
+    return if (this.trim().isNotEmpty()) {
+        try {
+            UUID.fromString(this)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    } else {
+        false
     }
 }

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models
 
 import androidx.core.util.PatternsCompat
+import cloud.mindbox.mobile_sdk.isUuid
 import java.util.*
 
 data class ValidationError(
@@ -44,12 +45,8 @@ data class ValidationError(
             }
         }
 
-        if (installId.trim().isNotEmpty()) {
-            try {
-                UUID.fromString(installId)
-            } catch (e: Exception) {
-                errors.add(ERROR_INVALID_INSTALLATION_ID)
-            }
+        if (!installId.isUuid()) {
+            errors.add(ERROR_INVALID_INSTALLATION_ID)
         }
 
         this.messages = errors.toList()
