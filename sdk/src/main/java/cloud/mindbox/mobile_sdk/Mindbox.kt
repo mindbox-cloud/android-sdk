@@ -34,7 +34,7 @@ object Mindbox {
         }
     }
 
-    fun onPushReceived(uniqKey: String) {
+    fun onPushReceived(applicationContext: Context, uniqKey: String) {
 
     }
 

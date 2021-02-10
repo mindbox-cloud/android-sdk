@@ -27,8 +27,9 @@ data class ValidationError(
 
         if (domain.startsWith("http") || domain.startsWith("/") || domain.endsWith("/")) {
             errors.add(ERROR_INVALID_FORMAT_DOMAIN)
-        } else if (domain.trim().isNotEmpty() && !PatternsCompat.WEB_URL.matcher("https://$domain/")
-                .matches()
+        } else if (domain.trim().isNotEmpty()
+            && (!PatternsCompat.WEB_URL.matcher("https://$domain/").matches()
+                    || !PatternsCompat.IP_ADDRESS.matcher(domain).matches())
         ) {
             errors.add(ERROR_INVALID_DOMAIN)
         }

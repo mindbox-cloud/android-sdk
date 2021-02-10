@@ -11,8 +11,7 @@ class InputParametersUnitTest {
         "api.mindbox.ru/",
         "https://api.mindbox.ru/",
         "hgkkjhhv",
-        "4854-t789"
-    )
+        "4854-t789")
 
     private val wrongUuidParameters = arrayListOf(
         "ларалтка ыфдво",
@@ -26,7 +25,7 @@ class InputParametersUnitTest {
         ""
     )
 
-    private val rightDomainParameter = "api.mindbox.ru"
+    private val rightDomainParameter = "198.246.176.1"//"api.mindbox.ru"
     private val rightEndpointParameter = "some_endpoint"
     private val rightUuidParameter = "31f08aa0-494a-11eb-b378-0242ac130002"
 
