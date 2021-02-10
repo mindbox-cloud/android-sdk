@@ -14,46 +14,10 @@ import java.util.*
 
 internal object GatewayManager {
 
-
-    private const val BASE_URL_PLACEHOLDER = "https://%1$1s"
-    private const val URL_APP_EVENT_PLACEHOLDER =
-        "%1$1s/v3/operations/async?" +
-                "endpointId=%2$1s&" +
-                "operation=%3$1s&" +
-                "deviceUUID=%4$1s&" +
-                "transactionId=%5$1s&" +
-                "dateTimeOffset=%6$1s"
-    private const val URL_PUSH_EVENT_PLACEHOLDER =
-        "/mobile-push/delivered?" +
-                "uniqKey=& " +
-                "endpointId=&" +
-                "deviceUUID="
-
     private fun buildEventUrl(
         configuration: Configuration,
         event: Event
     ): String {
-//        val urlQueries: HashMap<String, String> = when (event.eventType) {
-//            EventType.APP_INFO_UPDATED,
-//            EventType.APP_INSTALLED -> {
-//                hashMapOf(
-//                    UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
-//                    UrlQuery.OPERATION.value to event.eventType.type,
-//                    UrlQuery.DEVICE_UUID.value to configuration.deviceUuid,
-//                    UrlQuery.TRANSACTION_ID.value to event.transactionId,
-//                    UrlQuery.DATE_TIME_OFFSET.value to getTimeOffset(event.enqueueTimestamp)
-//                )
-//            }
-//            EventType.PUSH_DELIVERED -> {
-//                hashMapOf(
-//                    UrlQuery.UNIQ_KEY.value  to (event.uniqKey ?: ""),
-//                    UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
-//                    UrlQuery.DEVICE_UUID.value to configuration.deviceUuid,
-//                    UrlQuery.TRANSACTION_ID.value to event.transactionId,
-//                    UrlQuery.DATE_TIME_OFFSET.value to getTimeOffset(event.enqueueTimestamp)
-//                )
-//            }
-//        }
 
         val urlQueries: HashMap<String, String> = hashMapOf(
             UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
@@ -74,21 +38,7 @@ internal object GatewayManager {
 
         urlQueries.toUrlQueryString()
 
-        val url = "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
-
-//        val baseUrl = String.format(BASE_URL_PLACEHOLDER, configuration.domain)
-//
-//        return String.format(
-//            URL_EVENT_PLACEHOLDER,
-//            url,
-//            configuration.endpointId,
-//            event.eventType.operation,
-//            configuration.deviceUuid,
-//            event.transactionId,
-//            getTimeOffset(event.enqueueTimestamp)
-//        )
-
-        return url
+        return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
     fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
