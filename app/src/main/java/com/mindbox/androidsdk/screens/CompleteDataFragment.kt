@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
+import java.util.*
 
 class CompleteDataFragment(
     private val domain: String,
@@ -51,7 +52,7 @@ class CompleteDataFragment(
             val count: Int = countPushEvents.text.toString().toInt()
 
             for (i in 1..count) {
-
+                Mindbox.onPushReceived(requireContext(), UUID.randomUUID().toString())
             }
 
         } catch (e: NumberFormatException) {
