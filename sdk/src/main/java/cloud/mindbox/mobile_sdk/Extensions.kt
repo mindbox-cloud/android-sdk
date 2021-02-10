@@ -73,3 +73,7 @@ fun String.isUuid(): Boolean {
         false
     }
 }
+
+fun Map<String, String>.toUrlQueryString() =
+    this.map {(k,v) -> "$k=$v" }
+        .joinToString(prefix = "?", separator = "&")

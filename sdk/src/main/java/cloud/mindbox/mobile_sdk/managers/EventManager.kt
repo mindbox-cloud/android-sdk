@@ -16,11 +16,12 @@ internal object EventManager {
     fun appInstalled(context: Context, initData: FullInitData) {
         DbManager.addEventToQueue(
             context, Event(
-                UUID.randomUUID().toString(),
-                -1,
-                Date().time,
-                EventType.APP_INSTALLED,
-                gson.toJson(initData)
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.APP_INSTALLED,
+                uniqKey = null,
+                body = gson.toJson(initData)
             )
         )
     }
@@ -28,11 +29,25 @@ internal object EventManager {
     fun appInfoUpdate(context: Context, initData: PartialInitData) {
         DbManager.addEventToQueue(
             context, Event(
-                UUID.randomUUID().toString(),
-                -1,
-                Date().time,
-                EventType.APP_INFO_UPDATED,
-                gson.toJson(initData)
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.APP_INFO_UPDATED,
+                uniqKey = null,
+                body = gson.toJson(initData)
+            )
+        )
+    }
+
+    fun pushDelivered(context: Context, uniqKey: String) {
+        DbManager.addEventToQueue(
+            context, Event(
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.PUSH_DELIVERED,
+                uniqKey = uniqKey,
+                body = null
             )
         )
     }

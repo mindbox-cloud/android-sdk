@@ -35,7 +35,7 @@ object Mindbox {
     }
 
     fun onPushReceived(applicationContext: Context, uniqKey: String) {
-
+        EventManager.pushDelivered(applicationContext, uniqKey)
     }
 
     fun init(
@@ -53,7 +53,7 @@ object Mindbox {
                 .apply {
                     validateFields(
                         configuration.domain,
-                        configuration.endpoint,
+                        configuration.endpointId,
                         configuration.deviceUuid,
                         configuration.installationId
                     )

@@ -30,7 +30,7 @@ internal object DbManager {
                 filterOldEvents()
 
                 eventsBook.write(event.transactionId, event)
-                Logger.d(this, "Event ${event.eventType.type} was added to queue")
+                Logger.d(this, "Event ${event.eventType.operation} was added to queue")
             } catch (exception: PaperDbException) {
                 Logger.e(
                     this,

@@ -18,7 +18,7 @@ data class ValidationError(
         private const val ERROR_INVALID_INSTALLATION_ID = "Invalid UUID format of installationId"
     }
 
-    fun validateFields(domain: String, endpoint: String, deviceUuid: String, installId: String) {
+    fun validateFields(domain: String, endpointId: String, deviceUuid: String, installId: String) {
         val errors = arrayListOf<String>()
 
         if (domain.trim().isEmpty()) {
@@ -34,7 +34,7 @@ data class ValidationError(
             errors.add(ERROR_INVALID_DOMAIN)
         }
 
-        if (endpoint.trim().isEmpty()) {
+        if (endpointId.trim().isEmpty()) {
             errors.add(ERROR_EMPTY_ENDPOINT)
         }
 
