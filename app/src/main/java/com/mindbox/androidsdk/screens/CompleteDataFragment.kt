@@ -52,7 +52,9 @@ class CompleteDataFragment(
             val count: Int = countPushEvents.text.toString().toInt()
 
             for (i in 1..count) {
-                Mindbox.onPushReceived(requireContext(), UUID.randomUUID().toString())
+                Mindbox.onPushReceived(
+                    applicationContext = requireContext(),
+                    uniqKey = UUID.randomUUID().toString())
             }
 
         } catch (e: NumberFormatException) {
