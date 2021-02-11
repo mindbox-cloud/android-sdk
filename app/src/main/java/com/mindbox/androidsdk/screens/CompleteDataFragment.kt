@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
@@ -37,7 +38,13 @@ class CompleteDataFragment(
         """.trimIndent()
 
         sdkData.text = """
-                deviceUUID: ${Mindbox.getDeviceUuid()}
+                deviceUUID: ${
+                    try {
+                        Mindbox.getDeviceUuid()
+                    } catch (e: InitializeMindboxException) {
+                        "null"
+                    }
+                }
                 
                 save token: ${Mindbox.getFmsToken()}
                 
