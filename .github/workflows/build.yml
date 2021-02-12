@@ -64,7 +64,7 @@ jobs:
           ./gradlew --no-daemon clean
           ./gradlew --no-daemon build
           ./gradlew --no-daemon assembleDebug
-          ./gradlew --no-daemon assembleAndroidTest
+          ./gradlew --no-daemon testDebugUnitTest
 
 #   upload:
 #     needs: [build]
