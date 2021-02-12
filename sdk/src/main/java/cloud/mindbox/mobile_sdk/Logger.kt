@@ -17,7 +17,7 @@ internal object Logger {
         Log.e(parent.javaClass.simpleName, message)
     }
 
-    fun e(parent: Any, message: String, exception: Exception) {
+    fun e(parent: Any, message: String, exception: Throwable) {
         Log.e(parent.javaClass.simpleName, message, exception)
     }
 

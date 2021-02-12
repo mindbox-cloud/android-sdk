@@ -71,7 +71,10 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     // Firebase messaging
-    implementation 'com.google.firebase:firebase-messaging-ktx:21.0.0'
+    implementation platform('com.google.firebase:firebase-bom:26.1.1')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.android.gms:play-services-basement:17.5.0'
 
     // SharedPreference
     implementation "com.orhanobut:hawk:2.0.1"
@@ -92,6 +95,7 @@ dependencies {
 
     //work manager
     implementation "androidx.work:work-runtime-ktx:2.4.0"
+
 }
 
 apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'

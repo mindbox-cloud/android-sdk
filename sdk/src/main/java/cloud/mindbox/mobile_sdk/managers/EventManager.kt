@@ -1,9 +1,11 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.content.Context
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.FullInitData
 import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 import java.util.*
 
@@ -11,27 +13,50 @@ internal object EventManager {
 
     private val gson = Gson()
 
-    fun appInstalled(initData: FullInitData) {
+    fun appInstalled(context: Context, initData: FullInitData) {
         DbManager.addEventToQueue(
-            Event(
-                UUID.randomUUID().toString(),
-                -1,
-                Date().time,
-                EventType.APP_INSTALLED,
-                gson.toJson(initData)
+            context, Event(
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.APP_INSTALLED,
+                uniqKey = null,
+                body = gson.toJson(initData)
             )
         )
     }
 
-    fun appInfoUpdate(initData: PartialInitData) {
+    fun appInfoUpdate(context: Context, initData: PartialInitData) {
         DbManager.addEventToQueue(
-            Event(
-                UUID.randomUUID().toString(),
-                -1,
-                Date().time,
-                EventType.APP_INFO_UPDATED,
-                gson.toJson(initData)
+            context, Event(
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.APP_INFO_UPDATED,
+                uniqKey = null,
+                body = gson.toJson(initData)
             )
         )
+    }
+
+    fun pushDelivered(context: Context, uniqKey: String) {
+        DbManager.addEventToQueue(
+            context, Event(
+                transactionId = UUID.randomUUID().toString(),
+                dateTimeOffset = -1,
+                enqueueTimestamp = Date().time,
+                eventType = EventType.PUSH_DELIVERED,
+                uniqKey = uniqKey,
+                body = null
+            )
+        )
+    }
+
+    fun sendEventsIfExist(context: Context) {
+        val keys = DbManager.getEventsKeys()
+
+        if (keys.isNotEmpty()) {
+            BackgroundWorkManager.startOneTimeService(context)
+        }
     }
 }

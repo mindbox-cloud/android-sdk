@@ -1,34 +1,41 @@
 {
   "project_info": {
-    "project_number": "689681156359",
-    "project_id": "sdk-example-4da18",
-    "storage_bucket": "sdk-example-4da18.appspot.com"
+    "project_number": "855309246205",
+    "project_id": "mindbox-test-app",
+    "storage_bucket": "mindbox-test-app.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:689681156359:android:16989f4483039d0e339da2",
+        "mobilesdk_app_id": "1:855309246205:android:86d6c6bdcd2a4cc46d6894",
         "android_client_info": {
-          "package_name": "com.mindbox.androidsdk"
+          "package_name": "com.mindbox.androidappmindbox"
         }
       },
       "oauth_client": [
         {
-          "client_id": "689681156359-detc09004js8h6mcjhe0pmie7jpdb03c.apps.googleusercontent.com",
+          "client_id": "855309246205-7d4u83k4mtgc1urfv9q3rr494ugak39i.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDobC8RbSnXMkIjDQZDATa5GtD08NCpQFM"
+          "current_key": "AIzaSyDUJuFWO5hzwGLed4xlJDPAtJw4AowUt9w"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "689681156359-detc09004js8h6mcjhe0pmie7jpdb03c.apps.googleusercontent.com",
+              "client_id": "855309246205-7d4u83k4mtgc1urfv9q3rr494ugak39i.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "855309246205-ltgolv1su9ljcp05imgfppu1bdd6s5am.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "PushOk"
+              }
             }
           ]
         }

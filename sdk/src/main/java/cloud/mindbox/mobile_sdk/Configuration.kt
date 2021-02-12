@@ -6,13 +6,13 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 class Configuration(builder: Builder) {
     internal val installationId: String = builder.installationId
     internal var deviceUuid: String = builder.deviceUuid
-    internal val endpoint: String = builder.endpoint
+    internal val endpointId: String = builder.endpointId
     internal val domain: String = builder.domain
     internal val packageName: String = builder.packageName
     internal val versionName: String = builder.versionName
     internal val versionCode: String = builder.versionCode
 
-    class Builder(private val context: Context, val domain: String, val endpoint: String) {
+    class Builder(private val context: Context, val domain: String, val endpointId: String) {
         var installationId: String = MindboxPreferences.installationId ?: ""
         var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME

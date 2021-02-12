@@ -4,12 +4,11 @@ import android.content.Context
 import androidx.work.*
 import java.util.concurrent.TimeUnit
 
-//todo мб это будет синглтон?
-class BackgroundWorkManager {
+internal object BackgroundWorkManager {
 
-    fun start(context: Context) {
+    fun startPeriodicService(context: Context) {
         val request = PeriodicWorkRequest.Builder(
-            MindboxEventWorker::class.java,
+            MindboxPeriodicEventWorker::class.java,
             15, TimeUnit.MINUTES
         )
             .setBackoffCriteria(
@@ -24,9 +23,32 @@ class BackgroundWorkManager {
             ).build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            MindboxEventWorker::class.java.simpleName,
+            MindboxPeriodicEventWorker::class.java.simpleName,
             ExistingPeriodicWorkPolicy.REPLACE,
             request
         )
     }
+
+    fun startOneTimeService(context: Context) {
+            val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
+                .setInitialDelay(10, TimeUnit.SECONDS)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                ).build()
+
+            WorkManager
+                .getInstance(context)
+                .beginUniqueWork(
+                    MindboxOneTimeEventWorker::class.java.simpleName,
+                    ExistingWorkPolicy.REPLACE,
+                    request
+                )
+                .enqueue()
+    }
+}
+
+internal enum class WorkerType {
+    ONE_TIME_WORKER, PERIODIC_WORKER
 }
