@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models
 
 import androidx.core.util.PatternsCompat
+import cloud.mindbox.mobile_sdk.isUuid
 import java.util.*
 
 data class ValidationError(
@@ -17,7 +18,7 @@ data class ValidationError(
         private const val ERROR_INVALID_INSTALLATION_ID = "Invalid UUID format of installationId"
     }
 
-    fun validateFields(domain: String, endpoint: String, deviceUuid: String, installId: String) {
+    fun validateFields(domain: String, endpointId: String, deviceUuid: String, installId: String) {
         val errors = arrayListOf<String>()
 
         if (domain.trim().isEmpty()) {
@@ -26,13 +27,14 @@ data class ValidationError(
 
         if (domain.startsWith("http") || domain.startsWith("/") || domain.endsWith("/")) {
             errors.add(ERROR_INVALID_FORMAT_DOMAIN)
-        } else if (domain.trim().isNotEmpty() && !PatternsCompat.WEB_URL.matcher("https://$domain/")
-                .matches()
+        } else if (domain.trim().isNotEmpty()
+            && !(PatternsCompat.WEB_URL.matcher("https://$domain/").matches()
+                    || PatternsCompat.IP_ADDRESS.matcher(domain).matches())
         ) {
             errors.add(ERROR_INVALID_DOMAIN)
         }
 
-        if (endpoint.trim().isEmpty()) {
+        if (endpointId.trim().isEmpty()) {
             errors.add(ERROR_EMPTY_ENDPOINT)
         }
 
@@ -44,12 +46,8 @@ data class ValidationError(
             }
         }
 
-        if (installId.trim().isNotEmpty()) {
-            try {
-                UUID.fromString(installId)
-            } catch (e: Exception) {
-                errors.add(ERROR_INVALID_INSTALLATION_ID)
-            }
+        if (installId.isNotEmpty() && !installId.isUuid()) {
+            errors.add(ERROR_INVALID_INSTALLATION_ID)
         }
 
         this.messages = errors.toList()

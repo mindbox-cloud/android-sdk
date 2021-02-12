@@ -6,7 +6,9 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
+import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import java.util.*
 
 internal fun Context.schedulePeriodicService() {
     val application = this.applicationContext as Application
@@ -58,3 +60,20 @@ fun Result<Unit>.logOnException() {
         } catch (e: Throwable) { }
     }
 }
+
+fun String.isUuid(): Boolean {
+    return if (this.trim().isNotEmpty()) {
+        try {
+            UUID.fromString(this)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+fun Map<String, String>.toUrlQueryString() =
+    this.map {(k,v) -> "$k=$v" }
+        .joinToString(prefix = "?", separator = "&")

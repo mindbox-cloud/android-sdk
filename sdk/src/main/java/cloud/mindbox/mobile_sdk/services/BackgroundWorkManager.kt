@@ -42,7 +42,7 @@ internal object BackgroundWorkManager {
                 .getInstance(context)
                 .beginUniqueWork(
                     MindboxOneTimeEventWorker::class.java.simpleName,
-                    ExistingWorkPolicy.KEEP,
+                    ExistingWorkPolicy.REPLACE,
                     request
                 )
                 .enqueue()

@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
+    private var appContext: Context? = null
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
@@ -25,10 +26,25 @@ object Mindbox {
     fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
         ?: throw InitializeMindboxException("SDK was not initialized")
 
+    fun updateFmsToken(token: String) {
+        if (appContext != null && token.trim().isNotEmpty()) {
+            mindboxScope.launch {
+                updateAppInfo(appContext!!, token)
+            }
+        }
+    }
+
+    fun onPushReceived(applicationContext: Context, uniqKey: String) {
+        Paper.init(applicationContext)
+        EventManager.pushDelivered(applicationContext, uniqKey)
+    }
+
     fun init(
         context: Context,
         configuration: Configuration
     ) {
+        appContext = context
+
         Hawk.init(context).build()
         Paper.init(context.applicationContext)
         FirebaseApp.initializeApp(context)
@@ -38,7 +54,7 @@ object Mindbox {
                 .apply {
                     validateFields(
                         configuration.domain,
-                        configuration.endpoint,
+                        configuration.endpointId,
                         configuration.deviceUuid,
                         configuration.installationId
                     )
@@ -99,9 +115,11 @@ object Mindbox {
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
     }
 
-    private suspend fun updateAppInfo(context: Context) {
-        val firebaseToken =
-            withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
+    private suspend fun updateAppInfo(context: Context, token: String? = null) {
+
+        val firebaseToken = token
+            ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
+
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
 
         val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
@@ -122,6 +140,7 @@ object Mindbox {
     }
 
     fun release() {
+        appContext = null
         mindboxJob.cancel()
     }
 }
