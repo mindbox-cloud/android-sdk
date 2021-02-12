@@ -17,6 +17,7 @@ android {
         minSdkVersion 16
         targetSdkVersion 30
         versionCode 1
+        multiDexEnabled true
         versionName '"' + SDK_VERSION_NAME + '"'
 
         buildConfigField 'String', 'VERSION_NAME', '"' + SDK_VERSION_NAME + '"'
@@ -95,6 +96,9 @@ dependencies {
 
     //work manager
     implementation "androidx.work:work-runtime-ktx:2.4.0"
+
+    // dex
+    implementation "androidx.multidex:multidex:2.0.1"
 
 }
 
