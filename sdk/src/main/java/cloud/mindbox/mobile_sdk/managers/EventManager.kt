@@ -53,7 +53,7 @@ internal object EventManager {
     }
 
     fun sendEventsIfExist(context: Context) {
-        val keys = DbManager.getEventsKeys()
+        val keys = DbManager.getFilteredEventsKeys()
 
         if (keys.isNotEmpty()) {
             BackgroundWorkManager.startOneTimeService(context)

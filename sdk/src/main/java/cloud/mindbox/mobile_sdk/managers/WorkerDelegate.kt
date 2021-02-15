@@ -17,7 +17,7 @@ internal fun sendEventsWithResult(
     try {
         Paper.init(context.applicationContext)
 
-        val eventKeys = DbManager.getEventsKeys()
+        val eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             Logger.d(parent, "Events list is empty")
             ListenableWorker.Result.success()
@@ -28,7 +28,7 @@ internal fun sendEventsWithResult(
             return when (workerType) {
                 WorkerType.ONE_TIME_WORKER -> ListenableWorker.Result.success()
                 WorkerType.PERIODIC_WORKER ->
-                    if (!DbManager.getEventsKeys().isNullOrEmpty()) {
+                    if (!DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
                         ListenableWorker.Result.retry()
                     } else {
                         ListenableWorker.Result.success()
