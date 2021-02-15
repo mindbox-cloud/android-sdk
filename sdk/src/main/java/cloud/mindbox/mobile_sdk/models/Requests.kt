@@ -32,9 +32,8 @@ data class MindboxRequest(
 
         private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
         private const val VALUE_USER_AGENT =
-            "%1$1s + %2$1s(%3$1s), android + %4$1s, %5$1s, %6$1s" // format: {host.application.name + app_version(version_code), os + version, vendor, model}
+            "mindbox.sdk/%1$1s (Android %2$1s; %3$1s; %4$1s) %5$1s/%6$1s(%7$1s)" // format: mindbox.sdk/{sdk.version} (Android {os_version}; {vendor}; {model}) {host_app_name}/{host_app_version}
         private const val VALUE_INTEGRATION = "Android-SDK"
-
     }
 
     //building headers
@@ -44,12 +43,13 @@ data class MindboxRequest(
         params[HEADER_CONTENT_TYPE] = VALUE_CONTENT_TYPE
         params[HEADER_USER_AGENT] = String.format(
             VALUE_USER_AGENT,
-            configuration.packageName,
-            configuration.versionName,
-            configuration.versionCode,
+            BuildConfig.VERSION_NAME,
             Build.VERSION.RELEASE,
             Build.MANUFACTURER,
-            Build.MODEL
+            Build.MODEL,
+            configuration.packageName,
+            configuration.versionName,
+            configuration.versionCode
         )
         params[HEADER_INTEGRATION] = VALUE_INTEGRATION
         params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
