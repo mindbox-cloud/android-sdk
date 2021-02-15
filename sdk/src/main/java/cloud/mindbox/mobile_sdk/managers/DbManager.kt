@@ -26,9 +26,6 @@ internal object DbManager {
     fun addEventToQueue(context: Context, event: Event) {
         synchronized(this) {
             try {
-                filterEventsBySize()
-                filterOldEvents()
-
                 eventsBook.write(event.transactionId, event)
                 Logger.d(this, "Event ${event.eventType.operation} was added to queue")
             } catch (exception: PaperDbException) {
@@ -43,7 +40,13 @@ internal object DbManager {
         BackgroundWorkManager.startOneTimeService(context)
     }
 
-    fun getEventsKeys(): List<String> = synchronized(this) {
+    fun getFilteredEventsKeys(): List<String> = synchronized(this) {
+        filterEventsBySize()
+        filterOldEvents()
+        return getEventsKeys()
+    }
+
+    private fun getEventsKeys(): List<String> = synchronized(this) {
         return eventsBook.allKeys
     }
 
@@ -74,9 +77,12 @@ internal object DbManager {
     private fun filterEventsBySize() {
         synchronized(this) {
             val allKeys = getEventsKeys()
+            val diff = allKeys.size - MAX_EVENT_LIST_SIZE
 
-            if (allKeys.size >= MAX_EVENT_LIST_SIZE) {
-                removeEventFromQueue(allKeys.first())
+            if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
+                for (i in 1..diff) {
+                    removeEventFromQueue(allKeys[i])
+                }
             }
         }
     }
