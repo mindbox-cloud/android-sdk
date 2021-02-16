@@ -46,6 +46,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
         val endpoint = endpointData.text.toString()
         val deviceId = deviceUuidData.text.toString()
         val installId = installationIdData.text.toString()
+        val subscribeValue = subscribeView.isChecked
 
         if (domain.isNotEmpty() && domain != Prefs.enteredDomain) {
             Prefs.enteredDomain = domain
@@ -70,6 +71,7 @@ class EnteringDataFragment(private val callback: (String, String, String, String
         val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
             .setDeviceUuid(deviceId)
             .setInstallationId(installId)
+            .setSubscribeCustomerIfCreated(subscribeValue)
             .build()
 
         try {

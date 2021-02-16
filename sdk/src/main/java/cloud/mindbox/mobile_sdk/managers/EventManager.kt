@@ -7,13 +7,12 @@ import cloud.mindbox.mobile_sdk.models.EventParameters
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
-import java.util.*
 
 internal object EventManager {
 
     private val gson = Gson()
 
-    fun appInstalled(context: Context, initData: FullInitData) {
+    fun appInstalled(context: Context, initData: InitData) {
         DbManager.addEventToQueue(
             context, Event(
                 eventType = EventType.APP_INSTALLED,
@@ -23,7 +22,7 @@ internal object EventManager {
         )
     }
 
-    fun appInfoUpdate(context: Context, initData: PartialInitData) {
+    fun appInfoUpdate(context: Context, initData: UpdateData) {
         DbManager.addEventToQueue(
             context, Event(
                 eventType = EventType.APP_INFO_UPDATED,

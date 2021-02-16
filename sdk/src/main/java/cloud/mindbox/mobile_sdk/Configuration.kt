@@ -11,10 +11,12 @@ class Configuration(builder: Builder) {
     internal val packageName: String = builder.packageName
     internal val versionName: String = builder.versionName
     internal val versionCode: String = builder.versionCode
+    internal val subscribeCustomerIfCreated: Boolean = builder.subscribeCustomerIfCreated
 
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
         var installationId: String = MindboxPreferences.installationId ?: ""
         var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
+        var subscribeCustomerIfCreated: Boolean = false
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
@@ -32,6 +34,11 @@ class Configuration(builder: Builder) {
 
         fun setInstallationId(installationId: String): Builder {
             this.installationId = installationId
+            return this
+        }
+
+        fun setSubscribeCustomerIfCreated(subscribe: Boolean): Builder {
+            this.subscribeCustomerIfCreated = subscribe
             return this
         }
 

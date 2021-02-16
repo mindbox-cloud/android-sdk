@@ -51,21 +51,52 @@ class CompleteDataFragment(
                 save token date: ${Mindbox.getFmsTokenSaveDate()}
                 
                 SDK version: ${Mindbox.getSdkVersion()}
+                
+                SubscribeCustomerIfCreated: ${Mindbox.getSubscribeCustomerIfCreated().toString()}
             """.trimIndent()
     }
 
     private fun sendPushDeliveryEvents() {
         try {
+            visibleProgress()
             val count: Int = countPushEvents.text.toString().toInt()
 
-            for (i in 1..count) {
-                Mindbox.onPushReceived(
-                    applicationContext = requireContext(),
-                    uniqKey = UUID.randomUUID().toString())
+            val thread: Thread = object : Thread() {
+                override fun run() {
+
+                    try {
+                        for (i in 1..count) {
+                            Mindbox.onPushReceived(
+                                applicationContext = requireContext(),
+                                uniqKey = UUID.randomUUID().toString()
+                            )
+                        }
+
+                    } catch (e: InterruptedException) {
+                        e.printStackTrace()
+                    } finally {
+                        goneProgress()
+                    }
+                }
             }
+
+            thread.start()
 
         } catch (e: NumberFormatException) {
             Toast.makeText(requireContext(), "It's not a number", Toast.LENGTH_SHORT).show()
+            goneProgress()
+        }
+    }
+
+    private fun visibleProgress() {
+        generateProgress.visibility = View.VISIBLE
+        sendPushEvent.visibility = View.GONE
+    }
+
+    private fun goneProgress() {
+        activity?.runOnUiThread {
+            generateProgress.visibility = View.GONE
+            sendPushEvent.visibility = View.VISIBLE
         }
     }
 }
