@@ -1,10 +1,10 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.EventParameters
 import cloud.mindbox.mobile_sdk.models.EventType
-import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.PartialInitData
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 import java.util.*
@@ -17,7 +17,7 @@ internal object EventManager {
         DbManager.addEventToQueue(
             context, Event(
                 eventType = EventType.APP_INSTALLED,
-                uniqKey = null,
+                additionalFields = null,
                 body = gson.toJson(initData)
             )
         )
@@ -27,17 +27,20 @@ internal object EventManager {
         DbManager.addEventToQueue(
             context, Event(
                 eventType = EventType.APP_INFO_UPDATED,
-                uniqKey = null,
+                additionalFields = null,
                 body = gson.toJson(initData)
             )
         )
     }
 
     fun pushDelivered(context: Context, uniqKey: String) {
+        val fields = hashMapOf(
+            EventParameters.UNIQ_KEY.fieldName to uniqKey
+        )
         DbManager.addEventToQueue(
             context, Event(
                 eventType = EventType.PUSH_DELIVERED,
-                uniqKey = uniqKey,
+                additionalFields = fields,
                 body = null
             )
         )
