@@ -29,7 +29,6 @@ jobs:
         run: ./gradlew --no-daemon check
 
   test:
-    needs: lint
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
@@ -46,6 +45,15 @@ jobs:
         run: ./gradlew --no-daemon test
 
   build:
+    on:
+      push:
+        branches:
+          - master
+          - release*
+      pull_request:
+        branches:
+          - master
+          - release*
     needs: [test, lint]
     runs-on: ubuntu-latest 
     steps:
