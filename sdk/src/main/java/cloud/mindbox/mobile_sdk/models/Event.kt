@@ -1,9 +1,11 @@
 package cloud.mindbox.mobile_sdk.models
 
+import java.util.*
+
 internal data class Event(
-    val transactionId: String,
-    var dateTimeOffset: Long,
-    var enqueueTimestamp: Long, // date of event creating
+    val transactionId: String= UUID.randomUUID().toString(),
+    var dateTimeOffset: Long = -1L,
+    var enqueueTimestamp: Long = Date().time, // date of event creating
     var eventType: EventType,
     var uniqKey: String?,
     val body: String? //json
