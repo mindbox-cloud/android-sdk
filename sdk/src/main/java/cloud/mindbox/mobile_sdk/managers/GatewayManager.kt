@@ -32,7 +32,8 @@ internal object GatewayManager {
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
             EventType.PUSH_DELIVERED -> {
-                urlQueries[UrlQuery.UNIQ_KEY.value] = event.uniqKey ?: ""
+                urlQueries[UrlQuery.UNIQ_KEY.value] =
+                    event.additionalFields?.get(EventParameters.UNIQ_KEY.fieldName) ?: ""
             }
         }
 
