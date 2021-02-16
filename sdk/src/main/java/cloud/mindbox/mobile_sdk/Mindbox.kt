@@ -4,8 +4,8 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.EventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
-import cloud.mindbox.mobile_sdk.models.FullInitData
-import cloud.mindbox.mobile_sdk.models.PartialInitData
+import cloud.mindbox.mobile_sdk.models.InitData
+import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
@@ -101,11 +101,12 @@ object Mindbox {
         DbManager.saveConfigurations(configuration)
 
         val isTokenAvailable = !firebaseToken.isNullOrEmpty()
-        val initData = FullInitData(
-            firebaseToken ?: "",
-            isTokenAvailable,
-            configuration.installationId,
-            isNotificationEnabled
+        val initData = InitData(
+            token = firebaseToken ?: "",
+            isTokenAvailable = isTokenAvailable,
+            installationId = configuration.installationId,
+            isNotificationsEnabled = isNotificationEnabled,
+            subscribe = configuration.subscribeCustomerIfCreated
         )
 
         EventManager.appInstalled(context, initData)
@@ -128,10 +129,10 @@ object Mindbox {
 
         if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
-            val initData = PartialInitData(
-                firebaseToken ?: "",
-                isTokenAvailable,
-                isNotificationEnabled
+            val initData = UpdateData(
+                token = firebaseToken ?: "",
+                isTokenAvailable = isTokenAvailable,
+                isNotificationsEnabled = isNotificationEnabled
             )
 
             EventManager.appInfoUpdate(context, initData)
