@@ -41,9 +41,7 @@ object Mindbox {
 
     fun onPushReceived(applicationContext: Context, uniqKey: String) {
         Paper.init(applicationContext)
-        mindboxScope.launch {
-            EventManager.pushDelivered(applicationContext, uniqKey)
-        }
+        EventManager.pushDelivered(applicationContext, uniqKey)
     }
 
     fun init(
