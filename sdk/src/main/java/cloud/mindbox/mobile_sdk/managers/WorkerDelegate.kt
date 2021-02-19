@@ -50,7 +50,7 @@ private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
 
         GatewayManager.sendEvent(context, event) { isSended ->
             if (isSended) {
-                DbManager.removeEventFromQueue(event.transactionId)
+                DbManager.removeEventFromQueue(eventKey)
             }
             countDownLatch.countDown()
         }
