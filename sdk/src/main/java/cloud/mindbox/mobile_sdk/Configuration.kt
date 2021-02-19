@@ -59,6 +59,10 @@ class Configuration(builder: Builder) {
                     } else {
                         packageInfo.versionCode.toString().trim()
                     }
+
+                //need for scheduling and stopping one-time background service
+                MindboxPreferences.hostAppName = packageName
+
             } catch (e: Exception) {
                 Logger.e(this, "Getting app info failed. Identified as an unknown application")
             }

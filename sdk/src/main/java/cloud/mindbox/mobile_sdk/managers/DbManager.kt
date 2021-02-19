@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import io.paperdb.Paper
 import io.paperdb.PaperDbException
 import java.util.*
+import kotlin.collections.ArrayList
 
 // todo add run catching
 
@@ -24,9 +25,8 @@ internal object DbManager {
     private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
 
     fun addEventToQueue(context: Context, event: Event) {
-        synchronized(this) {
             try {
-                eventsBook.write(event.transactionId, event)
+                eventsBook.write("${event.enqueueTimestamp};${event.transactionId}", event)
                 Logger.d(this, "Event ${event.eventType.operation} was added to queue")
             } catch (exception: PaperDbException) {
                 Logger.e(
@@ -35,23 +35,22 @@ internal object DbManager {
                     exception
                 )
             }
-        }
 
         BackgroundWorkManager.startOneTimeService(context)
     }
 
-    fun getFilteredEventsKeys(): List<String> = synchronized(this) {
+    fun getFilteredEventsKeys(): List<String> {
         filterEventsBySize()
         filterOldEvents()
-        return getEventsKeys()
+        val allKeys = getEventsKeys()
+        return sortKeys(allKeys)
     }
 
-    private fun getEventsKeys(): List<String> = synchronized(this) {
+    private fun getEventsKeys(): List<String>  {
         return eventsBook.allKeys
     }
 
     fun getEvent(key: String): Event? {
-        synchronized(this) {
             return try {
                 eventsBook.read(key) as Event?
             } catch (exception: PaperDbException) {
@@ -61,21 +60,18 @@ internal object DbManager {
                 Logger.e(this, "Error reading from database", exception)
                 null
             }
-        }
     }
 
     fun removeEventFromQueue(key: String) {
-        synchronized(this) {
             try {
                 eventsBook.delete(key)
+                Logger.d(this, "Event $key was deleted to queue")
             } catch (exception: PaperDbException) {
                 Logger.e(this, "Error deleting item from database", exception)
             }
-        }
     }
 
     private fun filterEventsBySize() {
-        synchronized(this) {
             val allKeys = getEventsKeys()
             val diff = allKeys.size - MAX_EVENT_LIST_SIZE
 
@@ -84,11 +80,9 @@ internal object DbManager {
                     removeEventFromQueue(allKeys[i])
                 }
             }
-        }
     }
 
     private fun filterOldEvents() {
-        synchronized(this) {
             val keys = getEventsKeys()
             keys.forEach { key ->
                 val event = getEvent(key)
@@ -98,24 +92,35 @@ internal object DbManager {
                     return@forEach
                 }
             }
+    }
+
+    private fun sortKeys(list: List<String>): List<String> {
+        val arrayList = ArrayList<String>()
+        arrayList.addAll(list)
+
+        arrayList.sortBy { key ->
+            val keyTimeStamp = key.substringBefore(";")
+            try {
+                keyTimeStamp.toLong()
+            } catch (e: NumberFormatException) {
+                0L
+            }
         }
+        return arrayList.toList()
     }
 
     private fun Event.isTooOld(): Boolean =
         this.enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
 
     fun saveConfigurations(configuration: Configuration) {
-        synchronized(this) {
             try {
                 configurationBook.write(CONFIGURATION_KEY, configuration)
             } catch (exception: PaperDbException) {
                 Logger.e(this, "Error writing object configuration to the database", exception)
             }
-        }
     }
 
     fun getConfigurations(): Configuration? {
-        synchronized(this) {
             return try {
                 configurationBook.read(CONFIGURATION_KEY) as Configuration?
             } catch (exception: PaperDbException) {
@@ -124,6 +129,5 @@ internal object DbManager {
                 Logger.e(this, "Error reading from database", exception)
                 null
             }
-        }
     }
 }

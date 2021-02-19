@@ -11,6 +11,7 @@ internal object MindboxPreferences {
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
+    private const val KEY_HOST_APP_MANE = "key_host_app_name" //need for scheduling and stopping one-time background service
 
     var isFirstInitialize: Boolean
         get() = Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
@@ -47,5 +48,11 @@ internal object MindboxPreferences {
         get() = Hawk.get(KEY_IS_NOTIFICATION_ENABLED, true)
         set(value) {
             Hawk.put(KEY_IS_NOTIFICATION_ENABLED, value)
+        }
+
+    var hostAppName: String
+        get() = Hawk.get(KEY_HOST_APP_MANE, "")
+        set(value) {
+            Hawk.put(KEY_HOST_APP_MANE, value)
         }
 }
