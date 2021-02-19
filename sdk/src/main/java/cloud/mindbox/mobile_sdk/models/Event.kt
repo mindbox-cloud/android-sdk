@@ -13,8 +13,8 @@ internal data class Event(
 )
 
 internal enum class EventType(val operation: String, val endpoint: String) {
-    APP_INSTALLED("MobileApplicationInstalled", "/v3/operations/async"),
-    APP_INFO_UPDATED("MobileApplicationInfoUpdated", "/v3/operations/async"),
+    APP_INSTALLED("MobilePush.ApplicationInstalled", "/v3/operations/async"),
+    APP_INFO_UPDATED("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"),
     PUSH_DELIVERED("", "/mobile-push/delivered")
 }
 
