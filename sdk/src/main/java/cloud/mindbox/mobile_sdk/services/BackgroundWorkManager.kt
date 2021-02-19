@@ -9,12 +9,14 @@ import java.util.concurrent.TimeUnit
 internal object BackgroundWorkManager {
 
     private val ONE_TIME_WORKER_TAG = MindboxOneTimeEventWorker::class.java.simpleName + MindboxPreferences.hostAppName
+    private val PERIODIC_WORKER_TAG = PeriodicWorkRequest::class.java.simpleName + MindboxPreferences.hostAppName
 
     fun startPeriodicService(context: Context) {
         val request = PeriodicWorkRequest.Builder(
             MindboxPeriodicEventWorker::class.java,
             15, TimeUnit.MINUTES
         )
+            .addTag(PERIODIC_WORKER_TAG)
             .setBackoffCriteria(
                 BackoffPolicy.LINEAR,
                 60 * 1000, // 60 sec
@@ -27,10 +29,12 @@ internal object BackgroundWorkManager {
             ).build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            MindboxPeriodicEventWorker::class.java.simpleName,
+            PERIODIC_WORKER_TAG,
             ExistingPeriodicWorkPolicy.REPLACE,
             request
         )
+
+        stopOneTimeService(context)
     }
 
     fun startOneTimeService(context: Context) {
@@ -51,10 +55,16 @@ internal object BackgroundWorkManager {
                     request
                 )
                 .enqueue()
+
+        stopPeriodicService(context)
     }
 
-    fun stopOneTimeService(context: Context) {
+    private fun stopOneTimeService(context: Context) {
         WorkManager.getInstance(context).cancelAllWorkByTag(ONE_TIME_WORKER_TAG)
+    }
+
+    private fun stopPeriodicService(context: Context) {
+        WorkManager.getInstance(context).cancelAllWorkByTag(PERIODIC_WORKER_TAG)
     }
 }
 
