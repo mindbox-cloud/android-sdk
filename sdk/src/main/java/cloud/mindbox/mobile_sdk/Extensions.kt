@@ -30,7 +30,7 @@ internal fun Context.schedulePeriodicService() {
             activityCount--
             if (activityCount <= 0) {
                 runCatching {
-//                    BackgroundWorkManager.startPeriodicService(applicationContext)
+                    BackgroundWorkManager.startPeriodicService(applicationContext)
                     BackgroundWorkManager.stopOneTimeService(applicationContext)
                 }.logOnException()
             }
@@ -45,7 +45,7 @@ internal fun Context.schedulePeriodicService() {
         override fun onTrimMemory(level: Int) {
             if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
                 runCatching {
-//                    BackgroundWorkManager.startPeriodicService(applicationContext)
+                    BackgroundWorkManager.startPeriodicService(applicationContext)
                     BackgroundWorkManager.stopOneTimeService(applicationContext)
                 }.logOnException()
             }

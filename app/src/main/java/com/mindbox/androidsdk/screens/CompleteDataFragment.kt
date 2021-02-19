@@ -68,7 +68,7 @@ class CompleteDataFragment(
                         for (i in 1..count) {
                             Mindbox.onPushReceived(
                                 applicationContext = requireContext(),
-                                uniqKey = i.toString() //UUID.randomUUID().toString()
+                                uniqKey = UUID.randomUUID().toString()
                             )
                         }
 
