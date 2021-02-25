@@ -35,8 +35,18 @@ object Mindbox {
     }
 
     fun onPushReceived(context: Context, uniqKey: String) {
-        Paper.init(context)
+
+        if (!Hawk.isBuilt()) Hawk.init(context).build()
+        Paper.init(context.applicationContext)
+        FirebaseApp.initializeApp(context)
+
         EventManager.pushDelivered(context, uniqKey)
+
+        if (!MindboxPreferences.isFirstInitialize) {
+            mindboxScope.launch {
+                updateAppInfo(context)
+            }
+        }
     }
 
     fun init(
