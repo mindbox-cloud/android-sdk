@@ -26,11 +26,6 @@ object Mindbox {
     fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
         ?: throw InitializeMindboxException("SDK was not initialized")
 
-    fun getSubscribeCustomerIfCreated(): Boolean? {
-        Paper.init(appContext)
-        return DbManager.getConfigurations()?.subscribeCustomerIfCreated
-    }
-
     fun updateFmsToken(token: String) {
         if (appContext != null && token.trim().isNotEmpty()) {
             mindboxScope.launch {
@@ -39,9 +34,9 @@ object Mindbox {
         }
     }
 
-    fun onPushReceived(applicationContext: Context, uniqKey: String) {
-        Paper.init(applicationContext)
-        EventManager.pushDelivered(applicationContext, uniqKey)
+    fun onPushReceived(context: Context, uniqKey: String) {
+        Paper.init(context)
+        EventManager.pushDelivered(context, uniqKey)
     }
 
     fun init(

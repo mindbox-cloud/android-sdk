@@ -37,7 +37,7 @@ class Configuration(builder: Builder) {
             return this
         }
 
-        fun setSubscribeCustomerIfCreated(subscribe: Boolean): Builder {
+        fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
             this.subscribeCustomerIfCreated = subscribe
             return this
         }
