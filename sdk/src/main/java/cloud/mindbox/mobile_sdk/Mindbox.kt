@@ -49,6 +49,13 @@ object Mindbox {
         }
     }
 
+    /**
+     * Initializes the SDK for further work.
+     * We recommend calling this from the application class
+     *
+     * @param context used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     */
     fun init(
         context: Context,
         configuration: Configuration
