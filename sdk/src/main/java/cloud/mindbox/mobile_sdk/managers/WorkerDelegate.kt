@@ -15,7 +15,7 @@ internal fun sendEventsWithResult(
     Logger.d(parent, "Start working...")
 
     try {
-        Paper.init(context.applicationContext)
+        Paper.init(context)
 
         val eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {

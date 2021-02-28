@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.isUuid
 import java.util.*
 
 data class ValidationError(
-    var messages: List<String> = emptyList()
+    var messages: List<String>? = null
 ) {
 
     companion object {
