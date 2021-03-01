@@ -8,6 +8,7 @@ on:
     branches:
       - master
       - release*
+      - sonatype
     paths-ignore:
       - '**.md'
 
