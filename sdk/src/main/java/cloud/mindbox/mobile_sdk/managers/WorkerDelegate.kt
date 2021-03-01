@@ -20,7 +20,7 @@ internal fun sendEventsWithResult(
         val eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             Logger.d(parent, "Events list is empty")
-            ListenableWorker.Result.success()
+            return ListenableWorker.Result.success()
         } else {
 
             sendEvents(context, eventKeys, parent)
@@ -37,9 +37,8 @@ internal fun sendEventsWithResult(
         }
     } catch (e: Exception) {
         Logger.e(parent, "Failed events work", e)
-        ListenableWorker.Result.failure()
+        return ListenableWorker.Result.failure()
     }
-    return ListenableWorker.Result.success()
 }
 
 private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {

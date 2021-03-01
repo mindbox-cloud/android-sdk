@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.network.ServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.*
 
@@ -64,9 +65,9 @@ internal object GatewayManager {
                 {
                     Logger.d(this, "Event from background successful sended")
                     isSuccess.invoke(true)
-                }, {
+                }, { volleyError ->
                     try {
-                        when (val result = parseResponse(it.networkResponse)) {
+                        when (val result = parseResponse(volleyError.networkResponse)) {
                             is MindboxResponse.SuccessResponse<*>,
                             is MindboxResponse.BadRequest -> {
                                 Logger.d(this, "Event from background successful sended")
@@ -109,14 +110,15 @@ internal object GatewayManager {
     private fun convertBodyToJson(body: String?): JSONObject? {
         return if (body == null) {
             null
-        } else {
+        } else try {
             JSONObject(body)
+        } catch (e: JSONException) {
+            null
         }
     }
 
-    private fun parseResponse(response: NetworkResponse?): MindboxResponse {
+    private fun parseResponse(response: NetworkResponse): MindboxResponse {
         return when {
-            response == null -> MindboxResponse.Error(-1, byteArrayOf())
             response.statusCode < 300 -> {
                 MindboxResponse.SuccessResponse(response.data)
             }
