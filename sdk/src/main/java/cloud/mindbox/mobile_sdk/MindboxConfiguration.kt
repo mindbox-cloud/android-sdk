@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
-class Configuration(builder: Builder) {
+class MindboxConfiguration(builder: Builder) {
     internal val installationId: String = builder.installationId
     internal var deviceUuid: String = builder.deviceUuid
     internal val endpointId: String = builder.endpointId
@@ -43,9 +43,9 @@ class Configuration(builder: Builder) {
             return this
         }
 
-        fun build(): Configuration {
+        fun build(): MindboxConfiguration {
             generateAppInfo(context)
-            return Configuration(this)
+            return MindboxConfiguration(this)
         }
 
         private fun generateAppInfo(context: Context) {
@@ -65,7 +65,7 @@ class Configuration(builder: Builder) {
                 MindboxPreferences.hostAppName = packageName
 
             } catch (e: Exception) {
-                Logger.e(this, "Getting app info failed. Identified as an unknown application")
+                MindboxLogger.e(this, "Getting app info failed. Identified as an unknown application")
             }
         }
     }

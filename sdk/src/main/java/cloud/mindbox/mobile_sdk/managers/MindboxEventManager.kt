@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 
-internal object EventManager {
+internal object MindboxEventManager {
 
     private val gson = Gson()
 

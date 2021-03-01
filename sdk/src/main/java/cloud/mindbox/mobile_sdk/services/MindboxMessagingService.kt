@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.services
 
-import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -17,7 +17,7 @@ class MindboxMessagingService : FirebaseMessagingService() {
             val configurations = DbManager.getConfigurations()
 
             if (configurations == null) {
-                Logger.w(this, "Received FMS token, but SDK not initialized")
+                MindboxLogger.w(this, "Received FMS token, but SDK not initialized")
                 return
             }
 

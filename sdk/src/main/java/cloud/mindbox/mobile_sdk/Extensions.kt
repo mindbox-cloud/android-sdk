@@ -50,17 +50,17 @@ internal fun Context.schedulePeriodicService() {
     })
 }
 
-fun Result<Unit>.logOnException() {
+internal fun Result<Unit>.logOnException() {
     this.exceptionOrNull()?.let { exception ->
         try {
-            Logger.e(Mindbox, "Mindbox caught unhandled error", exception)
+            MindboxLogger.e(Mindbox, "Mindbox caught unhandled error", exception)
             // todo log crash
         } catch (e: Throwable) {
         }
     }
 }
 
-fun String.isUuid(): Boolean {
+internal fun String.isUuid(): Boolean {
     return if (this.trim().isNotEmpty()) {
         try {
             UUID.fromString(this)
@@ -73,6 +73,6 @@ fun String.isUuid(): Boolean {
     }
 }
 
-fun Map<String, String>.toUrlQueryString() =
+internal fun Map<String, String>.toUrlQueryString() =
     this.map { (k, v) -> "$k=$v" }
         .joinToString(prefix = "?", separator = "&")

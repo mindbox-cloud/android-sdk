@@ -4,7 +4,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
-import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.tasks.Tasks
@@ -32,11 +32,11 @@ internal object IdentifierManager {
         return try {
             val token: String? = Tasks.await(FirebaseMessaging.getInstance().token)
             if (!token.isNullOrEmpty() && token != MindboxPreferences.firebaseToken) {
-                Logger.i(this, "Token gets or updates from firebase")
+                MindboxLogger.i(this, "Token gets or updates from firebase")
             }
             token
         } catch (e: Exception) {
-            Logger.w(this, "Fetching FCM registration token failed with exception $e")
+            MindboxLogger.w(this, "Fetching FCM registration token failed with exception $e")
             null
         }
     }
@@ -46,13 +46,13 @@ internal object IdentifierManager {
             val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
             if (!advertisingIdInfo.isLimitAdTrackingEnabled && !advertisingIdInfo.id.isNullOrEmpty()) {
                 val id = advertisingIdInfo.id
-                Logger.d(
+                MindboxLogger.d(
                     this, "Received from AdvertisingIdClient: device uuid - $id"
                 )
                 id
             } else {
                 val id = generateRandomUuid()
-                Logger.d(
+                MindboxLogger.d(
                     this,
                     "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
                 )
@@ -61,7 +61,7 @@ internal object IdentifierManager {
         } catch (e: Exception) {
             e.printStackTrace()
             val id = generateRandomUuid()
-            Logger.d(
+            MindboxLogger.d(
                 this,
                 "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
             )

@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.EventManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.UpdateData
@@ -39,7 +39,7 @@ object Mindbox {
         Paper.init(context)
         FirebaseApp.initializeApp(context)
 
-        EventManager.pushDelivered(context, uniqKey)
+        MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
             mindboxScope.launch {
@@ -57,7 +57,7 @@ object Mindbox {
      */
     fun init(
         context: Context,
-        configuration: Configuration
+        configuration: MindboxConfiguration
     ) {
         initComponents(context)
 
@@ -91,7 +91,7 @@ object Mindbox {
             }
         }
 
-        EventManager.sendEventsIfExist(context)
+        MindboxEventManager.sendEventsIfExist(context)
         context.schedulePeriodicService()
     }
 
@@ -106,7 +106,7 @@ object Mindbox {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: Configuration) {
+    private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
         val firebaseToken = withContext(mindboxScope.coroutineContext) {
             IdentifierManager.registerFirebaseToken()
         }
@@ -124,7 +124,7 @@ object Mindbox {
             subscribe = configuration.subscribeCustomerIfCreated
         )
 
-        EventManager.appInstalled(context, initData)
+        MindboxEventManager.appInstalled(context, initData)
 
         MindboxPreferences.isFirstInitialize = false
         MindboxPreferences.firebaseToken = firebaseToken
@@ -150,7 +150,7 @@ object Mindbox {
                 isNotificationsEnabled = isNotificationEnabled
             )
 
-            EventManager.appInfoUpdate(context, initData)
+            MindboxEventManager.appInfoUpdate(context, initData)
 
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
             MindboxPreferences.firebaseToken = firebaseToken

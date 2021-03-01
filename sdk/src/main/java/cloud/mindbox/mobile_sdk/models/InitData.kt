@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-
-data class InitData(
+internal data class InitData(
     val token: String,
     val isTokenAvailable: Boolean,
     val installationId: String,
@@ -9,7 +8,7 @@ data class InitData(
     val subscribe: Boolean
 )
 
-data class UpdateData(
+internal data class UpdateData(
     val token: String,
     val isTokenAvailable: Boolean,
     val isNotificationsEnabled: Boolean

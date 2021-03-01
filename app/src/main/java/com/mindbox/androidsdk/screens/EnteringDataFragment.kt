@@ -3,7 +3,7 @@ package com.mindbox.androidsdk.screens
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
-import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.InitializeData
@@ -68,7 +68,7 @@ class EnteringDataFragment(private val callback: (InitializeData) -> Unit) :
             }
         }
 
-        val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
+        val configs = MindboxConfiguration.Builder(requireContext(), notEmptyDomain, endpoint)
             .setDeviceUuid(deviceId)
             .setInstallationId(installId)
             .subscribeCustomerIfCreated(subscribeValue)
