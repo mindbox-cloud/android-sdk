@@ -16,6 +16,7 @@ internal object BackgroundWorkManager {
             MindboxPeriodicEventWorker::class.java,
             15, TimeUnit.MINUTES
         )
+            .setInitialDelay(10, TimeUnit.SECONDS)
             .addTag(PERIODIC_WORKER_TAG)
             .setBackoffCriteria(
                 BackoffPolicy.LINEAR,
