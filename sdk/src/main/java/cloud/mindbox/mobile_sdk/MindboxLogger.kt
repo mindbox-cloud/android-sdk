@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.util.Log
 import java.lang.Exception
 
-internal object Logger {
+internal object MindboxLogger {
 
     fun i(parent: Any, message: String) {
         Log.i(parent.javaClass.simpleName, message)

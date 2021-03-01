@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.Configuration
-import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import io.paperdb.Paper
@@ -27,9 +27,9 @@ internal object DbManager {
     fun addEventToQueue(context: Context, event: Event) {
             try {
                 eventsBook.write("${event.enqueueTimestamp};${event.transactionId}", event)
-                Logger.d(this, "Event ${event.eventType.operation} was added to queue")
+                MindboxLogger.d(this, "Event ${event.eventType.operation} was added to queue")
             } catch (exception: PaperDbException) {
-                Logger.e(
+                MindboxLogger.e(
                     this,
                     "Error writing object to the database: ${event.body}",
                     exception
@@ -57,7 +57,7 @@ internal object DbManager {
 
                 // invalid data in case of exception
                 removeEventFromQueue(key)
-                Logger.e(this, "Error reading from database", exception)
+                MindboxLogger.e(this, "Error reading from database", exception)
                 null
             }
     }
@@ -65,9 +65,9 @@ internal object DbManager {
     fun removeEventFromQueue(key: String) {
             try {
                 eventsBook.delete(key)
-                Logger.d(this, "Event $key was deleted to queue")
+                MindboxLogger.d(this, "Event $key was deleted to queue")
             } catch (exception: PaperDbException) {
-                Logger.e(this, "Error deleting item from database", exception)
+                MindboxLogger.e(this, "Error deleting item from database", exception)
             }
     }
 
@@ -112,21 +112,21 @@ internal object DbManager {
     private fun Event.isTooOld(): Boolean =
         this.enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
 
-    fun saveConfigurations(configuration: Configuration) {
+    fun saveConfigurations(configuration: MindboxConfiguration) {
             try {
                 configurationBook.write(CONFIGURATION_KEY, configuration)
             } catch (exception: PaperDbException) {
-                Logger.e(this, "Error writing object configuration to the database", exception)
+                MindboxLogger.e(this, "Error writing object configuration to the database", exception)
             }
     }
 
-    fun getConfigurations(): Configuration? {
+    fun getConfigurations(): MindboxConfiguration? {
             return try {
-                configurationBook.read(CONFIGURATION_KEY) as Configuration?
+                configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
             } catch (exception: PaperDbException) {
 
                 // invalid data in case of exception
-                Logger.e(this, "Error reading from database", exception)
+                MindboxLogger.e(this, "Error reading from database", exception)
                 null
             }
     }

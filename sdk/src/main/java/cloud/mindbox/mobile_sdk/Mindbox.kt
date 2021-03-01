@@ -2,8 +2,8 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.EventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError
@@ -16,31 +16,61 @@ import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
-    private var appContext: Context? = null
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun getFmsToken() = MindboxPreferences.firebaseToken
-    fun getFmsTokenSaveDate() = MindboxPreferences.firebaseTokenSaveDate
-    fun getSdkVersion() = BuildConfig.VERSION_NAME
+    /**
+     * Returns token of Firebase Messaging Service used by SDK
+     */
+    fun getFmsToken(): String? = MindboxPreferences.firebaseToken
+
+    /**
+     * Returns date of FMS token saving
+     */
+    fun getFmsTokenSaveDate(): String = MindboxPreferences.firebaseTokenSaveDate
+
+    /**
+     * Returns SDK version
+     */
+    fun getSdkVersion(): String = BuildConfig.VERSION_NAME
+
+    /**
+     * Returns deviceUUID used by SDK
+     *
+     * @throws InitializeMindboxException when SDK isn't initialized
+     */
+    @Throws(InitializeMindboxException::class)
     fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
         ?: throw InitializeMindboxException("SDK was not initialized")
 
-    fun updateFmsToken(token: String) {
-        if (appContext != null && token.trim().isNotEmpty()) {
-            mindboxScope.launch {
-                updateAppInfo(appContext!!, token)
+    /**
+     * Updates FMS token for SDK
+     * Call it from onNewToken on messaging service
+     *
+     * @param context used to initialize the main tools
+     * @param token - token of FMS
+     */
+    fun updateFmsToken(context: Context, token: String) {
+        if (token.trim().isNotEmpty()) {
+            initComponents(context)
+
+            if (!MindboxPreferences.isFirstInitialize) {
+                mindboxScope.launch {
+                    updateAppInfo(context, token)
+                }
             }
         }
     }
 
+    /**
+     * Creates and deliveries event of "Push delivered"
+     *
+     * @param context used to initialize the main tools
+     * @param uniqKey - unique identifier of push notification
+     */
     fun onPushReceived(context: Context, uniqKey: String) {
-
-        if (!Hawk.isBuilt()) Hawk.init(context).build()
-        Paper.init(context.applicationContext)
-        FirebaseApp.initializeApp(context)
-
-        EventManager.pushDelivered(context, uniqKey)
+        initComponents(context)
+        MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
             mindboxScope.launch {
@@ -49,15 +79,18 @@ object Mindbox {
         }
     }
 
+    /**
+     * Initializes the SDK for further work.
+     * We recommend calling it in onCreate on an application class
+     *
+     * @param context used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     */
     fun init(
         context: Context,
-        configuration: Configuration
+        configuration: MindboxConfiguration
     ) {
-        appContext = context
-
-        Hawk.init(context).build()
-        Paper.init(context.applicationContext)
-        FirebaseApp.initializeApp(context)
+        initComponents(context)
 
         val validationErrors =
             ValidationError()
@@ -70,9 +103,8 @@ object Mindbox {
                     )
                 }
 
-        if (validationErrors.messages.isNotEmpty()) {
-            throw InitializeMindboxException(validationErrors.messages.toString())
-        }
+        validationErrors.messages
+            ?: throw InitializeMindboxException(validationErrors.messages.toString())
 
         mindboxScope.launch {
 
@@ -90,8 +122,14 @@ object Mindbox {
             }
         }
 
-        EventManager.sendEventsIfExist(context)
+        MindboxEventManager.sendEventsIfExist(context)
         context.schedulePeriodicService()
+    }
+
+    internal fun initComponents(context: Context) {
+        if (!Hawk.isBuilt()) Hawk.init(context).build()
+        Paper.init(context)
+        FirebaseApp.initializeApp(context)
     }
 
     private suspend fun initDeviceId(context: Context): String {
@@ -99,7 +137,7 @@ object Mindbox {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: Configuration) {
+    private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
         val firebaseToken = withContext(mindboxScope.coroutineContext) {
             IdentifierManager.registerFirebaseToken()
         }
@@ -117,7 +155,7 @@ object Mindbox {
             subscribe = configuration.subscribeCustomerIfCreated
         )
 
-        EventManager.appInstalled(context, initData)
+        MindboxEventManager.appInstalled(context, initData)
 
         MindboxPreferences.isFirstInitialize = false
         MindboxPreferences.firebaseToken = firebaseToken
@@ -143,15 +181,10 @@ object Mindbox {
                 isNotificationsEnabled = isNotificationEnabled
             )
 
-            EventManager.appInfoUpdate(context, initData)
+            MindboxEventManager.appInfoUpdate(context, initData)
 
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
             MindboxPreferences.firebaseToken = firebaseToken
         }
-    }
-
-    fun release() {
-        appContext = null
-        mindboxJob.cancel()
     }
 }

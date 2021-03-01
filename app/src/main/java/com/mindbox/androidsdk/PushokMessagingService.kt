@@ -15,7 +15,7 @@ import kotlin.random.Random
 class PushokMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
-        Mindbox.updateFmsToken(token)
+        Mindbox.updateFmsToken(applicationContext, token)
         super.onNewToken(token)
     }
 
@@ -25,12 +25,11 @@ class PushokMessagingService : FirebaseMessagingService() {
         var title = "Pushok title"
         var description = "Empty message"
 
-        if (remoteMessage.data.isNotEmpty()) {
+        val uniqueKey: String? = remoteMessage.data["uniqueKey"]
 
-            Mindbox.onPushReceived(
-                applicationContext,
-                remoteMessage.data["uniqueKey"] ?: "empty_unique_key"
-            )
+        if (!uniqueKey.isNullOrEmpty()) {
+
+            Mindbox.onPushReceived(applicationContext, uniqueKey)
 
             title = remoteMessage.data["title"] ?: "Empty title"
             description = "uniq key: ${remoteMessage.data["title"] ?: "empty"}"

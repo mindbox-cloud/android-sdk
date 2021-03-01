@@ -6,7 +6,6 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
-import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import java.util.*
 
@@ -51,17 +50,17 @@ internal fun Context.schedulePeriodicService() {
     })
 }
 
-fun Result<Unit>.logOnException() {
-    val exception = this.exceptionOrNull()
-    if (exception != null) {
+internal fun Result<Unit>.logOnException() {
+    this.exceptionOrNull()?.let { exception ->
         try {
-            Logger.e(Mindbox, "Mindbox caught unhandled error", exception)
+            MindboxLogger.e(Mindbox, "Mindbox caught unhandled error", exception)
             // todo log crash
-        } catch (e: Throwable) { }
+        } catch (e: Throwable) {
+        }
     }
 }
 
-fun String.isUuid(): Boolean {
+internal fun String.isUuid(): Boolean {
     return if (this.trim().isNotEmpty()) {
         try {
             UUID.fromString(this)
@@ -74,6 +73,6 @@ fun String.isUuid(): Boolean {
     }
 }
 
-fun Map<String, String>.toUrlQueryString() =
-    this.map {(k,v) -> "$k=$v" }
+internal fun Map<String, String>.toUrlQueryString() =
+    this.map { (k, v) -> "$k=$v" }
         .joinToString(prefix = "?", separator = "&")
