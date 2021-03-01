@@ -37,7 +37,7 @@ object Mindbox {
     fun onPushReceived(context: Context, uniqKey: String) {
 
         if (!Hawk.isBuilt()) Hawk.init(context).build()
-        Paper.init(context.applicationContext)
+        Paper.init(context)
         FirebaseApp.initializeApp(context)
 
         EventManager.pushDelivered(context, uniqKey)
@@ -60,11 +60,7 @@ object Mindbox {
         context: Context,
         configuration: Configuration
     ) {
-        appContext = context
-
-        Hawk.init(context).build()
-        Paper.init(context.applicationContext)
-        FirebaseApp.initializeApp(context)
+        initComponents(context)
 
         val validationErrors =
             ValidationError()
@@ -77,9 +73,8 @@ object Mindbox {
                     )
                 }
 
-        if (validationErrors.messages.isNotEmpty()) {
-            throw InitializeMindboxException(validationErrors.messages.toString())
-        }
+        validationErrors.messages
+            ?: throw InitializeMindboxException(validationErrors.messages.toString())
 
         mindboxScope.launch {
 
@@ -99,6 +94,14 @@ object Mindbox {
 
         EventManager.sendEventsIfExist(context)
         context.schedulePeriodicService()
+    }
+
+    internal fun initComponents(context: Context) {
+        appContext = context
+
+        Hawk.init(context).build()
+        Paper.init(context)
+        FirebaseApp.initializeApp(context)
     }
 
     private suspend fun initDeviceId(context: Context): String {
