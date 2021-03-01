@@ -16,8 +16,8 @@ internal object IdentifierManager {
     fun isNotificationsEnabled(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (!manager.areNotificationsEnabled()) {
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (manager?.areNotificationsEnabled() != true) {
                 return false
             }
             return manager.notificationChannels.firstOrNull { channel ->

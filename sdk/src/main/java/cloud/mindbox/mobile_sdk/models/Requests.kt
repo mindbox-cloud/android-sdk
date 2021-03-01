@@ -101,7 +101,7 @@ data class MindboxRequest(
             )
 
             logBodyResponse(json)
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             logError(e)
         } finally {
             logEndResponse()
