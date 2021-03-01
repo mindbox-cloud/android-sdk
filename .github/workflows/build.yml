@@ -43,7 +43,10 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: unit tests
-        run: ./gradlew --no-daemon test
+        run: |
+        ./gradlew --no-daemon test
+        ./gradlew --no-daemon assembleDebug
+        ./gradlew --no-daemon testDebugUnitTest
 
   build:
     needs: [test, lint]
@@ -60,32 +63,4 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: build project
-        run: |
-          ./gradlew --no-daemon clean
-          ./gradlew --no-daemon build
-          ./gradlew --no-daemon assembleDebug
-          ./gradlew --no-daemon testDebugUnitTest
-
-#   upload:
-#     needs: [build]
-#     runs-on: ubuntu-latest
-#     steps:
-#     - uses: actions/checkout@v2
-
-#     - name: Upload package to Bintray
-#       uses: bpicode/github-action-upload-bintray@master
-#       with:
-#         file: ./path/to/example-package_1.0_amd64.deb
-#         api_user: example-user
-#         api_key: ${{ secrets.BINTRAY_API_KEY }} # An API key can be obtained from the user profile page.
-#         gpg_passphrase: ${{ secrets.BINTRAY_GPG_PASSPHRASE }} # Optional, for this to work Bintray requires a GPG public/private keypair configured for the repository owner (individual or organization).
-#         repository_user: example-user
-#         repository: my_repository
-#         package: example-package
-#         version: '1.0'
-#         upload_path: pool/main/m # Typical for debian repository layout
-#         publish: 1
-#         calculate_metadata: true # Schedule metadata calculation after upload
-#         deb_distribution: stretch,buster,sid
-#         deb_component: main
-#         deb_architecture: amd64
+        run: ./gradlew build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
