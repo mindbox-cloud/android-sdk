@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.services.WorkerType
-import io.paperdb.Paper
 import java.util.concurrent.CountDownLatch
 
 internal fun sendEventsWithResult(
@@ -15,7 +15,7 @@ internal fun sendEventsWithResult(
     MindboxLogger.d(parent, "Start working...")
 
     try {
-        Paper.init(context)
+        Mindbox.initComponents(context)
 
         val eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {

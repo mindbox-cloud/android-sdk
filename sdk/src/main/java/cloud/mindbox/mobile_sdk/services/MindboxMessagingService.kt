@@ -11,18 +11,8 @@ import io.paperdb.Paper
 class MindboxMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
-        if (token.isNotEmpty() && token != MindboxPreferences.firebaseToken) {
-            Paper.init(applicationContext)
-
-            val configurations = DbManager.getConfigurations()
-
-            if (configurations == null) {
-                MindboxLogger.w(this, "Received FMS token, but SDK not initialized")
-                return
-            }
-
-            Mindbox.init(applicationContext, configurations)
-        }
+        Mindbox.updateFmsToken(applicationContext, token)
+        super.onNewToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {

@@ -2,8 +2,8 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError
@@ -27,18 +27,18 @@ object Mindbox {
 
     fun updateFmsToken(context: Context, token: String) {
         if (token.trim().isNotEmpty()) {
-            mindboxScope.launch {
-                updateAppInfo(context, token)
+            initComponents(context)
+
+            if (!MindboxPreferences.isFirstInitialize) {
+                mindboxScope.launch {
+                    updateAppInfo(context, token)
+                }
             }
         }
     }
 
     fun onPushReceived(context: Context, uniqKey: String) {
-
-        if (!Hawk.isBuilt()) Hawk.init(context).build()
-        Paper.init(context)
-        FirebaseApp.initializeApp(context)
-
+        initComponents(context)
         MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
@@ -96,7 +96,7 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context) {
-        Hawk.init(context).build()
+        if (!Hawk.isBuilt()) Hawk.init(context).build()
         Paper.init(context)
         FirebaseApp.initializeApp(context)
     }
