@@ -4,6 +4,10 @@ import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
+/**
+ * The configuration object used to initialize Mindbox SDK
+ * The parameters are taken into account only during first initialization
+ */
 class MindboxConfiguration(builder: Builder) {
     internal val installationId: String = builder.installationId
     internal var deviceUuid: String = builder.deviceUuid
@@ -14,6 +18,9 @@ class MindboxConfiguration(builder: Builder) {
     internal val versionCode: String = builder.versionCode
     internal val subscribeCustomerIfCreated: Boolean = builder.subscribeCustomerIfCreated
 
+    /**
+     * A Builder for MindboxConfiguration
+     */
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
         internal var installationId: String = MindboxPreferences.installationId ?: ""
         internal var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
@@ -28,21 +35,39 @@ class MindboxConfiguration(builder: Builder) {
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
         }
 
+        /**
+         * Specifies deviceUUID for Mindbox
+         *
+         * @param deviceUuid - it is the device id which we use to find a customer by the device in our DB
+         */
         fun setDeviceUuid(deviceUuid: String): Builder {
             this.deviceUuid = deviceUuid
             return this
         }
 
+        /**
+         * Specifies installationId for Mindbox
+         *
+         * @param installationId - deprecate - old id which was used to send mobile push
+         */
         fun setInstallationId(installationId: String): Builder {
             this.installationId = installationId
             return this
         }
 
+        /**
+         * Specifies subscribeCustomerIfCreated for Mindbox
+         *
+         * @param subscribe - flag which determines subscription status of the user
+         */
         fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
             this.subscribeCustomerIfCreated = subscribe
             return this
         }
 
+        /**
+         * Creates a new MindboxConfiguration.Builder.
+         */
         fun build(): MindboxConfiguration {
             generateAppInfo(context)
             return MindboxConfiguration(this)

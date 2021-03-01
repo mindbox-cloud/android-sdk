@@ -20,7 +20,7 @@ object Mindbox {
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
     /**
-     * Returns token of Firebase Messaging Service, used by SDK
+     * Returns token of Firebase Messaging Service used by SDK
      */
     fun getFmsToken(): String? = MindboxPreferences.firebaseToken
 
@@ -35,7 +35,7 @@ object Mindbox {
     fun getSdkVersion(): String = BuildConfig.VERSION_NAME
 
     /**
-     * Returns deviceUUID, used by SDK
+     * Returns deviceUUID used by SDK
      *
      * @throws InitializeMindboxException when SDK isn't initialized
      */
