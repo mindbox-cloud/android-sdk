@@ -3,15 +3,15 @@ package com.mindbox.androidsdk.screens
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
-import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.models.MindboxResponse
+import com.mindbox.androidsdk.InitializeData
 import com.mindbox.androidsdk.Prefs
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
 
-class EnteringDataFragment(private val callback: (String, String, String, String) -> Unit) :
+class EnteringDataFragment(private val callback: (InitializeData) -> Unit) :
     Fragment(R.layout.fragment_entering_data) {
 
     companion object {
@@ -68,17 +68,27 @@ class EnteringDataFragment(private val callback: (String, String, String, String
             }
         }
 
-        val configs = Configuration.Builder(requireContext(), notEmptyDomain, endpoint)
+        val configs = MindboxConfiguration.Builder(requireContext(), notEmptyDomain, endpoint)
             .setDeviceUuid(deviceId)
             .setInstallationId(installId)
-            .setSubscribeCustomerIfCreated(subscribeValue)
+            .subscribeCustomerIfCreated(subscribeValue)
             .build()
 
         try {
             Mindbox.init(this.requireContext(), configs)
 
             loadProgress.visibility = View.GONE
-            callback.invoke(notEmptyDomain, endpoint, deviceId, installId)
+
+            callback.invoke(
+                InitializeData(
+                    notEmptyDomain,
+                    endpoint,
+                    deviceId,
+                    installId,
+                    subscribeValue
+                )
+            )
+
         } catch (e: InitializeMindboxException) {
             loadProgress.visibility = View.GONE
             activity?.runOnUiThread {

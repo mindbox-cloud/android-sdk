@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-sealed class MindboxResponse {
+internal sealed class MindboxResponse {
 
     data class SuccessResponse<T>(
         var body: T

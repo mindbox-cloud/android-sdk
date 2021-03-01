@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
-import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.services.WorkerType
-import io.paperdb.Paper
 import java.util.concurrent.CountDownLatch
 
 internal fun sendEventsWithResult(
@@ -12,15 +12,15 @@ internal fun sendEventsWithResult(
     parent: Any,
     workerType: WorkerType
 ): ListenableWorker.Result {
-    Logger.d(parent, "Start working...")
+    MindboxLogger.d(parent, "Start working...")
 
     try {
-        Paper.init(context.applicationContext)
+        Mindbox.initComponents(context)
 
         val eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
-            Logger.d(parent, "Events list is empty")
-            ListenableWorker.Result.success()
+            MindboxLogger.d(parent, "Events list is empty")
+            return ListenableWorker.Result.success()
         } else {
 
             sendEvents(context, eventKeys, parent)
@@ -36,10 +36,9 @@ internal fun sendEventsWithResult(
             }
         }
     } catch (e: Exception) {
-        Logger.e(parent, "Failed events work", e)
-        ListenableWorker.Result.failure()
+        MindboxLogger.e(parent, "Failed events work", e)
+        return ListenableWorker.Result.failure()
     }
-    return ListenableWorker.Result.success()
 }
 
 private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
@@ -58,11 +57,11 @@ private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
         try {
             countDownLatch.await()
         } catch (e: InterruptedException) {
-            Logger.e(parent, "doWork -> sending was interrupted", e)
+            MindboxLogger.e(parent, "doWork -> sending was interrupted", e)
         }
     }
 }
 
 internal fun logEndWork(parent: Any) {
-    Logger.d(parent, "onStopped work")
+    MindboxLogger.d(parent, "onStopped work")
 }

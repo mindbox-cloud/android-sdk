@@ -9,15 +9,15 @@ import com.android.volley.toolbox.Volley
 
 // Service generator as emulated singleton.
 // Provides request queue and process requests
-internal class ServiceGenerator constructor(context: Context) {
+internal class MindboxServiceGenerator constructor(context: Context) {
 
     //Emulated singleton
     companion object {
         @Volatile
-        private var INSTANCE: ServiceGenerator? = null
+        private var INSTANCE: MindboxServiceGenerator? = null
         internal fun getInstance(context: Context) =
             INSTANCE ?: synchronized(this) {
-                INSTANCE ?: ServiceGenerator(context).also {
+                INSTANCE ?: MindboxServiceGenerator(context).also {
                     INSTANCE = it
                 }
             }
@@ -27,7 +27,7 @@ internal class ServiceGenerator constructor(context: Context) {
         VolleyLog.DEBUG = BuildConfig.DEBUG
     }
 
-    internal val requestQueue: RequestQueue by lazy {
+    private val requestQueue: RequestQueue by lazy {
         // applicationContext is key, it keeps you from leaking the
         // Activity or BroadcastReceiver if someone passes one in.
         Volley.newRequestQueue(context.applicationContext)

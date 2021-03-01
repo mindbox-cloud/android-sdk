@@ -6,7 +6,7 @@ import androidx.work.WorkerParameters
 import cloud.mindbox.mobile_sdk.managers.logEndWork
 import cloud.mindbox.mobile_sdk.managers.sendEventsWithResult
 
-class MindboxOneTimeEventWorker(appContext: Context, workerParams: WorkerParameters) :
+internal class MindboxOneTimeEventWorker(appContext: Context, workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
     override fun doWork(): Result {
         return sendEventsWithResult(
