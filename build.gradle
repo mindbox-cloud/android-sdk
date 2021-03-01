@@ -18,6 +18,11 @@ buildscript {
     }
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 allprojects {
     repositories {
         google()
