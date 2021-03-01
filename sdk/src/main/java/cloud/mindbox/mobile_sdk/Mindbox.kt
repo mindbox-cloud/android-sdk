@@ -16,7 +16,6 @@ import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
-    private var appContext: Context? = null
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
@@ -26,10 +25,10 @@ object Mindbox {
     fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
         ?: throw InitializeMindboxException("SDK was not initialized")
 
-    fun updateFmsToken(token: String) {
-        if (appContext != null && token.trim().isNotEmpty()) {
+    fun updateFmsToken(context: Context, token: String) {
+        if (token.trim().isNotEmpty()) {
             mindboxScope.launch {
-                updateAppInfo(appContext!!, token)
+                updateAppInfo(context, token)
             }
         }
     }
@@ -97,8 +96,6 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context) {
-        appContext = context
-
         Hawk.init(context).build()
         Paper.init(context)
         FirebaseApp.initializeApp(context)
@@ -158,10 +155,5 @@ object Mindbox {
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
             MindboxPreferences.firebaseToken = firebaseToken
         }
-    }
-
-    fun release() {
-        appContext = null
-        mindboxJob.cancel()
     }
 }
