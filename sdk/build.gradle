@@ -3,11 +3,14 @@ plugins {
     id 'kotlin-android'
     id "com.jfrog.bintray"
     id 'org.jetbrains.dokka'
+    id 'maven-publish'
+    id 'maven'
+    id 'signing'
+    id 'com.github.dcendents.android-maven'
 }
-apply plugin: 'maven-publish'
-group='com.github.mindbox-moscow'
 
-apply plugin: 'com.github.dcendents.android-maven'
+group='cloud.mindbox'
+version = System.getenv('RELEASE_VERSION') ?: "0.0.1"
 
 android {
     compileSdkVersion 30
@@ -44,18 +47,50 @@ android {
         outputFormat = 'html'
         outputDirectory = "$buildDir/dokka"
     }
+    signing {
+        sign publishing.publications
+    }
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-    bintray {
-        user = 'bintray_user'
-        key = 'BINTRAY_KEY'
-        pkg {
-            repo = 'cloud.mindbox'
-            name = 'mobile-sdk'
-            userOrg = 'mindbox'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/bintray/gradle-bintray-plugin.git'
-            version {
-                name = '1.0-test'
+            repository(url: "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: System.getenv('OSSRHUSERNAME'), password: System.getenv('OSSRHPASSWORD'))
+            }
+
+            snapshotRepository(url: "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: System.getenv('OSSRHUSERNAME'), password: System.getenv('OSSRHPASSWORD'))
+            }
+
+            pom.project {
+                name 'Mindbox Android SDK'
+                packaging 'jar'
+                // optionally artifactId can be defined here 
+                description 'The Mindbox SDK is a library for integrating a mobile app with Mindbox.'
+                url 'https://github.com/mindbox-moscow/android-sdk'
+
+                scm {
+                    url 'https://github.com/mindbox-moscow/android-sdk'
+                    connection 'scm:https://github.com/mindbox-moscow/android-sdk.git'
+                    developerConnection 'scm:git://github.com/mindbox-moscow/android-sdk.git'
+                }
+
+                licenses {
+                license {
+                    name 'The Mindbox License'
+                    url 'https://github.com/mindbox-moscow/android-sdk/blob/master/LICENSE.md'
+                }
+                }
+
+                developers {
+                developer {
+                    id 'mindbox'
+                    name 'Petr Nikitin'
+                    email 'android-sdk@mindbox.ru'
+                }
+                }
+            }
             }
         }
     }
