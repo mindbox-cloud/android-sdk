@@ -44,9 +44,9 @@ jobs:
 
       - name: unit tests
         run: |
-        ./gradlew --no-daemon test
-        ./gradlew --no-daemon assembleDebug
-        ./gradlew --no-daemon testDebugUnitTest
+          ./gradlew --no-daemon test
+          ./gradlew --no-daemon assembleDebug
+          ./gradlew --no-daemon testDebugUnitTest
 
   build:
     needs: [test, lint]
