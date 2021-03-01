@@ -13,6 +13,15 @@ plugins {
 group='cloud.mindbox'
 version = System.getenv('RELEASE_VERSION') ?: "0.0.1"
 
+// java {
+//     withJavadocJar()
+//     withSourcesJar()
+// }
+// task javadocJar(type: Jar) {
+//     classifier = 'javadoc'
+//     from javadoc
+// }
+
 android {
     compileSdkVersion 30
     buildToolsVersion "29.0.3"
