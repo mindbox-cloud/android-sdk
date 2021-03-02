@@ -41,7 +41,7 @@ class InputParametersUnitTest {
                         rightUuidParameter
                     )
                 }
-        assertEquals(0, rightCase.messages.size)
+        assertEquals(0, rightCase.messages?.size)
 
     }
 
@@ -58,7 +58,7 @@ class InputParametersUnitTest {
                             rightUuidParameter
                         )
                     }
-            assertEquals(1, errors.messages.size)
+            assertEquals(1, errors.messages?.size)
         }
     }
 
@@ -75,7 +75,7 @@ class InputParametersUnitTest {
                             parameter
                         )
                     }
-            assertEquals(1, errors.messages.size)
+            assertEquals(1, errors.messages?.size)
         }
     }
 
@@ -84,7 +84,7 @@ class InputParametersUnitTest {
         wrongDomainParameter.forEach { parameter ->
             val errors = ValidationError()
                 .apply { validateFields(parameter, rightEndpointParameter, rightUuidParameter, rightUuidParameter) }
-            assertEquals(1, errors.messages.size)
+            assertEquals(1, errors.messages?.size)
         }
     }
 
@@ -101,7 +101,7 @@ class InputParametersUnitTest {
                             rightUuidParameter
                         )
                     }
-            assertEquals(1, errors.messages.size)
+            assertEquals(1, errors.messages?.size)
         }
     }
 }

@@ -1,21 +1,22 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.Configuration
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
-import cloud.mindbox.mobile_sdk.Logger
+import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
-import cloud.mindbox.mobile_sdk.network.ServiceGenerator
+import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.*
 
 internal object GatewayManager {
 
     private fun buildEventUrl(
-        configuration: Configuration,
+        configuration: MindboxConfiguration,
         event: Event
     ): String {
 
@@ -42,19 +43,8 @@ internal object GatewayManager {
         return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
-    fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
+    fun sendEvent(context: Context, configuration: MindboxConfiguration, event: Event, isSuccess: (Boolean) -> Unit) {
         try {
-            val configuration = DbManager.getConfigurations()
-
-            if (configuration == null) {
-                Logger.e(
-                    this,
-                    "Configuration was not initialized",
-                    InitializeMindboxException("Configuration was not initialized")
-                )
-                isSuccess.invoke(false)
-                return
-            }
 
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, event)
@@ -62,18 +52,18 @@ internal object GatewayManager {
 
             val request = MindboxRequest(requestType, url, configuration, jsonRequest,
                 {
-                    Logger.d(this, "Event from background successful sended")
+                    MindboxLogger.d(this, "Event from background successful sended")
                     isSuccess.invoke(true)
-                }, {
+                }, { volleyError ->
                     try {
-                        when (val result = parseResponse(it.networkResponse)) {
+                        when (val result = parseResponse(volleyError.networkResponse)) {
                             is MindboxResponse.SuccessResponse<*>,
                             is MindboxResponse.BadRequest -> {
-                                Logger.d(this, "Event from background successful sended")
+                                MindboxLogger.d(this, "Event from background successful sended")
                                 isSuccess.invoke(true)
                             }
                             is MindboxResponse.Error -> {
-                                Logger.d(
+                                MindboxLogger.d(
                                     this,
                                     "Sending event from background was failure with code ${result.status}"
                                 )
@@ -81,15 +71,15 @@ internal object GatewayManager {
                             }
                         }
                     } catch (e: Exception) {
-                        Logger.e(this, "Parsing server response was failure", e)
+                        MindboxLogger.e(this, "Parsing server response was failure", e)
                         isSuccess.invoke(false)
                     }
                 }
             )
 
-            ServiceGenerator.getInstance(context).addToRequestQueue(request)
+            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
-            Logger.e(this, "Sending event was failure with exception", e)
+            MindboxLogger.e(this, "Sending event was failure with exception", e)
             isSuccess.invoke(false)
         }
     }
@@ -109,14 +99,16 @@ internal object GatewayManager {
     private fun convertBodyToJson(body: String?): JSONObject? {
         return if (body == null) {
             null
-        } else {
+        } else try {
             JSONObject(body)
+        } catch (e: JSONException) {
+            null
         }
     }
 
     private fun parseResponse(response: NetworkResponse?): MindboxResponse {
         return when {
-            response == null -> MindboxResponse.Error(-1, byteArrayOf())
+            response == null -> MindboxResponse.Error(-1, byteArrayOf()) // response can be null
             response.statusCode < 300 -> {
                 MindboxResponse.SuccessResponse(response.data)
             }

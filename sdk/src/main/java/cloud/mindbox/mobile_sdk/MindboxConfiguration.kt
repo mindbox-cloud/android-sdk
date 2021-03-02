@@ -1,9 +1,14 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import android.os.Build
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
-class Configuration(builder: Builder) {
+/**
+ * The configuration object used to initialize Mindbox SDK
+ * The parameters are taken into account only during first initialization
+ */
+class MindboxConfiguration(builder: Builder) {
     internal val installationId: String = builder.installationId
     internal var deviceUuid: String = builder.deviceUuid
     internal val endpointId: String = builder.endpointId
@@ -13,10 +18,13 @@ class Configuration(builder: Builder) {
     internal val versionCode: String = builder.versionCode
     internal val subscribeCustomerIfCreated: Boolean = builder.subscribeCustomerIfCreated
 
+    /**
+     * A Builder for MindboxConfiguration
+     */
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
-        var installationId: String = MindboxPreferences.installationId ?: ""
-        var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
-        var subscribeCustomerIfCreated: Boolean = false
+        internal var installationId: String = MindboxPreferences.installationId ?: ""
+        internal var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
+        internal var subscribeCustomerIfCreated: Boolean = false
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
@@ -27,24 +35,42 @@ class Configuration(builder: Builder) {
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
         }
 
+        /**
+         * Specifies deviceUUID for Mindbox
+         *
+         * @param deviceUuid - it is the device id which we use to find a customer by the device in our DB
+         */
         fun setDeviceUuid(deviceUuid: String): Builder {
             this.deviceUuid = deviceUuid
             return this
         }
 
+        /**
+         * Specifies installationId for Mindbox
+         *
+         * @param installationId - deprecate - old id which was used to send mobile push
+         */
         fun setInstallationId(installationId: String): Builder {
             this.installationId = installationId
             return this
         }
 
-        fun setSubscribeCustomerIfCreated(subscribe: Boolean): Builder {
+        /**
+         * Specifies subscribeCustomerIfCreated for Mindbox
+         *
+         * @param subscribe - flag which determines subscription status of the user
+         */
+        fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
             this.subscribeCustomerIfCreated = subscribe
             return this
         }
 
-        fun build(): Configuration {
+        /**
+         * Creates a new MindboxConfiguration.Builder.
+         */
+        fun build(): MindboxConfiguration {
             generateAppInfo(context)
-            return Configuration(this)
+            return MindboxConfiguration(this)
         }
 
         private fun generateAppInfo(context: Context) {
@@ -54,7 +80,7 @@ class Configuration(builder: Builder) {
                 packageName = packageInfo.packageName.trim()
                 this.versionName = packageInfo.versionName?.trim() ?: PLACEHOLDER_APP_PACKAGE_NAME
                 this.versionCode =
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toString().trim()
                     } else {
                         packageInfo.versionCode.toString().trim()
@@ -64,7 +90,7 @@ class Configuration(builder: Builder) {
                 MindboxPreferences.hostAppName = packageName
 
             } catch (e: Exception) {
-                Logger.e(this, "Getting app info failed. Identified as an unknown application")
+                MindboxLogger.e(this, "Getting app info failed. Identified as an unknown application")
             }
         }
     }

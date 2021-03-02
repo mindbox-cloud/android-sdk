@@ -6,17 +6,15 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
+import com.mindbox.androidsdk.InitializeData
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
 import java.util.*
 
-class CompleteDataFragment(
-    private val domain: String,
-    private val endpoint: String,
-    private val deviceId: String,
-    private val installId: String
-) :
+class CompleteDataFragment :
     Fragment(R.layout.fragment_complete_data) {
+
+    var data: InitializeData? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -28,31 +26,31 @@ class CompleteDataFragment(
 
     private fun fillData() {
         initParams.text = """
-            domain: $domain
+            domain: ${data?.domain.toString()}
             
-            endpoint: $endpoint
+            endpoint: ${data?.endpoint.toString()}
             
-            deviceUUID: $deviceId
+            deviceUUID: ${data?.deviceId.toString()}
             
-            installId: $installId
+            installId: ${data?.installId.toString()}
+            
+            SubscribeCustomerIfCreated: ${data?.subscribe.toString()}
         """.trimIndent()
 
         sdkData.text = """
                 deviceUUID: ${
-                    try {
-                        Mindbox.getDeviceUuid()
-                    } catch (e: InitializeMindboxException) {
-                        "null"
-                    }
-                }
+            try {
+                Mindbox.getDeviceUuid()
+            } catch (e: InitializeMindboxException) {
+                "null"
+            }
+        }
                 
                 save token: ${Mindbox.getFmsToken()}
                 
                 save token date: ${Mindbox.getFmsTokenSaveDate()}
                 
                 SDK version: ${Mindbox.getSdkVersion()}
-                
-                SubscribeCustomerIfCreated: ${Mindbox.getSubscribeCustomerIfCreated().toString()}
             """.trimIndent()
     }
 
@@ -67,7 +65,7 @@ class CompleteDataFragment(
                     try {
                         for (i in 1..count) {
                             Mindbox.onPushReceived(
-                                applicationContext = requireContext(),
+                                context = requireContext(),
                                 uniqKey = UUID.randomUUID().toString()
                             )
                         }

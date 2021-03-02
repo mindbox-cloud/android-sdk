@@ -19,17 +19,19 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(
                 R.id.fragmentContainer,
-                EnteringDataFragment { domain, endpoint, deviceId, installId ->
-                    openCompleteScreen(domain, endpoint, deviceId, installId)
+                EnteringDataFragment { data ->
+                    openCompleteScreen(data)
                 })
             .commit()
     }
 
-    private fun openCompleteScreen(domain: String, endpoint: String, deviceId: String, installId: String) {
+    private fun openCompleteScreen(data: InitializeData) {
+        val dataFragment = CompleteDataFragment()
+        dataFragment.data = data
         supportFragmentManager.beginTransaction()
-            .add(
+            .replace(
                 R.id.fragmentContainer,
-                CompleteDataFragment(domain, endpoint, deviceId, installId)
+                dataFragment
             )
             .addToBackStack(CompleteDataFragment::class.java.simpleName)
             .commit()

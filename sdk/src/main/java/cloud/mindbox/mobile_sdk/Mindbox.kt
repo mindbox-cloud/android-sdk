@@ -2,8 +2,8 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.EventManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError
@@ -16,137 +16,190 @@ import kotlinx.coroutines.Dispatchers.Default
 
 object Mindbox {
 
-    private var appContext: Context? = null
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun getFmsToken() = MindboxPreferences.firebaseToken
-    fun getFmsTokenSaveDate() = MindboxPreferences.firebaseTokenSaveDate
-    fun getSdkVersion() = BuildConfig.VERSION_NAME
-    fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
-        ?: throw InitializeMindboxException("SDK was not initialized")
+    /**
+     * Returns token of Firebase Messaging Service used by SDK
+     */
+    fun getFmsToken(): String? = runCatching { return MindboxPreferences.firebaseToken }
+        .returnOnException { null }
 
-    fun getSubscribeCustomerIfCreated(): Boolean? {
-        Paper.init(appContext)
-        return DbManager.getConfigurations()?.subscribeCustomerIfCreated
-    }
+    /**
+     * Returns date of FMS token saving
+     */
+    fun getFmsTokenSaveDate(): String =
+        runCatching { return MindboxPreferences.firebaseTokenSaveDate }
+            .returnOnException { "" }
 
-    fun updateFmsToken(token: String) {
-        if (appContext != null && token.trim().isNotEmpty()) {
-            mindboxScope.launch {
-                updateAppInfo(appContext!!, token)
+    /**
+     * Returns SDK version
+     */
+    fun getSdkVersion(): String = runCatching { return BuildConfig.VERSION_NAME }
+        .returnOnException { "" }
+
+    /**
+     * Returns deviceUUID used by SDK
+     *
+     * @throws InitializeMindboxException when SDK isn't initialized
+     */
+    @Throws(InitializeMindboxException::class)
+    fun getDeviceUuid(): String =
+        MindboxPreferences.deviceUuid ?: throw InitializeMindboxException("SDK was not initialized")
+
+    /**
+     * Updates FMS token for SDK
+     * Call it from onNewToken on messaging service
+     *
+     * @param context used to initialize the main tools
+     * @param token - token of FMS
+     */
+    fun updateFmsToken(context: Context, token: String) {
+        runCatching {
+            if (token.trim().isNotEmpty()) {
+                initComponents(context)
+
+                if (!MindboxPreferences.isFirstInitialize) {
+                    mindboxScope.launch {
+                        updateAppInfo(context, token)
+                    }
+                }
             }
-        }
+        }.logOnException()
     }
 
-    fun onPushReceived(applicationContext: Context, uniqKey: String) {
-        Paper.init(applicationContext)
-        EventManager.pushDelivered(applicationContext, uniqKey)
+    /**
+     * Creates and deliveries event of "Push delivered"
+     *
+     * @param context used to initialize the main tools
+     * @param uniqKey - unique identifier of push notification
+     */
+    fun onPushReceived(context: Context, uniqKey: String) {
+        runCatching {
+            initComponents(context)
+            MindboxEventManager.pushDelivered(context, uniqKey)
+
+            if (!MindboxPreferences.isFirstInitialize) {
+                mindboxScope.launch {
+                    updateAppInfo(context)
+                }
+            }
+        }.logOnException()
     }
 
+    /**
+     * Initializes the SDK for further work.
+     * We recommend calling it in onCreate on an application class
+     *
+     * @param context used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     */
     fun init(
         context: Context,
-        configuration: Configuration
+        configuration: MindboxConfiguration
     ) {
-        appContext = context
+        runCatching {
+            initComponents(context)
 
-        Hawk.init(context).build()
-        Paper.init(context.applicationContext)
-        FirebaseApp.initializeApp(context)
+            val validationErrors =
+                ValidationError()
+                    .apply {
+                        validateFields(
+                            configuration.domain,
+                            configuration.endpointId,
+                            configuration.deviceUuid,
+                            configuration.installationId
+                        )
+                    }
 
-        val validationErrors =
-            ValidationError()
-                .apply {
-                    validateFields(
-                        configuration.domain,
-                        configuration.endpointId,
-                        configuration.deviceUuid,
-                        configuration.installationId
-                    )
-                }
+            validationErrors.messages
+                ?: throw InitializeMindboxException(validationErrors.messages.toString())
 
-        if (validationErrors.messages.isNotEmpty()) {
-            throw InitializeMindboxException(validationErrors.messages.toString())
-        }
+            mindboxScope.launch {
 
-        mindboxScope.launch {
+                if (MindboxPreferences.isFirstInitialize) {
 
-            if (MindboxPreferences.isFirstInitialize) {
+                    if (configuration.deviceUuid.trim().isEmpty()) {
+                        configuration.deviceUuid = initDeviceId(context)
+                    } else {
+                        configuration.deviceUuid.trim()
+                    }
 
-                if (configuration.deviceUuid.trim().isEmpty()) {
-                    configuration.deviceUuid = initDeviceId(context)
+                    firstInitialization(context, configuration)
                 } else {
-                    configuration.deviceUuid.trim()
+                    updateAppInfo(context)
                 }
-
-                firstInitialization(context, configuration)
-            } else {
-                updateAppInfo(context)
             }
-        }
 
-        EventManager.sendEventsIfExist(context)
-        context.schedulePeriodicService()
+            MindboxEventManager.sendEventsIfExist(context)
+            context.schedulePeriodicService()
+        }.logOnException()
+    }
+
+    internal fun initComponents(context: Context) {
+        if (!Hawk.isBuilt()) Hawk.init(context).build()
+        Paper.init(context)
+        FirebaseApp.initializeApp(context)
     }
 
     private suspend fun initDeviceId(context: Context): String {
-        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-        return adid.await()
+        return runCatching {
+            val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+            return adid.await()
+        }.returnOnException { "" }
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: Configuration) {
-        val firebaseToken = withContext(mindboxScope.coroutineContext) {
-            IdentifierManager.registerFirebaseToken()
-        }
+    private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
+        runCatching {
+            val firebaseToken = withContext(mindboxScope.coroutineContext) {
+                IdentifierManager.registerFirebaseToken()
+            }
 
-        val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+            val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
 
-        DbManager.saveConfigurations(configuration)
+            DbManager.saveConfigurations(configuration)
 
-        val isTokenAvailable = !firebaseToken.isNullOrEmpty()
-        val initData = InitData(
-            token = firebaseToken ?: "",
-            isTokenAvailable = isTokenAvailable,
-            installationId = configuration.installationId,
-            isNotificationsEnabled = isNotificationEnabled,
-            subscribe = configuration.subscribeCustomerIfCreated
-        )
+            val isTokenAvailable = !firebaseToken.isNullOrEmpty()
+            val initData = InitData(
+                token = firebaseToken ?: "",
+                isTokenAvailable = isTokenAvailable,
+                installationId = configuration.installationId,
+                isNotificationsEnabled = isNotificationEnabled,
+                subscribe = configuration.subscribeCustomerIfCreated
+            )
 
-        EventManager.appInstalled(context, initData)
+            MindboxEventManager.appInstalled(context, initData)
 
-        MindboxPreferences.isFirstInitialize = false
-        MindboxPreferences.firebaseToken = firebaseToken
-        MindboxPreferences.installationId = configuration.installationId
-        MindboxPreferences.deviceUuid = configuration.deviceUuid
-        MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.isFirstInitialize = false
+            MindboxPreferences.firebaseToken = firebaseToken
+            MindboxPreferences.installationId = configuration.installationId
+            MindboxPreferences.deviceUuid = configuration.deviceUuid
+            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+        }.logOnException()
     }
 
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
+        runCatching {
+            val firebaseToken = token
+                ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
 
-        val firebaseToken = token
-            ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
+            val isTokenAvailable = !firebaseToken.isNullOrEmpty()
 
-        val isTokenAvailable = !firebaseToken.isNullOrEmpty()
+            val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
 
-        val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+            if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
-        if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
+                val initData = UpdateData(
+                    token = firebaseToken ?: "",
+                    isTokenAvailable = isTokenAvailable,
+                    isNotificationsEnabled = isNotificationEnabled
+                )
 
-            val initData = UpdateData(
-                token = firebaseToken ?: "",
-                isTokenAvailable = isTokenAvailable,
-                isNotificationsEnabled = isNotificationEnabled
-            )
+                MindboxEventManager.appInfoUpdate(context, initData)
 
-            EventManager.appInfoUpdate(context, initData)
-
-            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-            MindboxPreferences.firebaseToken = firebaseToken
-        }
-    }
-
-    fun release() {
-        appContext = null
-        mindboxJob.cancel()
+                MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+                MindboxPreferences.firebaseToken = firebaseToken
+            }
+        }.logOnException()
     }
 }

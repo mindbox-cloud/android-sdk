@@ -6,7 +6,6 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
-import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import java.util.*
 
@@ -51,17 +50,26 @@ internal fun Context.schedulePeriodicService() {
     })
 }
 
-fun Result<Unit>.logOnException() {
-    val exception = this.exceptionOrNull()
-    if (exception != null) {
-        try {
-            Logger.e(Mindbox, "Mindbox caught unhandled error", exception)
-            // todo log crash
-        } catch (e: Throwable) { }
+internal fun <T> Result<T>.returnOnException(block: (exception: Throwable) -> T): T {
+    return this.getOrElse { exception ->
+        exception.handle()
+        return block.invoke(exception)
     }
 }
 
-fun String.isUuid(): Boolean {
+internal fun Result<Unit>.logOnException() {
+    this.exceptionOrNull()?.handle()
+}
+
+private fun Throwable.handle() {
+    try {
+        MindboxLogger.e(Mindbox, "Mindbox caught unhandled error", this)
+        // todo log crash
+    } catch (e: Throwable) {
+    }
+}
+
+internal fun String.isUuid(): Boolean {
     return if (this.trim().isNotEmpty()) {
         try {
             UUID.fromString(this)
@@ -74,6 +82,7 @@ fun String.isUuid(): Boolean {
     }
 }
 
-fun Map<String, String>.toUrlQueryString() =
-    this.map {(k,v) -> "$k=$v" }
+internal fun Map<String, String>.toUrlQueryString() = runCatching {
+    return this.map { (k, v) -> "$k=$v" }
         .joinToString(prefix = "?", separator = "&")
+}.returnOnException { "" }
