@@ -32,7 +32,7 @@ class PushokMessagingService : FirebaseMessagingService() {
             Mindbox.onPushReceived(applicationContext, uniqueKey)
 
             title = remoteMessage.data["title"] ?: "Empty title"
-            description = "uniq key: ${remoteMessage.data["title"] ?: "empty"}"
+            description = "uniq key: $uniqueKey"
         }
 
         val builder = NotificationCompat.Builder(this, getString(R.string.pushok_default_channel))
