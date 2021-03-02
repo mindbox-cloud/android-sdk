@@ -30,7 +30,6 @@ jobs:
         run: ./gradlew check
 
   test:
-    needs: lint
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
@@ -47,6 +46,19 @@ jobs:
         run: |
           ./gradlew test
           ./gradlew testDebugUnitTest
+  check:
+    runs-on: ubuntu-latest
+    environment:
+      name: Testbed
+    steps:
+      - uses: actions/checkout@v2
+      - name: env check
+        run: |
+          echo $SONATYPE_USERNAME
+          echo $SOME_KEY
+        env:
+          SONATYPE_USERNAME: ${{secrets.OSSRHUSERNAME}}
+          SOME_KEY: ${{secrets.SOME_KEY}}
 
   build:
     needs: [test, lint]
