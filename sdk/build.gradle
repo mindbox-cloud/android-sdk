@@ -7,7 +7,6 @@ plugins {
     id 'maven'
     id 'signing'
     id 'com.github.dcendents.android-maven'
-    id 'java'
 }
 
 group='cloud.mindbox'
