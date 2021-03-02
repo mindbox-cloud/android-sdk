@@ -51,7 +51,6 @@ internal object GatewayManager {
                 MindboxLogger.e(
                     this,
                     "MindboxConfiguration was not initialized",
-                    InitializeMindboxException("MindboxConfiguration was not initialized")
                 )
                 isSuccess.invoke(false)
                 return

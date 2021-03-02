@@ -26,10 +26,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openCompleteScreen(data: InitializeData) {
+        val dataFragment = CompleteDataFragment()
+        dataFragment.data = data
         supportFragmentManager.beginTransaction()
             .replace(
                 R.id.fragmentContainer,
-                CompleteDataFragment(data)
+                dataFragment
             )
             .addToBackStack(CompleteDataFragment::class.java.simpleName)
             .commit()
