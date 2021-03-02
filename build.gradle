@@ -25,6 +25,6 @@ allprojects {
     }
 }
 
-artifacts {
-    archives javadocJar, sourcesJar
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
