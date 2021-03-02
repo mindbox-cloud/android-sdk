@@ -27,7 +27,7 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: lint check
-        run: ./gradlew --no-daemon check
+        run: ./gradlew  check
 
   test:
     needs: lint
@@ -45,9 +45,7 @@ jobs:
 
       - name: unit tests
         run: |
-          ./gradlew --no-daemon test
-          ./gradlew --no-daemon assembleDebug
-          ./gradlew --no-daemon testDebugUnitTest
+          ./gradlew test
 
   build:
     needs: [test, lint]
