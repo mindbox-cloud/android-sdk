@@ -26,7 +26,7 @@ internal object IdentifierManager {
                     channel.importance == NotificationManager.IMPORTANCE_NONE
                 } == null
             } else {
-                NotificationManagerCompat.from(context).areNotificationsEnabled()
+                return NotificationManagerCompat.from(context).areNotificationsEnabled()
             }
         }.returnOnException { true }
     }
@@ -73,6 +73,6 @@ internal object IdentifierManager {
     }
 
     private fun generateRandomUuid() = runCatching {
-        UUID.randomUUID().toString()
+        return UUID.randomUUID().toString()
     }.returnOnException { "" }
 }

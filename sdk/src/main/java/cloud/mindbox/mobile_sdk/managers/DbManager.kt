@@ -42,7 +42,7 @@ internal object DbManager {
     }
 
     fun getFilteredEventsKeys(): List<String> = runCatching {
-        sortKeys(getEventsKeys())
+        return sortKeys(getEventsKeys())
             .filterOldEvents()
             .filterEventsBySize()
             .toList()
@@ -50,20 +50,20 @@ internal object DbManager {
 
     private fun getEventsKeys(): List<String> {
         return runCatching {
-            eventsBook.allKeys
+            return eventsBook.allKeys
         }.returnOnException { emptyList() }
     }
 
     fun getEvent(key: String): Event? {
         return runCatching {
             try {
-                eventsBook.read(key) as Event?
+                return eventsBook.read(key) as Event?
             } catch (exception: PaperDbException) {
 
                 // invalid data in case of exception
                 removeEventFromQueue(key)
                 MindboxLogger.e(this, "Error reading from database", exception)
-                null
+                return null
             }
         }.returnOnException { null }
     }
@@ -107,7 +107,7 @@ internal object DbManager {
                     filteredList.remove(this[i])
                 }
             }
-            filteredList
+            return filteredList
         }.returnOnException { arrayListOf() }
     }
 
@@ -122,7 +122,7 @@ internal object DbManager {
                     return@forEach
                 }
             }
-            filteredList
+            return filteredList
         }.returnOnException { arrayListOf() }
     }
 
@@ -136,7 +136,7 @@ internal object DbManager {
                 0L
             }
 
-            enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
+            return enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
         }.returnOnException { false }
     }
 
@@ -157,12 +157,12 @@ internal object DbManager {
     fun getConfigurations(): MindboxConfiguration? {
         return runCatching {
             try {
-                configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
+                return configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
             } catch (exception: PaperDbException) {
 
                 // invalid data in case of exception
                 MindboxLogger.e(this, "Error reading from database", exception)
-                null
+                return null
             }
         }.returnOnException { null }
     }

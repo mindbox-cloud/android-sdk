@@ -73,14 +73,14 @@ internal data class MindboxRequest(
 
                 logBodyResponse(json)
 
-                Response.success(
+                return Response.success(
                     JSONObject("{data: $json}"), HttpHeaderParser.parseCacheHeaders(response)
                 )
             } catch (e: UnsupportedEncodingException) {
 
-                Response.error(ParseError(e))
+                return Response.error(ParseError(e))
             } catch (e: JsonSyntaxException) {
-                Response.error(ParseError(e))
+                return Response.error(ParseError(e))
             } finally {
                 logEndResponse()
             }

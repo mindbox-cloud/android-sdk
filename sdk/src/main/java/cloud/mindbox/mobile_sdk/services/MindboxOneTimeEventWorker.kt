@@ -13,7 +13,7 @@ internal class MindboxOneTimeEventWorker(appContext: Context, workerParams: Work
 
     override fun doWork(): Result {
         return runCatching {
-            sendEventsWithResult(
+            return sendEventsWithResult(
                 context = applicationContext,
                 parent = this,
                 workerType = WorkerType.ONE_TIME_WORKER

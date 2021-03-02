@@ -22,19 +22,20 @@ object Mindbox {
     /**
      * Returns token of Firebase Messaging Service used by SDK
      */
-    fun getFmsToken(): String? = runCatching { MindboxPreferences.firebaseToken }
+    fun getFmsToken(): String? = runCatching { return MindboxPreferences.firebaseToken }
         .returnOnException { null }
 
     /**
      * Returns date of FMS token saving
      */
-    fun getFmsTokenSaveDate(): String = runCatching { MindboxPreferences.firebaseTokenSaveDate }
-        .returnOnException { "" }
+    fun getFmsTokenSaveDate(): String =
+        runCatching { return MindboxPreferences.firebaseTokenSaveDate }
+            .returnOnException { "" }
 
     /**
      * Returns SDK version
      */
-    fun getSdkVersion(): String = runCatching { BuildConfig.VERSION_NAME }
+    fun getSdkVersion(): String = runCatching { return BuildConfig.VERSION_NAME }
         .returnOnException { "" }
 
     /**
@@ -43,9 +44,8 @@ object Mindbox {
      * @throws InitializeMindboxException when SDK isn't initialized
      */
     @Throws(InitializeMindboxException::class)
-    fun getDeviceUuid(): String = runCatching { MindboxPreferences.deviceUuid }
-        .returnOnException { null }
-        ?: throw InitializeMindboxException("SDK was not initialized")
+    fun getDeviceUuid(): String =
+        MindboxPreferences.deviceUuid ?: throw InitializeMindboxException("SDK was not initialized")
 
     /**
      * Updates FMS token for SDK
@@ -145,7 +145,7 @@ object Mindbox {
     private suspend fun initDeviceId(context: Context): String {
         return runCatching {
             val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-            adid.await()
+            return adid.await()
         }.returnOnException { "" }
     }
 

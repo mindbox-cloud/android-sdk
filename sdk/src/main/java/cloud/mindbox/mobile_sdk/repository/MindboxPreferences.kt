@@ -17,7 +17,7 @@ internal object MindboxPreferences {
 
     var isFirstInitialize: Boolean
         get() = runCatching {
-            Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
+            return Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
         }.returnOnException { true }
         set(value) {
             runCatching {
@@ -27,7 +27,7 @@ internal object MindboxPreferences {
 
     var deviceUuid: String?
         get() = runCatching {
-            Hawk.get(KEY_USER_ADID, null)
+            return Hawk.get(KEY_USER_ADID, null)
         }.returnOnException { null }
         set(value) {
             runCatching {
@@ -37,7 +37,7 @@ internal object MindboxPreferences {
 
     var installationId: String?
         get() = runCatching {
-            Hawk.get(KEY_INSTALLATION_ID, null)
+            return Hawk.get(KEY_INSTALLATION_ID, null)
         }.returnOnException { null }
         set(value) {
             runCatching {
@@ -47,7 +47,7 @@ internal object MindboxPreferences {
 
     var firebaseToken: String?
         get() = runCatching {
-            Hawk.get(KEY_FIREBASE_TOKEN, null)
+            return Hawk.get(KEY_FIREBASE_TOKEN, null)
         }.returnOnException { null }
         set(value) {
             runCatching {
@@ -58,7 +58,7 @@ internal object MindboxPreferences {
 
     var firebaseTokenSaveDate: String
         get() = runCatching {
-            Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
+            return Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
         }.returnOnException { "" }
         set(value) {
             runCatching {
@@ -68,7 +68,7 @@ internal object MindboxPreferences {
 
     var isNotificationEnabled: Boolean
         get() = runCatching {
-            Hawk.get(KEY_IS_NOTIFICATION_ENABLED, true)
+            return Hawk.get(KEY_IS_NOTIFICATION_ENABLED, true)
         }.returnOnException { true }
         set(value) {
             runCatching {
@@ -78,7 +78,7 @@ internal object MindboxPreferences {
 
     var hostAppName: String
         get() = runCatching {
-            Hawk.get(KEY_HOST_APP_MANE, "")
+            return Hawk.get(KEY_HOST_APP_MANE, "")
         }.returnOnException { "" }
         set(value) {
             runCatching {

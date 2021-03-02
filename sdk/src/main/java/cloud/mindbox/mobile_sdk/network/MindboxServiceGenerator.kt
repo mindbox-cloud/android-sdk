@@ -17,8 +17,8 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     companion object {
         @Volatile
         private var INSTANCE: MindboxServiceGenerator? = null
-        internal fun getInstance(context: Context) = runCatching {
-            INSTANCE ?: synchronized(this) {
+        internal fun getInstance(context: Context): MindboxServiceGenerator? = runCatching {
+            return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: MindboxServiceGenerator(context).also {
                     INSTANCE = it
                 }
@@ -35,9 +35,7 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     private val requestQueue: RequestQueue? by lazy {
         // applicationContext is key, it keeps you from leaking the
         // Activity or BroadcastReceiver if someone passes one in.
-        runCatching {
-            Volley.newRequestQueue(context.applicationContext)
-        }.returnOnException { null }
+        Volley.newRequestQueue(context.applicationContext)
     }
 
     internal fun addToRequestQueue(request: MindboxRequest) {

@@ -83,6 +83,6 @@ internal fun String.isUuid(): Boolean {
 }
 
 internal fun Map<String, String>.toUrlQueryString() = runCatching {
-    this.map { (k, v) -> "$k=$v" }
+    return this.map { (k, v) -> "$k=$v" }
         .joinToString(prefix = "?", separator = "&")
 }.returnOnException { "" }

@@ -43,18 +43,8 @@ internal object GatewayManager {
         return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
-    fun sendEvent(context: Context, event: Event, isSuccess: (Boolean) -> Unit) {
+    fun sendEvent(context: Context, configuration: MindboxConfiguration, event: Event, isSuccess: (Boolean) -> Unit) {
         try {
-            val configuration = DbManager.getConfigurations()
-
-            if (configuration == null) {
-                MindboxLogger.e(
-                    this,
-                    "MindboxConfiguration was not initialized",
-                )
-                isSuccess.invoke(false)
-                return
-            }
 
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, event)
@@ -116,8 +106,9 @@ internal object GatewayManager {
         }
     }
 
-    private fun parseResponse(response: NetworkResponse): MindboxResponse {
+    private fun parseResponse(response: NetworkResponse?): MindboxResponse {
         return when {
+            response == null -> MindboxResponse.Error(-1, byteArrayOf()) // response can be null
             response.statusCode < 300 -> {
                 MindboxResponse.SuccessResponse(response.data)
             }

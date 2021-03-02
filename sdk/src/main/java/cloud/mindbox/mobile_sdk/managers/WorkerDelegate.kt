@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
@@ -44,12 +45,22 @@ internal fun sendEventsWithResult(
 
 private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
     runCatching {
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration == null) {
+            MindboxLogger.e(
+                parent,
+                "MindboxConfiguration was not initialized",
+            )
+            return@runCatching
+        }
+
         eventKeys.forEach { eventKey ->
             val countDownLatch = CountDownLatch(1)
 
             val event = DbManager.getEvent(eventKey) ?: return@forEach
 
-            GatewayManager.sendEvent(context, event) { isSended ->
+            GatewayManager.sendEvent(context, configuration, event) { isSended ->
                 if (isSended) {
                     DbManager.removeEventFromQueue(eventKey)
                 }

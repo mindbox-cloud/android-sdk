@@ -14,7 +14,7 @@ internal class MindboxPeriodicEventWorker(appContext: Context, workerParams: Wor
 
     override fun doWork(): Result {
         return runCatching {
-            sendEventsWithResult(
+            return sendEventsWithResult(
                 context = applicationContext,
                 parent = this,
                 workerType = WorkerType.PERIODIC_WORKER
