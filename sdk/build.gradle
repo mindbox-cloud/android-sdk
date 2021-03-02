@@ -6,8 +6,8 @@ plugins {
     id 'maven-publish'
     id 'maven'
     id 'signing'
-    id 'com.github.dcendents.android-maven'
 }
+apply plugin: 'com.github.dcendents.android-maven'
 
 group='cloud.mindbox'
 version = System.getenv('RELEASE_VERSION') ?: "0.0.1"
