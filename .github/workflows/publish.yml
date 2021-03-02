@@ -10,7 +10,6 @@ on:
 
 jobs:
   publish:
-    needs: [build]
     environment:
       name: Testbed
     runs-on: ubuntu-latest
