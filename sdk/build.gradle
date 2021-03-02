@@ -7,10 +7,10 @@ plugins {
     id 'maven'
     id 'signing'
 }
-apply plugin: 'com.github.dcendents.android-maven'
-
+apply plugin: 'maven-publish'
 group='cloud.mindbox'
-version = System.getenv('RELEASE_VERSION') ?: "0.0.1"
+
+apply plugin: 'com.github.dcendents.android-maven'
 
 android {
     compileSdkVersion 30
