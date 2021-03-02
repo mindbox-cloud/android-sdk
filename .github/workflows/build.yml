@@ -51,6 +51,8 @@ jobs:
   build:
     needs: [test, lint]
     runs-on: ubuntu-latest 
+    environment:
+      name: Testbed
     steps:
       - uses: actions/checkout@v2
 
