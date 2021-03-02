@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.network
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.BuildConfig
+import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.returnOnException
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.Volley
@@ -15,25 +17,32 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     companion object {
         @Volatile
         private var INSTANCE: MindboxServiceGenerator? = null
-        internal fun getInstance(context: Context) =
+        internal fun getInstance(context: Context) = runCatching {
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: MindboxServiceGenerator(context).also {
                     INSTANCE = it
                 }
             }
+        }.returnOnException { null }
     }
 
     init {
-        VolleyLog.DEBUG = BuildConfig.DEBUG
+        runCatching {
+            VolleyLog.DEBUG = BuildConfig.DEBUG
+        }.logOnException()
     }
 
-    private val requestQueue: RequestQueue by lazy {
+    private val requestQueue: RequestQueue? by lazy {
         // applicationContext is key, it keeps you from leaking the
         // Activity or BroadcastReceiver if someone passes one in.
-        Volley.newRequestQueue(context.applicationContext)
+        runCatching {
+            Volley.newRequestQueue(context.applicationContext)
+        }.returnOnException { null }
     }
 
     internal fun addToRequestQueue(request: MindboxRequest) {
-        requestQueue.add(request)
+        runCatching {
+            requestQueue?.add(request)
+        }.returnOnException {}
     }
 }

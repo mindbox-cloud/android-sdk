@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.MindboxLogger
+import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import io.paperdb.Paper
@@ -25,6 +26,7 @@ internal object DbManager {
     private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
 
     fun addEventToQueue(context: Context, event: Event) {
+        runCatching {
             try {
                 eventsBook.write("${event.enqueueTimestamp};${event.transactionId}", event)
                 MindboxLogger.d(this, "Event ${event.eventType.operation} was added to queue")
@@ -36,7 +38,8 @@ internal object DbManager {
                 )
             }
 
-        BackgroundWorkManager.startOneTimeService(context)
+            BackgroundWorkManager.startOneTimeService(context)
+        }.logOnException()
     }
 
     fun getFilteredEventsKeys(): List<String> {

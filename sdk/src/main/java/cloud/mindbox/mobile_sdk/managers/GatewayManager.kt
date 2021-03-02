@@ -87,7 +87,7 @@ internal object GatewayManager {
                 }
             )
 
-            MindboxServiceGenerator.getInstance(context).addToRequestQueue(request)
+            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
             MindboxLogger.e(this, "Sending event was failure with exception", e)
             isSuccess.invoke(false)
