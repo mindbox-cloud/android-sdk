@@ -18,10 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
+          java-version: 8
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -29,15 +29,15 @@ jobs:
       - name: lint check
         run: ./gradlew check
 
-  test:
+  unit:
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
+          java-version: 8
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -46,35 +46,22 @@ jobs:
         run: |
           ./gradlew test
           ./gradlew testDebugUnitTest
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: env check
-        run: |
-          echo $SONATYPE_USERNAME
-          echo $SOME_KEY
-        env:
-          SONATYPE_USERNAME: ${{secrets.OSSRHUSERNAME}}
-          SOME_KEY: ${{secrets.SOME_KEY}}
 
   build:
-    needs: [test, lint]
+    needs: [unit, lint]
     runs-on: ubuntu-latest 
     environment:
       name: Testbed
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+          java-version: 8
 
       - name: build project
-        run: |
-          ./gradlew assembleDebug
-          ./gradlew build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: current
+          arguments: build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
