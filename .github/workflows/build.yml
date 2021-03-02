@@ -27,7 +27,7 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: lint check
-        run: ./gradlew  check
+        run: ./gradlew check
 
   test:
     needs: lint
@@ -46,6 +46,7 @@ jobs:
       - name: unit tests
         run: |
           ./gradlew test
+          ./gradlew testDebugUnitTest
 
   build:
     needs: [test, lint]
@@ -62,4 +63,6 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: build project
-        run: ./gradlew build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+        run: |
+          ./gradlew assembleDebug
+          ./gradlew build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
