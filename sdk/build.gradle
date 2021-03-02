@@ -21,6 +21,13 @@ version = System.getenv('RELEASE_VERSION') ?: "0.0.1"
 //     classifier = 'javadoc'
 //     from javadoc
 // }
+// task clean(type: Delete) {
+//     delete rootProject.buildDir
+// }
+// task sourcesJar(type: Jar) {
+//     classifier = 'sources'
+//     from sourceSets.main.allSource
+// }
 
 android {
     compileSdkVersion 30
