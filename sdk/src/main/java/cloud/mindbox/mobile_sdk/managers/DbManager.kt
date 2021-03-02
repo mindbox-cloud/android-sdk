@@ -42,62 +42,37 @@ internal object DbManager {
         }.logOnException()
     }
 
-    fun getFilteredEventsKeys(): List<String> {
-        filterEventsBySize()
-        filterOldEvents()
-        val allKeys = getEventsKeys()
-        return sortKeys(allKeys)
-    }
+    fun getFilteredEventsKeys(): List<String> = sortKeys(getEventsKeys())
+        .filterOldEvents()
+        .filterEventsBySize()
+        .toList()
 
-    private fun getEventsKeys(): List<String>  {
+    private fun getEventsKeys(): List<String> {
         return eventsBook.allKeys
     }
 
     fun getEvent(key: String): Event? {
-            return try {
-                eventsBook.read(key) as Event?
-            } catch (exception: PaperDbException) {
+        return try {
+            eventsBook.read(key) as Event?
+        } catch (exception: PaperDbException) {
 
-                // invalid data in case of exception
-                removeEventFromQueue(key)
-                MindboxLogger.e(this, "Error reading from database", exception)
-                null
-            }
+            // invalid data in case of exception
+            removeEventFromQueue(key)
+            MindboxLogger.e(this, "Error reading from database", exception)
+            null
+        }
     }
 
     fun removeEventFromQueue(key: String) {
-            try {
-                eventsBook.delete(key)
-                MindboxLogger.d(this, "Event $key was deleted to queue")
-            } catch (exception: PaperDbException) {
-                MindboxLogger.e(this, "Error deleting item from database", exception)
-            }
+        try {
+            eventsBook.delete(key)
+            MindboxLogger.d(this, "Event $key was deleted to queue")
+        } catch (exception: PaperDbException) {
+            MindboxLogger.e(this, "Error deleting item from database", exception)
+        }
     }
 
-    private fun filterEventsBySize() {
-            val allKeys = getEventsKeys()
-            val diff = allKeys.size - MAX_EVENT_LIST_SIZE
-
-            if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
-                for (i in 1..diff) {
-                    removeEventFromQueue(allKeys[i])
-                }
-            }
-    }
-
-    private fun filterOldEvents() {
-            val keys = getEventsKeys()
-            keys.forEach { key ->
-                val event = getEvent(key)
-                if (event?.isTooOld() == true) {
-                    removeEventFromQueue(key)
-                } else {
-                    return@forEach
-                }
-            }
-    }
-
-    private fun sortKeys(list: List<String>): List<String> {
+    private fun sortKeys(list: List<String>): ArrayList<String> {
         val arrayList = ArrayList<String>()
         arrayList.addAll(list)
 
@@ -109,28 +84,63 @@ internal object DbManager {
                 0L
             }
         }
-        return arrayList.toList()
+        return arrayList
     }
 
-    private fun Event.isTooOld(): Boolean =
-        this.enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
+    private fun ArrayList<String>.filterEventsBySize(): ArrayList<String> {
+        val filteredList = ArrayList(this) //coping of list
+        val diff = this.size - MAX_EVENT_LIST_SIZE
+
+        if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
+            for (i in 1..diff) {
+                removeEventFromQueue(this[i])
+                filteredList.remove(this[i])
+            }
+        }
+        return filteredList
+    }
+
+    private fun ArrayList<String>.filterOldEvents(): ArrayList<String> {
+        val filteredList = ArrayList(this) //coping of list
+        this.forEach { key ->
+            if (key.isTooOldKey()) {
+                removeEventFromQueue(key)
+                filteredList.remove(key)
+            } else {
+                return@forEach
+            }
+        }
+        return filteredList
+    }
+
+    private fun String.isTooOldKey(): Boolean {
+        val keyTimeStamp = this.substringBefore(";", "0")
+
+        val enqueueTimestamp = try {
+            keyTimeStamp.toLong()
+        } catch (e: NumberFormatException) {
+            0L
+        }
+
+        return enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
+    }
 
     fun saveConfigurations(configuration: MindboxConfiguration) {
-            try {
-                configurationBook.write(CONFIGURATION_KEY, configuration)
-            } catch (exception: PaperDbException) {
-                MindboxLogger.e(this, "Error writing object configuration to the database", exception)
-            }
+        try {
+            configurationBook.write(CONFIGURATION_KEY, configuration)
+        } catch (exception: PaperDbException) {
+            MindboxLogger.e(this, "Error writing object configuration to the database", exception)
+        }
     }
 
     fun getConfigurations(): MindboxConfiguration? {
-            return try {
-                configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
-            } catch (exception: PaperDbException) {
+        return try {
+            configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
+        } catch (exception: PaperDbException) {
 
-                // invalid data in case of exception
-                MindboxLogger.e(this, "Error reading from database", exception)
-                null
-            }
+            // invalid data in case of exception
+            MindboxLogger.e(this, "Error reading from database", exception)
+            null
+        }
     }
 }
