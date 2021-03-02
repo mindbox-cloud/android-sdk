@@ -19,12 +19,37 @@ object Mindbox {
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
 
-    fun getFmsToken() = MindboxPreferences.firebaseToken
-    fun getFmsTokenSaveDate() = MindboxPreferences.firebaseTokenSaveDate
-    fun getSdkVersion() = BuildConfig.VERSION_NAME
+    /**
+     * Returns token of Firebase Messaging Service used by SDK
+     */
+    fun getFmsToken(): String? = MindboxPreferences.firebaseToken
+
+    /**
+     * Returns date of FMS token saving
+     */
+    fun getFmsTokenSaveDate(): String = MindboxPreferences.firebaseTokenSaveDate
+
+    /**
+     * Returns SDK version
+     */
+    fun getSdkVersion(): String = BuildConfig.VERSION_NAME
+
+    /**
+     * Returns deviceUUID used by SDK
+     *
+     * @throws InitializeMindboxException when SDK isn't initialized
+     */
+    @Throws(InitializeMindboxException::class)
     fun getDeviceUuid(): String = MindboxPreferences.deviceUuid
         ?: throw InitializeMindboxException("SDK was not initialized")
 
+    /**
+     * Updates FMS token for SDK
+     * Call it from onNewToken on messaging service
+     *
+     * @param context used to initialize the main tools
+     * @param token - token of FMS
+     */
     fun updateFmsToken(context: Context, token: String) {
         if (token.trim().isNotEmpty()) {
             initComponents(context)
@@ -37,6 +62,12 @@ object Mindbox {
         }
     }
 
+    /**
+     * Creates and deliveries event of "Push delivered"
+     *
+     * @param context used to initialize the main tools
+     * @param uniqKey - unique identifier of push notification
+     */
     fun onPushReceived(context: Context, uniqKey: String) {
         initComponents(context)
         MindboxEventManager.pushDelivered(context, uniqKey)
@@ -50,7 +81,7 @@ object Mindbox {
 
     /**
      * Initializes the SDK for further work.
-     * We recommend calling this from the application class
+     * We recommend calling it in onCreate on an application class
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox

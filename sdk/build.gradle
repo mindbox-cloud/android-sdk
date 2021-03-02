@@ -54,7 +54,7 @@ android {
     }
 
     dokka {
-        outputFormat = 'html'
+        outputFormat = 'javadoc'
         outputDirectory = "$buildDir/dokka"
     }
     signing {
