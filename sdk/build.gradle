@@ -10,7 +10,7 @@ plugins {
 apply plugin: 'maven-publish'
 group='cloud.mindbox'
 
-apply plugin: 'com.github.dcendents.android-maven'
+// apply plugin: 'com.github.dcendents.android-maven'
 
 android {
     compileSdkVersion 30
