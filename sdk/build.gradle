@@ -1,13 +1,15 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id "com.jfrog.bintray"
     id 'org.jetbrains.dokka'
+    id 'maven'
+    id 'signing'
 }
 apply plugin: 'maven-publish'
 group='com.github.mindbox-moscow'
 
-apply plugin: 'com.github.dcendents.android-maven'
+group = "cloud.mindbox"
+version = "1.0.0"
 
 android {
     compileSdkVersion 30
@@ -45,17 +47,13 @@ android {
         outputDirectory = "$buildDir/dokka"
     }
 
-    bintray {
-        user = 'bintray_user'
-        key = 'BINTRAY_KEY'
-        pkg {
-            repo = 'cloud.mindbox'
-            name = 'mobile-sdk'
-            userOrg = 'mindbox'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/bintray/gradle-bintray-plugin.git'
-            version {
-                name = '1.0-test'
+    nexusPublishing {
+        packageGroup = "cloud.mindbox"
+        repositories {
+            sonatype {
+//                stagingProfileId = "id"
+                username = "USERNAME"
+                password = "PASSWORD"
             }
         }
     }
@@ -101,5 +99,3 @@ dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
 
 }
-
-apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'
