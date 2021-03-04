@@ -2,8 +2,10 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
+import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
+import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.services.WorkerType
 import java.util.concurrent.CountDownLatch
 
@@ -42,24 +44,36 @@ internal fun sendEventsWithResult(
 }
 
 private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
-    eventKeys.forEach { eventKey ->
-        val countDownLatch = CountDownLatch(1)
+    runCatching {
+        val configuration = DbManager.getConfigurations()
 
-        val event = DbManager.getEvent(eventKey) ?: return@forEach
+        if (configuration == null) {
+            MindboxLogger.e(
+                parent,
+                "MindboxConfiguration was not initialized",
+            )
+            return@runCatching
+        }
 
-        GatewayManager.sendEvent(context, event) { isSended ->
-            if (isSended) {
-                DbManager.removeEventFromQueue(eventKey)
+        eventKeys.forEach { eventKey ->
+            val countDownLatch = CountDownLatch(1)
+
+            val event = DbManager.getEvent(eventKey) ?: return@forEach
+
+            GatewayManager.sendEvent(context, configuration, event) { isSended ->
+                if (isSended) {
+                    DbManager.removeEventFromQueue(eventKey)
+                }
+                countDownLatch.countDown()
             }
-            countDownLatch.countDown()
-        }
 
-        try {
-            countDownLatch.await()
-        } catch (e: InterruptedException) {
-            MindboxLogger.e(parent, "doWork -> sending was interrupted", e)
+            try {
+                countDownLatch.await()
+            } catch (e: InterruptedException) {
+                MindboxLogger.e(parent, "doWork -> sending was interrupted", e)
+            }
         }
-    }
+    }.logOnException()
 }
 
 internal fun logEndWork(parent: Any) {

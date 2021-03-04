@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventParameters
@@ -13,43 +14,51 @@ internal object MindboxEventManager {
     private val gson = Gson()
 
     fun appInstalled(context: Context, initData: InitData) {
-        DbManager.addEventToQueue(
-            context, Event(
-                eventType = EventType.APP_INSTALLED,
-                additionalFields = null,
-                body = gson.toJson(initData)
+        runCatching {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.APP_INSTALLED,
+                    additionalFields = null,
+                    body = gson.toJson(initData)
+                )
             )
-        )
+        }.logOnException()
     }
 
     fun appInfoUpdate(context: Context, initData: UpdateData) {
-        DbManager.addEventToQueue(
-            context, Event(
-                eventType = EventType.APP_INFO_UPDATED,
-                additionalFields = null,
-                body = gson.toJson(initData)
+        runCatching {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.APP_INFO_UPDATED,
+                    additionalFields = null,
+                    body = gson.toJson(initData)
+                )
             )
-        )
+        }.logOnException()
     }
 
     fun pushDelivered(context: Context, uniqKey: String) {
-        val fields = hashMapOf(
-            EventParameters.UNIQ_KEY.fieldName to uniqKey
-        )
-        DbManager.addEventToQueue(
-            context, Event(
-                eventType = EventType.PUSH_DELIVERED,
-                additionalFields = fields,
-                body = null
+        runCatching {
+            val fields = hashMapOf(
+                EventParameters.UNIQ_KEY.fieldName to uniqKey
             )
-        )
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.PUSH_DELIVERED,
+                    additionalFields = fields,
+                    body = null
+                )
+            )
+        }.logOnException()
     }
 
     fun sendEventsIfExist(context: Context) {
-        val keys = DbManager.getFilteredEventsKeys()
+        runCatching {
+            val keys = DbManager.getFilteredEventsKeys()
 
-        if (keys.isNotEmpty()) {
-            BackgroundWorkManager.startOneTimeService(context)
-        }
+            if (keys.isNotEmpty()) {
+                BackgroundWorkManager.startOneTimeService(context)
+            }
+        }.logOnException()
     }
 }

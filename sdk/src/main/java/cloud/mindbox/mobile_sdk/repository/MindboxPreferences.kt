@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.repository
 
+import cloud.mindbox.mobile_sdk.returnOnException
 import com.orhanobut.hawk.Hawk
 import java.util.*
 
@@ -11,48 +12,77 @@ internal object MindboxPreferences {
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
-    private const val KEY_HOST_APP_MANE = "key_host_app_name" //need for scheduling and stopping one-time background service
+    private const val KEY_HOST_APP_MANE =
+        "key_host_app_name" //need for scheduling and stopping one-time background service
 
     var isFirstInitialize: Boolean
-        get() = Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
+        get() = runCatching {
+            return Hawk.get(KEY_IS_FIRST_INITIALIZATION, true)
+        }.returnOnException { true }
         set(value) {
-            Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
+            runCatching {
+                Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
+            }.returnOnException { }
         }
 
     var deviceUuid: String?
-        get() = Hawk.get(KEY_USER_ADID, null)
+        get() = runCatching {
+            return Hawk.get(KEY_USER_ADID, null)
+        }.returnOnException { null }
         set(value) {
-            Hawk.put(KEY_USER_ADID, value)
+            runCatching {
+                Hawk.put(KEY_USER_ADID, value)
+            }.returnOnException { }
         }
 
     var installationId: String?
-        get() = Hawk.get(KEY_INSTALLATION_ID, null)
+        get() = runCatching {
+            return Hawk.get(KEY_INSTALLATION_ID, null)
+        }.returnOnException { null }
         set(value) {
-            Hawk.put(KEY_INSTALLATION_ID, value)
+            runCatching {
+                Hawk.put(KEY_INSTALLATION_ID, value)
+            }.returnOnException { }
         }
 
     var firebaseToken: String?
-        get() = Hawk.get(KEY_FIREBASE_TOKEN, null)
+        get() = runCatching {
+            return Hawk.get(KEY_FIREBASE_TOKEN, null)
+        }.returnOnException { null }
         set(value) {
-            Hawk.put(KEY_FIREBASE_TOKEN, value)
-            firebaseTokenSaveDate = Date().toString()
+            runCatching {
+                Hawk.put(KEY_FIREBASE_TOKEN, value)
+                firebaseTokenSaveDate = Date().toString()
+            }.returnOnException { }
         }
 
     var firebaseTokenSaveDate: String
-        get() = Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
+        get() = runCatching {
+            return Hawk.get(KEY_FIREBASE_TOKEN_SAVE_DATE, "")
+        }.returnOnException { "" }
         set(value) {
-            Hawk.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
+            runCatching {
+                Hawk.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
+            }.returnOnException { }
         }
 
     var isNotificationEnabled: Boolean
-        get() = Hawk.get(KEY_IS_NOTIFICATION_ENABLED, true)
+        get() = runCatching {
+            return Hawk.get(KEY_IS_NOTIFICATION_ENABLED, true)
+        }.returnOnException { true }
         set(value) {
-            Hawk.put(KEY_IS_NOTIFICATION_ENABLED, value)
+            runCatching {
+                Hawk.put(KEY_IS_NOTIFICATION_ENABLED, value)
+            }.returnOnException { }
         }
 
     var hostAppName: String
-        get() = Hawk.get(KEY_HOST_APP_MANE, "")
+        get() = runCatching {
+            return Hawk.get(KEY_HOST_APP_MANE, "")
+        }.returnOnException { "" }
         set(value) {
-            Hawk.put(KEY_HOST_APP_MANE, value)
+            runCatching {
+                Hawk.put(KEY_HOST_APP_MANE, value)
+            }.returnOnException { }
         }
 }

@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
@@ -14,18 +15,20 @@ import java.util.*
 internal object IdentifierManager {
 
     fun isNotificationsEnabled(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            if (manager?.areNotificationsEnabled() != true) {
-                return false
+        return runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val manager =
+                    context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                if (manager?.areNotificationsEnabled() != true) {
+                    return false
+                }
+                return manager.notificationChannels.firstOrNull { channel ->
+                    channel.importance == NotificationManager.IMPORTANCE_NONE
+                } == null
+            } else {
+                return NotificationManagerCompat.from(context).areNotificationsEnabled()
             }
-            return manager.notificationChannels.firstOrNull { channel ->
-                channel.importance == NotificationManager.IMPORTANCE_NONE
-            } == null
-        } else {
-            NotificationManagerCompat.from(context).areNotificationsEnabled()
-        }
+        }.returnOnException { true }
     }
 
     fun registerFirebaseToken(): String? {
@@ -69,5 +72,7 @@ internal object IdentifierManager {
         }
     }
 
-    private fun generateRandomUuid() = UUID.randomUUID().toString()
+    private fun generateRandomUuid() = runCatching {
+        return UUID.randomUUID().toString()
+    }.returnOnException { "" }
 }

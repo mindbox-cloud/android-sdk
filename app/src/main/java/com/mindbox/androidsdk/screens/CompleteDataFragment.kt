@@ -11,10 +11,10 @@ import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
 import java.util.*
 
-class CompleteDataFragment(
-    private val data: InitializeData
-) :
+class CompleteDataFragment :
     Fragment(R.layout.fragment_complete_data) {
+
+    var data: InitializeData? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -26,15 +26,15 @@ class CompleteDataFragment(
 
     private fun fillData() {
         initParams.text = """
-            domain: ${data.domain}
+            domain: ${data?.domain.toString()}
             
-            endpoint: ${data.endpoint}
+            endpoint: ${data?.endpoint.toString()}
             
-            deviceUUID: ${data.deviceId}
+            deviceUUID: ${data?.deviceId.toString()}
             
-            installId: ${data.installId}
+            installId: ${data?.installId.toString()}
             
-            SubscribeCustomerIfCreated: ${data.subscribe}
+            SubscribeCustomerIfCreated: ${data?.subscribe.toString()}
         """.trimIndent()
 
         sdkData.text = """
