@@ -43,17 +43,6 @@ android {
         outputFormat = 'javadoc'
         outputDirectory = "$buildDir/dokka"
     }
-
-    nexusPublishing {
-        packageGroup = "cloud.mindbox"
-        repositories {
-            sonatype {
-//                stagingProfileId = "id"
-                username = "USERNAME"
-                password = "PASSWORD"
-            }
-        }
-    }
 }
 
 dependencies {
