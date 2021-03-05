@@ -8,6 +8,8 @@ plugins {
 apply plugin: 'maven-publish'
 group='com.github.mindbox-moscow'
 
+apply plugin: 'com.github.dcendents.android-maven'
+
 android {
     compileSdkVersion 30
     buildToolsVersion "29.0.3"
@@ -85,3 +87,5 @@ dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
 
 }
+
+apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'
