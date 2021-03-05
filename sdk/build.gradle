@@ -8,9 +8,6 @@ plugins {
 apply plugin: 'maven-publish'
 group='com.github.mindbox-moscow'
 
-group = "cloud.mindbox"
-version = "1.0.0"
-
 android {
     compileSdkVersion 30
     buildToolsVersion "29.0.3"
