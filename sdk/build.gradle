@@ -3,14 +3,12 @@ plugins {
     id 'kotlin-android'
     id "com.jfrog.bintray"
     id 'org.jetbrains.dokka'
-    id 'maven-publish'
     id 'maven'
     id 'signing'
 }
 apply plugin: 'maven-publish'
-group='cloud.mindbox'
-
-// apply plugin: 'com.github.dcendents.android-maven'
+group = 'cloud.mindbox'
+version = "1.0.0"
 
 android {
     compileSdkVersion 30
@@ -47,55 +45,61 @@ android {
         outputFormat = 'javadoc'
         outputDirectory = "$buildDir/dokka"
     }
-    signing {
-        sign publishing.publications
+    task androidSourcesJar(type: Jar) {
+        archiveClassifier.set('sources')
+        from android.sourceSets.main.java.srcDirs
     }
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-            repository(url: "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: System.getenv('OSSRHUSERNAME'), password: System.getenv('OSSRHPASSWORD'))
-            }
-
-            snapshotRepository(url: "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: System.getenv('OSSRHUSERNAME'), password: System.getenv('OSSRHPASSWORD'))
-            }
-
-            pom.project {
-                name 'Mindbox Android SDK'
-                packaging 'jar'
-                // optionally artifactId can be defined here 
-                description 'The Mindbox SDK is a library for integrating a mobile app with Mindbox.'
-                url 'https://github.com/mindbox-moscow/android-sdk'
-
-                scm {
-                    url 'https://github.com/mindbox-moscow/android-sdk'
-                    connection 'scm:https://github.com/mindbox-moscow/android-sdk.git'
-                    developerConnection 'scm:git://github.com/mindbox-moscow/android-sdk.git'
-                }
-
-                licenses {
-                license {
-                    name 'The Mindbox License'
-                    url 'https://github.com/mindbox-moscow/android-sdk/blob/master/LICENSE.md'
-                }
-                }
-
-                developers {
-                developer {
-                    id 'mindbox'
-                    name 'Petr Nikitin'
-                    email 'android-sdk@mindbox.ru'
-                }
+    afterEvaluate {
+        publishing {
+            publications {
+                release(MavenPublication) {
+                    from components.release
+                    artifact androidSourcesJar
+                    groupId = 'cloud.mindbox'
+                    artifactId = 'mobile-sdk'
+                    version = SDK_VERSION_NAME
+                    pom {
+                        name = 'Mindbox Android SDK'
+                        description = 'Test release'
+                        url = 'https://github.com/mindbox-moscow/android-sdk'
+                        licenses {
+                            license {
+                                name = 'The Mindbox License'
+                                url = 'https://github.com/mindbox-moscow/android-sdk/blob/master/LICENSE.md'
+                            }
+                        }
+                        developers {
+                            developer {
+                                id = 'mindbox'
+                                name = 'Petr Nikitin'
+                                email = 'nikitin@mindbox.ru'
+                            }
+                        }
+                        scm {
+                            connection = 'scm:https://github.com/mindbox-moscow/android-sdk.git'
+                            developerConnection = 'scm:git://github.com/mindbox-moscow/android-sdk.git'
+                            url = 'https://github.com/mindbox-moscow/android-sdk'
+                        }
+                    }
                 }
             }
+            repositories {
+                maven {
+                    name = "OSSRH"
+                    url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2")
+                    credentials {
+                        username = sonatypeUsername
+                        password = sonatypePassword
+                    }
+                }
             }
+        }
+        signing {
+            sign publishing.publications.release
         }
     }
 }
-
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.4.20"
@@ -136,5 +140,3 @@ dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
 
 }
-
-apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'
