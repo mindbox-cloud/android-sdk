@@ -25,8 +25,9 @@ jobs:
           echo -e "\nsigning.password=$signingpassword" >> gradle.properties
           echo -e "\nsigning.keyId=$signingkeyId" >> gradle.properties
           echo -e "\nsigning.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
-          cat gradle.properties
         env:
+          signingpassword: ${{secrets.signingpassword}}
+          signingkeyId: ${{secrets.signingkeyId}}
           SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'

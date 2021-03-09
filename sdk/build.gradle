@@ -139,5 +139,3 @@ dependencies {
     implementation "androidx.multidex:multidex:2.0.1"
 
 }
-
-apply from: 'https://raw.githubusercontent.com/sky-uk/gradle-maven-plugin/master/gradle-mavenizer.gradle'
