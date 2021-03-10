@@ -29,6 +29,7 @@ internal object BackgroundWorkManager {
                 )
                 .setConstraints(
                     Constraints.Builder()
+                        .setRequiresBatteryNotLow(true)
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 ).build()
