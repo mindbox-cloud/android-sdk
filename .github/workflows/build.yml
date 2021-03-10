@@ -6,8 +6,7 @@ on:
       - '**.md'
   push:
     branches:
-      - master
-      - release*
+      - '*'
     paths-ignore:
       - '**.md'
 
@@ -49,8 +48,6 @@ jobs:
   build:
     needs: [unit, lint]
     runs-on: ubuntu-latest 
-    environment:
-      name: Testbed
     steps:
       - uses: actions/checkout@v2
 
