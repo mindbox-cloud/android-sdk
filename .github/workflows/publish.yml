@@ -20,7 +20,7 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: lint check
-        run: ./gradlew check -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+        run: ./gradlew check
 
   unit:
     runs-on: ubuntu-latest 
@@ -37,8 +37,8 @@ jobs:
 
       - name: unit tests
         run: |
-          ./gradlew test -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
-          ./gradlew testDebugUnitTest -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+          ./gradlew test 
+          ./gradlew testDebugUnitTest
 
   build:
     needs: [unit, lint]
@@ -55,7 +55,7 @@ jobs:
         uses: eskatos/gradle-command-action@v1
         with:
           gradle-version: current
-          arguments: build -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+          arguments: build
 
   publish:
     needs: [build]
