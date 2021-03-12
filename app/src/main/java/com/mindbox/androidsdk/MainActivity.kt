@@ -16,12 +16,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openEnteringDataScreen() {
+        val enteringDataFragment = EnteringDataFragment()
+        enteringDataFragment.callback = { data ->
+            openCompleteScreen(data)
+        }
+
         supportFragmentManager.beginTransaction()
             .replace(
                 R.id.fragmentContainer,
-                EnteringDataFragment { data ->
-                    openCompleteScreen(data)
-                })
+                enteringDataFragment
+            )
             .commit()
     }
 

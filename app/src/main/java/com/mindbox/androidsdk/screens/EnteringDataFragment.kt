@@ -11,8 +11,9 @@ import com.mindbox.androidsdk.Prefs
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_entering_data.*
 
-class EnteringDataFragment(private val callback: (InitializeData) -> Unit) :
-    Fragment(R.layout.fragment_entering_data) {
+class EnteringDataFragment: Fragment(R.layout.fragment_entering_data) {
+
+    var callback: ((InitializeData) -> Unit)? = null
 
     companion object {
         private const val DEFAULT_DOMAIN = "api.mindbox.ru"
@@ -79,7 +80,7 @@ class EnteringDataFragment(private val callback: (InitializeData) -> Unit) :
 
             loadProgress.visibility = View.GONE
 
-            callback.invoke(
+            callback?.invoke(
                 InitializeData(
                     notEmptyDomain,
                     endpoint,
