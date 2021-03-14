@@ -18,15 +18,15 @@ internal object BackgroundWorkManager {
         runCatching {
             val request = PeriodicWorkRequest.Builder(
                 MindboxPeriodicEventWorker::class.java,
-                15, TimeUnit.MINUTES
+                1, TimeUnit.HOURS
             )
-                .setInitialDelay(10, TimeUnit.SECONDS)
+                .setInitialDelay(1, TimeUnit.HOURS)
                 .addTag(PERIODIC_WORKER_TAG)
-                .setBackoffCriteria(
-                    BackoffPolicy.LINEAR,
-                    60 * 1000, // 60 sec
-                    TimeUnit.MILLISECONDS
-                )
+//                .setBackoffCriteria(
+//                    BackoffPolicy.LINEAR,
+//                    1,
+//                    TimeUnit.HOURS
+//                )
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiresBatteryNotLow(true)

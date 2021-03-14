@@ -19,11 +19,15 @@ internal fun sendEventsWithResult(
     try {
         Mindbox.initComponents(context)
 
-        val eventKeys = DbManager.getFilteredEventsKeys()
+        var eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             MindboxLogger.d(parent, "Events list is empty")
             return ListenableWorker.Result.success()
         } else {
+
+            if (workerType == WorkerType.PERIODIC_WORKER && eventKeys.size > 1000) {
+                eventKeys = eventKeys.subList(0, 1000)
+            }
 
             sendEvents(context, eventKeys, parent)
 

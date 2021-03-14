@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.random.Random
@@ -66,5 +67,11 @@ class PushokMessagingService : FirebaseMessagingService() {
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
+    }
+
+    fun t(context: Context) {
+        MindboxConfiguration.Builder(context, "domain", "endpoint")
+            .setDeviceUuid("jhgk")
+            .build()
     }
 }
