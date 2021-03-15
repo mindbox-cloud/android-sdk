@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mindbox.androidsdk">
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
     <application
         android:name=".MainApp"
         android:allowBackup="true"
@@ -42,23 +40,6 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="@string/pushok_default_channel" />
 
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="mindbox.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/filepaths" />
-        </provider>
-
     </application>
-
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.SEND"/>
-            <data android:mimeType="*/*" />
-        </intent>
-    </queries>
 
 </manifest>

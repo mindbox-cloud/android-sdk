@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.androidsdk.InitializeData
 import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
+import java.util.*
 
 
 class CompleteDataFragment :
@@ -66,7 +67,7 @@ class CompleteDataFragment :
                         for (i in 1..count) {
                             Mindbox.onPushReceived(
                                 context = requireContext(),
-                                uniqKey = i.toString()//UUID.randomUUID().toString()
+                                uniqKey = UUID.randomUUID().toString()
                             )
                         }
 

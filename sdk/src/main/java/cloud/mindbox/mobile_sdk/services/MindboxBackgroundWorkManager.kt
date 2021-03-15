@@ -8,9 +8,7 @@ import java.util.concurrent.TimeUnit
 
 internal object BackgroundWorkManager {
 
-    private val ONE_TIME_WORKER_TAG =
-        BackgroundWorkManager::class.java.simpleName + MindboxPreferences.hostAppName
-    private val PERIODIC_WORKER_TAG =
+    private val WORKER_TAG =
         BackgroundWorkManager::class.java.simpleName + MindboxPreferences.hostAppName
 
     //todo change intervals
@@ -21,7 +19,7 @@ internal object BackgroundWorkManager {
                 15, TimeUnit.MINUTES
             )
                 .setInitialDelay(15, TimeUnit.MINUTES)
-                .addTag(PERIODIC_WORKER_TAG)
+                .addTag(WORKER_TAG)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiresBatteryNotLow(true)
@@ -30,7 +28,7 @@ internal object BackgroundWorkManager {
                 ).build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                PERIODIC_WORKER_TAG,
+                WORKER_TAG,
                 ExistingPeriodicWorkPolicy.KEEP,
                 request
             )
@@ -42,7 +40,7 @@ internal object BackgroundWorkManager {
         runCatching {
             val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
                 .setInitialDelay(10, TimeUnit.SECONDS)
-                .addTag(ONE_TIME_WORKER_TAG)
+                .addTag(WORKER_TAG)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -52,7 +50,7 @@ internal object BackgroundWorkManager {
             WorkManager
                 .getInstance(context)
                 .beginUniqueWork(
-                    ONE_TIME_WORKER_TAG,
+                    WORKER_TAG,
                     ExistingWorkPolicy.REPLACE,
                     request
                 )

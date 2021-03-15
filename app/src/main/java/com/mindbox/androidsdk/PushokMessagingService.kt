@@ -68,10 +68,4 @@ class PushokMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
     }
-
-    fun t(context: Context) {
-        MindboxConfiguration.Builder(context, "domain", "endpoint")
-            .setDeviceUuid("jhgk")
-            .build()
-    }
 }

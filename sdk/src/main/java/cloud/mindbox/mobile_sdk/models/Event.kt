@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models
 
 import java.util.*
 
-data class Event(
+internal data class Event(
     val transactionId: String = UUID.randomUUID().toString(),
     var enqueueTimestamp: Long = Date().time, // date of event creating
     var eventType: EventType,
@@ -12,7 +12,7 @@ data class Event(
     var requestTime: Long? = null
 )
 
-enum class EventType(val operation: String, val endpoint: String) {
+internal enum class EventType(val operation: String, val endpoint: String) {
     APP_INSTALLED("MobilePush.ApplicationInstalled", "/v3/operations/async"),
     APP_INFO_UPDATED("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"),
     PUSH_DELIVERED("", "/mobile-push/delivered")
