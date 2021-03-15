@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
-import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException

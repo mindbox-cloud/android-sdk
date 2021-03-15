@@ -11,7 +11,6 @@ import com.mindbox.androidsdk.R
 import kotlinx.android.synthetic.main.fragment_complete_data.*
 import java.util.*
 
-
 class CompleteDataFragment :
     Fragment(R.layout.fragment_complete_data) {
 

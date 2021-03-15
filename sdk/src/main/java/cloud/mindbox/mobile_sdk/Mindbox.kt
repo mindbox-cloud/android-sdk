@@ -1,11 +1,9 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
-import android.net.Uri
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError

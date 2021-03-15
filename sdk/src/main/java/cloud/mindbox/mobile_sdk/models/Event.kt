@@ -7,9 +7,7 @@ internal data class Event(
     var enqueueTimestamp: Long = Date().time, // date of event creating
     var eventType: EventType,
     var additionalFields: HashMap<String, String>?,
-    val body: String?, //json
-    var iSuccess: Boolean? = null,
-    var requestTime: Long? = null
+    val body: String? //json
 )
 
 internal enum class EventType(val operation: String, val endpoint: String) {

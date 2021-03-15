@@ -11,7 +11,6 @@ internal object BackgroundWorkManager {
     private val WORKER_TAG =
         BackgroundWorkManager::class.java.simpleName + MindboxPreferences.hostAppName
 
-    //todo change intervals
     fun startPeriodicService(context: Context) {
         runCatching {
             val request = PeriodicWorkRequest.Builder(
