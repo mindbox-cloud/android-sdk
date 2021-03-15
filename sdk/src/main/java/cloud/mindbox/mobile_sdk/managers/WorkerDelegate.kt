@@ -6,7 +6,9 @@ import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.services.WorkerType
+import java.util.*
 import java.util.concurrent.CountDownLatch
 
 internal fun sendEventsWithResult(
@@ -29,16 +31,20 @@ internal fun sendEventsWithResult(
                 eventKeys = eventKeys.subList(0, 1000)
             }
 
+            MindboxLogger.d(parent, "Will be sended ${eventKeys.size}")
+
             sendEvents(context, eventKeys, parent)
 
-            return when (workerType) {
-                WorkerType.ONE_TIME_WORKER -> ListenableWorker.Result.success()
-                WorkerType.PERIODIC_WORKER ->
-                    if (!DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
-                        ListenableWorker.Result.retry()
-                    } else {
+            return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
+                ListenableWorker.Result.success()
+            } else {
+                when (workerType) {
+                    WorkerType.ONE_TIME_WORKER -> {
+                        BackgroundWorkManager.startPeriodicService(context)
                         ListenableWorker.Result.success()
                     }
+                    WorkerType.PERIODIC_WORKER -> ListenableWorker.Result.retry()
+                }
             }
         }
     } catch (e: Exception) {
@@ -68,6 +74,7 @@ private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
                 if (isSended) {
                     DbManager.removeEventFromQueue(eventKey)
                 }
+
                 countDownLatch.countDown()
             }
 
