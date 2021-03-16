@@ -50,7 +50,7 @@ internal object BackgroundWorkManager {
                 .getInstance(context)
                 .beginUniqueWork(
                     WORKER_TAG,
-                    ExistingWorkPolicy.REPLACE,
+                    ExistingWorkPolicy.KEEP,
                     request
                 )
                 .enqueue()

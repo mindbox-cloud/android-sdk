@@ -5,7 +5,6 @@ import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
-import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.services.WorkerType
 import java.util.*
 import java.util.concurrent.CountDownLatch
@@ -37,13 +36,7 @@ internal fun sendEventsWithResult(
             return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
                 ListenableWorker.Result.success()
             } else {
-                when (workerType) {
-                    WorkerType.ONE_TIME_WORKER -> {
-                        BackgroundWorkManager.startPeriodicService(context)
-                        ListenableWorker.Result.success()
-                    }
-                    WorkerType.PERIODIC_WORKER -> ListenableWorker.Result.retry()
-                }
+                ListenableWorker.Result.retry()
             }
         }
     } catch (e: Exception) {
