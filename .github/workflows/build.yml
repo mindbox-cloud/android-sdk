@@ -6,8 +6,7 @@ on:
       - '**.md'
   push:
     branches:
-      - master
-      - release*
+      - '*'
     paths-ignore:
       - '**.md'
 
@@ -17,75 +16,48 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
+          java-version: 8
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
       - name: lint check
-        run: ./gradlew --no-daemon check
+        run: ./gradlew check
 
-  test:
-    needs: lint
+  unit:
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
+          java-version: 8
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
       - name: unit tests
-        run: ./gradlew --no-daemon test
+        run: |
+          ./gradlew test
+          ./gradlew testDebugUnitTest
 
   build:
-    needs: [test, lint]
+    needs: [unit, lint]
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK 8
         uses: actions/setup-java@v1
         with:
-          java-version: 1.8
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+          java-version: 8
 
       - name: build project
-        run: |
-          ./gradlew --no-daemon clean
-          ./gradlew --no-daemon build
-          ./gradlew --no-daemon assembleDebug
-          ./gradlew --no-daemon testDebugUnitTest
-
-#   upload:
-#     needs: [build]
-#     runs-on: ubuntu-latest
-#     steps:
-#     - uses: actions/checkout@v2
-
-#     - name: Upload package to Bintray
-#       uses: bpicode/github-action-upload-bintray@master
-#       with:
-#         file: ./path/to/example-package_1.0_amd64.deb
-#         api_user: example-user
-#         api_key: ${{ secrets.BINTRAY_API_KEY }} # An API key can be obtained from the user profile page.
-#         gpg_passphrase: ${{ secrets.BINTRAY_GPG_PASSPHRASE }} # Optional, for this to work Bintray requires a GPG public/private keypair configured for the repository owner (individual or organization).
-#         repository_user: example-user
-#         repository: my_repository
-#         package: example-package
-#         version: '1.0'
-#         upload_path: pool/main/m # Typical for debian repository layout
-#         publish: 1
-#         calculate_metadata: true # Schedule metadata calculation after upload
-#         deb_distribution: stretch,buster,sid
-#         deb_component: main
-#         deb_architecture: amd64
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: current
+          arguments: build
