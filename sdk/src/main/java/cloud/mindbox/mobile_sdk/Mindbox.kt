@@ -132,7 +132,6 @@ object Mindbox {
             }
 
             MindboxEventManager.sendEventsIfExist(context)
-            context.schedulePeriodicService()
         }.logOnException()
     }
 
