@@ -1,9 +1,6 @@
 name: SDK CI
 
 on:
-  pull_request:
-    paths-ignore:
-      - '**.md'
   push:
     branches:
       - '*'
