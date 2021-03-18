@@ -3,11 +3,26 @@ name: SDK CI
 on:
   push:
     branches:
-      - 'release*'
-    paths-ignore:
-      - '**.md'
+      - '*'
+    tags-ignore:
+      - '*'
 
 jobs:
+  slackNotification:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: ${{job.name}} started
+      uses: rtCamp/action-slack-notify@v2
+      env:
+      #UIT Slack channel and webhook url are set via GitHub secrets for test purposes. They should be replaced with MindBox credentials.
+        SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_USERNAME: MindBox-bot
+        SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
+        SLACK_COLOR: ${{job.status}}
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -57,16 +72,13 @@ jobs:
           gradle build
           gradle assembleDebug
 
-  slackNotification:
-    needs: [build]
-    name: Slack Notification
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Slack Notification
-      uses: rtCamp/action-slack-notify@v2
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_USERNAME: MindBox-bot
-        SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
-        SLACK_COLOR: ${{job.status}}
+      - name: Job status notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+        #UIT Slack channel and webhook url are set via GitHub secrets for test purposes. They should be replaced with MindBox credentials.
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: 'SDK is available for public release https://oss.sonatype.org/#stagingRepositories'
+          SLACK_USERNAME: MindBox-bot
+          SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
+          SLACK_COLOR: ${{job.status}}
