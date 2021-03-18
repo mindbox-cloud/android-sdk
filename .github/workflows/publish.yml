@@ -4,25 +4,11 @@ on:
   push:
     branch:
       - 'master'
-      - 'release-*'
+      - 'release*'
     tags-ignore:
       - '*'
 
 jobs:
-  slackNotification:
-    name: Slack Notification
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: ${{job.name}} started
-      uses: rtCamp/action-slack-notify@v2
-      env:
-      #UIT Slack channel and webhook url are set via GitHub secrets for test purposes. They should be replaced with MindBox credentials.
-        SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_USERNAME: MindBox-bot
-        SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
-        SLACK_COLOR: ${{job.status}}
 
   lint:
     runs-on: ubuntu-latest
