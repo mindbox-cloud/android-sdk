@@ -4,9 +4,7 @@ on:
   push:
     branch:
       - 'master'
-      - 'release*'
-    tags-ignore:
-      - '*'
+      - 'release-*'
 
 jobs:
 
