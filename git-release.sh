@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 version=$(cat gradle.properties |grep SDK_VERSION_NAME | cut -f2 -d"=")
 text=$1
 token=$2
@@ -19,10 +19,5 @@ generate_post_data()
 }
 EOF
 }
-echo "Setting tags"
-git tag -d $version
-git push --delete origin $version
-git tag $version
-git push origin $version
 echo "Create release $version for repo: $repo_full_name branch: $branch"
-curl --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases?access_token=$token"
+curl --user "JitPack-IT:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
