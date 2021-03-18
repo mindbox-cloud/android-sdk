@@ -94,6 +94,7 @@ jobs:
           arguments: test publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
 
   slackNotification:
+    needs: [pusblish]
     name: Slack Notification
     runs-on: ubuntu-latest
     steps:

@@ -58,6 +58,7 @@ jobs:
           gradle assembleDebug
 
   slackNotification:
+    needs: [pusblish]
     name: Slack Notification
     runs-on: ubuntu-latest
     steps:
