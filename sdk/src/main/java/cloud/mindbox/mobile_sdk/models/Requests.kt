@@ -2,8 +2,6 @@ package cloud.mindbox.mobile_sdk.models
 
 import android.os.Build
 import cloud.mindbox.mobile_sdk.*
-import cloud.mindbox.mobile_sdk.MindboxLogger
-import cloud.mindbox.mobile_sdk.logOnException
 import com.android.volley.NetworkResponse
 import com.android.volley.ParseError
 import com.android.volley.Response
@@ -73,9 +71,13 @@ internal data class MindboxRequest(
 
                 logBodyResponse(json)
 
-                return Response.success(
-                    JSONObject("{data: $json}"), HttpHeaderParser.parseCacheHeaders(response)
-                )
+                val dataJson = "{data: ${if (json.isNotEmpty()) json else null}}"
+
+                val cacheEntry = if (response != null) {
+                    HttpHeaderParser.parseCacheHeaders(response)
+                } else null
+
+                return Response.success(JSONObject(dataJson), cacheEntry)
             } catch (e: UnsupportedEncodingException) {
 
                 return Response.error(ParseError(e))
@@ -122,7 +124,7 @@ internal data class MindboxRequest(
             response?.allHeaders?.forEach { header ->
                 MindboxLogger.d(this, "${header.name}: ${header.value}")
             }
-        }.returnOnException {  }
+        }.returnOnException { }
     }
 
     private fun logBodyResponse(json: String?) {

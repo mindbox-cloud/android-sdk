@@ -1,11 +1,9 @@
 package cloud.mindbox.mobile_sdk.models
 
 import java.util.*
-import kotlin.collections.HashMap
 
 internal data class Event(
-    val transactionId: String= UUID.randomUUID().toString(),
-    var dateTimeOffset: Long = -1L,
+    val transactionId: String = UUID.randomUUID().toString(),
     var enqueueTimestamp: Long = Date().time, // date of event creating
     var eventType: EventType,
     var additionalFields: HashMap<String, String>?,
