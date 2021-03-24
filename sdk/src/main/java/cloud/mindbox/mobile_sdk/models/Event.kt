@@ -6,14 +6,15 @@ internal data class Event(
     val transactionId: String = UUID.randomUUID().toString(),
     var enqueueTimestamp: Long = Date().time, // date of event creating
     var eventType: EventType,
-    var additionalFields: HashMap<String, String>?,
-    val body: String? //json
+    var additionalFields: HashMap<String, String>? = null,
+    var body: String? = null //json
 )
 
 internal enum class EventType(val operation: String, val endpoint: String) {
     APP_INSTALLED("MobilePush.ApplicationInstalled", "/v3/operations/async"),
     APP_INFO_UPDATED("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"),
-    PUSH_DELIVERED("", "/mobile-push/delivered")
+    PUSH_DELIVERED("", "/mobile-push/delivered"),
+    PUSH_CLICKED("MobilePush.TrackClick", "/v3/operations/async")
 }
 
 internal enum class EventParameters(val fieldName: String) {
