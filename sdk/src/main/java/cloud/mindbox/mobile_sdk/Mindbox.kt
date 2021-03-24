@@ -88,6 +88,26 @@ object Mindbox {
     }
 
     /**
+     * Creates and deliveries event of "Push clicked"
+     *
+     * @param context used to initialize the main tools
+     * @param uniqKey - unique identifier of push notification
+     * @param buttonUniqKey - unique identifier of push notification button
+     */
+    fun pushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+        runCatching {
+            initComponents(context)
+//            MindboxEventManager.pushDelivered(context, uniqKey)
+
+            if (!MindboxPreferences.isFirstInitialize) {
+                mindboxScope.launch {
+                    updateAppInfo(context)
+                }
+            }
+        }.logOnException()
+    }
+
+    /**
      * Initializes the SDK for further work.
      * We recommend calling it in onCreate on an application class
      *
