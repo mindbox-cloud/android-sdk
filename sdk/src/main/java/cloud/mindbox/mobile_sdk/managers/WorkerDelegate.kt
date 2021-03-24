@@ -2,11 +2,11 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import androidx.work.ListenableWorker
-import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.services.WorkerType
+import java.util.*
 import java.util.concurrent.CountDownLatch
 
 internal fun sendEventsWithResult(
@@ -19,22 +19,24 @@ internal fun sendEventsWithResult(
     try {
         Mindbox.initComponents(context)
 
-        val eventKeys = DbManager.getFilteredEventsKeys()
+        var eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             MindboxLogger.d(parent, "Events list is empty")
             return ListenableWorker.Result.success()
         } else {
 
+            if (workerType == WorkerType.PERIODIC_WORKER && eventKeys.size > 1000) {
+                eventKeys = eventKeys.subList(0, 1000)
+            }
+
+            MindboxLogger.d(parent, "Will be sended ${eventKeys.size}")
+
             sendEvents(context, eventKeys, parent)
 
-            return when (workerType) {
-                WorkerType.ONE_TIME_WORKER -> ListenableWorker.Result.success()
-                WorkerType.PERIODIC_WORKER ->
-                    if (!DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
-                        ListenableWorker.Result.retry()
-                    } else {
-                        ListenableWorker.Result.success()
-                    }
+            return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
+                ListenableWorker.Result.success()
+            } else {
+                ListenableWorker.Result.retry()
             }
         }
     } catch (e: Exception) {
@@ -64,6 +66,7 @@ private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
                 if (isSended) {
                     DbManager.removeEventFromQueue(eventKey)
                 }
+
                 countDownLatch.countDown()
             }
 
