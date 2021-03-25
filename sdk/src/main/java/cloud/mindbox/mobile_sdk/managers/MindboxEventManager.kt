@@ -18,7 +18,6 @@ internal object MindboxEventManager {
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.APP_INSTALLED,
-                    additionalFields = null,
                     body = gson.toJson(initData)
                 )
             )
@@ -30,7 +29,6 @@ internal object MindboxEventManager {
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.APP_INFO_UPDATED,
-                    additionalFields = null,
                     body = gson.toJson(initData)
                 )
             )
@@ -45,8 +43,18 @@ internal object MindboxEventManager {
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.PUSH_DELIVERED,
-                    additionalFields = fields,
-                    body = null
+                    additionalFields = fields
+                )
+            )
+        }.logOnException()
+    }
+
+    fun pushClicked(context: Context, clickData: TrackClickData) {
+        runCatching {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.PUSH_CLICKED,
+                    body = gson.toJson(clickData)
                 )
             )
         }.logOnException()

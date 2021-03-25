@@ -29,7 +29,8 @@ internal object GatewayManager {
 
         when (event.eventType) {
             EventType.APP_INFO_UPDATED,
-            EventType.APP_INSTALLED -> {
+            EventType.APP_INSTALLED,
+            EventType.PUSH_CLICKED -> {
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
             EventType.PUSH_DELIVERED -> {
@@ -87,7 +88,8 @@ internal object GatewayManager {
     private fun getRequestType(eventType: EventType): Int {
         return when (eventType) {
             EventType.APP_INSTALLED,
-            EventType.APP_INFO_UPDATED -> Request.Method.POST
+            EventType.APP_INFO_UPDATED,
+            EventType.PUSH_CLICKED -> Request.Method.POST
             EventType.PUSH_DELIVERED -> Request.Method.GET
         }
     }
