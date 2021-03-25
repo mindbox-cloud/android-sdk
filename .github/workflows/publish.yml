@@ -95,7 +95,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           body: Automatically generated Pre-release
           draft: false
-          prerelease: false
+          prerelease: true
         
 
       - name: Publish to Sonatype
