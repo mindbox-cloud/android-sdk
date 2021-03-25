@@ -85,7 +85,17 @@ jobs:
 
       - name: Publish to Jitpack
       # To create release in Jitpack we need to create Github release
-        run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
+      # run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: Automatically generated Pre-release
+          draft: false
+          prerelease: false
         
 
       - name: Publish to Sonatype
@@ -97,7 +107,6 @@ jobs:
       - name: Job status notification
         uses: rtCamp/action-slack-notify@v2
         env:
-        #UIT Slack channel and webhook url are set via GitHub secrets for test purposes. They should be replaced with MindBox credentials.
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_MESSAGE: 'SDK is available for public release https://oss.sonatype.org/#stagingRepositories'
