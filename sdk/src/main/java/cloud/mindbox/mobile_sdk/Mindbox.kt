@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
+import cloud.mindbox.mobile_sdk.models.TrackClickData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.ValidationError
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -78,6 +79,26 @@ object Mindbox {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushDelivered(context, uniqKey)
+
+            if (!MindboxPreferences.isFirstInitialize) {
+                mindboxScope.launch {
+                    updateAppInfo(context)
+                }
+            }
+        }.logOnException()
+    }
+
+    /**
+     * Creates and deliveries event of "Push clicked"
+     *
+     * @param context used to initialize the main tools
+     * @param uniqKey - unique identifier of push notification
+     * @param buttonUniqKey - unique identifier of push notification button
+     */
+    fun pushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+        runCatching {
+            initComponents(context)
+            MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
 
             if (!MindboxPreferences.isFirstInitialize) {
                 mindboxScope.launch {
