@@ -13,3 +13,8 @@ internal data class UpdateData(
     val isTokenAvailable: Boolean,
     val isNotificationsEnabled: Boolean
 )
+
+internal data class TrackClickData(
+    var messageUniqueKey: String,
+    var buttonUniqueKey: String
+)
