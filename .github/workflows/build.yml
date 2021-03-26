@@ -1,14 +1,12 @@
 name: SDK CI
 
 on:
-  pull_request:
-    paths-ignore:
-      - '**.md'
   push:
-    branches:
+    branches-ignore:
+      - 'master'
+      - 'release-*'
+    tags-ignore:
       - '*'
-    paths-ignore:
-      - '**.md'
 
 jobs:
   lint:
@@ -25,7 +23,7 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: lint check
-        run: ./gradlew check
+        run: gradle check
 
   unit:
     runs-on: ubuntu-latest 
@@ -42,11 +40,10 @@ jobs:
 
       - name: unit tests
         run: |
-          ./gradlew test
-          ./gradlew testDebugUnitTest
+          gradle test
+          gradle testDebugUnitTest
 
   build:
-    needs: [unit, lint]
     runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v2
@@ -57,7 +54,6 @@ jobs:
           java-version: 8
 
       - name: build project
-        uses: eskatos/gradle-command-action@v1
-        with:
-          gradle-version: current
-          arguments: build
+        run: |
+          gradle build
+          gradle assembleDebug
