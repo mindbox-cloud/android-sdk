@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
@@ -44,7 +43,12 @@ internal object GatewayManager {
         return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
-    fun sendEvent(context: Context, configuration: MindboxConfiguration, event: Event, isSuccess: (Boolean) -> Unit) {
+    fun sendEvent(
+        context: Context,
+        configuration: MindboxConfiguration,
+        event: Event,
+        isSuccess: (Boolean) -> Unit
+    ) {
         try {
 
             val requestType: Int = getRequestType(event.eventType)
@@ -76,7 +80,9 @@ internal object GatewayManager {
                         isSuccess.invoke(false)
                     }
                 }
-            )
+            ).apply {
+                setShouldCache(false)
+            }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
