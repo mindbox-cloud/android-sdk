@@ -6,6 +6,9 @@ import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import com.android.volley.DefaultRetryPolicy
+import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+import com.android.volley.DefaultRetryPolicy.DEFAULT_MAX_RETRIES
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import org.json.JSONException
@@ -82,6 +85,7 @@ internal object GatewayManager {
                 }
             ).apply {
                 setShouldCache(false)
+                retryPolicy = DefaultRetryPolicy(60000, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
