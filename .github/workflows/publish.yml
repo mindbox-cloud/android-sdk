@@ -83,19 +83,19 @@ jobs:
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
-      - name: Publish to Jitpack
+      # - name: Publish to Jitpack
       # To create release in Jitpack we need to create Github release
       # run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: Automatically generated Pre-release
-          draft: false
-          prerelease: true
+        # id: create_release
+        # uses: actions/create-release@v1
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        # with:
+        #   tag_name: ${{ github.ref }}
+        #   release_name: Release ${{ github.ref }}
+        #   body: Automatically generated Pre-release
+        #   draft: false
+        #   prerelease: true
         
 
       - name: Publish to Sonatype
