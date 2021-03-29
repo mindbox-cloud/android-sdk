@@ -29,8 +29,13 @@ object Mindbox {
     /**
      * Returns token of Firebase Messaging Service used by SDK
      */
-    fun getFmsToken(): String? = runCatching { return MindboxPreferences.firebaseToken }
-        .returnOnException { null }
+    fun getFmsToken(callback: (String?) -> Unit) {
+        if (Hawk.isBuilt() && MindboxPreferences.firebaseToken != null) {
+            callback.invoke(MindboxPreferences.firebaseToken)
+        } else {
+            fmsTokenCallbacks[Date().time.toString()] = callback
+        }
+    }
 
     /**
      * Returns date of FMS token saving
@@ -49,10 +54,8 @@ object Mindbox {
      * Returns deviceUUID used by SDK
      */
     fun getDeviceUuid(callback: (String) -> Unit) {
-
-        val value = MindboxPreferences.deviceUuid
-        if (value != null) {
-            callback.invoke(value)
+        if (Hawk.isBuilt() && MindboxPreferences.deviceUuid != null) {
+            callback.invoke(MindboxPreferences.deviceUuid!!)
         } else {
             deviceUuidCallbacks[Date().time.toString()] = callback
         }
