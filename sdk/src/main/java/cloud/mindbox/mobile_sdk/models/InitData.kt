@@ -15,6 +15,6 @@ internal data class UpdateData(
 )
 
 internal data class TrackClickData(
-    var messageUniqueKey: String,
-    var buttonUniqueKey: String
+    val messageUniqueKey: String,
+    val buttonUniqueKey: String
 )

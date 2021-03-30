@@ -3,11 +3,11 @@ package cloud.mindbox.mobile_sdk.models
 import java.util.*
 
 internal data class Event(
+    val eventType: EventType,
     val transactionId: String = UUID.randomUUID().toString(),
-    var enqueueTimestamp: Long = Date().time, // date of event creating
-    var eventType: EventType,
-    var additionalFields: HashMap<String, String>? = null,
-    var body: String? = null //json
+    val enqueueTimestamp: Long = Date().time, // date of event creating
+    val additionalFields: HashMap<String, String>? = null,
+    val body: String? = null //json
 )
 
 internal enum class EventType(val operation: String, val endpoint: String) {

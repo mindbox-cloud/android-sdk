@@ -53,9 +53,14 @@ object Mindbox {
     /**
      * Returns deviceUUID used by SDK
      */
-    fun getDeviceUuid(callback: (String) -> Unit) {
-        if (Hawk.isBuilt() && MindboxPreferences.deviceUuid != null) {
-            callback.invoke(MindboxPreferences.deviceUuid!!)
+    fun getDeviceUuid(context: Context, callback: (String) -> Unit) {
+
+        initComponents(context)
+
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration != null && configuration.deviceUuid.isNotEmpty()) {
+            callback.invoke(configuration.deviceUuid)
         } else {
             deviceUuidCallbacks[Date().time.toString()] = callback
         }
@@ -162,11 +167,10 @@ object Mindbox {
                     firstInitialization(context, configuration)
                 } else {
                     updateAppInfo(context)
+                    MindboxEventManager.sendEventsIfExist(context)
                 }
             }
-
-            MindboxEventManager.sendEventsIfExist(context)
-        }.logOnException()
+        }.returnOnException { }
     }
 
     internal fun initComponents(context: Context) {
@@ -176,10 +180,8 @@ object Mindbox {
     }
 
     private suspend fun initDeviceId(context: Context): String {
-        return runCatching {
-            val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-            return adid.await()
-        }.returnOnException { "" }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        return adid.await()
     }
 
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
@@ -205,8 +207,6 @@ object Mindbox {
 
             MindboxPreferences.isFirstInitialize = false
             MindboxPreferences.firebaseToken = firebaseToken
-            MindboxPreferences.installationId = configuration.installationId
-            MindboxPreferences.deviceUuid = configuration.deviceUuid
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
 
             deliverDeviceUuid(configuration.deviceUuid)

@@ -45,34 +45,31 @@ internal object IdentifierManager {
     }
 
     fun getAdsIdentification(context: Context): String {
-        return try {
+        var id = ""
+        try {
             val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
             if (!advertisingIdInfo.isLimitAdTrackingEnabled && !advertisingIdInfo.id.isNullOrEmpty()) {
-                val id = advertisingIdInfo.id
+                id = advertisingIdInfo.id
                 MindboxLogger.d(
                     this, "Received from AdvertisingIdClient: device uuid - $id"
                 )
-                id
             } else {
-                val id = generateRandomUuid()
                 MindboxLogger.d(
                     this,
                     "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
                 )
-                id
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            val id = generateRandomUuid()
-            MindboxLogger.d(
+        } catch (exception: Exception) {
+            MindboxLogger.e(
                 this,
-                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id"
+                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from Random - $id",
+                exception
             )
-            id
+        } finally {
+            return if (id.isNotEmpty()) id
+            else generateRandomUuid()
         }
     }
 
-    private fun generateRandomUuid() = runCatching {
-        return UUID.randomUUID().toString()
-    }.returnOnException { "" }
+    private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
