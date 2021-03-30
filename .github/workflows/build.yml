@@ -2,11 +2,14 @@ name: SDK CI
 
 on:
   push:
-    branches-ignore:
-      - 'master'
-      - 'release-*'
-    tags-ignore:
+    branches:
       - '*'
+      - '!master'
+      - '!release-**'
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - '**.md'
 
 jobs:
   lint:
