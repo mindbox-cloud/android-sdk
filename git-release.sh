@@ -21,7 +21,7 @@ EOF
 }
 set-tag(){
   set-local-tag
-  #set-remote-tag
+  git push origin $version
 }
 set-local-tag(){
 if [ $(git tag -l | grep $version) ]; then
@@ -46,6 +46,5 @@ echo "Release settings: $(generate_post_data)"
 post-request(){
   curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
 }
-git push origin $version
 set-tag
 post-request
