@@ -5,11 +5,8 @@ on:
     branch:
       - 'master'
       - 'release-*'
-    tags-ignore:
-      - '*'
 
 jobs:
-
   lint:
     runs-on: ubuntu-latest
     steps:
