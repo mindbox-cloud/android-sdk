@@ -41,7 +41,7 @@ internal fun sendEventsWithResult(
                 eventKeys = eventKeys.subList(0, 1000)
             }
 
-            MindboxLogger.d(parent, "Will be sended ${eventKeys.size}")
+            MindboxLogger.d(parent, "Will be sent ${eventKeys.size}")
 
             sendEvents(context, eventKeys, configuration, parent)
 
