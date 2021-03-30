@@ -2,8 +2,6 @@ name: SDK publish
 
 on:
   push:
-    tags-ignore:
-      - '**'
     branch:
       - 'master'
       - 'release-**'
