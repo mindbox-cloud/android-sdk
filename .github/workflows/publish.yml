@@ -83,9 +83,9 @@ jobs:
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
-      # - name: Publish to Jitpack
+      - name: Publish to Jitpack
       # To create release in Jitpack we need to create Github release
-        # run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
+        run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
         # id: create_release
         # uses: actions/create-release@v1
         # env:
