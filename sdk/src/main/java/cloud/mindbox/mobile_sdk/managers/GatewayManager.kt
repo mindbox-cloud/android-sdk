@@ -17,6 +17,8 @@ import java.util.*
 
 internal object GatewayManager {
 
+    private const val TIMEOUT_DELAY = 60000
+
     private fun buildEventUrl(
         configuration: MindboxConfiguration,
         event: Event
@@ -83,7 +85,7 @@ internal object GatewayManager {
                 }
             ).apply {
                 setShouldCache(false)
-                retryPolicy = DefaultRetryPolicy(60000, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
