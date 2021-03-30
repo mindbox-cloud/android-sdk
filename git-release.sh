@@ -46,5 +46,6 @@ echo "Release settings: $(generate_post_data)"
 post-request(){
   curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
 }
+git push origin $version
 set-tag
 post-request
