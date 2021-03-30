@@ -165,7 +165,7 @@ object Mindbox {
                     MindboxEventManager.sendEventsIfExist(context)
                 }
             }
-        }.returnOnException {  }
+        }.returnOnException { }
     }
 
     internal fun initComponents(context: Context) {
@@ -175,10 +175,8 @@ object Mindbox {
     }
 
     private suspend fun initDeviceId(context: Context): String {
-        return runCatching {
-            val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-            return adid.await()
-        }.returnOnException { "" }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        return adid.await()
     }
 
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
