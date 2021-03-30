@@ -72,7 +72,5 @@ internal object IdentifierManager {
         }
     }
 
-    private fun generateRandomUuid() = runCatching {
-        return UUID.randomUUID().toString()
-    }.returnOnException { "" }
+    private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
