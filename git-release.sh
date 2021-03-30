@@ -21,7 +21,7 @@ EOF
 }
 set-tag(){
   set-local-tag
-  git push https://$user:$token@github.com/$repo_full_name.git $version
+  set-remote-tag
 }
 set-local-tag(){
 if [ $(git tag -l | grep $version) ]; then
