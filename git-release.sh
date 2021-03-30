@@ -35,7 +35,7 @@ fi
 set-remote-tag(){
 if [ $(git ls-remote --tags https://$user:$token@github.com/$repo_full_name.git | cut -f3 -d"/" | grep $version) ]; then
     echo "Remote tag cleanup"
-    git push --delete origin $version
+    git push --delete https://$user:$token@github.com/$repo_full_name.git $version
     git push https://$user:$token@github.com/$repo_full_name.git $version
 else
     git push https://$user:$token@github.com/$repo_full_name.git $version
