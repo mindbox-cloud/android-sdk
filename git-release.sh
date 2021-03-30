@@ -4,7 +4,7 @@ version=$(cat gradle.properties |grep SDK_VERSION_NAME | cut -f2 -d"=")
 text=$1
 token=$2
 user=$3
-branch=$(git rev-parse --abbrev-ref HEAD)
+branch=${GITHUB_REF##*/}
 repo_full_name=$(git config --get remote.origin.url | sed 's/.*:\/\/github.com\///;s/.git$//' | cut -f2 -d":")
 generate_post_data()
 {
