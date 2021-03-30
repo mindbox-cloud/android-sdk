@@ -162,11 +162,10 @@ object Mindbox {
                     firstInitialization(context, configuration)
                 } else {
                     updateAppInfo(context)
+                    MindboxEventManager.sendEventsIfExist(context)
                 }
             }
-
-            MindboxEventManager.sendEventsIfExist(context)
-        }.logOnException()
+        }.returnOnException {  }
     }
 
     internal fun initComponents(context: Context) {
