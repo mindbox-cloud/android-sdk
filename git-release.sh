@@ -19,6 +19,32 @@ generate_post_data()
 }
 EOF
 }
+set-tag(){
+  set-local-tag
+  set-remote-tag
+}
+set-local-tag(){
+if [ $(git tag -l | grep $version) ]; then
+    echo "Local tag cleanup"
+    git tag -d $version
+    git tag $version
+else
+    git tag $version
+fi
+}
+set-remote-tag(){
+if [ $(git ls-remote --tags origin | cut -f3 -d"/" | grep $version) ]; then
+    echo "Remote tag cleanup"
+    git push --delete origin $version
+    git push origin $version
+else
+    git push origin $version
+fi
+}
 echo "Create release $version for repo: $repo_full_name branch: $branch"
 echo "Release settings: $(generate_post_data)"
-curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
+post-request(){
+  curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
+}
+set-tag
+post-request
