@@ -21,7 +21,7 @@ EOF
 }
 set-tag(){
   set-local-tag
-  git push origin $version
+  git push https://$user:$token@https://github.com/$repo_full_name.git $version
 }
 set-local-tag(){
 if [ $(git tag -l | grep $version) ]; then
@@ -33,12 +33,12 @@ else
 fi
 }
 set-remote-tag(){
-if [ $(git ls-remote --tags origin | cut -f3 -d"/" | grep $version) ]; then
+if [ $(git ls-remote --tags https://$user:$token@https://github.com/$repo_full_name.git | cut -f3 -d"/" | grep $version) ]; then
     echo "Remote tag cleanup"
     git push --delete origin $version
-    git push origin $version
+    git push https://$user:$token@https://github.com/$repo_full_name.git $version
 else
-    git push origin $version
+    git push https://$user:$token@https://github.com/$repo_full_name.git $version
 fi
 }
 echo "Create release $version for repo: $repo_full_name branch: $branch"
