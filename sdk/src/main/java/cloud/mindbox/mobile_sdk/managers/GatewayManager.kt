@@ -41,8 +41,6 @@ internal object GatewayManager {
             }
         }
 
-        urlQueries.toUrlQueryString()
-
         return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
