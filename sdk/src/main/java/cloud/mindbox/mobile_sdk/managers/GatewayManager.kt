@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-import com.android.volley.DefaultRetryPolicy.DEFAULT_MAX_RETRIES
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import org.json.JSONException
@@ -18,6 +17,7 @@ import java.util.*
 internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
+    private const val MAX_RETRIES = 0
 
     private fun buildEventUrl(
         configuration: MindboxConfiguration,
@@ -60,14 +60,14 @@ internal object GatewayManager {
 
             val request = MindboxRequest(requestType, url, configuration, jsonRequest,
                 {
-                    MindboxLogger.d(this, "Event from background successful sended")
+                    MindboxLogger.d(this, "Event from background successful sent")
                     isSuccess.invoke(true)
                 }, { volleyError ->
                     try {
                         when (val result = parseResponse(volleyError.networkResponse)) {
                             is MindboxResponse.SuccessResponse<*>,
                             is MindboxResponse.BadRequest -> {
-                                MindboxLogger.d(this, "Event from background successful sended")
+                                MindboxLogger.d(this, "Event from background successful sent")
                                 isSuccess.invoke(true)
                             }
                             is MindboxResponse.Error -> {
@@ -85,7 +85,7 @@ internal object GatewayManager {
                 }
             ).apply {
                 setShouldCache(false)
-                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
