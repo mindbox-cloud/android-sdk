@@ -60,14 +60,14 @@ internal object GatewayManager {
 
             val request = MindboxRequest(requestType, url, configuration, jsonRequest,
                 {
-                    MindboxLogger.d(this, "Event from background successful sended")
+                    MindboxLogger.d(this, "Event from background successful sent")
                     isSuccess.invoke(true)
                 }, { volleyError ->
                     try {
                         when (val result = parseResponse(volleyError.networkResponse)) {
                             is MindboxResponse.SuccessResponse<*>,
                             is MindboxResponse.BadRequest -> {
-                                MindboxLogger.d(this, "Event from background successful sended")
+                                MindboxLogger.d(this, "Event from background successful sent")
                                 isSuccess.invoke(true)
                             }
                             is MindboxResponse.Error -> {
