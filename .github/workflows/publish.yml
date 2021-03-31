@@ -2,13 +2,13 @@ name: SDK publish
 
 on:
   push:
-    branch:
+    branches:
       - 'master'
       - 'release-**'
     paths-ignore:
       - '**.md'
     tags-ignore:
-      - 1.*
+      - '**'
 
 jobs:
   lint:
