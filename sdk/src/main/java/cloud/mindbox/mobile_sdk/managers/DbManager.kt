@@ -72,7 +72,7 @@ internal object DbManager {
         runCatching {
             try {
                 eventsBook.delete(key)
-                MindboxLogger.d(this, "Event $key was deleted to queue")
+                MindboxLogger.d(this, "Event $key was deleted from queue")
             } catch (exception: PaperDbException) {
                 MindboxLogger.e(this, "Error deleting item from database", exception)
             }

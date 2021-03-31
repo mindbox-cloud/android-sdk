@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import androidx.work.Configuration
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.services.WorkerType
@@ -19,6 +21,16 @@ internal fun sendEventsWithResult(
     try {
         Mindbox.initComponents(context)
 
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration == null) {
+            MindboxLogger.e(
+                parent,
+                "MindboxConfiguration was not initialized",
+            )
+            return ListenableWorker.Result.failure()
+        }
+
         var eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             MindboxLogger.d(parent, "Events list is empty")
@@ -31,7 +43,7 @@ internal fun sendEventsWithResult(
 
             MindboxLogger.d(parent, "Will be sended ${eventKeys.size}")
 
-            sendEvents(context, eventKeys, parent)
+            sendEvents(context, eventKeys, configuration, parent)
 
             return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
                 ListenableWorker.Result.success()
@@ -45,17 +57,8 @@ internal fun sendEventsWithResult(
     }
 }
 
-private fun sendEvents(context: Context, eventKeys: List<String>, parent: Any) {
+private fun sendEvents(context: Context, eventKeys: List<String>, configuration: MindboxConfiguration, parent: Any) {
     runCatching {
-        val configuration = DbManager.getConfigurations()
-
-        if (configuration == null) {
-            MindboxLogger.e(
-                parent,
-                "MindboxConfiguration was not initialized",
-            )
-            return@runCatching
-        }
 
         eventKeys.forEach { eventKey ->
             val countDownLatch = CountDownLatch(1)

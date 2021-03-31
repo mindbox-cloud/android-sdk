@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 internal object BackgroundWorkManager {
 
     private val WORKER_TAG =
-        BackgroundWorkManager::class.java.simpleName + MindboxPreferences.hostAppName
+        "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
 
     fun startPeriodicService(context: Context) {
         runCatching {

@@ -14,17 +14,28 @@ import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 object Mindbox {
 
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
+    private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
+    private val fmsTokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
 
     /**
      * Returns token of Firebase Messaging Service used by SDK
      */
-    fun getFmsToken(): String? = runCatching { return MindboxPreferences.firebaseToken }
-        .returnOnException { null }
+    fun getFmsToken(callback: (String?) -> Unit) {
+        if (Hawk.isBuilt() && MindboxPreferences.firebaseToken != null) {
+            callback.invoke(MindboxPreferences.firebaseToken)
+        } else {
+            fmsTokenCallbacks[Date().time.toString()] = callback
+        }
+    }
 
     /**
      * Returns date of FMS token saving
@@ -41,12 +52,19 @@ object Mindbox {
 
     /**
      * Returns deviceUUID used by SDK
-     *
-     * @throws InitializeMindboxException when SDK isn't initialized
      */
-    @Throws(InitializeMindboxException::class)
-    fun getDeviceUuid(): String =
-        MindboxPreferences.deviceUuid ?: throw InitializeMindboxException("SDK was not initialized")
+    fun getDeviceUuid(context: Context, callback: (String) -> Unit) {
+
+        initComponents(context)
+
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration != null && configuration.deviceUuid.isNotEmpty()) {
+            callback.invoke(configuration.deviceUuid)
+        } else {
+            deviceUuidCallbacks[Date().time.toString()] = callback
+        }
+    }
 
     /**
      * Updates FMS token for SDK
@@ -149,11 +167,10 @@ object Mindbox {
                     firstInitialization(context, configuration)
                 } else {
                     updateAppInfo(context)
+                    MindboxEventManager.sendEventsIfExist(context)
                 }
             }
-
-            MindboxEventManager.sendEventsIfExist(context)
-        }.logOnException()
+        }.returnOnException { }
     }
 
     internal fun initComponents(context: Context) {
@@ -163,10 +180,8 @@ object Mindbox {
     }
 
     private suspend fun initDeviceId(context: Context): String {
-        return runCatching {
-            val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-            return adid.await()
-        }.returnOnException { "" }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        return adid.await()
     }
 
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
@@ -192,9 +207,10 @@ object Mindbox {
 
             MindboxPreferences.isFirstInitialize = false
             MindboxPreferences.firebaseToken = firebaseToken
-            MindboxPreferences.installationId = configuration.installationId
-            MindboxPreferences.deviceUuid = configuration.deviceUuid
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+
+            deliverDeviceUuid(configuration.deviceUuid)
+            deliverFmsToken(firebaseToken)
         }.logOnException()
     }
 
@@ -221,5 +237,23 @@ object Mindbox {
                 MindboxPreferences.firebaseToken = firebaseToken
             }
         }.logOnException()
+    }
+
+    private fun deliverDeviceUuid(deviceUuid: String) {
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            deviceUuidCallbacks.keys.forEach { key ->
+                deviceUuidCallbacks[key]?.invoke(deviceUuid)
+                deviceUuidCallbacks.remove(key)
+            }
+        }, 1, TimeUnit.SECONDS)
+    }
+
+    private fun deliverFmsToken(token: String?) {
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            fmsTokenCallbacks.keys.forEach { key ->
+                fmsTokenCallbacks[key]?.invoke(token)
+                fmsTokenCallbacks.remove(key)
+            }
+        }, 1, TimeUnit.SECONDS)
     }
 }

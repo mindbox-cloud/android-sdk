@@ -2,11 +2,13 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.InitializeMindboxException
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import com.android.volley.DefaultRetryPolicy
+import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+import com.android.volley.DefaultRetryPolicy.DEFAULT_MAX_RETRIES
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import org.json.JSONException
@@ -14,6 +16,8 @@ import org.json.JSONObject
 import java.util.*
 
 internal object GatewayManager {
+
+    private const val TIMEOUT_DELAY = 60000
 
     private fun buildEventUrl(
         configuration: MindboxConfiguration,
@@ -39,12 +43,15 @@ internal object GatewayManager {
             }
         }
 
-        urlQueries.toUrlQueryString()
-
         return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
-    fun sendEvent(context: Context, configuration: MindboxConfiguration, event: Event, isSuccess: (Boolean) -> Unit) {
+    fun sendEvent(
+        context: Context,
+        configuration: MindboxConfiguration,
+        event: Event,
+        isSuccess: (Boolean) -> Unit
+    ) {
         try {
 
             val requestType: Int = getRequestType(event.eventType)
@@ -76,7 +83,10 @@ internal object GatewayManager {
                         isSuccess.invoke(false)
                     }
                 }
-            )
+            ).apply {
+                setShouldCache(false)
+                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+            }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
