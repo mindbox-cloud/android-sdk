@@ -21,7 +21,7 @@ EOF
 }
 set-tag(){
   set-local-tag
-  set-remote-tag
+  #set-remote-tag
 }
 set-local-tag(){
 if [ $(git tag -l | grep $version) ]; then
