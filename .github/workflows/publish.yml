@@ -7,6 +7,8 @@ on:
       - 'release-**'
     paths-ignore:
       - '**.md'
+    tags-ignore:
+      - 1.*
 
 jobs:
   lint:
