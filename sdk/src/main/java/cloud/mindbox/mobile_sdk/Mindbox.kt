@@ -14,6 +14,7 @@ import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -28,26 +29,30 @@ object Mindbox {
     /**
      * Subscribe to gets token of Firebase Messaging Service used by SDK
      *
-     * @param callbackTag - identifier of callback subscription
      * @param callback - invocation function with FMS token
+     * @return String identifier of callback subscription
      * @see disposeFmsToken
      */
-    fun subscribeFmsToken(callbackTag: String, callback: (String?) -> Unit) {
+    fun subscribeFmsToken(callback: (String?) -> Unit): String {
+        val id = UUID.randomUUID().toString()
+
         if (Hawk.isBuilt() && MindboxPreferences.firebaseToken != null) {
             callback.invoke(MindboxPreferences.firebaseToken)
         } else {
-            fmsTokenCallbacks[callbackTag] = callback
+            fmsTokenCallbacks[id] = callback
         }
+
+        return id
     }
 
     /**
      * Removes FMS token subscription if it is no longer necessary
      *
-     * @param callbackTag - identifier of the callback to remove
+     * @param callbackId - identifier of the callback to remove
      */
-    fun disposeFmsToken(callbackTag: String) {
-        if (fmsTokenCallbacks.contains(callbackTag)) {
-            fmsTokenCallbacks.remove(callbackTag)
+    fun disposeFmsToken(callbackId: String) {
+        if (fmsTokenCallbacks.contains(callbackId)) {
+            fmsTokenCallbacks.remove(callbackId)
         }
     }
 
@@ -67,30 +72,33 @@ object Mindbox {
     /**
      * Subscribe to gets deviceUUID used by SDK
      *
-     * @param callbackTag - identifier of callback subscription
      * @param callback - invocation function with deviceUUID
+     * @return String identifier of callback subscription
      * @see disposeDeviceUuid
      */
-    fun subscribeDeviceUuid(context: Context, callbackTag: String, callback: (String) -> Unit) {
+    fun subscribeDeviceUuid(context: Context, callback: (String) -> Unit): String {
         initComponents(context)
 
+        val id = UUID.randomUUID().toString()
         val configuration = DbManager.getConfigurations()
 
         if (configuration != null && configuration.deviceUuid.isNotEmpty()) {
             callback.invoke(configuration.deviceUuid)
         } else {
-            deviceUuidCallbacks[callbackTag] = callback
+            deviceUuidCallbacks[id] = callback
         }
+
+        return id
     }
 
     /**
      * Removes deviceUuid subscription if it is no longer necessary
      *
-     * @param callbackTag - identifier of the callback to remove
+     * @param callbackId - identifier of the callback to remove
      */
-    fun disposeDeviceUuid(callbackTag: String) {
-        if (deviceUuidCallbacks.contains(callbackTag)) {
-            deviceUuidCallbacks.remove(callbackTag)
+    fun disposeDeviceUuid(callbackId: String) {
+        if (deviceUuidCallbacks.contains(callbackId)) {
+            deviceUuidCallbacks.remove(callbackId)
         }
     }
 

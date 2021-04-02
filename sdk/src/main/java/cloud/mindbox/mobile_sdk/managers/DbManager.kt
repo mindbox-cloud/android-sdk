@@ -166,4 +166,12 @@ internal object DbManager {
             }
         }.returnOnException { null }
     }
+
+    internal fun removeConfiguration() {
+        try {
+            configurationBook.destroy()
+        } catch (exception: PaperDbException) {
+            exception.printStackTrace()
+        }
+    }
 }
