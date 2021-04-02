@@ -113,7 +113,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun pushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
