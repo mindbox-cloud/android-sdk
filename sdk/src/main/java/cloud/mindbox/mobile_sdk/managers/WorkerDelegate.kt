@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.work.Configuration
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
@@ -75,15 +76,20 @@ internal fun sendEventsWithResult(
 private fun sendEvents(context: Context, eventKeys: List<String>, configuration: MindboxConfiguration, parent: Any) {
     runCatching {
 
-        eventKeys.forEach { eventKey ->
+        val eventsCount = eventKeys.size
+
+        for (i in 1..eventsCount) {
             val countDownLatch = CountDownLatch(1)
 
-            val event = DbManager.getEvent(eventKey) ?: return@forEach
+            val eventKey = eventKeys[i]
+            val event = DbManager.getEvent(eventKey) ?: return
 
             GatewayManager.sendEvent(context, configuration, event) { isSended ->
                 if (isSended) {
                     DbManager.removeEventFromQueue(eventKey)
                 }
+
+                MindboxLogger.i(parent, "sent event #$i from $eventsCount")
 
                 countDownLatch.countDown()
             }
@@ -93,6 +99,10 @@ private fun sendEvents(context: Context, eventKeys: List<String>, configuration:
             } catch (e: InterruptedException) {
                 MindboxLogger.e(parent, "doWork -> sending was interrupted", e)
             }
+        }
+
+        eventKeys.forEach { eventKey ->
+
         }
     }.logOnException()
 }
