@@ -76,9 +76,9 @@ internal fun sendEventsWithResult(
 private fun sendEvents(context: Context, eventKeys: List<String>, configuration: MindboxConfiguration, parent: Any) {
     runCatching {
 
-        val eventsCount = eventKeys.size
+        val eventsCount = eventKeys.size - 1
 
-        for (i in 1..eventsCount) {
+        for (i in 0..eventsCount) {
             val countDownLatch = CountDownLatch(1)
 
             val eventKey = eventKeys[i]
@@ -89,7 +89,7 @@ private fun sendEvents(context: Context, eventKeys: List<String>, configuration:
                     DbManager.removeEventFromQueue(eventKey)
                 }
 
-                MindboxLogger.i(parent, "sent event #$i from $eventsCount")
+                MindboxLogger.i(parent, "sent event #${i + 1} from ${eventsCount + 1}")
 
                 countDownLatch.countDown()
             }
