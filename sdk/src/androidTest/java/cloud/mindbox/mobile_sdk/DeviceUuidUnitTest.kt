@@ -10,7 +10,7 @@ import org.junit.Test
 class DeviceUuidUnitTest {
 
     @Test
-    fun deviceUuidSubscribe_isCorrectReturn() {
+    fun subscribe_isCorrectReturn() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val tag = "device_uuid_subscribe_tag"
 
@@ -19,7 +19,6 @@ class DeviceUuidUnitTest {
         Mindbox.subscribeDeviceUuid(appContext) { deviceUuid ->
             result = deviceUuid
             println(deviceUuid)
-            Assert.assertEquals(true, deviceUuid.isUuid())
         }
 
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
@@ -30,6 +29,32 @@ class DeviceUuidUnitTest {
 
         Assert.assertEquals(true, result.isUuid())
     }
+
+    @Test
+    fun unsubscribe_isCorrect() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+
+        var result = ""
+
+        val subscribeId = Mindbox.subscribeDeviceUuid(appContext) { deviceUuid ->
+            result = deviceUuid
+        }
+
+        Mindbox.disposeDeviceUuidSubscription(subscribeId)
+
+        Thread.sleep(3000)
+
+        val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+
+        Mindbox.init(appContext, configs)
+
+        Thread.sleep(5000)
+
+        Assert.assertEquals("", result)
+    }
+
+//    @Test
+//    fun
 
     @After
     fun clear() {
