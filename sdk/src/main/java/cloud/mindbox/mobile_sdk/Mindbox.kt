@@ -36,7 +36,7 @@ object Mindbox {
     fun subscribeFmsToken(subscription: (String?) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
-        if (Hawk.isBuilt() && MindboxPreferences.firebaseToken != null) {
+        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.firebaseToken)
         } else {
             fmsTokenCallbacks[subscriptionId] = subscription
@@ -80,7 +80,7 @@ object Mindbox {
         val subscriptionId = UUID.randomUUID().toString()
         val configuration = DbManager.getConfigurations()
 
-        if (configuration != null && configuration.deviceUuid.isNotEmpty()) {
+        if (configuration != null && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(configuration.deviceUuid)
         } else {
             deviceUuidCallbacks[subscriptionId] = subscription
