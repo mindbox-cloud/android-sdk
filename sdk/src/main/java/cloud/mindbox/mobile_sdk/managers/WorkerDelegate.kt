@@ -101,9 +101,6 @@ private fun sendEvents(context: Context, eventKeys: List<String>, configuration:
             }
         }
 
-        eventKeys.forEach { eventKey ->
-
-        }
     }.logOnException()
 }
 

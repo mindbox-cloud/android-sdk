@@ -10,7 +10,6 @@ import org.junit.Test
 
 class FmsTokenRepeatedUnitTest {
 
-
     companion object {
         @BeforeClass
         @JvmStatic
