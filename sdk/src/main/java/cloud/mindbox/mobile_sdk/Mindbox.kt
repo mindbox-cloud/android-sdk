@@ -27,14 +27,31 @@ object Mindbox {
     private val fmsTokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
 
     /**
-     * Returns token of Firebase Messaging Service used by SDK
+     * Subscribe to gets token of Firebase Messaging Service used by SDK
+     *
+     * @param subscription - invocation function with FMS token
+     * @return String identifier of subscription
+     * @see disposeFmsTokenSubscription
      */
-    fun getFmsToken(callback: (String?) -> Unit) {
-        if (Hawk.isBuilt() && MindboxPreferences.firebaseToken != null) {
-            callback.invoke(MindboxPreferences.firebaseToken)
+    fun subscribeFmsToken(subscription: (String?) -> Unit): String {
+        val subscriptionId = UUID.randomUUID().toString()
+
+        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(MindboxPreferences.firebaseToken)
         } else {
-            fmsTokenCallbacks[Date().time.toString()] = callback
+            fmsTokenCallbacks[subscriptionId] = subscription
         }
+
+        return subscriptionId
+    }
+
+    /**
+     * Removes FMS token subscription if it is no longer necessary
+     *
+     * @param subscriptionId - identifier of the subscription to remove
+     */
+    fun disposeFmsTokenSubscription(subscriptionId: String) {
+        fmsTokenCallbacks.remove(subscriptionId)
     }
 
     /**
@@ -51,19 +68,34 @@ object Mindbox {
         .returnOnException { "" }
 
     /**
-     * Returns deviceUUID used by SDK
+     * Subscribe to gets deviceUUID used by SDK
+     *
+     * @param subscription - invocation function with deviceUUID
+     * @return String identifier of subscription
+     * @see disposeDeviceUuidSubscription
      */
-    fun getDeviceUuid(context: Context, callback: (String) -> Unit) {
-
+    fun subscribeDeviceUuid(context: Context, subscription: (String) -> Unit): String {
         initComponents(context)
 
+        val subscriptionId = UUID.randomUUID().toString()
         val configuration = DbManager.getConfigurations()
 
-        if (configuration != null && configuration.deviceUuid.isNotEmpty()) {
-            callback.invoke(configuration.deviceUuid)
+        if (configuration != null && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(configuration.deviceUuid)
         } else {
-            deviceUuidCallbacks[Date().time.toString()] = callback
+            deviceUuidCallbacks[subscriptionId] = subscription
         }
+
+        return subscriptionId
+    }
+
+    /**
+     * Removes deviceUuid subscription if it is no longer necessary
+     *
+     * @param subscriptionId - identifier of the subscription to remove
+     */
+    fun disposeDeviceUuidSubscription(subscriptionId: String) {
+        deviceUuidCallbacks.remove(subscriptionId)
     }
 
     /**
@@ -113,7 +145,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun pushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
