@@ -72,7 +72,7 @@ internal object DbManager {
         runCatching {
             try {
                 eventsBook.delete(key)
-                MindboxLogger.d(this, "Event $key was deleted to queue")
+                MindboxLogger.d(this, "Event $key was deleted from queue")
             } catch (exception: PaperDbException) {
                 MindboxLogger.e(this, "Error deleting item from database", exception)
             }
@@ -165,5 +165,13 @@ internal object DbManager {
                 return null
             }
         }.returnOnException { null }
+    }
+
+    internal fun removeConfiguration() {
+        try {
+            configurationBook.destroy()
+        } catch (exception: PaperDbException) {
+            exception.printStackTrace()
+        }
     }
 }

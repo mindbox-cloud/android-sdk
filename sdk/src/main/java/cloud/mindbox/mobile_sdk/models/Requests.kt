@@ -104,7 +104,11 @@ internal data class MindboxRequest(
 
                 val json = String(
                     volleyError.networkResponse?.data ?: ByteArray(0),
-                    Charset.forName(HttpHeaderParser.parseCharset(volleyError.networkResponse?.headers))
+                    Charset.forName(
+                        HttpHeaderParser.parseCharset(
+                            volleyError.networkResponse?.headers ?: emptyMap()
+                        )
+                    )
                 )
 
                 logBodyResponse(json)

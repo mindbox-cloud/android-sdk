@@ -22,8 +22,8 @@ class MindboxConfiguration(builder: Builder) {
      * A Builder for MindboxConfiguration
      */
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
-        internal var installationId: String = MindboxPreferences.installationId ?: ""
-        internal var deviceUuid: String = MindboxPreferences.deviceUuid ?: ""
+        internal var installationId: String = ""
+        internal var deviceUuid: String = ""
         internal var subscribeCustomerIfCreated: Boolean = false
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
