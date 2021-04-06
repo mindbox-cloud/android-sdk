@@ -9,8 +9,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
  * The parameters are taken into account only during first initialization
  */
 class MindboxConfiguration(builder: Builder) {
-    internal val installationId: String = builder.installationId
-    internal var deviceUuid: String = builder.deviceUuid
+    internal val previousInstallationId: String = builder.previousInstallationId
+    internal var previousDeviceUUID: String = builder.previousDeviceUUID
     internal val endpointId: String = builder.endpointId
     internal val domain: String = builder.domain
     internal val packageName: String = builder.packageName
@@ -22,8 +22,8 @@ class MindboxConfiguration(builder: Builder) {
      * A Builder for MindboxConfiguration
      */
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
-        internal var installationId: String = ""
-        internal var deviceUuid: String = ""
+        internal var previousInstallationId: String = ""
+        internal var previousDeviceUUID: String = ""
         internal var subscribeCustomerIfCreated: Boolean = false
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
@@ -38,20 +38,20 @@ class MindboxConfiguration(builder: Builder) {
         /**
          * Specifies deviceUUID for Mindbox
          *
-         * @param deviceUuid - it is the device id which we use to find a customer by the device in our DB
+         * @param previousDeviceUUID - deprecate - old device id which was used to find a customer by the device in our DB
          */
-        fun setDeviceUuid(deviceUuid: String): Builder {
-            this.deviceUuid = deviceUuid
+        fun setPreviousDeviceUuid(previousDeviceUUID: String): Builder {
+            this.previousDeviceUUID = previousDeviceUUID
             return this
         }
 
         /**
          * Specifies installationId for Mindbox
          *
-         * @param installationId - deprecate - old id which was used to send mobile push
+         * @param previousInstallationId - deprecate - old id which was used to send mobile push
          */
-        fun setInstallationId(installationId: String): Builder {
-            this.installationId = installationId
+        fun setPreviousInstallationId(previousInstallationId: String): Builder {
+            this.previousInstallationId = previousInstallationId
             return this
         }
 

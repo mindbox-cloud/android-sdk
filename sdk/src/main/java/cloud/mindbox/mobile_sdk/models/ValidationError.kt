@@ -15,8 +15,8 @@ internal data class ValidationError(
             "The domain must not start with https:// and must not end with /"
         private const val ERROR_INVALID_DOMAIN = "The domain is not valid"
         private const val ERROR_EMPTY_ENDPOINT = "Endpoint must not be empty"
-        private const val ERROR_INVALID_DEVICE_ID = "Invalid device UUID format"
-        private const val ERROR_INVALID_INSTALLATION_ID = "Invalid UUID format of installationId"
+        private const val ERROR_INVALID_DEVICE_ID = "Invalid previous device UUID format"
+        private const val ERROR_INVALID_INSTALLATION_ID = "Invalid UUID format of previous installationId"
     }
 
     fun validateFields(domain: String, endpointId: String, deviceUuid: String, installId: String) {

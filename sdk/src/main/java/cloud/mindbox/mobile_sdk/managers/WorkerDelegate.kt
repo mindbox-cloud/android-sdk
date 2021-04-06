@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.WorkerType
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
@@ -33,16 +34,28 @@ internal fun sendEventsWithResult(
             } catch (repairableException: GooglePlayServicesRepairableException) {
                 MindboxLogger.e(parent, "GooglePlayServices should be updated", repairableException)
             } catch (notAvailableException: GooglePlayServicesNotAvailableException) {
-                MindboxLogger.e(parent, "GooglePlayServices aren't available", notAvailableException)
+                MindboxLogger.e(
+                    parent,
+                    "GooglePlayServices aren't available",
+                    notAvailableException
+                )
             }
         }
 
         val configuration = DbManager.getConfigurations()
-
         if (configuration == null) {
             MindboxLogger.e(
                 parent,
                 "MindboxConfiguration was not initialized",
+            )
+            return ListenableWorker.Result.failure()
+        }
+
+        val deviceUuid = MindboxPreferences.deviceUuid
+        if (deviceUuid.isBlank()) {
+            MindboxLogger.e(
+                parent,
+                "Device UUID was not initialized",
             )
             return ListenableWorker.Result.failure()
         }
@@ -59,7 +72,7 @@ internal fun sendEventsWithResult(
 
             MindboxLogger.d(parent, "Will be sent ${eventKeys.size}")
 
-            sendEvents(context, eventKeys, configuration, parent)
+            sendEvents(context, eventKeys, configuration, deviceUuid, parent)
 
             return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
                 ListenableWorker.Result.success()
@@ -73,7 +86,13 @@ internal fun sendEventsWithResult(
     }
 }
 
-private fun sendEvents(context: Context, eventKeys: List<String>, configuration: MindboxConfiguration, parent: Any) {
+private fun sendEvents(
+    context: Context,
+    eventKeys: List<String>,
+    configuration: MindboxConfiguration,
+    deviceUuid: String,
+    parent: Any
+) {
     runCatching {
 
         val eventsCount = eventKeys.size - 1
@@ -84,7 +103,7 @@ private fun sendEvents(context: Context, eventKeys: List<String>, configuration:
             val eventKey = eventKeys[i]
             val event = DbManager.getEvent(eventKey) ?: return
 
-            GatewayManager.sendEvent(context, configuration, event) { isSended ->
+            GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSended ->
                 if (isSended) {
                     DbManager.removeEventFromQueue(eventKey)
                 }
