@@ -92,9 +92,11 @@ internal class WorkerDelegate() {
         parent: Any
     ) {
         runCatching {
-            eventKeys.forEach { eventKey ->
+            val eventsCount = eventKeys.size
+
+            eventKeys.forEachIndexed { index, eventKey ->
                 val countDownLatch = CountDownLatch(1)
-                val event = DbManager.getEvent(eventKey) ?: return@forEach
+                val event = DbManager.getEvent(eventKey) ?: return@forEachIndexed
 
                 if (isWorkerStopped) return
 
@@ -102,6 +104,8 @@ internal class WorkerDelegate() {
                     if (isSent) {
                         DbManager.removeEventFromQueue(eventKey)
                     }
+
+                    MindboxLogger.i(parent, "sent event #${index + 1} from $eventsCount")
 
                     countDownLatch.countDown()
                 }
@@ -119,4 +123,5 @@ internal class WorkerDelegate() {
         isWorkerStopped = true
         MindboxLogger.d(parent, "onStopped work")
     }
+
 }
