@@ -187,16 +187,10 @@ object Mindbox {
                 ?: throw InitializeMindboxException(validationErrors.messages.toString())
 
             mindboxScope.launch {
-
                 if (MindboxPreferences.isFirstInitialize) {
-
-                    if (configuration.deviceUuid.trim().isEmpty()) {
-                        configuration.deviceUuid = initDeviceId(context)
-                    } else {
-                        configuration.deviceUuid.trim()
-                    }
-
-                    firstInitialization(context, configuration)
+                    val lastDeviceUuid = configuration.deviceUuid
+                    configuration.deviceUuid = initDeviceId(context)
+                    firstInitialization(context, configuration, lastDeviceUuid)
                 } else {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
@@ -216,7 +210,11 @@ object Mindbox {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
+    private suspend fun firstInitialization(
+        context: Context,
+        configuration: MindboxConfiguration,
+        lastDeviceUuid:String
+    ) {
         runCatching {
             val firebaseToken = withContext(mindboxScope.coroutineContext) {
                 IdentifierManager.registerFirebaseToken()
@@ -231,6 +229,7 @@ object Mindbox {
                 token = firebaseToken ?: "",
                 isTokenAvailable = isTokenAvailable,
                 installationId = configuration.installationId,
+                lastDeviceUuid = lastDeviceUuid,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated
             )
