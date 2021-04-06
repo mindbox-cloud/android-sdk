@@ -29,14 +29,11 @@ class DeviceUuidRepeatedUnitTest {
 
     @Test
     fun secondaryGetting_isCorrect() {
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
         Thread.sleep(5000)
 
-        Mindbox.subscribeDeviceUuid(appContext) { deviceUuid ->
-            result = deviceUuid
-        }
+        Mindbox.subscribeDeviceUuid{ deviceUuid -> result = deviceUuid }
 
         Thread.sleep(1000)
 

@@ -51,15 +51,6 @@ internal fun sendEventsWithResult(
             return ListenableWorker.Result.failure()
         }
 
-        val deviceUuid = MindboxPreferences.deviceUuid
-        if (deviceUuid.isBlank()) {
-            MindboxLogger.e(
-                parent,
-                "Device UUID was not initialized",
-            )
-            return ListenableWorker.Result.failure()
-        }
-
         var eventKeys = DbManager.getFilteredEventsKeys()
         if (eventKeys.isNullOrEmpty()) {
             MindboxLogger.d(parent, "Events list is empty")
@@ -72,7 +63,7 @@ internal fun sendEventsWithResult(
 
             MindboxLogger.d(parent, "Will be sent ${eventKeys.size}")
 
-            sendEvents(context, eventKeys, configuration, deviceUuid, parent)
+            sendEvents(context, eventKeys, configuration, parent)
 
             return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
                 ListenableWorker.Result.success()
@@ -90,12 +81,12 @@ private fun sendEvents(
     context: Context,
     eventKeys: List<String>,
     configuration: MindboxConfiguration,
-    deviceUuid: String,
     parent: Any
 ) {
     runCatching {
 
         val eventsCount = eventKeys.size - 1
+        val deviceUuid = MindboxPreferences.deviceUuid
 
         for (i in 0..eventsCount) {
             val countDownLatch = CountDownLatch(1)
