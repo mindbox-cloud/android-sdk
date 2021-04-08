@@ -64,8 +64,4 @@ internal object MindboxPreferences {
                 Hawk.put(KEY_HOST_APP_MANE, value)
             }.returnOnException { }
         }
-
-    internal fun clear() {
-        Hawk.deleteAll()
-    }
 }
