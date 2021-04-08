@@ -69,7 +69,7 @@ class FmsTokenSingleUnitTest {
 
     @After
     fun clear() {
-        MindboxPreferences.clear()
-        DbManager.removeConfiguration()
+        clearPreferences()
+        removeConfiguration()
     }
 }

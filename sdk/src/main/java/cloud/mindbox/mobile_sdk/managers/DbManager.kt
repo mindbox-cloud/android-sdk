@@ -165,12 +165,4 @@ internal object DbManager {
             0L
         }
     }
-
-    internal fun removeConfiguration() {
-        try {
-            configurationBook.destroy()
-        } catch (exception: PaperDbException) {
-            exception.printStackTrace()
-        }
-    }
 }
