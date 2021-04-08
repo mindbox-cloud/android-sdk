@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.logger.Level
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -203,6 +205,16 @@ object Mindbox {
                 }
             }
         }.returnOnException { }
+    }
+
+    /**
+     * Specifies log level for Mindbox
+     *
+     * @param level - is used for showing Mindbox logs starts from [Level]. Default
+     * is [Level.INFO]. [Level.NONE] turns off all logs.
+     */
+    fun setLogLevel(level: Level) {
+        MindboxLogger.level = level
     }
 
     internal fun initComponents(context: Context) {

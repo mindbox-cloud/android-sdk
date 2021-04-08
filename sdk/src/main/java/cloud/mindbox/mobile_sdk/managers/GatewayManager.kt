@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.MindboxLogger
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString

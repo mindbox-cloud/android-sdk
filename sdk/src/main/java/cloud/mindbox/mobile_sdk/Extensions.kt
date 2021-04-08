@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import java.util.*
 
 internal fun <T> Result<T>.returnOnException(block: (exception: Throwable) -> T): T {

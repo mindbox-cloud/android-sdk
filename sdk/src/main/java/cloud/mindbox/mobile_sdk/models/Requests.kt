@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.models
 
 import android.os.Build
 import cloud.mindbox.mobile_sdk.*
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import com.android.volley.NetworkResponse
 import com.android.volley.ParseError
 import com.android.volley.Response
