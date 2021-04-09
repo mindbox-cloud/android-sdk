@@ -10,16 +10,12 @@ internal object MindboxLogger {
 
     init {
 
-        VolleyLog.DEBUG = DEFAULT_LOG_LEVEL == Level.VERBOSE
+        VolleyLog.DEBUG = false
 
     }
 
     @Volatile
     internal var level: Level = DEFAULT_LOG_LEVEL
-        set(value) {
-            field = value
-            VolleyLog.DEBUG = value == Level.VERBOSE
-        }
 
     fun i(parent: Any, message: String) {
         if (level.value <= Level.INFO.value) {
