@@ -12,7 +12,7 @@ class VersioningUnitTest {
         fun generateData() {
 
             for (i in 0..50) {
-                Mindbox.updateFmsToken()
+//                Mindbox.updateFmsToken("")
             }
         }
 

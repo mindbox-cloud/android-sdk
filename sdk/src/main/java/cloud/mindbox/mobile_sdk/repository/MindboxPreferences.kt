@@ -74,8 +74,4 @@ internal object MindboxPreferences {
             return version
         }.returnOnException { DEFAULT_INFO_UPDATED_VERSION }
 
-    internal fun clear() {
-        Hawk.deleteAll()
-    }
-
 }

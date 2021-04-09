@@ -56,14 +56,14 @@ internal object DbManager {
 
     fun getEvent(key: String): Event? {
         return runCatching {
-            try {
-                return eventsBook.read(key) as Event?
+            return try {
+                eventsBook.read(key) as Event?
             } catch (exception: PaperDbException) {
 
                 // invalid data in case of exception
                 removeEventFromQueue(key)
                 MindboxLogger.e(this, "Error reading from database", exception)
-                return null
+                null
             }
         }.returnOnException { null }
     }
@@ -85,12 +85,7 @@ internal object DbManager {
             arrayList.addAll(list)
 
             arrayList.sortBy { key ->
-                val keyTimeStamp = key.substringBefore(";")
-                try {
-                    keyTimeStamp.toLong()
-                } catch (e: NumberFormatException) {
-                    0L
-                }
+                key.getTimeFromKey()
             }
         }.logOnException()
         return arrayList
@@ -98,45 +93,39 @@ internal object DbManager {
 
     private fun ArrayList<String>.filterEventsBySize(): ArrayList<String> {
         return runCatching {
-            val filteredList = ArrayList(this) //coping of list
+
             val diff = this.size - MAX_EVENT_LIST_SIZE
 
-            if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
+            return if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
+                val filteredList = ArrayList(this) //coping of list
                 for (i in 1..diff) {
                     removeEventFromQueue(this[i])
                     filteredList.remove(this[i])
                 }
+                filteredList
+            } else {
+                this
             }
-            return filteredList
         }.returnOnException { arrayListOf() }
     }
 
     private fun ArrayList<String>.filterOldEvents(): ArrayList<String> {
         return runCatching {
             val filteredList = ArrayList(this) //coping of list
+            val timeNow = Date().time
             this.forEach { key ->
-                if (key.isTooOldKey()) {
+                if (key.isTooOldKey(timeNow)) {
                     removeEventFromQueue(key)
                     filteredList.remove(key)
-                } else {
-                    return@forEach
                 }
             }
             return filteredList
         }.returnOnException { arrayListOf() }
     }
 
-    private fun String.isTooOldKey(): Boolean {
+    private fun String.isTooOldKey(timeNow: Long): Boolean {
         return runCatching {
-            val keyTimeStamp = this.substringBefore(";", "0")
-
-            val enqueueTimestamp = try {
-                keyTimeStamp.toLong()
-            } catch (e: NumberFormatException) {
-                0L
-            }
-
-            return enqueueTimestamp - Date().time >= HALF_YEAR_IN_MILLISECONDS
+            return this.getTimeFromKey() - timeNow >= HALF_YEAR_IN_MILLISECONDS
         }.returnOnException { false }
     }
 
@@ -167,11 +156,13 @@ internal object DbManager {
         }.returnOnException { null }
     }
 
-    internal fun removeConfiguration() {
-        try {
-            configurationBook.destroy()
-        } catch (exception: PaperDbException) {
-            exception.printStackTrace()
+    private fun String.getTimeFromKey(): Long {
+        val keyTimeStamp = this.substringBefore(";", "0")
+
+        return try {
+            keyTimeStamp.toLong()
+        } catch (e: NumberFormatException) {
+            0L
         }
     }
 }
