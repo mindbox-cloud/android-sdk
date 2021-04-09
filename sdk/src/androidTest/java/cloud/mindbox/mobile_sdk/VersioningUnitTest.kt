@@ -1,11 +1,8 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import com.google.gson.Gson
 import com.orhanobut.hawk.Hawk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +27,7 @@ class VersioningUnitTest {
     @Test
     fun generatedData_isCorrect() {
 
-        Hawk.init(InstrumentationRegistry.getInstrumentation().targetContext)
+        Hawk.init(InstrumentationRegistry.getInstrumentation().targetContext).build()
 
 
         val scope = CoroutineScope(Dispatchers.Default)
