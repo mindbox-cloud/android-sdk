@@ -19,30 +19,24 @@ class VersioningUnitTest {
         @AfterClass
         @JvmStatic
         fun clearData() {
-
             clearPreferences()
         }
     }
 
     @Test
     fun generatedData_isCorrect() {
-
-        Hawk.init(InstrumentationRegistry.getInstrumentation().targetContext).build()
-
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        Hawk.init(appContext).build()
 
         val scope = CoroutineScope(Dispatchers.Default)
 
         scope.launch {
             val coroutines =
                 1.rangeTo(1000).map {
-                    launch {
-                        createEvent()
-                    }
+                    launch { createEvent() }
                 }
 
-            coroutines.forEach { corotuine ->
-                corotuine.join() // wait for all coroutines to finish their jobs.
-            }
+            coroutines.forEach { coroutine -> coroutine.join() }
         }
 
         Thread.sleep(40000)
