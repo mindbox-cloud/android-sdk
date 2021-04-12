@@ -14,17 +14,45 @@ import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 object Mindbox {
 
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
+    private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
+    private val fmsTokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
 
     /**
-     * Returns token of Firebase Messaging Service used by SDK
+     * Subscribe to gets token of Firebase Messaging Service used by SDK
+     *
+     * @param subscription - invocation function with FMS token
+     * @return String identifier of subscription
+     * @see disposeFmsTokenSubscription
      */
-    fun getFmsToken(): String? = runCatching { return MindboxPreferences.firebaseToken }
-        .returnOnException { null }
+    fun subscribeFmsToken(subscription: (String?) -> Unit): String {
+        val subscriptionId = UUID.randomUUID().toString()
+
+        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(MindboxPreferences.firebaseToken)
+        } else {
+            fmsTokenCallbacks[subscriptionId] = subscription
+        }
+
+        return subscriptionId
+    }
+
+    /**
+     * Removes FMS token subscription if it is no longer necessary
+     *
+     * @param subscriptionId - identifier of the subscription to remove
+     */
+    fun disposeFmsTokenSubscription(subscriptionId: String) {
+        fmsTokenCallbacks.remove(subscriptionId)
+    }
 
     /**
      * Returns date of FMS token saving
@@ -40,13 +68,35 @@ object Mindbox {
         .returnOnException { "" }
 
     /**
-     * Returns deviceUUID used by SDK
+     * Subscribe to gets deviceUUID used by SDK
      *
-     * @throws InitializeMindboxException when SDK isn't initialized
+     * @param subscription - invocation function with deviceUUID
+     * @return String identifier of subscription
+     * @see disposeDeviceUuidSubscription
      */
-    @Throws(InitializeMindboxException::class)
-    fun getDeviceUuid(): String =
-        MindboxPreferences.deviceUuid ?: throw InitializeMindboxException("SDK was not initialized")
+    fun subscribeDeviceUuid(context: Context, subscription: (String) -> Unit): String {
+        initComponents(context)
+
+        val subscriptionId = UUID.randomUUID().toString()
+        val configuration = DbManager.getConfigurations()
+
+        if (configuration != null && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(configuration.deviceUuid)
+        } else {
+            deviceUuidCallbacks[subscriptionId] = subscription
+        }
+
+        return subscriptionId
+    }
+
+    /**
+     * Removes deviceUuid subscription if it is no longer necessary
+     *
+     * @param subscriptionId - identifier of the subscription to remove
+     */
+    fun disposeDeviceUuidSubscription(subscriptionId: String) {
+        deviceUuidCallbacks.remove(subscriptionId)
+    }
 
     /**
      * Updates FMS token for SDK
@@ -95,7 +145,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun pushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
@@ -149,11 +199,10 @@ object Mindbox {
                     firstInitialization(context, configuration)
                 } else {
                     updateAppInfo(context)
+                    MindboxEventManager.sendEventsIfExist(context)
                 }
             }
-
-            MindboxEventManager.sendEventsIfExist(context)
-        }.logOnException()
+        }.returnOnException { }
     }
 
     internal fun initComponents(context: Context) {
@@ -163,10 +212,8 @@ object Mindbox {
     }
 
     private suspend fun initDeviceId(context: Context): String {
-        return runCatching {
-            val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
-            return adid.await()
-        }.returnOnException { "" }
+        val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
+        return adid.await()
     }
 
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
@@ -192,9 +239,10 @@ object Mindbox {
 
             MindboxPreferences.isFirstInitialize = false
             MindboxPreferences.firebaseToken = firebaseToken
-            MindboxPreferences.installationId = configuration.installationId
-            MindboxPreferences.deviceUuid = configuration.deviceUuid
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+
+            deliverDeviceUuid(configuration.deviceUuid)
+            deliverFmsToken(firebaseToken)
         }.logOnException()
     }
 
@@ -210,7 +258,7 @@ object Mindbox {
             if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
                 val initData = UpdateData(
-                    token = firebaseToken ?: "",
+                    token = firebaseToken ?: MindboxPreferences.firebaseToken ?: "",
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled
                 )
@@ -221,5 +269,23 @@ object Mindbox {
                 MindboxPreferences.firebaseToken = firebaseToken
             }
         }.logOnException()
+    }
+
+    private fun deliverDeviceUuid(deviceUuid: String) {
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            deviceUuidCallbacks.keys.forEach { key ->
+                deviceUuidCallbacks[key]?.invoke(deviceUuid)
+                deviceUuidCallbacks.remove(key)
+            }
+        }, 1, TimeUnit.SECONDS)
+    }
+
+    private fun deliverFmsToken(token: String?) {
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            fmsTokenCallbacks.keys.forEach { key ->
+                fmsTokenCallbacks[key]?.invoke(token)
+                fmsTokenCallbacks.remove(key)
+            }
+        }, 1, TimeUnit.SECONDS)
     }
 }
