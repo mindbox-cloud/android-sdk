@@ -258,7 +258,7 @@ object Mindbox {
             if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
                 val initData = UpdateData(
-                    token = firebaseToken ?: "",
+                    token = firebaseToken ?: MindboxPreferences.firebaseToken ?: "",
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled
                 )
