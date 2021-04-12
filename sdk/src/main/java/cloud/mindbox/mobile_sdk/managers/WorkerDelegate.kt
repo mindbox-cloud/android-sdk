@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.WorkerType
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
@@ -39,7 +40,7 @@ internal fun sendEventsWithResult(
 
         val configuration = DbManager.getConfigurations()
 
-        if (configuration == null) {
+        if (MindboxPreferences.isFirstInitialize || configuration == null) {
             MindboxLogger.e(
                 parent,
                 "MindboxConfiguration was not initialized",
