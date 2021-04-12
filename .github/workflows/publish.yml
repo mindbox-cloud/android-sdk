@@ -25,6 +25,9 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: lint check
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
         run: gradle check
 
   unit:
@@ -41,6 +44,9 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: unit tests
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
         run: |
           gradle test 
           gradle testDebugUnitTest
