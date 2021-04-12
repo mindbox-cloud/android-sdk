@@ -40,7 +40,7 @@ internal fun sendEventsWithResult(
 
         val configuration = DbManager.getConfigurations()
 
-        if (!MindboxPreferences.isFirstInitialize || configuration == null) {
+        if (MindboxPreferences.isFirstInitialize || configuration == null) {
             MindboxLogger.e(
                 parent,
                 "MindboxConfiguration was not initialized",
