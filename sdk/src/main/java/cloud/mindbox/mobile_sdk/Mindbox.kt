@@ -272,7 +272,8 @@ object Mindbox {
                 val initData = UpdateData(
                     token = firebaseToken ?: MindboxPreferences.firebaseToken ?: "",
                     isTokenAvailable = isTokenAvailable,
-                    isNotificationsEnabled = isNotificationEnabled
+                    isNotificationsEnabled = isNotificationEnabled,
+                    version = MindboxPreferences.infoUpdatedVersion
                 )
 
                 MindboxEventManager.appInfoUpdate(context, initData)

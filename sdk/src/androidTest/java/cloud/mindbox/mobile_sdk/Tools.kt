@@ -14,6 +14,15 @@ internal fun removeConfiguration() {
     }
 }
 
+internal fun removeEvents() {
+    try {
+        val configurationBook = Paper.book("mindbox_events_book")
+        configurationBook.destroy()
+    } catch (exception: PaperDbException) {
+        exception.printStackTrace()
+    }
+}
+
 fun clearPreferences() {
     Hawk.deleteAll()
 }
