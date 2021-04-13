@@ -14,7 +14,7 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        Mindbox.subscribeDeviceUuid(appContext) { deviceUuid ->
+        Mindbox.subscribeDeviceUuid{ deviceUuid ->
             result = deviceUuid
             println(deviceUuid)
         }
@@ -33,9 +33,7 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        val subscribeId = Mindbox.subscribeDeviceUuid(appContext) { deviceUuid ->
-            result = deviceUuid
-        }
+        val subscribeId = Mindbox.subscribeDeviceUuid{ deviceUuid -> result = deviceUuid }
 
         Mindbox.disposeDeviceUuidSubscription(subscribeId)
 
@@ -61,8 +59,7 @@ class DeviceUuidSingleUnitTest {
 
     @Test
     fun subscribeIdGeneration_isCorrect() {
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val subscribeId = Mindbox.subscribeDeviceUuid(appContext) { }
+        val subscribeId = Mindbox.subscribeDeviceUuid { }
 
         Mindbox.disposeDeviceUuidSubscription(subscribeId)
 

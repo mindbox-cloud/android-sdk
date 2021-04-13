@@ -7,12 +7,14 @@ import java.util.*
 internal object MindboxPreferences {
 
     private const val KEY_IS_FIRST_INITIALIZATION = "key_is_first_initialization"
-    private const val KEY_USER_ADID = "key_user_uuid"
+    private const val KEY_DEVICE_UUID = "key_device_uuid"
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
     private const val KEY_HOST_APP_MANE =
         "key_host_app_name" //need for scheduling and stopping one-time background service
+    private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
+    private const val DEFAULT_INFO_UPDATED_VERSION = 1
 
     var isFirstInitialize: Boolean
         get() = runCatching {
@@ -21,6 +23,16 @@ internal object MindboxPreferences {
         set(value) {
             runCatching {
                 Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
+            }.returnOnException { }
+        }
+
+    var deviceUuid: String
+        get() = runCatching {
+            return Hawk.get(KEY_DEVICE_UUID, "")
+        }.returnOnException { "" }
+        set(value) {
+            runCatching {
+                Hawk.put(KEY_DEVICE_UUID, value)
             }.returnOnException { }
         }
 
@@ -64,4 +76,12 @@ internal object MindboxPreferences {
                 Hawk.put(KEY_HOST_APP_MANE, value)
             }.returnOnException { }
         }
+
+    val infoUpdatedVersion: Int
+        @Synchronized get() = runCatching {
+            val version = Hawk.get(KEY_INFO_UPDATED_VERSION, DEFAULT_INFO_UPDATED_VERSION)
+            Hawk.put(KEY_INFO_UPDATED_VERSION, version + 1)
+            return version
+        }.returnOnException { DEFAULT_INFO_UPDATED_VERSION }
+
 }

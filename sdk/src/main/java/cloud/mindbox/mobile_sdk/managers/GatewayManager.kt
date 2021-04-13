@@ -2,13 +2,12 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.MindboxLogger
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-import com.android.volley.DefaultRetryPolicy.DEFAULT_MAX_RETRIES
 import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import org.json.JSONException
@@ -18,15 +17,17 @@ import java.util.*
 internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
+    private const val MAX_RETRIES = 0
 
     private fun buildEventUrl(
         configuration: MindboxConfiguration,
+        deviceUuid: String,
         event: Event
     ): String {
 
         val urlQueries: HashMap<String, String> = hashMapOf(
             UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
-            UrlQuery.DEVICE_UUID.value to configuration.deviceUuid,
+            UrlQuery.DEVICE_UUID.value to deviceUuid,
             UrlQuery.TRANSACTION_ID.value to event.transactionId,
             UrlQuery.DATE_TIME_OFFSET.value to getTimeOffset(event.enqueueTimestamp)
         )
@@ -49,13 +50,14 @@ internal object GatewayManager {
     fun sendEvent(
         context: Context,
         configuration: MindboxConfiguration,
+        deviceUuid: String,
         event: Event,
         isSuccess: (Boolean) -> Unit
     ) {
         try {
 
             val requestType: Int = getRequestType(event.eventType)
-            val url: String = buildEventUrl(configuration, event)
+            val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
 
             val request = MindboxRequest(requestType, url, configuration, jsonRequest,
@@ -85,7 +87,7 @@ internal object GatewayManager {
                 }
             ).apply {
                 setShouldCache(false)
-                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
