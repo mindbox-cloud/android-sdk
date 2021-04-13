@@ -68,7 +68,7 @@ class DeviceUuidSingleUnitTest {
 
     @After
     fun clear() {
-        MindboxPreferences.clear()
-        DbManager.removeConfiguration()
+        clearPreferences()
+        removeConfiguration()
     }
 }

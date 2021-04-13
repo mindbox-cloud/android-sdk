@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import android.os.Build
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 /**

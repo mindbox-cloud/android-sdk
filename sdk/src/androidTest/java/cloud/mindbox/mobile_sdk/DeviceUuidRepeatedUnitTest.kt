@@ -22,8 +22,8 @@ class DeviceUuidRepeatedUnitTest {
         @AfterClass
         @JvmStatic
         fun clear() {
-            MindboxPreferences.clear()
-            DbManager.removeConfiguration()
+            clearPreferences()
+            removeConfiguration()
         }
     }
 
