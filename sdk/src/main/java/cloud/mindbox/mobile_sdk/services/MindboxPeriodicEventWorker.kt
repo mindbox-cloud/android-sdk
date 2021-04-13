@@ -1,20 +1,20 @@
 package cloud.mindbox.mobile_sdk.services
 
 import android.content.Context
-import androidx.work.ListenableWorker
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import cloud.mindbox.mobile_sdk.logOnException
-import cloud.mindbox.mobile_sdk.managers.logEndWork
-import cloud.mindbox.mobile_sdk.managers.sendEventsWithResult
+import cloud.mindbox.mobile_sdk.managers.WorkerDelegate
 import cloud.mindbox.mobile_sdk.returnOnException
 
 internal class MindboxPeriodicEventWorker(appContext: Context, workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
 
+    private val workerDelegate: WorkerDelegate by lazy { WorkerDelegate() }
+
     override fun doWork(): Result {
         return runCatching {
-            return sendEventsWithResult(
+            return workerDelegate.sendEventsWithResult(
                 context = applicationContext,
                 parent = this,
                 workerType = WorkerType.PERIODIC_WORKER
@@ -25,7 +25,7 @@ internal class MindboxPeriodicEventWorker(appContext: Context, workerParams: Wor
     override fun onStopped() {
         super.onStopped()
         runCatching {
-            logEndWork(this)
+            workerDelegate.onEndWork(this)
         }.logOnException()
     }
 }
