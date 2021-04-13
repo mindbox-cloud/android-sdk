@@ -7,7 +7,7 @@ import java.util.*
 internal object MindboxPreferences {
 
     private const val KEY_IS_FIRST_INITIALIZATION = "key_is_first_initialization"
-    private const val KEY_USER_ADID = "key_user_uuid"
+    private const val KEY_DEVICE_UUID = "key_device_uuid"
     private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
@@ -23,6 +23,16 @@ internal object MindboxPreferences {
         set(value) {
             runCatching {
                 Hawk.put(KEY_IS_FIRST_INITIALIZATION, value)
+            }.returnOnException { }
+        }
+
+    var deviceUuid: String
+        get() = runCatching {
+            return Hawk.get(KEY_DEVICE_UUID, "")
+        }.returnOnException { "" }
+        set(value) {
+            runCatching {
+                Hawk.put(KEY_DEVICE_UUID, value)
             }.returnOnException { }
         }
 

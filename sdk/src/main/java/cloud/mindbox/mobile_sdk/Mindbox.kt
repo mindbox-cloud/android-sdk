@@ -76,14 +76,11 @@ object Mindbox {
      * @return String identifier of subscription
      * @see disposeDeviceUuidSubscription
      */
-    fun subscribeDeviceUuid(context: Context, subscription: (String) -> Unit): String {
-        initComponents(context)
-
+    fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
-        val configuration = DbManager.getConfigurations()
 
-        if (configuration != null && !MindboxPreferences.isFirstInitialize) {
-            subscription.invoke(configuration.deviceUuid)
+        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(MindboxPreferences.deviceUuid)
         } else {
             deviceUuidCallbacks[subscriptionId] = subscription
         }
@@ -180,8 +177,8 @@ object Mindbox {
                         validateFields(
                             configuration.domain,
                             configuration.endpointId,
-                            configuration.deviceUuid,
-                            configuration.installationId
+                            configuration.previousDeviceUUID,
+                            configuration.previousInstallationId
                         )
                     }
 
@@ -189,15 +186,7 @@ object Mindbox {
                 ?: throw InitializeMindboxException(validationErrors.messages.toString())
 
             mindboxScope.launch {
-
                 if (MindboxPreferences.isFirstInitialize) {
-
-                    if (configuration.deviceUuid.trim().isEmpty()) {
-                        configuration.deviceUuid = initDeviceId(context)
-                    } else {
-                        configuration.deviceUuid.trim()
-                    }
-
                     firstInitialization(context, configuration)
                 } else {
                     updateAppInfo(context)
@@ -235,6 +224,7 @@ object Mindbox {
             }
 
             val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
+            val deviceUuid = initDeviceId(context)
 
             DbManager.saveConfigurations(configuration)
 
@@ -242,18 +232,20 @@ object Mindbox {
             val initData = InitData(
                 token = firebaseToken ?: "",
                 isTokenAvailable = isTokenAvailable,
-                installationId = configuration.installationId,
+                installationId = configuration.previousInstallationId,
+                lastDeviceUuid = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated
             )
 
             MindboxEventManager.appInstalled(context, initData)
 
-            MindboxPreferences.isFirstInitialize = false
+            MindboxPreferences.deviceUuid = deviceUuid
             MindboxPreferences.firebaseToken = firebaseToken
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.isFirstInitialize = false
 
-            deliverDeviceUuid(configuration.deviceUuid)
+            deliverDeviceUuid(deviceUuid)
             deliverFmsToken(firebaseToken)
         }.logOnException()
     }

@@ -92,7 +92,9 @@ internal class WorkerDelegate() {
         parent: Any
     ) {
         runCatching {
-            val eventsCount = eventKeys.size
+
+            val eventsCount = eventKeys.size - 1
+            val deviceUuid = MindboxPreferences.deviceUuid
 
             eventKeys.forEachIndexed { index, eventKey ->
                 val countDownLatch = CountDownLatch(1)
@@ -100,7 +102,7 @@ internal class WorkerDelegate() {
 
                 if (isWorkerStopped) return
 
-                GatewayManager.sendEvent(context, configuration, event) { isSent ->
+                GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSent ->
                     if (isSent) {
                         DbManager.removeEventFromQueue(eventKey)
                     }

@@ -6,6 +6,7 @@ internal data class InitData(
     val token: String,
     val isTokenAvailable: Boolean,
     val installationId: String,
+    val lastDeviceUuid:String,
     val isNotificationsEnabled: Boolean,
     val subscribe: Boolean,
     private val version: Int = INIT_DATA_VERSION

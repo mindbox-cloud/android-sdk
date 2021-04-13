@@ -21,12 +21,13 @@ internal object GatewayManager {
 
     private fun buildEventUrl(
         configuration: MindboxConfiguration,
+        deviceUuid: String,
         event: Event
     ): String {
 
         val urlQueries: HashMap<String, String> = hashMapOf(
             UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
-            UrlQuery.DEVICE_UUID.value to configuration.deviceUuid,
+            UrlQuery.DEVICE_UUID.value to deviceUuid,
             UrlQuery.TRANSACTION_ID.value to event.transactionId,
             UrlQuery.DATE_TIME_OFFSET.value to getTimeOffset(event.enqueueTimestamp)
         )
@@ -49,13 +50,14 @@ internal object GatewayManager {
     fun sendEvent(
         context: Context,
         configuration: MindboxConfiguration,
+        deviceUuid: String,
         event: Event,
         isSuccess: (Boolean) -> Unit
     ) {
         try {
 
             val requestType: Int = getRequestType(event.eventType)
-            val url: String = buildEventUrl(configuration, event)
+            val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
 
             val request = MindboxRequest(requestType, url, configuration, jsonRequest,
