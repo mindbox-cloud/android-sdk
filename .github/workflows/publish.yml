@@ -45,6 +45,19 @@ jobs:
           gradle test 
           gradle testDebugUnitTest
 
+  emulation:
+    needs: [build]
+    runs-on: macos-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: run tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        script: ./gradlew sdk:connectedAndroidTest
+
   build:
     needs: [unit, lint]
     runs-on: ubuntu-latest 
