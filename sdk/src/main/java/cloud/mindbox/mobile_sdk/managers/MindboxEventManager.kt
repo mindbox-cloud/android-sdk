@@ -60,6 +60,17 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
+    fun appStarted(context: Context, trackVisitData: TrackVisitData) {
+        runCatching {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.TRACK_VISIT,
+                    body = gson.toJson(trackVisitData)
+                )
+            )
+        }.logOnException()
+    }
+
     fun sendEventsIfExist(context: Context) {
         runCatching {
             val keys = DbManager.getFilteredEventsKeys()
