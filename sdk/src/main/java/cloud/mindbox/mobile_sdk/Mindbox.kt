@@ -225,6 +225,7 @@ object Mindbox {
 
             val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
             val deviceUuid = initDeviceId(context)
+            val instanceId = IdentifierManager.generateRandomUuid()
 
             DbManager.saveConfigurations(configuration)
 
@@ -235,7 +236,8 @@ object Mindbox {
                 installationId = configuration.previousInstallationId,
                 lastDeviceUuid = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
-                subscribe = configuration.subscribeCustomerIfCreated
+                subscribe = configuration.subscribeCustomerIfCreated,
+                instanceId = instanceId
             )
 
             MindboxEventManager.appInstalled(context, initData)
@@ -243,6 +245,7 @@ object Mindbox {
             MindboxPreferences.deviceUuid = deviceUuid
             MindboxPreferences.firebaseToken = firebaseToken
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.instanceId = instanceId
             MindboxPreferences.isFirstInitialize = false
 
             deliverDeviceUuid(deviceUuid)
@@ -265,6 +268,7 @@ object Mindbox {
                     token = firebaseToken ?: MindboxPreferences.firebaseToken ?: "",
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled,
+                    instanceId = MindboxPreferences.instanceId,
                     version = MindboxPreferences.infoUpdatedVersion
                 )
 

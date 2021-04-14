@@ -14,6 +14,7 @@ internal object MindboxPreferences {
     private const val KEY_HOST_APP_MANE =
         "key_host_app_name" //need for scheduling and stopping one-time background service
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
+    private const val KEY_INSTANCE_ID = "key_instance_id"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
 
     var isFirstInitialize: Boolean
@@ -83,5 +84,15 @@ internal object MindboxPreferences {
             Hawk.put(KEY_INFO_UPDATED_VERSION, version + 1)
             return version
         }.returnOnException { DEFAULT_INFO_UPDATED_VERSION }
+
+    var instanceId: String
+        get() = runCatching {
+            return Hawk.get(KEY_INSTANCE_ID, "")
+        }.returnOnException { "" }
+        set(value) {
+            runCatching {
+                Hawk.put(KEY_INSTANCE_ID, value)
+            }.returnOnException { }
+        }
 
 }
