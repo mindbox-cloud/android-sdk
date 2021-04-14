@@ -11,30 +11,6 @@ internal object BackgroundWorkManager {
     private val WORKER_TAG =
         "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
 
-    fun startPeriodicService(context: Context) {
-        runCatching {
-            val request = PeriodicWorkRequest.Builder(
-                MindboxPeriodicEventWorker::class.java,
-                15, TimeUnit.MINUTES
-            )
-                .setInitialDelay(15, TimeUnit.MINUTES)
-                .addTag(WORKER_TAG)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiresBatteryNotLow(true)
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                ).build()
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORKER_TAG,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request
-            )
-
-        }.returnOnException { }
-    }
-
     fun startOneTimeService(context: Context) {
         runCatching {
             val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
@@ -57,8 +33,4 @@ internal object BackgroundWorkManager {
 
         }.returnOnException { }
     }
-}
-
-internal enum class WorkerType {
-    ONE_TIME_WORKER, PERIODIC_WORKER
 }

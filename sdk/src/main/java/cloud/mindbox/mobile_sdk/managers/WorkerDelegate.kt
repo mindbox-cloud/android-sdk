@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.services.WorkerType
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.security.ProviderInstaller
@@ -20,8 +19,7 @@ internal class WorkerDelegate() {
 
     fun sendEventsWithResult(
         context: Context,
-        parent: Any,
-        workerType: WorkerType
+        parent: Any
     ): ListenableWorker.Result {
         MindboxLogger.d(parent, "Start working...")
 
@@ -57,16 +55,11 @@ internal class WorkerDelegate() {
                 return ListenableWorker.Result.failure()
             }
 
-            var eventKeys = DbManager.getFilteredEventsKeys()
+            val eventKeys = DbManager.getFilteredEventsKeys()
             if (eventKeys.isNullOrEmpty()) {
                 MindboxLogger.d(parent, "Events list is empty")
                 return ListenableWorker.Result.success()
             } else {
-
-                if (workerType == WorkerType.PERIODIC_WORKER && eventKeys.size > 1000) {
-                    eventKeys = eventKeys.subList(0, 1000)
-                }
-
                 MindboxLogger.d(parent, "Will be sent ${eventKeys.size}")
 
                 sendEvents(context, eventKeys, configuration, parent)

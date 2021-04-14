@@ -16,8 +16,7 @@ internal class MindboxOneTimeEventWorker(appContext: Context, workerParams: Work
         return runCatching {
             return workerDelegate.sendEventsWithResult(
                 context = applicationContext,
-                parent = this,
-                workerType = WorkerType.ONE_TIME_WORKER
+                parent = this
             )
         }.returnOnException { Result.failure() }
     }
