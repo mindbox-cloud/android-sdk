@@ -26,7 +26,6 @@ internal object GatewayManager {
     ): String {
 
         val urlQueries: HashMap<String, String> = hashMapOf(
-            UrlQuery.ENDPOINT_ID.value to configuration.endpointId,
             UrlQuery.DEVICE_UUID.value to deviceUuid,
             UrlQuery.TRANSACTION_ID.value to event.transactionId,
             UrlQuery.DATE_TIME_OFFSET.value to getTimeOffset(event.enqueueTimestamp)
@@ -36,9 +35,11 @@ internal object GatewayManager {
             EventType.APP_INFO_UPDATED,
             EventType.APP_INSTALLED,
             EventType.PUSH_CLICKED -> {
+                urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
             EventType.PUSH_DELIVERED -> {
+                urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
                     event.additionalFields?.get(EventParameters.UNIQ_KEY.fieldName) ?: ""
             }
@@ -101,7 +102,8 @@ internal object GatewayManager {
         return when (eventType) {
             EventType.APP_INSTALLED,
             EventType.APP_INFO_UPDATED,
-            EventType.PUSH_CLICKED -> Request.Method.POST
+            EventType.PUSH_CLICKED,
+            EventType.TRACK_VISIT -> Request.Method.POST
             EventType.PUSH_DELIVERED -> Request.Method.GET
         }
     }

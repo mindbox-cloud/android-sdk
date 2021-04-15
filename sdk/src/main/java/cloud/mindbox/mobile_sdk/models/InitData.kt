@@ -25,3 +25,8 @@ internal data class TrackClickData(
     val messageUniqueKey: String,
     val buttonUniqueKey: String
 )
+
+internal data class TrackVisitData(
+    val ianaTimeZone: String,
+    val endpointId: String
+)
