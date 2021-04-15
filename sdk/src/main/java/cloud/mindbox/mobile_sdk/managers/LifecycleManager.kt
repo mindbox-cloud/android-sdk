@@ -10,37 +10,37 @@ internal class LifecycleManager(
 
     private var currentActivity: Activity? = null
 
-    override fun onActivityCreated(p0: Activity, p1: Bundle?) {
+    override fun onActivityCreated(activity: Activity, p1: Bundle?) {
 
     }
 
-    override fun onActivityStarted(p0: Activity) {
-        if (currentActivity == p0) {
+    override fun onActivityStarted(activity: Activity) {
+        if (currentActivity?.javaClass?.name == activity.javaClass.name) {
             onAppStarted()
         } else {
-            currentActivity = p0
+            currentActivity = activity
         }
     }
 
-    override fun onActivityResumed(p0: Activity) {
+    override fun onActivityResumed(activity: Activity) {
 
     }
 
-    override fun onActivityPaused(p0: Activity) {
+    override fun onActivityPaused(activity: Activity) {
 
     }
 
-    override fun onActivityStopped(p0: Activity) {
+    override fun onActivityStopped(activity: Activity) {
         if (currentActivity == null) {
-            currentActivity = p0
+            currentActivity = activity
         }
     }
 
-    override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {
+    override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {
 
     }
 
-    override fun onActivityDestroyed(p0: Activity) {
+    override fun onActivityDestroyed(activity: Activity) {
 
     }
 
