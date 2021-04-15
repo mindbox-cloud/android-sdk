@@ -9,6 +9,7 @@ internal data class InitData(
     val lastDeviceUuid: String,
     val isNotificationsEnabled: Boolean,
     val subscribe: Boolean,
+    val instanceId: String,
     private val version: Int = INIT_DATA_VERSION
 )
 
@@ -16,6 +17,7 @@ internal data class UpdateData(
     val token: String,
     val isTokenAvailable: Boolean,
     val isNotificationsEnabled: Boolean,
+    val instanceId: String,
     val version: Int
 )
 

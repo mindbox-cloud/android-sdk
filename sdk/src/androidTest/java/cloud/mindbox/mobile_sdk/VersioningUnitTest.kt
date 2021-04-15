@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
+import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.orhanobut.hawk.Hawk
@@ -29,6 +30,7 @@ class VersioningUnitTest {
         Hawk.init(appContext).build()
 
         val scope = CoroutineScope(Dispatchers.Default)
+        MindboxPreferences.instanceId = IdentifierManager.generateRandomUuid()
 
         scope.launch {
             val coroutines =
@@ -51,6 +53,7 @@ class VersioningUnitTest {
             token = UUID.randomUUID().toString(),
             isTokenAvailable = true,
             isNotificationsEnabled = true,
+            instanceId = MindboxPreferences.instanceId,
             version = MindboxPreferences.infoUpdatedVersion
         )
 
