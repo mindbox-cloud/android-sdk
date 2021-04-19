@@ -4,14 +4,10 @@ import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
-import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.IdentifierManager
-import cloud.mindbox.mobile_sdk.managers.LifecycleManager
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
-import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -37,7 +33,7 @@ object Mindbox {
     fun subscribeFmsToken(subscription: (String?) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
-        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.firebaseToken)
         } else {
             fmsTokenCallbacks[subscriptionId] = subscription
@@ -78,7 +74,7 @@ object Mindbox {
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
-        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.deviceUuid)
         } else {
             deviceUuidCallbacks[subscriptionId] = subscription
@@ -214,7 +210,7 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context) {
-        if (!Hawk.isBuilt()) Hawk.init(context).build()
+        SharedPreferencesManager.with(context)
         Paper.init(context)
         FirebaseApp.initializeApp(context)
     }
