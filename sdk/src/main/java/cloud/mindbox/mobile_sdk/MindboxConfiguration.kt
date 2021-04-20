@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 /**
@@ -88,10 +89,14 @@ class MindboxConfiguration(builder: Builder) {
                     }
 
                 //need for scheduling and stopping one-time background service
+                SharedPreferencesManager.with(context)
                 MindboxPreferences.hostAppName = packageName
 
             } catch (e: Exception) {
-                MindboxLogger.e(this, "Getting app info failed. Identified as an unknown application")
+                MindboxLogger.e(
+                    this,
+                    "Getting app info failed. Identified as an unknown application"
+                )
             }
         }
     }

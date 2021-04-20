@@ -14,7 +14,8 @@ internal enum class EventType(val operation: String, val endpoint: String) {
     APP_INSTALLED("MobilePush.ApplicationInstalled", "/v3/operations/async"),
     APP_INFO_UPDATED("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"),
     PUSH_DELIVERED("", "/mobile-push/delivered"),
-    PUSH_CLICKED("MobilePush.TrackClick", "/v3/operations/async")
+    PUSH_CLICKED("MobilePush.TrackClick", "/v3/operations/async"),
+    TRACK_VISIT("TrackVisit", "/v1.1/customer/mobile-track-visit")
 }
 
 internal enum class EventParameters(val fieldName: String) {

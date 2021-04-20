@@ -1,18 +1,13 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
-import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.managers.IdentifierManager
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.InitData
-import cloud.mindbox.mobile_sdk.models.TrackClickData
-import cloud.mindbox.mobile_sdk.models.UpdateData
-import cloud.mindbox.mobile_sdk.models.ValidationError
+import cloud.mindbox.mobile_sdk.managers.*
+import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
-import com.orhanobut.hawk.Hawk
 import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -38,7 +33,7 @@ object Mindbox {
     fun subscribeFmsToken(subscription: (String?) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
-        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.firebaseToken)
         } else {
             fmsTokenCallbacks[subscriptionId] = subscription
@@ -79,7 +74,7 @@ object Mindbox {
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
-        if (Hawk.isBuilt() && !MindboxPreferences.isFirstInitialize) {
+        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.deviceUuid)
         } else {
             deviceUuidCallbacks[subscriptionId] = subscription
@@ -192,6 +187,14 @@ object Mindbox {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
                 }
+                sendTrackVisitEvent(context, configuration.endpointId)
+
+                // Handle back app in foreground
+                val lifecycleManager = LifecycleManager {
+                    sendTrackVisitEvent(context, configuration.endpointId)
+                }
+                (context.applicationContext as? Application)
+                    ?.registerActivityLifecycleCallbacks(lifecycleManager)
             }
         }.returnOnException { }
     }
@@ -207,7 +210,7 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context) {
-        if (!Hawk.isBuilt()) Hawk.init(context).build()
+        SharedPreferencesManager.with(context)
         Paper.init(context)
         FirebaseApp.initializeApp(context)
     }
@@ -225,6 +228,7 @@ object Mindbox {
 
             val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
             val deviceUuid = initDeviceId(context)
+            val instanceId = IdentifierManager.generateRandomUuid()
 
             DbManager.saveConfigurations(configuration)
 
@@ -235,7 +239,8 @@ object Mindbox {
                 installationId = configuration.previousInstallationId,
                 lastDeviceUuid = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
-                subscribe = configuration.subscribeCustomerIfCreated
+                subscribe = configuration.subscribeCustomerIfCreated,
+                instanceId = instanceId
             )
 
             MindboxEventManager.appInstalled(context, initData)
@@ -243,6 +248,7 @@ object Mindbox {
             MindboxPreferences.deviceUuid = deviceUuid
             MindboxPreferences.firebaseToken = firebaseToken
             MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            MindboxPreferences.instanceId = instanceId
             MindboxPreferences.isFirstInitialize = false
 
             deliverDeviceUuid(deviceUuid)
@@ -265,6 +271,7 @@ object Mindbox {
                     token = firebaseToken ?: MindboxPreferences.firebaseToken ?: "",
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled,
+                    instanceId = MindboxPreferences.instanceId,
                     version = MindboxPreferences.infoUpdatedVersion
                 )
 
@@ -274,6 +281,15 @@ object Mindbox {
                 MindboxPreferences.firebaseToken = firebaseToken
             }
         }.logOnException()
+    }
+
+    private fun sendTrackVisitEvent(context: Context, endpointId: String) {
+        val trackVisitData = TrackVisitData(
+            ianaTimeZone = TimeZone.getDefault().id,
+            endpointId = endpointId
+        )
+
+        MindboxEventManager.appStarted(context, trackVisitData)
     }
 
     private fun deliverDeviceUuid(deviceUuid: String) {

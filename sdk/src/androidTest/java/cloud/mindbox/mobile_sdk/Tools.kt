@@ -1,9 +1,8 @@
 package cloud.mindbox.mobile_sdk
 
-import com.orhanobut.hawk.Hawk
+import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import io.paperdb.Paper
 import io.paperdb.PaperDbException
-
 
 internal fun removeConfiguration() {
     try {
@@ -24,5 +23,5 @@ internal fun removeEvents() {
 }
 
 fun clearPreferences() {
-    Hawk.deleteAll()
+    SharedPreferencesManager.deleteAll()
 }
