@@ -32,16 +32,20 @@ internal object GatewayManager {
         )
 
         when (event.eventType) {
-            EventType.APP_INFO_UPDATED,
-            EventType.APP_INSTALLED,
-            EventType.PUSH_CLICKED -> {
+            is EventType.AppInstalled,
+            is EventType.AppInfoUpdated,
+            is EventType.PushClicked -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
-            EventType.PUSH_DELIVERED -> {
+            is EventType.PushDelivered -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
                     event.additionalFields?.get(EventParameters.UNIQ_KEY.fieldName) ?: ""
+            }
+            is EventType.AsyncOperation -> {
+                urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
+                urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
         }
 
@@ -100,11 +104,12 @@ internal object GatewayManager {
 
     private fun getRequestType(eventType: EventType): Int {
         return when (eventType) {
-            EventType.APP_INSTALLED,
-            EventType.APP_INFO_UPDATED,
-            EventType.PUSH_CLICKED,
-            EventType.TRACK_VISIT -> Request.Method.POST
-            EventType.PUSH_DELIVERED -> Request.Method.GET
+            is EventType.AppInstalled,
+            is EventType.AppInfoUpdated,
+            is EventType.PushClicked,
+            is EventType.TrackVisit,
+            is EventType.AsyncOperation -> Request.Method.POST
+            is EventType.PushDelivered -> Request.Method.GET
         }
     }
 

@@ -3,9 +3,6 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.*
-import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.EventParameters
-import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 
@@ -17,7 +14,7 @@ internal object MindboxEventManager {
         runCatching {
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.APP_INSTALLED,
+                    eventType = EventType.AppInstalled,
                     body = gson.toJson(initData)
                 )
             )
@@ -28,7 +25,7 @@ internal object MindboxEventManager {
         runCatching {
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.APP_INFO_UPDATED,
+                    eventType = EventType.AppInfoUpdated,
                     body = gson.toJson(initData)
                 )
             )
@@ -42,7 +39,7 @@ internal object MindboxEventManager {
             )
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.PUSH_DELIVERED,
+                    eventType = EventType.PushDelivered,
                     additionalFields = fields
                 )
             )
@@ -53,7 +50,7 @@ internal object MindboxEventManager {
         runCatching {
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.PUSH_CLICKED,
+                    eventType = EventType.PushClicked,
                     body = gson.toJson(clickData)
                 )
             )
@@ -64,8 +61,19 @@ internal object MindboxEventManager {
         runCatching {
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.TRACK_VISIT,
+                    eventType = EventType.TrackVisit,
                     body = gson.toJson(trackVisitData)
+                )
+            )
+        }.logOnException()
+    }
+
+    fun asyncOperation(context: Context, name: String, properties: Map<String, Any?>?) {
+        runCatching {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.AsyncOperation(name),
+                    body = properties?.let(gson::toJson)
                 )
             )
         }.logOnException()
@@ -80,4 +88,5 @@ internal object MindboxEventManager {
             }
         }.logOnException()
     }
+
 }

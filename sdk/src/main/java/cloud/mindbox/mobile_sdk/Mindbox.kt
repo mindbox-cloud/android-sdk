@@ -209,6 +209,25 @@ object Mindbox {
         MindboxLogger.level = level
     }
 
+    /**
+     * Creates and deliveries event with specified name and body.
+     *
+     * @param context current context is used
+     * @param name the name of asynchronous operation
+     * @param properties [Map] which will be send as event json body of operation. Default value
+     * is null
+     */
+    fun executeAsyncOperation(
+        context: Context,
+        name: String,
+        properties: Map<String, Any?>? = null
+    ) {
+        runCatching {
+            initComponents(context)
+            MindboxEventManager.asyncOperation(context, name, properties)
+        }.logOnException()
+    }
+
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
         Paper.init(context)
