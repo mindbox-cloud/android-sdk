@@ -216,13 +216,12 @@ object Mindbox {
      *
      * @param context current context is used
      * @param operationSystemName the name of asynchronous operation
-     * @param operationBody [Map] which will be send as event json body of operation. Default value
-     * is empty map.
+     * @param operationBody [T] which extends [OperationBody] and will be send as event json body of operation.
      */
-    fun executeAsyncOperation(
+    fun <T : OperationBody> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: Map<String, Any?> = emptyMap()
+        operationBody: T
     ) {
         runCatching {
             if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {

@@ -8,6 +8,9 @@ import com.google.gson.Gson
 
 internal object MindboxEventManager {
 
+    private const val EMPTY_JSON_OBJECT = "{}"
+    private const val NULL_JSON = "null"
+
     private val gson = Gson()
 
     fun appInstalled(context: Context, initData: InitData) {
@@ -68,12 +71,13 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
-    fun asyncOperation(context: Context, name: String, properties: Map<String, Any?>?) {
+    fun <T : OperationBody> asyncOperation(context: Context, name: String, body: T) {
         runCatching {
+            val json = gson.toJson(body)
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.AsyncOperation(name),
-                    body = properties?.let(gson::toJson)
+                    body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
                 )
             )
         }.logOnException()
