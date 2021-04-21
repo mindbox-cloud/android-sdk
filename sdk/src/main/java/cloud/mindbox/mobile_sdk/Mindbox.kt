@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit
 
 object Mindbox {
 
+    private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
+
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
@@ -213,18 +215,25 @@ object Mindbox {
      * Creates and deliveries event with specified name and body.
      *
      * @param context current context is used
-     * @param name the name of asynchronous operation
-     * @param properties [Map] which will be send as event json body of operation. Default value
-     * is null
+     * @param operationSystemName the name of asynchronous operation
+     * @param operationBody [Map] which will be send as event json body of operation. Default value
+     * is empty map.
      */
     fun executeAsyncOperation(
         context: Context,
-        name: String,
-        properties: Map<String, Any?>? = null
+        operationSystemName: String,
+        operationBody: Map<String, Any?> = emptyMap()
     ) {
         runCatching {
-            initComponents(context)
-            MindboxEventManager.asyncOperation(context, name, properties)
+            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
+                initComponents(context)
+                MindboxEventManager.asyncOperation(context, operationSystemName, operationBody)
+            } else {
+                MindboxLogger.w(
+                    this,
+                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+                )
+            }
         }.logOnException()
     }
 
