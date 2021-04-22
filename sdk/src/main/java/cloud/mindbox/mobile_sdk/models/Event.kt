@@ -10,12 +10,20 @@ internal data class Event(
     val body: String? = null //json
 )
 
-internal enum class EventType(val operation: String, val endpoint: String) {
-    APP_INSTALLED("MobilePush.ApplicationInstalled", "/v3/operations/async"),
-    APP_INFO_UPDATED("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"),
-    PUSH_DELIVERED("", "/mobile-push/delivered"),
-    PUSH_CLICKED("MobilePush.TrackClick", "/v3/operations/async"),
-    TRACK_VISIT("TrackVisit", "/v1.1/customer/mobile-track-visit")
+internal sealed class EventType(val operation: String, val endpoint: String) {
+
+    object AppInstalled : EventType("MobilePush.ApplicationInstalled", "/v3/operations/async")
+
+    object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
+
+    object PushDelivered : EventType("", "/mobile-push/delivered")
+
+    object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
+
+    object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
+
+    internal class AsyncOperation(operation: String) : EventType(operation, "/v3/operations/async")
+
 }
 
 internal enum class EventParameters(val fieldName: String) {
