@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import androidx.room.Room
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -12,7 +11,6 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 
 internal object DbManager {
 
-    private const val DATABASE_NAME = "mindbox_db"
     const val EVENTS_TABLE_NAME = "mindbox_events_table"
     const val CONFIGURATION_TABLE_NAME = "mindbox_configuration_table"
 
@@ -23,11 +21,7 @@ internal object DbManager {
 
     fun init(context: Context) = runCatching {
         if (!this::mindboxDb.isInitialized) {
-            mindboxDb = Room.databaseBuilder(
-                context.applicationContext,
-                MindboxDatabase::class.java,
-                DATABASE_NAME
-            ).build()
+            mindboxDb = MindboxDatabase.getInstance(context)
         }
     }.logOnException()
 
