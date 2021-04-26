@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
-import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -238,7 +237,7 @@ object Mindbox {
 
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
-        Paper.init(context)
+        DbManager.init(context)
         FirebaseApp.initializeApp(context)
     }
 
@@ -257,7 +256,7 @@ object Mindbox {
             val deviceUuid = initDeviceId(context)
             val instanceId = IdentifierManager.generateRandomUuid()
 
-            DbManager.saveConfigurations(configuration)
+            DbManager.saveConfigurations(Configuration(configuration))
 
             val isTokenAvailable = !firebaseToken.isNullOrEmpty()
             val initData = InitData(

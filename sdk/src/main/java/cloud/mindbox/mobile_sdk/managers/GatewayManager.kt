@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
@@ -20,7 +19,7 @@ internal object GatewayManager {
     private const val MAX_RETRIES = 0
 
     private fun buildEventUrl(
-        configuration: MindboxConfiguration,
+        configuration: Configuration,
         deviceUuid: String,
         event: Event
     ): String {
@@ -54,7 +53,7 @@ internal object GatewayManager {
 
     fun sendEvent(
         context: Context,
-        configuration: MindboxConfiguration,
+        configuration: Configuration,
         deviceUuid: String,
         event: Event,
         isSuccess: (Boolean) -> Unit
@@ -102,20 +101,18 @@ internal object GatewayManager {
         }
     }
 
-    private fun getRequestType(eventType: EventType): Int {
-        return when (eventType) {
-            is EventType.AppInstalled,
-            is EventType.AppInfoUpdated,
-            is EventType.PushClicked,
-            is EventType.TrackVisit,
-            is EventType.AsyncOperation -> Request.Method.POST
-            is EventType.PushDelivered -> Request.Method.GET
-        }
+    private fun getRequestType(eventType: EventType): Int = when (eventType) {
+        is EventType.AppInstalled,
+        is EventType.AppInfoUpdated,
+        is EventType.PushClicked,
+        is EventType.TrackVisit,
+        is EventType.AsyncOperation -> Request.Method.POST
+        is EventType.PushDelivered -> Request.Method.GET
     }
 
-    private fun getTimeOffset(timeMls: Long): String {
-        return (Date().time - timeMls).toString()
-    }
+    private fun getTimeOffset(
+        timeMls: Long
+    ): String = (System.currentTimeMillis() - timeMls).toString()
 
     private fun convertBodyToJson(body: String?): JSONObject? {
         return if (body == null) {

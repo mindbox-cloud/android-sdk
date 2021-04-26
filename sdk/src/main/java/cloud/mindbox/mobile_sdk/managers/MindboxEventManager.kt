@@ -85,9 +85,7 @@ internal object MindboxEventManager {
 
     fun sendEventsIfExist(context: Context) {
         runCatching {
-            val keys = DbManager.getFilteredEventsKeys()
-
-            if (keys.isNotEmpty()) {
+            if (DbManager.getFilteredEvents().isNotEmpty()) {
                 BackgroundWorkManager.startOneTimeService(context)
             }
         }.logOnException()
