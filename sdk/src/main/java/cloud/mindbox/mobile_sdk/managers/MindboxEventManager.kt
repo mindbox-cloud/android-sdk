@@ -5,6 +5,8 @@ import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 internal object MindboxEventManager {
 
@@ -37,26 +39,30 @@ internal object MindboxEventManager {
 
     fun pushDelivered(context: Context, uniqKey: String) {
         runCatching {
-            val fields = hashMapOf(
-                EventParameters.UNIQ_KEY.fieldName to uniqKey
-            )
-            DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.PushDelivered,
-                    additionalFields = fields
+            runBlocking(Dispatchers.IO) {
+                val fields = hashMapOf(
+                    EventParameters.UNIQ_KEY.fieldName to uniqKey
                 )
-            )
+                DbManager.addEventToQueue(
+                    context, Event(
+                        eventType = EventType.PushDelivered,
+                        additionalFields = fields
+                    )
+                )
+            }
         }.logOnException()
     }
 
     fun pushClicked(context: Context, clickData: TrackClickData) {
         runCatching {
-            DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.PushClicked,
-                    body = gson.toJson(clickData)
+            runBlocking(Dispatchers.IO) {
+                DbManager.addEventToQueue(
+                    context, Event(
+                        eventType = EventType.PushClicked,
+                        body = gson.toJson(clickData)
+                    )
                 )
-            )
+            }
         }.logOnException()
     }
 
@@ -73,13 +79,15 @@ internal object MindboxEventManager {
 
     fun <T : OperationBody> asyncOperation(context: Context, name: String, body: T) {
         runCatching {
-            val json = gson.toJson(body)
-            DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.AsyncOperation(name),
-                    body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+            runBlocking(Dispatchers.IO) {
+                val json = gson.toJson(body)
+                DbManager.addEventToQueue(
+                    context, Event(
+                        eventType = EventType.AsyncOperation(name),
+                        body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+                    )
                 )
-            )
+            }
         }.logOnException()
     }
 

@@ -97,7 +97,9 @@ internal class WorkerDelegate {
                 if (isWorkerStopped) return
 
                 GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSent ->
-                    handleSendResult(isSent, event)
+                    if (isSent) {
+                        handleSendResult(event)
+                    }
 
                     MindboxLogger.i(
                         parent,
@@ -122,15 +124,7 @@ internal class WorkerDelegate {
     }
 
     private fun handleSendResult(
-        isSent: Boolean,
         event: Event
-    ) = runBlocking(Dispatchers.IO) {
-        if (isSent) {
-            DbManager.removeEventFromQueue(event)
-        } else {
-            val time = System.currentTimeMillis()
-            DbManager.updateEventInQueue(event.copy(retryTimeStamp = time))
-        }
-    }
+    ) = runBlocking(Dispatchers.IO) { DbManager.removeEventFromQueue(event) }
 
 }

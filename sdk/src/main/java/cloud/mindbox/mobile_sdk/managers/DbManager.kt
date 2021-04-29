@@ -40,22 +40,8 @@ internal object DbManager {
         BackgroundWorkManager.startOneTimeService(context)
     }.logOnException()
 
-    fun updateEventInQueue(event: Event) = runCatching {
-        try {
-            mindboxDb.eventsDao().update(event)
-            MindboxLogger.d(this, "Event ${event.eventType.operation} was updated")
-        } catch (exception: RuntimeException) {
-            MindboxLogger.e(
-                this,
-                "Error updating object to the database: ${event.body}",
-                exception
-            )
-        }
-    }.logOnException()
-
     fun getFilteredEvents(): List<Event> = runCatching {
-        getEvents()
-            .sortedBy { event -> event.retryTimeStamp ?: event.enqueueTimestamp }
+        getEvents().sortedBy(Event::enqueueTimestamp)
             .filterNot(::isOldEvent)
             .filterIndexed(::isIndexLessMax)
     }.returnOnException { emptyList() }

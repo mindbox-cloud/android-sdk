@@ -13,9 +13,6 @@ internal interface EventsDao {
     @Insert
     fun insert(event: Event)
 
-    @Update
-    fun update(event: Event)
-
     @Delete
     fun delete(event: Event)
 

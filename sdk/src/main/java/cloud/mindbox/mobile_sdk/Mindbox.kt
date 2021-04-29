@@ -192,7 +192,9 @@ object Mindbox {
 
                 // Handle back app in foreground
                 val lifecycleManager = LifecycleManager {
-                    sendTrackVisitEvent(context, configuration.endpointId)
+                    runBlocking(Dispatchers.IO) {
+                        sendTrackVisitEvent(context, configuration.endpointId)
+                    }
                 }
                 (context.applicationContext as? Application)
                     ?.registerActivityLifecycleCallbacks(lifecycleManager)

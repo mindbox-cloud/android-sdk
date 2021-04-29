@@ -12,7 +12,6 @@ internal data class Event(
     val eventType: EventType,
     val transactionId: String = UUID.randomUUID().toString(),
     val enqueueTimestamp: Long = System.currentTimeMillis(), // date of event creating
-    val retryTimeStamp: Long? = null, // date of last sent attempt
     val additionalFields: HashMap<String, String>? = null,
     val body: String? = null //json
 )
