@@ -2,12 +2,14 @@ package cloud.mindbox.mobile_sdk
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -234,6 +236,32 @@ object Mindbox {
             }
         }.logOnException()
     }
+
+    /**
+     * Handles only Mindbox notification message from [FirebaseMessagingService].
+     *
+     * @param context context used for Mindbox initializing and push notification showing
+     * @param message the [RemoteMessage] received from Firebase
+     * @param channelId the id of channel for Mindbox pushes
+     * @param channelName the name of channel for Mindbox pushes
+     * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     *
+     * @return true if notification is Mindbox push and  it's successfully handled, false otherwise.
+     */
+    fun handleRemoteMessage(
+        context: Context,
+        message: RemoteMessage?,
+        channelId: String,
+        channelName: String,
+        @DrawableRes ttt: Int,
+        channelDescription: String? = null
+    ): Boolean = PushNotificationManager.handleRemoteMessage(
+        context = context,
+        remoteMessage = message,
+        channelId = channelId,
+        channelName = channelName,
+        channelDescription = channelDescription
+    )
 
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
