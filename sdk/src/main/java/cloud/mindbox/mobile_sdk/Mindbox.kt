@@ -115,7 +115,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push delivered"
+     * Creates and deliveries event of "Push delivered". Recommended call this method from
+     * background thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -134,7 +135,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push clicked"
+     * Creates and deliveries event of "Push clicked". Recommended call this method from background
+     * thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -213,7 +215,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event with specified name and body.
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
      *
      * @param context current context is used
      * @param operationSystemName the name of asynchronous operation
