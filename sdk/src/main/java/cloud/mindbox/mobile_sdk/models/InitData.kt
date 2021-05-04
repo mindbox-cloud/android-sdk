@@ -23,7 +23,7 @@ internal data class UpdateData(
 
 internal data class TrackClickData(
     val messageUniqueKey: String,
-    val buttonUniqueKey: String
+    val buttonUniqueKey: String?
 )
 
 internal data class TrackVisitData(

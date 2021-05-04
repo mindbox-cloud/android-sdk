@@ -142,7 +142,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String?) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
@@ -244,22 +244,24 @@ object Mindbox {
      * @param message the [RemoteMessage] received from Firebase
      * @param channelId the id of channel for Mindbox pushes
      * @param channelName the name of channel for Mindbox pushes
+     * @param pushSmallIcon icon for push notification as drawable resource
      * @param channelDescription the description of channel for Mindbox pushes. Default is null
      *
-     * @return true if notification is Mindbox push and  it's successfully handled, false otherwise.
+     * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
     fun handleRemoteMessage(
         context: Context,
         message: RemoteMessage?,
         channelId: String,
         channelName: String,
-        @DrawableRes ttt: Int,
+        @DrawableRes pushSmallIcon: Int,
         channelDescription: String? = null
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
         remoteMessage = message,
         channelId = channelId,
         channelName = channelName,
+        pushSmallIcon = pushSmallIcon,
         channelDescription = channelDescription
     )
 

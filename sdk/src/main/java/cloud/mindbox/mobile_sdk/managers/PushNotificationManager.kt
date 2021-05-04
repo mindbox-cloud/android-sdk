@@ -4,15 +4,17 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
-import cloud.mindbox.mobile_sdk.*
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
 import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.ACTION_CLICKED
+import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.EXTRA_URL
+import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.getIntent
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -21,103 +23,50 @@ import kotlin.random.Random
 
 internal object PushNotificationManager {
 
+    private const val DATA_UNIQUE_KEY = "uniqueKey"
+    private const val DATA_TITLE = "title"
+    private const val DATA_MESSAGE = "message"
+    private const val DATA_IMAGE_URL = "imageUrl"
+    private const val DATA_BUTTONS = "buttons"
+    private const val MAX_ACTIONS_COUNT = 3
+
     internal fun handleRemoteMessage(
         context: Context,
         remoteMessage: RemoteMessage?,
         channelId: String,
         channelName: String,
+        @DrawableRes pushSmallIcon: Int,
         channelDescription: String?
-    ): Boolean {
+    ): Boolean = runCatching {
+        val data = remoteMessage?.data ?: return false
+        val uniqueKey = data[DATA_UNIQUE_KEY] ?: return false
+
         val applicationContext = context.applicationContext
-        val gson = Gson()
+        val title = data[DATA_TITLE] ?: ""
+        val description = data[DATA_MESSAGE] ?: ""
+        val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
+        val pushActions = Gson().fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
+        val notificationId = Random.nextInt()
 
-        var title = "Pushok title"
-        var description = "Empty message"
-
-        val buttonsType = object : TypeToken<List<PushAction>>() {}.type
-        val data = remoteMessage?.data
-
-        val uniqueKey: String? = data?.get("uniqueKey")
-        val imageUrl: String? = data?.get("imageUrl")
-        val buttons = gson.fromJson<List<PushAction>>(
-            data?.get("buttons").toString(),
-            buttonsType
-        )
-
-        val imageBitmap = getImageByUrl(imageUrl)
-
-        val pushAction = buttons?.firstOrNull() ?: return false
-
-        /*val buttonIntent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("is_button", true)
-            putExtra("uniq_push_key", uniqueKey)
-            putExtra("uniq_push_button_key", pushAction.uniqueKey)
-        }
-
-        val buttonPendingIntent: PendingIntent =
-            PendingIntent.getActivity(
-                applicationContext,
-                0,
-                buttonIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("is_button", false)
-            putExtra("uniq_push_key", uniqueKey)
-            putExtra("uniq_push_button_key", pushAction.uniqueKey)
-        }
-
-        val pendingIntent: PendingIntent =
-            PendingIntent.getActivity(
-                applicationContext,
-                1,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-            )*/
-
-        if (!uniqueKey.isNullOrEmpty()) {
-
-            Mindbox.onPushReceived(applicationContext, uniqueKey)
-
-            title = remoteMessage.data["title"] ?: "Empty title"
-            description = "uniq key: $uniqueKey"
-        }
+        Mindbox.onPushReceived(applicationContext, uniqueKey)
 
         val builder = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(title)
             .setContentText(description)
-            //.setContentIntent(pendingIntent)
+            .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            //.addAction(R.drawable.ic_message, pushAction.text, buttonPendingIntent)
-            .apply {
-                /*val smallIconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    R.drawable.ic_launcher_foreground
-                } else {
-                    R.mipmap.ic_launcher_round
-                }*/
-                setSmallIcon(0)
-
-                if (imageBitmap != null) {
-                    setLargeIcon(imageBitmap)
-                    setStyle(
-                        NotificationCompat.BigPictureStyle()
-                            .bigPicture(imageBitmap)
-                            .bigLargeIcon(null)
-                    )
-                }
-            }
+            .handlePushClick(context, notificationId, uniqueKey)
+            .handleActions(context, notificationId, uniqueKey, pushActions)
+            .handleImageByUrl(data[DATA_IMAGE_URL])
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel(notificationManager, channelId, channelName, channelDescription)
 
-        notificationManager.notify(Random.nextInt(), builder.build())
+        notificationManager.notify(notificationId, builder.build())
 
         return true
-    }
+    }.returnOnException { false }
 
     private fun createNotificationChannel(
         notificationManager: NotificationManager,
@@ -135,12 +84,71 @@ internal object PushNotificationManager {
         }
     }.logOnException()
 
-    private fun getImageByUrl(url: String?): Bitmap? = runCatching {
-        if (url.isNullOrBlank()) {
-            null
-        } else {
-            BitmapFactory.decodeStream(URL(url).openConnection().getInputStream())
+    private fun createPendingIntent(
+        context: Context,
+        id: Int,
+        action: String,
+        pushKey: String,
+        pushAction: PushAction? = null
+    ): PendingIntent? = runCatching {
+        val intent = getIntent(context, id, action, pushKey, pushAction?.uniqueKey).apply {
+            pushAction?.url?.let { url -> putExtra(EXTRA_URL, url) }
         }
+
+        PendingIntent.getBroadcast(
+            context,
+            Random.nextInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }.returnOnException { null }
+
+    private fun NotificationCompat.Builder.handlePushClick(
+        context: Context,
+        notificationId: Int,
+        uniqueKey: String
+    ) = apply {
+        createPendingIntent(
+            context = context,
+            id = notificationId,
+            action = ACTION_CLICKED,
+            pushKey = uniqueKey
+        )?.let(this::setContentIntent)
+    }
+
+    private fun NotificationCompat.Builder.handleActions(
+        context: Context,
+        notificationId: Int,
+        uniqueKey: String,
+        pushActions: List<PushAction>
+    ) = apply {
+        runCatching {
+            pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
+                createPendingIntent(
+                    context = context,
+                    id = notificationId,
+                    action = ACTION_CLICKED,
+                    pushKey = uniqueKey,
+                    pushAction = pushAction
+                )?.let { addAction(0, pushAction.text ?: "", it) }
+            }
+        }
+    }
+
+    private fun NotificationCompat.Builder.handleImageByUrl(url: String?) = apply {
+        runCatching {
+            if (!url.isNullOrBlank()) {
+                BitmapFactory.decodeStream(URL(url).openConnection().getInputStream())
+                    ?.let { imageBitmap ->
+                        setLargeIcon(imageBitmap)
+                        setStyle(
+                            NotificationCompat.BigPictureStyle()
+                                .bigPicture(imageBitmap)
+                                .bigLargeIcon(null)
+                        )
+                    }
+            }
+        }
+    }
 
 }
