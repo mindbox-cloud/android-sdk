@@ -58,20 +58,19 @@ internal class WorkerDelegate {
             }
 
             val events = DbManager.getFilteredEvents()
-            if (events.isNullOrEmpty()) {
+            return if (events.isNullOrEmpty()) {
                 MindboxLogger.d(parent, "Events list is empty")
-                return ListenableWorker.Result.success()
+                ListenableWorker.Result.success()
             } else {
                 MindboxLogger.d(parent, "Will be sent ${events.size}")
 
                 sendEvents(context, events, configuration, parent)
 
-                return if (DbManager.getFilteredEvents().isNullOrEmpty()) {
-                    ListenableWorker.Result.success()
-                } else if (!isWorkerStopped) {
-                    ListenableWorker.Result.retry()
-                } else {
-                    ListenableWorker.Result.failure()
+                when {
+                    isWorkerStopped -> ListenableWorker.Result.failure()
+                    DbManager.getFilteredEvents().isNullOrEmpty() ->
+                        ListenableWorker.Result.success()
+                    else -> ListenableWorker.Result.retry()
                 }
             }
         } catch (e: Exception) {

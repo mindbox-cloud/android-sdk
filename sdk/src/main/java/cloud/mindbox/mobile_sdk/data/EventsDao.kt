@@ -16,4 +16,7 @@ internal interface EventsDao {
     @Delete
     fun delete(event: Event)
 
+    @Delete
+    fun deleteEvents(events: List<Event>)
+
 }

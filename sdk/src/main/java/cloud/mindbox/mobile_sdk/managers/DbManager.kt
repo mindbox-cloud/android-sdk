@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import android.util.Log
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -8,6 +9,9 @@ import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.returnOnException
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 internal object DbManager {
 
@@ -41,20 +45,37 @@ internal object DbManager {
     }.logOnException()
 
     fun getFilteredEvents(): List<Event> = runCatching {
-        getEvents().sortedBy(Event::enqueueTimestamp)
-            .filterNot(::isOldEvent)
-            .filterIndexed(::isIndexLessMax)
+        val events = getEvents().sortedBy(Event::enqueueTimestamp)
+        val resultEvents = filterEvents(events)
+
+        if (events.size > resultEvents.size) {
+            CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
+        }
+
+        resultEvents
     }.returnOnException { emptyList() }
 
     fun removeEventFromQueue(event: Event) = runCatching {
         try {
-            mindboxDb.eventsDao().delete(event)
+            synchronized(this) { mindboxDb.eventsDao().delete(event) }
             MindboxLogger.d(
                 this,
                 "Event ${event.eventType};${event.transactionId} was deleted from queue"
             )
         } catch (exception: RuntimeException) {
             MindboxLogger.e(this, "Error deleting item from database", exception)
+        }
+    }.logOnException()
+
+    private fun removeEventsFromQueue(events: List<Event>) = runCatching {
+        try {
+            synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
+            MindboxLogger.d(
+                this,
+                "${events.size} events were deleted from queue"
+            )
+        } catch (exception: RuntimeException) {
+            MindboxLogger.e(this, "Error deleting items from database", exception)
         }
     }.logOnException()
 
@@ -81,29 +102,22 @@ internal object DbManager {
     }.returnOnException { null }
 
     private fun getEvents(): List<Event> = runCatching {
-        mindboxDb.eventsDao().getAll()
+        synchronized(this) { mindboxDb.eventsDao().getAll() }
     }.returnOnException { emptyList() }
 
-    private fun isIndexLessMax(index: Int, event: Event): Boolean = runCatching {
-        if (index >= MAX_EVENT_LIST_SIZE) {
-            removeEventFromQueue(event)
-            false
-        } else {
-            true
-        }
-    }.returnOnException { false }
+    private fun filterEvents(events: List<Event>): List<Event> {
+        val time = System.currentTimeMillis()
+        val filteredEvents = events.filterNot { it.isTooOld(time) }
 
-    private fun isOldEvent(event: Event): Boolean = runCatching {
-        if (event.isTooOld(System.currentTimeMillis())) {
-            removeEventFromQueue(event)
-            true
+        return if (filteredEvents.size <= MAX_EVENT_LIST_SIZE) {
+            filteredEvents
         } else {
-            false
+            filteredEvents.subList(0, MAX_EVENT_LIST_SIZE)
         }
-    }.returnOnException { true }
+    }
 
     private fun Event.isTooOld(timeNow: Long): Boolean = runCatching {
-        this.enqueueTimestamp - timeNow >= HALF_YEAR_IN_MILLISECONDS
+        timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
     }.returnOnException { false }
 
 }
