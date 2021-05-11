@@ -1,6 +1,12 @@
 package cloud.mindbox.mobile_sdk.models
 
+import androidx.annotation.StringDef
+
 private const val INIT_DATA_VERSION = 0
+
+internal const val DIRECT = "direct"
+internal const val LINK = "link"
+internal const val PUSH = "push"
 
 internal data class InitData(
     val token: String,
@@ -28,5 +34,10 @@ internal data class TrackClickData(
 
 internal data class TrackVisitData(
     val ianaTimeZone: String,
-    val endpointId: String
+    val endpointId: String,
+    @TrackVisitSource val source: String? = null,
+    val requestUrl: String? = null
 )
+
+@StringDef(DIRECT, LINK, PUSH)
+internal annotation class TrackVisitSource

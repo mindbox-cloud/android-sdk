@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -18,6 +19,11 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 object Mindbox {
+
+    /**
+     * Used for determination app open from push
+     */
+    const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
 
@@ -162,6 +168,8 @@ object Mindbox {
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
+     *
+     * @throws IllegalStateException
      */
     fun init(
         context: Context,
@@ -191,15 +199,12 @@ object Mindbox {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
                 }
-                sendTrackVisitEvent(context, configuration.endpointId)
             }
 
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
                 if (!Mindbox::lifecycleManager.isInitialized) {
-                    lifecycleManager = LifecycleManager {
-                        sendTrackVisitEvent(context, configuration.endpointId)
-                    }
+                    lifecycleManager = LifecycleManager(context as? Activity)
                 } else {
                     unregisterComponentCallbacks(lifecycleManager)
                     unregisterActivityLifecycleCallbacks(lifecycleManager)
@@ -321,14 +326,22 @@ object Mindbox {
         }.logOnException()
     }
 
-    private fun sendTrackVisitEvent(context: Context, endpointId: String) {
+    internal fun sendTrackVisitEvent(
+        context: Context,
+        @TrackVisitSource source: String? = null,
+        requestUrl: String? = null
+    ) = runCatching {
+        val applicationContext = context.applicationContext
+        val endpointId = DbManager.getConfigurations()?.endpointId ?: return
         val trackVisitData = TrackVisitData(
             ianaTimeZone = TimeZone.getDefault().id,
-            endpointId = endpointId
+            endpointId = endpointId,
+            source = source,
+            requestUrl = requestUrl
         )
 
-        MindboxEventManager.appStarted(context, trackVisitData)
-    }
+        MindboxEventManager.appStarted(applicationContext, trackVisitData)
+    }.logOnException()
 
     private fun deliverDeviceUuid(deviceUuid: String) {
         Executors.newSingleThreadScheduledExecutor().schedule({
@@ -347,4 +360,5 @@ object Mindbox {
             }
         }, 1, TimeUnit.SECONDS)
     }
+
 }
