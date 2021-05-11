@@ -1,168 +1,123 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import android.util.Log
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.returnOnException
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import io.paperdb.Paper
-import io.paperdb.PaperDbException
-import java.util.*
-import kotlin.collections.ArrayList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 internal object DbManager {
 
-    private const val CONFIGURATION_KEY = "configuration_key"
-    private const val EVENTS_BOOK_NAME = "mindbox_events_book"
-    private const val CONFIGURATION_BOOK_NAME = "mindbox_configuration_book"
+    const val EVENTS_TABLE_NAME = "mindbox_events_table"
+    const val CONFIGURATION_TABLE_NAME = "mindbox_configuration_table"
 
     private const val MAX_EVENT_LIST_SIZE = 10000
     private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
 
-    private val eventsBook = Paper.book(EVENTS_BOOK_NAME)
-    private val configurationBook = Paper.book(CONFIGURATION_BOOK_NAME)
+    private lateinit var mindboxDb: MindboxDatabase
 
-    fun addEventToQueue(context: Context, event: Event) {
-        runCatching {
-            try {
-                eventsBook.write("${event.enqueueTimestamp};${event.transactionId}", event)
-                MindboxLogger.d(this, "Event ${event.eventType.operation} was added to queue")
-            } catch (exception: PaperDbException) {
-                MindboxLogger.e(
-                    this,
-                    "Error writing object to the database: ${event.body}",
-                    exception
-                )
-            }
+    fun init(context: Context) = runCatching {
+        if (!this::mindboxDb.isInitialized) {
+            mindboxDb = MindboxDatabase.getInstance(context)
+        }
+    }.logOnException()
 
-            BackgroundWorkManager.startOneTimeService(context)
-        }.logOnException()
-    }
+    fun addEventToQueue(context: Context, event: Event) = runCatching {
+        try {
+            mindboxDb.eventsDao().insert(event)
+            MindboxLogger.d(this, "Event ${event.eventType.operation} was added to queue")
+        } catch (exception: RuntimeException) {
+            MindboxLogger.e(
+                this,
+                "Error writing object to the database: ${event.body}",
+                exception
+            )
+        }
 
-    fun getFilteredEventsKeys(): List<String> = runCatching {
-        return sortKeys(getEventsKeys())
-            .filterOldEvents()
-            .filterEventsBySize()
-            .toList()
+        BackgroundWorkManager.startOneTimeService(context)
+    }.logOnException()
+
+    fun getFilteredEvents(): List<Event> = runCatching {
+        val events = getEvents().sortedBy(Event::enqueueTimestamp)
+        val resultEvents = filterEvents(events)
+
+        if (events.size > resultEvents.size) {
+            CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
+        }
+
+        resultEvents
     }.returnOnException { emptyList() }
 
-    private fun getEventsKeys(): List<String> {
-        return runCatching {
-            return eventsBook.allKeys
-        }.returnOnException { emptyList() }
-    }
+    fun removeEventFromQueue(event: Event) = runCatching {
+        try {
+            synchronized(this) { mindboxDb.eventsDao().delete(event) }
+            MindboxLogger.d(
+                this,
+                "Event ${event.eventType};${event.transactionId} was deleted from queue"
+            )
+        } catch (exception: RuntimeException) {
+            MindboxLogger.e(this, "Error deleting item from database", exception)
+        }
+    }.logOnException()
 
-    fun getEvent(key: String): Event? {
-        return runCatching {
-            return try {
-                eventsBook.read(key) as Event?
-            } catch (exception: PaperDbException) {
+    private fun removeEventsFromQueue(events: List<Event>) = runCatching {
+        try {
+            synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
+            MindboxLogger.d(
+                this,
+                "${events.size} events were deleted from queue"
+            )
+        } catch (exception: RuntimeException) {
+            MindboxLogger.e(this, "Error deleting items from database", exception)
+        }
+    }.logOnException()
 
-                // invalid data in case of exception
-                removeEventFromQueue(key)
-                MindboxLogger.e(this, "Error reading from database", exception)
-                null
-            }
-        }.returnOnException { null }
-    }
+    fun saveConfigurations(configuration: Configuration) = runCatching {
+        try {
+            mindboxDb.configurationDao().insert(configuration)
+        } catch (exception: RuntimeException) {
+            MindboxLogger.e(
+                this,
+                "Error writing object configuration to the database",
+                exception
+            )
+        }
+    }.returnOnException { }
 
-    fun removeEventFromQueue(key: String) {
-        runCatching {
-            try {
-                eventsBook.delete(key)
-                MindboxLogger.d(this, "Event $key was deleted from queue")
-            } catch (exception: PaperDbException) {
-                MindboxLogger.e(this, "Error deleting item from database", exception)
-            }
-        }.logOnException()
-    }
+    fun getConfigurations(): Configuration? = runCatching {
+        try {
+            mindboxDb.configurationDao().get()
+        } catch (exception: RuntimeException) {
+            // invalid data in case of exception
+            MindboxLogger.e(this, "Error reading from database", exception)
+            null
+        }
+    }.returnOnException { null }
 
-    private fun sortKeys(list: List<String>): ArrayList<String> {
-        val arrayList = ArrayList<String>()
-        runCatching {
-            arrayList.addAll(list)
+    private fun getEvents(): List<Event> = runCatching {
+        synchronized(this) { mindboxDb.eventsDao().getAll() }
+    }.returnOnException { emptyList() }
 
-            arrayList.sortBy { key ->
-                key.getTimeFromKey()
-            }
-        }.logOnException()
-        return arrayList
-    }
+    private fun filterEvents(events: List<Event>): List<Event> {
+        val time = System.currentTimeMillis()
+        val filteredEvents = events.filterNot { it.isTooOld(time) }
 
-    private fun ArrayList<String>.filterEventsBySize(): ArrayList<String> {
-        return runCatching {
-
-            val diff = this.size - MAX_EVENT_LIST_SIZE
-
-            return if (diff > 0) { // allKeys.size >= MAX_EVENT_LIST_SIZE
-                val filteredList = ArrayList(this) //coping of list
-                for (i in 1..diff) {
-                    removeEventFromQueue(this[i])
-                    filteredList.remove(this[i])
-                }
-                filteredList
-            } else {
-                this
-            }
-        }.returnOnException { arrayListOf() }
-    }
-
-    private fun ArrayList<String>.filterOldEvents(): ArrayList<String> {
-        return runCatching {
-            val filteredList = ArrayList(this) //coping of list
-            val timeNow = Date().time
-            this.forEach { key ->
-                if (key.isTooOldKey(timeNow)) {
-                    removeEventFromQueue(key)
-                    filteredList.remove(key)
-                }
-            }
-            return filteredList
-        }.returnOnException { arrayListOf() }
-    }
-
-    private fun String.isTooOldKey(timeNow: Long): Boolean {
-        return runCatching {
-            return this.getTimeFromKey() - timeNow >= HALF_YEAR_IN_MILLISECONDS
-        }.returnOnException { false }
-    }
-
-    fun saveConfigurations(configuration: MindboxConfiguration) {
-        runCatching {
-            try {
-                configurationBook.write(CONFIGURATION_KEY, configuration)
-            } catch (exception: PaperDbException) {
-                MindboxLogger.e(
-                    this,
-                    "Error writing object configuration to the database",
-                    exception
-                )
-            }
-        }.returnOnException { }
-    }
-
-    fun getConfigurations(): MindboxConfiguration? {
-        return runCatching {
-            try {
-                return configurationBook.read(CONFIGURATION_KEY) as MindboxConfiguration?
-            } catch (exception: PaperDbException) {
-
-                // invalid data in case of exception
-                MindboxLogger.e(this, "Error reading from database", exception)
-                return null
-            }
-        }.returnOnException { null }
-    }
-
-    private fun String.getTimeFromKey(): Long {
-        val keyTimeStamp = this.substringBefore(";", "0")
-
-        return try {
-            keyTimeStamp.toLong()
-        } catch (e: NumberFormatException) {
-            0L
+        return if (filteredEvents.size <= MAX_EVENT_LIST_SIZE) {
+            filteredEvents
+        } else {
+            filteredEvents.subList(0, MAX_EVENT_LIST_SIZE)
         }
     }
+
+    private fun Event.isTooOld(timeNow: Long): Boolean = runCatching {
+        timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
+    }.returnOnException { false }
+
 }

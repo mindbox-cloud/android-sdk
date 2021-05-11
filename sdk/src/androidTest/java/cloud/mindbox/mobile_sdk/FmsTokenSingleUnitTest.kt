@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import org.junit.After
 import org.junit.Assert
@@ -20,6 +21,7 @@ class FmsTokenSingleUnitTest {
 
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
+        MindboxDatabase.isTestMode = true
         Mindbox.init(appContext, configs)
 
         Thread.sleep(10000)
@@ -40,9 +42,9 @@ class FmsTokenSingleUnitTest {
 
         Thread.sleep(3000)
 
-        val configs =
-            MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
+        val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
+        MindboxDatabase.isTestMode = true
         Mindbox.init(appContext, configs)
 
         Thread.sleep(5000)
@@ -55,6 +57,7 @@ class FmsTokenSingleUnitTest {
         Mindbox.disposeFmsTokenSubscription("wrong_subscribe")
         Mindbox.disposeFmsTokenSubscription("")
 
+        MindboxDatabase.isTestMode = true
         Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
     }
 
@@ -70,6 +73,6 @@ class FmsTokenSingleUnitTest {
     @After
     fun clear() {
         clearPreferences()
-        removeConfiguration()
     }
+
 }

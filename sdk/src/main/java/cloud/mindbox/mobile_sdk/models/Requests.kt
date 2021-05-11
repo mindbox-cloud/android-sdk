@@ -17,7 +17,7 @@ import java.nio.charset.Charset
 internal data class MindboxRequest(
     val methodType: Int = Method.POST,
     val fullUrl: String = "",
-    val configuration: MindboxConfiguration,
+    val configuration: Configuration,
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null

@@ -1,8 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import org.junit.After
 import org.junit.Assert
 import org.junit.Test
@@ -14,13 +13,14 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        Mindbox.subscribeDeviceUuid{ deviceUuid ->
+        Mindbox.subscribeDeviceUuid { deviceUuid ->
             result = deviceUuid
             println(deviceUuid)
         }
 
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
+        MindboxDatabase.isTestMode = true
         Mindbox.init(appContext, configs)
 
         Thread.sleep(10000)
@@ -33,15 +33,15 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        val subscribeId = Mindbox.subscribeDeviceUuid{ deviceUuid -> result = deviceUuid }
+        val subscribeId = Mindbox.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
 
         Mindbox.disposeDeviceUuidSubscription(subscribeId)
 
         Thread.sleep(3000)
 
-        val configs =
-            MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
+        val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
+        MindboxDatabase.isTestMode = true
         Mindbox.init(appContext, configs)
 
         Thread.sleep(5000)
@@ -54,6 +54,7 @@ class DeviceUuidSingleUnitTest {
         Mindbox.disposeDeviceUuidSubscription("wrong_subscribe")
         Mindbox.disposeDeviceUuidSubscription("")
 
+        MindboxDatabase.isTestMode = true
         Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
     }
 
@@ -69,6 +70,6 @@ class DeviceUuidSingleUnitTest {
     @After
     fun clear() {
         clearPreferences()
-        removeConfiguration()
     }
+
 }

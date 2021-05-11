@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import org.junit.AfterClass
 import org.junit.Assert
@@ -16,6 +17,7 @@ class FmsTokenRepeatedUnitTest {
         fun init() {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+            MindboxDatabase.isTestMode = true
             Mindbox.init(appContext, configs)
         }
 
@@ -23,7 +25,6 @@ class FmsTokenRepeatedUnitTest {
         @JvmStatic
         fun clear() {
             clearPreferences()
-            removeConfiguration()
         }
     }
 
@@ -41,4 +42,5 @@ class FmsTokenRepeatedUnitTest {
 
         Assert.assertEquals(true, result?.isUuid() ?: true)
     }
+
 }

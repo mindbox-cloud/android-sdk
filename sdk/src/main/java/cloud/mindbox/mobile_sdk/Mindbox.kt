@@ -10,7 +10,6 @@ import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
-import io.paperdb.Paper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -124,7 +123,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push delivered"
+     * Creates and deliveries event of "Push delivered". Recommended call this method from
+     * background thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -143,7 +143,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push clicked"
+     * Creates and deliveries event of "Push clicked". Recommended call this method from background
+     * thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -228,7 +229,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event with specified name and body.
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
      *
      * @param context current context is used
      * @param operationSystemName the name of asynchronous operation
@@ -254,7 +256,7 @@ object Mindbox {
 
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
-        Paper.init(context)
+        DbManager.init(context)
         FirebaseApp.initializeApp(context)
     }
 
@@ -273,14 +275,14 @@ object Mindbox {
             val deviceUuid = initDeviceId(context)
             val instanceId = IdentifierManager.generateRandomUuid()
 
-            DbManager.saveConfigurations(configuration)
+            DbManager.saveConfigurations(Configuration(configuration))
 
             val isTokenAvailable = !firebaseToken.isNullOrEmpty()
             val initData = InitData(
                 token = firebaseToken ?: "",
                 isTokenAvailable = isTokenAvailable,
                 installationId = configuration.previousInstallationId,
-                lastDeviceUuid = configuration.previousDeviceUUID,
+                externalDeviceUUID = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
                 instanceId = instanceId
@@ -331,16 +333,18 @@ object Mindbox {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null
     ) = runCatching {
-        val applicationContext = context.applicationContext
-        val endpointId = DbManager.getConfigurations()?.endpointId ?: return
-        val trackVisitData = TrackVisitData(
-            ianaTimeZone = TimeZone.getDefault().id,
-            endpointId = endpointId,
-            source = source,
-            requestUrl = requestUrl
-        )
+        runBlocking(Dispatchers.IO) {
+            val applicationContext = context.applicationContext
+            val endpointId = DbManager.getConfigurations()?.endpointId ?: return@runBlocking
+            val trackVisitData = TrackVisitData(
+                ianaTimeZone = TimeZone.getDefault().id,
+                endpointId = endpointId,
+                source = source,
+                requestUrl = requestUrl
+            )
 
-        MindboxEventManager.appStarted(applicationContext, trackVisitData)
+            MindboxEventManager.appStarted(applicationContext, trackVisitData)
+        }
     }.logOnException()
 
     private fun deliverDeviceUuid(deviceUuid: String) {

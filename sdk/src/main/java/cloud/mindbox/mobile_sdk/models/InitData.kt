@@ -12,7 +12,7 @@ internal data class InitData(
     val token: String,
     val isTokenAvailable: Boolean,
     val installationId: String,
-    val lastDeviceUuid: String,
+    val externalDeviceUUID: String,
     val isNotificationsEnabled: Boolean,
     val subscribe: Boolean,
     val instanceId: String,
