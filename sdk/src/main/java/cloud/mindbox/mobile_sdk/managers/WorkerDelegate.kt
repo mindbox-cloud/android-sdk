@@ -4,16 +4,18 @@ import android.content.Context
 import android.os.Build
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.security.ProviderInstaller
+import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
 
-internal class WorkerDelegate() {
+internal class WorkerDelegate {
 
     private var isWorkerStopped = false
 
@@ -50,26 +52,25 @@ internal class WorkerDelegate() {
             if (MindboxPreferences.isFirstInitialize || configuration == null) {
                 MindboxLogger.e(
                     parent,
-                    "MindboxConfiguration was not initialized",
+                    "Configuration was not initialized",
                 )
                 return ListenableWorker.Result.failure()
             }
 
-            val eventKeys = DbManager.getFilteredEventsKeys()
-            if (eventKeys.isNullOrEmpty()) {
+            val events = DbManager.getFilteredEvents()
+            return if (events.isNullOrEmpty()) {
                 MindboxLogger.d(parent, "Events list is empty")
-                return ListenableWorker.Result.success()
+                ListenableWorker.Result.success()
             } else {
-                MindboxLogger.d(parent, "Will be sent ${eventKeys.size}")
+                MindboxLogger.d(parent, "Will be sent ${events.size}")
 
-                sendEvents(context, eventKeys, configuration, parent)
+                sendEvents(context, events, configuration, parent)
 
-                return if (DbManager.getFilteredEventsKeys().isNullOrEmpty()) {
-                    ListenableWorker.Result.success()
-                } else if (!isWorkerStopped) {
-                    ListenableWorker.Result.retry()
-                } else {
-                    ListenableWorker.Result.failure()
+                when {
+                    isWorkerStopped -> ListenableWorker.Result.failure()
+                    DbManager.getFilteredEvents().isNullOrEmpty() ->
+                        ListenableWorker.Result.success()
+                    else -> ListenableWorker.Result.retry()
                 }
             }
         } catch (e: Exception) {
@@ -80,27 +81,29 @@ internal class WorkerDelegate() {
 
     private fun sendEvents(
         context: Context,
-        eventKeys: List<String>,
-        configuration: MindboxConfiguration,
+        events: List<Event>,
+        configuration: Configuration,
         parent: Any
     ) {
         runCatching {
 
-            val eventsCount = eventKeys.size - 1
+            val eventsCount = events.size - 1
             val deviceUuid = MindboxPreferences.deviceUuid
 
-            eventKeys.forEachIndexed { index, eventKey ->
+            events.forEachIndexed { index, event ->
                 val countDownLatch = CountDownLatch(1)
-                val event = DbManager.getEvent(eventKey) ?: return@forEachIndexed
 
                 if (isWorkerStopped) return
 
                 GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSent ->
                     if (isSent) {
-                        DbManager.removeEventFromQueue(eventKey)
+                        handleSendResult(event)
                     }
 
-                    MindboxLogger.i(parent, "sent event #${index + 1} from $eventsCount")
+                    MindboxLogger.i(
+                        parent,
+                        "sent event index #${index + 1} id #${event.uid} from $eventsCount"
+                    )
 
                     countDownLatch.countDown()
                 }
@@ -118,5 +121,9 @@ internal class WorkerDelegate() {
         isWorkerStopped = true
         MindboxLogger.d(parent, "onStopped work")
     }
+
+    private fun handleSendResult(
+        event: Event
+    ) = runBlocking(Dispatchers.IO) { DbManager.removeEventFromQueue(event) }
 
 }
