@@ -142,6 +142,7 @@ dependencies {
     // dex
     implementation "androidx.multidex:multidex:2.0.1"
 
+    // Handle app lifecycle
     implementation "androidx.lifecycle:lifecycle-process:2.3.1"
 
 }

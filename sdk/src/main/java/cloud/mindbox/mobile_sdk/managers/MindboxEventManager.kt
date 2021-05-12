@@ -68,14 +68,12 @@ internal object MindboxEventManager {
 
     fun appStarted(context: Context, trackVisitData: TrackVisitData) {
         runCatching {
-            runBlocking(Dispatchers.IO) {
-                DbManager.addEventToQueue(
-                    context, Event(
-                        eventType = EventType.TrackVisit,
-                        body = gson.toJson(trackVisitData)
-                    )
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.TrackVisit,
+                    body = gson.toJson(trackVisitData)
                 )
-            }
+            )
         }.logOnException()
     }
 

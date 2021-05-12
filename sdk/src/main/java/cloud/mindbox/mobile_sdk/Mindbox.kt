@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
@@ -169,8 +170,6 @@ object Mindbox {
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
-     *
-     * @throws IllegalStateException
      */
     fun init(
         context: Context,
@@ -196,6 +195,7 @@ object Mindbox {
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
                     firstInitialization(context, configuration)
+                    sendTrackVisitEvent(context)
                 } else {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
@@ -204,16 +204,33 @@ object Mindbox {
 
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
+                val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
+
                 if (!Mindbox::lifecycleManager.isInitialized) {
-                    lifecycleManager = LifecycleManager(context as? Activity)
+                    val activity = context as? Activity
+                    if (applicationLifecycle.currentState == RESUMED && activity == null) {
+                        MindboxLogger.e(
+                            this@Mindbox,
+                            "Incorrect context type for calling init in this place"
+                        )
+                    }
+
+                    lifecycleManager = LifecycleManager(
+                        currentActivityName = activity?.javaClass?.name,
+                        currentIntent = activity?.intent,
+                        onTrackVisitReady = { source, requestUrl ->
+                            runBlocking(Dispatchers.IO) {
+                                sendTrackVisitEvent(context, source, requestUrl)
+                            }
+                        }
+                    )
                 } else {
-                    unregisterComponentCallbacks(lifecycleManager)
                     unregisterActivityLifecycleCallbacks(lifecycleManager)
-                    ProcessLifecycleOwner.get().lifecycle.removeObserver(lifecycleManager)
+                    applicationLifecycle.removeObserver(lifecycleManager)
                 }
-                registerComponentCallbacks(lifecycleManager)
+
                 registerActivityLifecycleCallbacks(lifecycleManager)
-                ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleManager)
+                applicationLifecycle.addObserver(lifecycleManager)
             }
         }.returnOnException { }
     }
@@ -328,23 +345,21 @@ object Mindbox {
         }.logOnException()
     }
 
-    internal fun sendTrackVisitEvent(
+    private fun sendTrackVisitEvent(
         context: Context,
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null
     ) = runCatching {
-        runBlocking(Dispatchers.IO) {
-            val applicationContext = context.applicationContext
-            val endpointId = DbManager.getConfigurations()?.endpointId ?: return@runBlocking
-            val trackVisitData = TrackVisitData(
-                ianaTimeZone = TimeZone.getDefault().id,
-                endpointId = endpointId,
-                source = source,
-                requestUrl = requestUrl
-            )
+        val applicationContext = context.applicationContext
+        val endpointId = DbManager.getConfigurations()?.endpointId ?: return
+        val trackVisitData = TrackVisitData(
+            ianaTimeZone = TimeZone.getDefault().id,
+            endpointId = endpointId,
+            source = source,
+            requestUrl = requestUrl
+        )
 
-            MindboxEventManager.appStarted(applicationContext, trackVisitData)
-        }
+        MindboxEventManager.appStarted(applicationContext, trackVisitData)
     }.logOnException()
 
     private fun deliverDeviceUuid(deviceUuid: String) {
