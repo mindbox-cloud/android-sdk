@@ -1,8 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.managers.DbManager
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -16,6 +15,7 @@ class DeviceUuidRepeatedUnitTest {
         fun init() {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+            MindboxDatabase.isTestMode = true
             Mindbox.init(appContext, configs)
         }
 
@@ -23,7 +23,6 @@ class DeviceUuidRepeatedUnitTest {
         @JvmStatic
         fun clear() {
             clearPreferences()
-            removeConfiguration()
         }
     }
 
@@ -33,10 +32,11 @@ class DeviceUuidRepeatedUnitTest {
 
         Thread.sleep(5000)
 
-        Mindbox.subscribeDeviceUuid{ deviceUuid -> result = deviceUuid }
+        Mindbox.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
 
         Thread.sleep(1000)
 
         Assert.assertEquals(true, result.isUuid())
     }
+
 }
