@@ -28,7 +28,7 @@ internal class LifecycleManager(
         private const val SCHEMA_HTTP = "http"
         private const val SCHEMA_HTTPS = "https"
 
-        private const val TIMER_PERIOD = 60000L//1200000L
+        private const val TIMER_PERIOD = 1200000L
         private const val MAX_INTENT_HASHES_SIZE = 50
 
     }
