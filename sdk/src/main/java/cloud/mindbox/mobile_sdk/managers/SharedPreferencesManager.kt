@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.managers
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.returnOnException
 
 internal object SharedPreferencesManager {
 
@@ -39,7 +41,7 @@ internal object SharedPreferencesManager {
     fun put(
         key: String,
         value: String?
-    ) = preferences.edit().putString(key, value).apply()
+    ) = runCatching { preferences.edit().putString(key, value).apply() }.logOnException()
 
     /**
      * Saves [Boolean] into the Preferences.
@@ -50,7 +52,7 @@ internal object SharedPreferencesManager {
     fun put(
         key: String,
         value: Boolean
-    ) = preferences.edit().putBoolean(key, value).apply()
+    ) = runCatching { preferences.edit().putBoolean(key, value).apply() }.logOnException()
 
     /**
      * Saves [Int] into the Preferences.
@@ -61,7 +63,7 @@ internal object SharedPreferencesManager {
     fun put(
         key: String,
         value: Int
-    ) = preferences.edit().putInt(key, value).apply()
+    ) = runCatching { preferences.edit().putInt(key, value).apply() }.logOnException()
 
     /**
      * Used to retrieve [String] object from the Preferences.
@@ -73,7 +75,9 @@ internal object SharedPreferencesManager {
     fun getString(
         key: String,
         defaultValue: String? = null
-    ): String? = preferences.getString(key, defaultValue)
+    ): String? = runCatching {
+        preferences.getString(key, defaultValue)
+    }.returnOnException { defaultValue }
 
     /**
      * Used to retrieve [Boolean] object from the Preferences.
@@ -85,7 +89,9 @@ internal object SharedPreferencesManager {
     fun getBoolean(
         key: String,
         defaultValue: Boolean = false
-    ): Boolean = preferences.getBoolean(key, defaultValue)
+    ): Boolean = runCatching {
+        preferences.getBoolean(key, defaultValue)
+    }.returnOnException { defaultValue }
 
     /**
      * Used to retrieve [Int] object from the Preferences.
@@ -97,8 +103,12 @@ internal object SharedPreferencesManager {
     fun getInt(
         key: String,
         defaultValue: Int = DEFAULT_INT_VALUE
-    ): Int = preferences.getInt(key, defaultValue)
+    ): Int = runCatching {
+        preferences.getInt(key, defaultValue)
+    }.returnOnException { defaultValue }
 
-    internal fun deleteAll() = preferences.edit().clear().apply()
+    internal fun deleteAll() = runCatching {
+        preferences.edit().clear().apply()
+    }.exceptionOrNull()
 
 }
