@@ -64,9 +64,9 @@ object Mindbox {
     /**
      * Returns date of FMS token saving
      */
-    fun getFmsTokenSaveDate(): String =
-        runCatching { return MindboxPreferences.firebaseTokenSaveDate }
-            .returnOnException { "" }
+    fun getFmsTokenSaveDate(): String = runCatching {
+        return MindboxPreferences.firebaseTokenSaveDate
+    }.returnOnException { "" }
 
     /**
      * Returns SDK version
