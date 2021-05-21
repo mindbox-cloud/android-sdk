@@ -77,7 +77,7 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
-    fun <T : OperationBody> asyncOperation(context: Context, name: String, body: T) {
+    fun <T> asyncOperation(context: Context, name: String, body: T) {
         runCatching {
             runBlocking(Dispatchers.IO) {
                 val json = gson.toJson(body)

@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.*
@@ -222,7 +223,34 @@ object Mindbox {
      * @param operationSystemName the name of asynchronous operation
      * @param operationBody [T] which extends [OperationBody] and will be send as event json body of operation.
      */
+    @Deprecated("Used Mindbox.executeAsyncOperation with OperationBodyRequestBase")
     fun <T : OperationBody> executeAsyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T
+    ) = asyncOperation(context, operationSystemName, operationBody)
+
+    /**
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of asynchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     */
+    fun <T : OperationBodyRequestBase> executeAsyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T
+    ) = asyncOperation(context, operationSystemName, operationBody)
+
+    internal fun initComponents(context: Context) {
+        SharedPreferencesManager.with(context)
+        DbManager.init(context)
+        FirebaseApp.initializeApp(context)
+    }
+
+    private fun <T> asyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T
@@ -238,12 +266,6 @@ object Mindbox {
                 )
             }
         }.logOnException()
-    }
-
-    internal fun initComponents(context: Context) {
-        SharedPreferencesManager.with(context)
-        DbManager.init(context)
-        FirebaseApp.initializeApp(context)
     }
 
     private suspend fun initDeviceId(context: Context): String {
