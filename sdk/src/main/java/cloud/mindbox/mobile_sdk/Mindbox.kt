@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
@@ -194,7 +195,9 @@ object Mindbox {
 
                 // Handle back app in foreground
                 val lifecycleManager = LifecycleManager {
-                    sendTrackVisitEvent(context, configuration.endpointId)
+                    runBlocking(Dispatchers.IO) {
+                        sendTrackVisitEvent(context, configuration.endpointId)
+                    }
                 }
                 (context.applicationContext as? Application)
                     ?.registerActivityLifecycleCallbacks(lifecycleManager)
@@ -255,14 +258,16 @@ object Mindbox {
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String? = null
+        channelDescription: String? = null,
+        delay: Long
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
         remoteMessage = message,
         channelId = channelId,
         channelName = channelName,
         pushSmallIcon = pushSmallIcon,
-        channelDescription = channelDescription
+        channelDescription = channelDescription,
+        delay = delay
     )
 
     internal fun initComponents(context: Context) {
@@ -314,6 +319,7 @@ object Mindbox {
 
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
         runCatching {
+            Log.d("_____1", "start")
             val firebaseToken = token
                 ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
 
@@ -321,6 +327,7 @@ object Mindbox {
 
             val isNotificationEnabled = IdentifierManager.isNotificationsEnabled(context)
 
+            Log.d("_____1", "before checking $firebaseToken")
             if ((isTokenAvailable && firebaseToken != MindboxPreferences.firebaseToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
 
                 val initData = UpdateData(
