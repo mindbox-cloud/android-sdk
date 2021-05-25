@@ -1,0 +1,125 @@
+name: SDK publish
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+    paths-ignore:
+      - '**.md'
+    tags-ignore:
+      - '**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: lint check
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
+          arguments: check
+
+  unit:
+    runs-on: ubuntu-latest 
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: unit tests
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
+          arguments: test testDebugUnitTest
+
+  emulation:
+    needs: [build]
+    runs-on: macos-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: run tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        script: ./gradlew sdk:connectedAndroidTest
+
+  build:
+    needs: [unit, lint]
+    runs-on: ubuntu-latest 
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: build project
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
+          arguments: build assembleDebug
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Prepare to publish
+        run: |
+          echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
+          gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
+          --output /tmp/secret.gpg /tmp/publish_key.gpg
+          echo -e "\nsigning.password=$signingpassword" >> gradle.properties
+          echo -e "\nsigning.keyId=$signingkeyId" >> gradle.properties
+          echo -e "\nsigning.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
+        env:
+          signingpassword: ${{secrets.signingpassword}}
+          signingkeyId: ${{secrets.signingkeyId}}
+          SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
+          GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+      - name: Publish to Jitpack
+      # To create release in Jitpack we need to create Github release
+        run: ./git-release.sh "Automatically generated Pre-release" "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"   
+
+      - name: Publish to Sonatype
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.8
+          arguments: test publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+
+      - name: Job status notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: 'SDK is available for public release https://oss.sonatype.org/#stagingRepositories'
+          SLACK_USERNAME: MindBox-bot
+          SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
+          SLACK_COLOR: ${{job.status}}
