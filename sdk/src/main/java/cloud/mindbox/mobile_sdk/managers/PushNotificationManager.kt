@@ -1,15 +1,11 @@
 package cloud.mindbox.mobile_sdk.managers
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox
@@ -40,8 +36,7 @@ internal object PushNotificationManager {
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String?,
-        delay: Long
+        channelDescription: String?
     ): Boolean = runCatching {
         val data = remoteMessage?.data ?: return false
         val uniqueKey = data[DATA_UNIQUE_KEY] ?: return false
@@ -51,7 +46,7 @@ internal object PushNotificationManager {
         val description = data[DATA_MESSAGE] ?: ""
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
         val pushActions = Gson().fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
-        val notificationId = /*System.currentTimeMillis().toInt() */+Random.nextInt()
+        val notificationId = Random.nextInt()
 
         Mindbox.onPushReceived(applicationContext, uniqueKey)
 
@@ -60,7 +55,6 @@ internal object PushNotificationManager {
             .setContentText(description)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setNumber(delay.toInt() + 1)
             .handlePushClick(context, notificationId, uniqueKey)
             .handleActions(context, notificationId, uniqueKey, pushActions)
             .handleImageByUrl(data[DATA_IMAGE_URL])
@@ -69,12 +63,7 @@ internal object PushNotificationManager {
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel(notificationManager, channelId, channelName, channelDescription)
 
-        /* Handler(Looper.getMainLooper()).postDelayed({
-             Log.d("______", "id $notificationId time ${System.currentTimeMillis().toInt()}")*/
-        notificationManager.notify(notificationId, builder.build())//}, delay * 1000L)
-
-
-        Log.d("_____", "id $notificationId time ${System.currentTimeMillis().toInt()} count $delay")
+        notificationManager.notify(notificationId, builder.build())
 
         return true
     }.returnOnException { false }
