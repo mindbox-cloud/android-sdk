@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.app.Notification.DEFAULT_ALL
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -55,9 +56,10 @@ internal object PushNotificationManager {
             .setContentText(description)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(DEFAULT_ALL)
             .handlePushClick(context, notificationId, uniqueKey)
             .handleActions(context, notificationId, uniqueKey, pushActions)
-            .handleImageByUrl(data[DATA_IMAGE_URL])
+            .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -97,7 +99,7 @@ internal object PushNotificationManager {
 
         PendingIntent.getBroadcast(
             context,
-            id,
+            Random.nextInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -135,17 +137,24 @@ internal object PushNotificationManager {
         }
     }
 
-    private fun NotificationCompat.Builder.handleImageByUrl(url: String?) = apply {
+    private fun NotificationCompat.Builder.handleImageByUrl(
+        url: String?,
+        title: String,
+        text: String?
+    ) = apply {
         runCatching {
             if (!url.isNullOrBlank()) {
                 BitmapFactory.decodeStream(URL(url).openConnection().getInputStream())
                     ?.let { imageBitmap ->
                         setLargeIcon(imageBitmap)
-                        setStyle(
-                            NotificationCompat.BigPictureStyle()
-                                .bigPicture(imageBitmap)
-                                .bigLargeIcon(null)
-                        )
+
+                        val style = NotificationCompat.BigPictureStyle()
+                            .bigPicture(imageBitmap)
+                            .bigLargeIcon(null)
+                            .setBigContentTitle(title)
+                        text?.let(style::setSummaryText)
+
+                        setStyle(style)
                     }
             }
         }
