@@ -30,6 +30,7 @@ internal object PushNotificationManager {
     private const val DATA_IMAGE_URL = "imageUrl"
     private const val DATA_BUTTONS = "buttons"
     private const val MAX_ACTIONS_COUNT = 3
+    private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
     internal fun handleRemoteMessage(
         context: Context,
@@ -144,7 +145,11 @@ internal object PushNotificationManager {
     ) = apply {
         runCatching {
             if (!url.isNullOrBlank()) {
-                BitmapFactory.decodeStream(URL(url).openConnection().getInputStream())
+                val connection = URL(url).openConnection().apply {
+                    readTimeout = IMAGE_CONNECTION_TIMEOUT
+                    connectTimeout = IMAGE_CONNECTION_TIMEOUT
+                }
+                BitmapFactory.decodeStream(connection.getInputStream())
                     ?.let { imageBitmap ->
                         setLargeIcon(imageBitmap)
 
@@ -157,7 +162,7 @@ internal object PushNotificationManager {
                         setStyle(style)
                     }
             }
-        }
+        }.logOnException()
     }
 
 }
