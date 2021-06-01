@@ -1,8 +1,8 @@
-package cloud.mindbox.mobile_sdk.models.operation.request
+package cloud.mindbox.mobile_sdk.models.operation
 
 import java.util.*
 
-class DateTimeRequest : Date {
+class DateOnly : Date {
 
     constructor() : super()
 
