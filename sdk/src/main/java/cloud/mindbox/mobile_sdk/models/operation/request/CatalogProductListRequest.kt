@@ -9,5 +9,5 @@ open class CatalogProductListRequest(
     @JsonAdapter(DateTimeAdapter::class)
     @SerializedName("calculationDateTimeUtc") val calculationDateTimeUtc: DateTime? = null,
     @SerializedName("area") val area: AreaRequest? = null,
-    @SerializedName("items") val items: List<RequestedPromotionRequest>? = null
+    @SerializedName("items") val items: List<ItemRequest>? = null
 )
