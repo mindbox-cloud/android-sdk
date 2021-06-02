@@ -58,6 +58,7 @@ internal object PushNotificationManager {
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
+            .setAutoCancel(true)
             .handlePushClick(context, notificationId, uniqueKey)
             .handleActions(context, notificationId, uniqueKey, pushActions)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)

@@ -50,7 +50,6 @@ internal class MindboxPushReceiver : BroadcastReceiver() {
         }
 
         dismissNotification(context, intent)
-        context.sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
     }
 
     private fun dismissNotification(context: Context, intent: Intent) {
