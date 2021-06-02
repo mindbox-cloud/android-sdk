@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
@@ -9,6 +10,7 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -143,7 +145,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String?) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
@@ -244,6 +246,34 @@ object Mindbox {
         operationBody: T
     ) = asyncOperation(context, operationSystemName, operationBody)
 
+    /**
+     * Handles only Mindbox notification message from [FirebaseMessagingService].
+     *
+     * @param context context used for Mindbox initializing and push notification showing
+     * @param message the [RemoteMessage] received from Firebase
+     * @param channelId the id of channel for Mindbox pushes
+     * @param channelName the name of channel for Mindbox pushes
+     * @param pushSmallIcon icon for push notification as drawable resource
+     * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     *
+     * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
+     */
+    fun handleRemoteMessage(
+        context: Context,
+        message: RemoteMessage?,
+        channelId: String,
+        channelName: String,
+        @DrawableRes pushSmallIcon: Int,
+        channelDescription: String? = null
+    ): Boolean = PushNotificationManager.handleRemoteMessage(
+        context = context,
+        remoteMessage = message,
+        channelId = channelId,
+        channelName = channelName,
+        pushSmallIcon = pushSmallIcon,
+        channelDescription = channelDescription
+    )
+
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
@@ -311,6 +341,7 @@ object Mindbox {
 
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
         runCatching {
+
             val firebaseToken = token
                 ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
 
