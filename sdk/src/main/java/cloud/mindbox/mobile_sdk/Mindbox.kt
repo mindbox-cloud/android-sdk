@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.RemoteMessage
@@ -117,7 +118,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push delivered"
+     * Creates and deliveries event of "Push delivered". Recommended call this method from
+     * background thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -136,7 +138,8 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push clicked"
+     * Creates and deliveries event of "Push clicked". Recommended call this method from background
+     * thread.
      *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
@@ -215,29 +218,33 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event with specified name and body.
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
      *
      * @param context current context is used
      * @param operationSystemName the name of asynchronous operation
      * @param operationBody [T] which extends [OperationBody] and will be send as event json body of operation.
      */
+    @Deprecated("Used Mindbox.executeAsyncOperation with OperationBodyRequestBase")
     fun <T : OperationBody> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T
-    ) {
-        runCatching {
-            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
-                initComponents(context)
-                MindboxEventManager.asyncOperation(context, operationSystemName, operationBody)
-            } else {
-                MindboxLogger.w(
-                    this,
-                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
-                )
-            }
-        }.logOnException()
-    }
+    ) = asyncOperation(context, operationSystemName, operationBody)
+
+    /**
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of asynchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     */
+    fun <T : OperationBodyRequestBase> executeAsyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T
+    ) = asyncOperation(context, operationSystemName, operationBody)
 
     /**
      * Handles only Mindbox notification message from [FirebaseMessagingService].
@@ -273,6 +280,24 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
     }
 
+    private fun <T> asyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T
+    ) {
+        runCatching {
+            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
+                initComponents(context)
+                MindboxEventManager.asyncOperation(context, operationSystemName, operationBody)
+            } else {
+                MindboxLogger.w(
+                    this,
+                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+                )
+            }
+        }.logOnException()
+    }
+
     private suspend fun initDeviceId(context: Context): String {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
         return adid.await()
@@ -295,7 +320,7 @@ object Mindbox {
                 token = firebaseToken ?: "",
                 isTokenAvailable = isTokenAvailable,
                 installationId = configuration.previousInstallationId,
-                lastDeviceUuid = configuration.previousDeviceUUID,
+                externalDeviceUUID = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
                 instanceId = instanceId

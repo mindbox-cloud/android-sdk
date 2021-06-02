@@ -1,32 +1,34 @@
 package cloud.mindbox.mobile_sdk.models
 
+import com.google.gson.annotations.SerializedName
+
 private const val INIT_DATA_VERSION = 0
 
 internal data class InitData(
-    val token: String,
-    val isTokenAvailable: Boolean,
-    val installationId: String,
-    val lastDeviceUuid: String,
-    val isNotificationsEnabled: Boolean,
-    val subscribe: Boolean,
-    val instanceId: String,
-    private val version: Int = INIT_DATA_VERSION
+    @SerializedName("token") val token: String,
+    @SerializedName("isTokenAvailable") val isTokenAvailable: Boolean,
+    @SerializedName("installationId") val installationId: String,
+    @SerializedName("externalDeviceUUID") val externalDeviceUUID: String,
+    @SerializedName("isNotificationsEnabled") val isNotificationsEnabled: Boolean,
+    @SerializedName("subscribe") val subscribe: Boolean,
+    @SerializedName("instanceId") val instanceId: String,
+    @SerializedName("version") private val version: Int = INIT_DATA_VERSION
 )
 
 internal data class UpdateData(
-    val token: String,
-    val isTokenAvailable: Boolean,
-    val isNotificationsEnabled: Boolean,
-    val instanceId: String,
-    val version: Int
+    @SerializedName("token") val token: String,
+    @SerializedName("isTokenAvailable") val isTokenAvailable: Boolean,
+    @SerializedName("isNotificationsEnabled") val isNotificationsEnabled: Boolean,
+    @SerializedName("instanceId") val instanceId: String,
+    @SerializedName("version") val version: Int
 )
 
 internal data class TrackClickData(
-    val messageUniqueKey: String,
-    val buttonUniqueKey: String?
+    @SerializedName("messageUniqueKey") val messageUniqueKey: String,
+    @SerializedName("buttonUniqueKey") val buttonUniqueKey: String?
 )
 
 internal data class TrackVisitData(
-    val ianaTimeZone: String,
-    val endpointId: String
+    @SerializedName("ianaTimeZone") val ianaTimeZone: String,
+    @SerializedName("endpointId") val endpointId: String
 )

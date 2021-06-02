@@ -58,20 +58,19 @@ internal class WorkerDelegate {
             }
 
             val events = DbManager.getFilteredEvents()
-            if (events.isNullOrEmpty()) {
+            return if (events.isNullOrEmpty()) {
                 MindboxLogger.d(parent, "Events list is empty")
-                return ListenableWorker.Result.success()
+                ListenableWorker.Result.success()
             } else {
                 MindboxLogger.d(parent, "Will be sent ${events.size}")
 
                 sendEvents(context, events, configuration, parent)
 
-                return if (DbManager.getFilteredEvents().isNullOrEmpty()) {
-                    ListenableWorker.Result.success()
-                } else if (!isWorkerStopped) {
-                    ListenableWorker.Result.retry()
-                } else {
-                    ListenableWorker.Result.failure()
+                when {
+                    isWorkerStopped -> ListenableWorker.Result.failure()
+                    DbManager.getFilteredEvents().isNullOrEmpty() ->
+                        ListenableWorker.Result.success()
+                    else -> ListenableWorker.Result.retry()
                 }
             }
         } catch (e: Exception) {
@@ -97,7 +96,9 @@ internal class WorkerDelegate {
                 if (isWorkerStopped) return
 
                 GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSent ->
-                    handleSendResult(isSent, event)
+                    if (isSent) {
+                        handleSendResult(event)
+                    }
 
                     MindboxLogger.i(
                         parent,
@@ -122,15 +123,7 @@ internal class WorkerDelegate {
     }
 
     private fun handleSendResult(
-        isSent: Boolean,
         event: Event
-    ) = runBlocking(Dispatchers.IO) {
-        if (isSent) {
-            DbManager.removeEventFromQueue(event)
-        } else {
-            val time = System.currentTimeMillis()
-            DbManager.updateEventInQueue(event.copy(retryTimeStamp = time))
-        }
-    }
+    ) = runBlocking(Dispatchers.IO) { DbManager.removeEventFromQueue(event) }
 
 }
