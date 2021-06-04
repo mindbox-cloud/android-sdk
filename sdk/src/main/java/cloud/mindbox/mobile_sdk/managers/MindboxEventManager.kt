@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
@@ -93,38 +94,38 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
-    fun <T, V> syncOperation(
+    fun <T, V : OperationResponseBase> syncOperation(
         context: Context,
         name: String,
         body: T,
+        classOfV: Class<V>,
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
-    ) {
-        runCatching {
-            val configuration = DbManager.getConfigurations()
-            if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                MindboxLogger.e(this, "Configuration was not initialized")
-                // ToDo
-                return
-            }
+    ) = runCatching {
+        val configuration = DbManager.getConfigurations()
+        if (MindboxPreferences.isFirstInitialize || configuration == null) {
+            MindboxLogger.e(this, "Configuration was not initialized")
+            onError.invoke(MindboxError.Unknown())
+            return
+        }
 
-            val json = gson.toJson(body)
-            val event = Event(
-                eventType = EventType.SyncOperation(name),
-                body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
-            )
-            val deviceUuid = MindboxPreferences.deviceUuid
+        val json = gson.toJson(body)
+        val event = Event(
+            eventType = EventType.SyncOperation(name),
+            body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+        )
+        val deviceUuid = MindboxPreferences.deviceUuid
 
-            GatewayManager.sendSyncEvent<V>(
-                context = context,
-                configuration = configuration,
-                deviceUuid = deviceUuid,
-                event = event,
-                onSuccess = onSuccess,
-                onError = onError
-            )
-        }.logOnException()
-    }
+        GatewayManager.sendSyncEvent(
+            context = context,
+            configuration = configuration,
+            deviceUuid = deviceUuid,
+            event = event,
+            classOfT = classOfV,
+            onSuccess = onSuccess,
+            onError = onError
+        )
+    }.logOnException()
 
     fun sendEventsIfExist(context: Context) {
         runCatching {

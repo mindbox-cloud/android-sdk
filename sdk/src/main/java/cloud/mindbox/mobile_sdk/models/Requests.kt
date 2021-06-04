@@ -72,7 +72,7 @@ internal data class MindboxRequest(
 
                 logBodyResponse(json)
 
-                val dataJson = "{data: ${if (json.isNotEmpty()) json else null}}"
+                val dataJson = if (json.isNotEmpty()) json else "{data: null}"
 
                 val cacheEntry = if (response != null) {
                     HttpHeaderParser.parseCacheHeaders(response)

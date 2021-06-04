@@ -261,10 +261,11 @@ object Mindbox {
         operationBody: T,
         onSuccess: (OperationResponse) -> Unit,
         onError: (MindboxError) -> Unit
-    ) = executeGenericResponseSyncOperation(
+    ) = executeSyncOperation(
         context = context,
         operationSystemName = operationSystemName,
         operationBody = operationBody,
+        classOfV = OperationResponse::class.java,
         onSuccess = onSuccess,
         onError = onError
     )
@@ -275,13 +276,15 @@ object Mindbox {
      * @param context current context is used
      * @param operationSystemName the name of synchronous operation
      * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     * @param classOfV Class type for response object.
      * @param onSuccess Callback for response typed [V] which extends [OperationResponseBase] that will be invoked for success response to a given request.
      * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
      */
-    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeGenericResponseSyncOperation(
+    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
+        classOfV: Class<V>,
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
     ) {
@@ -293,6 +296,7 @@ object Mindbox {
                         context = context,
                         name = operationSystemName,
                         body = operationBody,
+                        classOfV = classOfV,
                         onSuccess = onSuccess,
                         onError = onError
                     )

@@ -1,42 +1,39 @@
 package cloud.mindbox.mobile_sdk.models
 
-sealed class MindboxError(
-    open val status: String/*,
-    open val statusCode: Int*/
-) {
+sealed class MindboxError(open val statusCode: Int?) {
 
     data class Validation(
-        override val status: String,
+        override val statusCode: Int,
+        val status: String,
         val validationMessages: List<ValidationMessage>
-    ) : MindboxError(status)
+    ) : MindboxError(statusCode)
 
     data class Protocol(
-        override val status: String,
+        override val statusCode: Int,
+        val status: String,
         val errorMessage: String?,
         val errorId: String?,
         val httpStatusCode: Int?
-    ) : MindboxError(status)
+    ) : MindboxError(statusCode)
 
     data class InternalServer(
-        override val status: String,
+        override val statusCode: Int,
+        val status: String,
         val errorMessage: String?,
         val errorId: String?,
         val httpStatusCode: Int?
-    ) : MindboxError(status)
+    ) : MindboxError(statusCode)
 
-    data class Unknown(
-        override val status: String,
+    data class UnknownServer(
+        override val statusCode: Int? = null,
+        val status: String? = null,
         val errorMessage: String? = null,
         val errorId: String? = null,
         val httpStatusCode: Int? = null
-    ) : MindboxError(status)
+    ) : MindboxError(statusCode)
+
+    data class Unknown(
+        val throwable: Throwable? = null
+    ) : MindboxError(null)
 
 }
-
-data class TestError(
-    val status: String? = null,
-    val errorMessage: String? = null,
-    val errorId: String? = null,
-    val httpStatusCode: Int? = null,
-    val validationMessages: List<ValidationMessage> ? = null
-)
