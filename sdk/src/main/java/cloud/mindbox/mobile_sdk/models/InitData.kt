@@ -25,7 +25,7 @@ internal data class UpdateData(
 
 internal data class TrackClickData(
     @SerializedName("messageUniqueKey") val messageUniqueKey: String,
-    @SerializedName("buttonUniqueKey") val buttonUniqueKey: String
+    @SerializedName("buttonUniqueKey") val buttonUniqueKey: String?
 )
 
 internal data class TrackVisitData(

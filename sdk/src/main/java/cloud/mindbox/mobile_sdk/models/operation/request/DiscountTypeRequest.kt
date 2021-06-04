@@ -4,5 +4,5 @@ import com.google.gson.annotations.SerializedName
 
 enum class DiscountTypeRequest {
     @SerializedName("promoCode") PROMO_CODE,
-    @SerializedName("externalPromoAction")EXTERNAL_PROMO_ACTION
+    @SerializedName("externalPromoAction") EXTERNAL_PROMO_ACTION
 }
