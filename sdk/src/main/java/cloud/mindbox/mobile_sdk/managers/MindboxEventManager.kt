@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logOnException
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +90,39 @@ internal object MindboxEventManager {
                     )
                 )
             }
+        }.logOnException()
+    }
+
+    fun <T, V> syncOperation(
+        context: Context,
+        name: String,
+        body: T,
+        onSuccess: (V) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) {
+        runCatching {
+            val configuration = DbManager.getConfigurations()
+            if (MindboxPreferences.isFirstInitialize || configuration == null) {
+                MindboxLogger.e(this, "Configuration was not initialized")
+                // ToDo
+                return
+            }
+
+            val json = gson.toJson(body)
+            val event = Event(
+                eventType = EventType.SyncOperation(name),
+                body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+            )
+            val deviceUuid = MindboxPreferences.deviceUuid
+
+            GatewayManager.sendSyncEvent<V>(
+                context = context,
+                configuration = configuration,
+                deviceUuid = deviceUuid,
+                event = event,
+                onSuccess = onSuccess,
+                onError = onError
+            )
         }.logOnException()
     }
 
