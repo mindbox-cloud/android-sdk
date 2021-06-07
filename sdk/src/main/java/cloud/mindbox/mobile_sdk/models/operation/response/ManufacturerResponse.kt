@@ -4,4 +4,8 @@ import com.google.gson.annotations.SerializedName
 
 open class ManufacturerResponse(
     @SerializedName("name") val name: String? = null
-)
+) {
+
+    override fun toString() = "ManufacturerResponse(name=$name)"
+
+}

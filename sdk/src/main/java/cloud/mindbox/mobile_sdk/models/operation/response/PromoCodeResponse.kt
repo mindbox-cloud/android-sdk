@@ -23,4 +23,13 @@ open class PromoCodeResponse(
     @SerializedName("issuedDateTimeUtc") val issuedDateTimeUtc: DateTime? = null,
     @JsonAdapter(DateTimeAdapter::class)
     @SerializedName("blockedDateTimeUtc") val blockedDateTimeUtc: DateTime? = null
-)
+) {
+
+    override fun toString() = "PromoCodeResponse(issueStatus=$issueStatus, ids=$ids, pool=$pool, " +
+            "availableFromDateTimeUtc=$availableFromDateTimeUtc, " +
+            "availableTillDateTimeUtc=$availableTillDateTimeUtc, isUsed=$isUsed, " +
+            "usedPointOfContact=$usedPointOfContact, usedDateTimeUtc=$usedDateTimeUtc, " +
+            "issuedPointOfContact=$issuedPointOfContact, issuedDateTimeUtc=$issuedDateTimeUtc, " +
+            "blockedDateTimeUtc=$blockedDateTimeUtc)"
+
+}

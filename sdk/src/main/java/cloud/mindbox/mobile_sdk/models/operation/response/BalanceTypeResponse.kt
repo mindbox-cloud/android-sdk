@@ -3,11 +3,11 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import com.google.gson.annotations.SerializedName
 
-open class UsedPointOfContactResponse(
+open class BalanceTypeResponse(
     @SerializedName("ids") val ids: Ids? = null,
     @SerializedName("name") val name: String? = null
 ) {
 
-    override fun toString() = "UsedPointOfContactResponse(ids=$ids, name=$name)"
+    override fun toString() = "BalanceTypeResponse(ids=$ids, name=$name)"
 
 }

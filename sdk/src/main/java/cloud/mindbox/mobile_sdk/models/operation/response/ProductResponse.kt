@@ -5,4 +5,8 @@ import com.google.gson.annotations.SerializedName
 
 open class ProductResponse(
     @SerializedName("ids") val ids: Ids? = null
-)
+) {
+
+    override fun toString() = "ProductResponse(ids=$ids)"
+
+}

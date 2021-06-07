@@ -17,4 +17,11 @@ open class RecommendationResponse(
     @SerializedName("ids") val ids: Ids? = null,
     @SerializedName("manufacturer") val manufacturer: ManufacturerResponse? = null,
     @SerializedName("customFields") val customFields: CustomFields? = null
-)
+) {
+
+    override fun toString() = "RecommendationResponse(name=$name, description=$description, " +
+            "displayName=$displayName, url=$url, pictureUrl=$pictureUrl, price=$price, " +
+            "oldPrice=$oldPrice, category=$category, vendorCode=$vendorCode, ids=$ids, " +
+            "manufacturer=$manufacturer, customFields=$customFields)"
+
+}

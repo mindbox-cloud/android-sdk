@@ -24,4 +24,12 @@ open class CustomerResponse private constructor(
     @SerializedName("ids") val ids: Ids? = null,
     @SerializedName("customFields") val customFields: CustomFields? = null,
     @SerializedName("subscriptions") val subscriptions: List<SubscriptionResponse>? = null
-)
+) {
+
+    override fun toString() = "CustomerResponse(discountCard=$discountCard, " +
+            "birthDate=$birthDate, sex=$sex, timeZone=$timeZone, lastName=$lastName, " +
+            "firstName=$firstName, middleName=$middleName, fullName=$fullName, area=$area, " +
+            "email=$email, mobilePhone=$mobilePhone, ids=$ids, customFields=$customFields, " +
+            "subscriptions=$subscriptions)"
+
+}

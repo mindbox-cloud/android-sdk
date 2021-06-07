@@ -5,4 +5,8 @@ import com.google.gson.annotations.SerializedName
 
 open class SegmentResponse(
     @SerializedName("ids") val ids: Ids? = null
-)
+) {
+
+    override fun toString() = "SegmentResponse(ids=$ids)"
+
+}

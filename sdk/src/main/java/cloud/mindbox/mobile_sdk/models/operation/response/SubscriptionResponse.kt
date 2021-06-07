@@ -7,4 +7,9 @@ open class SubscriptionResponse(
 	@SerializedName("brand") val brand: String? = null,
 	@SerializedName("pointOfContact") val pointOfContact: PointOfContactResponse? = null,
 	@SerializedName("topic") val topic: String? = null
-)
+) {
+
+    override fun toString() = "SubscriptionResponse(isSubscribed=$isSubscribed, brand=$brand, " +
+            "pointOfContact=$pointOfContact, topic=$topic)"
+
+}

@@ -8,4 +8,6 @@ class CustomFields(val fields: Map<String, Any?>? = null) {
 
     constructor(vararg pairs: Pair<String, Any?>) : this(pairs.toMap())
 
+    override fun toString() = "CustomFields(fields=$fields)"
+
 }

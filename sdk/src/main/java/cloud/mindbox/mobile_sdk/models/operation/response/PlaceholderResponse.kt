@@ -3,11 +3,11 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import com.google.gson.annotations.SerializedName
 
-open class UsedPointOfContactResponse(
+open class PlaceholderResponse(
     @SerializedName("ids") val ids: Ids? = null,
-    @SerializedName("name") val name: String? = null
+    @SerializedName("content") val content: List<ContentResponse>? = null
 ) {
 
-    override fun toString() = "UsedPointOfContactResponse(ids=$ids, name=$name)"
+    override fun toString() = "PlaceholderResponse(ids=$ids, content=$content)"
 
 }

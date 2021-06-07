@@ -24,4 +24,6 @@ class Ids(val ids: Map<String, String?>) {
         vararg pairs: Pair<String, String?>
     ) : this(HashMap<String, String?>(pairs.toMap()).apply { this[MINDBOX_ID_KEY] = "$mindboxId" })
 
+    override fun toString() = "Ids(ids=$ids)"
+
 }

@@ -8,4 +8,9 @@ open class ProductListItemResponse constructor(
     @SerializedName("productGroup") val productGroup: ProductGroupResponse? = null,
     @SerializedName("pricePerItem") val pricePerItem: Double? = null,
     @SerializedName("priceOfLine") val priceOfLine: Double? = null
-)
+) {
+
+    override fun toString() = "ProductListItemResponse(count=$count, product=$product, " +
+            "productGroup=$productGroup, pricePerItem=$pricePerItem, priceOfLine=$priceOfLine)"
+
+}
