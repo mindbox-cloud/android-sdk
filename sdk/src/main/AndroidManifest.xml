@@ -5,4 +5,17 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <application>
+
+        <receiver
+            android:name=".services.MindboxPushReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter android:priority="999">
+                <action android:name="cloud.mindbox.mobile_sdk.PUSH_CLICKED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
 </manifest>
