@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation.adapters
 
-import cloud.mindbox.mobile_sdk.models.operation.request.DateTimeRequest
+import cloud.mindbox.mobile_sdk.models.operation.DateTime
 import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
@@ -9,11 +9,11 @@ import com.google.gson.stream.JsonWriter
 import java.text.SimpleDateFormat
 import java.util.*
 
-class DateTimeRequestAdapter : TypeAdapter<DateTimeRequest>() {
+class DateTimeAdapter : TypeAdapter<DateTime>() {
 
     private val formatter = SimpleDateFormat("dd.MM.yyyy HH:mm:ss.FFF", Locale.getDefault())
 
-    override fun write(out: JsonWriter?, value: DateTimeRequest?) {
+    override fun write(out: JsonWriter?, value: DateTime?) {
         runCatching {
             if (value == null) {
                 out?.nullValue()
@@ -23,14 +23,14 @@ class DateTimeRequestAdapter : TypeAdapter<DateTimeRequest>() {
         }.returnOnException { out }
     }
 
-    override fun read(`in`: JsonReader?): DateTimeRequest? = `in`?.let { reader ->
+    override fun read(`in`: JsonReader?): DateTime? = `in`?.let { reader ->
         runCatching {
             if (reader.peek() === JsonToken.NULL) {
                 reader.nextNull()
                 return@let null
             }
 
-            reader.nextString()?.let { formatter.parse(it)?.time?.let(::DateTimeRequest) }
+            reader.nextString()?.let { formatter.parse(it)?.time?.let(::DateTime) }
         }.returnOnException { null }
     }
 

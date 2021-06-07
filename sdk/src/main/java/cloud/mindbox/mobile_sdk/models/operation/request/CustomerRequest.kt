@@ -1,9 +1,10 @@
 package cloud.mindbox.mobile_sdk.models.operation.request
 
 import cloud.mindbox.mobile_sdk.models.operation.CustomFields
+import cloud.mindbox.mobile_sdk.models.operation.DateOnly
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.models.operation.Sex
-import cloud.mindbox.mobile_sdk.models.operation.adapters.DateOnlyRequestAdapter
+import cloud.mindbox.mobile_sdk.models.operation.adapters.DateOnlyAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 import java.util.*
@@ -11,8 +12,8 @@ import java.util.*
 open class CustomerRequest private constructor(
     @SerializedName("authenticationTicket") val authenticationTicket: String? = null,
     @SerializedName("discountCard") val discountCard: DiscountCardRequest? = null,
-    @JsonAdapter(DateOnlyRequestAdapter::class)
-    @SerializedName("birthDate") val birthDate: DateOnlyRequest? = null,
+    @JsonAdapter(DateOnlyAdapter::class)
+    @SerializedName("birthDate") val birthDate: DateOnly? = null,
     @SerializedName("sex") val sex: Sex? = null,
     @SerializedName("timeZone") val timeZone: String? = null,
     @SerializedName("lastName") val lastName: String? = null,
@@ -30,7 +31,7 @@ open class CustomerRequest private constructor(
     constructor(
         authenticationTicket: String? = null,
         discountCard: DiscountCardRequest? = null,
-        birthDate: DateOnlyRequest? = null,
+        birthDate: DateOnly? = null,
         sex: Sex? = null,
         timeZone: TimeZone? = null,
         lastName: String? = null,
@@ -62,7 +63,7 @@ open class CustomerRequest private constructor(
     constructor(
         authenticationTicket: String? = null,
         discountCard: DiscountCardRequest? = null,
-        birthDate: DateOnlyRequest? = null,
+        birthDate: DateOnly? = null,
         sex: Sex? = null,
         timeZone: TimeZone? = null,
         fullName: String? = null,
