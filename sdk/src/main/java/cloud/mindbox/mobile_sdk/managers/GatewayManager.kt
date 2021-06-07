@@ -103,15 +103,22 @@ internal object GatewayManager {
     ) {
         try {
 
-            val requestType: Int = getRequestType(event.eventType)
+            val eventType = event.eventType
+            val requestType: Int = getRequestType(eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
 
-            val request = MindboxRequest(requestType, url, configuration, jsonRequest,
-                {
+            val request = MindboxRequest(
+                methodType = requestType,
+                fullUrl = url,
+                configuration = configuration,
+                jsonRequest = jsonRequest,
+                isSyncOperation = eventType is EventType.SyncOperation,
+                listener = {
                     MindboxLogger.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
-                }, { volleyError ->
+                },
+                errorsListener = { volleyError ->
                     try {
                         val error = volleyError.networkResponse
                         val code = error.statusCode
