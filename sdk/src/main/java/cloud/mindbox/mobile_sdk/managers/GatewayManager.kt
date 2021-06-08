@@ -9,7 +9,9 @@ import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
+import com.android.volley.VolleyError
 import com.google.gson.Gson
+import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.*
@@ -20,6 +22,7 @@ internal object GatewayManager {
     private const val MAX_RETRIES = 0
 
     private val gson by lazy { Gson() }
+    private val gatewayScope by lazy { CoroutineScope(Dispatchers.Main + Job()) }
 
     private fun buildEventUrl(
         configuration: Configuration,
@@ -102,7 +105,6 @@ internal object GatewayManager {
         onError: (MindboxError) -> Unit
     ) {
         try {
-
             val eventType = event.eventType
             val requestType: Int = getRequestType(eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, event)
@@ -118,61 +120,7 @@ internal object GatewayManager {
                     MindboxLogger.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError ->
-                    try {
-                        val error = volleyError.networkResponse
-                        val code = error.statusCode
-                        val errorData = error.data
-                        val errorBody: MindboxResponse? = errorData?.let { data ->
-                            gson.fromJson(String(data), MindboxResponse::class.java)
-                        }
-
-                        when (val status = errorBody?.status) {
-                            null -> onError.invoke(MindboxError.UnknownServer())
-                            MindboxResponse.STATUS_SUCCESS,
-                            MindboxResponse.STATUS_TRANSACTION_ALREADY_PROCESSED -> {
-                                onSuccess.invoke(String(errorData))
-                            }
-                            MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
-                                MindboxError.Validation(
-                                    statusCode = code,
-                                    status = status,
-                                    validationMessages = errorBody.validationMessages ?: emptyList()
-                                )
-                            )
-                            MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
-                                MindboxError.Protocol(
-                                    statusCode = code,
-                                    status = status,
-                                    errorMessage = errorBody.errorMessage,
-                                    errorId = errorBody.errorId,
-                                    httpStatusCode = errorBody.httpStatusCode
-                                )
-                            )
-                            MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
-                                MindboxError.InternalServer(
-                                    statusCode = code,
-                                    status = status,
-                                    errorMessage = errorBody.errorMessage,
-                                    errorId = errorBody.errorId,
-                                    httpStatusCode = errorBody.httpStatusCode
-                                )
-                            )
-                            else -> onError.invoke(
-                                MindboxError.UnknownServer(
-                                    statusCode = code,
-                                    status = status,
-                                    errorMessage = errorBody.errorMessage,
-                                    errorId = errorBody.errorId,
-                                    httpStatusCode = errorBody.httpStatusCode
-                                )
-                            )
-                        }
-                    } catch (e: Exception) {
-                        MindboxLogger.e(this, "Parsing server response was failure", e)
-                        onError.invoke(MindboxError.Unknown(e))
-                    }
-                }
+                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) }
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -199,6 +147,79 @@ internal object GatewayManager {
         timeMls: Long
     ): String = (System.currentTimeMillis() - timeMls).toString()
 
+    private fun <T : OperationResponseBase> handleSuccessResponse(
+        data: String,
+        onSuccess: (T) -> Unit,
+        onError: (MindboxError) -> Unit,
+        classOfT: Class<T>
+    ) = gatewayScope.launch {
+        try {
+            onSuccess.invoke(convertJsonToBody(data, classOfT))
+        } catch (e: Exception) {
+            onError.invoke(MindboxError.Unknown(e))
+        }
+    }
+
+    private fun handleError(
+        volleyError: VolleyError,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) = gatewayScope.launch {
+        try {
+            val error = volleyError.networkResponse
+            val code = error.statusCode
+            val errorData = error.data
+            val errorBody: MindboxResponse? = errorData?.let { data ->
+                convertJsonToBody(String(data), MindboxResponse::class.java)
+            }
+
+            when (val status = errorBody?.status) {
+                null -> onError.invoke(MindboxError.UnknownServer())
+                MindboxResponse.STATUS_SUCCESS,
+                MindboxResponse.STATUS_TRANSACTION_ALREADY_PROCESSED -> {
+                    onSuccess.invoke(String(errorData))
+                }
+                MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
+                    MindboxError.Validation(
+                        statusCode = code,
+                        status = status,
+                        validationMessages = errorBody.validationMessages ?: emptyList()
+                    )
+                )
+                MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
+                    MindboxError.Protocol(
+                        statusCode = code,
+                        status = status,
+                        errorMessage = errorBody.errorMessage,
+                        errorId = errorBody.errorId,
+                        httpStatusCode = errorBody.httpStatusCode
+                    )
+                )
+                MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
+                    MindboxError.InternalServer(
+                        statusCode = code,
+                        status = status,
+                        errorMessage = errorBody.errorMessage,
+                        errorId = errorBody.errorId,
+                        httpStatusCode = errorBody.httpStatusCode
+                    )
+                )
+                else -> onError.invoke(
+                    MindboxError.UnknownServer(
+                        statusCode = code,
+                        status = status,
+                        errorMessage = errorBody.errorMessage,
+                        errorId = errorBody.errorId,
+                        httpStatusCode = errorBody.httpStatusCode
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            MindboxLogger.e(this, "Parsing server response was failure", e)
+            onError.invoke(MindboxError.Unknown(e))
+        }
+    }
+
     private fun convertBodyToJson(body: String?): JSONObject? {
         return if (body == null) {
             null
@@ -209,16 +230,10 @@ internal object GatewayManager {
         }
     }
 
-    private fun <T : OperationResponseBase> handleSuccessResponse(
-        body: String,
-        onSuccess: (T) -> Unit,
-        onError: (MindboxError) -> Unit,
+    private suspend fun <T> convertJsonToBody(
+        data: String,
         classOfT: Class<T>
-    ) = try {
-        onSuccess.invoke(gson.fromJson(body, classOfT))
-    } catch (e: Exception) {
-        onError.invoke(MindboxError.Unknown(e))
-    }
+    ) = withContext(Dispatchers.Default) { gson.fromJson(data, classOfT) }
 
     private fun isAsyncSent(statusCode: Int?) = statusCode?.let { code ->
         code < 300 || code in 400..499
