@@ -3,21 +3,28 @@ package cloud.mindbox.mobile_sdk.models.operation.adapters
 import cloud.mindbox.mobile_sdk.models.operation.DateTime
 import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.gson.TypeAdapter
+import com.google.gson.internal.bind.util.ISO8601Utils
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
+import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.*
 
 class DateTimeAdapter : TypeAdapter<DateTime>() {
 
-    private val formatter = SimpleDateFormat("dd.MM.yyyy HH:mm:ss.FFF", Locale.getDefault())
+    companion object {
+
+        private const val WRITE_DATA_FORMAT = "dd.MM.yyyy HH:mm:ss.FFF"
+
+    }
 
     override fun write(out: JsonWriter?, value: DateTime?) {
         runCatching {
             if (value == null) {
                 out?.nullValue()
             } else {
+                val formatter = SimpleDateFormat(WRITE_DATA_FORMAT, Locale.getDefault())
                 out?.value(formatter.format(value))
             }
         }.returnOnException { out }
@@ -30,7 +37,9 @@ class DateTimeAdapter : TypeAdapter<DateTime>() {
                 return@let null
             }
 
-            reader.nextString()?.let { formatter.parse(it)?.time?.let(::DateTime) }
+            reader.nextString()?.let { dateString ->
+                ISO8601Utils.parse(dateString, ParsePosition(0))?.time?.let(::DateTime)
+            }
         }.returnOnException { null }
     }
 
