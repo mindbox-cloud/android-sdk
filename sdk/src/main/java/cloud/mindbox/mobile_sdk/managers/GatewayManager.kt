@@ -154,7 +154,13 @@ internal object GatewayManager {
         classOfT: Class<T>
     ) = gatewayScope.launch {
         try {
-            onSuccess.invoke(convertJsonToBody(data, classOfT))
+            val body = convertJsonToBody(data, MindboxResponse::class.java)
+            if (body.status != MindboxResponse.STATUS_VALIDATION_ERROR) {
+                onSuccess.invoke(convertJsonToBody(data, classOfT))
+            } else {
+                val validationMessages = body.validationMessages ?: emptyList()
+                onError.invoke(MindboxError.Validation(200, body.status, validationMessages))
+            }
         } catch (e: Exception) {
             onError.invoke(MindboxError.Unknown(e))
         }
