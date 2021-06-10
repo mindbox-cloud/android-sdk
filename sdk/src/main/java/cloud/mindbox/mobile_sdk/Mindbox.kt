@@ -198,7 +198,11 @@ object Mindbox {
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
                     firstInitialization(context, configuration)
-                    sendTrackVisitEvent(context)
+                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
+                            && !lifecycleManager.isTrackVisitSent()
+                    if (isTrackVisitNotSent) {
+                        sendTrackVisitEvent(context, DIRECT)
+                    }
                 } else {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
@@ -211,7 +215,8 @@ object Mindbox {
 
                 if (!Mindbox::lifecycleManager.isInitialized) {
                     val activity = context as? Activity
-                    if (applicationLifecycle.currentState == RESUMED && activity == null) {
+                    val isApplicationResumed = applicationLifecycle.currentState == RESUMED
+                    if (isApplicationResumed && activity == null) {
                         MindboxLogger.e(
                             this@Mindbox,
                             "Incorrect context type for calling init in this place"
@@ -221,6 +226,7 @@ object Mindbox {
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
+                        isAppInBackground = !isApplicationResumed,
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
                                 sendTrackVisitEvent(context, source, requestUrl)
@@ -230,6 +236,7 @@ object Mindbox {
                 } else {
                     unregisterActivityLifecycleCallbacks(lifecycleManager)
                     applicationLifecycle.removeObserver(lifecycleManager)
+                    lifecycleManager.wasReinitialized()
                 }
 
                 registerActivityLifecycleCallbacks(lifecycleManager)

@@ -13,14 +13,15 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.DIRECT
 import cloud.mindbox.mobile_sdk.models.LINK
 import cloud.mindbox.mobile_sdk.models.PUSH
+import cloud.mindbox.mobile_sdk.returnOnException
 import java.util.*
 import kotlin.concurrent.timer
-import cloud.mindbox.mobile_sdk.returnOnException
 
 internal class LifecycleManager(
     private var currentActivityName: String?,
     private var currentIntent: Intent?,
-    private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit
+    private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
+    private var isAppInBackground: Boolean
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
 
     companion object {
@@ -33,10 +34,11 @@ internal class LifecycleManager(
 
     }
 
-    private var isAppInBackground = true
     private var isIntentChanged = true
     private var timer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
+
+    private var wasReinitialized = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
 
@@ -84,6 +86,15 @@ internal class LifecycleManager(
 
     }
 
+    fun isTrackVisitSent(): Boolean {
+        currentIntent?.let(::sendTrackVisit)
+        return currentIntent != null
+    }
+
+    fun wasReinitialized() {
+        wasReinitialized = true
+    }
+
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
     private fun onAppMovedToBackground() {
         isAppInBackground = true
@@ -91,8 +102,10 @@ internal class LifecycleManager(
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() {
+    private fun onAppMovedToForeground() = if (!wasReinitialized) {
         currentIntent?.let(::sendTrackVisit)
+    } else {
+        wasReinitialized = false
     }
 
     private fun updateActivityParameters(activity: Activity) = runCatching {
