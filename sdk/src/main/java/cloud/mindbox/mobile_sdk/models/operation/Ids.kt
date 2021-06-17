@@ -39,8 +39,4 @@ class Ids(val ids: Map<String, String?>) {
 
     override fun toString() = "Ids(ids=$ids)"
 
-    private fun convertToKotlinPair(
-        pair: AndroidXPair<String, String?>
-    ) = pair.first?.let { Pair(it, pair.second) }
-
 }

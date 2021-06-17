@@ -19,7 +19,6 @@ internal data class MindboxRequest(
     val fullUrl: String = "",
     val configuration: Configuration,
     val jsonRequest: JSONObject? = null,
-    val isSyncOperation: Boolean = false,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
@@ -56,9 +55,7 @@ internal data class MindboxRequest(
             )
             params[HEADER_INTEGRATION] = VALUE_INTEGRATION
             params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
-            if (isSyncOperation) {
-                params[HEADER_ACCEPT] = VALUE_ACCEPT
-            }
+            params[HEADER_ACCEPT] = VALUE_ACCEPT
         }.logOnException()
 
         return params
