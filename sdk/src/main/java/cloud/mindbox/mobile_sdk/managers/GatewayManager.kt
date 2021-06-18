@@ -32,6 +32,7 @@ internal object GatewayManager {
 
         when (event.eventType) {
             is EventType.AppInstalled,
+            is EventType.AppInstalledWithoutCustomer,
             is EventType.AppInfoUpdated,
             is EventType.PushClicked -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
@@ -103,6 +104,7 @@ internal object GatewayManager {
 
     private fun getRequestType(eventType: EventType): Int = when (eventType) {
         is EventType.AppInstalled,
+        is EventType.AppInstalledWithoutCustomer,
         is EventType.AppInfoUpdated,
         is EventType.PushClicked,
         is EventType.TrackVisit,

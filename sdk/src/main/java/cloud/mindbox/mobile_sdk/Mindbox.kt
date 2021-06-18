@@ -326,7 +326,7 @@ object Mindbox {
                 instanceId = instanceId
             )
 
-            MindboxEventManager.appInstalled(context, initData)
+            MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 
             MindboxPreferences.deviceUuid = deviceUuid
             MindboxPreferences.firebaseToken = firebaseToken
