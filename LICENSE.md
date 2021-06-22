@@ -27,8 +27,8 @@
 ## 3. Права, передаваемые Пользователю
  
 3.1. Правообладатель размещает исходный код Программы по ссылкам:
-репозиторий: https://github.com/mindbox-moscow/android-sdk;
-менеджер пакетов: https://search.maven.org/search?q=mindbox.
+- репозиторий: https://github.com/mindbox-moscow/android-sdk;
+- менеджер пакетов: https://search.maven.org/search?q=mindbox.
 
 Исходный код в менеджере пакетов и в репозитории в ветке “Master” является “production ready”.
 
