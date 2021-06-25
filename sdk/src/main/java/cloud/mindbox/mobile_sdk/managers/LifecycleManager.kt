@@ -38,7 +38,7 @@ internal class LifecycleManager(
     private var timer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
 
-    private var wasReinitialized = false
+    private var skipSendingTrackVisit = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
 
@@ -92,7 +92,13 @@ internal class LifecycleManager(
     }
 
     fun wasReinitialized() {
-        wasReinitialized = true
+        skipSendingTrackVisit = true
+    }
+
+    fun onNewIntent(newIntent: Intent?) = newIntent?.let { intent ->
+        isIntentChanged = true
+        sendTrackVisit(intent)
+        skipSendingTrackVisit = true
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
@@ -102,10 +108,10 @@ internal class LifecycleManager(
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() = if (!wasReinitialized) {
+    private fun onAppMovedToForeground() = if (!skipSendingTrackVisit) {
         currentIntent?.let(::sendTrackVisit)
     } else {
-        wasReinitialized = false
+        skipSendingTrackVisit = false
     }
 
     private fun updateActivityParameters(activity: Activity) = runCatching {

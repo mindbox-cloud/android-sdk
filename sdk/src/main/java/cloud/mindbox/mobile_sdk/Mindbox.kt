@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.annotation.DrawableRes
@@ -244,6 +245,20 @@ object Mindbox {
             }
         }.returnOnException { }
     }
+
+    /**
+     * Send track visit event after link or push was clicked for [Activity] with launchMode equals
+     * "singleTop" or "singleTask" or if a client used the [Intent.FLAG_ACTIVITY_SINGLE_TOP] or
+     * [Intent.FLAG_ACTIVITY_NEW_TASK]
+     * flag when calling {@link #startActivity}.
+     *
+     * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
+     */
+    fun onNewIntent(intent: Intent?) = runCatching {
+        if (Mindbox::lifecycleManager.isInitialized) {
+            lifecycleManager.onNewIntent(intent)
+        }
+    }.logOnException()
 
     /**
      * Specifies log level for Mindbox
