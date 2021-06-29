@@ -96,9 +96,13 @@ internal class LifecycleManager(
     }
 
     fun onNewIntent(newIntent: Intent?) = newIntent?.let { intent ->
-        isIntentChanged = true
-        sendTrackVisit(intent)
-        skipSendingTrackVisit = true
+        if (currentIntent?.data != intent.data
+            || !areBundlesEqual(currentIntent?.extras, intent.extras)
+        ) {
+            isIntentChanged = updateHashesList(intent.hashCode())
+            sendTrackVisit(intent)
+            skipSendingTrackVisit = true
+        }
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
@@ -164,5 +168,24 @@ internal class LifecycleManager(
         timer?.cancel()
         timer = null
     }.logOnException()
+
+    private fun areBundlesEqual(
+        first: Bundle?,
+        second: Bundle?
+    ): Boolean = if (first == null || second == null) {
+        first == second
+    } else {
+        first.size() == second.size() && first.keySet().containsAll(second.keySet())
+                && first.keySet().all { key -> areItemsEqual(first.get(key), second.get(key)) }
+    }
+
+    private fun areItemsEqual(
+        first: Any?,
+        second: Any?
+    ) = if (first is Bundle && second is Bundle) {
+        areBundlesEqual(first, second)
+    } else {
+        first == second
+    }
 
 }
