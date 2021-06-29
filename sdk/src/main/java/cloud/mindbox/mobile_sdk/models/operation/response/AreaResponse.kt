@@ -4,9 +4,10 @@ import cloud.mindbox.mobile_sdk.models.operation.Ids
 import com.google.gson.annotations.SerializedName
 
 open class AreaResponse(
-    @SerializedName("ids") val ids: Ids? = null
+    @SerializedName("ids") val ids: Ids? = null,
+    @SerializedName("name") val name: String? = null
 ) {
 
-    override fun toString() = "AreaResponse(ids=$ids)"
+    override fun toString() = "AreaResponse(ids=$ids, name=$name)"
 
 }
