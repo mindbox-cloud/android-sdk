@@ -96,12 +96,10 @@ internal class LifecycleManager(
     }
 
     fun onNewIntent(newIntent: Intent?) = newIntent?.let { intent ->
-        if (currentIntent?.data != intent.data
-            || !areBundlesEqual(currentIntent?.extras, intent.extras)
-        ) {
+        if (intent.data != null || intent.extras?.get(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true) {
             isIntentChanged = updateHashesList(intent.hashCode())
             sendTrackVisit(intent)
-            skipSendingTrackVisit = true
+            skipSendingTrackVisit = isAppInBackground
         }
     }
 
@@ -168,24 +166,5 @@ internal class LifecycleManager(
         timer?.cancel()
         timer = null
     }.logOnException()
-
-    private fun areBundlesEqual(
-        first: Bundle?,
-        second: Bundle?
-    ): Boolean = if (first == null || second == null) {
-        first == second
-    } else {
-        first.size() == second.size() && first.keySet().containsAll(second.keySet())
-                && first.keySet().all { key -> areItemsEqual(first.get(key), second.get(key)) }
-    }
-
-    private fun areItemsEqual(
-        first: Any?,
-        second: Any?
-    ) = if (first is Bundle && second is Bundle) {
-        areBundlesEqual(first, second)
-    } else {
-        first == second
-    }
 
 }
