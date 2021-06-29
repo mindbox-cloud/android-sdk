@@ -1,9 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
-import cloud.mindbox.mobile_sdk.models.operation.CustomFields
-import cloud.mindbox.mobile_sdk.models.operation.DateOnly
-import cloud.mindbox.mobile_sdk.models.operation.Ids
-import cloud.mindbox.mobile_sdk.models.operation.Sex
+import cloud.mindbox.mobile_sdk.models.operation.*
 import cloud.mindbox.mobile_sdk.models.operation.adapters.DateOnlyAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
@@ -23,13 +20,21 @@ open class CustomerResponse private constructor(
     @SerializedName("mobilePhone") val mobilePhone: String? = null,
     @SerializedName("ids") val ids: Ids? = null,
     @SerializedName("customFields") val customFields: CustomFields? = null,
-    @SerializedName("subscriptions") val subscriptions: List<SubscriptionResponse>? = null
+    @SerializedName("subscriptions") val subscriptions: List<SubscriptionResponse>? = null,
+    @SerializedName("processingStatus") val processingStatus: ProcessingStatusResponse? = null,
+    @SerializedName("isEmailInvalid") val isEmailInvalid: Boolean? = null,
+    @SerializedName("isMobilePhoneInvalid") val isMobilePhoneInvalid: Boolean? = null,
+    @SerializedName("changeDateTimeUtc") val changeDateTimeUtc: DateTime? = null,
+    @SerializedName("ianaTimeZone") val ianaTimeZone: String? = null,
+    @SerializedName("timeZoneSource") val timeZoneSource: String? = null
 ) {
 
     override fun toString() = "CustomerResponse(discountCard=$discountCard, " +
             "birthDate=$birthDate, sex=$sex, timeZone=$timeZone, lastName=$lastName, " +
             "firstName=$firstName, middleName=$middleName, fullName=$fullName, area=$area, " +
             "email=$email, mobilePhone=$mobilePhone, ids=$ids, customFields=$customFields, " +
-            "subscriptions=$subscriptions)"
-
+            "subscriptions=$subscriptions, processingStatus=$processingStatus, " +
+            "isEmailInvalid=$isEmailInvalid, isMobilePhoneInvalid=$isMobilePhoneInvalid, " +
+            "changeDateTimeUtc=$changeDateTimeUtc, ianaTimeZone=$ianaTimeZone, " +
+            "timeZoneSource=$timeZoneSource)"
 }
