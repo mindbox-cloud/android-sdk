@@ -117,7 +117,6 @@ dependencies {
 
     // Firebase messaging
     implementation platform('com.google.firebase:firebase-bom:26.1.1')
-    implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.android.gms:play-services-basement:17.5.0'
 
@@ -141,5 +140,8 @@ dependencies {
 
     // dex
     implementation "androidx.multidex:multidex:2.0.1"
+
+    // Handle app lifecycle
+    implementation "androidx.lifecycle:lifecycle-process:2.3.1"
 
 }
