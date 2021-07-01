@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import cloud.mindbox.mobile_sdk.models.operation.*
 import cloud.mindbox.mobile_sdk.models.operation.adapters.DateOnlyAdapter
+import cloud.mindbox.mobile_sdk.models.operation.adapters.DateTimeAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
@@ -24,6 +25,7 @@ open class CustomerResponse private constructor(
     @SerializedName("processingStatus") val processingStatus: ProcessingStatusResponse? = null,
     @SerializedName("isEmailInvalid") val isEmailInvalid: Boolean? = null,
     @SerializedName("isMobilePhoneInvalid") val isMobilePhoneInvalid: Boolean? = null,
+    @JsonAdapter(DateTimeAdapter::class)
     @SerializedName("changeDateTimeUtc") val changeDateTimeUtc: DateTime? = null,
     @SerializedName("ianaTimeZone") val ianaTimeZone: String? = null,
     @SerializedName("timeZoneSource") val timeZoneSource: String? = null
