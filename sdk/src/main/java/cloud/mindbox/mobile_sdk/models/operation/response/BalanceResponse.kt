@@ -10,8 +10,10 @@ open class BalanceResponse(
     @SerializedName("systemName") val systemName: String? = null,
     @SerializedName("balanceType") val balanceType: BalanceTypeResponse? = null
 ) {
+
     override fun toString() =
         "BalanceResponse(total=$total, available=$available, blocked=$blocked, " +
                 "nearestExpiration=$nearestExpiration, systemName=$systemName, " +
                 "balanceType=$balanceType)"
+
 }

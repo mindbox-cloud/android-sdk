@@ -39,4 +39,5 @@ open class CustomerResponse private constructor(
             "isEmailInvalid=$isEmailInvalid, isMobilePhoneInvalid=$isMobilePhoneInvalid, " +
             "changeDateTimeUtc=$changeDateTimeUtc, ianaTimeZone=$ianaTimeZone, " +
             "timeZoneSource=$timeZoneSource)"
+
 }

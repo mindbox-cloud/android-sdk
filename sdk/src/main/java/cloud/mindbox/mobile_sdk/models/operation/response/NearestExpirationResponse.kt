@@ -10,5 +10,7 @@ open class NearestExpirationResponse(
     @JsonAdapter(DateOnlyAdapter::class)
     @SerializedName("date") val date: DateOnly? = null
 ) {
+
     override fun toString() = "NearestExpirationResponse(total=$total, date=$date)"
+
 }

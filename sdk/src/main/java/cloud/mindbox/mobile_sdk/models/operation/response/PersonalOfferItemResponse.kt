@@ -13,7 +13,9 @@ open class PersonalOfferItemResponse(
     @JsonAdapter(DateTimeAdapter::class)
     @SerializedName("endDateTimeUtc") val endDateTimeUtc: DateTime? = null
 ) {
+
     override fun toString() =
         "PersonalOfferItemResponse(product=$product, benefit=$benefit, " +
             "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc)"
+
 }

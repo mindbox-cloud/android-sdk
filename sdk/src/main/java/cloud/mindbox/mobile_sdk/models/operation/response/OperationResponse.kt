@@ -33,4 +33,5 @@ open class OperationResponse(
                 "promoCode=$promoCode, personalOffers=$personalOffers, balances=$balances, " +
                 "discountCards=$discountCards, promoActions=$promoActions, " +
                 "retailOrderStatistics=$retailOrderStatistics)"
+
 }
