@@ -5,7 +5,5 @@ import com.google.gson.annotations.SerializedName
 open class RetailOrderStatisticsResponse(
     @SerializedName("totalPaidAmount") val totalPaidAmount: Double? = null
 ) {
-    override fun toString(): String {
-        return "RetailOrderStatistics(totalPaidAmount=$totalPaidAmount)"
-    }
+    override fun toString() = "RetailOrderStatistics(totalPaidAmount=$totalPaidAmount)"
 }

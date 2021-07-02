@@ -11,7 +11,5 @@ open class StatusResponse(
     @JsonAdapter(DateTimeAdapter::class)
     @SerializedName("dateTimeUtc") val dateTimeUtc: DateTime? = null
 ) {
-    override fun toString(): String {
-        return "StatusResponse(ids=$ids, dateTimeUtc=$dateTimeUtc)"
-    }
+    override fun toString() = "StatusResponse(ids=$ids, dateTimeUtc=$dateTimeUtc)"
 }

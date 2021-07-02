@@ -18,9 +18,8 @@ open class PromoActionResponse(
     @SerializedName("customFields") val customFields: CustomFields? = null,
     @SerializedName("limits") val limits: List<LimitResponse>? = null
 ) {
-    override fun toString(): String {
-        return "PromoActionResponse(ids=$ids, name=$name, description=$description, " +
+    override fun toString() =
+        "PromoActionResponse(ids=$ids, name=$name, description=$description, " +
                 "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc, " +
                 "customFields=$customFields, limits=$limits)"
-    }
 }
