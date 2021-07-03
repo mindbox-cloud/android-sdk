@@ -47,3 +47,11 @@
 }
 -keep class kotlin.Metadata { *; }
 -keepattributes RuntimeVisibleAnnotations
+
+# WorkManager
+# Rendescript
+-keepclasseswithmembernames class * {
+   native <methods>;
+}
+
+-keep class androidx.renderscript.** { *; }
