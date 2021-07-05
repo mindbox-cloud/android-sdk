@@ -98,7 +98,7 @@ internal data class MindboxRequest(
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         if (BuildConfig.DEBUG) {
             runCatching {
-                MindboxLogger.d(
+                MindboxLogger.e(
                     this,
                     "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; "
                 )

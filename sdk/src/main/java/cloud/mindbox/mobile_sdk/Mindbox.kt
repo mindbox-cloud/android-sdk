@@ -1,7 +1,12 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import androidx.lifecycle.Lifecycle.State.RESUMED
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
@@ -11,6 +16,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -20,12 +26,18 @@ import java.util.concurrent.TimeUnit
 
 object Mindbox {
 
+    /**
+     * Used for determination app open from push
+     */
+    const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
+
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
 
     private val mindboxJob = Job()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
     private val fmsTokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
+    private lateinit var lifecycleManager: LifecycleManager
 
     /**
      * Subscribe to gets token of Firebase Messaging Service used by SDK
@@ -58,9 +70,9 @@ object Mindbox {
     /**
      * Returns date of FMS token saving
      */
-    fun getFmsTokenSaveDate(): String =
-        runCatching { return MindboxPreferences.firebaseTokenSaveDate }
-            .returnOnException { "" }
+    fun getFmsTokenSaveDate(): String = runCatching {
+        return MindboxPreferences.firebaseTokenSaveDate
+    }.returnOnException { "" }
 
     /**
      * Returns SDK version
@@ -145,7 +157,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String) {
+    fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String?) {
         runCatching {
             initComponents(context)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
@@ -189,23 +201,66 @@ object Mindbox {
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
                     firstInitialization(context, configuration)
+                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
+                            && !lifecycleManager.isTrackVisitSent()
+                    if (isTrackVisitNotSent) {
+                        sendTrackVisitEvent(context, DIRECT)
+                    }
                 } else {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
                 }
-                sendTrackVisitEvent(context, configuration.endpointId)
+            }
 
-                // Handle back app in foreground
-                val lifecycleManager = LifecycleManager {
-                    runBlocking(Dispatchers.IO) {
-                        sendTrackVisitEvent(context, configuration.endpointId)
+            // Handle back app in foreground
+            (context.applicationContext as? Application)?.apply {
+                val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
+
+                if (!Mindbox::lifecycleManager.isInitialized) {
+                    val activity = context as? Activity
+                    val isApplicationResumed = applicationLifecycle.currentState == RESUMED
+                    if (isApplicationResumed && activity == null) {
+                        MindboxLogger.e(
+                            this@Mindbox,
+                            "Incorrect context type for calling init in this place"
+                        )
                     }
+
+                    lifecycleManager = LifecycleManager(
+                        currentActivityName = activity?.javaClass?.name,
+                        currentIntent = activity?.intent,
+                        isAppInBackground = !isApplicationResumed,
+                        onTrackVisitReady = { source, requestUrl ->
+                            runBlocking(Dispatchers.IO) {
+                                sendTrackVisitEvent(context, source, requestUrl)
+                            }
+                        }
+                    )
+                } else {
+                    unregisterActivityLifecycleCallbacks(lifecycleManager)
+                    applicationLifecycle.removeObserver(lifecycleManager)
+                    lifecycleManager.wasReinitialized()
                 }
-                (context.applicationContext as? Application)
-                    ?.registerActivityLifecycleCallbacks(lifecycleManager)
+
+                registerActivityLifecycleCallbacks(lifecycleManager)
+                applicationLifecycle.addObserver(lifecycleManager)
             }
         }.returnOnException { }
     }
+
+    /**
+     * Send track visit event after link or push was clicked for [Activity] with launchMode equals
+     * "singleTop" or "singleTask" or if a client used the [Intent.FLAG_ACTIVITY_SINGLE_TOP] or
+     * [Intent.FLAG_ACTIVITY_NEW_TASK]
+     * flag when calling {@link #startActivity}.
+     *
+     * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
+     */
+    fun onNewIntent(intent: Intent?) = runCatching {
+        if (Mindbox::lifecycleManager.isInitialized) {
+            lifecycleManager.onNewIntent(intent)
+        }
+    }.logOnException()
 
     /**
      * Specifies log level for Mindbox
@@ -310,6 +365,34 @@ object Mindbox {
         }
     }
 
+    /**
+     * Handles only Mindbox notification message from [FirebaseMessagingService].
+     *
+     * @param context context used for Mindbox initializing and push notification showing
+     * @param message the [RemoteMessage] received from Firebase
+     * @param channelId the id of channel for Mindbox pushes
+     * @param channelName the name of channel for Mindbox pushes
+     * @param pushSmallIcon icon for push notification as drawable resource
+     * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     *
+     * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
+     */
+    fun handleRemoteMessage(
+        context: Context,
+        message: RemoteMessage?,
+        channelId: String,
+        channelName: String,
+        @DrawableRes pushSmallIcon: Int,
+        channelDescription: String? = null
+    ): Boolean = PushNotificationManager.handleRemoteMessage(
+        context = context,
+        remoteMessage = message,
+        channelId = channelId,
+        channelName = channelName,
+        pushSmallIcon = pushSmallIcon,
+        channelDescription = channelDescription
+    )
+
     internal fun initComponents(context: Context) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
@@ -377,6 +460,7 @@ object Mindbox {
 
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
         runCatching {
+
             val firebaseToken = token
                 ?: withContext(mindboxScope.coroutineContext) { IdentifierManager.registerFirebaseToken() }
 
@@ -402,14 +486,22 @@ object Mindbox {
         }.logOnException()
     }
 
-    private fun sendTrackVisitEvent(context: Context, endpointId: String) {
+    private fun sendTrackVisitEvent(
+        context: Context,
+        @TrackVisitSource source: String? = null,
+        requestUrl: String? = null
+    ) = runCatching {
+        val applicationContext = context.applicationContext
+        val endpointId = DbManager.getConfigurations()?.endpointId ?: return
         val trackVisitData = TrackVisitData(
             ianaTimeZone = TimeZone.getDefault().id,
-            endpointId = endpointId
+            endpointId = endpointId,
+            source = source,
+            requestUrl = requestUrl
         )
 
-        MindboxEventManager.appStarted(context, trackVisitData)
-    }
+        MindboxEventManager.appStarted(applicationContext, trackVisitData)
+    }.logOnException()
 
     private fun deliverDeviceUuid(deviceUuid: String) {
         Executors.newSingleThreadScheduledExecutor().schedule({
