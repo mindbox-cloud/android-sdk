@@ -11,7 +11,12 @@ open class OperationResponse(
     @SerializedName("productList") private val productList: Any? = null,
     @SerializedName("recommendations") val recommendations: List<RecommendationResponse>? = null,
     @SerializedName("customerSegmentations") val customerSegmentations: List<CustomerSegmentationResponse>? = null,
-    @SerializedName("promoCode") val promoCode: PromoCodeResponse? = null
+    @SerializedName("promoCode") val promoCode: PromoCodeResponse? = null,
+    @SerializedName("personalOffers") val personalOffers: List<PersonalOfferItemResponse>? = null,
+    @SerializedName("balances") val balances: List<BalanceResponse>? = null,
+    @SerializedName("discountCards") val discountCards: List<DiscountCardResponse>? = null,
+    @SerializedName("promoActions") val promoActions: List<PromoActionResponse>? = null,
+    @SerializedName("retailOrderStatistics") val retailOrderStatistics: RetailOrderStatisticsResponse? = null
 ) : OperationResponseBase(status) {
 
     /** Used for catalog with name productList and its type is [CatalogProductListResponse] **/
@@ -22,10 +27,11 @@ open class OperationResponse(
     fun productListItems() =
         (productList as? List<*>)?.mapNotNull { it as? ProductListItemResponse }
 
-    override fun toString(): String {
-        return "OperationResponse(customer=$customer, productList=$productList, " +
+    override fun toString() =
+        "OperationResponse(status=$status, customer=$customer, productList=$productList, " +
                 "recommendations=$recommendations, customerSegmentations=$customerSegmentations, " +
-                "promoCode=$promoCode)"
-    }
+                "promoCode=$promoCode, personalOffers=$personalOffers, balances=$balances, " +
+                "discountCards=$discountCards, promoActions=$promoActions, " +
+                "retailOrderStatistics=$retailOrderStatistics)"
 
 }

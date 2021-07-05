@@ -22,6 +22,7 @@ enum class ProcessingStatusResponse {
     @SerializedName("MindboxServerError") MINDBOX_SERVER_ERROR,
     @SerializedName("PriceHasBeenChanged") PRICE_HAS_BEEN_CHANGED,
     @SerializedName("PersonalDiscountsCalculationIsUnavailable") PERSONAL_DISCOUNTS_CALCULATION_IS_UNAVAILABLE,
-    @SerializedName("DiscountsCalculationIsUnavailable") DISCOUNTS_CALCULATION_IS_UNAVAILABLE
+    @SerializedName("DiscountsCalculationIsUnavailable") DISCOUNTS_CALCULATION_IS_UNAVAILABLE,
+    @SerializedName("InvalidAuthenticationTicket") INVALID_AUTHENTICATION_TICKET
 
 }
