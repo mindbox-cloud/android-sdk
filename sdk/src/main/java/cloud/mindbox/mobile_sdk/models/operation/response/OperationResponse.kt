@@ -28,7 +28,7 @@ open class OperationResponse(
         (productList as? List<*>)?.mapNotNull { it as? ProductListItemResponse }
 
     override fun toString() =
-        "OperationResponse(customer=$customer, productList=$productList, " +
+        "OperationResponse(status=$status, customer=$customer, productList=$productList, " +
                 "recommendations=$recommendations, customerSegmentations=$customerSegmentations, " +
                 "promoCode=$promoCode, personalOffers=$personalOffers, balances=$balances, " +
                 "discountCards=$discountCards, promoActions=$promoActions, " +
