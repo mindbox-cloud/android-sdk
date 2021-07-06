@@ -30,7 +30,18 @@ class IdsAdapter : TypeAdapter<Ids?>() {
                 return@let null
             }
 
-            gson.fromJson<Map<String, String?>?>(reader, Map::class.java)?.let(::Ids)
+            // Workaround for case when id value is handled by gson as Double, not as String or Int
+            // We manually parse value as String
+            val ids = mutableMapOf<String, String?>()
+            reader.beginObject()
+            while (reader.peek() != JsonToken.END_OBJECT) {
+                val key = reader.nextName()
+                val valueString = reader.nextString()
+                ids[key] = valueString
+            }
+            reader.endObject()
+
+            Ids(ids)
         }.returnOnException { null }
     }
 
