@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation.adapters
 
+import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.gson.Gson
@@ -33,13 +34,18 @@ class IdsAdapter : TypeAdapter<Ids?>() {
             // Workaround for case when id value is handled by gson as Double, not as String or Int
             // We manually parse value as String
             val ids = mutableMapOf<String, String?>()
-            reader.beginObject()
-            while (reader.peek() != JsonToken.END_OBJECT) {
-                val key = reader.nextName()
-                val valueString = reader.nextString()
-                ids[key] = valueString
+            if (reader.peek() == JsonToken.BEGIN_OBJECT) {
+                reader.beginObject()
+                while (reader.peek() != JsonToken.END_OBJECT) {
+                    runCatching {
+                        val key = reader.nextName()
+                        val valueString = reader.nextString()
+                        ids[key] = valueString
+
+                    }.logOnException()
+                }
+                reader.endObject()
             }
-            reader.endObject()
 
             Ids(ids)
         }.returnOnException { null }
