@@ -4,10 +4,10 @@ import com.google.gson.annotations.SerializedName
 
 enum class PointOfContactResponse {
 
-    @SerializedName("Email") EMAIL,
-    @SerializedName("Sms") SMS,
+    @SerializedName("Email", alternate = ["EMAIL", "email"]) EMAIL,
+    @SerializedName("Sms", alternate = ["SMS", "sms"]) SMS,
     @SerializedName("Viber") VIBER,
-    @SerializedName("Webpush") WEBPUSH,
-    @SerializedName("Mobilepush") MOBILEPUSH
+    @SerializedName("Webpush", alternate = ["WebPush"]) WEBPUSH,
+    @SerializedName("Mobilepush", alternate = ["MobilePush"]) MOBILEPUSH
 
 }
