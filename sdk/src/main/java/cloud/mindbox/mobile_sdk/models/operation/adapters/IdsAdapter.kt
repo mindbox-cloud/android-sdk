@@ -41,7 +41,6 @@ class IdsAdapter : TypeAdapter<Ids?>() {
                         val key = reader.nextName()
                         val valueString = reader.nextString()
                         ids[key] = valueString
-
                     }.logOnException()
                 }
                 reader.endObject()
