@@ -12,6 +12,7 @@ open class ProductListItemResponse constructor(
 ) {
 
     override fun toString() = "ProductListItemResponse(count=$count, product=$product, " +
-            "productGroup=$productGroup, pricePerItem=$pricePerItem, priceOfLine=$priceOfLine)"
+            "productGroup=$productGroup, pricePerItem=$pricePerItem, priceOfLine=$priceOfLine" +
+            "price=$price)"
 
 }
