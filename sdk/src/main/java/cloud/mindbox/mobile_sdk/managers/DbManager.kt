@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -45,14 +44,14 @@ internal object DbManager {
     }.logOnException()
 
     fun getFilteredEvents(): List<Event> = runCatching {
-        val events = getEvents().sortedBy(Event::enqueueTimestamp)
+        val events = getEvents().sortedByDescending(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
 
         if (events.size > resultEvents.size) {
             CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
         }
 
-        resultEvents
+        resultEvents.asReversed()
     }.returnOnException { emptyList() }
 
     fun removeEventFromQueue(event: Event) = runCatching {
