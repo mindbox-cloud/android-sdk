@@ -44,14 +44,14 @@ internal object DbManager {
     }.logOnException()
 
     fun getFilteredEvents(): List<Event> = runCatching {
-        val events = getEvents().sortedByDescending(Event::enqueueTimestamp)
+        val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
 
         if (events.size > resultEvents.size) {
             CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
         }
 
-        resultEvents.asReversed()
+        resultEvents
     }.returnOnException { emptyList() }
 
     fun removeEventFromQueue(event: Event) = runCatching {
@@ -108,11 +108,7 @@ internal object DbManager {
         val time = System.currentTimeMillis()
         val filteredEvents = events.filterNot { it.isTooOld(time) }
 
-        return if (filteredEvents.size <= MAX_EVENT_LIST_SIZE) {
-            filteredEvents
-        } else {
-            filteredEvents.subList(0, MAX_EVENT_LIST_SIZE)
-        }
+        return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
     private fun Event.isTooOld(timeNow: Long): Boolean = runCatching {
