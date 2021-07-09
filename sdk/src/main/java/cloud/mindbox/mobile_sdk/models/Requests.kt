@@ -35,6 +35,8 @@ internal data class MindboxRequest(
             "mindbox.sdk/%1$1s (Android %2$1s; %3$1s; %4$1s) %5$1s/%6$1s(%7$1s)" // format: mindbox.sdk/{sdk.version} (Android {os_version}; {vendor}; {model}) {host_app_name}/{host_app_version}
         private const val VALUE_INTEGRATION = "Android-SDK"
         private const val VALUE_ACCEPT = "application/json"
+
+        private const val DEFAULT_RESPONSE_CHARSET = "UTF-8"
     }
 
     //building headers
@@ -70,12 +72,12 @@ internal data class MindboxRequest(
 
                 val json = String(
                     response?.data ?: ByteArray(0),
-                    Charset.forName(HttpHeaderParser.parseCharset(response?.headers))
+                    Charset.forName(HttpHeaderParser.parseCharset(response?.headers, DEFAULT_RESPONSE_CHARSET))
                 )
 
                 logBodyResponse(json)
 
-                val dataJson = "{data: ${if (json.isNotEmpty()) json else null}}"
+                val dataJson = if (json.isNotEmpty()) json else "{data: null}"
 
                 val cacheEntry = if (response != null) {
                     HttpHeaderParser.parseCacheHeaders(response)

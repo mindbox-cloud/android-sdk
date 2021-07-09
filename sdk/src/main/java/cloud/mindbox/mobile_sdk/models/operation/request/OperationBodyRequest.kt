@@ -18,6 +18,7 @@ open class OperationBodyRequest : OperationBodyRequestBase {
     @SerializedName("promoCode") val promoCode: PromoCodeRequest?
     @SerializedName("viewProductCategory") val viewProductCategory: ViewProductCategoryRequest?
     @SerializedName("viewProduct") val viewProductRequest: ViewProductRequest?
+    @SerializedName("recommendation") val recommendation: RecommendationRequest?
 
     /** Used for catalog with name productList and its type is [CatalogProductListRequest] **/
     fun productList(): CatalogProductListRequest? = productList as? CatalogProductListRequest
@@ -39,7 +40,8 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         setProductCountInList: ProductListItemRequest? = null,
         promoCode: PromoCodeRequest? = null,
         viewProductCategory: ViewProductCategoryRequest? = null,
-        viewProductRequest: ViewProductRequest? = null
+        viewProductRequest: ViewProductRequest? = null,
+        recommendation: RecommendationRequest? = null
     ) : super() {
         this.customerAction = customerAction
         this.pointOfContact = pointOfContact
@@ -55,6 +57,7 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         this.promoCode = promoCode
         this.viewProductCategory = viewProductCategory
         this.viewProductRequest = viewProductRequest
+        this.recommendation = recommendation
     }
 
     constructor(
@@ -71,7 +74,8 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         productList: List<ProductListItemRequest>? = null,
         promoCode: PromoCodeRequest? = null,
         viewProductCategory: ViewProductCategoryRequest? = null,
-        viewProductRequest: ViewProductRequest? = null
+        viewProductRequest: ViewProductRequest? = null,
+        recommendation: RecommendationRequest? = null
     ) : super() {
         this.customerAction = customerAction
         this.pointOfContact = pointOfContact
@@ -87,6 +91,7 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         this.promoCode = promoCode
         this.viewProductCategory = viewProductCategory
         this.viewProductRequest = viewProductRequest
+        this.recommendation = recommendation
     }
 
     constructor(
@@ -102,7 +107,8 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         setProductCountInList: ProductListItemRequest? = null,
         promoCode: PromoCodeRequest? = null,
         viewProductCategory: ViewProductCategoryRequest? = null,
-        viewProductRequest: ViewProductRequest? = null
+        viewProductRequest: ViewProductRequest? = null,
+        recommendation: RecommendationRequest? = null
     ) : super() {
         this.customerAction = customerAction
         this.pointOfContact = pointOfContact
@@ -118,6 +124,7 @@ open class OperationBodyRequest : OperationBodyRequestBase {
         this.promoCode = promoCode
         this.viewProductCategory = viewProductCategory
         this.viewProductRequest = viewProductRequest
+        this.recommendation = recommendation
     }
 
 }
