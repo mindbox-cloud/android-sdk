@@ -26,7 +26,8 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
         private const val ASYNC_OPERATION_ORDINAL = 5
-        private const val APP_INSTALLED_WITHOUT_CUSTOMER = 6
+        private const val SYNC_OPERATION_ORDINAL = 6
+        private const val APP_INSTALLED_WITHOUT_CUSTOMER = 7
 
         fun typeToken(ordinal: Int) = when (ordinal) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
@@ -36,6 +37,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
+            SYNC_OPERATION_ORDINAL -> object : TypeToken<SyncOperation>() {}
             else -> throw IllegalArgumentException("Unknown TypeToken for $ordinal EventType ordinal")
         }
 
@@ -56,6 +58,8 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
     internal class AsyncOperation(operation: String) : EventType(operation, "/v3/operations/async")
 
+    internal class SyncOperation(operation: String) : EventType(operation, "/v3/operations/sync")
+
     fun ordinal() = when (this) {
         is AppInstalled -> APP_INSTALLED_ORDINAL
         is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
@@ -64,6 +68,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
+        is SyncOperation -> SYNC_OPERATION_ORDINAL
     }
 
 }

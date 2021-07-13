@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.app.Notification.DEFAULT_ALL
+import android.app.Notification.VISIBILITY_PRIVATE
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -59,6 +60,7 @@ internal object PushNotificationManager {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .handlePushClick(context, notificationId, uniqueKey)
             .handleActions(context, notificationId, uniqueKey, pushActions)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
@@ -82,6 +84,7 @@ internal object PushNotificationManager {
             val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(channelId, channelName, importance).apply {
                 channelDescription.let { description = it }
+                lockscreenVisibility = VISIBILITY_PRIVATE
             }
 
             notificationManager.createNotificationChannel(channel)
