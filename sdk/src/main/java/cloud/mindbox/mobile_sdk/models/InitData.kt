@@ -12,8 +12,8 @@ internal const val PUSH = "push"
 internal data class InitData(
     @SerializedName("token") val token: String,
     @SerializedName("isTokenAvailable") val isTokenAvailable: Boolean,
-    @SerializedName("installationId") val installationId: String,
-    @SerializedName("externalDeviceUUID") val externalDeviceUUID: String,
+    @SerializedName("previousInstallationId") val previousInstallationId: String,
+    @SerializedName("previousDeviceUUID") val previousDeviceUUID: String,
     @SerializedName("isNotificationsEnabled") val isNotificationsEnabled: Boolean,
     @SerializedName("subscribe") val subscribe: Boolean,
     @SerializedName("instanceId") val instanceId: String,

@@ -438,8 +438,8 @@ object Mindbox {
             val initData = InitData(
                 token = firebaseToken ?: "",
                 isTokenAvailable = isTokenAvailable,
-                installationId = configuration.previousInstallationId,
-                externalDeviceUUID = configuration.previousDeviceUUID,
+                previousInstallationId = configuration.previousInstallationId,
+                previousDeviceUUID = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
                 instanceId = instanceId
