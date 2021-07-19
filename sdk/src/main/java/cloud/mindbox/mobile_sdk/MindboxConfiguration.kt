@@ -19,6 +19,7 @@ class MindboxConfiguration(builder: Builder) {
     internal val versionName: String = builder.versionName
     internal val versionCode: String = builder.versionCode
     internal val subscribeCustomerIfCreated: Boolean = builder.subscribeCustomerIfCreated
+    internal val shouldCreateCustomer: Boolean = builder.shouldCreateCustomer
 
     /**
      * A Builder for MindboxConfiguration
@@ -30,6 +31,7 @@ class MindboxConfiguration(builder: Builder) {
         internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
+        internal var shouldCreateCustomer: Boolean = true
 
         companion object {
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
@@ -64,6 +66,17 @@ class MindboxConfiguration(builder: Builder) {
          */
         fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
             this.subscribeCustomerIfCreated = subscribe
+            return this
+        }
+
+        /**
+         * Specifies shouldCreateCustomer for Mindbox. Usable only during first initialisation
+         *
+         * @param shouldCreateCustomer - flag which determines create or not anonymous users.
+         * Default value is true.
+         */
+        fun shouldCreateCustomer(shouldCreateCustomer: Boolean): Builder {
+            this.shouldCreateCustomer = shouldCreateCustomer
             return this
         }
 

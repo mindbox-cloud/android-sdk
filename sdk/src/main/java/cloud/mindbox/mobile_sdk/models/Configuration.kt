@@ -15,7 +15,8 @@ internal data class Configuration(
     val packageName: String,
     val versionName: String,
     val versionCode: String,
-    val subscribeCustomerIfCreated: Boolean
+    val subscribeCustomerIfCreated: Boolean,
+    val shouldCreateCustomer: Boolean
 ) {
 
     internal constructor(mindboxConfiguration: MindboxConfiguration) : this(
@@ -26,7 +27,8 @@ internal data class Configuration(
         packageName = mindboxConfiguration.packageName,
         versionName = mindboxConfiguration.versionName,
         versionCode = mindboxConfiguration.versionCode,
-        subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated
+        subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated,
+        shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer
     )
 
 }

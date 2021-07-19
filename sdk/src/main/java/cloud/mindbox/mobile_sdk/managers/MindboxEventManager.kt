@@ -18,13 +18,15 @@ internal object MindboxEventManager {
 
     private val gson = Gson()
 
-    fun appInstalled(context: Context, initData: InitData) {
+    fun appInstalled(context: Context, initData: InitData, shouldCreateCustomer: Boolean) {
         runCatching {
+            val eventType = if (shouldCreateCustomer) {
+                EventType.AppInstalled
+            } else {
+                EventType.AppInstalledWithoutCustomer
+            }
             DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.AppInstalled,
-                    body = gson.toJson(initData)
-                )
+                context, Event(eventType = eventType, body = gson.toJson(initData))
             )
         }.logOnException()
     }

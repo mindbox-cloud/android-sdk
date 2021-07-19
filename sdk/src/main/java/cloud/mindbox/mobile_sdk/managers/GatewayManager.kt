@@ -36,6 +36,7 @@ internal object GatewayManager {
 
         when (event.eventType) {
             is EventType.AppInstalled,
+            is EventType.AppInstalledWithoutCustomer,
             is EventType.AppInfoUpdated,
             is EventType.PushClicked,
             is EventType.AsyncOperation -> {
@@ -133,6 +134,7 @@ internal object GatewayManager {
 
     private fun getRequestType(eventType: EventType): Int = when (eventType) {
         is EventType.AppInstalled,
+        is EventType.AppInstalledWithoutCustomer,
         is EventType.AppInfoUpdated,
         is EventType.PushClicked,
         is EventType.TrackVisit,
