@@ -173,6 +173,10 @@ internal object GatewayManager {
     ) = gatewayScope.launch {
         try {
             val error = volleyError.networkResponse
+            if (error == null) {
+                onError.invoke(MindboxError.UnknownServer())
+                return@launch
+            }
             val code = error.statusCode
             val errorData = error.data
             val errorBody: MindboxResponse? = errorData?.let { data ->

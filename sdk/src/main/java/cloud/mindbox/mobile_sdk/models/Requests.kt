@@ -72,12 +72,21 @@ internal data class MindboxRequest(
 
                 val json = String(
                     response?.data ?: ByteArray(0),
-                    Charset.forName(HttpHeaderParser.parseCharset(response?.headers, DEFAULT_RESPONSE_CHARSET))
+                    Charset.forName(
+                        HttpHeaderParser.parseCharset(
+                            response?.headers,
+                            DEFAULT_RESPONSE_CHARSET
+                        )
+                    )
                 )
 
                 logBodyResponse(json)
 
-                val dataJson = if (json.isNotEmpty()) json else "{data: null}"
+                val dataJson = when {
+                    json.isEmpty() -> "{data: null}"
+                    !json.matches("^\\{.*\\}$".toRegex()) -> "{data: $json}"
+                    else -> json
+                }
 
                 val cacheEntry = if (response != null) {
                     HttpHeaderParser.parseCacheHeaders(response)
