@@ -12,6 +12,8 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.RemoteMessage
@@ -300,6 +302,70 @@ object Mindbox {
     ) = asyncOperation(context, operationSystemName, operationBody)
 
     /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     * @param onSuccess Callback for response typed [OperationResponse] that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     */
+    fun <T : OperationBodyRequestBase> executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T,
+        onSuccess: (OperationResponse) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) = executeSyncOperation(
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBody = operationBody,
+        classOfV = OperationResponse::class.java,
+        onSuccess = onSuccess,
+        onError = onError
+    )
+
+    /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     * @param classOfV Class type for response object.
+     * @param onSuccess Callback for response typed [V] which extends [OperationResponseBase] that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     */
+    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T,
+        classOfV: Class<V>,
+        onSuccess: (V) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) {
+        runCatching {
+            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
+                mindboxScope.launch {
+                    initComponents(context)
+                    MindboxEventManager.syncOperation(
+                        context = context,
+                        name = operationSystemName,
+                        body = operationBody,
+                        classOfV = classOfV,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
+                }
+            } else {
+                MindboxLogger.w(
+                    this,
+                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+                )
+            }
+        }
+    }
+
+    /**
      * Handles only Mindbox notification message from [FirebaseMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
@@ -379,7 +445,7 @@ object Mindbox {
                 instanceId = instanceId
             )
 
-            MindboxEventManager.appInstalled(context, initData)
+            MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 
             MindboxPreferences.deviceUuid = deviceUuid
             MindboxPreferences.firebaseToken = firebaseToken

@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -109,11 +108,7 @@ internal object DbManager {
         val time = System.currentTimeMillis()
         val filteredEvents = events.filterNot { it.isTooOld(time) }
 
-        return if (filteredEvents.size <= MAX_EVENT_LIST_SIZE) {
-            filteredEvents
-        } else {
-            filteredEvents.subList(0, MAX_EVENT_LIST_SIZE)
-        }
+        return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
     private fun Event.isTooOld(timeNow: Long): Boolean = runCatching {

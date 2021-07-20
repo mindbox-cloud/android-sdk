@@ -95,7 +95,7 @@ internal class WorkerDelegate {
 
                 if (isWorkerStopped) return
 
-                GatewayManager.sendEvent(context, configuration, deviceUuid, event) { isSent ->
+                GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
                     if (isSent) {
                         handleSendResult(event)
                     }
