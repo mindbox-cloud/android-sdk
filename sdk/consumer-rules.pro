@@ -36,6 +36,9 @@
     boolean isLimitAdTrackingEnabled();
 }
 
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.preference.Preference
+
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
@@ -54,4 +57,8 @@
    native <methods>;
 }
 
--keep class androidx.renderscript.** { *; }
+# Volley
+-dontwarn com.android.volley.error.**
+-keep class com.android.volley.Response$* { *; }
+-keep class com.android.volley.Request$* { *; }
+-keep class org.apache.commons.logging.*
