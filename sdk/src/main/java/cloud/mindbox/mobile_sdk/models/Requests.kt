@@ -84,9 +84,7 @@ internal data class MindboxRequest(
 
                 val bodyJson = when {
                     body.isEmpty() -> "{data: null}"
-                    !body
-                        .replace("\n", "")
-                        .matches("^\\{.*\\}$".toRegex()) -> "{data: $body}"
+                    !isValidJson(body) -> "{data: $body}"
                     else -> body
                 }
 
@@ -138,6 +136,10 @@ internal data class MindboxRequest(
         }
         return volleyError
     }
+
+    private fun isValidJson(body: String) = body
+        .replace("\n", "")
+        .matches("^\\{.*\\}$".toRegex())
 
     private fun logResponse(response: NetworkResponse?) {
         if (BuildConfig.DEBUG) {
