@@ -37,6 +37,7 @@ internal class MindboxPushReceiver : BroadcastReceiver() {
         }
 
         internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
+
     }
 
     private val coroutineScope by lazy { CoroutineScope(Dispatchers.IO) }
