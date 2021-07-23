@@ -23,6 +23,7 @@ enum class ProcessingStatusResponse {
     @SerializedName("PriceHasBeenChanged") PRICE_HAS_BEEN_CHANGED,
     @SerializedName("PersonalDiscountsCalculationIsUnavailable") PERSONAL_DISCOUNTS_CALCULATION_IS_UNAVAILABLE,
     @SerializedName("DiscountsCalculationIsUnavailable") DISCOUNTS_CALCULATION_IS_UNAVAILABLE,
-    @SerializedName("InvalidAuthenticationTicket") INVALID_AUTHENTICATION_TICKET
+    @SerializedName("InvalidAuthenticationTicket") INVALID_AUTHENTICATION_TICKET,
+    @SerializedName("NotProcessed") NOT_PROCESSED
 
 }

@@ -70,7 +70,7 @@ internal data class MindboxRequest(
 
             try {
 
-                val json = String(
+                val body = String(
                     response?.data ?: ByteArray(0),
                     Charset.forName(
                         HttpHeaderParser.parseCharset(
@@ -80,19 +80,19 @@ internal data class MindboxRequest(
                     )
                 )
 
-                logBodyResponse(json)
+                logBodyResponse(body)
 
-                val dataJson = when {
-                    json.isEmpty() -> "{data: null}"
-                    !json.matches("^\\{.*\\}$".toRegex()) -> "{data: $json}"
-                    else -> json
+                val bodyJson = when {
+                    body.isEmpty() -> "{data: null}"
+                    !isJsonObject(body) -> "{data: $body}"
+                    else -> body
                 }
 
                 val cacheEntry = if (response != null) {
                     HttpHeaderParser.parseCacheHeaders(response)
                 } else null
 
-                Response.success(JSONObject(dataJson), cacheEntry)
+                Response.success(JSONObject(bodyJson), cacheEntry)
             } catch (e: UnsupportedEncodingException) {
                 Response.error(ParseError(e))
             } catch (e: JsonSyntaxException) {
@@ -136,6 +136,8 @@ internal data class MindboxRequest(
         }
         return volleyError
     }
+
+    private fun isJsonObject(body: String) = body.startsWith("{") && body.endsWith("}")
 
     private fun logResponse(response: NetworkResponse?) {
         if (BuildConfig.DEBUG) {

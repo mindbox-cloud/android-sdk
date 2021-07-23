@@ -15,7 +15,6 @@ import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
 import cloud.mindbox.mobile_sdk.returnOnException
 import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.ACTION_CLICKED
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.EXTRA_URL
 import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.getIntent
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
@@ -30,6 +29,7 @@ internal object PushNotificationManager {
     private const val DATA_MESSAGE = "message"
     private const val DATA_IMAGE_URL = "imageUrl"
     private const val DATA_BUTTONS = "buttons"
+    private const val DATA_PUSH_CLICK_URL = "clickUrl"
     private const val MAX_ACTIONS_COUNT = 3
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
@@ -50,6 +50,7 @@ internal object PushNotificationManager {
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
         val pushActions = Gson().fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
         val notificationId = Random.nextInt()
+        val pushLink = data[DATA_PUSH_CLICK_URL]
 
         Mindbox.onPushReceived(applicationContext, uniqueKey)
 
@@ -61,7 +62,7 @@ internal object PushNotificationManager {
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, notificationId, uniqueKey)
+            .handlePushClick(context, notificationId, uniqueKey, pushLink)
             .handleActions(context, notificationId, uniqueKey, pushActions)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
@@ -96,11 +97,10 @@ internal object PushNotificationManager {
         id: Int,
         action: String,
         pushKey: String,
-        pushAction: PushAction? = null
+        url: String?,
+        pushButtonKey: String? = null
     ): PendingIntent? = runCatching {
-        val intent = getIntent(context, id, action, pushKey, pushAction?.uniqueKey).apply {
-            pushAction?.url?.let { url -> putExtra(EXTRA_URL, url) }
-        }
+        val intent = getIntent(context, id, action, pushKey, url, pushButtonKey)
 
         PendingIntent.getBroadcast(
             context,
@@ -113,13 +113,15 @@ internal object PushNotificationManager {
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
         notificationId: Int,
-        uniqueKey: String
+        uniqueKey: String,
+        pushLink: String?
     ) = apply {
         createPendingIntent(
             context = context,
             id = notificationId,
             action = ACTION_CLICKED,
-            pushKey = uniqueKey
+            pushKey = uniqueKey,
+            url = pushLink
         )?.let(this::setContentIntent)
     }
 
@@ -136,7 +138,8 @@ internal object PushNotificationManager {
                     id = notificationId,
                     action = ACTION_CLICKED,
                     pushKey = uniqueKey,
-                    pushAction = pushAction
+                    url = pushAction.url,
+                    pushButtonKey = pushAction.uniqueKey
                 )?.let { addAction(0, pushAction.text ?: "", it) }
             }
         }
