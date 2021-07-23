@@ -26,14 +26,17 @@ internal class MindboxPushReceiver : BroadcastReceiver() {
             id: Int,
             action: String,
             pushKey: String,
+            url: String?,
             pushButtonKey: String?
         ) = Intent(action).apply {
             putExtra(EXTRA_NOTIFICATION_ID, id)
             putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
             putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+            url?.let { url -> putExtra(EXTRA_URL, url) }
             `package` = context.packageName
         }
 
+        internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
     }
 
     private val coroutineScope by lazy { CoroutineScope(Dispatchers.IO) }
