@@ -24,28 +24,6 @@
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Kotlin Coroutine
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
--keepnames class kotlinx.coroutines.android.AndroidExceptionPreHandler {}
--keepnames class kotlinx.coroutines.android.AndroidDispatcherFactory {}
-
-# Same story for the standard library's SafeContinuation that also uses AtomicReferenceFieldUpdater
--keepclassmembernames class kotlin.coroutines.SafeContinuation {
-    volatile <fields>;
-}
--dontwarn kotlinx.atomicfu.**
--dontwarn kotlinx.coroutines.flow.**
-
-### Kotlin
--keepclassmembers class **$WhenMappings {
-    <fields>;
-}
--keep class kotlin.Metadata { *; }
--keepclassmembers class kotlin.Metadata {
-    public <methods>;
-}
-
 ### Adjust SDK, android.installreferrer
 -keep class com.google.android.gms.common.ConnectionResult {
     int SUCCESS;
@@ -58,7 +36,29 @@
     boolean isLimitAdTrackingEnabled();
 }
 
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.preference.Preference
+
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -dontwarn androidx.room.paging.**
+
+# Kotlin
+-keepclassmembers class **$WhenMappings {
+    <fields>;
+}
+-keep class kotlin.Metadata { *; }
+-keepattributes RuntimeVisibleAnnotations
+
+# WorkManager
+# Rendescript
+-keepclasseswithmembernames class * {
+   native <methods>;
+}
+
+# Volley
+-dontwarn com.android.volley.error.**
+-keep class com.android.volley.Response$* { *; }
+-keep class com.android.volley.Request$* { *; }
+-keep class org.apache.commons.logging.*

@@ -26,20 +26,27 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
         private const val ASYNC_OPERATION_ORDINAL = 5
+        private const val SYNC_OPERATION_ORDINAL = 6
+        private const val APP_INSTALLED_WITHOUT_CUSTOMER = 7
 
         fun typeToken(ordinal: Int) = when (ordinal) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
+            APP_INSTALLED_WITHOUT_CUSTOMER -> object : TypeToken<AppInstalledWithoutCustomer>() {}
             APP_INFO_UPDATED_ORDINAL -> object : TypeToken<AppInfoUpdated>() {}
             PUSH_DELIVERED_ORDINAL -> object : TypeToken<PushDelivered>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
+            SYNC_OPERATION_ORDINAL -> object : TypeToken<SyncOperation>() {}
             else -> throw IllegalArgumentException("Unknown TypeToken for $ordinal EventType ordinal")
         }
 
     }
 
     object AppInstalled : EventType("MobilePush.ApplicationInstalled", "/v3/operations/async")
+
+    object AppInstalledWithoutCustomer :
+        EventType("MobilePush.ApplicationInstalledWithoutCustomer", "/v3/operations/async")
 
     object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
 
@@ -51,13 +58,17 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
     internal class AsyncOperation(operation: String) : EventType(operation, "/v3/operations/async")
 
+    internal class SyncOperation(operation: String) : EventType(operation, "/v3/operations/sync")
+
     fun ordinal() = when (this) {
         is AppInstalled -> APP_INSTALLED_ORDINAL
+        is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
         is AppInfoUpdated -> APP_INFO_UPDATED_ORDINAL
         is PushDelivered -> PUSH_DELIVERED_ORDINAL
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
+        is SyncOperation -> SYNC_OPERATION_ORDINAL
     }
 
 }

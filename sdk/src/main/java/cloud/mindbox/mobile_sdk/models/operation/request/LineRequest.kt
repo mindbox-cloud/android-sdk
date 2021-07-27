@@ -11,7 +11,7 @@ open class LineRequest private constructor(
     @SerializedName("costPricePerItem") val costPricePerItem: Double? = null,
     @SerializedName("customFields") val customFields: CustomFields? = null,
     @SerializedName("discountedPricePerLine") val discountedPricePerLine: Double? = null,
-    @SerializedName("lineId") val lineId: Int? = null,
+    @SerializedName("lineId") val lineId: String? = null,
     @SerializedName("lineNumber") val lineNumber: Int? = null,
     @SerializedName("discounts") val discounts: List<DiscountRequest>? = null,
     @SerializedName("product") val product: ProductRequest? = null
@@ -24,7 +24,7 @@ open class LineRequest private constructor(
         costPricePerItem: Double? = null,
         customFields: CustomFields? = null,
         discountedPricePerLine: Double? = null,
-        lineId: Int? = null,
+        lineId: String? = null,
         lineNumber: Int? = null,
         discounts: List<DiscountRequest>? = null,
         product: ProductRequest? = null
@@ -49,7 +49,7 @@ open class LineRequest private constructor(
         costPricePerItem: Double? = null,
         customFields: CustomFields? = null,
         discountedPricePerLine: Double? = null,
-        lineId: Int? = null,
+        lineId: String? = null,
         lineNumber: Int? = null,
         discounts: List<DiscountRequest>? = null,
         product: ProductRequest? = null
