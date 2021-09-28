@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
+import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
@@ -102,11 +103,14 @@ internal object PushNotificationManager {
     ): PendingIntent? = runCatching {
         val intent = getIntent(context, id, action, pushKey, url, pushButtonKey)
 
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+
         PendingIntent.getBroadcast(
             context,
             Random.nextInt(),
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            flags
         )
     }.returnOnException { null }
 
