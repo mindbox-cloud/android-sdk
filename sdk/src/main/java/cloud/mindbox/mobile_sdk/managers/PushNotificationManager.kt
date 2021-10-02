@@ -10,12 +10,10 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
-import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
 import cloud.mindbox.mobile_sdk.returnOnException
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.ACTION_CLICKED
 import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.getIntent
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
@@ -36,6 +34,7 @@ internal object PushNotificationManager {
 
     internal fun handleRemoteMessage(
         context: Context,
+        activity: Class<*>,
         remoteMessage: RemoteMessage?,
         channelId: String,
         channelName: String,
@@ -63,8 +62,8 @@ internal object PushNotificationManager {
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, notificationId, uniqueKey, pushLink)
-            .handleActions(context, notificationId, uniqueKey, pushActions)
+            .handlePushClick(context, activity, notificationId, uniqueKey, pushLink)
+            .handleActions(context, activity, notificationId, uniqueKey, pushActions)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
         val notificationManager: NotificationManager =
@@ -95,13 +94,13 @@ internal object PushNotificationManager {
 
     private fun createPendingIntent(
         context: Context,
+        activity: Class<*>,
         id: Int,
-        action: String,
         pushKey: String,
         url: String?,
         pushButtonKey: String? = null
     ): PendingIntent? = runCatching {
-        val intent = getIntent(context, id, action, pushKey, url, pushButtonKey)
+        val intent = getIntent(context, activity, id, pushKey, url, pushButtonKey)
 
         val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -109,7 +108,7 @@ internal object PushNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
 
-        PendingIntent.getBroadcast(
+        PendingIntent.getActivity(
             context,
             Random.nextInt(),
             intent,
@@ -119,14 +118,15 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
+        activity: Class<*>,
         notificationId: Int,
         uniqueKey: String,
         pushLink: String?
     ) = apply {
         createPendingIntent(
             context = context,
+            activity = activity,
             id = notificationId,
-            action = ACTION_CLICKED,
             pushKey = uniqueKey,
             url = pushLink
         )?.let(this::setContentIntent)
@@ -134,6 +134,7 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.handleActions(
         context: Context,
+        activity: Class<*>,
         notificationId: Int,
         uniqueKey: String,
         pushActions: List<PushAction>
@@ -142,8 +143,8 @@ internal object PushNotificationManager {
             pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
                 createPendingIntent(
                     context = context,
+                    activity = activity,
                     id = notificationId,
-                    action = ACTION_CLICKED,
                     pushKey = uniqueKey,
                     url = pushAction.url,
                     pushButtonKey = pushAction.uniqueKey
