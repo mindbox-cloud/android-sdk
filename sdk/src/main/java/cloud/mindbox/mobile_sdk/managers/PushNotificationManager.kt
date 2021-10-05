@@ -35,15 +35,16 @@ internal object PushNotificationManager {
 
     internal fun handleRemoteMessage(
         context: Context,
-        activities: Map<String, Class<out Activity>>,
         remoteMessage: RemoteMessage?,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String?
+        channelDescription: String?,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>
     ): Boolean = runCatching {
-        val correctedLinksActivities = activities.mapKeys { (key , _) ->
-            key.replace("*", "[0-9\\p{L}//?.]*").toRegex()
+        val correctedLinksActivities = activities?.mapKeys { (key , _) ->
+            key.replace("*", "[0-9\\p{L}//?.,=-_]*").toRegex()
         }
 
         val data = remoteMessage?.data ?: return false
@@ -67,8 +68,8 @@ internal object PushNotificationManager {
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, correctedLinksActivities, notificationId, uniqueKey, pushLink)
-            .handleActions(context, correctedLinksActivities, notificationId, uniqueKey, pushActions, pushLink)
+            .handlePushClick(context, notificationId, uniqueKey, pushLink, correctedLinksActivities, defaultActivity)
+            .handleActions(context, notificationId, uniqueKey, pushActions, correctedLinksActivities, defaultActivity)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
         val notificationManager: NotificationManager =
@@ -123,50 +124,52 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
-        activities: Map<Regex, Class<out Activity>>,
         notificationId: Int,
         uniqueKey: String,
-        pushLink: String?
+        pushLink: String?,
+        activities: Map<Regex, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
     ) = apply {
-        val key = pushLink?.let { activities.keys.find { it.matches(pushLink) } }
-        activities[key]?.let { activity ->
-            createPendingIntent(
-                context = context,
-                activity = activity,
-                id = notificationId,
-                pushKey = uniqueKey,
-                url = pushLink
-            )?.let(this::setContentIntent)
-        }
+        val activity = resolveActivity(activities, pushLink, defaultActivity)
+        createPendingIntent(
+            context = context,
+            activity = activity,
+            id = notificationId,
+            pushKey = uniqueKey,
+            url = pushLink
+        )?.let(this::setContentIntent)
     }
 
     private fun NotificationCompat.Builder.handleActions(
         context: Context,
-        activities: Map<Regex, Class<out Activity>>,
         notificationId: Int,
         uniqueKey: String,
         pushActions: List<PushAction>,
-        pushLink: String?
+        activities: Map<Regex, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
     ) = apply {
         runCatching {
             pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
-                val activity = pushAction.url?.let {
-                    val key = activities.keys.find { it.matches(pushAction.url) }
-                        ?: pushLink?.let { activities.keys.find { it.matches(pushLink) } }
-                    activities[key]
-                }
-                activity?.let {
-                    createPendingIntent(
-                        context = context,
-                        activity = activity,
-                        id = notificationId,
-                        pushKey = uniqueKey,
-                        url = pushAction.url, // TODO: Or pushLink if activity was not found for key pushAction.url
-                        pushButtonKey = pushAction.uniqueKey
-                    )?.let { addAction(0, pushAction.text ?: "", it) }
-                }
+                val activity = resolveActivity(activities, pushAction.url, defaultActivity)
+                createPendingIntent(
+                    context = context,
+                    activity = activity,
+                    id = notificationId,
+                    pushKey = uniqueKey,
+                    url = pushAction.url,
+                    pushButtonKey = pushAction.uniqueKey
+                )?.let { addAction(0, pushAction.text ?: "", it) }
             }
         }
+    }
+
+    private fun resolveActivity(
+        activities: Map<Regex, Class<out Activity>>?,
+        link: String?,
+        defaultActivity: Class<out Activity>
+    ): Class<out Activity> {
+        val key = link?.let { activities?.keys?.find { it.matches(link) } }
+        return activities?.get(key) ?: defaultActivity
     }
 
     private fun NotificationCompat.Builder.handleImageByUrl(

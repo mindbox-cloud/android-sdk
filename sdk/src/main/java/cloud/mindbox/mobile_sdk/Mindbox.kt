@@ -375,25 +375,33 @@ object Mindbox {
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
      * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     * @param activities map (url mask) -> (Activity class). When clicked on push or button with url, corresponding activity will be opened
+     *        Currently supports '*' character - indicator of zero or more numerical, alphabetic and punctuation characters
+     *        e.g. mask "https://sample.com/" will match only "https://sample.com/" link
+     *        whereas mask "https://sample.com/\u002A" will match
+     *        "https://sample.com/", "https://sample.com/foo", "https://sample.com/foo/bar", "https://sample.com/foo?bar=baz" and other masks
+     * @param defaultActivity default activity to be opened if url was not found in [activities]
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
     fun handleRemoteMessage(
         context: Context,
-        activities: Map<String, Class<out Activity>>,
         message: RemoteMessage?,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String? = null
+        channelDescription: String? = null,
+        activities: Map<String, Class<out Activity>>? = null,
+        defaultActivity: Class<out Activity>
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
-        activities = activities,
         remoteMessage = message,
         channelId = channelId,
         channelName = channelName,
         pushSmallIcon = pushSmallIcon,
-        channelDescription = channelDescription
+        channelDescription = channelDescription,
+        activities = activities,
+        defaultActivity = defaultActivity
     )
 
     /**
