@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.app.Activity
 import android.app.Notification.DEFAULT_ALL
 import android.app.Notification.VISIBILITY_PRIVATE
 import android.app.NotificationChannel
@@ -34,13 +35,17 @@ internal object PushNotificationManager {
 
     internal fun handleRemoteMessage(
         context: Context,
-        activity: Class<*>,
+        activities: Map<String, Class<out Activity>>,
         remoteMessage: RemoteMessage?,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
         channelDescription: String?
     ): Boolean = runCatching {
+        val correctedLinksActivities = activities.mapKeys { (key , _) ->
+            key.replace("*", "[0-9\\p{L}//?.]*").toRegex()
+        }
+
         val data = remoteMessage?.data ?: return false
         val uniqueKey = data[DATA_UNIQUE_KEY] ?: return false
 
@@ -62,8 +67,8 @@ internal object PushNotificationManager {
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, activity, notificationId, uniqueKey, pushLink)
-            .handleActions(context, activity, notificationId, uniqueKey, pushActions)
+            .handlePushClick(context, correctedLinksActivities, notificationId, uniqueKey, pushLink)
+            .handleActions(context, correctedLinksActivities, notificationId, uniqueKey, pushActions, pushLink)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
         val notificationManager: NotificationManager =
@@ -94,7 +99,7 @@ internal object PushNotificationManager {
 
     private fun createPendingIntent(
         context: Context,
-        activity: Class<*>,
+        activity: Class<out Activity>,
         id: Int,
         pushKey: String,
         url: String?,
@@ -118,37 +123,48 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
-        activity: Class<*>,
+        activities: Map<Regex, Class<out Activity>>,
         notificationId: Int,
         uniqueKey: String,
         pushLink: String?
     ) = apply {
-        createPendingIntent(
-            context = context,
-            activity = activity,
-            id = notificationId,
-            pushKey = uniqueKey,
-            url = pushLink
-        )?.let(this::setContentIntent)
+        val key = pushLink?.let { activities.keys.find { it.matches(pushLink) } }
+        activities[key]?.let { activity ->
+            createPendingIntent(
+                context = context,
+                activity = activity,
+                id = notificationId,
+                pushKey = uniqueKey,
+                url = pushLink
+            )?.let(this::setContentIntent)
+        }
     }
 
     private fun NotificationCompat.Builder.handleActions(
         context: Context,
-        activity: Class<*>,
+        activities: Map<Regex, Class<out Activity>>,
         notificationId: Int,
         uniqueKey: String,
-        pushActions: List<PushAction>
+        pushActions: List<PushAction>,
+        pushLink: String?
     ) = apply {
         runCatching {
             pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
-                createPendingIntent(
-                    context = context,
-                    activity = activity,
-                    id = notificationId,
-                    pushKey = uniqueKey,
-                    url = pushAction.url,
-                    pushButtonKey = pushAction.uniqueKey
-                )?.let { addAction(0, pushAction.text ?: "", it) }
+                val activity = pushAction.url?.let {
+                    val key = activities.keys.find { it.matches(pushAction.url) }
+                        ?: pushLink?.let { activities.keys.find { it.matches(pushLink) } }
+                    activities[key]
+                }
+                activity?.let {
+                    createPendingIntent(
+                        context = context,
+                        activity = activity,
+                        id = notificationId,
+                        pushKey = uniqueKey,
+                        url = pushAction.url, // TODO: Or pushLink if activity was not found for key pushAction.url
+                        pushButtonKey = pushAction.uniqueKey
+                    )?.let { addAction(0, pushAction.text ?: "", it) }
+                }
             }
         }
     }

@@ -380,7 +380,7 @@ object Mindbox {
      */
     fun handleRemoteMessage(
         context: Context,
-        activity: Class<*>,
+        activities: Map<String, Class<out Activity>>,
         message: RemoteMessage?,
         channelId: String,
         channelName: String,
@@ -388,7 +388,7 @@ object Mindbox {
         channelDescription: String? = null
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
-        activity = activity,
+        activities = activities,
         remoteMessage = message,
         channelId = channelId,
         channelName = channelName,

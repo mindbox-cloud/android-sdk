@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk.logOnException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ internal class MindboxPushReceiver : BroadcastReceiver() {
             url: String?,
             pushButtonKey: String?
         ) = Intent(context, activity).apply {
+            putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
             putExtra(EXTRA_NOTIFICATION_ID, id)
             putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
             putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
