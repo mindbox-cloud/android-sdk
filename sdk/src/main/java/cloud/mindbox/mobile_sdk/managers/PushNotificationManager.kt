@@ -182,10 +182,16 @@ internal object PushNotificationManager {
         activities: Map<Regex, Class<out Activity>>?,
         link: String?,
         defaultActivity: Class<out Activity>
-    ): Class<out Activity> {
-        val key = link?.let { activities?.keys?.find { it.matches(link) } }
-        return activities?.get(key) ?: defaultActivity
-    }
+    ): Class<out Activity> = link
+        ?.let { url -> activities?.firstNotNullOfOrNull { entry ->
+            isLinkMatchesRegex(entry, url) }
+        }
+        ?: defaultActivity
+
+    private fun isLinkMatchesRegex(
+        entry: Map.Entry<Regex, Class<out Activity>>,
+        link: String
+    ) = if (entry.key.matches(link)) entry.value else null
 
     private fun NotificationCompat.Builder.handleImageByUrl(
         url: String?,
