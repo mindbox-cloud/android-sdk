@@ -44,7 +44,7 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>
     ): Boolean = runCatching {
         val correctedLinksActivities = activities?.mapKeys { (key , _) ->
-            key.replace("*", "[0-9\\p{L}//?.,=-_]*").toRegex()
+            key.replace("*", ".*").toRegex()
         }
 
         val data = remoteMessage?.data ?: return false
