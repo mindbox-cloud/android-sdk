@@ -172,6 +172,25 @@ object Mindbox {
     }
 
     /**
+     * Creates and deliveries event of "Push clicked". Recommended call this method from background
+     * thread.
+     *
+     * @param context used to initialize the main tools
+     * @param intent - intent recieved in app component
+     *
+     * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
+     *         false if Mindbox SDK cannot find critical information in intent
+     */
+    fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
+        MindboxPushReceiver.getUniqKeyFromPushIntent(intent)?.let { uniqKey ->
+            val pushButtonUniqKey = MindboxPushReceiver.getUniqPushButtonKeyFromPushIntent(intent)
+            onPushClicked(context, uniqKey, pushButtonUniqKey)
+            true
+        } ?: false
+    }.returnOnException { false }
+
+
+    /**
      * Initializes the SDK for further work.
      * We recommend calling it in onCreate on an application class
      *
