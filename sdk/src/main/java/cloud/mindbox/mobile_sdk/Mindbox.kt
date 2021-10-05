@@ -15,7 +15,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBas
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
@@ -182,8 +181,8 @@ object Mindbox {
      *         false if Mindbox SDK cannot find critical information in intent
      */
     fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
-        MindboxPushReceiver.getUniqKeyFromPushIntent(intent)?.let { uniqKey ->
-            val pushButtonUniqKey = MindboxPushReceiver.getUniqPushButtonKeyFromPushIntent(intent)
+        PushNotificationManager.getUniqKeyFromPushIntent(intent)?.let { uniqKey ->
+            val pushButtonUniqKey = PushNotificationManager.getUniqPushButtonKeyFromPushIntent(intent)
             onPushClicked(context, uniqKey, pushButtonUniqKey)
             true
         } ?: false
@@ -430,7 +429,7 @@ object Mindbox {
      * @return url associated with the push intent or null if there is none
      */
     fun getUrlFromPushIntent(intent: Intent?): String? = intent?.let {
-        MindboxPushReceiver.getUrlFromPushIntent(intent)
+        PushNotificationManager.getUrlFromPushIntent(intent)
     }
 
     internal fun initComponents(context: Context) {

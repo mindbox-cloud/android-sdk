@@ -7,6 +7,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -15,7 +16,6 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
 import cloud.mindbox.mobile_sdk.returnOnException
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.getIntent
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -23,6 +23,11 @@ import java.net.URL
 import kotlin.random.Random
 
 internal object PushNotificationManager {
+
+    private const val EXTRA_NOTIFICATION_ID = "notification_id"
+    private const val EXTRA_URL = "push_url"
+    private const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
+    private const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
 
     private const val DATA_UNIQUE_KEY = "uniqueKey"
     private const val DATA_TITLE = "title"
@@ -80,6 +85,16 @@ internal object PushNotificationManager {
 
         return true
     }.returnOnException { false }
+
+    internal fun getUniqKeyFromPushIntent(
+        intent: Intent
+    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
+
+    internal fun getUniqPushButtonKeyFromPushIntent(
+        intent: Intent
+    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
+
+    internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
 
     private fun createNotificationChannel(
         notificationManager: NotificationManager,
@@ -197,6 +212,22 @@ internal object PushNotificationManager {
                     }
             }
         }.logOnException()
+    }
+
+    private fun getIntent(
+        context: Context,
+        activity: Class<*>,
+        id: Int,
+        pushKey: String,
+        url: String?,
+        pushButtonKey: String?
+    ) = Intent(context, activity).apply {
+        putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
+        putExtra(EXTRA_NOTIFICATION_ID, id)
+        putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
+        putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+        url?.let { url -> putExtra(EXTRA_URL, url) }
+        `package` = context.packageName
     }
 
 }
