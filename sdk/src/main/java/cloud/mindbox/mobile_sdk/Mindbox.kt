@@ -545,7 +545,7 @@ object Mindbox {
 
     private fun deliverDeviceUuid(deviceUuid: String) {
         Executors.newSingleThreadScheduledExecutor().schedule({
-            deviceUuidCallbacks.keys.forEach { key ->
+            deviceUuidCallbacks.keys.asIterable().forEach { key ->
                 deviceUuidCallbacks[key]?.invoke(deviceUuid)
                 deviceUuidCallbacks.remove(key)
             }
@@ -554,7 +554,7 @@ object Mindbox {
 
     private fun deliverFmsToken(token: String?) {
         Executors.newSingleThreadScheduledExecutor().schedule({
-            fmsTokenCallbacks.keys.forEach { key ->
+            fmsTokenCallbacks.keys.asIterable().forEach { key ->
                 fmsTokenCallbacks[key]?.invoke(token)
                 fmsTokenCallbacks.remove(key)
             }
