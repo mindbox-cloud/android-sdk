@@ -171,8 +171,10 @@ object Mindbox {
     }
 
     /**
-     * Creates and deliveries event of "Push clicked". Recommended call this method from background
-     * thread.
+     * Creates and deliveries event of "Push clicked".
+     * Recommended to be used with Mindbox SDK pushes with [handleRemoteMessage] method.
+     * Intent should contain "uniq_push_key" and "uniq_push_button_key" (optionally) in order to work correctly
+     * Recommended call this method from background thread.
      *
      * @param context used to initialize the main tools
      * @param intent - intent recieved in app component
@@ -180,7 +182,7 @@ object Mindbox {
      * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
      *         false if Mindbox SDK cannot find critical information in intent
      */
-    fun onPushClicked(context: Context, intent: Intent?): Boolean = runCatching {
+    fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
         PushNotificationManager.getUniqKeyFromPushIntent(intent)
             ?.let { uniqKey ->
                 val pushButtonUniqKey = PushNotificationManager
