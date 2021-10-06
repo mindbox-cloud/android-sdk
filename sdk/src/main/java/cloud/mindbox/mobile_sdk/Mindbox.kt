@@ -180,12 +180,15 @@ object Mindbox {
      * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
      *         false if Mindbox SDK cannot find critical information in intent
      */
-    fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
-        PushNotificationManager.getUniqKeyFromPushIntent(intent)?.let { uniqKey ->
-            val pushButtonUniqKey = PushNotificationManager.getUniqPushButtonKeyFromPushIntent(intent)
-            onPushClicked(context, uniqKey, pushButtonUniqKey)
-            true
-        } ?: false
+    fun onPushClicked(context: Context, intent: Intent?): Boolean = runCatching {
+        PushNotificationManager.getUniqKeyFromPushIntent(intent)
+            ?.let { uniqKey ->
+                val pushButtonUniqKey = PushNotificationManager
+                    .getUniqPushButtonKeyFromPushIntent(intent)
+                onPushClicked(context, uniqKey, pushButtonUniqKey)
+                true
+            }
+            ?: false
     }.returnOnException { false }
 
 
@@ -221,7 +224,7 @@ object Mindbox {
                 if (MindboxPreferences.isFirstInitialize) {
                     firstInitialization(context, configuration)
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
-                            && !lifecycleManager.isTrackVisitSent()
+                        && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
                         sendTrackVisitEvent(context, DIRECT)
                     }
@@ -408,9 +411,9 @@ object Mindbox {
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
+        defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
-        activities: Map<String, Class<out Activity>>? = null,
-        defaultActivity: Class<out Activity>
+        activities: Map<String, Class<out Activity>>? = null
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
         remoteMessage = message,
