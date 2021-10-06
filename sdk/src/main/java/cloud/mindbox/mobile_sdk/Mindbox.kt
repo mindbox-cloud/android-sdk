@@ -15,7 +15,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBas
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
@@ -172,6 +171,30 @@ object Mindbox {
     }
 
     /**
+     * Creates and deliveries event of "Push clicked".
+     * Recommended to be used with Mindbox SDK pushes with [handleRemoteMessage] method.
+     * Intent should contain "uniq_push_key" and "uniq_push_button_key" (optionally) in order to work correctly
+     * Recommended call this method from background thread.
+     *
+     * @param context used to initialize the main tools
+     * @param intent - intent recieved in app component
+     *
+     * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
+     *         false if Mindbox SDK cannot find critical information in intent
+     */
+    fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
+        PushNotificationManager.getUniqKeyFromPushIntent(intent)
+            ?.let { uniqKey ->
+                val pushButtonUniqKey = PushNotificationManager
+                    .getUniqPushButtonKeyFromPushIntent(intent)
+                onPushClicked(context, uniqKey, pushButtonUniqKey)
+                true
+            }
+            ?: false
+    }.returnOnException { false }
+
+
+    /**
      * Initializes the SDK for further work.
      * We recommend calling it in onCreate on an application class
      *
@@ -203,7 +226,7 @@ object Mindbox {
                 if (MindboxPreferences.isFirstInitialize) {
                     firstInitialization(context, configuration)
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
-                            && !lifecycleManager.isTrackVisitSent()
+                        && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
                         sendTrackVisitEvent(context, DIRECT)
                     }
@@ -375,6 +398,12 @@ object Mindbox {
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
      * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     * @param activities map (url mask) -> (Activity class). When clicked on push or button with url, corresponding activity will be opened
+     *        Currently supports '*' character - indicator of zero or more numerical, alphabetic and punctuation characters
+     *        e.g. mask "https://sample.com/" will match only "https://sample.com/" link
+     *        whereas mask "https://sample.com/\u002A" will match
+     *        "https://sample.com/", "https://sample.com/foo", "https://sample.com/foo/bar", "https://sample.com/foo?bar=baz" and other masks
+     * @param defaultActivity default activity to be opened if url was not found in [activities]
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
@@ -384,14 +413,18 @@ object Mindbox {
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String? = null
+        defaultActivity: Class<out Activity>,
+        channelDescription: String? = null,
+        activities: Map<String, Class<out Activity>>? = null
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
         remoteMessage = message,
         channelId = channelId,
         channelName = channelName,
         pushSmallIcon = pushSmallIcon,
-        channelDescription = channelDescription
+        channelDescription = channelDescription,
+        activities = activities,
+        defaultActivity = defaultActivity
     )
 
     /**
@@ -401,7 +434,7 @@ object Mindbox {
      * @return url associated with the push intent or null if there is none
      */
     fun getUrlFromPushIntent(intent: Intent?): String? = intent?.let {
-        MindboxPushReceiver.getUrlFromPushIntent(intent)
+        PushNotificationManager.getUrlFromPushIntent(intent)
     }
 
     internal fun initComponents(context: Context) {
@@ -516,7 +549,7 @@ object Mindbox {
 
     private fun deliverDeviceUuid(deviceUuid: String) {
         Executors.newSingleThreadScheduledExecutor().schedule({
-            deviceUuidCallbacks.keys.forEach { key ->
+            deviceUuidCallbacks.keys.asIterable().forEach { key ->
                 deviceUuidCallbacks[key]?.invoke(deviceUuid)
                 deviceUuidCallbacks.remove(key)
             }
@@ -525,7 +558,7 @@ object Mindbox {
 
     private fun deliverFmsToken(token: String?) {
         Executors.newSingleThreadScheduledExecutor().schedule({
-            fmsTokenCallbacks.keys.forEach { key ->
+            fmsTokenCallbacks.keys.asIterable().forEach { key ->
                 fmsTokenCallbacks[key]?.invoke(token)
                 fmsTokenCallbacks.remove(key)
             }

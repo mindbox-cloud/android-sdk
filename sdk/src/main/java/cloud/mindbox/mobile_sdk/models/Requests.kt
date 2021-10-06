@@ -113,7 +113,7 @@ internal data class MindboxRequest(
                 )
                 try {
 
-                    volleyError.networkResponse?.allHeaders?.forEach { header ->
+                    volleyError.networkResponse?.allHeaders?.asIterable()?.forEach { header ->
                         MindboxLogger.d(this, "${header.name}: ${header.value}")
                     }
 
@@ -144,7 +144,7 @@ internal data class MindboxRequest(
             runCatching {
                 MindboxLogger.d(this, "<--- ${response?.statusCode} $fullUrl")
 
-                response?.allHeaders?.forEach { header ->
+                response?.allHeaders?.asIterable()?.forEach { header ->
                     MindboxLogger.d(this, "${header.name}: ${header.value}")
                 }
             }.returnOnException { }
