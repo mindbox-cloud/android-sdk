@@ -12,12 +12,12 @@ apply plugin: 'com.github.dcendents.android-maven'
 
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
     buildToolsVersion "29.0.3"
 
     defaultConfig {
         minSdkVersion 16
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 1
         multiDexEnabled true
         versionName '"' + SDK_VERSION_NAME + '"'
@@ -136,7 +136,7 @@ dependencies {
     kapt "androidx.room:room-compiler:2.3.0"
 
     //work manager
-    implementation "androidx.work:work-runtime-ktx:2.4.0"
+    implementation "androidx.work:work-runtime-ktx:2.7.0"
 
     // Handle app lifecycle
     implementation "androidx.lifecycle:lifecycle-process:2.3.1"

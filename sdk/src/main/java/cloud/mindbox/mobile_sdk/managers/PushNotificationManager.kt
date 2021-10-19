@@ -1,11 +1,13 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.app.Activity
 import android.app.Notification.DEFAULT_ALL
 import android.app.Notification.VISIBILITY_PRIVATE
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -14,8 +16,6 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.PushAction
 import cloud.mindbox.mobile_sdk.returnOnException
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.ACTION_CLICKED
-import cloud.mindbox.mobile_sdk.services.MindboxPushReceiver.Companion.getIntent
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -23,6 +23,11 @@ import java.net.URL
 import kotlin.random.Random
 
 internal object PushNotificationManager {
+
+    private const val EXTRA_NOTIFICATION_ID = "notification_id"
+    private const val EXTRA_URL = "push_url"
+    private const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
+    private const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
 
     private const val DATA_UNIQUE_KEY = "uniqueKey"
     private const val DATA_TITLE = "title"
@@ -39,8 +44,14 @@ internal object PushNotificationManager {
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
-        channelDescription: String?
+        channelDescription: String?,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>
     ): Boolean = runCatching {
+        val correctedLinksActivities = activities?.mapKeys { (key , _) ->
+            key.replace("*", ".*").toRegex()
+        }
+
         val data = remoteMessage?.data ?: return false
         val uniqueKey = data[DATA_UNIQUE_KEY] ?: return false
 
@@ -62,8 +73,8 @@ internal object PushNotificationManager {
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, notificationId, uniqueKey, pushLink)
-            .handleActions(context, notificationId, uniqueKey, pushActions)
+            .handlePushClick(context, notificationId, uniqueKey, pushLink, correctedLinksActivities, defaultActivity)
+            .handleActions(context, notificationId, uniqueKey, pushActions, correctedLinksActivities, defaultActivity)
             .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
 
         val notificationManager: NotificationManager =
@@ -74,6 +85,16 @@ internal object PushNotificationManager {
 
         return true
     }.returnOnException { false }
+
+    internal fun getUniqKeyFromPushIntent(
+        intent: Intent
+    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
+
+    internal fun getUniqPushButtonKeyFromPushIntent(
+        intent: Intent
+    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
+
+    internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
 
     private fun createNotificationChannel(
         notificationManager: NotificationManager,
@@ -94,19 +115,25 @@ internal object PushNotificationManager {
 
     private fun createPendingIntent(
         context: Context,
+        activity: Class<out Activity>,
         id: Int,
-        action: String,
         pushKey: String,
         url: String?,
         pushButtonKey: String? = null
     ): PendingIntent? = runCatching {
-        val intent = getIntent(context, id, action, pushKey, url, pushButtonKey)
+        val intent = getIntent(context, activity, id, pushKey, url, pushButtonKey)
 
-        PendingIntent.getBroadcast(
+        val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+
+        PendingIntent.getActivity(
             context,
             Random.nextInt(),
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            flags
         )
     }.returnOnException { null }
 
@@ -114,12 +141,15 @@ internal object PushNotificationManager {
         context: Context,
         notificationId: Int,
         uniqueKey: String,
-        pushLink: String?
+        pushLink: String?,
+        activities: Map<Regex, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
     ) = apply {
+        val activity = resolveActivity(activities, pushLink, defaultActivity)
         createPendingIntent(
             context = context,
+            activity = activity,
             id = notificationId,
-            action = ACTION_CLICKED,
             pushKey = uniqueKey,
             url = pushLink
         )?.let(this::setContentIntent)
@@ -129,20 +159,32 @@ internal object PushNotificationManager {
         context: Context,
         notificationId: Int,
         uniqueKey: String,
-        pushActions: List<PushAction>
+        pushActions: List<PushAction>,
+        activities: Map<Regex, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
     ) = apply {
         runCatching {
             pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
+                val activity = resolveActivity(activities, pushAction.url, defaultActivity)
                 createPendingIntent(
                     context = context,
+                    activity = activity,
                     id = notificationId,
-                    action = ACTION_CLICKED,
                     pushKey = uniqueKey,
                     url = pushAction.url,
                     pushButtonKey = pushAction.uniqueKey
                 )?.let { addAction(0, pushAction.text ?: "", it) }
             }
         }
+    }
+
+    private fun resolveActivity(
+        activities: Map<Regex, Class<out Activity>>?,
+        link: String?,
+        defaultActivity: Class<out Activity>
+    ): Class<out Activity> {
+        val key = link?.let { activities?.keys?.find { it.matches(link) } }
+        return activities?.get(key) ?: defaultActivity
     }
 
     private fun NotificationCompat.Builder.handleImageByUrl(
@@ -170,6 +212,22 @@ internal object PushNotificationManager {
                     }
             }
         }.logOnException()
+    }
+
+    private fun getIntent(
+        context: Context,
+        activity: Class<*>,
+        id: Int,
+        pushKey: String,
+        url: String?,
+        pushButtonKey: String?
+    ) = Intent(context, activity).apply {
+        putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
+        putExtra(EXTRA_NOTIFICATION_ID, id)
+        putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
+        putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+        url?.let { url -> putExtra(EXTRA_URL, url) }
+        `package` = context.packageName
     }
 
 }
