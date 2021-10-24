@@ -326,6 +326,20 @@ object Mindbox {
     ) = asyncOperation(context, operationSystemName, operationBody)
 
     /**
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of asynchronous operation
+     * @param operationBodyJson event json body of operation.
+     */
+    fun executeAsyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String
+    ) = asyncOperation(context, operationSystemName, operationBodyJson)
+
+    /**
      * Creates and deliveries event synchronously with specified name and body.
      *
      * @param context current context is used
@@ -376,6 +390,43 @@ object Mindbox {
                         name = operationSystemName,
                         body = operationBody,
                         classOfV = classOfV,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
+                }
+            } else {
+                MindboxLogger.w(
+                    this,
+                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+                )
+            }
+        }
+    }
+
+    /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBodyJson event json body of operation.
+     * @param onSuccess Callback that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     */
+    fun executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) {
+        runCatching {
+            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
+                mindboxScope.launch {
+                    initComponents(context)
+                    MindboxEventManager.syncOperation(
+                        context = context,
+                        name = operationSystemName,
+                        bodyJson = operationBodyJson,
                         onSuccess = onSuccess,
                         onError = onError
                     )
@@ -448,10 +499,22 @@ object Mindbox {
         operationSystemName: String,
         operationBody: T
     ) {
+        asyncOperation(
+            context,
+            operationSystemName,
+            MindboxEventManager.operationBodyJson(operationBody)
+        )
+    }
+
+    private fun asyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String
+    ) {
         runCatching {
             if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
                 initComponents(context)
-                MindboxEventManager.asyncOperation(context, operationSystemName, operationBody)
+                MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
             } else {
                 MindboxLogger.w(
                     this,

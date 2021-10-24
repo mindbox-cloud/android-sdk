@@ -97,6 +97,22 @@ internal object GatewayManager {
         onError = onError
     )
 
+    fun sendSyncEvent(
+        context: Context,
+        configuration: Configuration,
+        deviceUuid: String,
+        event: Event,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) = sendEvent(
+        context = context,
+        configuration = configuration,
+        deviceUuid = deviceUuid,
+        event = event,
+        onSuccess = onSuccess,
+        onError = onError
+    )
+
     private fun sendEvent(
         context: Context,
         configuration: Configuration,

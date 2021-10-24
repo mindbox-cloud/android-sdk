@@ -82,14 +82,13 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
-    fun <T> asyncOperation(context: Context, name: String, body: T) {
+    fun asyncOperation(context: Context, name: String, body: String) {
         runCatching {
             runBlocking(Dispatchers.IO) {
-                val json = gson.toJson(body)
                 DbManager.addEventToQueue(
                     context, Event(
                         eventType = EventType.AsyncOperation(name),
-                        body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+                        body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT
                     )
                 )
             }
@@ -104,12 +103,7 @@ internal object MindboxEventManager {
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
     ) = runCatching {
-        val configuration = DbManager.getConfigurations()
-        if (MindboxPreferences.isFirstInitialize || configuration == null) {
-            MindboxLogger.e(this, "Configuration was not initialized")
-            onError.invoke(MindboxError.Unknown())
-            return
-        }
+        val configuration = checkConfiguration(onError) ?: return
 
         val json = gson.toJson(body)
         val event = Event(
@@ -129,6 +123,41 @@ internal object MindboxEventManager {
         )
     }.logOnException()
 
+    fun syncOperation(
+        context: Context,
+        name: String,
+        bodyJson: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    )  = runCatching {
+        val configuration = checkConfiguration(onError) ?: return
+
+        val event = Event(
+            eventType = EventType.SyncOperation(name),
+            body = bodyJson
+        )
+        val deviceUuid = MindboxPreferences.deviceUuid
+
+        GatewayManager.sendSyncEvent(
+            context = context,
+            configuration = configuration,
+            deviceUuid = deviceUuid,
+            event = event,
+            onSuccess = onSuccess,
+            onError = onError
+        )
+    }.logOnException()
+
+    private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
+        val configuration = DbManager.getConfigurations()
+        if (MindboxPreferences.isFirstInitialize || configuration == null) {
+            MindboxLogger.e(this, "Configuration was not initialized")
+            onError.invoke(MindboxError.Unknown())
+            return null
+        }
+        return configuration
+    }
+
     fun sendEventsIfExist(context: Context) {
         runCatching {
             if (DbManager.getFilteredEvents().isNotEmpty()) {
@@ -136,5 +165,7 @@ internal object MindboxEventManager {
             }
         }.logOnException()
     }
+
+    fun <T> operationBodyJson(body: T): String = gson.toJson(body)
 
 }
