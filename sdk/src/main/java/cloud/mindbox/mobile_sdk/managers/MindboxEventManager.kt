@@ -110,7 +110,7 @@ internal object MindboxEventManager {
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
 
-        GatewayManager.sendSyncEvent(
+        GatewayManager.sendEvent(
             context = context,
             configuration = configuration,
             deviceUuid = deviceUuid,
@@ -133,7 +133,7 @@ internal object MindboxEventManager {
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
 
-        GatewayManager.sendSyncEvent(
+        GatewayManager.sendEvent(
             context = context,
             configuration = configuration,
             deviceUuid = deviceUuid,
