@@ -71,7 +71,7 @@ internal object GatewayManager {
         deviceUuid: String,
         event: Event,
         isSentListener: (Boolean) -> Unit
-    ) = sendEvent(
+    ) = sendSyncEvent(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
@@ -88,7 +88,7 @@ internal object GatewayManager {
         classOfT: Class<T>,
         onSuccess: (T) -> Unit,
         onError: (MindboxError) -> Unit
-    ) = sendEvent(
+    ) = sendSyncEvent(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
@@ -98,22 +98,6 @@ internal object GatewayManager {
     )
 
     fun sendSyncEvent(
-        context: Context,
-        configuration: Configuration,
-        deviceUuid: String,
-        event: Event,
-        onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
-    ) = sendEvent(
-        context = context,
-        configuration = configuration,
-        deviceUuid = deviceUuid,
-        event = event,
-        onSuccess = onSuccess,
-        onError = onError
-    )
-
-    private fun sendEvent(
         context: Context,
         configuration: Configuration,
         deviceUuid: String,

@@ -106,10 +106,8 @@ internal object MindboxEventManager {
         val configuration = checkConfiguration(onError) ?: return
 
         val json = gson.toJson(body)
-        val event = Event(
-            eventType = EventType.SyncOperation(name),
-            body = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
-        )
+        val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
+        val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
 
         GatewayManager.sendSyncEvent(
@@ -129,13 +127,10 @@ internal object MindboxEventManager {
         bodyJson: String,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit
-    )  = runCatching {
+    ) = runCatching {
         val configuration = checkConfiguration(onError) ?: return
 
-        val event = Event(
-            eventType = EventType.SyncOperation(name),
-            body = bodyJson
-        )
+        val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
 
         GatewayManager.sendSyncEvent(
@@ -147,6 +142,14 @@ internal object MindboxEventManager {
             onError = onError
         )
     }.logOnException()
+
+    private fun createSyncEvent(
+        name: String,
+        bodyJson: String
+    ) = Event(
+        eventType = EventType.SyncOperation(name),
+        body = bodyJson
+    )
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()
