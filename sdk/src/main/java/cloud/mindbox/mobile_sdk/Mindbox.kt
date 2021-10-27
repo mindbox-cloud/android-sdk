@@ -326,6 +326,20 @@ object Mindbox {
     ) = asyncOperation(context, operationSystemName, operationBody)
 
     /**
+     * Creates and deliveries event with specified name and body. Recommended call this method from
+     * background thread.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of asynchronous operation
+     * @param operationBodyJson event json body of operation.
+     */
+    fun executeAsyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String
+    ) = asyncOperation(context, operationSystemName, operationBodyJson)
+
+    /**
      * Creates and deliveries event synchronously with specified name and body.
      *
      * @param context current context is used
@@ -367,25 +381,42 @@ object Mindbox {
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
     ) {
-        runCatching {
-            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
-                mindboxScope.launch {
-                    initComponents(context)
-                    MindboxEventManager.syncOperation(
-                        context = context,
-                        name = operationSystemName,
-                        body = operationBody,
-                        classOfV = classOfV,
-                        onSuccess = onSuccess,
-                        onError = onError
-                    )
-                }
-            } else {
-                MindboxLogger.w(
-                    this,
-                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
-                )
-            }
+        if (validateOperationAndInitializeComponents(context, operationSystemName)) {
+            MindboxEventManager.syncOperation(
+                context = context,
+                name = operationSystemName,
+                body = operationBody,
+                classOfV = classOfV,
+                onSuccess = onSuccess,
+                onError = onError
+            )
+        }
+    }
+
+    /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBodyJson event json body of operation.
+     * @param onSuccess Callback that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     */
+    fun executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) {
+        if (validateOperationAndInitializeComponents(context, operationSystemName)) {
+            MindboxEventManager.syncOperation(
+                context = context,
+                name = operationSystemName,
+                bodyJson = operationBodyJson,
+                onSuccess = onSuccess,
+                onError = onError
+            )
         }
     }
 
@@ -447,19 +478,38 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T
+    ) = runCatching {
+        asyncOperation(
+            context,
+            operationSystemName,
+            MindboxEventManager.operationBodyJson(operationBody)
+        )
+    }.logOnException()
+
+    private fun asyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String
     ) {
-        runCatching {
-            if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
-                initComponents(context)
-                MindboxEventManager.asyncOperation(context, operationSystemName, operationBody)
-            } else {
-                MindboxLogger.w(
-                    this,
-                    "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
-                )
-            }
-        }.logOnException()
+        if (validateOperationAndInitializeComponents(context, operationSystemName)) {
+            MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
+        }
     }
+
+    private fun validateOperationAndInitializeComponents(
+        context: Context,
+        operationSystemName: String
+    ) = runCatching {
+        if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
+            initComponents(context)
+        } else {
+            MindboxLogger.w(
+                this,
+                "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+            )
+        }
+        true
+    }.returnOnException { false }
 
     private suspend fun initDeviceId(context: Context): String {
         val adid = mindboxScope.async { IdentifierManager.getAdsIdentification(context) }
