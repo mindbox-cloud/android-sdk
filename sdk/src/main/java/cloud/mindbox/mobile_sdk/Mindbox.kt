@@ -382,14 +382,16 @@ object Mindbox {
         onError: (MindboxError) -> Unit
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
-            MindboxEventManager.syncOperation(
-                context = context,
-                name = operationSystemName,
-                body = operationBody,
-                classOfV = classOfV,
-                onSuccess = onSuccess,
-                onError = onError
-            )
+            mindboxScope.launch {
+                MindboxEventManager.syncOperation(
+                    context = context,
+                    name = operationSystemName,
+                    body = operationBody,
+                    classOfV = classOfV,
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
+            }
         }
     }
 
@@ -410,13 +412,15 @@ object Mindbox {
         onError: (MindboxError) -> Unit
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
-            MindboxEventManager.syncOperation(
-                context = context,
-                name = operationSystemName,
-                bodyJson = operationBodyJson,
-                onSuccess = onSuccess,
-                onError = onError
-            )
+            mindboxScope.launch {
+                MindboxEventManager.syncOperation(
+                    context = context,
+                    name = operationSystemName,
+                    bodyJson = operationBodyJson,
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
+            }
         }
     }
 
