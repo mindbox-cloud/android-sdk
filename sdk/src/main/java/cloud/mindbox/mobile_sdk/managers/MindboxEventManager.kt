@@ -126,9 +126,10 @@ internal object MindboxEventManager {
         name: String,
         bodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onRequestError: (String) -> Unit,
+        onMindboxError: (MindboxError) -> Unit
     ) = runCatching {
-        val configuration = checkConfiguration(onError) ?: return
+        val configuration = checkConfiguration(onMindboxError) ?: return
 
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
@@ -139,7 +140,8 @@ internal object MindboxEventManager {
             deviceUuid = deviceUuid,
             event = event,
             onSuccess = onSuccess,
-            onError = onError
+            onRequestError = onRequestError,
+            onMindboxError = onMindboxError
         )
     }.logOnException()
 

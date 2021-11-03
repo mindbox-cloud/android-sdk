@@ -409,7 +409,8 @@ object Mindbox {
         operationSystemName: String,
         operationBodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onRequestError: (String) -> Unit,
+        onMindboxError: (MindboxError) -> Unit
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
@@ -418,7 +419,8 @@ object Mindbox {
                     name = operationSystemName,
                     bodyJson = operationBodyJson,
                     onSuccess = onSuccess,
-                    onError = onError
+                    onRequestError = onRequestError,
+                    onMindboxError = onMindboxError
                 )
             }
         }

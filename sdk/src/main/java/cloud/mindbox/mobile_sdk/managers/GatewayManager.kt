@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.google.gson.Gson
@@ -71,13 +72,14 @@ internal object GatewayManager {
         deviceUuid: String,
         event: Event,
         isSentListener: (Boolean) -> Unit
-    ) = sendEvent(
+    ) = sendEventInternal(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
         onSuccess = { isSentListener.invoke(true) },
-        onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) }
+        onRequestError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) },
+        onMindboxError = { isSentListener.invoke(false) }
     )
 
     fun <T : OperationResponseBase> sendEvent(
@@ -88,13 +90,14 @@ internal object GatewayManager {
         classOfT: Class<T>,
         onSuccess: (T) -> Unit,
         onError: (MindboxError) -> Unit
-    ) = sendEvent(
+    ) = sendEventInternal(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
         onSuccess = { body -> handleSuccessResponse(body, onSuccess, onError, classOfT) },
-        onError = onError
+        onRequestError = { errorBody -> parseErrorBody(errorBody).let(onError) },
+        onMindboxError = onError
     )
 
     fun sendEvent(
@@ -103,7 +106,26 @@ internal object GatewayManager {
         deviceUuid: String,
         event: Event,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onRequestError: (String) -> Unit,
+        onMindboxError: (MindboxError) -> Unit
+    ) = sendEventInternal(
+        context = context,
+        configuration = configuration,
+        deviceUuid = deviceUuid,
+        event = event,
+        onSuccess = onSuccess,
+        onRequestError = { errorBody -> onRequestError(String(errorBody.data)) },
+        onMindboxError = onMindboxError
+    )
+
+    private fun sendEventInternal(
+        context: Context,
+        configuration: Configuration,
+        deviceUuid: String,
+        event: Event,
+        onSuccess: (String) -> Unit,
+        onRequestError: (NetworkResponse) -> Unit,
+        onMindboxError: (MindboxError) -> Unit
     ) {
         try {
             val requestType: Int = getRequestType(event.eventType)
@@ -119,7 +141,7 @@ internal object GatewayManager {
                     MindboxLogger.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) }
+                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onRequestError, onMindboxError) }
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -128,7 +150,7 @@ internal object GatewayManager {
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
             MindboxLogger.e(this, "Sending event was failure with exception", e)
-            onError.invoke(MindboxError.Unknown(e))
+            onMindboxError.invoke(MindboxError.Unknown(e))
         }
     }
 
@@ -169,64 +191,67 @@ internal object GatewayManager {
     private fun handleError(
         volleyError: VolleyError,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onRequestError: (NetworkResponse) -> Unit,
+        onMindboxError: (MindboxError) -> Unit
     ) = gatewayScope.launch {
         try {
             val error = volleyError.networkResponse
             if (error == null) {
-                onError.invoke(MindboxError.UnknownServer())
+                onMindboxError.invoke(MindboxError.UnknownServer())
                 return@launch
             }
-            val code = error.statusCode
             val errorData = error.data
             val errorBody: MindboxResponse? = errorData?.let { data ->
                 convertJsonToBody(String(data), MindboxResponse::class.java)
             }
 
-            when (val status = errorBody?.status) {
-                null -> onError.invoke(MindboxError.UnknownServer())
+            when (errorBody?.status) {
+                null -> onMindboxError.invoke(MindboxError.UnknownServer())
                 MindboxResponse.STATUS_SUCCESS,
                 MindboxResponse.STATUS_TRANSACTION_ALREADY_PROCESSED -> {
                     onSuccess.invoke(String(errorData))
                 }
-                MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
-                    MindboxError.Validation(
-                        statusCode = code,
-                        status = status,
-                        validationMessages = errorBody.validationMessages ?: emptyList()
-                    )
-                )
-                MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
-                    MindboxError.Protocol(
-                        statusCode = code,
-                        status = status,
-                        errorMessage = errorBody.errorMessage,
-                        errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
-                    )
-                )
-                MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
-                    MindboxError.InternalServer(
-                        statusCode = code,
-                        status = status,
-                        errorMessage = errorBody.errorMessage,
-                        errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
-                    )
-                )
-                else -> onError.invoke(
-                    MindboxError.UnknownServer(
-                        statusCode = code,
-                        status = status,
-                        errorMessage = errorBody.errorMessage,
-                        errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
-                    )
-                )
+                else -> onRequestError(error)
             }
         } catch (e: Exception) {
             MindboxLogger.e(this, "Parsing server response was failure", e)
-            onError.invoke(MindboxError.Unknown(e))
+            onMindboxError.invoke(MindboxError.Unknown(e))
+        }
+    }
+
+    private fun parseErrorBody(error: NetworkResponse): MindboxError {
+        val errorData = error.data
+        val errorBody: MindboxResponse? = errorData?.let { data ->
+            gson.fromJson(String(data), MindboxResponse::class.java)
+        }
+        val code = error.statusCode
+        return when (val status = errorBody?.status) {
+            MindboxResponse.STATUS_VALIDATION_ERROR -> MindboxError.Validation(
+                statusCode = code,
+                status = status,
+                validationMessages = errorBody.validationMessages ?: emptyList()
+            )
+            MindboxResponse.STATUS_PROTOCOL_ERROR -> MindboxError.Protocol(
+                statusCode = code,
+                status = status,
+                errorMessage = errorBody.errorMessage,
+                errorId = errorBody.errorId,
+                httpStatusCode = errorBody.httpStatusCode
+            )
+            MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> MindboxError.InternalServer(
+                statusCode = code,
+                status = status,
+                errorMessage = errorBody.errorMessage,
+                errorId = errorBody.errorId,
+                httpStatusCode = errorBody.httpStatusCode
+            )
+            else -> MindboxError.UnknownServer(
+                statusCode = code,
+                status = status,
+                errorMessage = errorBody?.errorMessage,
+                errorId = errorBody?.errorId,
+                httpStatusCode = errorBody?.httpStatusCode
+            )
         }
     }
 
