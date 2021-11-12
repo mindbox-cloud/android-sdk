@@ -47,7 +47,7 @@ sealed class MindboxError(open val statusCode: Int?) {
         val httpStatusCode: Int? = null
     ) : MindboxError(statusCode) {
 
-        constructor() : this(statusCode = 502, status = "Cannot reach server")
+        constructor() : this(errorMessage = "Cannot reach server")
 
     }
 
