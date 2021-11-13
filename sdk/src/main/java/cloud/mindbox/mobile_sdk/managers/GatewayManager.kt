@@ -80,7 +80,7 @@ internal object GatewayManager {
         onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) }
     )
 
-    fun <T : OperationResponseBase> sendSyncEvent(
+    fun <T : OperationResponseBase> sendEvent(
         context: Context,
         configuration: Configuration,
         deviceUuid: String,
@@ -97,7 +97,7 @@ internal object GatewayManager {
         onError = onError
     )
 
-    private fun sendEvent(
+    fun sendEvent(
         context: Context,
         configuration: Configuration,
         deviceUuid: String,
