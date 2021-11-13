@@ -14,7 +14,7 @@ import java.util.*
 
 internal object IdentifierManager {
 
-
+    private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
 
     fun isNotificationsEnabled(context: Context): Boolean = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -45,7 +45,7 @@ internal object IdentifierManager {
     fun getAdsIdentification(context: Context): String = runCatching {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
         val id = advertisingIdInfo.id
-        if (advertisingIdInfo.isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == "00000000-0000-0000-0000-000000000000") {
+        if (advertisingIdInfo.isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
             MindboxLogger.d(
                 this,
                 "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random - $id"
