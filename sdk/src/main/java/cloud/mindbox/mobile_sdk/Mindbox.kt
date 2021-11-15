@@ -396,6 +396,35 @@ object Mindbox {
     }
 
     /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBodyJson event json body of operation.
+     * @param onSuccess Callback that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     */
+    fun executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit
+    ) {
+        if (validateOperationAndInitializeComponents(context, operationSystemName)) {
+            mindboxScope.launch {
+                MindboxEventManager.syncOperation(
+                    context = context,
+                    name = operationSystemName,
+                    bodyJson = operationBodyJson,
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
+            }
+        }
+    }
+
+    /**
      * Handles only Mindbox notification message from [FirebaseMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
