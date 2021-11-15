@@ -121,28 +121,6 @@ internal object MindboxEventManager {
         )
     }.logOnException()
 
-    fun syncOperation(
-        context: Context,
-        name: String,
-        bodyJson: String,
-        onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
-    ) = runCatching {
-        val configuration = checkConfiguration(onError) ?: return
-
-        val event = createSyncEvent(name, bodyJson)
-        val deviceUuid = MindboxPreferences.deviceUuid
-
-        GatewayManager.sendEvent(
-            context = context,
-            configuration = configuration,
-            deviceUuid = deviceUuid,
-            event = event,
-            onSuccess = onSuccess,
-            onError = onError
-        )
-    }.logOnException()
-
     private fun createSyncEvent(
         name: String,
         bodyJson: String
