@@ -208,19 +208,16 @@ object Mindbox {
         runCatching {
             initComponents(context)
 
-            val validationErrors =
-                ValidationError()
-                    .apply {
-                        validateFields(
-                            configuration.domain,
-                            configuration.endpointId,
-                            configuration.previousDeviceUUID,
-                            configuration.previousInstallationId
-                        )
-                    }
+            val validationErrors = SdkValidation.validateConfiguration(
+                domain = configuration.domain,
+                endpointId = configuration.endpointId,
+                previousDeviceUUID = configuration.previousDeviceUUID,
+                previousInstallationId = configuration.previousInstallationId
+            )
 
-            validationErrors.messages
-                ?: throw InitializeMindboxException(validationErrors.messages.toString())
+            if (validationErrors.isNotEmpty()) {
+                throw InitializeMindboxException(validationErrors.toString())
+            }
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
