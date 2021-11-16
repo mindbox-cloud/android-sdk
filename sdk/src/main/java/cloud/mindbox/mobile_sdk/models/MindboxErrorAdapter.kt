@@ -97,8 +97,8 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
                 .name("errorMessage").value(value.errorMessage)
                 .name("errorId").value(value.errorId)
                 .name("httpStatusCode").value(value.httpStatusCode)
-            is MindboxError.Unknown -> name("name").value(value.throwable?.javaClass?.canonicalName)
-                .name("message").value(value.throwable?.localizedMessage)
+            is MindboxError.Unknown -> name("errorName").value(value.throwable?.javaClass?.canonicalName)
+                .name("errorMessage").value(value.throwable?.localizedMessage)
         }
     }
         .endObject()
