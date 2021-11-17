@@ -29,11 +29,11 @@ internal object SdkValidation {
                 add(ERROR_EMPTY_ENDPOINT)
             }
 
-            if (!previousDeviceUUID.isUuid()) {
+            if (previousDeviceUUID.isNotEmpty() && !previousDeviceUUID.isUuid()) {
                 add(ERROR_INVALID_DEVICE_ID)
             }
 
-            if (!previousInstallationId.isUuid()) {
+            if (previousDeviceUUID.isNotEmpty() && !previousInstallationId.isUuid()) {
                 add(ERROR_INVALID_INSTALLATION_ID)
             }
         }
