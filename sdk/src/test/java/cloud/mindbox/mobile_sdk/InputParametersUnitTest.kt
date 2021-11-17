@@ -70,43 +70,55 @@ class InputParametersUnitTest {
     }
 
     @Test
-    fun domain_isWrong() {
-        val errors0 = SdkValidation.validateConfiguration(
+    fun domain_isEmpty() {
+        val errors = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[0],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
         )
-        assertEquals(1, errors0.size)
-        assertEquals(SdkValidation.ERROR_EMPTY_DOMAIN, errors0[0])
+        assertEquals(1, errors.size)
+        assertEquals(SdkValidation.ERROR_EMPTY_DOMAIN, errors[0])
+    }
 
-        val errors1 = SdkValidation.validateConfiguration(
+    @Test
+    fun domain_startsWithHttps() {
+        val errors = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[1],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
         )
-        assertEquals(1, errors1.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors1[0])
+        assertEquals(1, errors.size)
+        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+    }
 
-        val errors2 = SdkValidation.validateConfiguration(
+    @Test
+    fun domain_endsWithSlash() {
+        val errors = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[2],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
         )
-        assertEquals(1, errors2.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors2[0])
+        assertEquals(1, errors.size)
+        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+    }
 
-        val errors3 = SdkValidation.validateConfiguration(
+    @Test
+    fun domain_startsWithHttpsAndEndsWithSlash() {
+        val errors = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[3],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
         )
-        assertEquals(1, errors3.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors3[0])
+        assertEquals(1, errors.size)
+        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+    }
 
+    @Test
+    fun domain_InvalidFormat() {
         val errors4 = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[4],
             endpointId = rightEndpointParameter,

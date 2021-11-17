@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import androidx.core.util.PatternsCompat
 
-object SdkValidation {
+internal object SdkValidation {
 
     internal const val ERROR_EMPTY_DOMAIN = "Domain must not be empty"
     internal const val ERROR_INVALID_FORMAT_DOMAIN =
@@ -21,7 +21,7 @@ object SdkValidation {
         mutableListOf<String>().apply {
             when {
                 domain.isBlank() -> add(ERROR_EMPTY_DOMAIN)
-                isDomainWellFormatted(domain) -> add(ERROR_INVALID_FORMAT_DOMAIN)
+                !isDomainWellFormatted(domain) -> add(ERROR_INVALID_FORMAT_DOMAIN)
                 !isDomainValid(domain) -> add(ERROR_INVALID_DOMAIN)
             }
 
@@ -39,9 +39,9 @@ object SdkValidation {
         }
     }.returnOnException { emptyList() }
 
-    private fun isDomainWellFormatted(domain: String) = domain.startsWith("http")
-            || domain.startsWith("/")
-            || domain.endsWith("/")
+    private fun isDomainWellFormatted(domain: String) = !domain.startsWith("http")
+            && !domain.startsWith("/")
+            && !domain.endsWith("/")
 
     private fun isDomainValid(
         domain: String
