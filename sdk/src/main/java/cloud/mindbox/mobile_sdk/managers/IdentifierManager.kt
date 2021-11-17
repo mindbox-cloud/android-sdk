@@ -48,7 +48,9 @@ internal object IdentifierManager {
         if (advertisingIdInfo.isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
             MindboxLogger.d(
                 this,
-                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random - $id"
+                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random. " +
+                        "isLimitAdTrackingEnabled=${advertisingIdInfo.isLimitAdTrackingEnabled}, " +
+                        "uuid from AdvertisingIdClient = $id"
             )
             generateRandomUuid()
         } else {
