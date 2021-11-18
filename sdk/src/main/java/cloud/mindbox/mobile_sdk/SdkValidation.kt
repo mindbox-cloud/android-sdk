@@ -33,7 +33,7 @@ internal object SdkValidation {
                 add(ERROR_INVALID_DEVICE_ID)
             }
 
-            if (previousDeviceUUID.isNotEmpty() && !previousInstallationId.isUuid()) {
+            if (previousInstallationId.isNotEmpty() && !previousInstallationId.isUuid()) {
                 add(ERROR_INVALID_INSTALLATION_ID)
             }
         }

@@ -38,7 +38,39 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(0, rightCase.size)
+    }
 
+    @Test
+    fun mandatoryInputParameters_isCorrect() {
+        val rightCase = SdkValidation.validateConfiguration(
+            domain = rightDomainParameter,
+            endpointId = rightEndpointParameter,
+            previousDeviceUUID = "",
+            previousInstallationId = ""
+        )
+        assertEquals(0, rightCase.size)
+    }
+
+    @Test
+    fun noPreviousInstallationId_isCorrect() {
+        val rightCase = SdkValidation.validateConfiguration(
+            domain = rightDomainParameter,
+            endpointId = rightEndpointParameter,
+            previousDeviceUUID = rightUuidParameter,
+            previousInstallationId = ""
+        )
+        assertEquals(0, rightCase.size)
+    }
+
+    @Test
+    fun noPreviousDeviceUuid_isCorrect() {
+        val rightCase = SdkValidation.validateConfiguration(
+            domain = rightDomainParameter,
+            endpointId = rightEndpointParameter,
+            previousDeviceUUID = "",
+            previousInstallationId = rightUuidParameter
+        )
+        assertEquals(0, rightCase.size)
     }
 
     @Test
