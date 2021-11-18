@@ -10,7 +10,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
  * The configuration object used to initialize Mindbox SDK
  * The parameters are taken into account only during first initialization
  */
-class MindboxConfiguration internal constructor(
+class MindboxConfiguration private constructor(
     internal val previousInstallationId: String,
     internal val previousDeviceUUID: String,
     internal val endpointId: String,
