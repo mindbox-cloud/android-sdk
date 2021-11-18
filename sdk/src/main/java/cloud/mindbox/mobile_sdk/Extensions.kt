@@ -22,17 +22,15 @@ private fun Throwable.handle() {
     }
 }
 
-internal fun String.isUuid(): Boolean {
-    return if (this.trim().isNotEmpty()) {
-        try {
-            UUID.fromString(this)
-            true
-        } catch (e: Exception) {
-            false
-        }
-    } else {
+internal fun String.isUuid() = if (this.isNotBlank()) {
+    try {
+        UUID.fromString(this)
+        true
+    } catch (e: Exception) {
         false
     }
+} else {
+    false
 }
 
 internal fun Map<String, String>.toUrlQueryString() = runCatching {

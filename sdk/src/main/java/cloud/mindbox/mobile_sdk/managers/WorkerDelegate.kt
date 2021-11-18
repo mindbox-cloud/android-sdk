@@ -102,7 +102,7 @@ internal class WorkerDelegate {
 
                     MindboxLogger.i(
                         parent,
-                        "sent event index #${index + 1} id #${event.uid} from $eventsCount"
+                        "sent event index #$index id #${event.uid} from $eventsCount"
                     )
 
                     countDownLatch.countDown()

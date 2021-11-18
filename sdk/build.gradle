@@ -117,7 +117,7 @@ dependencies {
 
     // Firebase messaging
     implementation platform('com.google.firebase:firebase-bom:26.1.1')
-    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.firebase:firebase-messaging:21.0.0'
     implementation 'com.google.android.gms:play-services-basement:17.5.0'
 
     // Ads
@@ -128,7 +128,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'
 
     //network
-    implementation 'com.android.volley:volley:1.1.1'
+    implementation 'com.android.volley:volley:1.2.1'
     implementation 'com.google.code.gson:gson:2.8.6'
 
     // DB
