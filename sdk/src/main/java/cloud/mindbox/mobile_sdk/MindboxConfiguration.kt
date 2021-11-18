@@ -11,7 +11,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
  * The parameters are taken into account only during first initialization
  */
 class MindboxConfiguration(builder: Builder) {
-    internal val previousInstallationId: String = builder.previousInstallationId
+    internal var previousInstallationId: String = builder.previousInstallationId
     internal var previousDeviceUUID: String = builder.previousDeviceUUID
     internal val endpointId: String = builder.endpointId
     internal val domain: String = builder.domain

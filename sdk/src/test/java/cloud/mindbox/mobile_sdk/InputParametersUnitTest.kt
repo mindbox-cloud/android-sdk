@@ -83,7 +83,7 @@ class InputParametersUnitTest {
                 previousInstallationId = rightUuidParameter
             )
             assertEquals(1, errors.size)
-            assertEquals(SdkValidation.ERROR_INVALID_DEVICE_ID, errors[0])
+            assertEquals(SdkValidation.Error.INVALID_DEVICE_ID, errors[0])
         }
     }
 
@@ -97,7 +97,7 @@ class InputParametersUnitTest {
                 previousInstallationId = wrongUuid
             )
             assertEquals(1, errors.size)
-            assertEquals(SdkValidation.ERROR_INVALID_INSTALLATION_ID, errors[0])
+            assertEquals(SdkValidation.Error.INVALID_INSTALLATION_ID, errors[0])
         }
     }
 
@@ -110,7 +110,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors.size)
-        assertEquals(SdkValidation.ERROR_EMPTY_DOMAIN, errors[0])
+        assertEquals(SdkValidation.Error.EMPTY_DOMAIN, errors[0])
     }
 
     @Test
@@ -122,7 +122,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
     }
 
     @Test
@@ -134,7 +134,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
     }
 
     @Test
@@ -146,7 +146,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors.size)
-        assertEquals(SdkValidation.ERROR_INVALID_FORMAT_DOMAIN, errors[0])
+        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
     }
 
     @Test
@@ -158,7 +158,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors4.size)
-        assertEquals(SdkValidation.ERROR_INVALID_DOMAIN, errors4[0])
+        assertEquals(SdkValidation.Error.INVALID_DOMAIN, errors4[0])
 
         val errors5 = SdkValidation.validateConfiguration(
             domain = wrongDomainParameter[5],
@@ -167,7 +167,7 @@ class InputParametersUnitTest {
             previousInstallationId = rightUuidParameter
         )
         assertEquals(1, errors5.size)
-        assertEquals(SdkValidation.ERROR_INVALID_DOMAIN, errors5[0])
+        assertEquals(SdkValidation.Error.INVALID_DOMAIN, errors5[0])
     }
 
     @Test
@@ -180,7 +180,7 @@ class InputParametersUnitTest {
                 rightUuidParameter
             )
             assertEquals(1, errors.size)
-            assertEquals(SdkValidation.ERROR_EMPTY_ENDPOINT, errors[0])
+            assertEquals(SdkValidation.Error.EMPTY_ENDPOINT, errors[0])
         }
     }
 }

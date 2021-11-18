@@ -208,16 +208,7 @@ object Mindbox {
         runCatching {
             initComponents(context)
 
-            val validationErrors = SdkValidation.validateConfiguration(
-                domain = configuration.domain,
-                endpointId = configuration.endpointId,
-                previousDeviceUUID = configuration.previousDeviceUUID,
-                previousInstallationId = configuration.previousInstallationId
-            )
-
-            if (validationErrors.isNotEmpty()) {
-                throw InitializeMindboxException(validationErrors.toString())
-            }
+            validateConfiguration(configuration)
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
@@ -473,6 +464,34 @@ object Mindbox {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         FirebaseApp.initializeApp(context)
+    }
+
+    private fun validateConfiguration(configuration: MindboxConfiguration) {
+        val validationErrors = SdkValidation.validateConfiguration(
+            domain = configuration.domain,
+            endpointId = configuration.endpointId,
+            previousDeviceUUID = configuration.previousDeviceUUID,
+            previousInstallationId = configuration.previousInstallationId
+        )
+
+        if (validationErrors.isNotEmpty()) {
+            if (validationErrors.any(SdkValidation.Error::critical)) {
+                throw InitializeMindboxException(validationErrors.toString())
+            }
+            MindboxLogger.e(this, "Invalid configuration parameters found: $validationErrors")
+            configuration.previousDeviceUUID =
+                if (validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)) {
+                    ""
+                } else {
+                    configuration.previousDeviceUUID
+                }
+            configuration.previousInstallationId =
+                if (validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)) {
+                    ""
+                } else {
+                    configuration.previousInstallationId
+                }
+        }
     }
 
     private fun <T> asyncOperation(
