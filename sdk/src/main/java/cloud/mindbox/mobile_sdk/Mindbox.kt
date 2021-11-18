@@ -481,11 +481,11 @@ object Mindbox {
                 throw InitializeMindboxException(validationErrors.toString())
             }
             MindboxLogger.e(this, "Invalid configuration parameters found: $validationErrors")
-            val deviceIdErrorOccurred = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
-            val installationIdErrorOccurred = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
+            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
             configuration.copy(
-                previousDeviceUUID = if (deviceIdErrorOccurred) "" else configuration.previousDeviceUUID,
-                previousInstallationId = if (installationIdErrorOccurred) "" else configuration.previousInstallationId
+                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
+                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId
             )
         }
     }
