@@ -10,16 +10,51 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
  * The configuration object used to initialize Mindbox SDK
  * The parameters are taken into account only during first initialization
  */
-class MindboxConfiguration(builder: Builder) {
-    internal var previousInstallationId: String = builder.previousInstallationId
-    internal var previousDeviceUUID: String = builder.previousDeviceUUID
-    internal val endpointId: String = builder.endpointId
-    internal val domain: String = builder.domain
-    internal val packageName: String = builder.packageName
-    internal val versionName: String = builder.versionName
-    internal val versionCode: String = builder.versionCode
-    internal val subscribeCustomerIfCreated: Boolean = builder.subscribeCustomerIfCreated
-    internal val shouldCreateCustomer: Boolean = builder.shouldCreateCustomer
+class MindboxConfiguration internal constructor(
+    internal val previousInstallationId: String,
+    internal val previousDeviceUUID: String,
+    internal val endpointId: String,
+    internal val domain: String,
+    internal val packageName: String,
+    internal val versionName: String,
+    internal val versionCode: String,
+    internal val subscribeCustomerIfCreated: Boolean,
+    internal val shouldCreateCustomer: Boolean
+) {
+
+    constructor(builder: Builder) : this(
+        previousInstallationId = builder.previousInstallationId,
+        previousDeviceUUID = builder.previousDeviceUUID,
+        endpointId = builder.endpointId,
+        domain = builder.domain,
+        packageName = builder.packageName,
+        versionName = builder.versionName,
+        versionCode = builder.versionCode,
+        subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
+        shouldCreateCustomer = builder.shouldCreateCustomer
+    )
+
+    internal fun copy(
+        previousInstallationId: String = this.previousInstallationId,
+        previousDeviceUUID: String = this.previousDeviceUUID,
+        endpointId: String = this.endpointId,
+        domain: String = this.domain,
+        packageName: String = this.packageName,
+        versionName: String = this.versionName,
+        versionCode: String = this.versionCode,
+        subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
+        shouldCreateCustomer: Boolean = this.shouldCreateCustomer
+    ) = MindboxConfiguration(
+        previousInstallationId = previousInstallationId,
+        previousDeviceUUID = previousDeviceUUID,
+        endpointId = endpointId,
+        domain = domain,
+        packageName = packageName,
+        versionName = versionName,
+        versionCode = versionCode,
+        subscribeCustomerIfCreated = subscribeCustomerIfCreated,
+        shouldCreateCustomer = shouldCreateCustomer
+    )
 
     /**
      * A Builder for MindboxConfiguration

@@ -208,11 +208,11 @@ object Mindbox {
         runCatching {
             initComponents(context)
 
-            validateConfiguration(configuration)
+            val validatedConfiguration = validateConfiguration(configuration)
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
-                    firstInitialization(context, configuration)
+                    firstInitialization(context, validatedConfiguration)
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                         && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
@@ -466,7 +466,7 @@ object Mindbox {
         FirebaseApp.initializeApp(context)
     }
 
-    private fun validateConfiguration(configuration: MindboxConfiguration) {
+    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfiguration {
         val validationErrors = SdkValidation.validateConfiguration(
             domain = configuration.domain,
             endpointId = configuration.endpointId,
@@ -474,23 +474,19 @@ object Mindbox {
             previousInstallationId = configuration.previousInstallationId
         )
 
-        if (validationErrors.isNotEmpty()) {
+        return if (validationErrors.isEmpty()) {
+            configuration
+        } else {
             if (validationErrors.any(SdkValidation.Error::critical)) {
                 throw InitializeMindboxException(validationErrors.toString())
             }
             MindboxLogger.e(this, "Invalid configuration parameters found: $validationErrors")
-            configuration.previousDeviceUUID =
-                if (validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)) {
-                    ""
-                } else {
-                    configuration.previousDeviceUUID
-                }
-            configuration.previousInstallationId =
-                if (validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)) {
-                    ""
-                } else {
-                    configuration.previousInstallationId
-                }
+            val deviceIdErrorOccurred = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
+            val installationIdErrorOccurred = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            configuration.copy(
+                previousDeviceUUID = if (deviceIdErrorOccurred) "" else configuration.previousDeviceUUID,
+                previousInstallationId = if (installationIdErrorOccurred) "" else configuration.previousInstallationId
+            )
         }
     }
 
