@@ -183,4 +183,5 @@ class InputParametersUnitTest {
             assertEquals(SdkValidation.Error.EMPTY_ENDPOINT, errors[0])
         }
     }
+
 }
