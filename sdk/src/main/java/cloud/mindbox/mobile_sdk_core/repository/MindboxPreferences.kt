@@ -8,7 +8,7 @@ internal object MindboxPreferences {
 
     private const val KEY_IS_FIRST_INITIALIZATION = "key_is_first_initialization"
     private const val KEY_DEVICE_UUID = "key_device_uuid"
-    private const val KEY_FIREBASE_TOKEN = "key_firebase_token"
+    private const val KEY_PUSH_TOKEN = "key_firebase_token"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
     private const val KEY_HOST_APP_MANE =
@@ -39,11 +39,11 @@ internal object MindboxPreferences {
 
     var pushToken: String?
         get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN)
+            return SharedPreferencesManager.getString(KEY_PUSH_TOKEN)
         }.returnOnException { null }
         set(value) {
             runCatching {
-                SharedPreferencesManager.put(KEY_FIREBASE_TOKEN, value)
+                SharedPreferencesManager.put(KEY_PUSH_TOKEN, value)
                 firebaseTokenSaveDate = Date().toString()
             }.returnOnException { }
         }

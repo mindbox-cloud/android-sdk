@@ -16,7 +16,7 @@ class DeviceUuidRepeatedUnitTest {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
             MindboxDatabase.isTestMode = true
-            cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+            MindboxInternalCore.init(appContext, configs)
         }
 
         @AfterClass
@@ -32,7 +32,7 @@ class DeviceUuidRepeatedUnitTest {
 
         Thread.sleep(5000)
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
+        MindboxInternalCore.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
 
         Thread.sleep(1000)
 

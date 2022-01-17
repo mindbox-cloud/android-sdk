@@ -29,7 +29,7 @@ class VersioningUnitTest {
         SharedPreferencesManager.with(appContext)
 
         val scope = CoroutineScope(Dispatchers.Default)
-        MindboxPreferences.instanceId = IdentifierManager.generateRandomUuid()
+        MindboxPreferences.instanceId = MindboxInternalCore.generateRandomUuid()
 
         scope.launch {
             val coroutines =

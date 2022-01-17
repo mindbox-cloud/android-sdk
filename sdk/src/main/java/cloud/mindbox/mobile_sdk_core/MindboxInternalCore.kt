@@ -439,6 +439,6 @@ object MindboxInternalCore {
         }, 1, TimeUnit.SECONDS)
     }
 
-    private fun generateRandomUuid() = UUID.randomUUID().toString()
+    internal fun generateRandomUuid() = UUID.randomUUID().toString()
 
 }

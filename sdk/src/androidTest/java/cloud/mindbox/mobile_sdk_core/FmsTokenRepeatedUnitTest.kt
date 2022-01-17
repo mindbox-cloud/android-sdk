@@ -16,7 +16,7 @@ class FmsTokenRepeatedUnitTest {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
             MindboxDatabase.isTestMode = true
-            cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+            MindboxInternalCore.init(appContext, configs)
         }
 
         @AfterClass
@@ -32,7 +32,7 @@ class FmsTokenRepeatedUnitTest {
 
         Thread.sleep(5000)
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.subscribeFmsToken { fmsToken ->
+        MindboxInternalCore.subscribeFmsToken { fmsToken ->
             result = fmsToken
         }
 

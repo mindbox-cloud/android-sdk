@@ -13,7 +13,7 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.subscribeDeviceUuid { deviceUuid ->
+        MindboxInternalCore.subscribeDeviceUuid { deviceUuid ->
             result = deviceUuid
             println(deviceUuid)
         }
@@ -21,7 +21,7 @@ class DeviceUuidSingleUnitTest {
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+        MindboxInternalCore.init(appContext, configs)
 
         Thread.sleep(10000)
 
@@ -33,16 +33,16 @@ class DeviceUuidSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result = ""
 
-        val subscribeId = cloud.mindbox.mobile_sdk_core.Mindbox.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
+        val subscribeId = MindboxInternalCore.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeDeviceUuidSubscription(subscribeId)
+        MindboxInternalCore.disposeDeviceUuidSubscription(subscribeId)
 
         Thread.sleep(3000)
 
         val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+        MindboxInternalCore.init(appContext, configs)
 
         Thread.sleep(5000)
 
@@ -51,18 +51,18 @@ class DeviceUuidSingleUnitTest {
 
     @Test
     fun wrongUnsubscribe_isCorrect() {
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeDeviceUuidSubscription("wrong_subscribe")
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeDeviceUuidSubscription("")
+        MindboxInternalCore.disposeDeviceUuidSubscription("wrong_subscribe")
+        MindboxInternalCore.disposeDeviceUuidSubscription("")
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
+        MindboxInternalCore.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
     }
 
     @Test
     fun subscribeIdGeneration_isCorrect() {
-        val subscribeId = cloud.mindbox.mobile_sdk_core.Mindbox.subscribeDeviceUuid { }
+        val subscribeId = MindboxInternalCore.subscribeDeviceUuid { }
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeDeviceUuidSubscription(subscribeId)
+        MindboxInternalCore.disposeDeviceUuidSubscription(subscribeId)
 
         Assert.assertEquals(true, subscribeId.isUuid())
     }

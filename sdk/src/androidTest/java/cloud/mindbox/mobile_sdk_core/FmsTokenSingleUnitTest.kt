@@ -13,14 +13,14 @@ class FmsTokenSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result: String? = ""
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.subscribeFmsToken { fmsToken ->
+        MindboxInternalCore.subscribeFmsToken { fmsToken ->
             result = fmsToken
         }
 
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+        MindboxInternalCore.init(appContext, configs)
 
         Thread.sleep(10000)
 
@@ -32,18 +32,18 @@ class FmsTokenSingleUnitTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         var result: String? = ""
 
-        val subscribeId = cloud.mindbox.mobile_sdk_core.Mindbox.subscribeFmsToken { fmsToken ->
+        val subscribeId = MindboxInternalCore.subscribeFmsToken { fmsToken ->
             result = fmsToken
         }
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeFmsTokenSubscription(subscribeId)
+        MindboxInternalCore.disposeFmsTokenSubscription(subscribeId)
 
         Thread.sleep(3000)
 
         val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.init(appContext, configs)
+        MindboxInternalCore.init(appContext, configs)
 
         Thread.sleep(5000)
 
@@ -52,18 +52,18 @@ class FmsTokenSingleUnitTest {
 
     @Test
     fun wrongUnsubscribe_isCorrect() {
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeFmsTokenSubscription("wrong_subscribe")
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeFmsTokenSubscription("")
+        MindboxInternalCore.disposeFmsTokenSubscription("wrong_subscribe")
+        MindboxInternalCore.disposeFmsTokenSubscription("")
 
         MindboxDatabase.isTestMode = true
-        cloud.mindbox.mobile_sdk_core.Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
+        MindboxInternalCore.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
     }
 
     @Test
     fun subscribeIdGeneration_isCorrect() {
-        val subscribeId = cloud.mindbox.mobile_sdk_core.Mindbox.subscribeFmsToken { }
+        val subscribeId = MindboxInternalCore.subscribeFmsToken { }
 
-        cloud.mindbox.mobile_sdk_core.Mindbox.disposeFmsTokenSubscription(subscribeId)
+        MindboxInternalCore.disposeFmsTokenSubscription(subscribeId)
 
         Assert.assertEquals(true, subscribeId.isUuid())
     }
