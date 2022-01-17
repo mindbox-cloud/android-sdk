@@ -44,11 +44,11 @@ internal object MindboxPreferences {
         set(value) {
             runCatching {
                 SharedPreferencesManager.put(KEY_PUSH_TOKEN, value)
-                firebaseTokenSaveDate = Date().toString()
+                tokenSaveDate = Date().toString()
             }.returnOnException { }
         }
 
-    var firebaseTokenSaveDate: String
+    var tokenSaveDate: String
         get() = runCatching {
             return SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
         }.returnOnException { "" }

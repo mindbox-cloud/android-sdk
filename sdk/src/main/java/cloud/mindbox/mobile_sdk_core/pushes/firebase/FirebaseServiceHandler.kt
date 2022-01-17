@@ -22,9 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object FirebaseServiceHandler : PushServiceHandler {
-
-    private val fmsTokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
+object FirebaseServiceHandler : PushServiceHandler() {
 
     private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -34,59 +32,9 @@ object FirebaseServiceHandler : PushServiceHandler {
         FirebaseApp.initializeApp(context)
     }
 
-    override fun subscribeToken(subscription: (String?) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
+    override fun updateToken(context: Context, token: String) = MindboxInternalCore.updateToken(context, token)
 
-        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
-            subscription.invoke(MindboxPreferences.pushToken)
-        } else {
-            fmsTokenCallbacks[subscriptionId] = subscription
-        }
-
-        return subscriptionId
-    }
-
-    override fun disposeTokenSubscription(subscriptionId: String) {
-        fmsTokenCallbacks.remove(subscriptionId)
-    }
-
-    override fun getTokenSaveDate(): String = runCatching {
-        return MindboxPreferences.firebaseTokenSaveDate
-    }.returnOnException { "" }
-
-    override fun updateToken(context: Context, token: String) {
-        runCatching {
-            if (token.trim().isNotEmpty()) {
-                MindboxInternalCore.initComponents(context)
-
-                if (!MindboxPreferences.isFirstInitialize) {
-                    MindboxInternalCore.mindboxScope.launch {
-                        MindboxInternalCore.updateAppInfo(context, token)
-                    }
-                }
-            }
-        }.logOnException()
-    }
-
-    override fun deliverToken(token: String?) {
-        Executors.newSingleThreadScheduledExecutor().schedule({
-            fmsTokenCallbacks.keys.asIterable().forEach { key ->
-                fmsTokenCallbacks[key]?.invoke(token)
-                fmsTokenCallbacks.remove(key)
-            }
-        }, 1, TimeUnit.SECONDS)
-    }
-
-    override fun registerToken(): String? = try {
-        val token: String? = Tasks.await(FirebaseMessaging.getInstance().token)
-        if (!token.isNullOrEmpty() && token != MindboxPreferences.pushToken) {
-            MindboxLogger.i(this, "Token gets or updates from firebase")
-        }
-        token
-    } catch (e: Exception) {
-        MindboxLogger.w(this, "Fetching FCM registration token failed with exception $e")
-        null
-    }
+    override fun getToken(context: Context): String? =Tasks.await(FirebaseMessaging.getInstance().token)
 
     override fun getAdsIdentification(context: Context): String = runCatching {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
