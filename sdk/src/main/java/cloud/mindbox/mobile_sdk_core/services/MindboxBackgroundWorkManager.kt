@@ -1,0 +1,36 @@
+package cloud.mindbox.mobile_sdk_core.services
+
+import android.content.Context
+import androidx.work.*
+import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk_core.returnOnException
+import java.util.concurrent.TimeUnit
+
+internal object BackgroundWorkManager {
+
+    private val WORKER_TAG =
+        "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
+
+    fun startOneTimeService(context: Context) {
+        runCatching {
+            val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
+                .setInitialDelay(10, TimeUnit.SECONDS)
+                .addTag(WORKER_TAG)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                ).build()
+
+            WorkManager
+                .getInstance(context)
+                .beginUniqueWork(
+                    WORKER_TAG,
+                    ExistingWorkPolicy.KEEP,
+                    request
+                )
+                .enqueue()
+
+        }.returnOnException { }
+    }
+}
