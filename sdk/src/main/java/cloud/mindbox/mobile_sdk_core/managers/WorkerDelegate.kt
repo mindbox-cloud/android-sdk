@@ -1,17 +1,13 @@
 package cloud.mindbox.mobile_sdk_core.managers
 
 import android.content.Context
-import android.os.Build
 import androidx.work.ListenableWorker
-import cloud.mindbox.mobile_sdk_core.MindboxCore
+import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk_core.logOnException
 import cloud.mindbox.mobile_sdk_core.models.Configuration
 import cloud.mindbox.mobile_sdk_core.models.Event
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException
-import com.google.android.gms.common.GooglePlayServicesRepairableException
-import com.google.android.gms.security.ProviderInstaller
 import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
 
@@ -26,26 +22,9 @@ internal class WorkerDelegate {
         MindboxLogger.d(parent, "Start working...")
 
         try {
-            MindboxCore.initComponents(context)
+            MindboxInternalCore.initComponents(context)
 
-            // Handle SSL error for Android less 21
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                try {
-                    ProviderInstaller.installIfNeeded(context)
-                } catch (repairableException: GooglePlayServicesRepairableException) {
-                    MindboxLogger.e(
-                        parent,
-                        "GooglePlayServices should be updated",
-                        repairableException
-                    )
-                } catch (notAvailableException: GooglePlayServicesNotAvailableException) {
-                    MindboxLogger.e(
-                        parent,
-                        "GooglePlayServices aren't available",
-                        notAvailableException
-                    )
-                }
-            }
+            MindboxInternalCore.pushServiceHandler.ensureVersionCompatibility(context, parent)
 
             val configuration = DbManager.getConfigurations()
 

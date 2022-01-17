@@ -7,7 +7,7 @@ import android.os.Bundle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
-import cloud.mindbox.mobile_sdk_core.MindboxCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
+import cloud.mindbox.mobile_sdk_core.MindboxInternalCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk_core.logOnException
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk_core.models.DIRECT

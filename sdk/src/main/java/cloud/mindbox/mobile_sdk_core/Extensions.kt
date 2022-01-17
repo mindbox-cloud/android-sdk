@@ -16,7 +16,7 @@ internal fun Result<Unit>.logOnException() {
 
 private fun Throwable.handle() {
     try {
-        MindboxLogger.e(MindboxCore, "Mindbox caught unhandled error", this)
+        MindboxLogger.e(MindboxInternalCore, "Mindbox caught unhandled error", this)
         // todo log crash
     } catch (e: Throwable) {
     }

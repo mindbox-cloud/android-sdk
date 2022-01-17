@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk_core.MindboxConfiguration
-import cloud.mindbox.mobile_sdk_core.MindboxCore
+import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.logger.Level
 import cloud.mindbox.mobile_sdk_core.managers.*
 import cloud.mindbox.mobile_sdk_core.models.*
@@ -20,7 +20,7 @@ object Mindbox {
     /**
      * Used for determination app open from push
      */
-    const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = MindboxCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
+    const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = MindboxInternalCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 
     /**
      * Subscribe to gets token of Firebase Messaging Service used by SDK
@@ -31,7 +31,7 @@ object Mindbox {
      */
     fun subscribeFmsToken(
         subscription: (String?) -> Unit
-    ): String = MindboxCore.subscribeFmsToken(subscription)
+    ): String = MindboxInternalCore.subscribeFmsToken(subscription)
     /**
      * Removes FMS token subscription if it is no longer necessary
      *
@@ -39,17 +39,17 @@ object Mindbox {
      */
     fun disposeFmsTokenSubscription(
         subscriptionId: String
-    ): Unit = MindboxCore.disposeFmsTokenSubscription(subscriptionId)
+    ): Unit = MindboxInternalCore.disposeFmsTokenSubscription(subscriptionId)
 
     /**
      * Returns date of FMS token saving
      */
-    fun getFmsTokenSaveDate(): String = MindboxCore.getFmsTokenSaveDate()
+    fun getFmsTokenSaveDate(): String = MindboxInternalCore.getFmsTokenSaveDate()
 
     /**
      * Returns SDK version
      */
-    fun getSdkVersion(): String = MindboxCore.getSdkVersion()
+    fun getSdkVersion(): String = MindboxInternalCore.getSdkVersion()
 
     /**
      * Subscribe to gets deviceUUID used by SDK
@@ -60,7 +60,7 @@ object Mindbox {
      */
     fun subscribeDeviceUuid(
         subscription: (String) -> Unit
-    ): String = MindboxCore.subscribeDeviceUuid(subscription)
+    ): String = MindboxInternalCore.subscribeDeviceUuid(subscription)
 
     /**
      * Removes deviceUuid subscription if it is no longer necessary
@@ -69,7 +69,7 @@ object Mindbox {
      */
     fun disposeDeviceUuidSubscription(
         subscriptionId: String
-    ): Unit = MindboxCore.disposeDeviceUuidSubscription(subscriptionId)
+    ): Unit = MindboxInternalCore.disposeDeviceUuidSubscription(subscriptionId)
 
     /**
      * Updates FMS token for SDK
@@ -81,7 +81,7 @@ object Mindbox {
     fun updateFmsToken(
         context: Context,
         token: String
-    ): Unit = MindboxCore.updateFmsToken(context, token)
+    ): Unit = MindboxInternalCore.updateFmsToken(context, token)
 
     /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
@@ -93,7 +93,7 @@ object Mindbox {
     fun onPushReceived(
         context: Context,
         uniqKey: String
-    ): Unit = MindboxCore.onPushReceived(context, uniqKey)
+    ): Unit = MindboxInternalCore.onPushReceived(context, uniqKey)
 
     /**
      * Creates and deliveries event of "Push clicked". Recommended call this method from background
@@ -124,7 +124,7 @@ object Mindbox {
     fun onPushClicked(
         context: Context,
         intent: Intent
-    ): Boolean = MindboxCore.onPushClicked(context, intent)
+    ): Boolean = MindboxInternalCore.onPushClicked(context, intent)
 
 
     /**
@@ -137,7 +137,7 @@ object Mindbox {
     fun init(
         context: Context,
         configuration: MindboxConfiguration
-    ): Unit = MindboxCore.init(context, configuration)
+    ): Unit = MindboxInternalCore.init(context, configuration)
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -147,7 +147,7 @@ object Mindbox {
      *
      * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
      */
-    fun onNewIntent(intent: Intent?) = MindboxCore.onNewIntent(intent)
+    fun onNewIntent(intent: Intent?) = MindboxInternalCore.onNewIntent(intent)
 
     /**
      * Specifies log level for Mindbox
@@ -155,7 +155,7 @@ object Mindbox {
      * @param level - is used for showing Mindbox logs starts from [Level]. Default
      * is [Level.INFO]. [Level.NONE] turns off all logs.
      */
-    fun setLogLevel(level: Level): Unit = MindboxCore.setLogLevel(level)
+    fun setLogLevel(level: Level): Unit = MindboxInternalCore.setLogLevel(level)
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -170,7 +170,7 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T
-    ): Unit = MindboxCore.executeAsyncOperation(context, operationSystemName, operationBody)
+    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBody)
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -184,7 +184,7 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T
-    ): Unit = MindboxCore.executeAsyncOperation(context, operationSystemName, operationBody)
+    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBody)
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -198,7 +198,7 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBodyJson: String
-    ): Unit = MindboxCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
+    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
 
     /**
      * Creates and deliveries event synchronously with specified name and body.
@@ -215,7 +215,7 @@ object Mindbox {
         operationBody: T,
         onSuccess: (OperationResponse) -> Unit,
         onError: (MindboxError) -> Unit
-    ): Unit = MindboxCore.executeSyncOperation(
+    ): Unit = MindboxInternalCore.executeSyncOperation(
         context,
         operationSystemName,
         operationBody,
@@ -240,7 +240,7 @@ object Mindbox {
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
-    ): Unit = MindboxCore.executeSyncOperation(
+    ): Unit = MindboxInternalCore.executeSyncOperation(
         context,
         operationSystemName,
         operationBody,
@@ -264,7 +264,7 @@ object Mindbox {
         operationBodyJson: String,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit
-    ): Unit = MindboxCore.executeSyncOperation(
+    ): Unit = MindboxInternalCore.executeSyncOperation(
         context,
         operationSystemName,
         operationBodyJson,
@@ -299,7 +299,7 @@ object Mindbox {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null
-    ): Boolean = MindboxCore.handleRemoteMessage(
+    ): Boolean = MindboxInternalCore.handleRemoteMessage(
         context,
         message,
         channelId,
@@ -316,6 +316,6 @@ object Mindbox {
      * @param intent an intent sent by SDK and received in BroadcastReceiver
      * @return url associated with the push intent or null if there is none
      */
-    fun getUrlFromPushIntent(intent: Intent?): String? = MindboxCore.getUrlFromPushIntent(intent)
+    fun getUrlFromPushIntent(intent: Intent?): String? = MindboxInternalCore.getUrlFromPushIntent(intent)
 
 }

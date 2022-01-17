@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk_core.managers
+package cloud.mindbox.mobile_sdk_core.pushes
 
 import android.app.Activity
 import android.app.Notification.DEFAULT_ALL
@@ -12,13 +12,10 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
-import cloud.mindbox.mobile_sdk_core.MindboxCore
+import androidx.core.app.NotificationManagerCompat
+import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.logOnException
-import cloud.mindbox.mobile_sdk_core.models.PushAction
 import cloud.mindbox.mobile_sdk_core.returnOnException
-import com.google.firebase.messaging.RemoteMessage
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.net.URL
 import kotlin.random.Random
 
@@ -29,18 +26,27 @@ internal object PushNotificationManager {
     private const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
     private const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
 
-    private const val DATA_UNIQUE_KEY = "uniqueKey"
-    private const val DATA_TITLE = "title"
-    private const val DATA_MESSAGE = "message"
-    private const val DATA_IMAGE_URL = "imageUrl"
-    private const val DATA_BUTTONS = "buttons"
-    private const val DATA_PUSH_CLICK_URL = "clickUrl"
     private const val MAX_ACTIONS_COUNT = 3
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
+    internal fun isNotificationsEnabled(context: Context): Boolean = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (manager?.areNotificationsEnabled() != true) {
+                return false
+            }
+            return manager.notificationChannels.firstOrNull { channel ->
+                channel.importance == NotificationManager.IMPORTANCE_NONE
+            } == null
+        } else {
+            return NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+    }.returnOnException { true }
+
     internal fun handleRemoteMessage(
         context: Context,
-        remoteMessage: RemoteMessage?,
+        remoteMessage: RemoteMessage,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -52,30 +58,22 @@ internal object PushNotificationManager {
             key.replace("*", ".*").toRegex()
         }
 
-        val data = remoteMessage?.data ?: return false
-        val uniqueKey = data[DATA_UNIQUE_KEY] ?: return false
-
         val applicationContext = context.applicationContext
-        val title = data[DATA_TITLE] ?: ""
-        val description = data[DATA_MESSAGE] ?: ""
-        val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
-        val pushActions = Gson().fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
         val notificationId = Random.nextInt()
-        val pushLink = data[DATA_PUSH_CLICK_URL]
 
-        MindboxCore.onPushReceived(applicationContext, uniqueKey)
+        MindboxInternalCore.onPushReceived(applicationContext, remoteMessage.uniqueKey)
 
         val builder = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle(title)
-            .setContentText(description)
+            .setContentTitle(remoteMessage.title)
+            .setContentText(remoteMessage.description)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, notificationId, uniqueKey, pushLink, correctedLinksActivities, defaultActivity)
-            .handleActions(context, notificationId, uniqueKey, pushActions, correctedLinksActivities, defaultActivity)
-            .handleImageByUrl(data[DATA_IMAGE_URL], title, description)
+            .handlePushClick(context, notificationId, remoteMessage.uniqueKey, remoteMessage.pushLink, correctedLinksActivities, defaultActivity)
+            .handleActions(context, notificationId, remoteMessage.uniqueKey, remoteMessage.pushActions, correctedLinksActivities, defaultActivity)
+            .handleImageByUrl(remoteMessage.imageUrl, remoteMessage.title, remoteMessage.description)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -222,7 +220,7 @@ internal object PushNotificationManager {
         url: String?,
         pushButtonKey: String?
     ) = Intent(context, activity).apply {
-        putExtra(MindboxCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
+        putExtra(MindboxInternalCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
         putExtra(EXTRA_NOTIFICATION_ID, id)
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)

@@ -37,7 +37,7 @@ internal object MindboxPreferences {
             }.returnOnException { }
         }
 
-    var firebaseToken: String?
+    var pushToken: String?
         get() = runCatching {
             return SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN)
         }.returnOnException { null }
