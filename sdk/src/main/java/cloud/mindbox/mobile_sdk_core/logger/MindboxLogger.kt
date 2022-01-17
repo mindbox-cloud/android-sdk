@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk_core.logger
 import android.util.Log
 import com.android.volley.VolleyLog
 
-internal object MindboxLogger {
+object MindboxLogger {
 
     private val TAG = "Mindbox"
     private val DEFAULT_LOG_LEVEL = Level.ERROR
