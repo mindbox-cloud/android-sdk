@@ -4,6 +4,8 @@ import android.content.Context
 
 interface PushServiceHandler {
 
+    val notificationProvider: String
+
     fun initService(context: Context)
 
     fun subscribeToken(subscription: (String?) -> Unit): String

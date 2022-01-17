@@ -28,6 +28,8 @@ object FirebaseServiceHandler : PushServiceHandler {
 
     private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
 
+    override val notificationProvider: String = "FCM"
+
     override fun initService(context: Context) {
         FirebaseApp.initializeApp(context)
     }

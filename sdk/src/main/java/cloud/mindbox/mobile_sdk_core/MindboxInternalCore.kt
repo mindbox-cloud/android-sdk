@@ -369,7 +369,8 @@ object MindboxInternalCore {
                 externalDeviceUUID = configuration.previousDeviceUUID,
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
-                instanceId = instanceId
+                instanceId = instanceId,
+                notificationProvider = pushServiceHandler.notificationProvider
             )
 
             MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)

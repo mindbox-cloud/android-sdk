@@ -17,7 +17,8 @@ internal data class InitData(
     @SerializedName("isNotificationsEnabled") val isNotificationsEnabled: Boolean,
     @SerializedName("subscribe") val subscribe: Boolean,
     @SerializedName("instanceId") val instanceId: String,
-    @SerializedName("version") private val version: Int = INIT_DATA_VERSION
+    @SerializedName("version") private val version: Int = INIT_DATA_VERSION,
+    @SerializedName("notificationProvider") val notificationProvider: String
 )
 
 internal data class UpdateData(
