@@ -1,25 +1,69 @@
 package cloud.mindbox.mobile_sdk_core.pushes
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk_core.returnOnException
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-interface PushServiceHandler {
+abstract class PushServiceHandler {
 
-    fun initService(context: Context)
+    private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
 
-    fun subscribeToken(subscription: (String?) -> Unit): String
+    abstract val notificationProvider: String
 
-    fun disposeTokenSubscription(subscriptionId: String)
+    abstract fun initService(context: Context)
 
-    fun getTokenSaveDate(): String
+    abstract fun getToken(context: Context): String?
 
-    fun updateToken(context: Context, token: String)
+    abstract fun updateToken(context: Context, token: String)
 
-    fun deliverToken(token: String?)
+    abstract fun getAdsIdentification(context: Context): String
 
-    fun registerToken(): String?
+    abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
-    fun getAdsIdentification(context: Context): String
+    fun registerToken(context: Context, previousToken: String?): String? = try {
+        val token = getToken(context)
+        if (!token.isNullOrEmpty() && token != previousToken) {
+            MindboxLogger.i(this, "Token gets or updates from $notificationProvider")
+        }
+        token
+    } catch (e: Exception) {
+        MindboxLogger.w(this, "Fetching $notificationProvider registration token failed with exception $e")
+        null
+    }
 
-    fun ensureVersionCompatibility(context: Context, logParent: Any)
+    fun subscribeToken(subscription: (String?) -> Unit): String {
+        val subscriptionId = UUID.randomUUID().toString()
+
+        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
+            subscription.invoke(MindboxPreferences.pushToken)
+        } else {
+            tokenCallbacks[subscriptionId] = subscription
+        }
+
+        return subscriptionId
+    }
+
+    fun disposeTokenSubscription(subscriptionId: String) {
+        tokenCallbacks.remove(subscriptionId)
+    }
+
+    fun getTokenSaveDate(): String = runCatching {
+        return MindboxPreferences.tokenSaveDate
+    }.returnOnException { "" }
+
+    fun deliverToken(token: String?) {
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            tokenCallbacks.keys.asIterable().forEach { key ->
+                tokenCallbacks[key]?.invoke(token)
+                tokenCallbacks.remove(key)
+            }
+        }, 1, TimeUnit.SECONDS)
+    }
 
 }

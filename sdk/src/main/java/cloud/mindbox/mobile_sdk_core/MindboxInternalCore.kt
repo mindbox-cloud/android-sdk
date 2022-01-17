@@ -34,7 +34,7 @@ object MindboxInternalCore {
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
 
     private val mindboxJob = Job()
-    internal val mindboxScope = CoroutineScope(Default + mindboxJob)
+    private val mindboxScope = CoroutineScope(Default + mindboxJob)
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
     private lateinit var lifecycleManager: LifecycleManager
 
@@ -352,7 +352,7 @@ object MindboxInternalCore {
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
         runCatching {
             val pushToken = withContext(mindboxScope.coroutineContext) {
-                pushServiceHandler.registerToken()
+                pushServiceHandler.registerToken(context, MindboxPreferences.pushToken)
             }
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
@@ -389,7 +389,7 @@ object MindboxInternalCore {
         runCatching {
 
             val pushToken = token
-                ?: withContext(mindboxScope.coroutineContext) { pushServiceHandler.registerToken() }
+                ?: withContext(mindboxScope.coroutineContext) { pushServiceHandler.registerToken(context, MindboxPreferences.pushToken) }
 
             val isTokenAvailable = !pushToken.isNullOrEmpty()
 
@@ -440,5 +440,19 @@ object MindboxInternalCore {
     }
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
+
+    fun updateToken(context: Context, token: String) {
+        runCatching {
+            if (token.trim().isNotEmpty()) {
+                initComponents(context)
+
+                if (!MindboxPreferences.isFirstInitialize) {
+                    mindboxScope.launch {
+                        updateAppInfo(context, token)
+                    }
+                }
+            }
+        }.logOnException()
+    }
 
 }
