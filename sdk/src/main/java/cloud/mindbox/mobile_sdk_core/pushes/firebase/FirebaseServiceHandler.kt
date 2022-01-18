@@ -3,11 +3,8 @@ package cloud.mindbox.mobile_sdk_core.pushes.firebase
 import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
-import cloud.mindbox.mobile_sdk_core.logOnException
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
-import cloud.mindbox.mobile_sdk_core.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk_core.returnOnException
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
@@ -16,11 +13,7 @@ import com.google.android.gms.security.ProviderInstaller
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.launch
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 object FirebaseServiceHandler : PushServiceHandler() {
 
@@ -40,7 +33,7 @@ object FirebaseServiceHandler : PushServiceHandler() {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
         val id = advertisingIdInfo.id
         if (advertisingIdInfo.isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
-            MindboxLogger.d(
+            MindboxLoggerInternal.d(
                 this,
                 "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random. " +
                         "isLimitAdTrackingEnabled=${advertisingIdInfo.isLimitAdTrackingEnabled}, " +
@@ -48,13 +41,13 @@ object FirebaseServiceHandler : PushServiceHandler() {
             )
             generateRandomUuid()
         } else {
-            MindboxLogger.d(
+            MindboxLoggerInternal.d(
                 this, "Received from AdvertisingIdClient: device uuid - $id"
             )
             id
         }
     }.returnOnException {
-        MindboxLogger.d(
+        MindboxLoggerInternal.d(
             this,
             "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random"
         )
@@ -67,13 +60,13 @@ object FirebaseServiceHandler : PushServiceHandler() {
             try {
                 ProviderInstaller.installIfNeeded(context)
             } catch (repairableException: GooglePlayServicesRepairableException) {
-                MindboxLogger.e(
+                MindboxLoggerInternal.e(
                     logParent,
                     "GooglePlayServices should be updated",
                     repairableException
                 )
             } catch (notAvailableException: GooglePlayServicesNotAvailableException) {
-                MindboxLogger.e(
+                MindboxLoggerInternal.e(
                     logParent,
                     "GooglePlayServices aren't available",
                     notAvailableException

@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk_core.pushes
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk_core.returnOnException
@@ -29,11 +29,11 @@ abstract class PushServiceHandler {
     fun registerToken(context: Context, previousToken: String?): String? = try {
         val token = getToken(context)
         if (!token.isNullOrEmpty() && token != previousToken) {
-            MindboxLogger.i(this, "Token gets or updates from $notificationProvider")
+            MindboxLoggerInternal.i(this, "Token gets or updates from $notificationProvider")
         }
         token
     } catch (e: Exception) {
-        MindboxLogger.w(this, "Fetching $notificationProvider registration token failed with exception $e")
+        MindboxLoggerInternal.w(this, "Fetching $notificationProvider registration token failed with exception $e")
         null
     }
 

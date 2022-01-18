@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk_core.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk_core.logOnException
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.models.Configuration
 import cloud.mindbox.mobile_sdk_core.models.Event
 import cloud.mindbox.mobile_sdk_core.repository.MindboxDatabase
@@ -31,9 +31,9 @@ internal object DbManager {
     fun addEventToQueue(context: Context, event: Event) = runCatching {
         try {
             mindboxDb.eventsDao().insert(event)
-            MindboxLogger.d(this, "Event ${event.eventType.operation} was added to queue")
+            MindboxLoggerInternal.d(this, "Event ${event.eventType.operation} was added to queue")
         } catch (exception: RuntimeException) {
-            MindboxLogger.e(
+            MindboxLoggerInternal.e(
                 this,
                 "Error writing object to the database: ${event.body}",
                 exception
@@ -57,24 +57,24 @@ internal object DbManager {
     fun removeEventFromQueue(event: Event) = runCatching {
         try {
             synchronized(this) { mindboxDb.eventsDao().delete(event) }
-            MindboxLogger.d(
+            MindboxLoggerInternal.d(
                 this,
                 "Event ${event.eventType};${event.transactionId} was deleted from queue"
             )
         } catch (exception: RuntimeException) {
-            MindboxLogger.e(this, "Error deleting item from database", exception)
+            MindboxLoggerInternal.e(this, "Error deleting item from database", exception)
         }
     }.logOnException()
 
     private fun removeEventsFromQueue(events: List<Event>) = runCatching {
         try {
             synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
-            MindboxLogger.d(
+            MindboxLoggerInternal.d(
                 this,
                 "${events.size} events were deleted from queue"
             )
         } catch (exception: RuntimeException) {
-            MindboxLogger.e(this, "Error deleting items from database", exception)
+            MindboxLoggerInternal.e(this, "Error deleting items from database", exception)
         }
     }.logOnException()
 
@@ -82,7 +82,7 @@ internal object DbManager {
         try {
             mindboxDb.configurationDao().insert(configuration)
         } catch (exception: RuntimeException) {
-            MindboxLogger.e(
+            MindboxLoggerInternal.e(
                 this,
                 "Error writing object configuration to the database",
                 exception
@@ -95,7 +95,7 @@ internal object DbManager {
             mindboxDb.configurationDao().get()
         } catch (exception: RuntimeException) {
             // invalid data in case of exception
-            MindboxLogger.e(this, "Error reading from database", exception)
+            MindboxLoggerInternal.e(this, "Error reading from database", exception)
             null
         }
     }.returnOnException { null }

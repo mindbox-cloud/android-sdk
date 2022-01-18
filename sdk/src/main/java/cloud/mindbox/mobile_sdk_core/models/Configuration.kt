@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk_core.models
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import cloud.mindbox.mobile_sdk_core.MindboxConfiguration
+import cloud.mindbox.mobile_sdk_core.MindboxConfigurationInternal
 import cloud.mindbox.mobile_sdk_core.managers.DbManager.CONFIGURATION_TABLE_NAME
 
 @Entity(tableName = CONFIGURATION_TABLE_NAME)
@@ -19,7 +19,7 @@ internal data class Configuration(
     val shouldCreateCustomer: Boolean
 ) {
 
-    internal constructor(mindboxConfiguration: MindboxConfiguration) : this(
+    internal constructor(mindboxConfiguration: MindboxConfigurationInternal) : this(
         previousInstallationId = mindboxConfiguration.previousInstallationId,
         previousDeviceUUID = mindboxConfiguration.previousDeviceUUID,
         endpointId = mindboxConfiguration.endpointId,

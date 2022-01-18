@@ -1,7 +1,7 @@
 # Keep model classes
 -keepclassmembers class cloud.mindbox.mobile_sdk_core.models** { *; }
 -keepclassmembers enum cloud.mindbox.mobile_sdk_core.models** { *; }
--keep class cloud.mindbox.mobile_sdk_core.MindboxConfiguration { *; }
+-keep class cloud.mindbox.mobile_sdk.MindboxConfiguration { *; }
 
 # Gson
 -keepattributes Signature
