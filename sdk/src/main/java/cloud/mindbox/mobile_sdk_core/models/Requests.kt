@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk_core.models
 
 import android.os.Build
 import cloud.mindbox.mobile_sdk_core.*
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import com.android.volley.NetworkResponse
 import com.android.volley.ParseError
 import com.android.volley.Response
@@ -107,14 +107,14 @@ internal data class MindboxRequest(
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         if (BuildConfig.DEBUG) {
             runCatching {
-                MindboxLogger.e(
+                MindboxLoggerInternal.e(
                     this,
                     "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; "
                 )
                 try {
 
                     volleyError.networkResponse?.allHeaders?.asIterable()?.forEach { header ->
-                        MindboxLogger.d(this, "${header.name}: ${header.value}")
+                        MindboxLoggerInternal.d(this, "${header.name}: ${header.value}")
                     }
 
                     val json = String(
@@ -142,10 +142,10 @@ internal data class MindboxRequest(
     private fun logResponse(response: NetworkResponse?) {
         if (BuildConfig.DEBUG) {
             runCatching {
-                MindboxLogger.d(this, "<--- ${response?.statusCode} $fullUrl")
+                MindboxLoggerInternal.d(this, "<--- ${response?.statusCode} $fullUrl")
 
                 response?.allHeaders?.asIterable()?.forEach { header ->
-                    MindboxLogger.d(this, "${header.name}: ${header.value}")
+                    MindboxLoggerInternal.d(this, "${header.name}: ${header.value}")
                 }
             }.returnOnException { }
         }
@@ -154,22 +154,22 @@ internal data class MindboxRequest(
     private fun logBodyResponse(json: String?) {
         if (BuildConfig.DEBUG) {
             runCatching {
-                MindboxLogger.d(this, "$json")
+                MindboxLoggerInternal.d(this, "$json")
             }.logOnException()
         }
     }
 
     private fun logError(e: Exception) {
         runCatching {
-            MindboxLogger.d(this, e.message ?: "Empty message")
-            MindboxLogger.d(this, e.stackTraceToString())
+            MindboxLoggerInternal.d(this, e.message ?: "Empty message")
+            MindboxLoggerInternal.d(this, e.stackTraceToString())
         }.logOnException()
     }
 
     private fun logEndResponse() {
         if (BuildConfig.DEBUG) {
             runCatching {
-                MindboxLogger.d(this, "<--- End of response")
+                MindboxLoggerInternal.d(this, "<--- End of response")
             }.logOnException()
         }
     }

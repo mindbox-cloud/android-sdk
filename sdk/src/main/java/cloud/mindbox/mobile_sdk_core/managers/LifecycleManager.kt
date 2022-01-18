@@ -9,7 +9,7 @@ import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk_core.logOnException
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.models.DIRECT
 import cloud.mindbox.mobile_sdk_core.models.LINK
 import cloud.mindbox.mobile_sdk_core.models.PUSH
@@ -129,7 +129,7 @@ internal class LifecycleManager(
             onTrackVisitReady.invoke(source, requestUrl)
             startKeepAliveTimer()
 
-            MindboxLogger.d(this, "Track visit event with source $source and url $requestUrl")
+            MindboxLoggerInternal.d(this, "Track visit event with source $source and url $requestUrl")
         }
     }.logOnException()
 

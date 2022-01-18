@@ -14,7 +14,7 @@ class DeviceUuidRepeatedUnitTest {
         @JvmStatic
         fun init() {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-            val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+            val configs = cloud.mindbox.mobile_sdk.MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
             MindboxDatabase.isTestMode = true
             MindboxInternalCore.init(appContext, configs)
         }

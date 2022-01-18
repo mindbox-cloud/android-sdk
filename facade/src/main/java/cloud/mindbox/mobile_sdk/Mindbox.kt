@@ -4,14 +4,17 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
-import cloud.mindbox.mobile_sdk_core.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.models.MindboxError
+import cloud.mindbox.mobile_sdk.models.operation.OperationBody
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.logger.Level
 import cloud.mindbox.mobile_sdk_core.managers.*
-import cloud.mindbox.mobile_sdk_core.models.*
-import cloud.mindbox.mobile_sdk_core.models.operation.request.OperationBodyRequestBase
-import cloud.mindbox.mobile_sdk_core.models.operation.response.OperationResponse
-import cloud.mindbox.mobile_sdk_core.models.operation.response.OperationResponseBase
+import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
+import cloud.mindbox.mobile_sdk_core.MindboxConfigurationInternal
+import cloud.mindbox.mobile_sdk.models.SdkValidation
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import com.google.firebase.messaging.RemoteMessage
 import java.util.*
 
@@ -32,6 +35,7 @@ object Mindbox {
     fun subscribeFmsToken(
         subscription: (String?) -> Unit
     ): String = MindboxInternalCore.subscribeFmsToken(subscription)
+
     /**
      * Removes FMS token subscription if it is no longer necessary
      *
@@ -137,7 +141,10 @@ object Mindbox {
     fun init(
         context: Context,
         configuration: MindboxConfiguration
-    ): Unit = MindboxInternalCore.init(context, configuration)
+    ) {
+        val validatedConfiguration = validateConfiguration(configuration)
+        MindboxInternalCore.init(context, validatedConfiguration)
+    }
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -163,7 +170,7 @@ object Mindbox {
      *
      * @param context current context is used
      * @param operationSystemName the name of asynchronous operation
-     * @param operationBody [T] which extends [OperationBody] and will be send as event json body of operation.
+     * @param operationBody [T] which extends [OperationBodyInternal] and will be send as event json body of operation.
      */
     @Deprecated("Used Mindbox.executeAsyncOperation with OperationBodyRequestBase")
     fun <T : OperationBody> executeAsyncOperation(
@@ -198,7 +205,8 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBodyJson: String
-    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
+    ): Unit =
+        MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
 
     /**
      * Creates and deliveries event synchronously with specified name and body.
@@ -216,11 +224,14 @@ object Mindbox {
         onSuccess: (OperationResponse) -> Unit,
         onError: (MindboxError) -> Unit
     ): Unit = MindboxInternalCore.executeSyncOperation(
-        context,
-        operationSystemName,
-        operationBody,
-        onSuccess,
-        onError
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBody = operationBody,
+        classOfV = OperationResponse::class.java,
+        onSuccess = onSuccess,
+        onError = {
+            onError(MindboxError.fromInternal(it))
+        }
     )
 
     /**
@@ -241,12 +252,14 @@ object Mindbox {
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit
     ): Unit = MindboxInternalCore.executeSyncOperation(
-        context,
-        operationSystemName,
-        operationBody,
-        classOfV,
-        onSuccess,
-        onError
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBody = operationBody,
+        classOfV = classOfV,
+        onSuccess = onSuccess,
+        onError = {
+            onError(MindboxError.fromInternal(it))
+        }
     )
 
     /**
@@ -265,11 +278,13 @@ object Mindbox {
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit
     ): Unit = MindboxInternalCore.executeSyncOperation(
-        context,
-        operationSystemName,
-        operationBodyJson,
-        onSuccess,
-        onError
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBodyJson = operationBodyJson,
+        onSuccess = onSuccess,
+        onError = {
+            onError(MindboxError.fromInternal(it))
+        }
     )
 
     /**
@@ -316,6 +331,31 @@ object Mindbox {
      * @param intent an intent sent by SDK and received in BroadcastReceiver
      * @return url associated with the push intent or null if there is none
      */
-    fun getUrlFromPushIntent(intent: Intent?): String? = MindboxInternalCore.getUrlFromPushIntent(intent)
+    fun getUrlFromPushIntent(intent: Intent?): String? =
+        MindboxInternalCore.getUrlFromPushIntent(intent)
+
+    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfigurationInternal {
+        val validationErrors = SdkValidation.validateConfiguration(
+            domain = configuration.domain,
+            endpointId = configuration.endpointId,
+            previousDeviceUUID = configuration.previousDeviceUUID,
+            previousInstallationId = configuration.previousInstallationId
+        )
+
+        return if (validationErrors.isEmpty()) {
+            configuration
+        } else {
+            if (validationErrors.any(SdkValidation.Error::critical)) {
+                throw InitializeMindboxException(validationErrors.toString())
+            }
+            MindboxLoggerInternal.e(this, "Invalid configuration parameters found: $validationErrors")
+            val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
+            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            configuration.copy(
+                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
+                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId
+            )
+        }
+    }
 
 }

@@ -17,7 +17,7 @@ class FmsTokenSingleUnitTest {
             result = fmsToken
         }
 
-        val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+        val configs = cloud.mindbox.mobile_sdk.MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
         MindboxDatabase.isTestMode = true
         MindboxInternalCore.init(appContext, configs)
@@ -40,7 +40,7 @@ class FmsTokenSingleUnitTest {
 
         Thread.sleep(3000)
 
-        val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
+        val configs = cloud.mindbox.mobile_sdk.MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
         MindboxDatabase.isTestMode = true
         MindboxInternalCore.init(appContext, configs)

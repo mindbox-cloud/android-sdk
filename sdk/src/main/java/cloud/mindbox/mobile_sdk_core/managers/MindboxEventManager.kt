@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk_core.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk_core.logOnException
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.models.*
-import cloud.mindbox.mobile_sdk_core.models.operation.response.OperationResponseBase
+import cloud.mindbox.mobile_sdk_core.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk_core.services.BackgroundWorkManager
 import com.google.gson.Gson
@@ -95,13 +95,13 @@ internal object MindboxEventManager {
         }.logOnException()
     }
 
-    fun <T, V : OperationResponseBase> syncOperation(
+    fun <T, V : OperationResponseBaseInternal> syncOperation(
         context: Context,
         name: String,
         body: T,
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxErrorInternal) -> Unit
     ) = runCatching {
         val configuration = checkConfiguration(onError) ?: return
 
@@ -126,7 +126,7 @@ internal object MindboxEventManager {
         name: String,
         bodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxErrorInternal) -> Unit
     ) = runCatching {
         val configuration = checkConfiguration(onError) ?: return
 
@@ -151,11 +151,11 @@ internal object MindboxEventManager {
         body = bodyJson
     )
 
-    private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
+    private fun checkConfiguration(onError: (MindboxErrorInternal) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()
         if (MindboxPreferences.isFirstInitialize || configuration == null) {
-            MindboxLogger.e(this, "Configuration was not initialized")
-            onError.invoke(MindboxError.Unknown())
+            MindboxLoggerInternal.e(this, "Configuration was not initialized")
+            onError.invoke(MindboxErrorInternal.Unknown())
             return null
         }
         return configuration

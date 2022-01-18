@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk_core.managers
 import android.content.Context
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.logOnException
 import cloud.mindbox.mobile_sdk_core.models.Configuration
 import cloud.mindbox.mobile_sdk_core.models.Event
@@ -19,7 +19,7 @@ internal class WorkerDelegate {
         context: Context,
         parent: Any
     ): ListenableWorker.Result {
-        MindboxLogger.d(parent, "Start working...")
+        MindboxLoggerInternal.d(parent, "Start working...")
 
         try {
             MindboxInternalCore.initComponents(context)
@@ -29,7 +29,7 @@ internal class WorkerDelegate {
             val configuration = DbManager.getConfigurations()
 
             if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                MindboxLogger.e(
+                MindboxLoggerInternal.e(
                     parent,
                     "Configuration was not initialized",
                 )
@@ -38,10 +38,10 @@ internal class WorkerDelegate {
 
             val events = DbManager.getFilteredEvents()
             return if (events.isNullOrEmpty()) {
-                MindboxLogger.d(parent, "Events list is empty")
+                MindboxLoggerInternal.d(parent, "Events list is empty")
                 ListenableWorker.Result.success()
             } else {
-                MindboxLogger.d(parent, "Will be sent ${events.size}")
+                MindboxLoggerInternal.d(parent, "Will be sent ${events.size}")
 
                 sendEvents(context, events, configuration, parent)
 
@@ -53,7 +53,7 @@ internal class WorkerDelegate {
                 }
             }
         } catch (e: Exception) {
-            MindboxLogger.e(parent, "Failed events work", e)
+            MindboxLoggerInternal.e(parent, "Failed events work", e)
             return ListenableWorker.Result.failure()
         }
     }
@@ -79,7 +79,7 @@ internal class WorkerDelegate {
                         handleSendResult(event)
                     }
 
-                    MindboxLogger.i(
+                    MindboxLoggerInternal.i(
                         parent,
                         "sent event index #$index id #${event.uid} from $eventsCount"
                     )
@@ -90,7 +90,7 @@ internal class WorkerDelegate {
                 try {
                     countDownLatch.await()
                 } catch (e: InterruptedException) {
-                    MindboxLogger.e(parent, "doWork -> sending was interrupted", e)
+                    MindboxLoggerInternal.e(parent, "doWork -> sending was interrupted", e)
                 }
             }
         }.logOnException()
@@ -98,7 +98,7 @@ internal class WorkerDelegate {
 
     fun onEndWork(parent: Any) {
         isWorkerStopped = true
-        MindboxLogger.d(parent, "onStopped work")
+        MindboxLoggerInternal.d(parent, "onStopped work")
     }
 
     private fun handleSendResult(
