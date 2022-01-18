@@ -1,7 +1,11 @@
-package cloud.mindbox.mobile_sdk_core
+package cloud.mindbox.mindbox_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk_core.repository.MindboxDatabase
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.models.isUuid
+import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
+import cloud.mindbox.mobile_sdk_core.clearPreferences
+import cloud.mindbox.mobile_sdk_core.setDatabaseTestMode
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -14,8 +18,8 @@ class FmsTokenRepeatedUnitTest {
         @JvmStatic
         fun init() {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-            val configs = cloud.mindbox.mobile_sdk.MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
-            MindboxDatabase.isTestMode = true
+            val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
+            setDatabaseTestMode(true)
             MindboxInternalCore.init(appContext, configs)
         }
 
