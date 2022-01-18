@@ -25,8 +25,6 @@ object FirebaseServiceHandler : PushServiceHandler() {
         FirebaseApp.initializeApp(context)
     }
 
-    override fun updateToken(context: Context, token: String) = MindboxInternalCore.updateToken(context, token)
-
     override fun getToken(context: Context): String? =Tasks.await(FirebaseMessaging.getInstance().token)
 
     override fun getAdsIdentification(context: Context): String = runCatching {

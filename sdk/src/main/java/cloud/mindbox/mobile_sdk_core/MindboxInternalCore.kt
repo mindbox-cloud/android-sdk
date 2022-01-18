@@ -64,7 +64,19 @@ object MindboxInternalCore {
         deviceUuidCallbacks.remove(subscriptionId)
     }
 
-    fun updateFmsToken(context: Context, token: String) = pushServiceHandler.updateToken(context, token)
+    fun updateFmsToken(context: Context, token: String) {
+        runCatching {
+            if (token.trim().isNotEmpty()) {
+                initComponents(context)
+
+                if (!MindboxPreferences.isFirstInitialize) {
+                    mindboxScope.launch {
+                        updateAppInfo(context, token)
+                    }
+                }
+            }
+        }.logOnException()
+    }
 
     fun onPushReceived(context: Context, uniqKey: String) {
         runCatching {
@@ -343,7 +355,7 @@ object MindboxInternalCore {
         }.logOnException()
     }
 
-    internal suspend fun updateAppInfo(context: Context, token: String? = null) {
+    private suspend fun updateAppInfo(context: Context, token: String? = null) {
         runCatching {
 
             val pushToken = token
@@ -398,19 +410,5 @@ object MindboxInternalCore {
     }
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
-
-    fun updateToken(context: Context, token: String) {
-        runCatching {
-            if (token.trim().isNotEmpty()) {
-                initComponents(context)
-
-                if (!MindboxPreferences.isFirstInitialize) {
-                    mindboxScope.launch {
-                        updateAppInfo(context, token)
-                    }
-                }
-            }
-        }.logOnException()
-    }
 
 }

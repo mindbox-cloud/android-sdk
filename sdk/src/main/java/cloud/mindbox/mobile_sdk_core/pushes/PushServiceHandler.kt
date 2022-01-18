@@ -20,8 +20,6 @@ abstract class PushServiceHandler {
 
     abstract fun getToken(context: Context): String?
 
-    abstract fun updateToken(context: Context, token: String)
-
     abstract fun getAdsIdentification(context: Context): String
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
