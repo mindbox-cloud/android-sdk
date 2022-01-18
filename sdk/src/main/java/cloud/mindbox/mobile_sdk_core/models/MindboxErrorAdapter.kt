@@ -8,19 +8,19 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
-class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
+class MindboxErrorAdapter : TypeAdapter<MindboxErrorInternal?>() {
 
     private val gson by lazy { Gson() }
 
     private val errorJsonNames = mapOf(
-        MindboxError.Validation::class to "MindboxError",
-        MindboxError.Protocol::class to "MindboxError",
-        MindboxError.InternalServer::class to "MindboxError",
-        MindboxError.UnknownServer::class to "NetworkError",
-        MindboxError.Unknown::class to "InternalError"
+        MindboxErrorInternal.Validation::class to "MindboxError",
+        MindboxErrorInternal.Protocol::class to "MindboxError",
+        MindboxErrorInternal.InternalServer::class to "MindboxError",
+        MindboxErrorInternal.UnknownServer::class to "NetworkError",
+        MindboxErrorInternal.Unknown::class to "InternalError"
     )
 
-    override fun write(out: JsonWriter?, value: MindboxError?) {
+    override fun write(out: JsonWriter?, value: MindboxErrorInternal?) {
         if (value == null) {
             out?.nullValue()
         } else {
@@ -33,26 +33,26 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
         }
     }
 
-    override fun read(`in`: JsonReader?): MindboxError? = `in`?.let { reader ->
+    override fun read(`in`: JsonReader?): MindboxErrorInternal? = `in`?.let { reader ->
         runCatching {
             reader.beginObject()
             val error = when (reader.nextString()) {
                 "MindboxError" -> {
                     val statusCode = reader.nextInt()
                     when (statusCode) {
-                        200 -> MindboxError.Validation(
+                        200 -> MindboxErrorInternal.Validation(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
-                            validationMessages = gson.fromJson(reader, object : TypeToken<List<ValidationMessage>>() {}.type)
+                            validationMessages = gson.fromJson(reader, object : TypeToken<List<ValidationMessageInternal>>() {}.type)
                         )
-                        400, 401, 403, 429 -> MindboxError.Protocol(
+                        400, 401, 403, 429 -> MindboxErrorInternal.Protocol(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
                             errorMessage = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                             errorId = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                             httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null,
                         )
-                        500, 503 -> MindboxError.InternalServer(
+                        500, 503 -> MindboxErrorInternal.InternalServer(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
                             errorMessage = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
@@ -62,14 +62,14 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
                         else -> null
                     }
                 }
-                "NetworkError" -> MindboxError.UnknownServer(
+                "NetworkError" -> MindboxErrorInternal.UnknownServer(
                     statusCode = reader.nextInt(),
                     status = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorMessage = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorId = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null
                 )
-                "InternalError" -> MindboxError.Unknown().apply { reader.skipValue() }
+                "InternalError" -> MindboxErrorInternal.Unknown().apply { reader.skipValue() }
                 else -> null
             }
             reader.endObject()
@@ -77,27 +77,27 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
         }.returnOnException { null }
     }
 
-    private fun JsonWriter.writeErrorObject(value: MindboxError) = beginObject().apply {
+    private fun JsonWriter.writeErrorObject(value: MindboxErrorInternal) = beginObject().apply {
         when (value) {
-            is MindboxError.Validation -> name("statusCode").value(value.statusCode)
+            is MindboxErrorInternal.Validation -> name("statusCode").value(value.statusCode)
                 .name("status").value(value.status)
                 .name("validationMessages").jsonValue(gson.toJson(value.validationMessages))
-            is MindboxError.Protocol -> name("statusCode").value(value.statusCode)
+            is MindboxErrorInternal.Protocol -> name("statusCode").value(value.statusCode)
                 .name("status").value(value.status)
                 .name("errorMessage").value(value.errorMessage)
                 .name("errorId").value(value.errorId)
                 .name("httpStatusCode").value(value.httpStatusCode)
-            is MindboxError.InternalServer -> name("statusCode").value(value.statusCode)
+            is MindboxErrorInternal.InternalServer -> name("statusCode").value(value.statusCode)
                 .name("status").value(value.status)
                 .name("errorMessage").value(value.errorMessage)
                 .name("errorId").value(value.errorId)
                 .name("httpStatusCode").value(value.httpStatusCode)
-            is MindboxError.UnknownServer -> name("statusCode").value(value.statusCode)
+            is MindboxErrorInternal.UnknownServer -> name("statusCode").value(value.statusCode)
                 .name("status").value(value.status)
                 .name("errorMessage").value(value.errorMessage)
                 .name("errorId").value(value.errorId)
                 .name("httpStatusCode").value(value.httpStatusCode)
-            is MindboxError.Unknown -> name("errorName").value(value.throwable?.javaClass?.canonicalName)
+            is MindboxErrorInternal.Unknown -> name("errorName").value(value.throwable?.javaClass?.canonicalName)
                 .name("errorMessage").value(value.throwable?.localizedMessage)
         }
     }

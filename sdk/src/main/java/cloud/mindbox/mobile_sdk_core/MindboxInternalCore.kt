@@ -8,12 +8,11 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk_core.logger.Level
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.managers.*
 import cloud.mindbox.mobile_sdk_core.models.*
-import cloud.mindbox.mobile_sdk_core.models.operation.request.OperationBodyRequestBase
-import cloud.mindbox.mobile_sdk_core.models.operation.response.OperationResponse
-import cloud.mindbox.mobile_sdk_core.models.operation.response.OperationResponseBase
+import cloud.mindbox.mobile_sdk_core.models.operation.OperationBodyRequestBaseInternal
+import cloud.mindbox.mobile_sdk_core.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk_core.pushes.firebase.FirebaseRemoteMessageTransformer
@@ -104,19 +103,16 @@ object MindboxInternalCore {
             ?: false
     }.returnOnException { false }
 
-
     fun init(
         context: Context,
-        configuration: MindboxConfiguration
+        configuration: MindboxConfigurationInternal
     ) {
         runCatching {
             initComponents(context)
 
-            val validatedConfiguration = validateConfiguration(configuration)
-
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
-                    firstInitialization(context, validatedConfiguration)
+                    firstInitialization(context, configuration)
                     val isTrackVisitNotSent = MindboxInternalCore::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
@@ -136,7 +132,7 @@ object MindboxInternalCore {
                     val activity = context as? Activity
                     val isApplicationResumed = applicationLifecycle.currentState == RESUMED
                     if (isApplicationResumed && activity == null) {
-                        MindboxLogger.e(
+                        MindboxLoggerInternal.e(
                             this@MindboxInternalCore,
                             "Incorrect context type for calling init in this place"
                         )
@@ -171,17 +167,17 @@ object MindboxInternalCore {
     }.logOnException()
 
     fun setLogLevel(level: Level) {
-        MindboxLogger.level = level
+        MindboxLoggerInternal.level = level
     }
 
     @Deprecated("Used Mindbox.executeAsyncOperation with OperationBodyRequestBase")
-    fun <T : OperationBody> executeAsyncOperation(
+    fun <T : OperationBodyInternal> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T
     ) = asyncOperation(context, operationSystemName, operationBody)
 
-    fun <T : OperationBodyRequestBase> executeAsyncOperation(
+    fun <T : OperationBodyRequestBaseInternal> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T
@@ -193,28 +189,13 @@ object MindboxInternalCore {
         operationBodyJson: String
     ) = asyncOperation(context, operationSystemName, operationBodyJson)
 
-    fun <T : OperationBodyRequestBase> executeSyncOperation(
-        context: Context,
-        operationSystemName: String,
-        operationBody: T,
-        onSuccess: (OperationResponse) -> Unit,
-        onError: (MindboxError) -> Unit
-    ) = executeSyncOperation(
-        context = context,
-        operationSystemName = operationSystemName,
-        operationBody = operationBody,
-        classOfV = OperationResponse::class.java,
-        onSuccess = onSuccess,
-        onError = onError
-    )
-
-    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
+    fun <T : OperationBodyRequestBaseInternal, V : OperationResponseBaseInternal> executeSyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxErrorInternal) -> Unit
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
@@ -235,7 +216,7 @@ object MindboxInternalCore {
         operationSystemName: String,
         operationBodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxErrorInternal) -> Unit
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
@@ -283,30 +264,6 @@ object MindboxInternalCore {
         pushServiceHandler.initService(context)
     }
 
-    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfiguration {
-        val validationErrors = SdkValidation.validateConfiguration(
-            domain = configuration.domain,
-            endpointId = configuration.endpointId,
-            previousDeviceUUID = configuration.previousDeviceUUID,
-            previousInstallationId = configuration.previousInstallationId
-        )
-
-        return if (validationErrors.isEmpty()) {
-            configuration
-        } else {
-            if (validationErrors.any(SdkValidation.Error::critical)) {
-                throw InitializeMindboxException(validationErrors.toString())
-            }
-            MindboxLogger.e(this, "Invalid configuration parameters found: $validationErrors")
-            val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
-            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
-            configuration.copy(
-                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
-                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId
-            )
-        }
-    }
-
     private fun <T> asyncOperation(
         context: Context,
         operationSystemName: String,
@@ -336,7 +293,7 @@ object MindboxInternalCore {
         if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
             initComponents(context)
         } else {
-            MindboxLogger.w(
+            MindboxLoggerInternal.w(
                 this,
                 "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
             )
@@ -349,7 +306,7 @@ object MindboxInternalCore {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: MindboxConfiguration) {
+    private suspend fun firstInitialization(context: Context, configuration: MindboxConfigurationInternal) {
         runCatching {
             val pushToken = withContext(mindboxScope.coroutineContext) {
                 pushServiceHandler.registerToken(context, MindboxPreferences.pushToken)
