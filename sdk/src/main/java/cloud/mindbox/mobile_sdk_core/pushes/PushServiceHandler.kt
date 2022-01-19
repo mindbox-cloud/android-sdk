@@ -2,17 +2,8 @@ package cloud.mindbox.mobile_sdk_core.pushes
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
-import cloud.mindbox.mobile_sdk_core.managers.SharedPreferencesManager
-import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk_core.returnOnException
-import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 abstract class PushServiceHandler {
-
-    private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
 
     abstract val notificationProvider: String
 
@@ -20,7 +11,7 @@ abstract class PushServiceHandler {
 
     abstract fun getToken(context: Context): String?
 
-    abstract fun getAdsIdentification(context: Context): String
+    abstract fun getAdsIdentification(context: Context): String?
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
@@ -35,33 +26,10 @@ abstract class PushServiceHandler {
         null
     }
 
-    fun subscribeToken(subscription: (String?) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
 
-        if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
-            subscription.invoke(MindboxPreferences.pushToken)
-        } else {
-            tokenCallbacks[subscriptionId] = subscription
-        }
 
-        return subscriptionId
-    }
 
-    fun disposeTokenSubscription(subscriptionId: String) {
-        tokenCallbacks.remove(subscriptionId)
-    }
 
-    fun getTokenSaveDate(): String = runCatching {
-        return MindboxPreferences.tokenSaveDate
-    }.returnOnException { "" }
 
-    fun deliverToken(token: String?) {
-        Executors.newSingleThreadScheduledExecutor().schedule({
-            tokenCallbacks.keys.asIterable().forEach { key ->
-                tokenCallbacks[key]?.invoke(token)
-                tokenCallbacks.remove(key)
-            }
-        }, 1, TimeUnit.SECONDS)
-    }
 
 }
