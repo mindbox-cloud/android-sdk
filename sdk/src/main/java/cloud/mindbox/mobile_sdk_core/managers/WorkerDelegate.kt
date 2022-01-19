@@ -22,9 +22,9 @@ internal class WorkerDelegate {
         MindboxLoggerInternal.d(parent, "Start working...")
 
         try {
-            MindboxInternalCore.initComponents(context)
+            MindboxInternalCore.initComponents(context, MindboxInternalCore.pushServiceHandler)
 
-            MindboxInternalCore.pushServiceHandler.ensureVersionCompatibility(context, parent)
+            MindboxInternalCore.pushServiceHandler?.ensureVersionCompatibility(context, parent)
 
             val configuration = DbManager.getConfigurations()
 
