@@ -25,7 +25,7 @@ object FirebaseServiceHandler : PushServiceHandler() {
         FirebaseApp.initializeApp(context)
     }
 
-    override fun getToken(context: Context): String? =Tasks.await(FirebaseMessaging.getInstance().token)
+    override fun getToken(context: Context): String? = Tasks.await(FirebaseMessaging.getInstance().token)
 
     override fun getAdsIdentification(context: Context): String = runCatching {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
