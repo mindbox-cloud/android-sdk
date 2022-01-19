@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk_core.MindboxConfigurationInternal
 import cloud.mindbox.mobile_sdk.models.SdkValidation
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
+import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
 import com.google.firebase.messaging.RemoteMessage
 import java.util.*
 
@@ -32,23 +33,23 @@ object Mindbox {
      * @return String identifier of subscription
      * @see disposeFmsTokenSubscription
      */
-    fun subscribeFmsToken(
+    fun subscribePushToken(
         subscription: (String?) -> Unit
-    ): String = MindboxInternalCore.subscribeFmsToken(subscription)
+    ): String = MindboxInternalCore.subscribePushToken(subscription)
 
     /**
      * Removes FMS token subscription if it is no longer necessary
      *
      * @param subscriptionId - identifier of the subscription to remove
      */
-    fun disposeFmsTokenSubscription(
+    fun disposePushTokenSubscription(
         subscriptionId: String
-    ): Unit = MindboxInternalCore.disposeFmsTokenSubscription(subscriptionId)
+    ): Unit = MindboxInternalCore.disposePushTokenSubscription(subscriptionId)
 
     /**
      * Returns date of FMS token saving
      */
-    fun getFmsTokenSaveDate(): String = MindboxInternalCore.getFmsTokenSaveDate()
+    fun getPushTokenSaveDate(): String = MindboxInternalCore.getPushTokenSaveDate()
 
     /**
      * Returns SDK version
@@ -140,10 +141,11 @@ object Mindbox {
      */
     fun init(
         context: Context,
-        configuration: MindboxConfiguration
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>
     ) {
         val validatedConfiguration = validateConfiguration(configuration)
-        MindboxInternalCore.init(context, validatedConfiguration)
+        MindboxInternalCore.init(context, validatedConfiguration, pushServices)
     }
 
     /**
