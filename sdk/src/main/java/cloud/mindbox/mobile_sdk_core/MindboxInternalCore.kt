@@ -89,7 +89,7 @@ object MindboxInternalCore {
         deviceUuidCallbacks.remove(subscriptionId)
     }
 
-    fun updateFmsToken(context: Context, token: String) {
+    fun updatePushToken(context: Context, token: String) {
         runCatching {
             if (token.trim().isNotEmpty()) {
                 initComponents(context, pushServiceHandler)
@@ -143,7 +143,7 @@ object MindboxInternalCore {
     fun init(
         context: Context,
         configuration: MindboxConfigurationInternal,
-        pushServices: List<MindboxPushService>
+        pushServices: List<MindboxPushService>,
     ) {
         runCatching {
             initComponents(context, pushServices.first().getServiceHandler())
@@ -212,19 +212,19 @@ object MindboxInternalCore {
     fun <T : OperationBodyInternal> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: T
+        operationBody: T,
     ) = asyncOperation(context, operationSystemName, operationBody)
 
     fun <T : OperationBodyRequestBaseInternal> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: T
+        operationBody: T,
     ) = asyncOperation(context, operationSystemName, operationBody)
 
     fun executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBodyJson: String
+        operationBodyJson: String,
     ) = asyncOperation(context, operationSystemName, operationBodyJson)
 
     fun <T : OperationBodyRequestBaseInternal, V : OperationResponseBaseInternal> executeSyncOperation(
@@ -233,7 +233,7 @@ object MindboxInternalCore {
         operationBody: T,
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
-        onError: (MindboxErrorInternal) -> Unit
+        onError: (MindboxErrorInternal) -> Unit,
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
@@ -243,7 +243,7 @@ object MindboxInternalCore {
                     body = operationBody,
                     classOfV = classOfV,
                     onSuccess = onSuccess,
-                    onError = onError
+                    onError = onError,
                 )
             }
         }
@@ -254,7 +254,7 @@ object MindboxInternalCore {
         operationSystemName: String,
         operationBodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxErrorInternal) -> Unit
+        onError: (MindboxErrorInternal) -> Unit,
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
@@ -263,7 +263,7 @@ object MindboxInternalCore {
                     name = operationSystemName,
                     bodyJson = operationBodyJson,
                     onSuccess = onSuccess,
-                    onError = onError
+                    onError = onError,
                 )
             }
         }
@@ -277,7 +277,7 @@ object MindboxInternalCore {
         @DrawableRes pushSmallIcon: Int,
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
-        activities: Map<String, Class<out Activity>>? = null
+        activities: Map<String, Class<out Activity>>? = null,
     ): Boolean {
         val remoteMessage = FirebaseRemoteMessageTransformer.transform(message) ?: return false
         return PushNotificationManager.handleRemoteMessage(
@@ -288,7 +288,7 @@ object MindboxInternalCore {
             pushSmallIcon = pushSmallIcon,
             channelDescription = channelDescription,
             activities = activities,
-            defaultActivity = defaultActivity
+            defaultActivity = defaultActivity,
         )
     }
 
@@ -298,7 +298,7 @@ object MindboxInternalCore {
 
     internal fun initComponents(
         context: Context,
-        pushServiceHandler: PushServiceHandler?
+        pushServiceHandler: PushServiceHandler?,
     ) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
@@ -309,7 +309,7 @@ object MindboxInternalCore {
     private fun <T> asyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: T
+        operationBody: T,
     ) = runCatching {
         asyncOperation(
             context,
@@ -321,7 +321,7 @@ object MindboxInternalCore {
     private fun asyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBodyJson: String
+        operationBodyJson: String,
     ) {
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
@@ -330,7 +330,7 @@ object MindboxInternalCore {
 
     private fun validateOperationAndInitializeComponents(
         context: Context,
-        operationSystemName: String
+        operationSystemName: String,
     ) = runCatching {
         if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
             initComponents(context, pushServiceHandler)
@@ -353,7 +353,11 @@ object MindboxInternalCore {
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfigurationInternal) {
         runCatching {
             val pushToken = withContext(mindboxScope.coroutineContext) {
-                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
+                pushServiceHandler?.registerToken(
+                    mindboxScope,
+                    context,
+                    MindboxPreferences.pushToken,
+                )
             }
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
@@ -371,7 +375,7 @@ object MindboxInternalCore {
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
                 instanceId = instanceId,
-                notificationProvider = pushServiceHandler.notificationProvider
+                notificationProvider = pushServiceHandler?.notificationProvider ?: "",
             )
 
             MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
@@ -391,20 +395,26 @@ object MindboxInternalCore {
         runCatching {
 
             val pushToken = token
-                ?: withContext(mindboxScope.coroutineContext) { pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken) }
+                ?: withContext(mindboxScope.coroutineContext) {
+                    pushServiceHandler?.registerToken(
+                        mindboxScope,
+                        context,
+                        MindboxPreferences.pushToken,
+                    )
+                }
 
             val isTokenAvailable = !pushToken.isNullOrEmpty()
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
-            if ((isTokenAvailable && pushToken != MindboxPreferences.pushToken) || isNotificationEnabled != MindboxPreferences.isNotificationEnabled) {
+            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
 
                 val initData = UpdateData(
                     token = pushToken ?: MindboxPreferences.pushToken ?: "",
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled,
                     instanceId = MindboxPreferences.instanceId,
-                    version = MindboxPreferences.infoUpdatedVersion
+                    version = MindboxPreferences.infoUpdatedVersion,
                 )
 
                 MindboxEventManager.appInfoUpdate(context, initData)
@@ -415,10 +425,17 @@ object MindboxInternalCore {
         }.logOnException()
     }
 
+    private fun isUpdateInfoRequired(
+        isTokenAvailable: Boolean,
+        pushToken: String?,
+        isNotificationEnabled: Boolean,
+    ) = isTokenAvailable && pushToken != MindboxPreferences.pushToken
+            || isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+
     private fun sendTrackVisitEvent(
         context: Context,
         @TrackVisitSource source: String? = null,
-        requestUrl: String? = null
+        requestUrl: String? = null,
     ) = runCatching {
         val applicationContext = context.applicationContext
         val endpointId = DbManager.getConfigurations()?.endpointId ?: return
@@ -426,7 +443,7 @@ object MindboxInternalCore {
             ianaTimeZone = TimeZone.getDefault().id,
             endpointId = endpointId,
             source = source,
-            requestUrl = requestUrl
+            requestUrl = requestUrl,
         )
 
         MindboxEventManager.appStarted(applicationContext, trackVisitData)

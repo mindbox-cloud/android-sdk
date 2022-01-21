@@ -34,7 +34,7 @@ object Mindbox {
      * @see disposeFmsTokenSubscription
      */
     fun subscribePushToken(
-        subscription: (String?) -> Unit
+        subscription: (String?) -> Unit,
     ): String = MindboxInternalCore.subscribePushToken(subscription)
 
     /**
@@ -43,7 +43,7 @@ object Mindbox {
      * @param subscriptionId - identifier of the subscription to remove
      */
     fun disposePushTokenSubscription(
-        subscriptionId: String
+        subscriptionId: String,
     ): Unit = MindboxInternalCore.disposePushTokenSubscription(subscriptionId)
 
     /**
@@ -64,7 +64,7 @@ object Mindbox {
      * @see disposeDeviceUuidSubscription
      */
     fun subscribeDeviceUuid(
-        subscription: (String) -> Unit
+        subscription: (String) -> Unit,
     ): String = MindboxInternalCore.subscribeDeviceUuid(subscription)
 
     /**
@@ -83,10 +83,10 @@ object Mindbox {
      * @param context used to initialize the main tools
      * @param token - token of FMS
      */
-    fun updateFmsToken(
+    fun updatePushToken(
         context: Context,
-        token: String
-    ): Unit = MindboxInternalCore.updateFmsToken(context, token)
+        token: String,
+    ): Unit = MindboxInternalCore.updatePushToken(context, token)
 
     /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
@@ -97,7 +97,7 @@ object Mindbox {
      */
     fun onPushReceived(
         context: Context,
-        uniqKey: String
+        uniqKey: String,
     ): Unit = MindboxInternalCore.onPushReceived(context, uniqKey)
 
     /**
@@ -111,7 +111,7 @@ object Mindbox {
     fun onPushClicked(
         context: Context,
         uniqKey: String,
-        buttonUniqKey: String?
+        buttonUniqKey: String?,
     ): Unit = onPushClicked(context, uniqKey, buttonUniqKey)
 
     /**
@@ -128,7 +128,7 @@ object Mindbox {
      */
     fun onPushClicked(
         context: Context,
-        intent: Intent
+        intent: Intent,
     ): Boolean = MindboxInternalCore.onPushClicked(context, intent)
 
 
@@ -142,7 +142,7 @@ object Mindbox {
     fun init(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>
+        pushServices: List<MindboxPushService>,
     ) {
         val validatedConfiguration = validateConfiguration(configuration)
         MindboxInternalCore.init(context, validatedConfiguration, pushServices)
@@ -178,8 +178,12 @@ object Mindbox {
     fun <T : OperationBody> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: T
-    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBody)
+        operationBody: T,
+    ): Unit = MindboxInternalCore.executeAsyncOperation(
+        context,
+        operationSystemName,
+        operationBody,
+    )
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -192,8 +196,12 @@ object Mindbox {
     fun <T : OperationBodyRequestBase> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBody: T
-    ): Unit = MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBody)
+        operationBody: T,
+    ): Unit = MindboxInternalCore.executeAsyncOperation(
+        context,
+        operationSystemName,
+        operationBody,
+    )
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -206,7 +214,7 @@ object Mindbox {
     fun executeAsyncOperation(
         context: Context,
         operationSystemName: String,
-        operationBodyJson: String
+        operationBodyJson: String,
     ): Unit =
         MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
 
@@ -233,7 +241,7 @@ object Mindbox {
         onSuccess = onSuccess,
         onError = {
             onError(MindboxError.fromInternal(it))
-        }
+        },
     )
 
     /**
@@ -252,7 +260,7 @@ object Mindbox {
         operationBody: T,
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ): Unit = MindboxInternalCore.executeSyncOperation(
         context = context,
         operationSystemName = operationSystemName,
@@ -261,7 +269,7 @@ object Mindbox {
         onSuccess = onSuccess,
         onError = {
             onError(MindboxError.fromInternal(it))
-        }
+        },
     )
 
     /**
@@ -278,7 +286,7 @@ object Mindbox {
         operationSystemName: String,
         operationBodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ): Unit = MindboxInternalCore.executeSyncOperation(
         context = context,
         operationSystemName = operationSystemName,
@@ -286,7 +294,7 @@ object Mindbox {
         onSuccess = onSuccess,
         onError = {
             onError(MindboxError.fromInternal(it))
-        }
+        },
     )
 
     /**
@@ -315,7 +323,7 @@ object Mindbox {
         @DrawableRes pushSmallIcon: Int,
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
-        activities: Map<String, Class<out Activity>>? = null
+        activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = MindboxInternalCore.handleRemoteMessage(
         context,
         message,
@@ -324,7 +332,7 @@ object Mindbox {
         pushSmallIcon,
         defaultActivity,
         channelDescription,
-        activities
+        activities,
     )
 
     /**
@@ -336,12 +344,14 @@ object Mindbox {
     fun getUrlFromPushIntent(intent: Intent?): String? =
         MindboxInternalCore.getUrlFromPushIntent(intent)
 
-    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfigurationInternal {
+    private fun validateConfiguration(
+        configuration: MindboxConfiguration,
+    ): MindboxConfigurationInternal {
         val validationErrors = SdkValidation.validateConfiguration(
             domain = configuration.domain,
             endpointId = configuration.endpointId,
             previousDeviceUUID = configuration.previousDeviceUUID,
-            previousInstallationId = configuration.previousInstallationId
+            previousInstallationId = configuration.previousInstallationId,
         )
 
         return if (validationErrors.isEmpty()) {
@@ -350,12 +360,25 @@ object Mindbox {
             if (validationErrors.any(SdkValidation.Error::critical)) {
                 throw InitializeMindboxException(validationErrors.toString())
             }
-            MindboxLoggerInternal.e(this, "Invalid configuration parameters found: $validationErrors")
+            MindboxLoggerInternal.e(
+                this,
+                "Invalid configuration parameters found: $validationErrors",
+            )
             val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
-            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            val isInstallationIdError = validationErrors.contains(
+                SdkValidation.Error.INVALID_INSTALLATION_ID
+            )
             configuration.copy(
-                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
-                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId
+                previousDeviceUUID = if (isDeviceIdError) {
+                    ""
+                } else {
+                    configuration.previousDeviceUUID
+                },
+                previousInstallationId = if (isInstallationIdError) {
+                    ""
+                } else {
+                    configuration.previousInstallationId
+                },
             )
         }
     }

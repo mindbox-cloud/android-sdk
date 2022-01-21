@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk_core.pushes
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
+import kotlinx.coroutines.CoroutineScope
 
 abstract class PushServiceHandler {
 
@@ -9,14 +10,18 @@ abstract class PushServiceHandler {
 
     abstract fun initService(context: Context)
 
-    abstract fun getToken(context: Context): String?
-
     abstract fun getAdsIdentification(context: Context): String?
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
-    fun registerToken(context: Context, previousToken: String?): String? = try {
-        val token = getToken(context)
+    protected abstract suspend fun getToken(scope: CoroutineScope, context: Context): String?
+
+    suspend fun registerToken(
+        scope: CoroutineScope,
+        context: Context,
+        previousToken: String?,
+    ): String? = try {
+        val token = getToken(scope, context)
         if (!token.isNullOrEmpty() && token != previousToken) {
             MindboxLoggerInternal.i(this, "Token gets or updates from $notificationProvider")
         }
