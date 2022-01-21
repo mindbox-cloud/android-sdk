@@ -415,6 +415,7 @@ object MindboxInternalCore {
                     isNotificationsEnabled = isNotificationEnabled,
                     instanceId = MindboxPreferences.instanceId,
                     version = MindboxPreferences.infoUpdatedVersion,
+                    notificationProvider = pushServiceHandler?.notificationProvider ?: "",
                 )
 
                 MindboxEventManager.appInfoUpdate(context, initData)
