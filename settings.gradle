@@ -1,4 +1,5 @@
 include ':sdk'
+include ':facade'
+include ':mindbox-hms'
 include ':app'
 rootProject.name = "AndroidSdk"
-include ':facade'
