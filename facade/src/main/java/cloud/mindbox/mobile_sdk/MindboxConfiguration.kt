@@ -16,7 +16,7 @@ class MindboxConfiguration private constructor(
     versionName: String,
     versionCode: String,
     subscribeCustomerIfCreated: Boolean,
-    shouldCreateCustomer: Boolean
+    shouldCreateCustomer: Boolean,
 ) : MindboxConfigurationInternal(
     previousInstallationId,
     previousDeviceUUID,
@@ -26,7 +26,7 @@ class MindboxConfiguration private constructor(
     versionName,
     versionCode,
     subscribeCustomerIfCreated,
-    shouldCreateCustomer
+    shouldCreateCustomer,
 ) {
 
     constructor(builder: Builder) : this(
@@ -38,7 +38,7 @@ class MindboxConfiguration private constructor(
         versionName = builder.versionName,
         versionCode = builder.versionCode,
         subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
-        shouldCreateCustomer = builder.shouldCreateCustomer
+        shouldCreateCustomer = builder.shouldCreateCustomer,
     )
 
     /**
@@ -47,15 +47,18 @@ class MindboxConfiguration private constructor(
     class Builder(
         private val context: Context,
         val domain: String,
-        val endpointId: String
+        val endpointId: String,
         ) : MindboxConfigurationInternal.BuilderInternal() {
 
         internal var previousInstallationId: String = ""
         internal var previousDeviceUUID: String = ""
         internal var subscribeCustomerIfCreated: Boolean = false
-        internal var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
-        internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
-        internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
+        internal val packageName: String
+            get() = super.packageNameInternal
+        internal val versionName: String
+            get() = super.versionNameInternal
+        internal val versionCode: String
+            get() = super.versionCodeInternal
         internal var shouldCreateCustomer: Boolean = true
 
         companion object {
