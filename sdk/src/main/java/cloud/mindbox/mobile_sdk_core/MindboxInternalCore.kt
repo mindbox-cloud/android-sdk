@@ -371,7 +371,7 @@ object MindboxInternalCore {
                 isNotificationsEnabled = isNotificationEnabled,
                 subscribe = configuration.subscribeCustomerIfCreated,
                 instanceId = instanceId,
-                notificationProvider = pushServiceHandler.notificationProvider
+                notificationProvider = pushServiceHandler?.notificationProvider ?: ""
             )
 
             MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
@@ -404,7 +404,8 @@ object MindboxInternalCore {
                     isTokenAvailable = isTokenAvailable,
                     isNotificationsEnabled = isNotificationEnabled,
                     instanceId = MindboxPreferences.instanceId,
-                    version = MindboxPreferences.infoUpdatedVersion
+                    version = MindboxPreferences.infoUpdatedVersion,
+                    notificationProvider = pushServiceHandler?.notificationProvider ?: ""
                 )
 
                 MindboxEventManager.appInfoUpdate(context, initData)
