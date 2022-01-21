@@ -1,4 +1,4 @@
 include ':sdk'
+include ':facade'
 include ':app'
 rootProject.name = "AndroidSdk"
-include ':facade'
