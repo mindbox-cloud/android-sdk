@@ -366,7 +366,7 @@ object Mindbox {
             )
             val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
             val isInstallationIdError = validationErrors.contains(
-                SdkValidation.Error.INVALID_INSTALLATION_ID
+                SdkValidation.Error.INVALID_INSTALLATION_ID,
             )
             configuration.copy(
                 previousDeviceUUID = if (isDeviceIdError) {
