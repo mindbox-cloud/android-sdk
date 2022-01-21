@@ -35,6 +35,6 @@ android {
 dependencies {
     implementation project(path: ':sdk')
 
-    implementation 'com.huawei.hms:push:6.1.0.300'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
+    implementation sdkDependencies.hms_push
+    implementation sdkDependencies.kotlinx_coroutines_core
 }
