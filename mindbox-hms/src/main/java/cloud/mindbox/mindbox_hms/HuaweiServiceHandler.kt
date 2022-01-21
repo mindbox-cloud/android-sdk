@@ -1,4 +1,4 @@
-package com.akkalomator.mindbox_hms
+package cloud.mindbox.mindbox_hms
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
