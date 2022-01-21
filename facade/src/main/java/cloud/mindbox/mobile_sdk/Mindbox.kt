@@ -83,10 +83,10 @@ object Mindbox {
      * @param context used to initialize the main tools
      * @param token - token of FMS
      */
-    fun updateFmsToken(
+    fun updatePushToken(
         context: Context,
         token: String
-    ): Unit = MindboxInternalCore.updateFmsToken(context, token)
+    ): Unit = MindboxInternalCore.updatePushToken(context, token)
 
     /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
