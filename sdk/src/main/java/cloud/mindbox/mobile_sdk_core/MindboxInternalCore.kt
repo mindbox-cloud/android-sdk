@@ -89,7 +89,7 @@ object MindboxInternalCore {
         deviceUuidCallbacks.remove(subscriptionId)
     }
 
-    fun updateFmsToken(context: Context, token: String) {
+    fun updatePushToken(context: Context, token: String) {
         runCatching {
             if (token.trim().isNotEmpty()) {
                 initComponents(context, pushServiceHandler)

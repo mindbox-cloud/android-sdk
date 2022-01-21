@@ -15,7 +15,7 @@ open class MindboxConfigurationInternal(
     val versionName: String,
     val versionCode: String,
     val subscribeCustomerIfCreated: Boolean,
-    val shouldCreateCustomer: Boolean
+    val shouldCreateCustomer: Boolean,
 ) {
 
     fun copy(
@@ -27,7 +27,7 @@ open class MindboxConfigurationInternal(
         versionName: String = this.versionName,
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
-        shouldCreateCustomer: Boolean = this.shouldCreateCustomer
+        shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
     ) = MindboxConfigurationInternal(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
@@ -37,13 +37,13 @@ open class MindboxConfigurationInternal(
         versionName = versionName,
         versionCode = versionCode,
         subscribeCustomerIfCreated = subscribeCustomerIfCreated,
-        shouldCreateCustomer = shouldCreateCustomer
+        shouldCreateCustomer = shouldCreateCustomer,
     )
 
     abstract class BuilderInternal {
-        private var packageName: String = PLACEHOLDER_APP_PACKAGE_NAME
-        private var versionName: String = PLACEHOLDER_APP_VERSION_NAME
-        private var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
+        protected var packageNameInternal: String = PLACEHOLDER_APP_PACKAGE_NAME
+        protected var versionNameInternal: String = PLACEHOLDER_APP_VERSION_NAME
+        protected var versionCodeInternal: String = PLACEHOLDER_APP_VERSION_CODE
 
         companion object {
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
@@ -55,9 +55,9 @@ open class MindboxConfigurationInternal(
             try {
                 val packageManager = context.packageManager
                 val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-                packageName = packageInfo.packageName.trim()
-                this.versionName = packageInfo.versionName?.trim() ?: PLACEHOLDER_APP_PACKAGE_NAME
-                this.versionCode =
+                packageNameInternal = packageInfo.packageName.trim()
+                this.versionNameInternal = packageInfo.versionName?.trim() ?: PLACEHOLDER_APP_PACKAGE_NAME
+                this.versionCodeInternal =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toString().trim()
                     } else {
@@ -66,7 +66,7 @@ open class MindboxConfigurationInternal(
 
                 //need for scheduling and stopping one-time background service
                 SharedPreferencesManager.with(context)
-                MindboxPreferences.hostAppName = packageName
+                MindboxPreferences.hostAppName = packageNameInternal
 
             } catch (e: Exception) {
                 MindboxLoggerInternal.e(
