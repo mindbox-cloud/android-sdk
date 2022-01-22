@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk_core.returnOnException
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
+import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.security.ProviderInstaller
@@ -16,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import java.util.*
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import com.google.android.gms.common.GoogleApiAvailability
 
 object FirebaseServiceHandler : PushServiceHandler() {
 
@@ -86,6 +88,9 @@ object FirebaseServiceHandler : PushServiceHandler() {
             }
         }
     }
+
+    override fun isAvailable(context: Context) = GoogleApiAvailability.getInstance()
+        .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
     private fun generateRandomUuid() = UUID.randomUUID().toString()
 

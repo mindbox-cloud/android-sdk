@@ -146,7 +146,11 @@ object MindboxInternalCore {
         pushServices: List<MindboxPushService>,
     ) {
         runCatching {
-            initComponents(context, pushServices.first().getServiceHandler())
+            val pushService = pushServices
+                .map(MindboxPushService::getServiceHandler)
+                .firstOrNull { it.isServiceAvailable(context) }
+
+            initComponents(context, pushService)
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {

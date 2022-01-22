@@ -14,6 +14,19 @@ abstract class PushServiceHandler {
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
+    fun isServiceAvailable(context: Context): Boolean = try {
+        val isAvailable = isAvailable(context)
+        if (!isAvailable) {
+            MindboxLoggerInternal.w(this, "$notificationProvider services are not available")
+        }
+        isAvailable
+    } catch (e: Exception) {
+        MindboxLoggerInternal.w(this, "Unable to determine $notificationProvider services availability. Failed with exception $e")
+        false
+    }
+
+    protected abstract fun isAvailable(context: Context): Boolean
+
     protected abstract suspend fun getToken(scope: CoroutineScope, context: Context): String?
 
     suspend fun registerToken(
