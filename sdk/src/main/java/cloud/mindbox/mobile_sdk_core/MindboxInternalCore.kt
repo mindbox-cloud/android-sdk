@@ -16,9 +16,9 @@ import cloud.mindbox.mobile_sdk_core.models.operation.OperationResponseBaseInter
 import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk_core.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk_core.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk_core.pushes.firebase.FirebaseRemoteMessageTransformer
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
-import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -283,10 +283,10 @@ object MindboxInternalCore {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean {
-        val remoteMessage = FirebaseRemoteMessageTransformer.transform(message) ?: return false
+        message ?: return false
         return PushNotificationManager.handleRemoteMessage(
             context = context,
-            remoteMessage = remoteMessage,
+            remoteMessage = message,
             channelId = channelId,
             channelName = channelName,
             pushSmallIcon = pushSmallIcon,
