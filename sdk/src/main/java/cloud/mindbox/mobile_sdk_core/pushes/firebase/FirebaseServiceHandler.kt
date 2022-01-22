@@ -14,14 +14,11 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import java.util.*
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import com.google.android.gms.common.GoogleApiAvailability
 
 object FirebaseServiceHandler : PushServiceHandler() {
-
-    private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
 
     override val notificationProvider: String = "FCM"
 
@@ -43,29 +40,11 @@ object FirebaseServiceHandler : PushServiceHandler() {
             .addOnFailureListener(continuation::resumeWithException)
     }
 
-    override fun getAdsIdentification(context: Context): String = runCatching {
+    override suspend fun getAdsId(context: Context): Pair<String?, Boolean> {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
         val id = advertisingIdInfo.id
-        if (advertisingIdInfo.isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
-            MindboxLoggerInternal.d(
-                this,
-                "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random. " +
-                        "isLimitAdTrackingEnabled=${advertisingIdInfo.isLimitAdTrackingEnabled}, " +
-                        "uuid from AdvertisingIdClient = $id"
-            )
-            generateRandomUuid()
-        } else {
-            MindboxLoggerInternal.d(
-                this, "Received from AdvertisingIdClient: device uuid - $id"
-            )
-            id
-        }
-    }.returnOnException {
-        MindboxLoggerInternal.d(
-            this,
-            "Device uuid cannot be received from AdvertisingIdClient. Will be generated from random"
-        )
-        generateRandomUuid()
+        val isLimitAdTrackingEnabled = advertisingIdInfo.isLimitAdTrackingEnabled
+        return id to isLimitAdTrackingEnabled
     }
 
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {
@@ -91,7 +70,5 @@ object FirebaseServiceHandler : PushServiceHandler() {
 
     override fun isAvailable(context: Context) = GoogleApiAvailability.getInstance()
         .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
-
-    private fun generateRandomUuid() = UUID.randomUUID().toString()
 
 }
