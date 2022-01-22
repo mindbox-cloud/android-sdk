@@ -1,10 +1,9 @@
-package cloud.mindbox.mobile_sdk_core.pushes.firebase
+package cloud.mindbox.mindbox_firebase
 
 import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk_core.returnOnException
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException

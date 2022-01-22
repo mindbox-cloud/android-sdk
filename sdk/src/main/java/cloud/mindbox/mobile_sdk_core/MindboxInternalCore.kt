@@ -17,7 +17,6 @@ import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk_core.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk_core.pushes.RemoteMessage
-import cloud.mindbox.mobile_sdk_core.pushes.firebase.FirebaseRemoteMessageTransformer
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default

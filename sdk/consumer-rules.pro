@@ -24,18 +24,6 @@
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-### Adjust SDK, android.installreferrer
--keep class com.google.android.gms.common.ConnectionResult {
-    int SUCCESS;
-}
--keep class com.google.android.gms.ads.identifier.AdvertisingIdClient {
-    com.google.android.gms.ads.identifier.AdvertisingIdClient$Info getAdvertisingIdInfo(android.content.Context);
-}
--keep class com.google.android.gms.ads.identifier.AdvertisingIdClient$Info {
-    java.lang.String getId();
-    boolean isLimitAdTrackingEnabled();
-}
-
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.preference.Preference
 

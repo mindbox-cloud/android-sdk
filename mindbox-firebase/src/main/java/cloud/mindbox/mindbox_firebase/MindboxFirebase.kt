@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk_core.pushes.firebase
+package cloud.mindbox.mindbox_firebase
 
 import android.app.Activity
 import android.content.Context
