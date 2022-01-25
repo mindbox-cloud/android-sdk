@@ -6,7 +6,7 @@ import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk_core.repository.MindboxPreferences
 
-open class MindboxConfigurationInternal(
+abstract class MindboxConfigurationInternal(
     val previousInstallationId: String,
     val previousDeviceUUID: String,
     val endpointId: String,
@@ -18,7 +18,7 @@ open class MindboxConfigurationInternal(
     val shouldCreateCustomer: Boolean,
 ) {
 
-    fun copy(
+    abstract fun copy(
         previousInstallationId: String = this.previousInstallationId,
         previousDeviceUUID: String = this.previousDeviceUUID,
         endpointId: String = this.endpointId,
@@ -28,17 +28,7 @@ open class MindboxConfigurationInternal(
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
-    ) = MindboxConfigurationInternal(
-        previousInstallationId = previousInstallationId,
-        previousDeviceUUID = previousDeviceUUID,
-        endpointId = endpointId,
-        domain = domain,
-        packageName = packageName,
-        versionName = versionName,
-        versionCode = versionCode,
-        subscribeCustomerIfCreated = subscribeCustomerIfCreated,
-        shouldCreateCustomer = shouldCreateCustomer,
-    )
+    ): MindboxConfigurationInternal
 
     abstract class BuilderInternal {
         protected var packageNameInternal: String = PLACEHOLDER_APP_PACKAGE_NAME
@@ -46,9 +36,11 @@ open class MindboxConfigurationInternal(
         protected var versionCodeInternal: String = PLACEHOLDER_APP_VERSION_CODE
 
         companion object {
+
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
             private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
+
         }
 
         protected fun generateAppInfo(context: Context) {
@@ -56,7 +48,8 @@ open class MindboxConfigurationInternal(
                 val packageManager = context.packageManager
                 val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
                 packageNameInternal = packageInfo.packageName.trim()
-                this.versionNameInternal = packageInfo.versionName?.trim() ?: PLACEHOLDER_APP_PACKAGE_NAME
+                this.versionNameInternal = packageInfo.versionName?.trim()
+                    ?: PLACEHOLDER_APP_PACKAGE_NAME
                 this.versionCodeInternal =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toString().trim()

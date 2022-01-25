@@ -43,7 +43,10 @@ class MindboxErrorAdapter : TypeAdapter<MindboxErrorInternal?>() {
                         200 -> MindboxErrorInternal.Validation(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
-                            validationMessages = gson.fromJson(reader, object : TypeToken<List<ValidationMessageInternal>>() {}.type)
+                            validationMessages = gson.fromJson(
+                                reader,
+                                object : TypeToken<List<ValidationMessageInternal>>() {}.type
+                            )
                         )
                         400, 401, 403, 429 -> MindboxErrorInternal.Protocol(
                             statusCode = reader.nextInt(),
@@ -67,7 +70,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxErrorInternal?>() {
                     status = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorMessage = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorId = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
-                    httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null
+                    httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null,
                 )
                 "InternalError" -> MindboxErrorInternal.Unknown().apply { reader.skipValue() }
                 else -> null

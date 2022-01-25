@@ -27,7 +27,7 @@ object Mindbox {
     const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = MindboxInternalCore.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 
     /**
-     * Subscribe to gets token of Firebase Messaging Service used by SDK
+     * Subscribe to gets token from push service used by SDK
      *
      * @param subscription - invocation function with FMS token
      * @return String identifier of subscription
@@ -38,7 +38,7 @@ object Mindbox {
     ): String = MindboxInternalCore.subscribePushToken(subscription)
 
     /**
-     * Removes FMS token subscription if it is no longer necessary
+     * Removes push token subscription if it is no longer necessary
      *
      * @param subscriptionId - identifier of the subscription to remove
      */
@@ -47,7 +47,7 @@ object Mindbox {
     ): Unit = MindboxInternalCore.disposePushTokenSubscription(subscriptionId)
 
     /**
-     * Returns date of FMS token saving
+     * Returns date of push token saving
      */
     fun getPushTokenSaveDate(): String = MindboxInternalCore.getPushTokenSaveDate()
 
@@ -77,11 +77,11 @@ object Mindbox {
     ): Unit = MindboxInternalCore.disposeDeviceUuidSubscription(subscriptionId)
 
     /**
-     * Updates FMS token for SDK
+     * Updates push token for SDK
      * Call it from onNewToken on messaging service
      *
      * @param context used to initialize the main tools
-     * @param token - token of FMS
+     * @param token - token of push service
      */
     fun updatePushToken(
         context: Context,
@@ -207,8 +207,11 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBodyJson: String
-    ): Unit =
-        MindboxInternalCore.executeAsyncOperation(context, operationSystemName, operationBodyJson)
+    ): Unit = MindboxInternalCore.executeAsyncOperation(
+        context,
+        operationSystemName,
+        operationBodyJson
+    )
 
     /**
      * Creates and deliveries event synchronously with specified name and body.
@@ -231,9 +234,7 @@ object Mindbox {
         operationBody = operationBody,
         classOfV = OperationResponse::class.java,
         onSuccess = onSuccess,
-        onError = {
-            onError(MindboxError.fromInternal(it))
-        }
+        onError = { onError(MindboxError.fromInternal(it)) }
     )
 
     /**
@@ -259,9 +260,7 @@ object Mindbox {
         operationBody = operationBody,
         classOfV = classOfV,
         onSuccess = onSuccess,
-        onError = {
-            onError(MindboxError.fromInternal(it))
-        }
+        onError = { onError(MindboxError.fromInternal(it)) }
     )
 
     /**
@@ -284,13 +283,11 @@ object Mindbox {
         operationSystemName = operationSystemName,
         operationBodyJson = operationBodyJson,
         onSuccess = onSuccess,
-        onError = {
-            onError(MindboxError.fromInternal(it))
-        }
+        onError = { onError(MindboxError.fromInternal(it)) }
     )
 
     /**
-     * Handles only Mindbox notification message from [FirebaseMessagingService].
+     * Handles only Mindbox notification message from [FirebaseMessagingService] or [HuaweiMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
      * @param message the [RemoteMessage] received from Firebase
@@ -333,10 +330,13 @@ object Mindbox {
      * @param intent an intent sent by SDK and received in BroadcastReceiver
      * @return url associated with the push intent or null if there is none
      */
-    fun getUrlFromPushIntent(intent: Intent?): String? =
-        MindboxInternalCore.getUrlFromPushIntent(intent)
+    fun getUrlFromPushIntent(
+        intent: Intent?
+    ): String? = MindboxInternalCore.getUrlFromPushIntent(intent)
 
-    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfigurationInternal {
+    private fun validateConfiguration(
+        configuration: MindboxConfiguration
+    ): MindboxConfigurationInternal {
         val validationErrors = SdkValidation.validateConfiguration(
             domain = configuration.domain,
             endpointId = configuration.endpointId,
@@ -351,11 +351,27 @@ object Mindbox {
                 throw InitializeMindboxException(validationErrors.toString())
             }
             MindboxLoggerInternal.e(this, "Invalid configuration parameters found: $validationErrors")
-            val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
-            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            val isDeviceIdError = validationErrors.contains(
+                SdkValidation.Error.INVALID_DEVICE_ID
+            )
+            val isInstallationIdError = validationErrors.contains(
+                SdkValidation.Error.INVALID_INSTALLATION_ID
+            )
+
+            val previousDeviceUUID = if (isDeviceIdError) {
+                ""
+            } else {
+                configuration.previousDeviceUUID
+            }
+            val previousInstallationId = if (isInstallationIdError) {
+                ""
+            } else {
+                configuration.previousInstallationId
+            }
+
             configuration.copy(
-                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
-                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId
+                previousDeviceUUID = previousDeviceUUID,
+                previousInstallationId = previousInstallationId
             )
         }
     }

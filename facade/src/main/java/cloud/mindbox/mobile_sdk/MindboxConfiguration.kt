@@ -41,6 +41,28 @@ class MindboxConfiguration private constructor(
         shouldCreateCustomer = builder.shouldCreateCustomer,
     )
 
+    override fun copy(
+        previousInstallationId: String,
+        previousDeviceUUID: String,
+        endpointId: String,
+        domain: String,
+        packageName: String,
+        versionName: String,
+        versionCode: String,
+        subscribeCustomerIfCreated: Boolean,
+        shouldCreateCustomer: Boolean
+    )= MindboxConfiguration(
+        previousInstallationId = previousInstallationId,
+        previousDeviceUUID = previousDeviceUUID,
+        endpointId = endpointId,
+        domain = domain,
+        packageName = packageName,
+        versionName = versionName,
+        versionCode = versionCode,
+        subscribeCustomerIfCreated = subscribeCustomerIfCreated,
+        shouldCreateCustomer = shouldCreateCustomer,
+    )
+
     /**
      * A Builder for MindboxConfiguration
      */
@@ -48,7 +70,7 @@ class MindboxConfiguration private constructor(
         private val context: Context,
         val domain: String,
         val endpointId: String,
-        ) : MindboxConfigurationInternal.BuilderInternal() {
+    ) : MindboxConfigurationInternal.BuilderInternal() {
 
         internal var previousInstallationId: String = ""
         internal var previousDeviceUUID: String = ""
@@ -60,12 +82,6 @@ class MindboxConfiguration private constructor(
         internal val versionCode: String
             get() = super.versionCodeInternal
         internal var shouldCreateCustomer: Boolean = true
-
-        companion object {
-            private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
-            private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
-            private const val PLACEHOLDER_APP_VERSION_CODE = "?"
-        }
 
         /**
          * Specifies deviceUUID for Mindbox

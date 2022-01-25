@@ -17,7 +17,7 @@ import java.util.*
 
 object FirebaseServiceHandler : PushServiceHandler() {
 
-    override val notificationProvider: String = "STUB"
+    override val notificationProvider: String = "FMS"
 
     private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -39,9 +39,7 @@ object FirebaseServiceHandler : PushServiceHandler() {
             )
             generateRandomUuid()
         } else {
-            MindboxLoggerInternal.d(
-                this, "Received from AdvertisingIdClient: device uuid - $id"
-            )
+            MindboxLoggerInternal.d(this, "Received from AdvertisingIdClient: device uuid - $id")
             id
         }
     }.returnOnException {

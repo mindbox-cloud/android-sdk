@@ -53,7 +53,7 @@ internal object PushNotificationManager {
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>
-    ): Boolean = runCatching {
+    ): Boolean {
         val correctedLinksActivities = activities?.mapKeys { (key , _) ->
             key.replace("*", ".*").toRegex()
         }
@@ -61,19 +61,37 @@ internal object PushNotificationManager {
         val applicationContext = context.applicationContext
         val notificationId = Random.nextInt()
 
-        MindboxInternalCore.onPushReceived(applicationContext, remoteMessage.uniqueKey)
+        val uniqueKey = remoteMessage.uniqueKey
+        MindboxInternalCore.onPushReceived(applicationContext, uniqueKey)
 
+        val pushActions = remoteMessage.pushActions
+        val title = remoteMessage.title
+        val text = remoteMessage.description
         val builder = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle(remoteMessage.title)
-            .setContentText(remoteMessage.description)
+            .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .handlePushClick(context, notificationId, remoteMessage.uniqueKey, remoteMessage.pushLink, correctedLinksActivities, defaultActivity)
-            .handleActions(context, notificationId, remoteMessage.uniqueKey, remoteMessage.pushActions, correctedLinksActivities, defaultActivity)
-            .handleImageByUrl(remoteMessage.imageUrl, remoteMessage.title, remoteMessage.description)
+            .handlePushClick(
+                context,
+                notificationId,
+                uniqueKey,
+                remoteMessage.pushLink,
+                correctedLinksActivities,
+                defaultActivity,
+            )
+            .handleActions(
+                context,
+                notificationId,
+                uniqueKey,
+                pushActions,
+                correctedLinksActivities,
+                defaultActivity,
+            )
+            .handleImageByUrl(remoteMessage.imageUrl, title, text)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -82,7 +100,7 @@ internal object PushNotificationManager {
         notificationManager.notify(notificationId, builder.build())
 
         return true
-    }.returnOnException { false }
+    }
 
     internal fun getUniqKeyFromPushIntent(
         intent: Intent

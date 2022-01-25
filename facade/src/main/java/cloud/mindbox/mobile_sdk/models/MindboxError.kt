@@ -38,7 +38,8 @@ sealed class MindboxError(open val statusCode: Int?) {
             is MindboxErrorInternal.Validation -> Validation(
                 statusCode = error.statusCode,
                 status = error.status,
-                validationMessages = error.validationMessages.map(ValidationMessage.Companion::fromInternal)
+                validationMessages = error.validationMessages
+                    .map(ValidationMessage.Companion::fromInternal)
             )
         }
 

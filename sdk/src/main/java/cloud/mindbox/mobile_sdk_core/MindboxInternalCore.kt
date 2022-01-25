@@ -278,7 +278,7 @@ object MindboxInternalCore {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null
-    ): Boolean {
+    ): Boolean = runCatching {
         val remoteMessage = FirebaseRemoteMessageTransformer.transform(message) ?: return false
         return PushNotificationManager.handleRemoteMessage(
             context = context,
@@ -290,7 +290,7 @@ object MindboxInternalCore {
             activities = activities,
             defaultActivity = defaultActivity
         )
-    }
+    }.returnOnException { false }
 
     fun getUrlFromPushIntent(intent: Intent?): String? = intent?.let {
         PushNotificationManager.getUrlFromPushIntent(intent)
@@ -350,7 +350,10 @@ object MindboxInternalCore {
         return adid.await()
     }
 
-    private suspend fun firstInitialization(context: Context, configuration: MindboxConfigurationInternal) {
+    private suspend fun firstInitialization(
+        context: Context,
+        configuration: MindboxConfigurationInternal
+    ) {
         runCatching {
             val pushToken = withContext(mindboxScope.coroutineContext) {
                 pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
@@ -389,8 +392,9 @@ object MindboxInternalCore {
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
         runCatching {
 
-            val pushToken = token
-                ?: withContext(mindboxScope.coroutineContext) { pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken) }
+            val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
+                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
+            }
 
             val isTokenAvailable = !pushToken.isNullOrEmpty()
 
