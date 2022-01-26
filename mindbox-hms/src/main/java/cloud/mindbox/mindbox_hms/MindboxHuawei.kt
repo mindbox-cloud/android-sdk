@@ -6,6 +6,7 @@ import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk_core.returnOnException
 import com.huawei.hms.push.RemoteMessage
 
 object MindboxHuawei : MindboxPushService {
@@ -39,15 +40,17 @@ object MindboxHuawei : MindboxPushService {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean = MindboxInternalCore.handleRemoteMessage(
-        context,
-        HuaweiRemoteMessageTransformer.transform(message),
-        channelId,
-        channelName,
-        pushSmallIcon,
-        defaultActivity,
-        channelDescription,
-        activities,
-    )
+    ): Boolean = runCatching {
+        MindboxInternalCore.handleRemoteMessage(
+            context,
+            HuaweiRemoteMessageTransformer.transform(message),
+            channelId,
+            channelName,
+            pushSmallIcon,
+            defaultActivity,
+            channelDescription,
+            activities,
+        )
+    }.returnOnException { false }
 
 }
