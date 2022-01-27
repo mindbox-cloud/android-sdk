@@ -21,7 +21,7 @@ abstract class PushServiceHandler {
         }
         isAvailable
     } catch (e: Exception) {
-        MindboxLoggerInternal.w(this, "Unable to determine $notificationProvider services availability. Failed with exception $e")
+        MindboxLoggerInternal.e(this, "Unable to determine $notificationProvider services availability. Failed with exception $e")
         false
     }
 
@@ -40,7 +40,7 @@ abstract class PushServiceHandler {
         }
         token
     } catch (e: Exception) {
-        MindboxLoggerInternal.w(this, "Fetching $notificationProvider registration token failed with exception $e")
+        MindboxLoggerInternal.e(this, "Fetching $notificationProvider registration token failed with exception $e")
         null
     }
 
