@@ -28,7 +28,6 @@ object FirebaseServiceHandler : PushServiceHandler() {
     }
 
     override suspend fun getToken(
-        scope: CoroutineScope,
         context: Context
     ): String? = suspendCoroutine { continuation ->
         FirebaseMessaging.getInstance().token

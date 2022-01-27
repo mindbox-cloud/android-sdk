@@ -398,7 +398,7 @@ object MindboxInternalCore {
         runCatching {
 
             val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
-                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
+                pushServiceHandler?.registerToken(mindboxScope, context, MindboxPreferences.pushToken)
             }
 
             val isTokenAvailable = !pushToken.isNullOrEmpty()
