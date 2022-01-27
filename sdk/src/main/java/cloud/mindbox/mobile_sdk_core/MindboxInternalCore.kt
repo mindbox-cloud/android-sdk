@@ -408,7 +408,6 @@ object MindboxInternalCore {
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
             if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
-
                 val initData = UpdateData(
                     token = pushToken ?: MindboxPreferences.pushToken ?: "",
                     isTokenAvailable = isTokenAvailable,
