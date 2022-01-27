@@ -16,33 +16,36 @@ abstract class PushServiceHandler {
 
     abstract fun initService(context: Context)
 
-    suspend fun getAdsIdentification(context: Context): String =
-        runCatching {
-            val (id, isLimitAdTrackingEnabled) = getAdsId(context)
+    fun getAdsIdentification(context: Context): String = runCatching {
+        val (id, isLimitAdTrackingEnabled) = getAdsId(context)
 
-            if (isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
-                MindboxLoggerInternal.d(
-                    this,
-                    "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. Will be generated from random. " +
-                            "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
-                            "uuid from AdvertisingIdClient = $id"
-                )
-                generateRandomUuid()
-            } else {
-                MindboxLoggerInternal.d(
-                    this, "Received from $notificationProvider AdvertisingIdClient: device uuid - $id"
-                )
-                id
-            }
-        }.returnOnException {
+        if (isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
             MindboxLoggerInternal.d(
                 this,
-                "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. Will be generated from random"
+                "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
+                        "Will be generated from random. " +
+                        "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
+                        "uuid from AdvertisingIdClient = $id"
             )
             generateRandomUuid()
+        } else {
+            MindboxLoggerInternal.d(
+                this,
+                "Received from $notificationProvider AdvertisingIdClient: " +
+                        "device uuid - $id"
+            )
+            id
         }
+    }.returnOnException {
+        MindboxLoggerInternal.d(
+            this,
+            "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
+                    "Will be generated from random"
+        )
+        generateRandomUuid()
+    }
 
-    abstract suspend fun getAdsId(context: Context): Pair<String?, Boolean>
+    abstract fun getAdsId(context: Context): Pair<String?, Boolean>
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
@@ -55,7 +58,8 @@ abstract class PushServiceHandler {
     } catch (e: Exception) {
         MindboxLoggerInternal.w(
             this,
-            "Unable to determine $notificationProvider services availability. Failed with exception $e"
+            "Unable to determine $notificationProvider services availability. " +
+                    "Failed with exception $e"
         )
         false
     }

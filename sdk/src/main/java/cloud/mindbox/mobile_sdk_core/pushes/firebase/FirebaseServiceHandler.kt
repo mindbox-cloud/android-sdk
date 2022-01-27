@@ -40,7 +40,7 @@ object FirebaseServiceHandler : PushServiceHandler() {
             .addOnFailureListener(continuation::resumeWithException)
     }
 
-    override suspend fun getAdsId(context: Context): Pair<String?, Boolean> {
+    override fun getAdsId(context: Context): Pair<String?, Boolean> {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
         val id = advertisingIdInfo.id
         val isLimitAdTrackingEnabled = advertisingIdInfo.isLimitAdTrackingEnabled

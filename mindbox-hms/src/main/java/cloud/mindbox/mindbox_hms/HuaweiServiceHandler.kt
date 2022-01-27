@@ -40,19 +40,19 @@ object HuaweiServiceHandler : PushServiceHandler() {
         }
     }
 
-    override suspend fun getAdsId(context: Context): Pair<String?, Boolean> = suspendCoroutine { continuation ->
-        try {
-            val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
-            if (info == null) {
-                MindboxLoggerInternal.w(this, "Cannot retrieve $notificationProvider AdvertisingIdClient.Info")
-            }
-            val id = info?.id
-            val isLimitAdTrackingEnabled = info?.isLimitAdTrackingEnabled ?: false
-            continuation.resumeWith(Result.success(id to isLimitAdTrackingEnabled))
-        } catch (e: IOException) {
-            continuation.resumeWithException(e)
+    override fun getAdsId(
+        context: Context
+    ): Pair<String?, Boolean> {
+        val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
+        if (info == null) {
+            MindboxLoggerInternal.w(
+                this,
+                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info"
+            )
         }
-
+        val id = info?.id
+        val isLimitAdTrackingEnabled = info?.isLimitAdTrackingEnabled ?: false
+        return id to isLimitAdTrackingEnabled
     }
 
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {

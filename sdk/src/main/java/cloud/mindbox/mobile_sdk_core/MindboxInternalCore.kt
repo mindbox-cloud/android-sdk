@@ -347,12 +347,9 @@ object MindboxInternalCore {
         true
     }.returnOnException { false }
 
-    private suspend fun initDeviceId(context: Context): String {
-        val adid = mindboxScope.async {
-            pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
-        }
-        return adid.await()
-    }
+    private suspend fun initDeviceId(
+        context: Context
+    ) = pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
 
     private suspend fun firstInitialization(context: Context, configuration: MindboxConfigurationInternal) {
         runCatching {
