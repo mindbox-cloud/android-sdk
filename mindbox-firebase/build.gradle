@@ -34,16 +34,16 @@ android {
 dependencies {
     implementation project(path: ':sdk')
 
-    implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
+    implementation sdkDependencies.androidx_core_ktx
+    implementation sdkDependencies.kotlinx_coroutines_core
 
-    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation sdkDependencies.gson
 
     // Firebase messaging
-    implementation platform('com.google.firebase:firebase-bom:26.1.1')
-    implementation 'com.google.firebase:firebase-messaging:21.0.0'
-    implementation 'com.google.android.gms:play-services-basement:17.5.0'
+    implementation platform(sdkDependencies.firebase_bom)
+    implementation sdkDependencies.firebase_messaging
+    implementation sdkDependencies.gms_play_services_basement
 
     // Ads
-    implementation 'com.google.android.gms:play-services-ads-identifier:17.0.0'
+    implementation sdkDependencies.gms_play_services_ads_identifier
 }

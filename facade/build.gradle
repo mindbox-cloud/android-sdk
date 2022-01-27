@@ -35,11 +35,10 @@ android {
 
 dependencies {
 
+    implementation project(path: ':sdk')
+
     implementation sdkDependencies.firebase_messaging
     testImplementation testDependencies.junit
     androidTestImplementation testDependencies.androidx_junit
-
     implementation sdkDependencies.gson
-
-    implementation project(path: ':sdk')
 }
