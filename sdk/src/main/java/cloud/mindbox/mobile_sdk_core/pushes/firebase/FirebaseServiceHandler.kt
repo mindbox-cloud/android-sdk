@@ -9,10 +9,13 @@ import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.security.ProviderInstaller
-import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import java.util.*
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 object FirebaseServiceHandler : PushServiceHandler() {
 
@@ -24,7 +27,19 @@ object FirebaseServiceHandler : PushServiceHandler() {
         FirebaseApp.initializeApp(context)
     }
 
-    override fun getToken(context: Context): String? = Tasks.await(FirebaseMessaging.getInstance().token)
+    override suspend fun getToken(
+        scope: CoroutineScope,
+        context: Context
+    ): String? = suspendCoroutine { continuation ->
+        FirebaseMessaging.getInstance().token
+            .addOnCanceledListener {
+                continuation.resumeWithException(CancellationException())
+            }
+            .addOnSuccessListener { token ->
+                continuation.resumeWith(Result.success(token))
+            }
+            .addOnFailureListener(continuation::resumeWithException)
+    }
 
     override fun getAdsIdentification(context: Context): String = runCatching {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
