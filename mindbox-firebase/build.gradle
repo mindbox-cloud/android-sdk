@@ -42,6 +42,7 @@ dependencies {
     // Firebase messaging
     implementation platform(sdkDependencies.firebase_bom)
     implementation sdkDependencies.firebase_messaging
+    implementation sdkDependencies.gms_play_services_base
     implementation sdkDependencies.gms_play_services_basement
 
     // Ads
