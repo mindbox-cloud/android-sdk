@@ -1,6 +1,7 @@
 package cloud.mindbox.mindbox_hms
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import com.huawei.agconnect.AGConnectOptionsBuilder
 import com.huawei.hms.aaid.HmsInstanceId
@@ -10,7 +11,10 @@ import com.huawei.hms.push.HmsMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import java.util.*
+import com.huawei.hms.ads.identifier.AdvertisingIdClient
+import java.io.IOException
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 object HuaweiServiceHandler : PushServiceHandler() {
 
@@ -36,9 +40,19 @@ object HuaweiServiceHandler : PushServiceHandler() {
         }
     }
 
-    override fun getAdsIdentification(context: Context): String {
-//        TODO("Not yet implemented")
-        return UUID.randomUUID().toString()
+    override fun getAdsId(
+        context: Context
+    ): Pair<String?, Boolean> {
+        val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
+        if (info == null) {
+            MindboxLoggerInternal.w(
+                this,
+                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info"
+            )
+        }
+        val id = info?.id
+        val isLimitAdTrackingEnabled = info?.isLimitAdTrackingEnabled ?: false
+        return id to isLimitAdTrackingEnabled
     }
 
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {
