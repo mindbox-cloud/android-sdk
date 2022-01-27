@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk_core.pushes.firebase
 
 import android.content.Context
 import android.os.Build
-import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk_core.returnOnException
@@ -17,9 +16,9 @@ import java.util.*
 
 object FirebaseServiceHandler : PushServiceHandler() {
 
-    override val notificationProvider: String = "FMS"
-
     private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
+
+    override val notificationProvider: String = "FCM"
 
     override fun initService(context: Context) {
         FirebaseApp.initializeApp(context)
