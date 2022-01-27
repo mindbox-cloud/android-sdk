@@ -4,6 +4,8 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
 import com.huawei.agconnect.AGConnectOptionsBuilder
 import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.api.ConnectionResult
+import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.push.HmsMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -42,5 +44,8 @@ object HuaweiServiceHandler : PushServiceHandler() {
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {
 //        TODO("Not yet implemented")
     }
+
+    override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()
+        .isHuaweiMobileServicesAvailable(context) == ConnectionResult.SUCCESS
 
 }
