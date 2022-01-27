@@ -115,14 +115,6 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
-    // Firebase messaging
-    implementation platform('com.google.firebase:firebase-bom:26.1.1')
-    implementation 'com.google.firebase:firebase-messaging:21.0.0'
-    implementation 'com.google.android.gms:play-services-basement:17.5.0'
-
-    // Ads
-    implementation 'com.google.android.gms:play-services-ads-identifier:17.0.0'
-
     // coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'

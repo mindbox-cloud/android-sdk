@@ -1,4 +1,4 @@
-package cloud.mindbox.mindbox_hms
+package cloud.mindbox.mindbox_firebase
 
 import android.app.Activity
 import android.content.Context
@@ -6,17 +6,17 @@ import androidx.annotation.DrawableRes
 import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
 import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
-import com.huawei.hms.push.RemoteMessage
+import com.google.firebase.messaging.RemoteMessage
 
-object MindboxHuawei : MindboxPushService {
+object MindboxFirebase : MindboxPushService {
 
-    override fun getServiceHandler(): PushServiceHandler = HuaweiServiceHandler
+    override fun getServiceHandler(): PushServiceHandler = FirebaseServiceHandler
 
     /**
      * Handles only Mindbox notification message from [FirebaseMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
-     * @param message the [RemoteMessage] received from HMS
+     * @param message the [RemoteMessage] received from Firebase
      * @param channelId the id of channel for Mindbox pushes
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
@@ -41,7 +41,7 @@ object MindboxHuawei : MindboxPushService {
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = MindboxInternalCore.handleRemoteMessage(
         context,
-        HuaweiRemoteMessageTransformer.transform(message),
+        FirebaseRemoteMessageTransformer.transform(message),
         channelId,
         channelName,
         pushSmallIcon,

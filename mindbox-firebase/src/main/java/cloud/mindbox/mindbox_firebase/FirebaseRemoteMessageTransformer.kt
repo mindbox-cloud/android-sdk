@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk_core.pushes.firebase
+package cloud.mindbox.mindbox_firebase
 
 import cloud.mindbox.mobile_sdk_core.pushes.PushAction
 import cloud.mindbox.mobile_sdk_core.pushes.RemoteMessage
@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.firebase.messaging.RemoteMessage as FirebaseRemoteMessage
 
-object FirebaseRemoteMessageTransformer {
+internal object FirebaseRemoteMessageTransformer {
 
     private const val DATA_UNIQUE_KEY = "uniqueKey"
     private const val DATA_TITLE = "title"
