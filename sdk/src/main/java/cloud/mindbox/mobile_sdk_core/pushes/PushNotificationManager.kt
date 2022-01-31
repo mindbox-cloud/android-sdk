@@ -53,7 +53,7 @@ internal object PushNotificationManager {
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>
-    ) {
+    ): Boolean = runCatching {
         val correctedLinksActivities = activities?.mapKeys { (key , _) ->
             key.replace("*", ".*").toRegex()
         }
@@ -99,7 +99,8 @@ internal object PushNotificationManager {
 
         notificationManager.notify(notificationId, builder.build())
 
-    }
+        return true
+    }.returnOnException { false }
 
     internal fun getUniqKeyFromPushIntent(
         intent: Intent

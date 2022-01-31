@@ -31,7 +31,7 @@ object MindboxInternalCore {
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
 
-    private val mindboxJob = Job()
+    private val mindboxJob = SupervisorJob()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
@@ -283,7 +283,7 @@ object MindboxInternalCore {
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean {
         message ?: return false
-        mindboxScope.launch {
+        return runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
                 remoteMessage = message,
@@ -295,7 +295,6 @@ object MindboxInternalCore {
                 defaultActivity = defaultActivity,
             )
         }
-        return true
     }
 
     fun getUrlFromPushIntent(intent: Intent?): String? = intent?.let {
