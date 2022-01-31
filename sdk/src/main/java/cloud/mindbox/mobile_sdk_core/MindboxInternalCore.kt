@@ -283,16 +283,19 @@ object MindboxInternalCore {
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean {
         message ?: return false
-        return PushNotificationManager.handleRemoteMessage(
-            context = context,
-            remoteMessage = message,
-            channelId = channelId,
-            channelName = channelName,
-            pushSmallIcon = pushSmallIcon,
-            channelDescription = channelDescription,
-            activities = activities,
-            defaultActivity = defaultActivity,
-        )
+        mindboxScope.launch {
+            PushNotificationManager.handleRemoteMessage(
+                context = context,
+                remoteMessage = message,
+                channelId = channelId,
+                channelName = channelName,
+                pushSmallIcon = pushSmallIcon,
+                channelDescription = channelDescription,
+                activities = activities,
+                defaultActivity = defaultActivity,
+            )
+        }
+        return true
     }
 
     fun getUrlFromPushIntent(intent: Intent?): String? = intent?.let {
