@@ -14,5 +14,5 @@ internal data class HuaweiMessage(
 internal data class PushAction(
     @SerializedName("uniqueKey") val uniqueKey: String?,
     @SerializedName("text") val text: String?,
-    @SerializedName("url") val url: String?
+    @SerializedName("url") val url: String?,
 )

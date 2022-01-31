@@ -8,13 +8,8 @@ import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.push.HmsMessaging
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import com.huawei.hms.ads.identifier.AdvertisingIdClient
-import java.io.IOException
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 object HuaweiServiceHandler : PushServiceHandler() {
 
@@ -22,19 +17,18 @@ object HuaweiServiceHandler : PushServiceHandler() {
     private const val HMS_TOKEN_SCOPE = "HCM"
     private const val TOKEN_ACQUISITION_DELAY = 2000L
 
-    override val notificationProvider: String = "HMS"
+    override val notificationProvider: String = "HCM"
 
     override fun initService(context: Context) {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
     }
 
     override suspend fun getToken(
-        scope: CoroutineScope,
         context: Context,
-    ): String? = withContext(scope.coroutineContext) {
+    ): String? {
         val appId = AGConnectOptionsBuilder().build(context).getString(HMS_APP_ID_KEY)
         val hms = HmsInstanceId.getInstance(context)
-        hms.getToken(appId, HMS_TOKEN_SCOPE)?.takeIf(String::isNotEmpty) ?: run {
+        return hms.getToken(appId, HMS_TOKEN_SCOPE)?.takeIf(String::isNotEmpty) ?: run {
             delay(TOKEN_ACQUISITION_DELAY)
             hms.getToken(appId, HMS_TOKEN_SCOPE)
         }

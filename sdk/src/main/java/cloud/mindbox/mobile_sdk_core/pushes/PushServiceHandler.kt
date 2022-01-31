@@ -67,11 +67,10 @@ abstract class PushServiceHandler {
     }
 
     suspend fun registerToken(
-        scope: CoroutineScope,
         context: Context,
         previousToken: String?,
     ): String? = try {
-        val token = getToken(scope, context)
+        val token = getToken(context)
         if (!token.isNullOrEmpty() && token != previousToken) {
             MindboxLoggerInternal.i(this, "Token gets or updates from $notificationProvider")
         }
@@ -86,7 +85,7 @@ abstract class PushServiceHandler {
 
     protected abstract fun isAvailable(context: Context): Boolean
 
-    protected abstract suspend fun getToken(scope: CoroutineScope, context: Context): String?
+    protected abstract suspend fun getToken(context: Context): String?
 
     private fun generateRandomUuid() = UUID.randomUUID().toString()
 
