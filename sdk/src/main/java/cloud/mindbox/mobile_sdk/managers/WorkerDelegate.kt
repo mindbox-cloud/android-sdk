@@ -18,7 +18,7 @@ internal class WorkerDelegate {
 
     fun sendEventsWithResult(
         context: Context,
-        parent: Any
+        parent: Any,
     ): ListenableWorker.Result {
         MindboxLoggerImpl.d(parent, "Start working...")
 
@@ -63,7 +63,7 @@ internal class WorkerDelegate {
         context: Context,
         events: List<Event>,
         configuration: Configuration,
-        parent: Any
+        parent: Any,
     ) = runCatching {
         val eventsCount = events.size - 1
         val deviceUuid = MindboxPreferences.deviceUuid
@@ -77,7 +77,7 @@ internal class WorkerDelegate {
                 event,
                 parent,
                 index,
-                eventsCount
+                eventsCount,
             )
         }
     }.logOnException()
@@ -90,7 +90,7 @@ internal class WorkerDelegate {
         parent: Any,
         index: Int = 0,
         eventsCount: Int = 1,
-        shouldStartWorker: Boolean = false
+        shouldStartWorker: Boolean = false,
     ) {
         val countDownLatch = CountDownLatch(1)
 
@@ -103,7 +103,7 @@ internal class WorkerDelegate {
 
             MindboxLoggerImpl.i(
                 parent,
-                "sent event index #$index id #${event.uid} from $eventsCount"
+                "sent event index #$index id #${event.uid} from $eventsCount",
             )
 
             countDownLatch.countDown()
