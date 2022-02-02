@@ -1,5 +1,4 @@
 include ':sdk'
-include ':facade'
 include ':mindbox-hms'
 include ':mindbox-firebase'
 include ':app'

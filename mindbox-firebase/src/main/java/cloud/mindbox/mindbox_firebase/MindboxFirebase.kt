@@ -3,14 +3,15 @@ package cloud.mindbox.mindbox_firebase
 import android.app.Activity
 import android.content.Context
 import androidx.annotation.DrawableRes
-import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
-import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
-import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
+import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import com.google.firebase.messaging.RemoteMessage
 
 object MindboxFirebase : MindboxPushService {
 
-    override fun getServiceHandler(): PushServiceHandler = FirebaseServiceHandler
+    override fun getServiceHandler(logger: MindboxLogger) = FirebaseServiceHandler(logger)
 
     /**
      * Handles only Mindbox notification message from [FirebaseMessagingService].
@@ -30,6 +31,7 @@ object MindboxFirebase : MindboxPushService {
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
+    @Suppress("Deprecation")
     fun handleRemoteMessage(
         context: Context,
         message: RemoteMessage?,
@@ -39,7 +41,7 @@ object MindboxFirebase : MindboxPushService {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean = MindboxInternalCore.handleRemoteMessage(
+    ): Boolean = Mindbox.handleRemoteMessage(
         context,
         FirebaseRemoteMessageTransformer.transform(message),
         channelId,

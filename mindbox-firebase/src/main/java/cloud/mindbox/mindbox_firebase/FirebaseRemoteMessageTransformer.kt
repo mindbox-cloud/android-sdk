@@ -1,7 +1,7 @@
 package cloud.mindbox.mindbox_firebase
 
-import cloud.mindbox.mobile_sdk_core.pushes.PushAction
-import cloud.mindbox.mobile_sdk_core.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.PushAction
+import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.firebase.messaging.RemoteMessage as FirebaseRemoteMessage

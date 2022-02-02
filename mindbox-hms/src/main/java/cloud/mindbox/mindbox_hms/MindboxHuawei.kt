@@ -3,18 +3,20 @@ package cloud.mindbox.mindbox_hms
 import android.app.Activity
 import android.content.Context
 import androidx.annotation.DrawableRes
-import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
-import cloud.mindbox.mobile_sdk_core.pushes.MindboxPushService
-import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk_core.returnOnException
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
+import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.returnOnException
+import com.huawei.hms.push.HmsMessageService
 import com.huawei.hms.push.RemoteMessage
 
 object MindboxHuawei : MindboxPushService {
 
-    override fun getServiceHandler(): PushServiceHandler = HuaweiServiceHandler
+    override fun getServiceHandler(logger: MindboxLogger) = HuaweiServiceHandler(logger)
 
     /**
-     * Handles only Mindbox notification message from [FirebaseMessagingService].
+     * Handles only Mindbox notification message from [HmsMessageService].
      *
      * @param context context used for Mindbox initializing and push notification showing
      * @param message the [RemoteMessage] received from HMS
@@ -31,6 +33,7 @@ object MindboxHuawei : MindboxPushService {
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
+    @Suppress("Deprecation")
     fun handleRemoteMessage(
         context: Context,
         message: RemoteMessage?,
@@ -41,7 +44,7 @@ object MindboxHuawei : MindboxPushService {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = runCatching {
-        MindboxInternalCore.handleRemoteMessage(
+        Mindbox.handleRemoteMessage(
             context,
             HuaweiRemoteMessageTransformer.transform(message),
             channelId,

@@ -2,8 +2,8 @@ package cloud.mindbox.mindbox_firebase
 
 import android.content.Context
 import android.os.Build
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
-import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
@@ -12,12 +12,11 @@ import com.google.android.gms.security.ProviderInstaller
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import com.google.android.gms.common.GoogleApiAvailability
 
-object FirebaseServiceHandler : PushServiceHandler() {
+class FirebaseServiceHandler(private val logger: MindboxLogger) : PushServiceHandler() {
 
     override val notificationProvider: String = "FCM"
 
@@ -51,13 +50,13 @@ object FirebaseServiceHandler : PushServiceHandler() {
             try {
                 ProviderInstaller.installIfNeeded(context)
             } catch (repairableException: GooglePlayServicesRepairableException) {
-                MindboxLoggerInternal.e(
+                logger.e(
                     logParent,
                     "GooglePlayServices should be updated",
                     repairableException
                 )
             } catch (notAvailableException: GooglePlayServicesNotAvailableException) {
-                MindboxLoggerInternal.e(
+                logger.e(
                     logParent,
                     "GooglePlayServices aren't available",
                     notAvailableException
