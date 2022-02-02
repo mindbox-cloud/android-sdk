@@ -53,13 +53,13 @@ class FirebaseServiceHandler(private val logger: MindboxLogger) : PushServiceHan
                 logger.e(
                     logParent,
                     "GooglePlayServices should be updated",
-                    repairableException
+                    repairableException,
                 )
             } catch (notAvailableException: GooglePlayServicesNotAvailableException) {
                 logger.e(
                     logParent,
                     "GooglePlayServices aren't available",
-                    notAvailableException
+                    notAvailableException,
                 )
             }
         }

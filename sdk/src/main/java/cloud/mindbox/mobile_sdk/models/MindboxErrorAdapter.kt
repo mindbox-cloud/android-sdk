@@ -43,10 +43,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
                         200 -> MindboxError.Validation(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
-                            validationMessages = gson.fromJson(
-                                reader,
-                                object : TypeToken<List<ValidationMessage>>() {}.type
-                            )
+                            validationMessages = validationErrors(reader)
                         )
                         400, 401, 403, 429 -> MindboxError.Protocol(
                             statusCode = reader.nextInt(),
@@ -78,6 +75,15 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
             reader.endObject()
             error
         }.returnOnException { null }
+    }
+
+    private fun validationErrors(reader: JsonReader): List<ValidationMessage> = runCatching {
+        gson.fromJson<List<ValidationMessage>>(
+            reader,
+            object : TypeToken<List<ValidationMessage>>() {}.type
+        )
+    }.returnOnException {
+        listOf()
     }
 
     private fun JsonWriter.writeErrorObject(value: MindboxError) = beginObject().apply {

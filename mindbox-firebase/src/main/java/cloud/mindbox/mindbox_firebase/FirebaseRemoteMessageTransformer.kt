@@ -2,8 +2,10 @@ package cloud.mindbox.mindbox_firebase
 
 import cloud.mindbox.mobile_sdk.pushes.PushAction
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.lang.reflect.Type
 import com.google.firebase.messaging.RemoteMessage as FirebaseRemoteMessage
 
 internal object FirebaseRemoteMessageTransformer {
@@ -21,7 +23,7 @@ internal object FirebaseRemoteMessageTransformer {
         val data = remoteMessage?.data ?: return null
         val uniqueKey = data[DATA_UNIQUE_KEY] ?: return null
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
-        val pushActions = gson.fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
+        val pushActions = getButtons(data, pushActionsType)
         return RemoteMessage(
             uniqueKey = uniqueKey,
             title = data[DATA_TITLE] ?: "",
@@ -31,5 +33,12 @@ internal object FirebaseRemoteMessageTransformer {
             imageUrl = data[DATA_IMAGE_URL],
         )
     }
+
+    private fun getButtons(
+        data: Map<String, String>,
+        pushActionsType: Type?
+    ) = runCatching {
+        gson.fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
+    }.returnOnException { listOf() }
 
 }

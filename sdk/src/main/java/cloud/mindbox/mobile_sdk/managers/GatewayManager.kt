@@ -27,7 +27,7 @@ internal object GatewayManager {
     private fun buildEventUrl(
         configuration: Configuration,
         deviceUuid: String,
-        event: Event
+        event: Event,
     ): String {
 
         val urlQueries: HashMap<String, String> = hashMapOf(
@@ -70,14 +70,14 @@ internal object GatewayManager {
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
-        isSentListener: (Boolean) -> Unit
+        isSentListener: (Boolean) -> Unit,
     ) = sendEvent(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
         onSuccess = { isSentListener.invoke(true) },
-        onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) }
+        onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) },
     )
 
     fun <T : OperationResponseBaseInternal> sendEvent(
@@ -87,14 +87,14 @@ internal object GatewayManager {
         event: Event,
         classOfT: Class<T>,
         onSuccess: (T) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ) = sendEvent(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
         onSuccess = { body -> handleSuccessResponse(body, onSuccess, onError, classOfT) },
-        onError = onError
+        onError = onError,
     )
 
     fun sendEvent(
@@ -103,7 +103,7 @@ internal object GatewayManager {
         deviceUuid: String,
         event: Event,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ) {
         try {
             val requestType: Int = getRequestType(event.eventType)
@@ -119,7 +119,7 @@ internal object GatewayManager {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) }
+                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) },
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -151,7 +151,7 @@ internal object GatewayManager {
         data: String,
         onSuccess: (T) -> Unit,
         onError: (MindboxError) -> Unit,
-        classOfT: Class<T>
+        classOfT: Class<T>,
     ) = gatewayScope.launch {
         try {
             val body = convertJsonToBody(data, MindboxResponse::class.java)
@@ -169,7 +169,7 @@ internal object GatewayManager {
     private fun handleError(
         volleyError: VolleyError,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ) = gatewayScope.launch {
         try {
             val error = volleyError.networkResponse
@@ -193,7 +193,7 @@ internal object GatewayManager {
                     MindboxError.Validation(
                         statusCode = code,
                         status = status,
-                        validationMessages = errorBody.validationMessages ?: emptyList()
+                        validationMessages = errorBody.validationMessages ?: emptyList(),
                     )
                 )
                 MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
@@ -202,7 +202,7 @@ internal object GatewayManager {
                         status = status,
                         errorMessage = errorBody.errorMessage,
                         errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
+                        httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
                 MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
@@ -211,7 +211,7 @@ internal object GatewayManager {
                         status = status,
                         errorMessage = errorBody.errorMessage,
                         errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
+                        httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
                 else -> onError.invoke(
@@ -220,7 +220,7 @@ internal object GatewayManager {
                         status = status,
                         errorMessage = errorBody.errorMessage,
                         errorId = errorBody.errorId,
-                        httpStatusCode = errorBody.httpStatusCode
+                        httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
             }
@@ -242,7 +242,7 @@ internal object GatewayManager {
 
     private suspend fun <T> convertJsonToBody(
         data: String,
-        classOfT: Class<T>
+        classOfT: Class<T>,
     ) = withContext(Dispatchers.Default) { gson.fromJson(data, classOfT) }
 
     private fun isAsyncSent(statusCode: Int?) = statusCode?.let { code ->

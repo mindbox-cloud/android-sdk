@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.returnOnException
 import com.google.firebase.messaging.RemoteMessage
 
 object MindboxFirebase : MindboxPushService {
@@ -41,15 +42,17 @@ object MindboxFirebase : MindboxPushService {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean = Mindbox.handleRemoteMessage(
-        context,
-        FirebaseRemoteMessageTransformer.transform(message),
-        channelId,
-        channelName,
-        pushSmallIcon,
-        defaultActivity,
-        channelDescription,
-        activities,
-    )
+    ): Boolean = runCatching {
+        Mindbox.handleRemoteMessage(
+            context,
+            FirebaseRemoteMessageTransformer.transform(message),
+            channelId,
+            channelName,
+            pushSmallIcon,
+            defaultActivity,
+            channelDescription,
+            activities,
+        )
+    }.returnOnException { false }
 
 }

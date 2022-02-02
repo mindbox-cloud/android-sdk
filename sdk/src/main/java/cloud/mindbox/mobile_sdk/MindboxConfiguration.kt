@@ -44,7 +44,7 @@ class MindboxConfiguration private constructor(
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
-    )= MindboxConfiguration(
+    ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
         endpointId = endpointId,
@@ -151,7 +151,7 @@ class MindboxConfiguration private constructor(
             } catch (e: Exception) {
                 MindboxLoggerImpl.e(
                     this,
-                    "Getting app info failed. Identified as an unknown application"
+                    "Getting app info failed. Identified as an unknown application",
                 )
             }
         }

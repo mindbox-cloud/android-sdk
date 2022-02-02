@@ -25,9 +25,7 @@ class HuaweiServiceHandler(private val logger: MindboxLogger) : PushServiceHandl
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
     }
 
-    override suspend fun getToken(
-        context: Context,
-    ): String? {
+    override suspend fun getToken(context: Context): String? {
         val appId = AGConnectOptionsBuilder().build(context).getString(HMS_APP_ID_KEY)
         val hms = HmsInstanceId.getInstance(context)
         return hms.getToken(appId, HMS_TOKEN_SCOPE)?.takeIf(String::isNotEmpty) ?: run {
@@ -36,14 +34,12 @@ class HuaweiServiceHandler(private val logger: MindboxLogger) : PushServiceHandl
         }
     }
 
-    override fun getAdsId(
-        context: Context
-    ): Pair<String?, Boolean> {
+    override fun getAdsId(context: Context): Pair<String?, Boolean> {
         val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
         if (info == null) {
             logger.w(
                 this,
-                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info"
+                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info",
             )
         }
         val id = info?.id
