@@ -1,4 +1,4 @@
-package cloud.mindbox.mindbox_sdk
+package cloud.mindbox.mobile_sdk
 
 import cloud.mindbox.mobile_sdk.models.SdkValidation
 import org.junit.Assert.assertEquals

@@ -1,17 +1,13 @@
-package cloud.mindbox.mindbox_sdk
+package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk_core.MindboxConfiguration
-import cloud.mindbox.mobile_sdk_core.models.isUuid
-import cloud.mindbox.mobile_sdk_core.MindboxInternalCore
-import cloud.mindbox.mobile_sdk_core.clearPreferences
-import cloud.mindbox.mobile_sdk_core.setDatabaseTestMode
+import cloud.mindbox.mobile_sdk.models.isUuid
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 
-class FmsTokenRepeatedUnitTest {
+class DeviceUuidRepeatedUnitTest {
 
     companion object {
         @BeforeClass
@@ -20,7 +16,7 @@ class FmsTokenRepeatedUnitTest {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
             setDatabaseTestMode(true)
-            MindboxInternalCore.init(appContext, configs)
+            Mindbox.init(appContext, configs, listOf())
         }
 
         @AfterClass
@@ -32,17 +28,15 @@ class FmsTokenRepeatedUnitTest {
 
     @Test
     fun secondaryGetting_isCorrect() {
-        var result: String? = ""
+        var result = ""
 
         Thread.sleep(5000)
 
-        MindboxInternalCore.subscribeFmsToken { fmsToken ->
-            result = fmsToken
-        }
+        Mindbox.subscribeDeviceUuid { deviceUuid -> result = deviceUuid }
 
-        Thread.sleep(3000)
+        Thread.sleep(1000)
 
-        Assert.assertEquals(true, result?.isUuid() ?: true)
+        Assert.assertEquals(true, result.isUuid())
     }
 
 }

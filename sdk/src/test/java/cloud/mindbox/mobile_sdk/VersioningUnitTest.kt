@@ -53,7 +53,8 @@ class VersioningUnitTest {
             isTokenAvailable = true,
             isNotificationsEnabled = true,
             instanceId = MindboxPreferences.instanceId,
-            version = MindboxPreferences.infoUpdatedVersion
+            version = MindboxPreferences.infoUpdatedVersion,
+            notificationProvider = ""
         )
 
         eventList.add(event)
