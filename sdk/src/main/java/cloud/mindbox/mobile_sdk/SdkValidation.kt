@@ -1,7 +1,7 @@
-package cloud.mindbox.mobile_sdk.models
+package cloud.mindbox.mobile_sdk
 
 import androidx.core.util.PatternsCompat
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.models.isUuid
 
 internal object SdkValidation {
 
