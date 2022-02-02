@@ -1,8 +1,8 @@
 package cloud.mindbox.mindbox_hms
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
-import cloud.mindbox.mobile_sdk_core.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import com.huawei.agconnect.AGConnectOptionsBuilder
 import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.api.ConnectionResult
@@ -11,11 +11,13 @@ import com.huawei.hms.push.HmsMessaging
 import kotlinx.coroutines.delay
 import com.huawei.hms.ads.identifier.AdvertisingIdClient
 
-object HuaweiServiceHandler : PushServiceHandler() {
+class HuaweiServiceHandler(private val logger: MindboxLogger) : PushServiceHandler() {
 
-    private const val HMS_APP_ID_KEY = "client/app_id"
-    private const val HMS_TOKEN_SCOPE = "HCM"
-    private const val TOKEN_ACQUISITION_DELAY = 2000L
+    companion object {
+        private const val HMS_APP_ID_KEY = "client/app_id"
+        private const val HMS_TOKEN_SCOPE = "HCM"
+        private const val TOKEN_ACQUISITION_DELAY = 2000L
+    }
 
     override val notificationProvider: String = "HCM"
 
@@ -23,9 +25,7 @@ object HuaweiServiceHandler : PushServiceHandler() {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
     }
 
-    override suspend fun getToken(
-        context: Context,
-    ): String? {
+    override suspend fun getToken(context: Context): String? {
         val appId = AGConnectOptionsBuilder().build(context).getString(HMS_APP_ID_KEY)
         val hms = HmsInstanceId.getInstance(context)
         return hms.getToken(appId, HMS_TOKEN_SCOPE)?.takeIf(String::isNotEmpty) ?: run {
@@ -34,14 +34,12 @@ object HuaweiServiceHandler : PushServiceHandler() {
         }
     }
 
-    override fun getAdsId(
-        context: Context
-    ): Pair<String?, Boolean> {
+    override fun getAdsId(context: Context): Pair<String?, Boolean> {
         val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
         if (info == null) {
-            MindboxLoggerInternal.w(
+            logger.w(
                 this,
-                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info"
+                "Cannot retrieve $notificationProvider AdvertisingIdClient.Info",
             )
         }
         val id = info?.id
@@ -50,7 +48,6 @@ object HuaweiServiceHandler : PushServiceHandler() {
     }
 
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {
-//        TODO("Not yet implemented")
     }
 
     override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()

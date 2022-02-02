@@ -1,7 +1,7 @@
 package cloud.mindbox.mindbox_hms
 
-import cloud.mindbox.mobile_sdk_core.pushes.PushAction
-import cloud.mindbox.mobile_sdk_core.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.PushAction
+import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import com.huawei.hms.push.RemoteMessage as HuaweiRemoteMessage
 import com.google.gson.Gson
 
