@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk_core.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
 

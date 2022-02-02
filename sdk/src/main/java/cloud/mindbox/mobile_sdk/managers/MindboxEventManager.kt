@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
@@ -72,7 +73,7 @@ internal object MindboxEventManager {
     )
 
     private fun asyncOperation(context: Context, event: Event) {
-        val mindboxScope = MindboxInternalCore.mindboxScope
+        val mindboxScope = Mindbox.mindboxScope
         mindboxScope.launch(mindboxScope.coroutineContext + Dispatchers.IO) {
             runCatching {
                 DbManager.addEventToQueue(context, event)
@@ -80,7 +81,7 @@ internal object MindboxEventManager {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
                 if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                    MindboxLoggerInternal.e(
+                    MindboxLoggerImpl.e(
                         this,
                         "Configuration was not initialized",
                     )
