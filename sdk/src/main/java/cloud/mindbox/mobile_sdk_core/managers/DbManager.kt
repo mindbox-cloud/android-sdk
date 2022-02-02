@@ -7,7 +7,6 @@ import cloud.mindbox.mobile_sdk_core.models.Configuration
 import cloud.mindbox.mobile_sdk_core.models.Event
 import cloud.mindbox.mobile_sdk_core.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk_core.returnOnException
-import cloud.mindbox.mobile_sdk_core.services.BackgroundWorkManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,8 +38,6 @@ internal object DbManager {
                 exception
             )
         }
-
-        BackgroundWorkManager.startOneTimeService(context)
     }.logOnException()
 
     fun getFilteredEvents(): List<Event> = runCatching {

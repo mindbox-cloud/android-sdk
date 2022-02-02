@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk_core.managers
 
 import android.content.Context
+import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk_core.logOnException
 import cloud.mindbox.mobile_sdk_core.logger.MindboxLoggerInternal
 import cloud.mindbox.mobile_sdk_core.models.*
@@ -85,12 +86,32 @@ internal object MindboxEventManager {
     fun asyncOperation(context: Context, name: String, body: String) {
         runCatching {
             runBlocking(Dispatchers.IO) {
-                DbManager.addEventToQueue(
-                    context, Event(
-                        eventType = EventType.AsyncOperation(name),
-                        body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT
-                    )
+                val event = Event(
+                    eventType = EventType.AsyncOperation(name),
+                    body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT
                 )
+
+                DbManager.addEventToQueue(context, event)
+
+                val configuration = DbManager.getConfigurations()
+                val deviceUuid = MindboxPreferences.deviceUuid
+                if (MindboxPreferences.isFirstInitialize || configuration == null) {
+                    MindboxLoggerInternal.e(
+                        this,
+                        "Configuration was not initialized",
+                    )
+                } else {
+                    GatewayManager.sendAsyncEvent(
+                        context,
+                        configuration,
+                        deviceUuid,
+                        event
+                    ) { isSent ->
+                        if (!isSent) {
+                            BackgroundWorkManager.startOneTimeService(context)
+                        }
+                    }
+                }
             }
         }.logOnException()
     }
