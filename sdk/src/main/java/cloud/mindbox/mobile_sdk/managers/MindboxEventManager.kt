@@ -79,7 +79,7 @@ internal object MindboxEventManager {
                         configuration,
                         deviceUuid,
                         event,
-                        parent = this,
+                        parent = this@MindboxEventManager,
                         shouldStartWorker = true,
                     )
                 }

@@ -54,7 +54,7 @@ internal object DbManager {
 
     fun removeEventFromQueue(event: Event) = runCatching {
         try {
-            synchronized(this) { mindboxDb.eventsDao().delete(event) }
+            synchronized(this) { mindboxDb.eventsDao().delete(event.transactionId) }
             MindboxLoggerImpl.d(
                 this,
                 "Event ${event.eventType};${event.transactionId} was deleted from queue"
