@@ -98,6 +98,7 @@ internal class WorkerDelegate {
             if (isSent) {
                 handleSendResult(event)
             } else if (shouldStartWorker) {
+                DbManager.setNotSending(event)
                 BackgroundWorkManager.startOneTimeService(context)
             }
 

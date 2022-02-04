@@ -41,6 +41,10 @@ internal object DbManager {
         }
     }.logOnException()
 
+    fun setNotSending(event: Event) = runCatching {
+        mindboxDb.eventsDao().update(event.copy(isSending = false))
+    }.logOnException()
+
     fun getFilteredEvents(): List<Event> = runCatching {
         val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
