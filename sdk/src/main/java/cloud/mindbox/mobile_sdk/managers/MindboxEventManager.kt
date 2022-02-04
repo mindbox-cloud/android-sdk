@@ -26,18 +26,12 @@ internal object MindboxEventManager {
         } else {
             EventType.AppInstalledWithoutCustomer
         }
-        asyncOperation(
-            context,
-            Event(eventType = eventType, body = gson.toJson(initData)),
-        )
+        asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
     }
 
     fun appInfoUpdate(context: Context, initData: UpdateData) = asyncOperation(
         context,
-        Event(
-            eventType = EventType.AppInfoUpdated,
-            body = gson.toJson(initData),
-        ),
+        Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData))
     )
 
     fun pushDelivered(context: Context, uniqKey: String) = asyncOperation(
@@ -50,18 +44,12 @@ internal object MindboxEventManager {
 
     fun pushClicked(context: Context, clickData: TrackClickData) = asyncOperation(
         context,
-        Event(
-            eventType = EventType.PushClicked,
-            body = gson.toJson(clickData),
-        ),
+        Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
     )
 
     fun appStarted(context: Context, trackVisitData: TrackVisitData) = asyncOperation(
         context,
-        Event(
-            eventType = EventType.TrackVisit,
-            body = gson.toJson(trackVisitData),
-        ),
+        Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
     )
 
     fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
