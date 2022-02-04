@@ -74,10 +74,10 @@ internal object MindboxEventManager {
 
     private fun asyncOperation(context: Context, event: Event) {
         val mindboxScope = Mindbox.mindboxScope
-        mindboxScope.launch(mindboxScope.coroutineContext + Dispatchers.IO) {
+        val ioContext = mindboxScope.coroutineContext + Dispatchers.IO
+        runBlocking(ioContext) { DbManager.addEventToQueue(context, event) }
+        mindboxScope.launch(ioContext) {
             runCatching {
-                DbManager.addEventToQueue(context, event)
-
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
                 if (MindboxPreferences.isFirstInitialize || configuration == null) {
