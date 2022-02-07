@@ -53,7 +53,7 @@ internal object DbManager {
             CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
         }
 
-        resultEvents
+        resultEvents.filter { !it.isSending }
     }.returnOnException { emptyList() }
 
     fun removeEventFromQueue(event: Event) = runCatching {
@@ -108,7 +108,7 @@ internal object DbManager {
 
     private fun filterEvents(events: List<Event>): List<Event> {
         val time = System.currentTimeMillis()
-        val filteredEvents = events.filter { !it.isTooOld(time) && !it.isSending }
+        val filteredEvents = events.filter { !it.isTooOld(time) }
 
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
