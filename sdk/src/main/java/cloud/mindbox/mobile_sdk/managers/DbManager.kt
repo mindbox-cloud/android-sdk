@@ -108,7 +108,7 @@ internal object DbManager {
 
     private fun filterEvents(events: List<Event>): List<Event> {
         val time = System.currentTimeMillis()
-        val filteredEvents = events.filterNot { it.isTooOld(time) }
+        val filteredEvents = events.filter { !it.isTooOld(time) && !it.isSending }
 
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
