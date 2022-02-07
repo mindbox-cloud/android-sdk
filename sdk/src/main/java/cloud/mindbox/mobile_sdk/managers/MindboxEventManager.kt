@@ -10,8 +10,10 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
 
@@ -19,6 +21,8 @@ internal object MindboxEventManager {
     private const val NULL_JSON = "null"
 
     private val gson = Gson()
+
+    private val poolDispatcher = Executors.newFixedThreadPool(8).asCoroutineDispatcher()
 
     fun appInstalled(context: Context, initData: InitData, shouldCreateCustomer: Boolean) {
         val eventType = if (shouldCreateCustomer) {
@@ -63,7 +67,8 @@ internal object MindboxEventManager {
     private fun asyncOperation(context: Context, event: Event) {
         val mindboxScope = Mindbox.mindboxScope
         val ioContext = mindboxScope.coroutineContext + Dispatchers.IO
-        runBlocking(ioContext) { DbManager.addEventToQueue(context, event) }
+        val poolContext = mindboxScope.coroutineContext + poolDispatcher
+        runBlocking(poolContext) { DbManager.addEventToQueue(context, event) }
         mindboxScope.launch(ioContext) {
             runCatching {
                 val configuration = DbManager.getConfigurations()

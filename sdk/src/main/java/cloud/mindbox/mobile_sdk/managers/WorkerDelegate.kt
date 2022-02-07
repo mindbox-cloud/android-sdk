@@ -95,19 +95,21 @@ internal class WorkerDelegate {
         val countDownLatch = CountDownLatch(1)
 
         GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
-            if (isSent) {
-                handleSendResult(event)
-            } else if (shouldStartWorker) {
-                runBlocking(Dispatchers.IO) { DbManager.setNotSending(event) }
-                BackgroundWorkManager.startOneTimeService(context)
+            Mindbox.mindboxScope.launch {
+                if (isSent) {
+                    DbManager.removeEventFromQueue(event)
+                } else if (shouldStartWorker) {
+                    DbManager.setNotSending(event)
+                    BackgroundWorkManager.startOneTimeService(context)
+                }
+
+                MindboxLoggerImpl.i(
+                    parent,
+                    "sent event index #$index id #${event.uid} from $eventsCount",
+                )
+
+                countDownLatch.countDown()
             }
-
-            MindboxLoggerImpl.i(
-                parent,
-                "sent event index #$index id #${event.uid} from $eventsCount",
-            )
-
-            countDownLatch.countDown()
         }
 
         try {
@@ -121,9 +123,5 @@ internal class WorkerDelegate {
         isWorkerStopped = true
         MindboxLoggerImpl.d(parent, "onStopped work")
     }
-
-    private fun handleSendResult(
-        event: Event
-    ) = runBlocking(Dispatchers.IO) { DbManager.removeEventFromQueue(event) }
 
 }
