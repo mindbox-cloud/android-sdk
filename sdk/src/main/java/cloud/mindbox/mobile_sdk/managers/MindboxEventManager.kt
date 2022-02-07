@@ -22,7 +22,9 @@ internal object MindboxEventManager {
 
     private val gson = Gson()
 
-    private val poolDispatcher = Executors.newFixedThreadPool(8).asCoroutineDispatcher()
+    private val poolDispatcher = Executors.newFixedThreadPool(
+        Runtime.getRuntime().availableProcessors()
+    ).asCoroutineDispatcher()
 
     fun appInstalled(context: Context, initData: InitData, shouldCreateCustomer: Boolean) {
         val eventType = if (shouldCreateCustomer) {
