@@ -53,7 +53,8 @@ internal object DbManager {
             CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
         }
 
-        resultEvents.filter { !it.isSending }
+        val time = System.currentTimeMillis()
+        resultEvents.filter { !it.isSending || time - it.enqueueTimestamp > 120_000 }
     }.returnOnException { emptyList() }
 
     fun removeEventFromQueue(event: Event) = runCatching {
