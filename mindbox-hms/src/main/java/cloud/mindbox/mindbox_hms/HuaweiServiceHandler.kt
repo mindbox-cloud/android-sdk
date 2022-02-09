@@ -3,6 +3,7 @@ package cloud.mindbox.mindbox_hms
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import com.huawei.agconnect.AGConnectOptionsBuilder
 import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.api.ConnectionResult
@@ -10,14 +11,20 @@ import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.push.HmsMessaging
 import kotlinx.coroutines.delay
 import com.huawei.hms.ads.identifier.AdvertisingIdClient
+import com.huawei.hms.push.RemoteMessage
 
-class HuaweiServiceHandler(private val logger: MindboxLogger) : PushServiceHandler() {
+internal class HuaweiServiceHandler(
+    private val logger: MindboxLogger,
+    exceptionHandler: ExceptionHandler,
+) : PushServiceHandler() {
 
     companion object {
         private const val HMS_APP_ID_KEY = "client/app_id"
         private const val HMS_TOKEN_SCOPE = "HCM"
         private const val TOKEN_ACQUISITION_DELAY = 2000L
     }
+
+    private val messageTransformer = HuaweiRemoteMessageTransformer(exceptionHandler)
 
     override val notificationProvider: String = "HCM"
 
@@ -52,5 +59,11 @@ class HuaweiServiceHandler(private val logger: MindboxLogger) : PushServiceHandl
 
     override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()
         .isHuaweiMobileServicesAvailable(context) == ConnectionResult.SUCCESS
+
+    override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {
+        messageTransformer.transform(message)
+    } else {
+        null
+    }
 
 }

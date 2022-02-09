@@ -14,8 +14,7 @@ import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logOnException
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.net.URL
 import kotlin.random.Random
 
@@ -29,20 +28,20 @@ internal object PushNotificationManager {
     private const val MAX_ACTIONS_COUNT = 3
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
-    internal fun isNotificationsEnabled(context: Context): Boolean = runCatching {
+    internal fun isNotificationsEnabled(context: Context): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             if (manager?.areNotificationsEnabled() != true) {
-                return false
+                return@runCatching false
             }
-            return manager.notificationChannels.firstOrNull { channel ->
+            manager.notificationChannels.firstOrNull { channel ->
                 channel.importance == NotificationManager.IMPORTANCE_NONE
             } == null
         } else {
-            return NotificationManagerCompat.from(context).areNotificationsEnabled()
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
-    }.returnOnException { true }
+    }
 
     internal fun handleRemoteMessage(
         context: Context,
@@ -53,7 +52,7 @@ internal object PushNotificationManager {
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>
-    ): Boolean = runCatching {
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         val correctedLinksActivities = activities?.mapKeys { (key , _) ->
             key.replace("*", ".*").toRegex()
         }
@@ -99,8 +98,8 @@ internal object PushNotificationManager {
 
         notificationManager.notify(notificationId, builder.build())
 
-        return true
-    }.returnOnException { false }
+        true
+    }
 
     internal fun getUniqKeyFromPushIntent(
         intent: Intent
@@ -117,7 +116,7 @@ internal object PushNotificationManager {
         channelId: String,
         channelName: String,
         channelDescription: String?
-    ) = runCatching {
+    ) = LoggingExceptionHandler.runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(channelId, channelName, importance).apply {
@@ -127,7 +126,7 @@ internal object PushNotificationManager {
 
             notificationManager.createNotificationChannel(channel)
         }
-    }.logOnException()
+    }
 
     private fun createPendingIntent(
         context: Context,
@@ -136,7 +135,7 @@ internal object PushNotificationManager {
         pushKey: String,
         url: String?,
         pushButtonKey: String? = null
-    ): PendingIntent? = runCatching {
+    ): PendingIntent? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         val intent = getIntent(context, activity, id, pushKey, url, pushButtonKey)
 
         val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
@@ -151,7 +150,7 @@ internal object PushNotificationManager {
             intent,
             flags
         )
-    }.returnOnException { null }
+    }
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
@@ -208,7 +207,7 @@ internal object PushNotificationManager {
         title: String,
         text: String?
     ) = apply {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (!url.isNullOrBlank()) {
                 val connection = URL(url).openConnection().apply {
                     readTimeout = IMAGE_CONNECTION_TIMEOUT
@@ -227,7 +226,7 @@ internal object PushNotificationManager {
                         setStyle(style)
                     }
             }
-        }.logOnException()
+        }
     }
 
     private fun getIntent(

@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.adapters
 
 import cloud.mindbox.mobile_sdk.models.operation.DateOnly
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
@@ -14,24 +14,24 @@ class DateOnlyAdapter : TypeAdapter<DateOnly>() {
     private val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     override fun write(out: JsonWriter?, value: DateOnly?) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (value == null) {
                 out?.nullValue()
             } else {
                 out?.value(formatter.format(value))
             }
-        }.returnOnException { out }
+        }
     }
 
     override fun read(`in`: JsonReader?): DateOnly? = `in`?.let { reader ->
-        runCatching {
+        LoggingExceptionHandler.runCatching(defaultValue = null) {
             if (reader.peek() === JsonToken.NULL) {
                 reader.nextNull()
-                return@let null
+                return@runCatching null
             }
 
             reader.nextString()?.let { formatter.parse(it)?.time?.let(::DateOnly) }
-        }.returnOnException { null }
+        }
     }
 
 }
