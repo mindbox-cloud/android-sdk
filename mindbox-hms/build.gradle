@@ -3,6 +3,8 @@ plugins {
     id 'kotlin-android'
     id 'com.huawei.agconnect'
 }
+apply plugin: 'maven-publish'
+group = 'com.github.mindbox-moscow'
 
 android {
     compileSdkVersion 31

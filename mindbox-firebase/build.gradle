@@ -2,6 +2,8 @@ plugins {
     id 'com.android.library'
     id 'kotlin-android'
 }
+apply plugin: 'maven-publish'
+group = 'com.github.mindbox-moscow'
 
 android {
     compileSdkVersion 31
