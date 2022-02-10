@@ -14,7 +14,7 @@ android {
     buildToolsVersion "29.0.3"
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion moduleMinSdk()
         targetSdkVersion 31
         versionCode 1
         multiDexEnabled true
@@ -103,6 +103,16 @@ android {
         signing {
             sign publishing.publications.release
         }
+    }
+}
+
+def moduleMinSdk() {
+    def projectName = project.name
+    switch(projectName) {
+        case "mindbox-huawei":
+            return 19
+        default:
+            return 16
     }
 }
 
