@@ -49,8 +49,6 @@ android {
         from android.sourceSets.main.java.srcDirs
     }
 
-
-
     afterEvaluate {
         publishing {
             publications {
