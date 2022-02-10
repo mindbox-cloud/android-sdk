@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import androidx.core.util.PatternsCompat
 import cloud.mindbox.mobile_sdk.models.isUuid
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
 internal object SdkValidation {
 
@@ -23,7 +24,7 @@ internal object SdkValidation {
         endpointId: String,
         previousDeviceUUID: String,
         previousInstallationId: String
-    ) = runCatching {
+    ) = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         mutableListOf<Error>().apply {
             when {
                 domain.isBlank() -> add(Error.EMPTY_DOMAIN)
@@ -43,7 +44,7 @@ internal object SdkValidation {
                 add(Error.INVALID_INSTALLATION_ID)
             }
         }
-    }.returnOnException { emptyList() }
+    }
 
     private fun isDomainWellFormatted(domain: String) = !domain.startsWith("http")
             && !domain.startsWith("/")

@@ -4,10 +4,10 @@ import android.content.Context
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
 
@@ -64,7 +64,7 @@ internal class WorkerDelegate {
         configuration: Configuration,
         parent: Any
     ) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
 
             val eventsCount = events.size - 1
             val deviceUuid = MindboxPreferences.deviceUuid
@@ -72,7 +72,7 @@ internal class WorkerDelegate {
             events.forEachIndexed { index, event ->
                 val countDownLatch = CountDownLatch(1)
 
-                if (isWorkerStopped) return
+                if (isWorkerStopped) return@runCatching
 
                 GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
                     if (isSent) {
@@ -93,7 +93,7 @@ internal class WorkerDelegate {
                     MindboxLoggerImpl.e(parent, "doWork -> sending was interrupted", e)
                 }
             }
-        }.logOnException()
+        }
     }
 
     fun onEndWork(parent: Any) {

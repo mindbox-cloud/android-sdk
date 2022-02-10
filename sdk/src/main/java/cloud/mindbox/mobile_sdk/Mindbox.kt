@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import java.util.*
@@ -77,15 +78,16 @@ object Mindbox {
     /**
      * Returns date of push token saving
      */
-    fun getPushTokenSaveDate(): String = runCatching {
-        return MindboxPreferences.tokenSaveDate
-    }.returnOnException { "" }
+    fun getPushTokenSaveDate(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
+        MindboxPreferences.tokenSaveDate
+    }
 
     /**
      * Returns SDK version
      */
-    fun getSdkVersion(): String = runCatching { return BuildConfig.VERSION_NAME }
-        .returnOnException { "" }
+    fun getSdkVersion(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
+        BuildConfig.VERSION_NAME
+    }
 
     /**
      * Subscribe to gets deviceUUID used by SDK
@@ -123,7 +125,7 @@ object Mindbox {
      * @param token - token of push service
      */
     fun updatePushToken(context: Context, token: String) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (token.trim().isNotEmpty()) {
                 initComponents(context, pushServiceHandler)
 
@@ -133,7 +135,7 @@ object Mindbox {
                     }
                 }
             }
-        }.logOnException()
+        }
     }
 
     /**
@@ -144,7 +146,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      */
     fun onPushReceived(context: Context, uniqKey: String) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             initComponents(context, pushServiceHandler)
             MindboxEventManager.pushDelivered(context, uniqKey)
 
@@ -153,7 +155,7 @@ object Mindbox {
                     updateAppInfo(context)
                 }
             }
-        }.logOnException()
+        }
     }
 
     /**
@@ -165,7 +167,7 @@ object Mindbox {
      * @param buttonUniqKey - unique identifier of push notification button
      */
     fun onPushClicked(context: Context, uniqKey: String, buttonUniqKey: String?) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             initComponents(context, pushServiceHandler)
             MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
 
@@ -174,7 +176,7 @@ object Mindbox {
                     updateAppInfo(context)
                 }
             }
-        }.logOnException()
+        }
     }
 
     /**
@@ -189,7 +191,10 @@ object Mindbox {
      * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
      *         false if Mindbox SDK cannot find critical information in intent
      */
-    fun onPushClicked(context: Context, intent: Intent): Boolean = runCatching {
+    fun onPushClicked(
+        context: Context,
+        intent: Intent
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         PushNotificationManager.getUniqKeyFromPushIntent(intent)
             ?.let { uniqKey ->
                 val pushButtonUniqKey = PushNotificationManager
@@ -198,7 +203,7 @@ object Mindbox {
                 true
             }
             ?: false
-    }.returnOnException { false }
+    }
 
     /**
      * Initializes the SDK for further work.
@@ -212,9 +217,9 @@ object Mindbox {
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             val pushService = pushServices
-                .map { it.getServiceHandler(MindboxLoggerImpl) }
+                .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
                 .firstOrNull { it.isServiceAvailable(context) }
 
             initComponents(context, pushService)
@@ -266,7 +271,7 @@ object Mindbox {
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
             }
-        }.returnOnException { }
+        }
     }
 
     /**
@@ -277,11 +282,11 @@ object Mindbox {
      *
      * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
      */
-    fun onNewIntent(intent: Intent?) = runCatching {
+    fun onNewIntent(intent: Intent?) = LoggingExceptionHandler.runCatching {
         if (Mindbox::lifecycleManager.isInitialized) {
             lifecycleManager.onNewIntent(intent)
         }
-    }.logOnException()
+    }
 
     /**
      * Specifies log level for Mindbox
@@ -421,12 +426,27 @@ object Mindbox {
         }
     }
 
-    @Deprecated(
-        "Use MindboxFirebase.handleRemoteMessage or MindboxHuawei.handleRemoteMessage methods"
-    )
+    /**
+     * Handles only Mindbox notification message from [HmsMessageService] and [FirebaseMessageServise].
+     *
+     * @param context context used for Mindbox initializing and push notification showing
+     * @param message the [RemoteMessage] received from Firebase or HMS
+     * @param channelId the id of channel for Mindbox pushes
+     * @param channelName the name of channel for Mindbox pushes
+     * @param pushSmallIcon icon for push notification as drawable resource
+     * @param channelDescription the description of channel for Mindbox pushes. Default is null
+     * @param activities map (url mask) -> (Activity class). When clicked on push or button with url, corresponding activity will be opened
+     *        Currently supports '*' character - indicator of zero or more numerical, alphabetic and punctuation characters
+     *        e.g. mask "https://sample.com/" will match only "https://sample.com/" link
+     *        whereas mask "https://sample.com/\u002A" will match
+     *        "https://sample.com/", "https://sample.com/foo", "https://sample.com/foo/bar", "https://sample.com/foo?bar=baz" and other masks
+     * @param defaultActivity default activity to be opened if url was not found in [activities]
+     *
+     * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
+     */
     fun handleRemoteMessage(
         context: Context,
-        message: RemoteMessage?,
+        message: Any?,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -435,10 +455,11 @@ object Mindbox {
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean {
         message ?: return false
+        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message) ?: return false
         return runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
-                remoteMessage = message,
+                remoteMessage = convertedMessage,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,
@@ -482,13 +503,13 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T,
-    ) = runCatching {
+    ) = LoggingExceptionHandler.runCatching {
         asyncOperation(
             context,
             operationSystemName,
             MindboxEventManager.operationBodyJson(operationBody)
         )
-    }.logOnException()
+    }
 
     private fun asyncOperation(
         context: Context,
@@ -503,7 +524,7 @@ object Mindbox {
     private fun validateOperationAndInitializeComponents(
         context: Context,
         operationSystemName: String,
-    ) = runCatching {
+    ) = LoggingExceptionHandler.runCatching(defaultValue = false) {
         if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
             initComponents(context, pushServiceHandler)
         } else {
@@ -513,7 +534,7 @@ object Mindbox {
             )
         }
         true
-    }.returnOnException { false }
+    }
 
     private suspend fun initDeviceId(context: Context): String {
         val adid = mindboxScope.async {
@@ -526,7 +547,7 @@ object Mindbox {
         context: Context,
         configuration: MindboxConfiguration,
     ) {
-        runCatching {
+        LoggingExceptionHandler.runCatchingSuspending {
             val pushToken = withContext(mindboxScope.coroutineContext) {
                 pushServiceHandler?.registerToken(
                     context,
@@ -562,11 +583,11 @@ object Mindbox {
 
             deliverDeviceUuid(deviceUuid)
             deliverToken(pushToken)
-        }.logOnException()
+        }
     }
 
     private suspend fun updateAppInfo(context: Context, token: String? = null) {
-        runCatching {
+        LoggingExceptionHandler.runCatchingSuspending {
 
             val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
                 pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
@@ -591,7 +612,7 @@ object Mindbox {
                 MindboxPreferences.isNotificationEnabled = isNotificationEnabled
                 MindboxPreferences.pushToken = pushToken
             }
-        }.logOnException()
+        }
     }
 
     private fun isUpdateInfoRequired(
@@ -605,18 +626,19 @@ object Mindbox {
         context: Context,
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
-    ) = runCatching {
-        val applicationContext = context.applicationContext
-        val endpointId = DbManager.getConfigurations()?.endpointId ?: return
-        val trackVisitData = TrackVisitData(
-            ianaTimeZone = TimeZone.getDefault().id,
-            endpointId = endpointId,
-            source = source,
-            requestUrl = requestUrl,
-        )
+    ) = LoggingExceptionHandler.runCatching {
+        DbManager.getConfigurations()?.endpointId?.let { endpointId ->
+            val applicationContext = context.applicationContext
+            val trackVisitData = TrackVisitData(
+                ianaTimeZone = TimeZone.getDefault().id,
+                endpointId = endpointId,
+                source = source,
+                requestUrl = requestUrl,
+            )
 
-        MindboxEventManager.appStarted(applicationContext, trackVisitData)
-    }.logOnException()
+            MindboxEventManager.appStarted(applicationContext, trackVisitData)
+        }
+    }
 
     private fun deliverDeviceUuid(deviceUuid: String) {
         Executors.newSingleThreadScheduledExecutor().schedule({

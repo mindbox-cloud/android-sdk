@@ -1,13 +1,12 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
-import cloud.mindbox.mobile_sdk.returnOnException
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,13 +21,13 @@ internal object DbManager {
 
     private lateinit var mindboxDb: MindboxDatabase
 
-    fun init(context: Context) = runCatching {
+    fun init(context: Context) = LoggingExceptionHandler.runCatching {
         if (!this::mindboxDb.isInitialized) {
             mindboxDb = MindboxDatabase.getInstance(context)
         }
-    }.logOnException()
+    }
 
-    fun addEventToQueue(context: Context, event: Event) = runCatching {
+    fun addEventToQueue(context: Context, event: Event) = LoggingExceptionHandler.runCatching {
         try {
             mindboxDb.eventsDao().insert(event)
             MindboxLoggerImpl.d(this, "Event ${event.eventType.operation} was added to queue")
@@ -41,9 +40,9 @@ internal object DbManager {
         }
 
         BackgroundWorkManager.startOneTimeService(context)
-    }.logOnException()
+    }
 
-    fun getFilteredEvents(): List<Event> = runCatching {
+    fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
 
@@ -52,9 +51,9 @@ internal object DbManager {
         }
 
         resultEvents
-    }.returnOnException { emptyList() }
+    }
 
-    fun removeEventFromQueue(event: Event) = runCatching {
+    fun removeEventFromQueue(event: Event) = LoggingExceptionHandler.runCatching {
         try {
             synchronized(this) { mindboxDb.eventsDao().delete(event) }
             MindboxLoggerImpl.d(
@@ -64,9 +63,9 @@ internal object DbManager {
         } catch (exception: RuntimeException) {
             MindboxLoggerImpl.e(this, "Error deleting item from database", exception)
         }
-    }.logOnException()
+    }
 
-    private fun removeEventsFromQueue(events: List<Event>) = runCatching {
+    private fun removeEventsFromQueue(events: List<Event>) = LoggingExceptionHandler.runCatching {
         try {
             synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
             MindboxLoggerImpl.d(
@@ -76,9 +75,9 @@ internal object DbManager {
         } catch (exception: RuntimeException) {
             MindboxLoggerImpl.e(this, "Error deleting items from database", exception)
         }
-    }.logOnException()
+    }
 
-    fun saveConfigurations(configuration: Configuration) = runCatching {
+    fun saveConfigurations(configuration: Configuration) = LoggingExceptionHandler.runCatching {
         try {
             mindboxDb.configurationDao().insert(configuration)
         } catch (exception: RuntimeException) {
@@ -88,9 +87,9 @@ internal object DbManager {
                 exception
             )
         }
-    }.returnOnException { }
+    }
 
-    fun getConfigurations(): Configuration? = runCatching {
+    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         try {
             mindboxDb.configurationDao().get()
         } catch (exception: RuntimeException) {
@@ -98,11 +97,11 @@ internal object DbManager {
             MindboxLoggerImpl.e(this, "Error reading from database", exception)
             null
         }
-    }.returnOnException { null }
+    }
 
-    private fun getEvents(): List<Event> = runCatching {
+    private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
-    }.returnOnException { emptyList() }
+    }
 
     private fun filterEvents(events: List<Event>): List<Event> {
         val time = System.currentTimeMillis()
@@ -111,8 +110,8 @@ internal object DbManager {
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
-    private fun Event.isTooOld(timeNow: Long): Boolean = runCatching {
+    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
-    }.returnOnException { false }
+    }
 
 }

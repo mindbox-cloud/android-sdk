@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
@@ -34,7 +34,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
     }
 
     override fun read(`in`: JsonReader?): MindboxError? = `in`?.let { reader ->
-        runCatching {
+        LoggingExceptionHandler.runCatching(defaultValue = null) {
             reader.beginObject()
             val error = when (reader.nextString()) {
                 "MindboxError" -> {
@@ -74,16 +74,14 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
             }
             reader.endObject()
             error
-        }.returnOnException { null }
+        }
     }
 
-    private fun validationErrors(reader: JsonReader): List<ValidationMessage> = runCatching {
+    private fun validationErrors(reader: JsonReader): List<ValidationMessage> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         gson.fromJson<List<ValidationMessage>>(
             reader,
             object : TypeToken<List<ValidationMessage>>() {}.type
         )
-    }.returnOnException {
-        listOf()
     }
 
     private fun JsonWriter.writeErrorObject(value: MindboxError) = beginObject().apply {
