@@ -110,7 +110,7 @@ def moduleMinSdk() {
     def projectName = project.name
     switch(projectName) {
         case "mindbox-huawei":
-            return 19
+            return 17
         default:
             return 16
     }
