@@ -1,7 +1,7 @@
 ext {
 
     sdkDependencies = [
-        kotlin_stdlib: 'org.jetbrains.kotlin:kotlin-stdlib:1.6.0',
+        kotlin_stdlib: 'org.jetbrains.kotlin:kotlin-stdlib:1.4.20',
         androidx_core_ktx: 'androidx.core:core-ktx:1.7.0',
         androidx_annotations: 'androidx.annotation:annotation:1.3.0',
         firebase_bom: 'com.google.firebase:firebase-bom:26.1.1',
