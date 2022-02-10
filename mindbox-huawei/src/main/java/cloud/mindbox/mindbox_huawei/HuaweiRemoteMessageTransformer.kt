@@ -1,4 +1,4 @@
-package cloud.mindbox.mindbox_hms
+package cloud.mindbox.mindbox_huawei
 
 import cloud.mindbox.mobile_sdk.pushes.PushAction
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage

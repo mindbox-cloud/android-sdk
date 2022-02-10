@@ -1,4 +1,4 @@
-package cloud.mindbox.mindbox_hms
+package cloud.mindbox.mindbox_huawei
 
 import com.google.gson.annotations.SerializedName
 

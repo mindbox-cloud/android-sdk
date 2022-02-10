@@ -1,5 +1,5 @@
 include ':sdk'
-include ':mindbox-hms'
+include ':mindbox-huawei'
 include ':mindbox-firebase'
 include ':app'
 rootProject.name = "AndroidSdk"
