@@ -49,15 +49,7 @@ android {
         from android.sourceSets.main.java.srcDirs
     }
 
-    task moduleArtifactId() {
-        def projectName = project.name
-        switch(projectName) {
-            case "sdk":
-                return "mobile-sdk"
-            default:
-                return projectName
-        }
-    }
+
 
     afterEvaluate {
         publishing {
@@ -66,7 +58,7 @@ android {
                     from components.release
                     artifact androidSourcesJar
                     groupId = 'cloud.mindbox'
-                    artifactId = moduleArtifactId
+                    artifactId = moduleArtifactId()
                     version = SDK_VERSION_NAME
                     pom {
                         name = 'Mindbox Android SDK'
@@ -113,5 +105,15 @@ android {
         signing {
             sign publishing.publications.release
         }
+    }
+}
+
+def moduleArtifactId() {
+    def projectName = project.name
+    switch(projectName) {
+        case "sdk":
+            return "mobile-sdk"
+        default:
+            return projectName
     }
 }
