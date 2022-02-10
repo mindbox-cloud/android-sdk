@@ -34,6 +34,62 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
+    afterEvaluate {
+        publishing {
+            publications {
+                release(MavenPublication) {
+                    from components.release
+                    artifact androidSourcesJar
+                    groupId = 'cloud.mindbox'
+                    artifactId = 'mobile-sdk'
+                    version = SDK_VERSION_NAME
+                    pom {
+                        name = 'Mindbox Android SDK'
+                        description = 'Test release'
+                        url = 'https://github.com/mindbox-moscow/android-sdk'
+                        licenses {
+                            license {
+                                name = 'The Mindbox License'
+                                url = 'https://github.com/mindbox-moscow/android-sdk/blob/master/LICENSE.md'
+                            }
+                        }
+                        developers {
+                            developer {
+                                id = 'mindbox'
+                                name = 'Petr Nikitin'
+                                email = 'nikitin@mindbox.ru'
+                            }
+                        }
+                        scm {
+                            connection = 'scm:https://github.com/mindbox-moscow/android-sdk.git'
+                            developerConnection = 'scm:git://github.com/mindbox-moscow/android-sdk.git'
+                            url = 'https://github.com/mindbox-moscow/android-sdk'
+                        }
+                    }
+                }
+            }
+            repositories {
+                if (!project.hasProperty("sonatypeUsername")) {
+                    ext.sonatypeUsername = "sonatypeUsername"
+                }
+                if (!project.hasProperty("sonatypePassword")) {
+                    ext.sonatypePassword = "sonatypePassword"
+                }
+                maven {
+                    name = "OSSRH"
+                    url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2")
+                    credentials {
+                        username = sonatypeUsername
+                        password = sonatypePassword
+                    }
+                }
+            }
+        }
+        signing {
+            sign publishing.publications.release
+        }
+    }
 }
 
 dependencies {
