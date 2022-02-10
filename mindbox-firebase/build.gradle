@@ -49,7 +49,7 @@ android {
                     from components.release
                     artifact androidSourcesJar
                     groupId = 'cloud.mindbox'
-                    artifactId = 'mobile-sdk'
+                    artifactId = 'mindbox-firebase'
                     version = SDK_VERSION_NAME
                     pom {
                         name = 'Mindbox Android SDK'
