@@ -226,7 +226,8 @@ object Mindbox {
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
-                    firstInitialization(context, configuration)
+                    val validatedConfiguration = validateConfiguration(configuration)
+                    firstInitialization(context, validatedConfiguration)
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
