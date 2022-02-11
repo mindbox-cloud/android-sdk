@@ -14,7 +14,7 @@ android {
     buildToolsVersion "29.0.3"
 
     defaultConfig {
-        minSdkVersion moduleMinSdk()
+        minSdkVersion MIN_SDK_VERSION
         targetSdkVersion 31
         versionCode 1
         multiDexEnabled true
@@ -56,10 +56,10 @@ android {
                     from components.release
                     artifact androidSourcesJar
                     groupId = 'cloud.mindbox'
-                    artifactId = moduleArtifactId()
+                    artifactId = ARTIFACT_ID
                     version = SDK_VERSION_NAME
                     pom {
-                        name = 'Mindbox Android SDK'
+                        name = ARTIFACT_NAME
                         description = 'Test release'
                         url = 'https://github.com/mindbox-moscow/android-sdk'
                         licenses {
@@ -103,25 +103,5 @@ android {
         signing {
             sign publishing.publications.release
         }
-    }
-}
-
-def moduleMinSdk() {
-    def projectName = project.name
-    switch(projectName) {
-        case "mindbox-huawei":
-            return 17
-        default:
-            return 16
-    }
-}
-
-def moduleArtifactId() {
-    def projectName = project.name
-    switch(projectName) {
-        case "sdk":
-            return "mobile-sdk"
-        default:
-            return projectName
     }
 }
