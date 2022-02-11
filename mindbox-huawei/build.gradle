@@ -1,5 +1,14 @@
 apply from: "${rootProject.projectDir}/modulesCommon.gradle"
 
+android {
+    defaultConfig {
+        consumerProguardFiles "consumer-rules.pro",
+                "${rootProject.projectDir}/proguard/proguard-gson.pro",
+                "${rootProject.projectDir}/proguard/proguard-huawei.pro",
+                "${rootProject.projectDir}/proguard/proguard-kotlin.pro"
+    }
+}
+
 dependencies {
     implementation project(path: ':sdk')
 

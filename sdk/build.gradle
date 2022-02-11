@@ -1,5 +1,16 @@
 apply from: "${rootProject.projectDir}/modulesCommon.gradle"
 
+android {
+    defaultConfig {
+        consumerProguardFiles "consumer-rules.pro",
+                    "${rootProject.projectDir}/proguard/proguard-gson.pro",
+                    "${rootProject.projectDir}/proguard/proguard-kotlin.pro",
+                    "${rootProject.projectDir}/proguard/proguard-room.pro",
+                    "${rootProject.projectDir}/proguard/proguard-volley.pro",
+                    "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
+    }
+}
+
 dependencies {
 
     implementation sdkDependencies.kotlin_stdlib
