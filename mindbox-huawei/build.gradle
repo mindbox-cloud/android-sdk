@@ -13,7 +13,9 @@ dependencies {
     implementation project(path: ':sdk')
 
     implementation sdkDependencies.kotlinx_coroutines_core
-    implementation sdkDependencies.hms_push
+    implementation (sdkDependencies.hms_push) {
+        transitive=true
+    }
     implementation sdkDependencies.hms_ads_identifier
     implementation sdkDependencies.gson
     implementation sdkDependencies.androidx_annotations
