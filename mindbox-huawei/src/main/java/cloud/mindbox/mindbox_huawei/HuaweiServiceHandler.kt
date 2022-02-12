@@ -30,16 +30,22 @@ internal class HuaweiServiceHandler(
 
     override fun initService(context: Context) {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
+        val appId = getAppId(context)
+        HmsInstanceId.getInstance(context).getToken(appId, HMS_TOKEN_SCOPE)
     }
 
     override suspend fun getToken(context: Context): String? {
-        val appId = AGConnectOptionsBuilder().build(context).getString(HMS_APP_ID_KEY)
+        val appId = getAppId(context)
         val hms = HmsInstanceId.getInstance(context)
         return hms.getToken(appId, HMS_TOKEN_SCOPE)?.takeIf(String::isNotEmpty) ?: run {
             delay(TOKEN_ACQUISITION_DELAY)
             hms.getToken(appId, HMS_TOKEN_SCOPE)
         }
     }
+
+    private fun getAppId(
+        context: Context,
+    ) = AGConnectOptionsBuilder().build(context).getString(HMS_APP_ID_KEY)
 
     override fun getAdsId(context: Context): Pair<String?, Boolean> {
         val info: AdvertisingIdClient.Info? = AdvertisingIdClient.getAdvertisingIdInfo(context)
