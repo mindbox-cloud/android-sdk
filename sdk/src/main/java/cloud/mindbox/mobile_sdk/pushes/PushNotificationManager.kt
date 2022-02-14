@@ -68,7 +68,6 @@ internal object PushNotificationManager {
         val text = remoteMessage.description
         val builder = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(title)
-            .setContentText(text)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
@@ -91,6 +90,7 @@ internal object PushNotificationManager {
                 defaultActivity,
             )
             .handleImageByUrl(remoteMessage.imageUrl, title, text)
+            .setText(text)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -244,5 +244,10 @@ internal object PushNotificationManager {
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
     }
+
+    private fun NotificationCompat.Builder.setText(text: String) = setStyle(
+        NotificationCompat.BigTextStyle()
+            .bigText(text)
+    )
 
 }
