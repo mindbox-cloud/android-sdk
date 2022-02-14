@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -454,10 +455,11 @@ object Mindbox {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean {
-        message ?: return false
-        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message) ?: return false
-        return runBlocking(mindboxScope.coroutineContext) {
+    ): Boolean  = LoggingExceptionHandler.runCatching(defaultValue = false) {
+        message ?: return@runCatching false
+        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message)
+            ?: return@runCatching false
+        runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
                 remoteMessage = convertedMessage,
