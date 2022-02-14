@@ -497,7 +497,9 @@ object Mindbox {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         this.pushServiceHandler = pushServiceHandler
-        this.pushServiceHandler?.initService(context)
+        mindboxScope.launch {
+            pushServiceHandler?.initService(context)
+        }
     }
 
     private fun <T> asyncOperation(
