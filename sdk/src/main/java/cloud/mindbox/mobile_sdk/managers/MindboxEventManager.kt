@@ -29,7 +29,10 @@ internal object MindboxEventManager {
             EventType.AppInstalledWithoutCustomer
         }
         DbManager.addEventToQueue(
-            context, Event(eventType = eventType, body = gson.toJson(initData))
+            context, Event(
+                eventType = eventType,
+                body = gson.toJson(initData),
+            )
         )
     }
 
@@ -38,7 +41,7 @@ internal object MindboxEventManager {
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.AppInfoUpdated,
-                    body = gson.toJson(initData)
+                    body = gson.toJson(initData),
                 )
             )
         }
@@ -53,7 +56,7 @@ internal object MindboxEventManager {
                 DbManager.addEventToQueue(
                     context, Event(
                         eventType = EventType.PushDelivered,
-                        additionalFields = fields
+                        additionalFields = fields,
                     )
                 )
             }
@@ -66,7 +69,7 @@ internal object MindboxEventManager {
                 DbManager.addEventToQueue(
                     context, Event(
                         eventType = EventType.PushClicked,
-                        body = gson.toJson(clickData)
+                        body = gson.toJson(clickData),
                     )
                 )
             }
@@ -78,7 +81,7 @@ internal object MindboxEventManager {
             DbManager.addEventToQueue(
                 context, Event(
                     eventType = EventType.TrackVisit,
-                    body = gson.toJson(trackVisitData)
+                    body = gson.toJson(trackVisitData),
                 )
             )
         }
@@ -90,7 +93,7 @@ internal object MindboxEventManager {
                 DbManager.addEventToQueue(
                     context, Event(
                         eventType = EventType.AsyncOperation(name),
-                        body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT
+                        body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
                     )
                 )
             }

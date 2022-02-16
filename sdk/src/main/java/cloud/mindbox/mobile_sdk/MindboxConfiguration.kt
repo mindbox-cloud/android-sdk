@@ -34,7 +34,7 @@ class MindboxConfiguration private constructor(
         shouldCreateCustomer = builder.shouldCreateCustomer,
     )
 
-    fun copy(
+    internal fun copy(
         previousInstallationId: String = this.previousInstallationId,
         previousDeviceUUID: String = this.previousDeviceUUID,
         endpointId: String = this.endpointId,
@@ -59,11 +59,7 @@ class MindboxConfiguration private constructor(
     /**
      * A Builder for MindboxConfiguration
      */
-    class Builder(
-        private val context: Context,
-        val domain: String,
-        val endpointId: String,
-    ) {
+    class Builder(private val context: Context, val domain: String, val endpointId: String) {
 
         companion object {
 

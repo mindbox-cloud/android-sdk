@@ -21,7 +21,7 @@ internal data class MindboxRequest(
     val configuration: Configuration,
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
-    val errorsListener: Response.ErrorListener? = null
+    val errorsListener: Response.ErrorListener? = null,
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
     companion object {
@@ -54,7 +54,7 @@ internal data class MindboxRequest(
                 Build.MODEL,
                 configuration.packageName,
                 configuration.versionName,
-                configuration.versionCode
+                configuration.versionCode,
             )
             params[HEADER_INTEGRATION] = VALUE_INTEGRATION
             params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
@@ -77,7 +77,7 @@ internal data class MindboxRequest(
                         Charset.forName(
                             HttpHeaderParser.parseCharset(
                                 response?.headers,
-                                DEFAULT_RESPONSE_CHARSET
+                                DEFAULT_RESPONSE_CHARSET,
                             )
                         )
                     )
@@ -90,9 +90,7 @@ internal data class MindboxRequest(
                         else -> body
                     }
 
-                    val cacheEntry = if (response != null) {
-                        HttpHeaderParser.parseCacheHeaders(response)
-                    } else null
+                    val cacheEntry = response?.let(HttpHeaderParser::parseCacheHeaders)
 
                     Response.success(JSONObject(bodyJson), cacheEntry)
                 } catch (e: UnsupportedEncodingException) {

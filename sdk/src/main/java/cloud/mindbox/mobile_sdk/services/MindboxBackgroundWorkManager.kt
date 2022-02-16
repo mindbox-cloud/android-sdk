@@ -16,7 +16,6 @@ internal object BackgroundWorkManager {
             val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
                 .setInitialDelay(10, TimeUnit.SECONDS)
                 .addTag(WORKER_TAG)
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)

@@ -17,7 +17,7 @@ internal class MindboxServiceGenerator constructor(context: Context) {
         @Volatile
         private var INSTANCE: MindboxServiceGenerator? = null
         internal fun getInstance(
-            context: Context
+            context: Context,
         ): MindboxServiceGenerator? = LoggingExceptionHandler.runCatching(defaultValue = null) {
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: MindboxServiceGenerator(context).also {

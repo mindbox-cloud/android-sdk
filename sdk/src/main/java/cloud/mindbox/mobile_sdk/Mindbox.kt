@@ -38,6 +38,7 @@ object Mindbox {
     const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
+    private const val DELIVER_TOKEN_DELAY = 1L
 
     private val mindboxJob = SupervisorJob()
     private val mindboxScope = CoroutineScope(Default + mindboxJob)
@@ -194,7 +195,7 @@ object Mindbox {
      */
     fun onPushClicked(
         context: Context,
-        intent: Intent
+        intent: Intent,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         PushNotificationManager.getUniqKeyFromPushIntent(intent)
             ?.let { uniqKey ->
@@ -456,9 +457,10 @@ object Mindbox {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean  = LoggingExceptionHandler.runCatching(defaultValue = false) {
-        message ?: return@runCatching false
-        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message)
-            ?: return@runCatching false
+        val convertedMessage = message?.let {
+            pushServiceHandler?.convertToRemoteMessage(message)
+        } ?: return@runCatching false
+
         runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
@@ -489,13 +491,10 @@ object Mindbox {
                 tokenCallbacks[key]?.invoke(token)
                 tokenCallbacks.remove(key)
             }
-        }, 1, TimeUnit.SECONDS)
+        }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
 
-    internal fun initComponents(
-        context: Context,
-        pushServiceHandler: PushServiceHandler?,
-    ) {
+    internal fun initComponents(context: Context, pushServiceHandler: PushServiceHandler?) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         this.pushServiceHandler = pushServiceHandler
@@ -654,9 +653,7 @@ object Mindbox {
         }, 1, TimeUnit.SECONDS)
     }
 
-    private fun validateConfiguration(
-        configuration: MindboxConfiguration,
-    ): MindboxConfiguration {
+    private fun validateConfiguration(configuration: MindboxConfiguration): MindboxConfiguration {
         val validationErrors = SdkValidation.validateConfiguration(
             domain = configuration.domain,
             endpointId = configuration.endpointId,
@@ -675,10 +672,10 @@ object Mindbox {
                 "Invalid configuration parameters found: $validationErrors",
             )
             val isDeviceIdError = validationErrors.contains(
-                SdkValidation.Error.INVALID_DEVICE_ID
+                SdkValidation.Error.INVALID_DEVICE_ID,
             )
             val isInstallationIdError = validationErrors.contains(
-                SdkValidation.Error.INVALID_INSTALLATION_ID
+                SdkValidation.Error.INVALID_INSTALLATION_ID,
             )
 
             val previousDeviceUUID = if (isDeviceIdError) {
@@ -694,7 +691,7 @@ object Mindbox {
 
             configuration.copy(
                 previousDeviceUUID = previousDeviceUUID,
-                previousInstallationId = previousInstallationId
+                previousInstallationId = previousInstallationId,
             )
         }
     }
