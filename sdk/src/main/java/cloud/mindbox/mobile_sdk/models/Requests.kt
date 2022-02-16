@@ -78,8 +78,8 @@ internal data class MindboxRequest(
                             HttpHeaderParser.parseCharset(
                                 response?.headers,
                                 DEFAULT_RESPONSE_CHARSET,
-                            )
-                        )
+                            ),
+                        ),
                     )
 
                     logBodyResponse(body)
@@ -111,7 +111,7 @@ internal data class MindboxRequest(
             LoggingExceptionHandler.runCatching {
                 MindboxLoggerImpl.e(
                     this,
-                    "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; "
+                    "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
                 )
                 try {
 
