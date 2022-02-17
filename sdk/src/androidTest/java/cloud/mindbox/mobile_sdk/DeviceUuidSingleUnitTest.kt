@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
+import cloud.mindbox.mobile_sdk.models.isUuid
 import org.junit.After
 import org.junit.Assert
 import org.junit.Test
@@ -20,8 +20,8 @@ class DeviceUuidSingleUnitTest {
 
         val configs = MindboxConfiguration.Builder(appContext, "epi.ru", "some").build()
 
-        MindboxDatabase.isTestMode = true
-        Mindbox.init(appContext, configs)
+        setDatabaseTestMode(true)
+        Mindbox.init(appContext, configs, listOf())
 
         Thread.sleep(10000)
 
@@ -41,8 +41,8 @@ class DeviceUuidSingleUnitTest {
 
         val configs = MindboxConfiguration.Builder(appContext, "example.com", "someEndpoint").build()
 
-        MindboxDatabase.isTestMode = true
-        Mindbox.init(appContext, configs)
+        setDatabaseTestMode(true)
+        Mindbox.init(appContext, configs, listOf())
 
         Thread.sleep(5000)
 
@@ -54,8 +54,8 @@ class DeviceUuidSingleUnitTest {
         Mindbox.disposeDeviceUuidSubscription("wrong_subscribe")
         Mindbox.disposeDeviceUuidSubscription("")
 
-        MindboxDatabase.isTestMode = true
-        Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext) //for cancel method after test
+        setDatabaseTestMode(true)
+        initCoreComponents()
     }
 
     @Test

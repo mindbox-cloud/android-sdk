@@ -1,7 +1,5 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
-import com.google.gson.annotations.SerializedName
+import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 
-abstract class OperationResponseBase(
-    @SerializedName("status") val status: String? = null
-)
+abstract class OperationResponseBase(status: String? = null): OperationResponseBaseInternal(status)

@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.models
 
+import com.google.gson.annotations.SerializedName
+
 data class ValidationMessage(
-    val message: String? = null,
-    val location: String? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("location") val location: String? = null,
 )

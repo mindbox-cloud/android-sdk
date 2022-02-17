@@ -3,8 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
-import cloud.mindbox.mobile_sdk.logOnException
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
 internal object SharedPreferencesManager {
 
@@ -40,8 +39,8 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: String?
-    ) = runCatching { preferences.edit().putString(key, value).apply() }.logOnException()
+        value: String?,
+    ) = LoggingExceptionHandler.runCatching { preferences.edit().putString(key, value).apply() }
 
     /**
      * Saves [Boolean] into the Preferences.
@@ -51,8 +50,8 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: Boolean
-    ) = runCatching { preferences.edit().putBoolean(key, value).apply() }.logOnException()
+        value: Boolean,
+    ) = LoggingExceptionHandler.runCatching { preferences.edit().putBoolean(key, value).apply() }
 
     /**
      * Saves [Int] into the Preferences.
@@ -62,8 +61,8 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: Int
-    ) = runCatching { preferences.edit().putInt(key, value).apply() }.logOnException()
+        value: Int,
+    ) = LoggingExceptionHandler.runCatching { preferences.edit().putInt(key, value).apply() }
 
     /**
      * Used to retrieve [String] object from the Preferences.
@@ -74,10 +73,10 @@ internal object SharedPreferencesManager {
      **/
     fun getString(
         key: String,
-        defaultValue: String? = null
-    ): String? = runCatching {
+        defaultValue: String? = null,
+    ): String? = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getString(key, defaultValue)
-    }.returnOnException { defaultValue }
+    }
 
     /**
      * Used to retrieve [Boolean] object from the Preferences.
@@ -88,10 +87,10 @@ internal object SharedPreferencesManager {
      **/
     fun getBoolean(
         key: String,
-        defaultValue: Boolean = false
-    ): Boolean = runCatching {
+        defaultValue: Boolean = false,
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getBoolean(key, defaultValue)
-    }.returnOnException { defaultValue }
+    }
 
     /**
      * Used to retrieve [Int] object from the Preferences.
@@ -102,10 +101,10 @@ internal object SharedPreferencesManager {
      **/
     fun getInt(
         key: String,
-        defaultValue: Int = DEFAULT_INT_VALUE
-    ): Int = runCatching {
+        defaultValue: Int = DEFAULT_INT_VALUE,
+    ): Int = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getInt(key, defaultValue)
-    }.returnOnException { defaultValue }
+    }
 
     internal fun deleteAll() = runCatching {
         preferences.edit().clear().apply()

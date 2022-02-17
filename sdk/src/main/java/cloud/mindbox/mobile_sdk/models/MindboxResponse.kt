@@ -7,7 +7,7 @@ internal class MindboxResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null,
     @SerializedName("errorId") val errorId: String? = null,
     @SerializedName("httpStatusCode") val httpStatusCode: Int? = null,
-    @SerializedName("validationMessages") val validationMessages: List<ValidationMessage>? = null
+    @SerializedName("validationMessages") val validationMessages: List<ValidationMessage>? = null,
 ) {
 
     companion object {

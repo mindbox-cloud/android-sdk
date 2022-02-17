@@ -1,6 +1,6 @@
-package cloud.mindbox.mobile_sdk.models
+package cloud.mindbox.mobile_sdk.pushes
 
-internal data class PushAction(
+data class PushAction(
     val uniqueKey: String?,
     val text: String?,
     val url: String?

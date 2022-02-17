@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import android.os.Build
-import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
@@ -19,7 +19,7 @@ class MindboxConfiguration private constructor(
     internal val versionName: String,
     internal val versionCode: String,
     internal val subscribeCustomerIfCreated: Boolean,
-    internal val shouldCreateCustomer: Boolean
+    internal val shouldCreateCustomer: Boolean,
 ) {
 
     constructor(builder: Builder) : this(
@@ -31,7 +31,7 @@ class MindboxConfiguration private constructor(
         versionName = builder.versionName,
         versionCode = builder.versionCode,
         subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
-        shouldCreateCustomer = builder.shouldCreateCustomer
+        shouldCreateCustomer = builder.shouldCreateCustomer,
     )
 
     internal fun copy(
@@ -43,7 +43,7 @@ class MindboxConfiguration private constructor(
         versionName: String = this.versionName,
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
-        shouldCreateCustomer: Boolean = this.shouldCreateCustomer
+        shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
     ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
@@ -53,13 +53,22 @@ class MindboxConfiguration private constructor(
         versionName = versionName,
         versionCode = versionCode,
         subscribeCustomerIfCreated = subscribeCustomerIfCreated,
-        shouldCreateCustomer = shouldCreateCustomer
+        shouldCreateCustomer = shouldCreateCustomer,
     )
 
     /**
      * A Builder for MindboxConfiguration
      */
     class Builder(private val context: Context, val domain: String, val endpointId: String) {
+
+        companion object {
+
+            private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
+            private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
+            private const val PLACEHOLDER_APP_VERSION_CODE = "?"
+
+        }
+
         internal var previousInstallationId: String = ""
         internal var previousDeviceUUID: String = ""
         internal var subscribeCustomerIfCreated: Boolean = false
@@ -67,12 +76,6 @@ class MindboxConfiguration private constructor(
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
         internal var shouldCreateCustomer: Boolean = true
-
-        companion object {
-            private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
-            private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
-            private const val PLACEHOLDER_APP_VERSION_CODE = "?"
-        }
 
         /**
          * Specifies deviceUUID for Mindbox
@@ -128,7 +131,8 @@ class MindboxConfiguration private constructor(
                 val packageManager = context.packageManager
                 val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
                 packageName = packageInfo.packageName.trim()
-                this.versionName = packageInfo.versionName?.trim() ?: PLACEHOLDER_APP_PACKAGE_NAME
+                this.versionName = packageInfo.versionName?.trim()
+                    ?: PLACEHOLDER_APP_PACKAGE_NAME
                 this.versionCode =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toString().trim()
@@ -141,11 +145,13 @@ class MindboxConfiguration private constructor(
                 MindboxPreferences.hostAppName = packageName
 
             } catch (e: Exception) {
-                MindboxLogger.e(
+                MindboxLoggerImpl.e(
                     this,
-                    "Getting app info failed. Identified as an unknown application"
+                    "Getting app info failed. Identified as an unknown application",
                 )
             }
         }
+
     }
+
 }
