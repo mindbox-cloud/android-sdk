@@ -57,6 +57,20 @@ object Mindbox {
      * @return String identifier of subscription
      * @see disposePushTokenSubscription
      */
+    @Deprecated(
+        message = "Use subscribePushToken instead",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("subscribePushToken")
+    )
+    fun subscribeFmsToken(subscription: (String?) -> Unit) = subscribePushToken(subscription)
+
+    /**
+     * Subscribe to gets token from push service used by SDK
+     *
+     * @param subscription - invocation function with push token
+     * @return String identifier of subscription
+     * @see disposePushTokenSubscription
+     */
     fun subscribePushToken(subscription: (String?) -> Unit): String {
         val subscriptionId = UUID.randomUUID().toString()
 
@@ -74,9 +88,31 @@ object Mindbox {
      *
      * @param subscriptionId - identifier of the subscription to remove
      */
+    @Deprecated(
+        message = "Use disposePushTokenSubscription",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("disposePushTokenSubscription")
+    )
+    fun disposeFmsTokenSubscription(subscriptionId: String) = disposePushTokenSubscription(subscriptionId)
+
+    /**
+     * Removes push token subscription if it is no longer necessary
+     *
+     * @param subscriptionId - identifier of the subscription to remove
+     */
     fun disposePushTokenSubscription(subscriptionId: String) {
         tokenCallbacks.remove(subscriptionId)
     }
+
+    /**
+     * Returns date of push token saving
+     */
+    @Deprecated(
+        message = "Use getPushTokenSaveDate instead",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("getPushTokenSaveDate")
+    )
+    fun getFmsTokenSaveDate() = getPushTokenSaveDate()
 
     /**
      * Returns date of push token saving
