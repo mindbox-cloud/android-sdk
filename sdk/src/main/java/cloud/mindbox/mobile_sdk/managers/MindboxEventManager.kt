@@ -21,7 +21,7 @@ internal object MindboxEventManager {
     fun appInstalled(
         context: Context,
         initData: InitData,
-        shouldCreateCustomer: Boolean
+        shouldCreateCustomer: Boolean,
     ) = LoggingExceptionHandler.runCatching {
         val eventType = if (shouldCreateCustomer) {
             EventType.AppInstalled
@@ -36,67 +36,73 @@ internal object MindboxEventManager {
         )
     }
 
-    fun appInfoUpdate(context: Context, initData: UpdateData) {
-        LoggingExceptionHandler.runCatching {
+    fun appInfoUpdate(
+        context: Context,
+        initData: UpdateData,
+    ) = LoggingExceptionHandler.runCatching {
+        DbManager.addEventToQueue(
+            context, Event(
+                eventType = EventType.AppInfoUpdated,
+                body = gson.toJson(initData),
+            )
+        )
+    }
+
+    fun pushDelivered(
+        context: Context,
+        uniqKey: String,
+    ) = LoggingExceptionHandler.runCatching {
+        runBlocking(Dispatchers.IO) {
+            val fields = hashMapOf(
+                EventParameters.UNIQ_KEY.fieldName to uniqKey
+            )
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.AppInfoUpdated,
-                    body = gson.toJson(initData),
+                    eventType = EventType.PushDelivered,
+                    additionalFields = fields,
                 )
             )
         }
     }
 
-    fun pushDelivered(context: Context, uniqKey: String) {
-        LoggingExceptionHandler.runCatching {
-            runBlocking(Dispatchers.IO) {
-                val fields = hashMapOf(
-                    EventParameters.UNIQ_KEY.fieldName to uniqKey
-                )
-                DbManager.addEventToQueue(
-                    context, Event(
-                        eventType = EventType.PushDelivered,
-                        additionalFields = fields,
-                    )
-                )
-            }
-        }
-    }
-
-    fun pushClicked(context: Context, clickData: TrackClickData) {
-        LoggingExceptionHandler.runCatching {
-            runBlocking(Dispatchers.IO) {
-                DbManager.addEventToQueue(
-                    context, Event(
-                        eventType = EventType.PushClicked,
-                        body = gson.toJson(clickData),
-                    )
-                )
-            }
-        }
-    }
-
-    fun appStarted(context: Context, trackVisitData: TrackVisitData) {
-        LoggingExceptionHandler.runCatching {
+    fun pushClicked(
+        context: Context,
+        clickData: TrackClickData,
+    ) = LoggingExceptionHandler.runCatching {
+        runBlocking(Dispatchers.IO) {
             DbManager.addEventToQueue(
                 context, Event(
-                    eventType = EventType.TrackVisit,
-                    body = gson.toJson(trackVisitData),
+                    eventType = EventType.PushClicked,
+                    body = gson.toJson(clickData),
                 )
             )
         }
     }
 
-    fun asyncOperation(context: Context, name: String, body: String) {
-        LoggingExceptionHandler.runCatching {
-            runBlocking(Dispatchers.IO) {
-                DbManager.addEventToQueue(
-                    context, Event(
-                        eventType = EventType.AsyncOperation(name),
-                        body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
-                    )
+    fun appStarted(
+        context: Context,
+        trackVisitData: TrackVisitData,
+    ) = LoggingExceptionHandler.runCatching {
+        DbManager.addEventToQueue(
+            context, Event(
+                eventType = EventType.TrackVisit,
+                body = gson.toJson(trackVisitData),
+            )
+        )
+    }
+
+    fun asyncOperation(
+        context: Context,
+        name: String,
+        body: String,
+    ) = LoggingExceptionHandler.runCatching {
+        runBlocking(Dispatchers.IO) {
+            DbManager.addEventToQueue(
+                context, Event(
+                    eventType = EventType.AsyncOperation(name),
+                    body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
                 )
-            }
+            )
         }
     }
 
@@ -106,7 +112,7 @@ internal object MindboxEventManager {
         body: T,
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ) = LoggingExceptionHandler.runCatching {
         val configuration = checkConfiguration(onError) ?: return@runCatching
 
@@ -131,7 +137,7 @@ internal object MindboxEventManager {
         name: String,
         bodyJson: String,
         onSuccess: (String) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ) = LoggingExceptionHandler.runCatching {
         val configuration = checkConfiguration(onError) ?: return@runCatching
 
@@ -150,7 +156,7 @@ internal object MindboxEventManager {
 
     private fun createSyncEvent(
         name: String,
-        bodyJson: String
+        bodyJson: String,
     ) = Event(
         eventType = EventType.SyncOperation(name),
         body = bodyJson

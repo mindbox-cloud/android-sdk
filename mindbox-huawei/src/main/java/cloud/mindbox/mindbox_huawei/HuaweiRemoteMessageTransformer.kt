@@ -19,16 +19,16 @@ internal class HuaweiRemoteMessageTransformer(private val exceptionHandler: Exce
             uniqueKey = parsedMessage.uniqueKey,
             title = parsedMessage.title,
             description = parsedMessage.message,
-            pushActions = parsedMessage.buttons.map {
-                PushAction(
-                    uniqueKey = it.uniqueKey,
-                    text = it.text,
-                    url = it.url,
-                )
-            },
+            pushActions = parsedMessage.buttons.map(::pushAction),
             pushLink = parsedMessage.clickUrl,
             imageUrl = parsedMessage.imageUrl,
         )
     }
+
+    private fun pushAction(it: cloud.mindbox.mindbox_huawei.PushAction) = PushAction(
+        uniqueKey = it.uniqueKey,
+        text = it.text,
+        url = it.url,
+    )
 
 }

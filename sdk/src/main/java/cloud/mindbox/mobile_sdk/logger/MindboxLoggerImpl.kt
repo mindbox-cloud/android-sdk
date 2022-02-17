@@ -6,9 +6,13 @@ import com.android.volley.VolleyLog
 interface MindboxLogger {
 
     fun i(parent: Any, message: String)
+
     fun d(parent: Any, message: String)
+
     fun e(parent: Any, message: String)
+
     fun e(parent: Any, message: String, exception: Throwable)
+
     fun w(parent: Any, message: String)
 
 }
@@ -16,6 +20,7 @@ interface MindboxLogger {
 internal object MindboxLoggerImpl : MindboxLogger {
 
     private const val TAG = "Mindbox"
+
     private val DEFAULT_LOG_LEVEL = Level.ERROR
 
     init {

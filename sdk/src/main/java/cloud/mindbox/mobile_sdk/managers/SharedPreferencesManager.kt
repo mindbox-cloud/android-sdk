@@ -39,7 +39,7 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: String?
+        value: String?,
     ) = LoggingExceptionHandler.runCatching { preferences.edit().putString(key, value).apply() }
 
     /**
@@ -50,7 +50,7 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: Boolean
+        value: Boolean,
     ) = LoggingExceptionHandler.runCatching { preferences.edit().putBoolean(key, value).apply() }
 
     /**
@@ -61,7 +61,7 @@ internal object SharedPreferencesManager {
      **/
     fun put(
         key: String,
-        value: Int
+        value: Int,
     ) = LoggingExceptionHandler.runCatching { preferences.edit().putInt(key, value).apply() }
 
     /**
@@ -73,7 +73,7 @@ internal object SharedPreferencesManager {
      **/
     fun getString(
         key: String,
-        defaultValue: String? = null
+        defaultValue: String? = null,
     ): String? = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getString(key, defaultValue)
     }
@@ -87,7 +87,7 @@ internal object SharedPreferencesManager {
      **/
     fun getBoolean(
         key: String,
-        defaultValue: Boolean = false
+        defaultValue: Boolean = false,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getBoolean(key, defaultValue)
     }
@@ -101,7 +101,7 @@ internal object SharedPreferencesManager {
      **/
     fun getInt(
         key: String,
-        defaultValue: Int = DEFAULT_INT_VALUE
+        defaultValue: Int = DEFAULT_INT_VALUE,
     ): Int = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getInt(key, defaultValue)
     }

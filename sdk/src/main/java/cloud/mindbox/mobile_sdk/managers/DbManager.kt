@@ -110,7 +110,9 @@ internal object DbManager {
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
-    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(
+        defaultValue = false
+    ) {
         timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
     }
 
