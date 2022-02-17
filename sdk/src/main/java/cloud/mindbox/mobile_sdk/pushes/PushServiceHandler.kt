@@ -29,19 +29,19 @@ abstract class PushServiceHandler {
                     "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
                             "Will be generated from random. " +
                             "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
-                            "uuid from AdvertisingIdClient = $id"
+                            "uuid from AdvertisingIdClient = $id",
                 )
                 generateRandomUuid()
             } else {
                 MindboxLoggerImpl.d(
                     this,
                     "Received from $notificationProvider AdvertisingIdClient: " +
-                            "device uuid - $id"
+                            "device uuid - $id",
                 )
                 id
             }
         },
-        defaultValue = onAdsIdAcquisitionFailure()
+        defaultValue = onAdsIdAcquisitionFailure(),
     )
 
     abstract fun getAdsId(context: Context): Pair<String?, Boolean>
@@ -58,7 +58,7 @@ abstract class PushServiceHandler {
         MindboxLoggerImpl.w(
             this,
             "Unable to determine $notificationProvider services availability. " +
-                    "Failed with exception $e"
+                    "Failed with exception $e",
         )
         false
     }
@@ -75,7 +75,7 @@ abstract class PushServiceHandler {
     } catch (e: Exception) {
         MindboxLoggerImpl.w(
             this,
-            "Fetching $notificationProvider registration token failed with exception $e"
+            "Fetching $notificationProvider registration token failed with exception $e",
         )
         null
     }
@@ -88,7 +88,7 @@ abstract class PushServiceHandler {
         MindboxLoggerImpl.d(
             this,
             "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
-                    "Will be generated from random"
+                    "Will be generated from random",
         )
         generateRandomUuid()
     }

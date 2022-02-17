@@ -29,10 +29,8 @@ internal object MindboxEventManager {
             EventType.AppInstalledWithoutCustomer
         }
         DbManager.addEventToQueue(
-            context, Event(
-                eventType = eventType,
-                body = gson.toJson(initData),
-            )
+            context,
+            Event(eventType = eventType, body = gson.toJson(initData)),
         )
     }
 
@@ -41,10 +39,8 @@ internal object MindboxEventManager {
         initData: UpdateData,
     ) = LoggingExceptionHandler.runCatching {
         DbManager.addEventToQueue(
-            context, Event(
-                eventType = EventType.AppInfoUpdated,
-                body = gson.toJson(initData),
-            )
+            context,
+            Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
     }
 
@@ -53,14 +49,10 @@ internal object MindboxEventManager {
         uniqKey: String,
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) {
-            val fields = hashMapOf(
-                EventParameters.UNIQ_KEY.fieldName to uniqKey
-            )
+            val fields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey)
             DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.PushDelivered,
-                    additionalFields = fields,
-                )
+                context,
+                Event(eventType = EventType.PushDelivered, additionalFields = fields),
             )
         }
     }
@@ -71,10 +63,8 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) {
             DbManager.addEventToQueue(
-                context, Event(
-                    eventType = EventType.PushClicked,
-                    body = gson.toJson(clickData),
-                )
+                context,
+                Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
             )
         }
     }
@@ -84,10 +74,8 @@ internal object MindboxEventManager {
         trackVisitData: TrackVisitData,
     ) = LoggingExceptionHandler.runCatching {
         DbManager.addEventToQueue(
-            context, Event(
-                eventType = EventType.TrackVisit,
-                body = gson.toJson(trackVisitData),
-            )
+            context,
+            Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
         )
     }
 
@@ -98,10 +86,11 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) {
             DbManager.addEventToQueue(
-                context, Event(
+                context,
+                Event(
                     eventType = EventType.AsyncOperation(name),
                     body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
-                )
+                ),
             )
         }
     }
@@ -128,7 +117,7 @@ internal object MindboxEventManager {
             event = event,
             classOfT = classOfV,
             onSuccess = onSuccess,
-            onError = onError
+            onError = onError,
         )
     }
 
@@ -150,7 +139,7 @@ internal object MindboxEventManager {
             deviceUuid = deviceUuid,
             event = event,
             onSuccess = onSuccess,
-            onError = onError
+            onError = onError,
         )
     }
 
@@ -159,7 +148,7 @@ internal object MindboxEventManager {
         bodyJson: String,
     ) = Event(
         eventType = EventType.SyncOperation(name),
-        body = bodyJson
+        body = bodyJson,
     )
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {

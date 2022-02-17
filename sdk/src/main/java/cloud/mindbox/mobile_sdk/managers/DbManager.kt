@@ -42,7 +42,9 @@ internal object DbManager {
         BackgroundWorkManager.startOneTimeService(context)
     }
 
-    fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
+    fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(
+        defaultValue = listOf()
+    ) {
         val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
 
@@ -89,7 +91,9 @@ internal object DbManager {
         }
     }
 
-    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(defaultValue = null) {
+    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(
+        defaultValue = null
+    ) {
         try {
             mindboxDb.configurationDao().get()
         } catch (exception: RuntimeException) {
@@ -99,7 +103,9 @@ internal object DbManager {
         }
     }
 
-    private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
+    private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
+        defaultValue = listOf()
+    ) {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
     }
 

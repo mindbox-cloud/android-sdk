@@ -42,7 +42,7 @@ internal class FirebaseRemoteMessageTransformer(private val exceptionHandler: Ex
 
     private fun getButtons(
         data: Map<String, String>,
-        pushActionsType: Type?
+        pushActionsType: Type?,
     ) = exceptionHandler.runCatching(defaultValue = listOf()) {
         gson.fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
     }

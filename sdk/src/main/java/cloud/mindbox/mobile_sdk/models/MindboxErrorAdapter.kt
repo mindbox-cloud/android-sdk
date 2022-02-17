@@ -77,7 +77,9 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
         }
     }
 
-    private fun validationErrors(reader: JsonReader): List<ValidationMessage> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
+    private fun validationErrors(
+        reader: JsonReader
+    ): List<ValidationMessage> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         gson.fromJson<List<ValidationMessage>>(
             reader,
             object : TypeToken<List<ValidationMessage>>() {}.type,

@@ -1,10 +1,10 @@
 package cloud.mindbox.mindbox_huawei
 
-import cloud.mindbox.mobile_sdk.pushes.PushAction
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import com.huawei.hms.push.RemoteMessage as HuaweiRemoteMessage
 import com.google.gson.Gson
+import cloud.mindbox.mobile_sdk.pushes.PushAction as MindboxPushAction
 
 internal class HuaweiRemoteMessageTransformer(private val exceptionHandler: ExceptionHandler) {
 
@@ -25,10 +25,10 @@ internal class HuaweiRemoteMessageTransformer(private val exceptionHandler: Exce
         )
     }
 
-    private fun pushAction(it: cloud.mindbox.mindbox_huawei.PushAction) = PushAction(
-        uniqueKey = it.uniqueKey,
-        text = it.text,
-        url = it.url,
+    private fun pushAction(action: PushAction) = MindboxPushAction(
+        uniqueKey = action.uniqueKey,
+        text = action.text,
+        url = action.url,
     )
 
 }
