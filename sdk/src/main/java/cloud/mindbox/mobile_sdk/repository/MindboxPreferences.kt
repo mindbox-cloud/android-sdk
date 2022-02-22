@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.util.*
 
 internal object MindboxPreferences {
@@ -18,84 +18,86 @@ internal object MindboxPreferences {
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
 
     var isFirstInitialize: Boolean
-        get() = runCatching {
-            return SharedPreferencesManager.getBoolean(KEY_IS_FIRST_INITIALIZATION, true)
-        }.returnOnException { true }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
+            SharedPreferencesManager.getBoolean(KEY_IS_FIRST_INITIALIZATION, true)
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_IS_FIRST_INITIALIZATION, value)
-            }.returnOnException { }
+            }
         }
 
     var deviceUuid: String
-        get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_DEVICE_UUID) ?: ""
-        }.returnOnException { "" }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_DEVICE_UUID) ?: ""
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_DEVICE_UUID, value)
-            }.returnOnException { }
+            }
         }
 
     var pushToken: String?
-        get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_PUSH_TOKEN)
-        }.returnOnException { null }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = null) {
+            SharedPreferencesManager.getString(KEY_PUSH_TOKEN)
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_PUSH_TOKEN, value)
                 tokenSaveDate = Date().toString()
-            }.returnOnException { }
+            }
         }
 
     var tokenSaveDate: String
-        get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
-        }.returnOnException { "" }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+             SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
-            }.returnOnException { }
+            }
         }
 
     var isNotificationEnabled: Boolean
-        get() = runCatching {
-            return SharedPreferencesManager.getBoolean(KEY_IS_NOTIFICATION_ENABLED, true)
-        }.returnOnException { true }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
+            SharedPreferencesManager.getBoolean(KEY_IS_NOTIFICATION_ENABLED, true)
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_IS_NOTIFICATION_ENABLED, value)
-            }.returnOnException { }
+            }
         }
 
     var hostAppName: String
-        get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_HOST_APP_MANE) ?: ""
-        }.returnOnException { "" }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_HOST_APP_MANE) ?: ""
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_HOST_APP_MANE, value)
-            }.returnOnException { }
+            }
         }
 
     val infoUpdatedVersion: Int
-        @Synchronized get() = runCatching {
+        @Synchronized get() = LoggingExceptionHandler.runCatching(
+            defaultValue = DEFAULT_INFO_UPDATED_VERSION
+        ) {
             val version = SharedPreferencesManager.getInt(
                 KEY_INFO_UPDATED_VERSION,
                 DEFAULT_INFO_UPDATED_VERSION
             )
             SharedPreferencesManager.put(KEY_INFO_UPDATED_VERSION, version + 1)
-            return version
-        }.returnOnException { DEFAULT_INFO_UPDATED_VERSION }
+            version
+        }
 
     var instanceId: String
-        get() = runCatching {
-            return SharedPreferencesManager.getString(KEY_INSTANCE_ID) ?: ""
-        }.returnOnException { "" }
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_INSTANCE_ID) ?: ""
+        }
         set(value) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_INSTANCE_ID, value)
-            }.returnOnException { }
+            }
         }
 
 }

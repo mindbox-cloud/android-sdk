@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -26,7 +27,11 @@ internal object MindboxEventManager {
         Runtime.getRuntime().availableProcessors()
     ).asCoroutineDispatcher()
 
-    fun appInstalled(context: Context, initData: InitData, shouldCreateCustomer: Boolean) {
+    fun appInstalled(
+        context: Context,
+        initData: InitData,
+        shouldCreateCustomer: Boolean,
+    ) = LoggingExceptionHandler.runCatching {
         val eventType = if (shouldCreateCustomer) {
             EventType.AppInstalled
         } else {
@@ -35,10 +40,15 @@ internal object MindboxEventManager {
         asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
     }
 
-    fun appInfoUpdate(context: Context, initData: UpdateData) = asyncOperation(
-        context,
-        Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData))
-    )
+    fun appInfoUpdate(
+        context: Context,
+        initData: UpdateData,
+    ) = LoggingExceptionHandler.runCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData))
+        )
+    }
 
     fun pushDelivered(context: Context, uniqKey: String) = asyncOperation(
         context,
@@ -48,15 +58,33 @@ internal object MindboxEventManager {
         ),
     )
 
-    fun pushClicked(context: Context, clickData: TrackClickData) = asyncOperation(
-        context,
-        Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
-    )
+    fun pushClicked(
+        context: Context,
+        clickData: TrackClickData,
+    ) = LoggingExceptionHandler.runCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
+        )
+    }
 
-    fun appStarted(context: Context, trackVisitData: TrackVisitData) = asyncOperation(
-        context,
-        Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
-    )
+    fun pushClicked(
+        context: Context,
+        clickData: TrackClickData,
+    ) = LoggingExceptionHandler.runCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
+        )
+    }
+
+    fun appStarted(context: Context, trackVisitData: TrackVisitData) =
+        LoggingExceptionHandler.runCatching {
+            asyncOperation(
+                context,
+                Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
+            )
+        }
 
     fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
         context,
@@ -66,13 +94,16 @@ internal object MindboxEventManager {
         ),
     )
 
-    private fun asyncOperation(context: Context, event: Event) {
+    private fun asyncOperation(
+        context: Context,
+        event: Event,
+    ) = LoggingExceptionHandler.runCatching {
         val mindboxScope = Mindbox.mindboxScope
         val ioContext = mindboxScope.coroutineContext + Dispatchers.IO
         val poolContext = mindboxScope.coroutineContext + poolDispatcher
         runBlocking(poolContext) { DbManager.addEventToQueue(context, event) }
         mindboxScope.launch(ioContext) {
-            runCatching {
+            LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
                 if (MindboxPreferences.isFirstInitialize || configuration == null) {
@@ -90,7 +121,7 @@ internal object MindboxEventManager {
                         shouldStartWorker = true,
                     )
                 }
-            }.logOnException()
+            }
         }
     }
 
@@ -101,8 +132,8 @@ internal object MindboxEventManager {
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit,
-    ) = runCatching {
-        val configuration = checkConfiguration(onError) ?: return
+    ) = LoggingExceptionHandler.runCatching {
+        val configuration = checkConfiguration(onError) ?: return@runCatching
 
         val json = gson.toJson(body)
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
@@ -118,7 +149,7 @@ internal object MindboxEventManager {
             onSuccess = onSuccess,
             onError = onError,
         )
-    }.logOnException()
+    }
 
     fun syncOperation(
         context: Context,
@@ -126,8 +157,8 @@ internal object MindboxEventManager {
         bodyJson: String,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
-    ) = runCatching {
-        val configuration = checkConfiguration(onError) ?: return
+    ) = LoggingExceptionHandler.runCatching {
+        val configuration = checkConfiguration(onError) ?: return@runCatching
 
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
@@ -140,7 +171,7 @@ internal object MindboxEventManager {
             onSuccess = onSuccess,
             onError = onError,
         )
-    }.logOnException()
+    }
 
     private fun createSyncEvent(
         name: String,
@@ -160,12 +191,10 @@ internal object MindboxEventManager {
         return configuration
     }
 
-    fun sendEventsIfExist(context: Context) {
-        runCatching {
-            if (DbManager.getFilteredEvents().isNotEmpty()) {
-                BackgroundWorkManager.startOneTimeService(context)
-            }
-        }.logOnException()
+    fun sendEventsIfExist(context: Context) = LoggingExceptionHandler.runCatching {
+        if (DbManager.getFilteredEvents().isNotEmpty()) {
+            BackgroundWorkManager.startOneTimeService(context)
+        }
     }
 
     fun <T> operationBodyJson(body: T): String = gson.toJson(body)

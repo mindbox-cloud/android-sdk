@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
@@ -17,7 +17,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
         MindboxError.Protocol::class to "MindboxError",
         MindboxError.InternalServer::class to "MindboxError",
         MindboxError.UnknownServer::class to "NetworkError",
-        MindboxError.Unknown::class to "InternalError"
+        MindboxError.Unknown::class to "InternalError",
     )
 
     override fun write(out: JsonWriter?, value: MindboxError?) {
@@ -34,7 +34,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
     }
 
     override fun read(`in`: JsonReader?): MindboxError? = `in`?.let { reader ->
-        runCatching {
+        LoggingExceptionHandler.runCatching(defaultValue = null) {
             reader.beginObject()
             val error = when (reader.nextString()) {
                 "MindboxError" -> {
@@ -43,7 +43,7 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
                         200 -> MindboxError.Validation(
                             statusCode = reader.nextInt(),
                             status = reader.nextString(),
-                            validationMessages = validationErrors(reader)
+                            validationMessages = validationErrors(reader),
                         )
                         400, 401, 403, 429 -> MindboxError.Protocol(
                             statusCode = reader.nextInt(),
@@ -67,23 +67,23 @@ class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
                     status = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorMessage = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
                     errorId = if (reader.peek() == JsonToken.STRING) reader.nextString() else null,
-                    httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null
+                    httpStatusCode = if (reader.peek() == JsonToken.NUMBER) reader.nextInt() else null,
                 )
                 "InternalError" -> MindboxError.Unknown().apply { reader.skipValue() }
                 else -> null
             }
             reader.endObject()
             error
-        }.returnOnException { null }
+        }
     }
 
-    private fun validationErrors(reader: JsonReader): List<ValidationMessage> = runCatching {
+    private fun validationErrors(
+        reader: JsonReader
+    ): List<ValidationMessage> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         gson.fromJson<List<ValidationMessage>>(
             reader,
-            object : TypeToken<List<ValidationMessage>>() {}.type
+            object : TypeToken<List<ValidationMessage>>() {}.type,
         )
-    }.returnOnException {
-        listOf()
     }
 
     private fun JsonWriter.writeErrorObject(value: MindboxError) = beginObject().apply {

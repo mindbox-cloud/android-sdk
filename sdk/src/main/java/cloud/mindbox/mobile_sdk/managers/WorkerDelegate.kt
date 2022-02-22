@@ -4,10 +4,10 @@ import android.content.Context
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
@@ -64,9 +64,11 @@ internal class WorkerDelegate {
         events: List<Event>,
         configuration: Configuration,
         parent: Any,
-    ) = runCatching {
-        val eventsCount = events.size - 1
-        val deviceUuid = MindboxPreferences.deviceUuid
+    ) {
+        LoggingExceptionHandler.runCatching {
+
+            val eventsCount = events.size - 1
+            val deviceUuid = MindboxPreferences.deviceUuid
 
         events.forEachIndexed { index, event ->
             if (isWorkerStopped) return

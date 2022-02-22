@@ -14,8 +14,7 @@ import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logOnException
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.net.URL
 import kotlin.random.Random
 
@@ -29,20 +28,21 @@ internal object PushNotificationManager {
     private const val MAX_ACTIONS_COUNT = 3
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
-    internal fun isNotificationsEnabled(context: Context): Boolean = runCatching {
+    internal fun isNotificationsEnabled(
+        context: Context,
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             if (manager?.areNotificationsEnabled() != true) {
-                return false
+                return@runCatching false
             }
-            return manager.notificationChannels.firstOrNull { channel ->
-                channel.importance == NotificationManager.IMPORTANCE_NONE
-            } == null
+            manager.notificationChannels
+                .firstOrNull { it.importance == NotificationManager.IMPORTANCE_NONE } == null
         } else {
-            return NotificationManagerCompat.from(context).areNotificationsEnabled()
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
-    }.returnOnException { true }
+    }
 
     internal fun handleRemoteMessage(
         context: Context,
@@ -52,8 +52,8 @@ internal object PushNotificationManager {
         @DrawableRes pushSmallIcon: Int,
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
-        defaultActivity: Class<out Activity>
-    ): Boolean = runCatching {
+        defaultActivity: Class<out Activity>,
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         val correctedLinksActivities = activities?.mapKeys { (key , _) ->
             key.replace("*", ".*").toRegex()
         }
@@ -99,15 +99,15 @@ internal object PushNotificationManager {
 
         notificationManager.notify(notificationId, builder.build())
 
-        return true
-    }.returnOnException { false }
+        true
+    }
 
     internal fun getUniqKeyFromPushIntent(
-        intent: Intent
+        intent: Intent,
     ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
 
     internal fun getUniqPushButtonKeyFromPushIntent(
-        intent: Intent
+        intent: Intent,
     ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
 
     internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
@@ -116,8 +116,8 @@ internal object PushNotificationManager {
         notificationManager: NotificationManager,
         channelId: String,
         channelName: String,
-        channelDescription: String?
-    ) = runCatching {
+        channelDescription: String?,
+    ) = LoggingExceptionHandler.runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(channelId, channelName, importance).apply {
@@ -127,7 +127,7 @@ internal object PushNotificationManager {
 
             notificationManager.createNotificationChannel(channel)
         }
-    }.logOnException()
+    }
 
     private fun createPendingIntent(
         context: Context,
@@ -135,8 +135,8 @@ internal object PushNotificationManager {
         id: Int,
         pushKey: String,
         url: String?,
-        pushButtonKey: String? = null
-    ): PendingIntent? = runCatching {
+        pushButtonKey: String? = null,
+    ): PendingIntent? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         val intent = getIntent(context, activity, id, pushKey, url, pushButtonKey)
 
         val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
@@ -151,7 +151,7 @@ internal object PushNotificationManager {
             intent,
             flags
         )
-    }.returnOnException { null }
+    }
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
@@ -197,7 +197,7 @@ internal object PushNotificationManager {
     private fun resolveActivity(
         activities: Map<Regex, Class<out Activity>>?,
         link: String?,
-        defaultActivity: Class<out Activity>
+        defaultActivity: Class<out Activity>,
     ): Class<out Activity> {
         val key = link?.let { activities?.keys?.find { it.matches(link) } }
         return activities?.get(key) ?: defaultActivity
@@ -206,9 +206,9 @@ internal object PushNotificationManager {
     private fun NotificationCompat.Builder.handleImageByUrl(
         url: String?,
         title: String,
-        text: String?
+        text: String?,
     ) = apply {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (!url.isNullOrBlank()) {
                 val connection = URL(url).openConnection().apply {
                     readTimeout = IMAGE_CONNECTION_TIMEOUT
@@ -227,7 +227,7 @@ internal object PushNotificationManager {
                         setStyle(style)
                     }
             }
-        }.logOnException()
+        }
     }
 
     private fun getIntent(
@@ -236,7 +236,7 @@ internal object PushNotificationManager {
         id: Int,
         pushKey: String,
         url: String?,
-        pushButtonKey: String?
+        pushButtonKey: String?,
     ) = Intent(context, activity).apply {
         putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
         putExtra(EXTRA_NOTIFICATION_ID, id)

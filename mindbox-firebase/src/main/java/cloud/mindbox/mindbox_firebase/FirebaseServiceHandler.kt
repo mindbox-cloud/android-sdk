@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
@@ -15,8 +16,14 @@ import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.firebase.messaging.RemoteMessage
 
-class FirebaseServiceHandler(private val logger: MindboxLogger) : PushServiceHandler() {
+internal class FirebaseServiceHandler(
+    private val logger: MindboxLogger,
+    exceptionHandler: ExceptionHandler,
+) : PushServiceHandler() {
+
+    private val messageTransformer = FirebaseRemoteMessageTransformer(exceptionHandler)
 
     override val notificationProvider: String = "FCM"
 
@@ -67,5 +74,11 @@ class FirebaseServiceHandler(private val logger: MindboxLogger) : PushServiceHan
 
     override fun isAvailable(context: Context) = GoogleApiAvailability.getInstance()
         .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+
+    override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {
+        messageTransformer.transform(message)
+    } else {
+        null
+    }
 
 }
