@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -57,16 +56,6 @@ internal object MindboxEventManager {
             additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
         ),
     )
-
-    fun pushClicked(
-        context: Context,
-        clickData: TrackClickData,
-    ) = LoggingExceptionHandler.runCatching {
-        asyncOperation(
-            context,
-            Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
-        )
-    }
 
     fun pushClicked(
         context: Context,

@@ -64,14 +64,13 @@ internal class WorkerDelegate {
         events: List<Event>,
         configuration: Configuration,
         parent: Any,
-    ) {
-        LoggingExceptionHandler.runCatching {
+    ) = LoggingExceptionHandler.runCatching {
 
             val eventsCount = events.size - 1
             val deviceUuid = MindboxPreferences.deviceUuid
 
         events.forEachIndexed { index, event ->
-            if (isWorkerStopped) return
+            if (isWorkerStopped) return@runCatching
             sendEvent(
                 context,
                 configuration,
@@ -82,7 +81,7 @@ internal class WorkerDelegate {
                 eventsCount,
             )
         }
-    }.logOnException()
+    }
 
     fun sendEvent(
         context: Context,

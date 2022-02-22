@@ -41,9 +41,9 @@ internal object DbManager {
 
         BackgroundWorkManager.startOneTimeService(context)
     }
-    fun setNotSending(event: Event) = runCatching {
+    fun setNotSending(event: Event) = LoggingExceptionHandler.runCatching {
         mindboxDb.eventsDao().update(event.copy(isSending = false))
-    }.logOnException()
+    }
 
     fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(
         defaultValue = listOf()
