@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -28,7 +29,9 @@ internal object PushNotificationManager {
     private const val MAX_ACTIONS_COUNT = 3
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
-    internal fun isNotificationsEnabled(context: Context): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
+    internal fun isNotificationsEnabled(
+        context: Context
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
@@ -53,7 +56,7 @@ internal object PushNotificationManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
-        val correctedLinksActivities = activities?.mapKeys { (key , _) ->
+        val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
         }
 
@@ -89,8 +92,7 @@ internal object PushNotificationManager {
                 correctedLinksActivities,
                 defaultActivity,
             )
-            .handleImageByUrl(remoteMessage.imageUrl, title, text)
-            .setText(text)
+            .setNotificationStyle(remoteMessage.imageUrl, title, text)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -202,31 +204,51 @@ internal object PushNotificationManager {
         return activities?.get(key) ?: defaultActivity
     }
 
-    private fun NotificationCompat.Builder.handleImageByUrl(
+    private fun NotificationCompat.Builder.setNotificationStyle(
         url: String?,
         title: String,
         text: String?
     ) = apply {
-        LoggingExceptionHandler.runCatching {
-            if (!url.isNullOrBlank()) {
-                val connection = URL(url).openConnection().apply {
-                    readTimeout = IMAGE_CONNECTION_TIMEOUT
-                    connectTimeout = IMAGE_CONNECTION_TIMEOUT
-                }
-                BitmapFactory.decodeStream(connection.getInputStream())
-                    ?.let { imageBitmap ->
-                        setLargeIcon(imageBitmap)
-
-                        val style = NotificationCompat.BigPictureStyle()
-                            .bigPicture(imageBitmap)
-                            .bigLargeIcon(null)
-                            .setBigContentTitle(title)
-                        text?.let(style::setSummaryText)
-
-                        setStyle(style)
+        LoggingExceptionHandler.runCatching(
+            block = {
+                url.takeIf { !it.isNullOrEmpty() }?.let {
+                    val connection = URL(url).openConnection().apply {
+                        readTimeout = IMAGE_CONNECTION_TIMEOUT
+                        connectTimeout = IMAGE_CONNECTION_TIMEOUT
                     }
+                    BitmapFactory.decodeStream(connection.getInputStream())
+                        ?.let { imageBitmap -> setImage(imageBitmap, title, text) }
+                } ?: setText(text)
+            },
+            defaultValue = {
+                setText(text)
             }
-        }
+        )
+    }
+
+    private fun NotificationCompat.Builder.setImage(
+        imageBitmap: Bitmap,
+        title: String,
+        text: String?
+    ): NotificationCompat.Builder {
+        setLargeIcon(imageBitmap)
+
+        val style = NotificationCompat.BigPictureStyle()
+            .bigPicture(imageBitmap)
+            .bigLargeIcon(null)
+            .setBigContentTitle(title)
+        text?.let(style::setSummaryText)
+
+        return setStyle(style)
+    }
+
+    private fun NotificationCompat.Builder.setText(
+        text: String?
+    ) = LoggingExceptionHandler.runCatching {
+        setStyle(
+            NotificationCompat.BigTextStyle()
+                .bigText(text)
+        )
     }
 
     private fun getIntent(
@@ -244,10 +266,5 @@ internal object PushNotificationManager {
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
     }
-
-    private fun NotificationCompat.Builder.setText(text: String) = setStyle(
-        NotificationCompat.BigTextStyle()
-            .bigText(text)
-    )
 
 }
