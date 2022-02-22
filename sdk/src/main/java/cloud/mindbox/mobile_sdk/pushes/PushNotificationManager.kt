@@ -219,9 +219,7 @@ internal object PushNotificationManager {
                         ?.let { imageBitmap -> setImage(imageBitmap, title, text) }
                 } ?: setText(text)
             },
-            defaultValue = {
-                setText(text)
-            }
+            defaultValue = { setText(text) }
         )
     }
 
@@ -246,7 +244,7 @@ internal object PushNotificationManager {
     ) = LoggingExceptionHandler.runCatching {
         setStyle(
             NotificationCompat.BigTextStyle()
-                .bigText(text)
+                .bigText(text),
         )
     }
 
