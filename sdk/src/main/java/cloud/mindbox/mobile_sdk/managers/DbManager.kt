@@ -42,7 +42,9 @@ internal object DbManager {
         BackgroundWorkManager.startOneTimeService(context)
     }
 
-    fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
+    fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(
+        defaultValue = listOf()
+    ) {
         val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
 
@@ -89,7 +91,9 @@ internal object DbManager {
         }
     }
 
-    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(defaultValue = null) {
+    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(
+        defaultValue = null
+    ) {
         try {
             mindboxDb.configurationDao().get()
         } catch (exception: RuntimeException) {
@@ -99,7 +103,9 @@ internal object DbManager {
         }
     }
 
-    private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
+    private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
+        defaultValue = listOf()
+    ) {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
     }
 
@@ -110,7 +116,9 @@ internal object DbManager {
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
-    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(
+        defaultValue = false
+    ) {
         timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
     }
 

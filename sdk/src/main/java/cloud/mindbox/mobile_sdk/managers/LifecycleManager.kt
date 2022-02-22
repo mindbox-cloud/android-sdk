@@ -118,7 +118,10 @@ internal class LifecycleManager(
         currentIntent = activity.intent
     }
 
-    private fun sendTrackVisit(intent: Intent, areActivitiesEqual: Boolean = true) = LoggingExceptionHandler.runCatching {
+    private fun sendTrackVisit(
+        intent: Intent,
+        areActivitiesEqual: Boolean = true,
+    ) = LoggingExceptionHandler.runCatching {
         val source = if (isIntentChanged) source(intent) else DIRECT
 
         if (areActivitiesEqual || source != DIRECT) {
@@ -155,7 +158,7 @@ internal class LifecycleManager(
         timer = timer(
             initialDelay = TIMER_PERIOD,
             period = TIMER_PERIOD,
-            action = { onTrackVisitReady.invoke(null, null) }
+            action = { onTrackVisitReady.invoke(null, null) },
         )
     }
 

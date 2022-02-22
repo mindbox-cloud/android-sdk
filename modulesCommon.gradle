@@ -31,10 +31,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = '1.8'
     }
@@ -43,6 +45,7 @@ android {
         outputFormat = 'javadoc'
         outputDirectory = "$buildDir/dokka"
     }
+
     task androidSourcesJar(type: Jar) {
         archiveClassifier.set('sources')
         from android.sourceSets.main.java.srcDirs
@@ -82,6 +85,7 @@ android {
                     }
                 }
             }
+
             repositories {
                 if (!project.hasProperty("sonatypeUsername")) {
                     ext.sonatypeUsername = "sonatypeUsername"
@@ -99,6 +103,7 @@ android {
                 }
             }
         }
+
         signing {
             sign publishing.publications.release
         }

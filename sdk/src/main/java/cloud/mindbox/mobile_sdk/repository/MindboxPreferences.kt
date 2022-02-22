@@ -79,7 +79,9 @@ internal object MindboxPreferences {
         }
 
     val infoUpdatedVersion: Int
-        @Synchronized get() = LoggingExceptionHandler.runCatching(defaultValue = DEFAULT_INFO_UPDATED_VERSION) {
+        @Synchronized get() = LoggingExceptionHandler.runCatching(
+            defaultValue = DEFAULT_INFO_UPDATED_VERSION
+        ) {
             val version = SharedPreferencesManager.getInt(
                 KEY_INFO_UPDATED_VERSION,
                 DEFAULT_INFO_UPDATED_VERSION

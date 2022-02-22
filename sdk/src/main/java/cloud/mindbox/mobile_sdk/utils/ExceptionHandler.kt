@@ -2,15 +2,11 @@ package cloud.mindbox.mobile_sdk.utils
 
 abstract class ExceptionHandler {
 
-    fun <T> runCatching(
-        block: () -> T
-    ) {
+    fun <T> runCatching(block: () -> T) {
         runCatching(Unit, block)
     }
 
-    suspend fun <T> runCatchingSuspending(
-        block: suspend () -> T
-    ) {
+    suspend fun <T> runCatchingSuspending(block: suspend () -> T) {
         runCatchingSuspending(Unit, block)
     }
 
@@ -26,16 +22,16 @@ abstract class ExceptionHandler {
 
     fun <T> runCatching(
         block: () -> T,
-        defaultValue: (Throwable) -> T
-    ): T = kotlin.runCatching {block.invoke() }.getOrElse { exception ->
+        defaultValue: (Throwable) -> T,
+    ): T = kotlin.runCatching { block.invoke() }.getOrElse { exception ->
         handle(exception)
         defaultValue.invoke(exception)
     }
 
     suspend fun <T> runCatchingSuspending(
         block: suspend () -> T,
-        defaultValue: (Throwable) -> T
-    ): T = kotlin.runCatching {block.invoke() }.getOrElse { exception ->
+        defaultValue: (Throwable) -> T,
+    ): T = kotlin.runCatching { block.invoke() }.getOrElse { exception ->
         handle(exception)
         defaultValue.invoke(exception)
     }

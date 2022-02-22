@@ -11,27 +11,24 @@ internal object BackgroundWorkManager {
     private val WORKER_TAG =
         "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
 
-    fun startOneTimeService(context: Context) {
-        LoggingExceptionHandler.runCatching {
-            val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
-                .setInitialDelay(10, TimeUnit.SECONDS)
-                .addTag(WORKER_TAG)
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                ).build()
+    fun startOneTimeService(context: Context) = LoggingExceptionHandler.runCatching {
+        val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
+            .setInitialDelay(10, TimeUnit.SECONDS)
+            .addTag(WORKER_TAG)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
 
-            WorkManager
-                .getInstance(context)
-                .beginUniqueWork(
-                    WORKER_TAG,
-                    ExistingWorkPolicy.KEEP,
-                    request
-                )
-                .enqueue()
-
-        }
+        WorkManager
+            .getInstance(context)
+            .beginUniqueWork(
+                WORKER_TAG,
+                ExistingWorkPolicy.KEEP,
+                request
+            )
+            .enqueue()
     }
 }

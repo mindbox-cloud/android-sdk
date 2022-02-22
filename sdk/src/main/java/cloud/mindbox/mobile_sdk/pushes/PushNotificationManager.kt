@@ -30,7 +30,7 @@ internal object PushNotificationManager {
     private const val IMAGE_CONNECTION_TIMEOUT = 30000
 
     internal fun isNotificationsEnabled(
-        context: Context
+        context: Context,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager =
@@ -38,9 +38,8 @@ internal object PushNotificationManager {
             if (manager?.areNotificationsEnabled() != true) {
                 return@runCatching false
             }
-            manager.notificationChannels.firstOrNull { channel ->
-                channel.importance == NotificationManager.IMPORTANCE_NONE
-            } == null
+            manager.notificationChannels
+                .firstOrNull { it.importance == NotificationManager.IMPORTANCE_NONE } == null
         } else {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
@@ -54,7 +53,7 @@ internal object PushNotificationManager {
         @DrawableRes pushSmallIcon: Int,
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
-        defaultActivity: Class<out Activity>
+        defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
@@ -104,11 +103,11 @@ internal object PushNotificationManager {
     }
 
     internal fun getUniqKeyFromPushIntent(
-        intent: Intent
+        intent: Intent,
     ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
 
     internal fun getUniqPushButtonKeyFromPushIntent(
-        intent: Intent
+        intent: Intent,
     ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
 
     internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
@@ -117,7 +116,7 @@ internal object PushNotificationManager {
         notificationManager: NotificationManager,
         channelId: String,
         channelName: String,
-        channelDescription: String?
+        channelDescription: String?,
     ) = LoggingExceptionHandler.runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
@@ -136,7 +135,7 @@ internal object PushNotificationManager {
         id: Int,
         pushKey: String,
         url: String?,
-        pushButtonKey: String? = null
+        pushButtonKey: String? = null,
     ): PendingIntent? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         val intent = getIntent(context, activity, id, pushKey, url, pushButtonKey)
 
@@ -198,7 +197,7 @@ internal object PushNotificationManager {
     private fun resolveActivity(
         activities: Map<Regex, Class<out Activity>>?,
         link: String?,
-        defaultActivity: Class<out Activity>
+        defaultActivity: Class<out Activity>,
     ): Class<out Activity> {
         val key = link?.let { activities?.keys?.find { it.matches(link) } }
         return activities?.get(key) ?: defaultActivity
@@ -207,7 +206,7 @@ internal object PushNotificationManager {
     private fun NotificationCompat.Builder.setNotificationStyle(
         url: String?,
         title: String,
-        text: String?
+        text: String?,
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
@@ -229,7 +228,7 @@ internal object PushNotificationManager {
     private fun NotificationCompat.Builder.setImage(
         imageBitmap: Bitmap,
         title: String,
-        text: String?
+        text: String?,
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
 
@@ -243,7 +242,7 @@ internal object PushNotificationManager {
     }
 
     private fun NotificationCompat.Builder.setText(
-        text: String?
+        text: String?,
     ) = LoggingExceptionHandler.runCatching {
         setStyle(
             NotificationCompat.BigTextStyle()
@@ -257,7 +256,7 @@ internal object PushNotificationManager {
         id: Int,
         pushKey: String,
         url: String?,
-        pushButtonKey: String?
+        pushButtonKey: String?,
     ) = Intent(context, activity).apply {
         putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
         putExtra(EXTRA_NOTIFICATION_ID, id)

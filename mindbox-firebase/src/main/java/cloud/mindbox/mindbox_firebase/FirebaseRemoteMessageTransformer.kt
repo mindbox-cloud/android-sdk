@@ -24,7 +24,7 @@ internal class FirebaseRemoteMessageTransformer(private val exceptionHandler: Ex
     private val gson by lazy { Gson() }
 
     fun transform(
-        remoteMessage: FirebaseRemoteMessage?
+        remoteMessage: FirebaseRemoteMessage?,
     ): RemoteMessage? = exceptionHandler.runCatching(defaultValue = null) {
         val data = remoteMessage?.data ?: return@runCatching null
         val uniqueKey = data[DATA_UNIQUE_KEY] ?: return@runCatching null
@@ -42,7 +42,7 @@ internal class FirebaseRemoteMessageTransformer(private val exceptionHandler: Ex
 
     private fun getButtons(
         data: Map<String, String>,
-        pushActionsType: Type?
+        pushActionsType: Type?,
     ) = exceptionHandler.runCatching(defaultValue = listOf()) {
         gson.fromJson<List<PushAction>>(data[DATA_BUTTONS], pushActionsType)
     }
