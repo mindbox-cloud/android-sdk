@@ -30,16 +30,6 @@ internal abstract class MindboxDatabase : RoomDatabase() {
 
         }
 
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
-
-            override fun migrate(database: SupportSQLiteDatabase) {
-                val query = "ALTER TABLE $EVENTS_TABLE_NAME " +
-                        "ADD COLUMN isSending INTEGER NOT NULL DEFAULT 0"
-                database.execSQL(query)
-            }
-
-        }
-
         internal var isTestMode = false
 
         internal fun getInstance(context: Context) = if (!isTestMode) {
@@ -48,7 +38,7 @@ internal abstract class MindboxDatabase : RoomDatabase() {
                 MindboxDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2)
                 .build()
         } else {
             Room.inMemoryDatabaseBuilder(context.applicationContext, MindboxDatabase::class.java)

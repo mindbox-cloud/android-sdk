@@ -41,9 +41,6 @@ internal object DbManager {
 
         BackgroundWorkManager.startOneTimeService(context)
     }
-    fun setNotSending(event: Event) = LoggingExceptionHandler.runCatching {
-        mindboxDb.eventsDao().update(event.copy(isSending = false))
-    }
 
     fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(
         defaultValue = listOf()
@@ -55,8 +52,11 @@ internal object DbManager {
             CoroutineScope(Dispatchers.IO).launch { removeEventsFromQueue(events - resultEvents) }
         }
 
-        val time = System.currentTimeMillis()
-        resultEvents.filter { !it.isSending || time - it.enqueueTimestamp > 120_000 }
+        resultEvents
+    }
+
+    fun getFilteredEventsForBackgroundSend() = System.currentTimeMillis().let { time ->
+        getFilteredEvents().filter { time - it.enqueueTimestamp > 120_000 }
     }
 
     fun removeEventFromQueue(event: Event) = LoggingExceptionHandler.runCatching {

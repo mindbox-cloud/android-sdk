@@ -14,7 +14,6 @@ internal data class Event(
     val enqueueTimestamp: Long = System.currentTimeMillis(), // date of event creating
     val additionalFields: HashMap<String, String>? = null,
     val body: String? = null, //json
-    val isSending: Boolean = true,
 )
 
 internal sealed class EventType(val operation: String, val endpoint: String) {

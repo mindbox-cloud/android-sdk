@@ -181,7 +181,7 @@ internal object MindboxEventManager {
     }
 
     fun sendEventsIfExist(context: Context) = LoggingExceptionHandler.runCatching {
-        if (DbManager.getFilteredEvents().isNotEmpty()) {
+        if (DbManager.getFilteredEventsForBackgroundSend().isNotEmpty()) {
             BackgroundWorkManager.startOneTimeService(context)
         }
     }

@@ -13,7 +13,7 @@ internal object BackgroundWorkManager {
 
     fun startOneTimeService(context: Context) = LoggingExceptionHandler.runCatching {
         val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
-            .setInitialDelay(10, TimeUnit.SECONDS)
+            .setInitialDelay(120, TimeUnit.SECONDS)
             .addTag(WORKER_TAG)
             .setConstraints(
                 Constraints.Builder()

@@ -37,7 +37,7 @@ internal class WorkerDelegate {
                 return ListenableWorker.Result.failure()
             }
 
-            val events = DbManager.getFilteredEvents()
+            val events = DbManager.getFilteredEventsForBackgroundSend()
             return if (events.isNullOrEmpty()) {
                 MindboxLoggerImpl.d(parent, "Events list is empty")
                 ListenableWorker.Result.success()
@@ -66,8 +66,8 @@ internal class WorkerDelegate {
         parent: Any,
     ) = LoggingExceptionHandler.runCatching {
 
-            val eventsCount = events.size - 1
-            val deviceUuid = MindboxPreferences.deviceUuid
+        val eventsCount = events.size - 1
+        val deviceUuid = MindboxPreferences.deviceUuid
 
         events.forEachIndexed { index, event ->
             if (isWorkerStopped) return@runCatching
@@ -100,7 +100,6 @@ internal class WorkerDelegate {
                 if (isSent) {
                     DbManager.removeEventFromQueue(event)
                 } else if (shouldStartWorker) {
-                    DbManager.setNotSending(event)
                     BackgroundWorkManager.startOneTimeService(context)
                 }
 

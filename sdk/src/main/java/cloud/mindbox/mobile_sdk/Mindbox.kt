@@ -611,8 +611,6 @@ object Mindbox {
             notificationProvider = pushServiceHandler?.notificationProvider ?: "",
         )
 
-        MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
-
         MindboxPreferences.deviceUuid = deviceUuid
         MindboxPreferences.pushToken = pushToken
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
@@ -621,6 +619,8 @@ object Mindbox {
 
         deliverDeviceUuid(deviceUuid)
         deliverToken(pushToken)
+
+        MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
     }
 
     private suspend fun updateAppInfo(
