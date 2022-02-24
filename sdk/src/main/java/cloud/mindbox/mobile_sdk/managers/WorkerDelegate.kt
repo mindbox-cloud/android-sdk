@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import android.util.Log
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -40,7 +41,12 @@ internal class WorkerDelegate {
             val events = DbManager.getFilteredEventsForBackgroundSend()
             return if (events.isNullOrEmpty()) {
                 MindboxLoggerImpl.d(parent, "Events list is empty")
-                ListenableWorker.Result.success()
+                if (DbManager.getFilteredEvents().isNullOrEmpty()) {
+                    ListenableWorker.Result.success()
+                } else {
+                    MindboxLoggerImpl.d(parent, "Database contains events that can't be sent right now. Worker will restart")
+                    ListenableWorker.Result.retry()
+                }
             } else {
                 MindboxLoggerImpl.d(parent, "Will be sent ${events.size}")
 
