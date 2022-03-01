@@ -9,10 +9,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
@@ -22,9 +19,7 @@ internal object MindboxEventManager {
 
     private val gson = Gson()
 
-    private val poolDispatcher = Executors.newFixedThreadPool(
-        Runtime.getRuntime().availableProcessors()
-    ).asCoroutineDispatcher()
+    private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     fun appInstalled(
         context: Context,
@@ -89,15 +84,15 @@ internal object MindboxEventManager {
         context: Context,
         event: Event,
     ) = LoggingExceptionHandler.runCatching {
-        val mindboxScope = Mindbox.mindboxScope
-        val ioContext = mindboxScope.coroutineContext + Dispatchers.IO
-        val poolContext = mindboxScope.coroutineContext + poolDispatcher
-        runBlocking(poolContext) { DbManager.addEventToQueue(context, event) }
-        mindboxScope.launch(ioContext) {
+        runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
+        Mindbox.mindboxScope.launch(poolDispatcher) {
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
-                if (MindboxPreferences.isFirstInitialize || configuration == null) {
+                val isInstallEvent = event.eventType is EventType.AppInstalled
+                        || event.eventType is EventType.AppInstalledWithoutCustomer
+                val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
+                if (!isInitialized || configuration == null) {
                     MindboxLoggerImpl.e(this, "Configuration was not initialized")
                 } else {
                     WorkerDelegate().sendEvent(
@@ -108,6 +103,7 @@ internal object MindboxEventManager {
                         parent = this@MindboxEventManager,
                         shouldStartWorker = true,
                     )
+                    if (isInstallEvent) MindboxPreferences.isFirstInitialize = false
                 }
             }
         }
@@ -164,10 +160,7 @@ internal object MindboxEventManager {
     private fun createSyncEvent(
         name: String,
         bodyJson: String,
-    ) = Event(
-        eventType = EventType.SyncOperation(name),
-        body = bodyJson,
-    )
+    ) = Event(eventType = EventType.SyncOperation(name), body = bodyJson)
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()

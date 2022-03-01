@@ -8,11 +8,10 @@ import cloud.mindbox.mobile_sdk.converters.MindboxRoomConverter
 import cloud.mindbox.mobile_sdk.data.ConfigurationsDao
 import cloud.mindbox.mobile_sdk.data.EventsDao
 import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
-import cloud.mindbox.mobile_sdk.managers.DbManager.EVENTS_TABLE_NAME
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 
-@Database(entities = [Configuration::class, Event::class], version = 3)
+@Database(entities = [Configuration::class, Event::class], version = 2)
 @TypeConverters(MindboxRoomConverter::class)
 internal abstract class MindboxDatabase : RoomDatabase() {
 
@@ -36,7 +35,7 @@ internal abstract class MindboxDatabase : RoomDatabase() {
             Room.databaseBuilder(
                 context.applicationContext,
                 MindboxDatabase::class.java,
-                DATABASE_NAME
+                DATABASE_NAME,
             )
                 .addMigrations(MIGRATION_1_2)
                 .build()

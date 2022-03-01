@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -41,7 +40,10 @@ internal class WorkerDelegate {
                 if (DbManager.getFilteredEvents().isNullOrEmpty()) {
                     ListenableWorker.Result.success()
                 } else {
-                    MindboxLoggerImpl.d(parent, "Database contains events that can't be sent right now. Worker will restart")
+                    MindboxLoggerImpl.d(
+                        parent,
+                        "Database contains events that can't be sent right now. Worker will restart",
+                    )
                     ListenableWorker.Result.retry()
                 }
             } else {
@@ -74,15 +76,7 @@ internal class WorkerDelegate {
 
         events.forEachIndexed { index, event ->
             if (isWorkerStopped) return@runCatching
-            sendEvent(
-                context,
-                configuration,
-                deviceUuid,
-                event,
-                parent,
-                index,
-                eventsCount,
-            )
+            sendEvent(context, configuration, deviceUuid, event, parent, index, eventsCount)
         }
     }
 

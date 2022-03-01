@@ -18,6 +18,7 @@ internal object DbManager {
 
     private const val MAX_EVENT_LIST_SIZE = 10000
     private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
+    private const val DELAY_FOR_SEND_IN_BACKGROUND = 120_000
 
     private lateinit var mindboxDb: MindboxDatabase
 
@@ -35,7 +36,7 @@ internal object DbManager {
             MindboxLoggerImpl.e(
                 this,
                 "Error writing object to the database: ${event.body}",
-                exception
+                exception,
             )
         }
 
@@ -43,7 +44,7 @@ internal object DbManager {
     }
 
     fun getFilteredEvents(): List<Event> = LoggingExceptionHandler.runCatching(
-        defaultValue = listOf()
+        defaultValue = listOf(),
     ) {
         val events = getEvents().sortedBy(Event::enqueueTimestamp)
         val resultEvents = filterEvents(events)
@@ -56,7 +57,7 @@ internal object DbManager {
     }
 
     fun getFilteredEventsForBackgroundSend() = System.currentTimeMillis().let { time ->
-        getFilteredEvents().filter { time - it.enqueueTimestamp > 120_000 }
+        getFilteredEvents().filter { time - it.enqueueTimestamp > DELAY_FOR_SEND_IN_BACKGROUND }
     }
 
     fun removeEventFromQueue(event: Event) = LoggingExceptionHandler.runCatching {
@@ -64,7 +65,7 @@ internal object DbManager {
             synchronized(this) { mindboxDb.eventsDao().delete(event.transactionId) }
             MindboxLoggerImpl.d(
                 this,
-                "Event ${event.eventType};${event.transactionId} was deleted from queue"
+                "Event ${event.eventType};${event.transactionId} was deleted from queue",
             )
         } catch (exception: RuntimeException) {
             MindboxLoggerImpl.e(this, "Error deleting item from database", exception)
@@ -74,10 +75,7 @@ internal object DbManager {
     private fun removeEventsFromQueue(events: List<Event>) = LoggingExceptionHandler.runCatching {
         try {
             synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
-            MindboxLoggerImpl.d(
-                this,
-                "${events.size} events were deleted from queue"
-            )
+            MindboxLoggerImpl.d(this, "${events.size} events were deleted from queue")
         } catch (exception: RuntimeException) {
             MindboxLoggerImpl.e(this, "Error deleting items from database", exception)
         }
@@ -90,13 +88,13 @@ internal object DbManager {
             MindboxLoggerImpl.e(
                 this,
                 "Error writing object configuration to the database",
-                exception
+                exception,
             )
         }
     }
 
     fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(
-        defaultValue = null
+        defaultValue = null,
     ) {
         try {
             mindboxDb.configurationDao().get()
@@ -108,7 +106,7 @@ internal object DbManager {
     }
 
     private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
-        defaultValue = listOf()
+        defaultValue = listOf(),
     ) {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
     }
@@ -120,9 +118,9 @@ internal object DbManager {
         return filteredEvents.takeLast(MAX_EVENT_LIST_SIZE)
     }
 
-    private fun Event.isTooOld(timeNow: Long): Boolean = LoggingExceptionHandler.runCatching(
-        defaultValue = false
-    ) {
+    private fun Event.isTooOld(
+        timeNow: Long,
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
     }
 
