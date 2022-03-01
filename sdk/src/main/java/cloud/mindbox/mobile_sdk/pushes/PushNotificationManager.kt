@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -54,7 +55,7 @@ internal object PushNotificationManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
-        val correctedLinksActivities = activities?.mapKeys { (key , _) ->
+        val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
         }
 
@@ -69,7 +70,6 @@ internal object PushNotificationManager {
         val text = remoteMessage.description
         val builder = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(title)
-            .setContentText(text)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
@@ -91,7 +91,7 @@ internal object PushNotificationManager {
                 correctedLinksActivities,
                 defaultActivity,
             )
-            .handleImageByUrl(remoteMessage.imageUrl, title, text)
+            .setNotificationStyle(remoteMessage.imageUrl, title, text)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -203,31 +203,49 @@ internal object PushNotificationManager {
         return activities?.get(key) ?: defaultActivity
     }
 
-    private fun NotificationCompat.Builder.handleImageByUrl(
+    private fun NotificationCompat.Builder.setNotificationStyle(
         url: String?,
         title: String,
         text: String?,
     ) = apply {
-        LoggingExceptionHandler.runCatching {
-            if (!url.isNullOrBlank()) {
-                val connection = URL(url).openConnection().apply {
-                    readTimeout = IMAGE_CONNECTION_TIMEOUT
-                    connectTimeout = IMAGE_CONNECTION_TIMEOUT
-                }
-                BitmapFactory.decodeStream(connection.getInputStream())
-                    ?.let { imageBitmap ->
-                        setLargeIcon(imageBitmap)
-
-                        val style = NotificationCompat.BigPictureStyle()
-                            .bigPicture(imageBitmap)
-                            .bigLargeIcon(null)
-                            .setBigContentTitle(title)
-                        text?.let(style::setSummaryText)
-
-                        setStyle(style)
+        LoggingExceptionHandler.runCatching(
+            block = {
+                url.takeIf { !it.isNullOrEmpty() }?.let {
+                    val connection = URL(url).openConnection().apply {
+                        readTimeout = IMAGE_CONNECTION_TIMEOUT
+                        connectTimeout = IMAGE_CONNECTION_TIMEOUT
                     }
-            }
-        }
+                    BitmapFactory.decodeStream(connection.getInputStream())
+                        ?.let { imageBitmap -> setImage(imageBitmap, title, text) }
+                } ?: setText(text)
+            },
+            defaultValue = { setText(text) }
+        )
+    }
+
+    private fun NotificationCompat.Builder.setImage(
+        imageBitmap: Bitmap,
+        title: String,
+        text: String?,
+    ): NotificationCompat.Builder {
+        setLargeIcon(imageBitmap)
+
+        val style = NotificationCompat.BigPictureStyle()
+            .bigPicture(imageBitmap)
+            .bigLargeIcon(null)
+            .setBigContentTitle(title)
+        text?.let(style::setSummaryText)
+
+        return setStyle(style)
+    }
+
+    private fun NotificationCompat.Builder.setText(
+        text: String?,
+    ) = LoggingExceptionHandler.runCatching {
+        setStyle(
+            NotificationCompat.BigTextStyle()
+                .bigText(text),
+        )
     }
 
     private fun getIntent(
