@@ -31,10 +31,7 @@ internal class WorkerDelegate {
             val configuration = DbManager.getConfigurations()
 
             if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                MindboxLoggerImpl.e(
-                    parent,
-                    "Configuration was not initialized",
-                )
+                MindboxLoggerImpl.e(parent, "Configuration was not initialized")
                 return ListenableWorker.Result.failure()
             }
 

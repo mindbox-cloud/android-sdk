@@ -45,7 +45,7 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         asyncOperation(
             context,
-            Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData))
+            Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
     }
 
@@ -67,13 +67,15 @@ internal object MindboxEventManager {
         )
     }
 
-    fun appStarted(context: Context, trackVisitData: TrackVisitData) =
-        LoggingExceptionHandler.runCatching {
-            asyncOperation(
-                context,
-                Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
-            )
-        }
+    fun appStarted(
+        context: Context,
+        trackVisitData: TrackVisitData,
+    ) = LoggingExceptionHandler.runCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
+        )
+    }
 
     fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
         context,
@@ -96,10 +98,7 @@ internal object MindboxEventManager {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
                 if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                    MindboxLoggerImpl.e(
-                        this,
-                        "Configuration was not initialized",
-                    )
+                    MindboxLoggerImpl.e(this, "Configuration was not initialized")
                 } else {
                     WorkerDelegate().sendEvent(
                         context,
