@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.managers.IdentifierManager
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -30,7 +29,7 @@ class VersioningUnitTest {
         SharedPreferencesManager.with(appContext)
 
         val scope = CoroutineScope(Dispatchers.Default)
-        MindboxPreferences.instanceId = IdentifierManager.generateRandomUuid()
+        MindboxPreferences.instanceId = Mindbox.generateRandomUuid()
 
         scope.launch {
             val coroutines =
@@ -54,7 +53,8 @@ class VersioningUnitTest {
             isTokenAvailable = true,
             isNotificationsEnabled = true,
             instanceId = MindboxPreferences.instanceId,
-            version = MindboxPreferences.infoUpdatedVersion
+            version = MindboxPreferences.infoUpdatedVersion,
+            notificationProvider = "",
         )
 
         eventList.add(event)

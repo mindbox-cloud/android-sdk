@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.adapters
 
 import cloud.mindbox.mobile_sdk.models.operation.DateTime
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.TypeAdapter
 import com.google.gson.internal.bind.util.ISO8601Utils
 import com.google.gson.stream.JsonReader
@@ -20,27 +20,27 @@ class DateTimeAdapter : TypeAdapter<DateTime>() {
     }
 
     override fun write(out: JsonWriter?, value: DateTime?) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (value == null) {
                 out?.nullValue()
             } else {
                 val formatter = SimpleDateFormat(WRITE_DATA_FORMAT, Locale.getDefault())
                 out?.value(formatter.format(value))
             }
-        }.returnOnException { out }
+        }
     }
 
     override fun read(`in`: JsonReader?): DateTime? = `in`?.let { reader ->
-        runCatching {
+        LoggingExceptionHandler.runCatching(defaultValue = null) {
             if (reader.peek() === JsonToken.NULL) {
                 reader.nextNull()
-                return@let null
+                return@runCatching null
             }
 
             reader.nextString()?.let { dateString ->
                 ISO8601Utils.parse(dateString, ParsePosition(0))?.time?.let(::DateTime)
             }
-        }.returnOnException { null }
+        }
     }
 
 }

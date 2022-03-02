@@ -1,3 +1,5 @@
 package cloud.mindbox.mobile_sdk.models.operation.request
 
-abstract class OperationBodyRequestBase
+import cloud.mindbox.mobile_sdk.models.operation.OperationBodyRequestBaseInternal
+
+abstract class OperationBodyRequestBase : OperationBodyRequestBaseInternal()

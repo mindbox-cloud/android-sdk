@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation
 
 import cloud.mindbox.mobile_sdk.models.operation.adapters.CustomerFieldsAdapter
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.annotations.JsonAdapter
 import androidx.core.util.Pair as AndroidXPair
@@ -14,10 +14,10 @@ class CustomFields(val fields: Map<String, Any?>? = null) {
      *
      * @param classOfT Class type for result [CustomFields] object.
      */
-    fun <T> convertTo(classOfT: Class<T>): T? = runCatching {
+    fun <T> convertTo(classOfT: Class<T>): T? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         val gson = Gson()
-        return gson.fromJson(gson.toJson(fields), classOfT)
-    }.returnOnException { null }
+        gson.fromJson(gson.toJson(fields), classOfT)
+    }
 
     constructor(vararg pairs: Pair<String, Any?>) : this(pairs.toMap())
 

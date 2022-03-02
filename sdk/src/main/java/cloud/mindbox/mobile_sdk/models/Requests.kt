@@ -2,7 +2,8 @@ package cloud.mindbox.mobile_sdk.models
 
 import android.os.Build
 import cloud.mindbox.mobile_sdk.*
-import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.NetworkResponse
 import com.android.volley.ParseError
 import com.android.volley.Response
@@ -20,7 +21,7 @@ internal data class MindboxRequest(
     val configuration: Configuration,
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
-    val errorsListener: Response.ErrorListener? = null
+    val errorsListener: Response.ErrorListener? = null,
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
     companion object {
@@ -43,7 +44,7 @@ internal data class MindboxRequest(
     override fun getHeaders(): MutableMap<String, String> {
         val params: MutableMap<String, String> = HashMap()
 
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             params[HEADER_CONTENT_TYPE] = VALUE_CONTENT_TYPE
             params[HEADER_USER_AGENT] = String.format(
                 VALUE_USER_AGENT,
@@ -53,68 +54,69 @@ internal data class MindboxRequest(
                 Build.MODEL,
                 configuration.packageName,
                 configuration.versionName,
-                configuration.versionCode
+                configuration.versionCode,
             )
             params[HEADER_INTEGRATION] = VALUE_INTEGRATION
             params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
             params[HEADER_ACCEPT] = VALUE_ACCEPT
-        }.logOnException()
+        }
 
         return params
     }
 
     //Logging responses
     override fun parseNetworkResponse(response: NetworkResponse?): Response<JSONObject> {
-        return runCatching {
-            logResponse(response)
+        return LoggingExceptionHandler.runCatching(
+            block = {
+                logResponse(response)
 
-            try {
+                try {
 
-                val body = String(
-                    response?.data ?: ByteArray(0),
-                    Charset.forName(
-                        HttpHeaderParser.parseCharset(
-                            response?.headers,
-                            DEFAULT_RESPONSE_CHARSET
-                        )
+                    val body = String(
+                        response?.data ?: ByteArray(0),
+                        Charset.forName(
+                            HttpHeaderParser.parseCharset(
+                                response?.headers,
+                                DEFAULT_RESPONSE_CHARSET,
+                            ),
+                        ),
                     )
-                )
 
-                logBodyResponse(body)
+                    logBodyResponse(body)
 
-                val bodyJson = when {
-                    body.isEmpty() -> "{data: null}"
-                    !isJsonObject(body) -> "{data: $body}"
-                    else -> body
+                    val bodyJson = when {
+                        body.isEmpty() -> "{data: null}"
+                        !isJsonObject(body) -> "{data: $body}"
+                        else -> body
+                    }
+
+                    val cacheEntry = response?.let(HttpHeaderParser::parseCacheHeaders)
+
+                    Response.success(JSONObject(bodyJson), cacheEntry)
+                } catch (e: UnsupportedEncodingException) {
+                    Response.error(ParseError(e))
+                } catch (e: JsonSyntaxException) {
+                    Response.error(ParseError(e))
+                } finally {
+                    logEndResponse()
                 }
-
-                val cacheEntry = if (response != null) {
-                    HttpHeaderParser.parseCacheHeaders(response)
-                } else null
-
-                Response.success(JSONObject(bodyJson), cacheEntry)
-            } catch (e: UnsupportedEncodingException) {
-                Response.error(ParseError(e))
-            } catch (e: JsonSyntaxException) {
-                Response.error(ParseError(e))
-            } finally {
-                logEndResponse()
-            }
-        }.returnOnException { e -> Response.error(ParseError(e)) }
+            },
+            defaultValue = { e -> Response.error(ParseError(e)) }
+        )
     }
 
     //Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         if (BuildConfig.DEBUG) {
-            runCatching {
-                MindboxLogger.e(
+            LoggingExceptionHandler.runCatching {
+                MindboxLoggerImpl.e(
                     this,
-                    "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; "
+                    "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
                 )
                 try {
 
                     volleyError.networkResponse?.allHeaders?.asIterable()?.forEach { header ->
-                        MindboxLogger.d(this, "${header.name}: ${header.value}")
+                        MindboxLoggerImpl.d(this, "${header.name}: ${header.value}")
                     }
 
                     val json = String(
@@ -132,7 +134,7 @@ internal data class MindboxRequest(
                 } finally {
                     logEndResponse()
                 }
-            }.logOnException()
+            }
         }
         return volleyError
     }
@@ -141,36 +143,36 @@ internal data class MindboxRequest(
 
     private fun logResponse(response: NetworkResponse?) {
         if (BuildConfig.DEBUG) {
-            runCatching {
-                MindboxLogger.d(this, "<--- ${response?.statusCode} $fullUrl")
+            LoggingExceptionHandler.runCatching {
+                MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
 
                 response?.allHeaders?.asIterable()?.forEach { header ->
-                    MindboxLogger.d(this, "${header.name}: ${header.value}")
+                    MindboxLoggerImpl.d(this, "${header.name}: ${header.value}")
                 }
-            }.returnOnException { }
+            }
         }
     }
 
     private fun logBodyResponse(json: String?) {
         if (BuildConfig.DEBUG) {
-            runCatching {
-                MindboxLogger.d(this, "$json")
-            }.logOnException()
+            LoggingExceptionHandler.runCatching {
+                MindboxLoggerImpl.d(this, "$json")
+            }
         }
     }
 
     private fun logError(e: Exception) {
-        runCatching {
-            MindboxLogger.d(this, e.message ?: "Empty message")
-            MindboxLogger.d(this, e.stackTraceToString())
-        }.logOnException()
+        LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.d(this, e.message ?: "Empty message")
+            MindboxLoggerImpl.d(this, e.stackTraceToString())
+        }
     }
 
     private fun logEndResponse() {
         if (BuildConfig.DEBUG) {
-            runCatching {
-                MindboxLogger.d(this, "<--- End of response")
-            }.logOnException()
+            LoggingExceptionHandler.runCatching {
+                MindboxLoggerImpl.d(this, "<--- End of response")
+            }
         }
     }
 

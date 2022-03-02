@@ -1,8 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.adapters
 
-import cloud.mindbox.mobile_sdk.logOnException
 import cloud.mindbox.mobile_sdk.models.operation.Ids
-import cloud.mindbox.mobile_sdk.returnOnException
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
@@ -15,20 +14,20 @@ class IdsAdapter : TypeAdapter<Ids?>() {
     private val gson by lazy { Gson() }
 
     override fun write(out: JsonWriter?, value: Ids?) {
-        runCatching {
+        LoggingExceptionHandler.runCatching {
             if (value == null) {
                 out?.nullValue()
             } else {
                 out?.jsonValue(gson.toJson(value.ids))
             }
-        }.returnOnException { out }
+        }
     }
 
     override fun read(`in`: JsonReader?): Ids? = `in`?.let { reader ->
-        runCatching {
+        LoggingExceptionHandler.runCatching(defaultValue = null) {
             if (reader.peek() === JsonToken.NULL) {
                 reader.nextNull()
-                return@let null
+                return@runCatching null
             }
 
             // Workaround for case when id value is handled by gson as Double, not as String or Int
@@ -37,17 +36,17 @@ class IdsAdapter : TypeAdapter<Ids?>() {
             if (reader.peek() == JsonToken.BEGIN_OBJECT) {
                 reader.beginObject()
                 while (reader.peek() != JsonToken.END_OBJECT) {
-                    runCatching {
+                    LoggingExceptionHandler.runCatching {
                         val key = reader.nextName()
                         val valueString = reader.nextString()
                         ids[key] = valueString
-                    }.logOnException()
+                    }
                 }
                 reader.endObject()
             }
 
             Ids(ids)
-        }.returnOnException { null }
+        }
     }
 
 }

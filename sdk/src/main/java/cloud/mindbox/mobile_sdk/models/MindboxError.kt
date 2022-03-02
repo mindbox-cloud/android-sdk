@@ -17,7 +17,7 @@ sealed class MindboxError(open val statusCode: Int?) {
     data class Validation(
         override val statusCode: Int,
         val status: String,
-        val validationMessages: List<ValidationMessage>
+        val validationMessages: List<ValidationMessage>,
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
@@ -26,7 +26,7 @@ sealed class MindboxError(open val statusCode: Int?) {
         val status: String,
         val errorMessage: String?,
         val errorId: String?,
-        val httpStatusCode: Int?
+        val httpStatusCode: Int?,
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
@@ -35,7 +35,7 @@ sealed class MindboxError(open val statusCode: Int?) {
         val status: String,
         val errorMessage: String?,
         val errorId: String?,
-        val httpStatusCode: Int?
+        val httpStatusCode: Int?,
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
@@ -44,7 +44,7 @@ sealed class MindboxError(open val statusCode: Int?) {
         val status: String? = null,
         val errorMessage: String? = null,
         val errorId: String? = null,
-        val httpStatusCode: Int? = null
+        val httpStatusCode: Int? = null,
     ) : MindboxError(statusCode) {
 
         constructor() : this(errorMessage = "Cannot reach server")
@@ -52,8 +52,6 @@ sealed class MindboxError(open val statusCode: Int?) {
     }
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class Unknown(
-        val throwable: Throwable? = null
-    ) : MindboxError(null)
+    data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
 
 }

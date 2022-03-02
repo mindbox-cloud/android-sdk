@@ -1,0 +1,28 @@
+apply from: "${rootProject.projectDir}/modulesCommon.gradle"
+
+android {
+    defaultConfig {
+        consumerProguardFiles "consumer-rules.pro",
+                "${rootProject.projectDir}/proguard/proguard-gson.pro",
+                "${rootProject.projectDir}/proguard/proguard-firebase.pro",
+                "${rootProject.projectDir}/proguard/proguard-kotlin.pro"
+    }
+}
+
+dependencies {
+    implementation project(path: ':sdk')
+
+    implementation sdkDependencies.androidx_core_ktx
+    implementation sdkDependencies.kotlinx_coroutines_core
+
+    implementation sdkDependencies.gson
+
+    // Firebase messaging
+    implementation platform(sdkDependencies.firebase_bom)
+    implementation sdkDependencies.firebase_messaging
+    implementation sdkDependencies.gms_play_services_base
+    implementation sdkDependencies.gms_play_services_basement
+
+    // Ads
+    implementation sdkDependencies.gms_play_services_ads_identifier
+}
