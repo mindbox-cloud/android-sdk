@@ -79,7 +79,8 @@ internal object PushNotificationManager {
             .handlePushClick(
                 context,
                 notificationId,
-                remoteMessage,
+                uniqueKey,
+                remoteMessage.payload,
                 remoteMessage.pushLink,
                 correctedLinksActivities,
                 defaultActivity,
@@ -87,7 +88,8 @@ internal object PushNotificationManager {
             .handleActions(
                 context,
                 notificationId,
-                remoteMessage,
+                uniqueKey,
+                remoteMessage.payload,
                 pushActions,
                 correctedLinksActivities,
                 defaultActivity,
@@ -136,12 +138,20 @@ internal object PushNotificationManager {
         context: Context,
         activity: Class<out Activity>,
         id: Int,
-        message: RemoteMessage,
+        payload: String?,
         pushKey: String,
         url: String?,
         pushButtonKey: String? = null,
     ): PendingIntent? = LoggingExceptionHandler.runCatching(defaultValue = null) {
-        val intent = getIntent(context, activity, id, message, pushKey, url, pushButtonKey)
+        val intent = getIntent(
+            context = context,
+            activity = activity,
+            id = id,
+            payload = payload,
+            pushKey = pushKey,
+            url = url,
+            pushButtonKey = pushButtonKey,
+        )
 
         val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -153,14 +163,15 @@ internal object PushNotificationManager {
             context,
             Random.nextInt(),
             intent,
-            flags
+            flags,
         )
     }
 
     private fun NotificationCompat.Builder.handlePushClick(
         context: Context,
         notificationId: Int,
-        message: RemoteMessage,
+        uniqueKey: String,
+        payload: String?,
         pushLink: String?,
         activities: Map<Regex, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
@@ -170,32 +181,32 @@ internal object PushNotificationManager {
             context = context,
             activity = activity,
             id = notificationId,
-            message = message,
-            pushKey = message.uniqueKey,
-            url = pushLink
+            payload = payload,
+            pushKey = uniqueKey,
+            url = pushLink,
         )?.let(this::setContentIntent)
     }
 
     private fun NotificationCompat.Builder.handleActions(
         context: Context,
         notificationId: Int,
-        message: RemoteMessage,
+        uniqueKey: String,
+        payload: String?,
         pushActions: List<PushAction>,
         activities: Map<Regex, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
     ) = apply {
         runCatching {
-            val uniqueKey = message.uniqueKey
             pushActions.take(MAX_ACTIONS_COUNT).forEach { pushAction ->
                 val activity = resolveActivity(activities, pushAction.url, defaultActivity)
                 createPendingIntent(
                     context = context,
                     activity = activity,
                     id = notificationId,
-                    message = message,
                     pushKey = uniqueKey,
+                    payload = payload,
                     url = pushAction.url,
-                    pushButtonKey = pushAction.uniqueKey
+                    pushButtonKey = pushAction.uniqueKey,
                 )?.let { addAction(0, pushAction.text ?: "", it) }
             }
         }
@@ -259,12 +270,12 @@ internal object PushNotificationManager {
         context: Context,
         activity: Class<*>,
         id: Int,
-        message: RemoteMessage,
+        payload: String?,
         pushKey: String,
         url: String?,
         pushButtonKey: String?,
     ) = Intent(context, activity).apply {
-        putExtra(EXTRA_PAYLOAD, message.payload)
+        putExtra(EXTRA_PAYLOAD, payload)
         putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
         putExtra(EXTRA_NOTIFICATION_ID, id)
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
