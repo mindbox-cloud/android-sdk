@@ -7,4 +7,5 @@ data class RemoteMessage(
     val pushActions: List<PushAction>,
     val pushLink: String?,
     val imageUrl: String?,
+    val payload: String?,
 )

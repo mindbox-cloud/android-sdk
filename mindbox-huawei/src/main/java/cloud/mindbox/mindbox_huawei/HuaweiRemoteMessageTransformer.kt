@@ -22,6 +22,7 @@ internal class HuaweiRemoteMessageTransformer(private val exceptionHandler: Exce
             pushActions = parsedMessage.buttons.map(::pushAction),
             pushLink = parsedMessage.clickUrl,
             imageUrl = parsedMessage.imageUrl,
+            payload = parsedMessage.payload,
         )
     }
 
