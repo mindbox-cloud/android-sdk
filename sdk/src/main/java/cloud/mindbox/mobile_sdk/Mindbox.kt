@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.annotation.DrawableRes
+import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -37,6 +38,27 @@ object Mindbox {
      * Used for determination app open from push
      */
     const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
+
+    /**
+     * Factory for custom initialisation of WorkManager
+     *
+     * You don't need this if you are using default WorkManager initialisation
+     *
+     * If you disabled automatic initialisation, add this factory to your DelegatingWorkerFactory
+     * in place, where you register your factories
+     *
+     * Example:
+     *
+     * override fun getWorkManagerConfiguration() = Configuration.Builder()
+     *     .setWorkerFactory(
+     *         DelegatingWorkerFactory().apply {
+     *             // your factories
+     *             addFactory(Mindbox.mindboxWorkerFactory) // Mindbox factory
+     *         }
+     *      )
+     *     .build()
+     */
+    val mindboxWorkerFactory: WorkerFactory by lazy { MindboxWorkerFactory }
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
