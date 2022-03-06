@@ -4,6 +4,3 @@
 -keep class cloud.mindbox.mobile_sdk.MindboxConfiguration { *; }
 
 -keep public class * extends android.preference.Preference
-
-# Keep MindboxWorkerFactoryName
--keep class cloud.mindbox.mobile_sdk.MindboxWorkerFactory
