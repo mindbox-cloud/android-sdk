@@ -53,12 +53,12 @@ object Mindbox {
      *     .setWorkerFactory(
      *         DelegatingWorkerFactory().apply {
      *             // your factories
-     *             addFactory(Mindbox.MINDBOX_WORKER_FACTORY) // Mindbox factory
+     *             addFactory(Mindbox.mindboxWorkerFactory) // Mindbox factory
      *         }
      *      )
      *     .build()
      */
-    val MINDBOX_WORKER_FACTORY: WorkerFactory by lazy { MindboxWorkerFactory }
+    val mindboxWorkerFactory: WorkerFactory by lazy { MindboxWorkerFactory }
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
