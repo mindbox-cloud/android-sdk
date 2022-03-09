@@ -9,6 +9,7 @@ internal data class HuaweiMessage(
     @SerializedName("buttons") val buttons: List<PushAction>,
     @SerializedName("clickUrl") val clickUrl: String?,
     @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("payload") val payload: String,
 )
 
 internal data class PushAction(
