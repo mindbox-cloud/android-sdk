@@ -18,6 +18,7 @@ internal class FirebaseRemoteMessageTransformer(private val exceptionHandler: Ex
         private const val DATA_IMAGE_URL = "imageUrl"
         private const val DATA_BUTTONS = "buttons"
         private const val DATA_PUSH_CLICK_URL = "clickUrl"
+        private const val DATA_PAYLOAD = "payload"
 
     }
 
@@ -37,6 +38,7 @@ internal class FirebaseRemoteMessageTransformer(private val exceptionHandler: Ex
             pushActions = pushActions,
             pushLink = data[DATA_PUSH_CLICK_URL],
             imageUrl = data[DATA_IMAGE_URL],
+            payload = data[DATA_PAYLOAD],
         )
     }
 
