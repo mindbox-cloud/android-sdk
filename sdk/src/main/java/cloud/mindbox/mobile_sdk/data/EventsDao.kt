@@ -14,8 +14,8 @@ internal interface EventsDao {
     @Insert
     fun insert(event: Event)
 
-    @Delete
-    fun delete(event: Event)
+    @Query("DELETE FROM $EVENTS_TABLE_NAME WHERE transactionId = :transactionId")
+    fun delete(transactionId: String)
 
     @Delete
     fun deleteEvents(events: List<Event>)

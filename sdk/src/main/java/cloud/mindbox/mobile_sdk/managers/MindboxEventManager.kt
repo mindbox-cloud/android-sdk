@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -8,8 +9,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
 
@@ -17,6 +18,8 @@ internal object MindboxEventManager {
     private const val NULL_JSON = "null"
 
     private val gson = Gson()
+
+    private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     fun appInstalled(
         context: Context,
@@ -28,70 +31,81 @@ internal object MindboxEventManager {
         } else {
             EventType.AppInstalledWithoutCustomer
         }
-        DbManager.addEventToQueue(
-            context,
-            Event(eventType = eventType, body = gson.toJson(initData)),
-        )
+        asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
     }
 
     fun appInfoUpdate(
         context: Context,
         initData: UpdateData,
     ) = LoggingExceptionHandler.runCatching {
-        DbManager.addEventToQueue(
+        asyncOperation(
             context,
             Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
     }
 
-    fun pushDelivered(
-        context: Context,
-        uniqKey: String,
-    ) = LoggingExceptionHandler.runCatching {
-        runBlocking(Dispatchers.IO) {
-            val fields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey)
-            DbManager.addEventToQueue(
-                context,
-                Event(eventType = EventType.PushDelivered, additionalFields = fields),
-            )
-        }
-    }
+    fun pushDelivered(context: Context, uniqKey: String) = asyncOperation(
+        context,
+        Event(
+            eventType = EventType.PushDelivered,
+            additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
+        ),
+    )
 
     fun pushClicked(
         context: Context,
         clickData: TrackClickData,
     ) = LoggingExceptionHandler.runCatching {
-        runBlocking(Dispatchers.IO) {
-            DbManager.addEventToQueue(
-                context,
-                Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
-            )
-        }
+        asyncOperation(
+            context,
+            Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
+        )
     }
 
     fun appStarted(
         context: Context,
         trackVisitData: TrackVisitData,
     ) = LoggingExceptionHandler.runCatching {
-        DbManager.addEventToQueue(
+        asyncOperation(
             context,
             Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
         )
     }
 
-    fun asyncOperation(
+    fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
+        context,
+        Event(
+            eventType = EventType.AsyncOperation(name),
+            body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
+        ),
+    )
+
+    private fun asyncOperation(
         context: Context,
-        name: String,
-        body: String,
+        event: Event,
     ) = LoggingExceptionHandler.runCatching {
-        runBlocking(Dispatchers.IO) {
-            DbManager.addEventToQueue(
-                context,
-                Event(
-                    eventType = EventType.AsyncOperation(name),
-                    body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
-                ),
-            )
+        runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
+        Mindbox.mindboxScope.launch(poolDispatcher) {
+            LoggingExceptionHandler.runCatching {
+                val configuration = DbManager.getConfigurations()
+                val deviceUuid = MindboxPreferences.deviceUuid
+                val isInstallEvent = event.eventType is EventType.AppInstalled
+                        || event.eventType is EventType.AppInstalledWithoutCustomer
+                val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
+                if (!isInitialized || configuration == null) {
+                    MindboxLoggerImpl.e(this, "Configuration was not initialized")
+                } else {
+                    WorkerDelegate().sendEvent(
+                        context,
+                        configuration,
+                        deviceUuid,
+                        event,
+                        parent = this@MindboxEventManager,
+                        shouldStartWorker = true,
+                    )
+                    if (isInstallEvent) MindboxPreferences.isFirstInitialize = false
+                }
+            }
         }
     }
 
@@ -146,10 +160,7 @@ internal object MindboxEventManager {
     private fun createSyncEvent(
         name: String,
         bodyJson: String,
-    ) = Event(
-        eventType = EventType.SyncOperation(name),
-        body = bodyJson,
-    )
+    ) = Event(eventType = EventType.SyncOperation(name), body = bodyJson)
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()
@@ -162,7 +173,7 @@ internal object MindboxEventManager {
     }
 
     fun sendEventsIfExist(context: Context) = LoggingExceptionHandler.runCatching {
-        if (DbManager.getFilteredEvents().isNotEmpty()) {
+        if (DbManager.getFilteredEventsForBackgroundSend().isNotEmpty()) {
             BackgroundWorkManager.startOneTimeService(context)
         }
     }

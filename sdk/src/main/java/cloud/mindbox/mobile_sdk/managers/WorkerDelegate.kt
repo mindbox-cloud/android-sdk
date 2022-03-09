@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import kotlinx.coroutines.*
 import java.util.concurrent.CountDownLatch
 
@@ -17,7 +18,7 @@ internal class WorkerDelegate {
 
     fun sendEventsWithResult(
         context: Context,
-        parent: Any
+        parent: Any,
     ): ListenableWorker.Result {
         MindboxLoggerImpl.d(parent, "Start working...")
 
@@ -29,17 +30,22 @@ internal class WorkerDelegate {
             val configuration = DbManager.getConfigurations()
 
             if (MindboxPreferences.isFirstInitialize || configuration == null) {
-                MindboxLoggerImpl.e(
-                    parent,
-                    "Configuration was not initialized",
-                )
+                MindboxLoggerImpl.e(parent, "Configuration was not initialized")
                 return ListenableWorker.Result.failure()
             }
 
-            val events = DbManager.getFilteredEvents()
+            val events = DbManager.getFilteredEventsForBackgroundSend()
             return if (events.isNullOrEmpty()) {
                 MindboxLoggerImpl.d(parent, "Events list is empty")
-                ListenableWorker.Result.success()
+                if (DbManager.getFilteredEvents().isNullOrEmpty()) {
+                    ListenableWorker.Result.success()
+                } else {
+                    MindboxLoggerImpl.d(
+                        parent,
+                        "Database contains events that can't be sent right now. Worker will restart",
+                    )
+                    ListenableWorker.Result.retry()
+                }
             } else {
                 MindboxLoggerImpl.d(parent, "Will be sent ${events.size}")
 
@@ -62,37 +68,51 @@ internal class WorkerDelegate {
         context: Context,
         events: List<Event>,
         configuration: Configuration,
-        parent: Any
+        parent: Any,
+    ) = LoggingExceptionHandler.runCatching {
+
+        val eventsCount = events.size - 1
+        val deviceUuid = MindboxPreferences.deviceUuid
+
+        events.forEachIndexed { index, event ->
+            if (isWorkerStopped) return@runCatching
+            sendEvent(context, configuration, deviceUuid, event, parent, index, eventsCount)
+        }
+    }
+
+    fun sendEvent(
+        context: Context,
+        configuration: Configuration,
+        deviceUuid: String,
+        event: Event,
+        parent: Any,
+        index: Int = 0,
+        eventsCount: Int = 1,
+        shouldStartWorker: Boolean = false,
     ) {
-        LoggingExceptionHandler.runCatching {
+        val countDownLatch = CountDownLatch(1)
 
-            val eventsCount = events.size - 1
-            val deviceUuid = MindboxPreferences.deviceUuid
-
-            events.forEachIndexed { index, event ->
-                val countDownLatch = CountDownLatch(1)
-
-                if (isWorkerStopped) return@runCatching
-
-                GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
-                    if (isSent) {
-                        handleSendResult(event)
-                    }
-
-                    MindboxLoggerImpl.i(
-                        parent,
-                        "sent event index #$index id #${event.uid} from $eventsCount"
-                    )
-
-                    countDownLatch.countDown()
+        GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
+            Mindbox.mindboxScope.launch {
+                if (isSent) {
+                    DbManager.removeEventFromQueue(event)
+                } else if (shouldStartWorker) {
+                    BackgroundWorkManager.startOneTimeService(context)
                 }
 
-                try {
-                    countDownLatch.await()
-                } catch (e: InterruptedException) {
-                    MindboxLoggerImpl.e(parent, "doWork -> sending was interrupted", e)
-                }
+                MindboxLoggerImpl.i(
+                    parent,
+                    "sent event index #$index id #${event.uid} from $eventsCount",
+                )
+
+                countDownLatch.countDown()
             }
+        }
+
+        try {
+            countDownLatch.await()
+        } catch (e: InterruptedException) {
+            MindboxLoggerImpl.e(parent, "doWork -> sending was interrupted", e)
         }
     }
 
@@ -100,9 +120,5 @@ internal class WorkerDelegate {
         isWorkerStopped = true
         MindboxLoggerImpl.d(parent, "onStopped work")
     }
-
-    private fun handleSendResult(
-        event: Event
-    ) = runBlocking(Dispatchers.IO) { DbManager.removeEventFromQueue(event) }
 
 }

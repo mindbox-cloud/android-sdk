@@ -13,7 +13,7 @@ internal data class Event(
     val transactionId: String = UUID.randomUUID().toString(),
     val enqueueTimestamp: Long = System.currentTimeMillis(), // date of event creating
     val additionalFields: HashMap<String, String>? = null,
-    val body: String? = null //json
+    val body: String? = null, //json
 )
 
 internal sealed class EventType(val operation: String, val endpoint: String) {

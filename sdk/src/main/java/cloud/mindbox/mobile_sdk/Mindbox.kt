@@ -4,17 +4,15 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.annotation.DrawableRes
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationBody
-import cloud.mindbox.mobile_sdk.models.operation.OperationBodyRequestBaseInternal
-import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
@@ -23,7 +21,6 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -64,7 +61,7 @@ object Mindbox {
     private const val DELIVER_TOKEN_DELAY = 1L
 
     private val mindboxJob = SupervisorJob()
-    private val mindboxScope = CoroutineScope(Default + mindboxJob)
+    internal val mindboxScope = CoroutineScope(Default + mindboxJob)
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
@@ -82,7 +79,7 @@ object Mindbox {
     @Deprecated(
         message = "Use subscribePushToken instead",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("subscribePushToken")
+        replaceWith = ReplaceWith("subscribePushToken"),
     )
     fun subscribeFmsToken(subscription: (String?) -> Unit) = subscribePushToken(subscription)
 
@@ -113,9 +110,11 @@ object Mindbox {
     @Deprecated(
         message = "Use disposePushTokenSubscription",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("disposePushTokenSubscription")
+        replaceWith = ReplaceWith("disposePushTokenSubscription"),
     )
-    fun disposeFmsTokenSubscription(subscriptionId: String) = disposePushTokenSubscription(subscriptionId)
+    fun disposeFmsTokenSubscription(
+        subscriptionId: String,
+    ) = disposePushTokenSubscription(subscriptionId)
 
     /**
      * Removes push token subscription if it is no longer necessary
@@ -132,7 +131,7 @@ object Mindbox {
     @Deprecated(
         message = "Use getPushTokenSaveDate instead",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("getPushTokenSaveDate")
+        replaceWith = ReplaceWith("getPushTokenSaveDate"),
     )
     fun getFmsTokenSaveDate() = getPushTokenSaveDate()
 
@@ -308,7 +307,7 @@ object Mindbox {
                     if (isApplicationResumed && activity == null) {
                         MindboxLoggerImpl.e(
                             this@Mindbox,
-                            "Incorrect context type for calling init in this place"
+                            "Incorrect context type for calling init in this place",
                         )
                     }
 
@@ -415,7 +414,7 @@ object Mindbox {
         operationSystemName: String,
         operationBody: T,
         onSuccess: (OperationResponse) -> Unit,
-        onError: (MindboxError) -> Unit
+        onError: (MindboxError) -> Unit,
     ): Unit = executeSyncOperation(
         context = context,
         operationSystemName = operationSystemName,
@@ -568,7 +567,7 @@ object Mindbox {
         asyncOperation(
             context,
             operationSystemName,
-            MindboxEventManager.operationBodyJson(operationBody)
+            MindboxEventManager.operationBodyJson(operationBody),
         )
     }
 
@@ -591,7 +590,7 @@ object Mindbox {
         } else {
             MindboxLoggerImpl.w(
                 this,
-                "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250."
+                "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250.",
             )
         }
         true
@@ -609,10 +608,7 @@ object Mindbox {
         configuration: MindboxConfiguration,
     ) = LoggingExceptionHandler.runCatchingSuspending {
         val pushToken = withContext(mindboxScope.coroutineContext) {
-            pushServiceHandler?.registerToken(
-                context,
-                MindboxPreferences.pushToken,
-            )
+            pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
         }
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
@@ -633,13 +629,12 @@ object Mindbox {
             notificationProvider = pushServiceHandler?.notificationProvider ?: "",
         )
 
-        MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
-
         MindboxPreferences.deviceUuid = deviceUuid
         MindboxPreferences.pushToken = pushToken
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
-        MindboxPreferences.isFirstInitialize = false
+
+        MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 
         deliverDeviceUuid(deviceUuid)
         deliverToken(pushToken)
@@ -723,10 +718,7 @@ object Mindbox {
             if (validationErrors.any(SdkValidation.Error::critical)) {
                 throw InitializeMindboxException(validationErrors.toString())
             }
-            MindboxLoggerImpl.e(
-                this,
-                "Invalid configuration parameters found: $validationErrors",
-            )
+            MindboxLoggerImpl.e(this, "Invalid configuration parameters found: $validationErrors")
             val isDeviceIdError = validationErrors.contains(
                 SdkValidation.Error.INVALID_DEVICE_ID,
             )

@@ -35,7 +35,7 @@ internal abstract class MindboxDatabase : RoomDatabase() {
             Room.databaseBuilder(
                 context.applicationContext,
                 MindboxDatabase::class.java,
-                DATABASE_NAME
+                DATABASE_NAME,
             )
                 .addMigrations(MIGRATION_1_2)
                 .build()
