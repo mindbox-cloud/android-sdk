@@ -265,10 +265,17 @@ object Mindbox {
 
     /**
      * Initializes the SDK for further work.
-     * We recommend calling it in onCreate on an application class
+     *
+     * We recommend calling it synchronously in onCreate on an application class
+     *
+     * If you must call it the other way, invoke [Mindbox.initPushServices] in [Application.onCreate] or else pushes won't be shown when application is inactive
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
      */
     fun init(
         context: Context,
@@ -276,10 +283,6 @@ object Mindbox {
         pushServices: List<MindboxPushService>? = null,
     ) {
         LoggingExceptionHandler.runCatching {
-//            val pushService = pushServices
-//                .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
-//                .firstOrNull { it.isServiceAvailable(context) }
-
             initComponents(context, pushServices)
 
             mindboxScope.launch {
@@ -339,7 +342,23 @@ object Mindbox {
         }
     }
 
-    fun initPushServices(context: Context, pushServices: List<MindboxPushService>? = null) {
+    /**
+     * Method to initialise push services
+     *
+     * You must call this method in onCreate in your Application class if you call [Mindbox.init] not there
+     *
+     * @param context used to initialize the main tools
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     */
+    fun initPushServices(
+        context: Context,
+        pushServices: List<MindboxPushService>,
+    ) = initPushServices(pushServices, context)
+
+    private fun initPushServices(pushServices: List<MindboxPushService>? = null, context: Context) {
         if (pushServiceHandler == null && pushServices != null) {
             val savedProvider = MindboxPreferences.notificationProvider
             pushServiceHandler = selectPushServiceHandler(context, pushServices, savedProvider)
@@ -355,8 +374,10 @@ object Mindbox {
                     }
                 }
 
-            mindboxScope.launch {
-                pushServiceHandler?.initService(context)
+            pushServiceHandler?.let {
+                mindboxScope.launch {
+                    pushServiceHandler?.initService(context)
+                }
             }
         }
     }
@@ -604,7 +625,7 @@ object Mindbox {
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
-        initPushServices(context, pushServices)
+        initPushServices(pushServices, context)
     }
 
     private fun <T> asyncOperation(
