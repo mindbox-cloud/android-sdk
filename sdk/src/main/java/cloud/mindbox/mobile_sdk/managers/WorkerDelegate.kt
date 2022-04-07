@@ -23,7 +23,7 @@ internal class WorkerDelegate {
         MindboxLoggerImpl.d(parent, "Start working...")
 
         try {
-            Mindbox.initComponents(context, Mindbox.pushServiceHandler)
+            Mindbox.initComponents(context, null)
 
             Mindbox.pushServiceHandler?.ensureVersionCompatibility(context, parent)
 
