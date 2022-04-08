@@ -356,7 +356,7 @@ object Mindbox {
     fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
-    ) = initPushServices(pushServices, context)
+    ) = LoggingExceptionHandler.runCatching { initPushServices(pushServices, context) }
 
     private fun initPushServices(pushServices: List<MindboxPushService>? = null, context: Context) {
         if (pushServiceHandler == null && pushServices != null) {
