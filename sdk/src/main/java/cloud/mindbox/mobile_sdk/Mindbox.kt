@@ -186,7 +186,7 @@ object Mindbox {
      */
     fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
         if (token.trim().isNotEmpty()) {
-            initComponents(context, null)
+            initComponents(context)
 
             if (!MindboxPreferences.isFirstInitialize) {
                 mindboxScope.launch {
@@ -204,7 +204,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      */
     fun onPushReceived(context: Context, uniqKey: String) = LoggingExceptionHandler.runCatching {
-        initComponents(context, null)
+        initComponents(context)
         MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
@@ -227,7 +227,7 @@ object Mindbox {
         uniqKey: String,
         buttonUniqKey: String?,
     ) = LoggingExceptionHandler.runCatching {
-        initComponents(context, null)
+        initComponents(context)
         MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
 
         if (!MindboxPreferences.isFirstInitialize) {
@@ -358,12 +358,12 @@ object Mindbox {
     fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
-    ) = LoggingExceptionHandler.runCatching { setPushServiceHandler(context, pushServices) }
+    ) = setPushServiceHandler(context, pushServices)
 
     private fun setPushServiceHandler(
         context: Context,
         pushServices: List<MindboxPushService>? = null,
-    ) {
+    ) = LoggingExceptionHandler.runCatching {
         if (pushServiceHandler == null && pushServices != null) {
             val savedProvider = MindboxPreferences.notificationProvider
             selectPushServiceHandler(context, pushServices, savedProvider)
@@ -673,7 +673,7 @@ object Mindbox {
         operationSystemName: String,
     ) = LoggingExceptionHandler.runCatching(defaultValue = false) {
         if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
-            initComponents(context, null)
+            initComponents(context)
         } else {
             MindboxLoggerImpl.w(
                 this,
