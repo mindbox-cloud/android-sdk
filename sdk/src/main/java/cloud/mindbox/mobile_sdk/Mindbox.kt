@@ -280,7 +280,7 @@ object Mindbox {
     fun init(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>? = null,
+        pushServices: List<MindboxPushService>?,
     ) {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
