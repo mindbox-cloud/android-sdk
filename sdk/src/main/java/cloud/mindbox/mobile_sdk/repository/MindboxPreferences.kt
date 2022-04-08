@@ -15,6 +15,7 @@ internal object MindboxPreferences {
         "key_host_app_name" //need for scheduling and stopping one-time background service
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
     private const val KEY_INSTANCE_ID = "key_instance_id"
+    private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
 
     var isFirstInitialize: Boolean
@@ -100,4 +101,13 @@ internal object MindboxPreferences {
             }
         }
 
+    var notificationProvider: String
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_NOTIFICATION_PROVIDER) ?: ""
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_NOTIFICATION_PROVIDER, value)
+            }
+        }
 }

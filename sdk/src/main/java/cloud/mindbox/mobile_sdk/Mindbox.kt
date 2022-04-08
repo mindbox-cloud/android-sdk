@@ -186,7 +186,7 @@ object Mindbox {
      */
     fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
         if (token.trim().isNotEmpty()) {
-            initComponents(context, pushServiceHandler)
+            initComponents(context)
 
             if (!MindboxPreferences.isFirstInitialize) {
                 mindboxScope.launch {
@@ -204,7 +204,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      */
     fun onPushReceived(context: Context, uniqKey: String) = LoggingExceptionHandler.runCatching {
-        initComponents(context, pushServiceHandler)
+        initComponents(context)
         MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
@@ -227,7 +227,7 @@ object Mindbox {
         uniqKey: String,
         buttonUniqKey: String?,
     ) = LoggingExceptionHandler.runCatching {
-        initComponents(context, pushServiceHandler)
+        initComponents(context)
         MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
 
         if (!MindboxPreferences.isFirstInitialize) {
@@ -265,10 +265,17 @@ object Mindbox {
 
     /**
      * Initializes the SDK for further work.
-     * We recommend calling it in onCreate on an application class
+     *
+     * We recommend calling it synchronously in onCreate on an application class
+     *
+     * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
      */
     fun init(
         context: Context,
@@ -276,11 +283,7 @@ object Mindbox {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-            val pushService = pushServices
-                .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
-                .firstOrNull { it.isServiceAvailable(context) }
-
-            initComponents(context, pushService)
+            initComponents(context, pushServices)
 
             mindboxScope.launch {
                 if (MindboxPreferences.isFirstInitialize) {
@@ -310,6 +313,14 @@ object Mindbox {
                             "Incorrect context type for calling init in this place",
                         )
                     }
+                    if (isApplicationResumed || context !is Application) {
+                        MindboxLoggerImpl.w(
+                            this,
+                            "We recommend to call Mindbox.init() synchronously from " +
+                                    "Application.onCreate. If you can't do so, don't forget to " +
+                                    "call Mindbox.initPushServices from Application.onCreate",
+                        )
+                    }
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
@@ -331,6 +342,75 @@ object Mindbox {
                 applicationLifecycle.addObserver(lifecycleManager)
             }
         }
+    }
+
+    /**
+     * Method to initialise push services
+     *
+     * You must call this method in onCreate in your Application class if you call [Mindbox.init] not there
+     *
+     * @param context used to initialize the main tools
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     */
+    fun initPushServices(
+        context: Context,
+        pushServices: List<MindboxPushService>,
+    ) = setPushServiceHandler(context, pushServices)
+
+    private fun setPushServiceHandler(
+        context: Context,
+        pushServices: List<MindboxPushService>? = null,
+    ) = LoggingExceptionHandler.runCatching {
+        if (pushServiceHandler == null && pushServices != null) {
+            val savedProvider = MindboxPreferences.notificationProvider
+            selectPushServiceHandler(context, pushServices, savedProvider)
+                ?.let { pushServiceHandler ->
+                    this.pushServiceHandler = pushServiceHandler
+                    pushServiceHandler.notificationProvider
+                        .takeIf { it != savedProvider }
+                        ?.let { newProvider ->
+                            MindboxPreferences.notificationProvider = newProvider
+                            if (!MindboxPreferences.isFirstInitialize) {
+                                mindboxScope.launch {
+                                    updateAppInfo(context)
+                                }
+                            }
+                        }
+                    mindboxScope.launch {
+                        pushServiceHandler.initService(context)
+                    }
+                }
+        }
+    }
+
+    private fun selectPushServiceHandler(
+        context: Context,
+        pushServices: List<MindboxPushService>,
+        savedProvider: String,
+    ): PushServiceHandler? {
+        val serviceHandlers = pushServices
+            .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
+        return serviceHandlers.firstOrNull { it.notificationProvider == savedProvider }
+            ?: initAvailablePushService(context, serviceHandlers, savedProvider)
+    }
+
+    private fun initAvailablePushService(
+        context: Context,
+        serviceHandlers: List<PushServiceHandler>,
+        savedProvider: String,
+    ) = if (savedProvider.isBlank()) {
+        serviceHandlers.firstOrNull { it.isServiceAvailable(context) }
+    } else {
+        MindboxLoggerImpl.e(
+            Mindbox,
+            "Mindbox was previously initialized with $savedProvider push service but " +
+                    "Mindbox did not find it within pushServices. Check your Mindbox.init() and " +
+                    "Mindbox.initPushServices()",
+        )
+        null
     }
 
     /**
@@ -560,13 +640,10 @@ object Mindbox {
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
 
-    internal fun initComponents(context: Context, pushServiceHandler: PushServiceHandler?) {
+    internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
-        this.pushServiceHandler = pushServiceHandler
-        mindboxScope.launch {
-            pushServiceHandler?.initService(context)
-        }
+        setPushServiceHandler(context, pushServices)
     }
 
     private fun <T> asyncOperation(
@@ -596,7 +673,7 @@ object Mindbox {
         operationSystemName: String,
     ) = LoggingExceptionHandler.runCatching(defaultValue = false) {
         if (operationSystemName.matches(OPERATION_NAME_REGEX.toRegex())) {
-            initComponents(context, pushServiceHandler)
+            initComponents(context)
         } else {
             MindboxLoggerImpl.w(
                 this,
@@ -628,6 +705,7 @@ object Mindbox {
         DbManager.saveConfigurations(Configuration(configuration))
 
         val isTokenAvailable = !pushToken.isNullOrEmpty()
+        val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
         val initData = InitData(
             token = pushToken ?: "",
             isTokenAvailable = isTokenAvailable,
@@ -636,13 +714,14 @@ object Mindbox {
             isNotificationsEnabled = isNotificationEnabled,
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
-            notificationProvider = pushServiceHandler?.notificationProvider ?: "",
+            notificationProvider = notificationProvider,
         )
 
         MindboxPreferences.deviceUuid = deviceUuid
         MindboxPreferences.pushToken = pushToken
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
+        MindboxPreferences.notificationProvider = notificationProvider
 
         MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 
