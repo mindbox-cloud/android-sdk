@@ -358,7 +358,7 @@ object Mindbox {
     fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
-    ) = setPushServiceHandler(context, pushServices)
+    ) = initComponents(context, pushServices)
 
     private fun setPushServiceHandler(
         context: Context,
