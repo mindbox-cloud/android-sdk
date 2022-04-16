@@ -20,6 +20,7 @@ EOF
 set-tag() {
   set-local-tag
   #set-remote-tag
+  echo "Tag cleaned"
 }
 prepare-release-data() {
   if [[ $version =~ ^[0-9.]+$ ]]; then
