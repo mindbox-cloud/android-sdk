@@ -54,10 +54,10 @@ set-remote-tag() {
   fi
 }
 echo "Create release $version for repo: $repo_full_name branch: $branch"
-echo "Release settings: $(generate_post_data)"
 post-request() {
   curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
 }
 set-tag
 prepare-release-data
+echo "Release settings: $(generate_post_data)"
 post-request
