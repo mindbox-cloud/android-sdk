@@ -39,8 +39,7 @@ prepare-release-data() {
 set-local-tag() {
   if [ $(git tag -l | grep $version) ]; then
     echo "Local tag cleanup"
-    git tag -d $version
-    git tag $version
+    git tag -f $version
   else
     git tag $version
   fi
