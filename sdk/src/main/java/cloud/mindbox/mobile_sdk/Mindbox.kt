@@ -61,7 +61,12 @@ object Mindbox {
     private const val DELIVER_TOKEN_DELAY = 1L
 
     private val mindboxJob = SupervisorJob()
-    internal val mindboxScope = CoroutineScope(Default + mindboxJob)
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
+    }
+    internal val mindboxScope = CoroutineScope(
+        Default + mindboxJob + coroutineExceptionHandler,
+    )
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
