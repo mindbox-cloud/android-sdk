@@ -24,9 +24,10 @@ set-tag() {
 prepare-release-data() {
   if [[ $version =~ ^[0-9.]+$ ]]; then
     name="Release-$version"
-    release_notes_1=$(curl -s --show-error --user "$user:$token" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$repo_full_name/pulls?base=$branch" | grep "\"body\":" | cut -f2- -d:)
-    release_notes="${release_notes_1:2:${#release_notes_1}-4}"
-    body="What's new:\n$release_notes"
+#    release_notes_1=$(curl -s --show-error --user "$user:$token" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$repo_full_name/pulls?base=$branch" | grep "\"body\":" | cut -f2- -d:)
+#    release_notes="${release_notes_1:2:${#release_notes_1}-4}"
+    release_notes=""
+    body="# What's new:\n$release_notes"
     prerelease=false
   else
     name="Pre-release-$version"
