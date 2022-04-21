@@ -291,9 +291,17 @@ object Mindbox {
             initComponents(context, pushServices)
 
             mindboxScope.launch {
-                if (MindboxPreferences.isFirstInitialize) {
+                val checkResult = checkConfig(configuration)
+                val isFirstInitialization = MindboxPreferences.isFirstInitialize
+
+                if (checkResult != ConfigUpdate.NOT_UPDATED) {
+                    DbManager.removeAllEventsFromQueue()
+                }
+
+                if (isFirstInitialization || checkResult == ConfigUpdate.UPDATED) {
                     val validatedConfiguration = validateConfiguration(configuration)
                     firstInitialization(context, validatedConfiguration)
+
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
@@ -688,11 +696,15 @@ object Mindbox {
         true
     }
 
-    private suspend fun initDeviceId(context: Context): String {
+    private suspend fun getDeviceId(
+        context: Context,
+    ): String = if (MindboxPreferences.isFirstInitialize) {
         val adid = mindboxScope.async {
             pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
         }
-        return adid.await()
+        adid.await()
+    } else {
+        MindboxPreferences.deviceUuid
     }
 
     private suspend fun firstInitialization(
@@ -704,7 +716,7 @@ object Mindbox {
         }
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-        val deviceUuid = initDeviceId(context)
+        val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
 
         DbManager.saveConfigurations(Configuration(configuration))
@@ -770,6 +782,23 @@ object Mindbox {
         isNotificationEnabled: Boolean,
     ) = isTokenAvailable && pushToken != MindboxPreferences.pushToken
             || isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+
+    private suspend fun checkConfig(
+        newConfiguration: MindboxConfiguration,
+    ): ConfigUpdate = LoggingExceptionHandler.runCatchingSuspending(ConfigUpdate.UPDATED) {
+        DbManager.getConfigurations()?.let { currentConfiguration ->
+            val isUrlChanged = newConfiguration.domain != currentConfiguration.domain
+            val isEndpointChanged = newConfiguration.endpointId != currentConfiguration.endpointId
+            val isShouldCreateCustomerChanged = newConfiguration.shouldCreateCustomer != currentConfiguration.shouldCreateCustomer
+
+            when {
+                isUrlChanged || isEndpointChanged -> ConfigUpdate.UPDATED
+                !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
+                isShouldCreateCustomerChanged && currentConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+                else -> ConfigUpdate.UPDATED
+            }
+        } ?: ConfigUpdate.UPDATED
+    }
 
     private fun sendTrackVisitEvent(
         context: Context,

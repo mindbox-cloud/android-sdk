@@ -60,55 +60,52 @@ internal object DbManager {
         getFilteredEvents().filter { time - it.enqueueTimestamp > DELAY_FOR_SEND_IN_BACKGROUND }
     }
 
-    fun removeEventFromQueue(event: Event) = LoggingExceptionHandler.runCatching {
-        try {
-            synchronized(this) { mindboxDb.eventsDao().delete(event.transactionId) }
-            MindboxLoggerImpl.d(
-                this,
-                "Event ${event.eventType};${event.transactionId} was deleted from queue",
-            )
-        } catch (exception: RuntimeException) {
-            MindboxLoggerImpl.e(this, "Error deleting item from database", exception)
-        }
+    fun removeEventFromQueue(event: Event) = try {
+        synchronized(this) { mindboxDb.eventsDao().delete(event.transactionId) }
+        MindboxLoggerImpl.d(
+            this,
+            "Event ${event.eventType};${event.transactionId} was deleted from queue",
+        )
+    } catch (exception: RuntimeException) {
+        MindboxLoggerImpl.e(this, "Error deleting item from database", exception)
     }
 
-    private fun removeEventsFromQueue(events: List<Event>) = LoggingExceptionHandler.runCatching {
-        try {
-            synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
-            MindboxLoggerImpl.d(this, "${events.size} events were deleted from queue")
-        } catch (exception: RuntimeException) {
-            MindboxLoggerImpl.e(this, "Error deleting items from database", exception)
-        }
+    private fun removeEventsFromQueue(events: List<Event>) = try {
+        synchronized(this) { mindboxDb.eventsDao().deleteEvents(events) }
+        MindboxLoggerImpl.d(this, "${events.size} events were deleted from queue")
+    } catch (exception: RuntimeException) {
+        MindboxLoggerImpl.e(this, "Error deleting items from database", exception)
     }
 
-    fun saveConfigurations(configuration: Configuration) = LoggingExceptionHandler.runCatching {
-        try {
-            mindboxDb.configurationDao().insert(configuration)
-        } catch (exception: RuntimeException) {
-            MindboxLoggerImpl.e(
-                this,
-                "Error writing object configuration to the database",
-                exception,
-            )
-        }
+    fun saveConfigurations(configuration: Configuration) = try {
+        mindboxDb.configurationDao().insert(configuration)
+    } catch (exception: RuntimeException) {
+        MindboxLoggerImpl.e(
+            this,
+            "Error writing object configuration to the database",
+            exception,
+        )
     }
 
-    fun getConfigurations(): Configuration? = LoggingExceptionHandler.runCatching(
-        defaultValue = null,
-    ) {
-        try {
-            mindboxDb.configurationDao().get()
-        } catch (exception: RuntimeException) {
-            // invalid data in case of exception
-            MindboxLoggerImpl.e(this, "Error reading from database", exception)
-            null
-        }
+    fun getConfigurations(): Configuration? = try {
+        mindboxDb.configurationDao().get()
+    } catch (exception: RuntimeException) {
+        // invalid data in case of exception
+        MindboxLoggerImpl.e(this, "Error reading from database", exception)
+        null
     }
 
     private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
         defaultValue = listOf(),
     ) {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
+    }
+
+    fun removeAllEventsFromQueue() = try {
+        mindboxDb.eventsDao().deleteAll()
+    } catch (exception: RuntimeException) {
+        // invalid data in case of exception
+        MindboxLoggerImpl.e(this, "Error reading from database", exception)
     }
 
     private fun filterEvents(events: List<Event>): List<Event> {

@@ -20,4 +20,7 @@ internal interface EventsDao {
     @Delete
     fun deleteEvents(events: List<Event>)
 
+    @Query("DELETE FROM $EVENTS_TABLE_NAME")
+    fun deleteAll()
+
 }
