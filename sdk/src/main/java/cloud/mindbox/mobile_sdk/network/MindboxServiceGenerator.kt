@@ -2,11 +2,14 @@ package cloud.mindbox.mobile_sdk.network
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.BuildConfig
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.Volley
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 // Service generator as emulated singleton.
 // Provides request queue and process requests
@@ -30,6 +33,15 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     init {
         LoggingExceptionHandler.runCatching {
             VolleyLog.DEBUG = BuildConfig.DEBUG
+            Mindbox.mindboxScope.launch {
+                bindRequestQueueWithMindboxScope()
+            }
+        }
+    }
+
+    private suspend fun bindRequestQueueWithMindboxScope() = suspendCancellableCoroutine<Unit> { continuation ->
+        continuation.invokeOnCancellation {
+            requestQueue?.cancelAll() { true }
         }
     }
 
