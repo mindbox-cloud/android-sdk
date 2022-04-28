@@ -291,6 +291,8 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
 
+            var shouldSendAppInfoUpdated = false
+
             initScope.launch {
                 val checkResult = checkConfig(configuration)
 
@@ -339,6 +341,15 @@ object Mindbox {
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
                         isAppInBackground = !isApplicationResumed,
+                        onAppMovedToForeground = {
+                            if (shouldSendAppInfoUpdated) {
+                                mindboxScope.launch {
+                                    updateAppInfo(context)
+                                }
+                            } else {
+                                shouldSendAppInfoUpdated = true
+                            }
+                        },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
                                 sendTrackVisitEvent(context, source, requestUrl)
