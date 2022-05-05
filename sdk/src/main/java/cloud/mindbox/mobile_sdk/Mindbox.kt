@@ -64,6 +64,8 @@ object Mindbox {
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
+    private val infoUpdatedThreadDispatcher = Executors.newSingleThreadExecutor()
+        .asCoroutineDispatcher()
     private val initScope = createMindboxScope()
     internal var mindboxScope = createMindboxScope()
         private set
@@ -291,8 +293,6 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
 
-            var shouldSendAppInfoUpdated = false
-
             initScope.launch {
                 val checkResult = checkConfig(configuration)
 
@@ -342,12 +342,8 @@ object Mindbox {
                         currentIntent = activity?.intent,
                         isAppInBackground = !isApplicationResumed,
                         onAppMovedToForeground = {
-                            if (shouldSendAppInfoUpdated) {
-                                mindboxScope.launch {
-                                    updateAppInfo(context)
-                                }
-                            } else {
-                                shouldSendAppInfoUpdated = true
+                            mindboxScope.launch {
+                                updateAppInfo(context)
                             }
                         },
                         onTrackVisitReady = { source, requestUrl ->
@@ -764,30 +760,32 @@ object Mindbox {
     private suspend fun updateAppInfo(
         context: Context,
         token: String? = null,
-    ) = LoggingExceptionHandler.runCatchingSuspending {
+    ) = withContext(infoUpdatedThreadDispatcher) {
+        LoggingExceptionHandler.runCatchingSuspending {
 
-        val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
-            pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
-        }
+            val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
+                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
+            }
 
-        val isTokenAvailable = !pushToken.isNullOrEmpty()
+            val isTokenAvailable = !pushToken.isNullOrEmpty()
 
-        val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
+            val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
-        if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
-            val initData = UpdateData(
-                token = pushToken ?: MindboxPreferences.pushToken ?: "",
-                isTokenAvailable = isTokenAvailable,
-                isNotificationsEnabled = isNotificationEnabled,
-                instanceId = MindboxPreferences.instanceId,
-                version = MindboxPreferences.infoUpdatedVersion,
-                notificationProvider = pushServiceHandler?.notificationProvider ?: "",
-            )
+            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
+                val initData = UpdateData(
+                    token = pushToken ?: MindboxPreferences.pushToken ?: "",
+                    isTokenAvailable = isTokenAvailable,
+                    isNotificationsEnabled = isNotificationEnabled,
+                    instanceId = MindboxPreferences.instanceId,
+                    version = MindboxPreferences.infoUpdatedVersion,
+                    notificationProvider = pushServiceHandler?.notificationProvider ?: "",
+                )
 
-            MindboxEventManager.appInfoUpdate(context, initData)
+                MindboxEventManager.appInfoUpdate(context, initData)
 
-            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-            MindboxPreferences.pushToken = pushToken
+                MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+                MindboxPreferences.pushToken = pushToken
+            }
         }
     }
 
