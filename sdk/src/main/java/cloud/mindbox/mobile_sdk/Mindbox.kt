@@ -343,7 +343,9 @@ object Mindbox {
                         isAppInBackground = !isApplicationResumed,
                         onAppMovedToForeground = {
                             mindboxScope.launch {
-                                updateAppInfo(context)
+                                if (!MindboxPreferences.isFirstInitialize) {
+                                    updateAppInfo(context)
+                                }
                             }
                         },
                         onTrackVisitReady = { source, requestUrl ->
