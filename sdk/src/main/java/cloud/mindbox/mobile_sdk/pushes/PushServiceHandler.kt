@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import kotlinx.coroutines.runBlocking
 import java.util.*
 
 abstract class PushServiceHandler {
@@ -48,19 +49,21 @@ abstract class PushServiceHandler {
 
     abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
 
-    fun isServiceAvailable(context: Context): Boolean = try {
-        val isAvailable = isAvailable(context)
-        if (!isAvailable) {
-            MindboxLoggerImpl.w(this, "$notificationProvider services are not available")
+    fun isServiceAvailable(context: Context): Boolean = runBlocking {
+        try {
+            val isAvailable = checkServiceAvailable(context) || !getToken(context).isNullOrEmpty()
+            if (!isAvailable) {
+                MindboxLoggerImpl.w(this, "$notificationProvider services are not available")
+            }
+            isAvailable
+        } catch (e: Exception) {
+            MindboxLoggerImpl.w(
+                this,
+                "Unable to determine $notificationProvider services availability. " +
+                        "Failed with exception $e",
+            )
+            false
         }
-        isAvailable
-    } catch (e: Exception) {
-        MindboxLoggerImpl.w(
-            this,
-            "Unable to determine $notificationProvider services availability. " +
-                    "Failed with exception $e",
-        )
-        false
     }
 
     suspend fun registerToken(
@@ -80,7 +83,7 @@ abstract class PushServiceHandler {
         null
     }
 
-    protected abstract fun isAvailable(context: Context): Boolean
+    protected abstract fun checkServiceAvailable(context: Context): Boolean
 
     protected abstract suspend fun getToken(context: Context): String?
 

@@ -65,7 +65,7 @@ internal class HuaweiServiceHandler(
     override fun ensureVersionCompatibility(context: Context, logParent: Any) {
     }
 
-    override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()
+    override fun checkServiceAvailable(context: Context) = HuaweiApiAvailability.getInstance()
         .isHuaweiMobileServicesAvailable(context) == ConnectionResult.SUCCESS
 
     override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {

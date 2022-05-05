@@ -72,7 +72,7 @@ internal class FirebaseServiceHandler(
         }
     }
 
-    override fun isAvailable(context: Context) = GoogleApiAvailability.getInstance()
+    override fun checkServiceAvailable(context: Context) = GoogleApiAvailability.getInstance()
         .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
     override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {
