@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -60,13 +61,15 @@ object Mindbox {
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
 
-    private val mindboxJob = SupervisorJob()
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
-    internal val mindboxScope = CoroutineScope(
-        Default + mindboxJob + coroutineExceptionHandler,
-    )
+    private val infoUpdatedThreadDispatcher = Executors.newSingleThreadExecutor()
+        .asCoroutineDispatcher()
+    private val initScope = createMindboxScope()
+    internal var mindboxScope = createMindboxScope()
+        private set
+
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
@@ -290,10 +293,17 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
 
-            mindboxScope.launch {
-                if (MindboxPreferences.isFirstInitialize) {
+            initScope.launch {
+                val checkResult = checkConfig(configuration)
+
+                if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
+                    softReinitialization(context, checkResult, configuration)
+                }
+
+                if (checkResult == ConfigUpdate.UPDATED) {
                     val validatedConfiguration = validateConfiguration(configuration)
                     firstInitialization(context, validatedConfiguration)
+
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
@@ -331,6 +341,13 @@ object Mindbox {
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
                         isAppInBackground = !isApplicationResumed,
+                        onAppMovedToForeground = {
+                            mindboxScope.launch {
+                                if (!MindboxPreferences.isFirstInitialize) {
+                                    updateAppInfo(context)
+                                }
+                            }
+                        },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
                                 sendTrackVisitEvent(context, source, requestUrl)
@@ -390,6 +407,10 @@ object Mindbox {
                 }
         }
     }
+
+    private fun createMindboxScope() = CoroutineScope(
+        Default + SupervisorJob() + coroutineExceptionHandler,
+    )
 
     private fun selectPushServiceHandler(
         context: Context,
@@ -688,11 +709,15 @@ object Mindbox {
         true
     }
 
-    private suspend fun initDeviceId(context: Context): String {
+    private suspend fun getDeviceId(
+        context: Context,
+    ): String = if (MindboxPreferences.isFirstInitialize) {
         val adid = mindboxScope.async {
             pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
         }
-        return adid.await()
+        adid.await()
+    } else {
+        MindboxPreferences.deviceUuid
     }
 
     private suspend fun firstInitialization(
@@ -704,7 +729,7 @@ object Mindbox {
         }
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-        val deviceUuid = initDeviceId(context)
+        val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
 
         DbManager.saveConfigurations(Configuration(configuration))
@@ -737,30 +762,32 @@ object Mindbox {
     private suspend fun updateAppInfo(
         context: Context,
         token: String? = null,
-    ) = LoggingExceptionHandler.runCatchingSuspending {
+    ) = withContext(infoUpdatedThreadDispatcher) {
+        LoggingExceptionHandler.runCatchingSuspending {
 
-        val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
-            pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
-        }
+            val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
+                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
+            }
 
-        val isTokenAvailable = !pushToken.isNullOrEmpty()
+            val isTokenAvailable = !pushToken.isNullOrEmpty()
 
-        val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
+            val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
-        if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
-            val initData = UpdateData(
-                token = pushToken ?: MindboxPreferences.pushToken ?: "",
-                isTokenAvailable = isTokenAvailable,
-                isNotificationsEnabled = isNotificationEnabled,
-                instanceId = MindboxPreferences.instanceId,
-                version = MindboxPreferences.infoUpdatedVersion,
-                notificationProvider = pushServiceHandler?.notificationProvider ?: "",
-            )
+            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
+                val initData = UpdateData(
+                    token = pushToken ?: MindboxPreferences.pushToken ?: "",
+                    isTokenAvailable = isTokenAvailable,
+                    isNotificationsEnabled = isNotificationEnabled,
+                    instanceId = MindboxPreferences.instanceId,
+                    version = MindboxPreferences.infoUpdatedVersion,
+                    notificationProvider = pushServiceHandler?.notificationProvider ?: "",
+                )
 
-            MindboxEventManager.appInfoUpdate(context, initData)
+                MindboxEventManager.appInfoUpdate(context, initData)
 
-            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-            MindboxPreferences.pushToken = pushToken
+                MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+                MindboxPreferences.pushToken = pushToken
+            }
         }
     }
 
@@ -770,6 +797,48 @@ object Mindbox {
         isNotificationEnabled: Boolean,
     ) = isTokenAvailable && pushToken != MindboxPreferences.pushToken
             || isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+
+    private fun checkConfig(
+        newConfiguration: MindboxConfiguration,
+    ): ConfigUpdate = LoggingExceptionHandler.runCatching(ConfigUpdate.UPDATED) {
+        if (MindboxPreferences.isFirstInitialize) {
+            ConfigUpdate.UPDATED
+        } else {
+            DbManager.getConfigurations()?.let { currentConfiguration ->
+                val isUrlChanged = newConfiguration.domain != currentConfiguration.domain
+                val isEndpointChanged =
+                    newConfiguration.endpointId != currentConfiguration.endpointId
+                val isShouldCreateCustomerChanged =
+                    newConfiguration.shouldCreateCustomer != currentConfiguration.shouldCreateCustomer
+
+                when {
+                    isUrlChanged || isEndpointChanged -> ConfigUpdate.UPDATED
+                    !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
+                    currentConfiguration.shouldCreateCustomer &&
+                            !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+                    else -> ConfigUpdate.UPDATED
+                }
+            } ?: ConfigUpdate.UPDATED
+        }
+    }
+
+    private fun softReinitialization(
+        context: Context,
+        checkResult: ConfigUpdate,
+        configuration: MindboxConfiguration,
+    ) {
+        mindboxScope.cancel()
+        mindboxScope = createMindboxScope()
+        DbManager.removeAllEventsFromQueue()
+        WorkManager.getInstance(context).cancelAllWork()
+
+        if (checkResult == ConfigUpdate.UPDATED_SCC) {
+            val validatedConfiguration = validateConfiguration(configuration)
+            DbManager.saveConfigurations(Configuration(validatedConfiguration))
+        }
+
+        MindboxPreferences.resetAppInfoUpdated()
+    }
 
     private fun sendTrackVisitEvent(
         context: Context,

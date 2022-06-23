@@ -51,7 +51,7 @@ internal object MindboxPreferences {
 
     var tokenSaveDate: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
-             SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
+            SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
         }
         set(value) {
             LoggingExceptionHandler.runCatching {
@@ -78,6 +78,8 @@ internal object MindboxPreferences {
                 SharedPreferencesManager.put(KEY_HOST_APP_MANE, value)
             }
         }
+
+    fun resetAppInfoUpdated() = SharedPreferencesManager.put(KEY_INFO_UPDATED_VERSION, DEFAULT_INFO_UPDATED_VERSION)
 
     val infoUpdatedVersion: Int
         @Synchronized get() = LoggingExceptionHandler.runCatching(

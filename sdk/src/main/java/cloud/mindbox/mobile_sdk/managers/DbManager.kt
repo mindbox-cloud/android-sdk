@@ -111,6 +111,15 @@ internal object DbManager {
         synchronized(this) { mindboxDb.eventsDao().getAll() }
     }
 
+    fun removeAllEventsFromQueue() {
+        try {
+            mindboxDb.eventsDao().deleteAll()
+        } catch (exception: RuntimeException) {
+            // invalid data in case of exception
+            MindboxLoggerImpl.e(this, "Error reading from database", exception)
+        }
+    }
+
     private fun filterEvents(events: List<Event>): List<Event> {
         val time = System.currentTimeMillis()
         val filteredEvents = events.filterNot { it.isTooOld(time) }

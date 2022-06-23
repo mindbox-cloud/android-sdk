@@ -14,9 +14,9 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class FirebaseServiceHandler(
     private val logger: MindboxLogger,
@@ -33,7 +33,7 @@ internal class FirebaseServiceHandler(
 
     override suspend fun getToken(
         context: Context,
-    ): String? = suspendCoroutine { continuation ->
+    ): String? = suspendCancellableCoroutine { continuation ->
         FirebaseMessaging.getInstance().token
             .addOnCanceledListener {
                 continuation.resumeWithException(CancellationException())
