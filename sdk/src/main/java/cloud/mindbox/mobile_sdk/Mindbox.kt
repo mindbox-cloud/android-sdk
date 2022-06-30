@@ -7,7 +7,6 @@ import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -22,6 +21,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -828,9 +828,8 @@ object Mindbox {
         configuration: MindboxConfiguration,
     ) {
         mindboxScope.cancel()
-        mindboxScope = createMindboxScope()
         DbManager.removeAllEventsFromQueue()
-        WorkManager.getInstance(context).cancelAllWork()
+        BackgroundWorkManager.cancelAllWork(context)
 
         if (checkResult == ConfigUpdate.UPDATED_SCC) {
             val validatedConfiguration = validateConfiguration(configuration)
@@ -838,6 +837,7 @@ object Mindbox {
         }
 
         MindboxPreferences.resetAppInfoUpdated()
+        mindboxScope = createMindboxScope()
     }
 
     private fun sendTrackVisitEvent(
