@@ -29,4 +29,7 @@ internal object BackgroundWorkManager {
             .enqueue()
     }
 
+    fun cancelAllWork(context: Context) = WorkManager.getInstance(context)
+        .cancelAllWorkByTag(WORKER_TAG)
+
 }
