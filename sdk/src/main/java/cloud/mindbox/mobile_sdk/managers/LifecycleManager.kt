@@ -19,8 +19,9 @@ import kotlin.concurrent.timer
 internal class LifecycleManager(
     private var currentActivityName: String?,
     private var currentIntent: Intent?,
+    private var isAppInBackground: Boolean,
+    private var onAppMovedToForeground: () -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
-    private var isAppInBackground: Boolean
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
 
     companion object {
@@ -107,10 +108,13 @@ internal class LifecycleManager(
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() = if (!skipSendingTrackVisit) {
-        currentIntent?.let(::sendTrackVisit)
-    } else {
-        skipSendingTrackVisit = false
+    private fun onAppMovedToForeground() {
+        onAppMovedToForeground.invoke()
+        if (!skipSendingTrackVisit) {
+            currentIntent?.let(::sendTrackVisit)
+        } else {
+            skipSendingTrackVisit = false
+        }
     }
 
     private fun updateActivityParameters(activity: Activity) = LoggingExceptionHandler.runCatching {

@@ -13,7 +13,7 @@ internal interface ConfigurationsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(configuration: Configuration)
 
-    @Query("SELECT * FROM $CONFIGURATION_TABLE_NAME WHERE configurationId == 0")
+    @Query("SELECT * FROM $CONFIGURATION_TABLE_NAME ORDER BY configurationId DESC LIMIT 1")
     fun get(): Configuration
 
 }

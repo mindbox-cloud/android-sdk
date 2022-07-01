@@ -71,6 +71,7 @@ internal object PushNotificationManager {
         val text = remoteMessage.description
         val builder = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
