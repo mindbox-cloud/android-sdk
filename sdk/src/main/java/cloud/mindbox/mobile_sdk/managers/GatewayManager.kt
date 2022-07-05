@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
@@ -109,6 +110,7 @@ internal object GatewayManager {
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
+            val isDebug = BuildConfiguration.isDebug(context)
 
             val request = MindboxRequest(
                 methodType = requestType,
@@ -120,6 +122,7 @@ internal object GatewayManager {
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) },
+                isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)

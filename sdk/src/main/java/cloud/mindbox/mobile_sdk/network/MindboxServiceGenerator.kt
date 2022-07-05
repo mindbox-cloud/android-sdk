@@ -1,9 +1,9 @@
 package cloud.mindbox.mobile_sdk.network
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
@@ -32,7 +32,7 @@ internal class MindboxServiceGenerator constructor(context: Context) {
 
     init {
         LoggingExceptionHandler.runCatching {
-            VolleyLog.DEBUG = BuildConfig.DEBUG
+            VolleyLog.DEBUG = BuildConfiguration.isDebug(context)
             Mindbox.mindboxScope.launch {
                 bindRequestQueueWithMindboxScope()
             }
