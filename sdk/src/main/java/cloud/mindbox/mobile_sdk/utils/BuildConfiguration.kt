@@ -7,6 +7,8 @@ object BuildConfiguration {
 
     fun isDebug(
         context: Context
-    ): Boolean = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
 
 }
