@@ -16,10 +16,8 @@ import cloud.mindbox.mobile_sdk.models.operation.OperationBody
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
-import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
+import cloud.mindbox.mobile_sdk.pushes.*
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
-import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -76,6 +74,11 @@ object Mindbox {
     private lateinit var lifecycleManager: LifecycleManager
 
     internal var pushServiceHandler: PushServiceHandler? = null
+
+
+    fun setMessageHandlingCallback(callback: MessageHandlingCallback) {
+        PushNotificationManager.remoteMessageHandling = callback
+    }
 
     /**
      * Subscribe to gets token from push service used by SDK
