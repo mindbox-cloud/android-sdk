@@ -72,6 +72,4 @@ interface MessageHandlingCallback {
 
     }
 
-    companion object : Default()
-
 }

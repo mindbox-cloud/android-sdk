@@ -30,7 +30,7 @@ internal object PushNotificationManager {
 
     private const val MAX_ACTIONS_COUNT = 3
 
-    internal var remoteMessageHandling: MessageHandlingCallback = MessageHandlingCallback
+    internal var remoteMessageHandling: MessageHandlingCallback = MessageHandlingCallback.Default()
 
     internal fun isNotificationsEnabled(
         context: Context,
