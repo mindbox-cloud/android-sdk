@@ -25,8 +25,6 @@ internal class MindboxNotificationWorker(
         val notificationId: Int = data.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
         require(notificationId != EMPTY_INT) { "Empty notification Id" }
 
-        Log.e("TAG", "doWork $notificationId")
-
         val message: RemoteMessage? = data.getString(KEY_REMOTE_MESSAGE)?.deserialize()
         requireNotNull(message) { "RemoteMessage is null" }
 

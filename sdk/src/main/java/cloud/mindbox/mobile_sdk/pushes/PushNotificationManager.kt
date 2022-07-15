@@ -135,9 +135,10 @@ internal object PushNotificationManager {
         }
 
         val fallback: ImageFallback? = image.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.d(
+            MindboxLoggerImpl.e(
                 parent = this,
-                message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed $error"
+                message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed",
+                exception = error
             )
             remoteMessageHandling.onImageLoadingFailed(
                 context = context,
@@ -226,6 +227,7 @@ internal object PushNotificationManager {
                 notificationManager.notify(notificationId, notification)
             }
             null -> {
+                createNotificationChannel(notificationManager, channelId, channelName, channelDescription)
                 val notification = buildNotification(
                     context = applicationContext,
                     notificationId = notificationId,
