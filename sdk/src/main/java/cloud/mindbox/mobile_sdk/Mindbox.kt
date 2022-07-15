@@ -75,7 +75,13 @@ object Mindbox {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-
+    /**
+     * Set callback to handle some events in [handleRemoteMessage]
+     *
+     * @see handleRemoteMessage
+     * @see MessageHandlingCallback
+     * @see MessageHandlingCallback.Default
+     */
     fun setMessageHandlingCallback(callback: MessageHandlingCallback) {
         PushNotificationManager.remoteMessageHandling = callback
     }
