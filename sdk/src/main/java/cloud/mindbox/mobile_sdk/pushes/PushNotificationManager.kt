@@ -97,7 +97,10 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>,
         state: MessageHandlingState
     ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
-        MindboxLoggerImpl.d(this, "Notify message ${remoteMessage.uniqueKey} started")
+        MindboxLoggerImpl.d(
+            parent = this,
+            message = "Notify message ${remoteMessage.uniqueKey} started with state $state"
+        )
         val applicationContext = context.applicationContext
 
         val uniqueKey = remoteMessage.uniqueKey
@@ -106,18 +109,19 @@ internal object PushNotificationManager {
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val isNotificationActive = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                && isNotificationActive(notificationManager, notificationId)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val isNotificationActive = isNotificationActive(notificationManager, notificationId)
 
-        if (state.attemptNumber > 1 && state.isNotificationWasShown && !isNotificationActive) {
-            MindboxLoggerImpl.d(
-                parent = this,
-                message = "Notify message ${remoteMessage.uniqueKey}: An attempt to update " +
-                        "the notification was canceled because the notification was canceled"
-            )
-            //If this is not the first attempt and notification was shown and the notification is not active,
-            //then it is considered to have been canceled
-            return@runCatchingSuspending true
+            if (state.attemptNumber > 1 && state.isNotificationWasShown && !isNotificationActive) {
+                MindboxLoggerImpl.d(
+                    parent = this,
+                    message = "Notify message ${remoteMessage.uniqueKey}: An attempt to update " +
+                            "the notification was canceled because the notification was canceled"
+                )
+                //If this is not the first attempt and notification was shown and the notification is not active,
+                //then it is considered to have been canceled
+                return@runCatchingSuspending true
+            }
         }
 
         val image: Result<Bitmap?> = withContext(Dispatchers.IO) {
@@ -149,9 +153,8 @@ internal object PushNotificationManager {
             }
         }
 
-        if (BuildConfig.DEBUG && fallback is ImageFallback.AllowAndRetry
-            && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            throw IllegalArgumentException("ShowAndRetry policy works correctly only on SDK >= 23")
+        if (fallback is ImageFallback.AllowAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            MindboxLoggerImpl.e(this, "ShowAndRetry works correctly only on SDK >= 23")
         }
 
         when (fallback) {
