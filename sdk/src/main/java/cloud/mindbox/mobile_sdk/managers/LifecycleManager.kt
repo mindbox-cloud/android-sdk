@@ -106,13 +106,13 @@ internal class LifecycleManager(
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    private fun onAppMovedToBackground() {
+    private fun onAppMovedToBackground() = LoggingExceptionHandler.runCatching {
         isAppInBackground = true
         cancelKeepAliveTimer()
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() {
+    private fun onAppMovedToForeground() = LoggingExceptionHandler.runCatching {
         onAppMovedToForeground.invoke()
         if (!skipSendingTrackVisit) {
             currentIntent?.let(::sendTrackVisit)
