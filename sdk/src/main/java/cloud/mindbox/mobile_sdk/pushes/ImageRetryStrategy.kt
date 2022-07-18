@@ -23,7 +23,7 @@ sealed class ImageRetryStrategy {
      * @see BitmapFactory.decodeResource
      * @see androidx.core.graphics.drawable.toBitmap
      */
-    data class NoRetry(
+    data class ApplyDefault(
         val defaultImage: Bitmap? = null,
     ) : ImageRetryStrategy()
 
@@ -47,7 +47,7 @@ sealed class ImageRetryStrategy {
      * @see androidx.core.graphics.drawable.toBitmap
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    data class ContinueAndRetry(
+    data class ApplyDefaultAndRetry(
         val delay: Long = 0L,
         val placeholder: Bitmap? = null,
     ) : ImageRetryStrategy()

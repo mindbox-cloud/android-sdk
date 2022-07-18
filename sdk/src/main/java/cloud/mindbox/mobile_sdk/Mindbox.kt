@@ -75,14 +75,40 @@ object Mindbox {
     internal var pushServiceHandler: PushServiceHandler? = null
 
     /**
-     * Set callback to handle some events in [handleRemoteMessage]
+     * Allows you to specify additional components for message handling
+     * when calling the [handleRemoteMessage] function.
      *
+     * Example:
+     *
+     *  class App : Application {
+     *
+     *      override fun onCreate() {
+     *          ...
+     *          val defaultImage = ContextCompat.getDrawable(this, R.drawable.ic_placeholder)?.toBitmap()
+     *          Mindbox.setMessageHandling(
+     *              imageLoader = MindboxImageLoader.Default,
+     *              imageFailureHandler = MindboxImageFailureHandler.applyDefaultAndRetryStrategy(
+     *                  maxAttempts = 5,
+     *                  delay = 3_000,
+     *                  defaultImage = defaultImage,
+     *              )
+     *          )
+     *          ...
+     *      }
+     *  }
+     *
+     * @see MindboxImageLoader
+     * @see MindboxImageFailureHandler
      * @see handleRemoteMessage
-     * @see MessageHandlingCallback
-     * @see MessageHandlingDefault
      */
-    fun setMessageHandlingCallback(callback: MessageHandlingCallback) {
-        PushNotificationManager.remoteMessageHandling = callback
+    fun setMessageHandling(
+        imageLoader: MindboxImageLoader = MindboxImageLoader.Default,
+        imageFailureHandler: MindboxImageFailureHandler = MindboxImageFailureHandler.Default,
+    ) {
+        PushNotificationManager.messageHandler = MindboxMessageHandler(
+            imageFailureHandler = imageFailureHandler,
+            imageLoader = imageLoader,
+        )
     }
 
     /**

@@ -6,9 +6,14 @@ import android.graphics.BitmapFactory
 import java.net.URL
 
 /**
- * Default implementation [MessageHandlingCallback]
+ * Default image loading implementation
  */
-open class MessageHandlingDefault : MessageHandlingCallback {
+val MindboxImageLoader.Companion.Default: MindboxImageLoader
+    get() = DefaultLoader
+
+private val DefaultLoader: MindboxImageLoader = MindboxImageLoaderDefault()
+
+internal class MindboxImageLoaderDefault : MindboxImageLoader {
 
     companion object {
 
@@ -19,7 +24,6 @@ open class MessageHandlingDefault : MessageHandlingCallback {
     override fun onLoadImage(
         context: Context,
         message: RemoteMessage,
-        state: MessageHandlingState,
     ): Bitmap? = message.imageUrl?.let { url ->
         val connection = URL(url).openConnection().apply {
             readTimeout = IMAGE_CONNECTION_TIMEOUT
@@ -27,12 +31,5 @@ open class MessageHandlingDefault : MessageHandlingCallback {
         }
         BitmapFactory.decodeStream(connection.getInputStream())
     }
-
-    override fun onImageLoadingFailed(
-        context: Context,
-        message: RemoteMessage,
-        state: MessageHandlingState,
-        error: Throwable,
-    ): ImageRetryStrategy = ImageRetryStrategy.NoRetry()
 
 }

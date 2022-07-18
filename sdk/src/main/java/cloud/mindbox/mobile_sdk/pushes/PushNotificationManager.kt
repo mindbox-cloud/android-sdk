@@ -30,7 +30,7 @@ internal object PushNotificationManager {
 
     private const val MAX_ACTIONS_COUNT = 3
 
-    internal var remoteMessageHandling: MessageHandlingCallback = MessageHandlingDefault()
+    internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
     internal fun isNotificationsEnabled(
         context: Context,
@@ -69,7 +69,7 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
         tryNotifyRemoteMessage(
-            notificationId = Generator.generateInt(),
+            notificationId = Generator.generateUniqueInt(),
             context = context,
             remoteMessage = remoteMessage,
             channelId = channelId,
@@ -80,7 +80,7 @@ internal object PushNotificationManager {
             defaultActivity = defaultActivity,
             state = MessageHandlingState(
                 attemptNumber = 1,
-                isNotificationWasShown = false,
+                isMessageDisplayed = false,
             ),
         )
     }
@@ -120,10 +120,9 @@ internal object PushNotificationManager {
 
         val image = withContext(Dispatchers.IO) {
             runCatching {
-                remoteMessageHandling.onLoadImage(
+                messageHandler.imageLoader.onLoadImage(
                     context = context,
                     message = remoteMessage,
-                    state = state,
                 )
             }
         }
@@ -143,7 +142,7 @@ internal object PushNotificationManager {
                 message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed",
                 exception = error,
             )
-            remoteMessageHandling.onImageLoadingFailed(
+            messageHandler.imageFailureHandler.onImageLoadingFailed(
                 context = context,
                 message = remoteMessage,
                 state = state,
@@ -157,7 +156,7 @@ internal object PushNotificationManager {
             }
         }
 
-        if (fallback is ImageRetryStrategy.ContinueAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        if (fallback is ImageRetryStrategy.ApplyDefaultAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             MindboxLoggerImpl.e(
                 parent = this,
                 message = "ShowAndRetry works correctly only on SDK >= 23",
@@ -181,7 +180,7 @@ internal object PushNotificationManager {
                 )
             }
             is ImageRetryStrategy.Cancel -> {}
-            is ImageRetryStrategy.ContinueAndRetry -> {
+            is ImageRetryStrategy.ApplyDefaultAndRetry -> {
                 allowAndRetryNotifyRemoteMessage(
                     context = applicationContext,
                     notificationManager = notificationManager,
@@ -198,7 +197,7 @@ internal object PushNotificationManager {
                     currentState = state,
                 )
             }
-            is ImageRetryStrategy.NoRetry -> {
+            is ImageRetryStrategy.ApplyDefault -> {
                 allowNotifyRemoteMessage(
                     context = applicationContext,
                     notificationManager = notificationManager,
@@ -245,7 +244,7 @@ internal object PushNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val isNotificationActive = isNotificationActive(notificationManager, notificationId)
 
-            if (state.attemptNumber > 1 && state.isNotificationWasShown && !isNotificationActive) {
+            if (state.attemptNumber > 1 && state.isMessageDisplayed && !isNotificationActive) {
                 //If this is not the first attempt and notification was shown and the notification is not active,
                 //then it is considered to have been canceled
                 return true
@@ -330,7 +329,7 @@ internal object PushNotificationManager {
             activities = activities,
             defaultActivity = defaultActivity,
             delay = delay,
-            state = currentState.copy(isNotificationWasShown = true),
+            state = currentState.copy(isMessageDisplayed = true),
         )
     }
 
