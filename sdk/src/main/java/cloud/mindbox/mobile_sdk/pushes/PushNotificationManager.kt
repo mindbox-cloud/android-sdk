@@ -69,7 +69,7 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
         tryNotifyRemoteMessage(
-            notificationId = generateUniqueNotificationId(),
+            notificationId = Generator.generateInt(),
             context = context,
             remoteMessage = remoteMessage,
             channelId = channelId,
@@ -118,8 +118,8 @@ internal object PushNotificationManager {
             return@runCatchingSuspending true
         }
 
-        val image: Result<Bitmap?> = withContext(Dispatchers.IO) {
-            kotlin.runCatching {
+        val image = withContext(Dispatchers.IO) {
+            runCatching {
                 remoteMessageHandling.onLoadImage(
                     context = context,
                     message = remoteMessage,
@@ -137,7 +137,7 @@ internal object PushNotificationManager {
             return@runCatchingSuspending true
         }
 
-        val fallback: ImageRetryStrategy? = image.exceptionOrNull()?.let { error ->
+        val fallback = image.exceptionOrNull()?.let { error ->
             MindboxLoggerImpl.e(
                 parent = this,
                 message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed",
@@ -635,10 +635,6 @@ internal object PushNotificationManager {
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
-    }
-
-    private fun generateUniqueNotificationId(): Int {
-        return Generator.generateInt()
     }
 
 }

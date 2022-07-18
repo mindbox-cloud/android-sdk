@@ -18,7 +18,7 @@ sealed class ImageRetryStrategy {
     /**
      * Continue the process without the desired image
      *
-     * @param defaultImage Optional image to replace the desired
+     * @param defaultImage An optional image to replace the desired one if the download fails
      *
      * @see BitmapFactory.decodeResource
      * @see androidx.core.graphics.drawable.toBitmap

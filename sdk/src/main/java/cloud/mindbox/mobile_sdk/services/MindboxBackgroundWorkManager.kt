@@ -14,10 +14,10 @@ internal object BackgroundWorkManager {
     private const val INITIAL_DELAY = 120L
 
     private val NOTIFICATION_WORKER_TAG =
-        "MindboxNotificationWorkManager${MindboxPreferences.hostAppName}"
+        "MindboxNotificationWorkManager-${MindboxPreferences.hostAppName}"
 
     private val WORKER_TAG =
-        "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
+        "MindboxBackgroundWorkManager-${MindboxPreferences.hostAppName}"
 
     fun startOneTimeService(context: Context) = LoggingExceptionHandler.runCatching {
         val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
@@ -80,6 +80,6 @@ internal object BackgroundWorkManager {
     }
 
     private fun getUniqueWorkerNameFor(notificationId: Int): String {
-        return "NotificationWorker-$notificationId"
+        return "$NOTIFICATION_WORKER_TAG-$notificationId"
     }
 }

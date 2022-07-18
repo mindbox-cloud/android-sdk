@@ -45,4 +45,5 @@ interface MessageHandlingCallback {
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy
+
 }

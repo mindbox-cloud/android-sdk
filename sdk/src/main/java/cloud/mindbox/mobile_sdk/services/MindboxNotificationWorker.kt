@@ -17,61 +17,6 @@ internal class MindboxNotificationWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend fun doWork(): Result = LoggingExceptionHandler.runCatchingSuspending(
-        defaultValue = Result.failure(),
-    ) {
-        val notificationId = inputData.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
-        require(notificationId != EMPTY_INT) { "Empty notification Id" }
-
-        val message: RemoteMessage? = inputData.getString(KEY_REMOTE_MESSAGE)?.deserialize()
-        requireNotNull(message) { "RemoteMessage is null" }
-
-        val channelId = inputData.getString(KEY_CHANNEL_ID)
-        requireNotNull(channelId) { "channelId is null" }
-
-        val channelName = inputData.getString(KEY_CHANNEL_NAME)
-        requireNotNull(channelName) { "channelName is null" }
-
-        val pushSmallIcon = inputData.getInt(KEY_SMALL_ICON_RES, EMPTY_INT)
-        require(notificationId != EMPTY_INT) { "Empty pushSmallIcon" }
-
-        val channelDescription = inputData.getString(KEY_CHANNEL_DESCRIPTION)
-
-        val activities = inputData.getString(KEY_ACTIVITIES)
-            ?.deserialize<Map<String, String>>()
-            ?.mapNotNull { (key, value) ->
-                LoggingExceptionHandler.runCatching(defaultValue = null) {
-                    key to Class.forName(value) as Class<out Activity>
-                }
-            }
-            ?.toMap()
-
-        val defaultActivity = inputData.getString(KEY_ACTIVITY_DEFAULT)?.let {
-            LoggingExceptionHandler.runCatching(defaultValue = null) {
-                Class.forName(it) as Class<out Activity>
-            }
-        }
-        requireNotNull(defaultActivity) { "defaultActivity is null" }
-
-        val state: MessageHandlingState? = inputData.getString(KEY_STATE)?.deserialize()
-        requireNotNull(state) { "State is null" }
-
-        PushNotificationManager.tryNotifyRemoteMessage(
-            context = this.applicationContext,
-            remoteMessage = message,
-            channelId = channelId,
-            channelName = channelName,
-            pushSmallIcon = pushSmallIcon,
-            channelDescription = channelDescription,
-            activities = activities,
-            defaultActivity = defaultActivity,
-            notificationId = notificationId,
-            state = state.copy(attemptNumber = state.attemptNumber + 1),
-        )
-        Result.success()
-    }
-
-
     companion object {
 
         private const val EMPTY_INT = 0
@@ -128,6 +73,61 @@ internal class MindboxNotificationWorker(
                 .putString(KEY_STATE, stateString)
                 .build()
         }
+
+    }
+
+    override suspend fun doWork(): Result = LoggingExceptionHandler.runCatchingSuspending(
+        defaultValue = Result.failure(),
+    ) {
+        val notificationId = inputData.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
+        require(notificationId != EMPTY_INT) { "Empty notification Id" }
+
+        val message = inputData.getString(KEY_REMOTE_MESSAGE)?.deserialize<RemoteMessage>()
+        requireNotNull(message) { "RemoteMessage is null" }
+
+        val channelId = inputData.getString(KEY_CHANNEL_ID)
+        requireNotNull(channelId) { "channelId is null" }
+
+        val channelName = inputData.getString(KEY_CHANNEL_NAME)
+        requireNotNull(channelName) { "channelName is null" }
+
+        val pushSmallIcon = inputData.getInt(KEY_SMALL_ICON_RES, EMPTY_INT)
+        require(notificationId != EMPTY_INT) { "Empty pushSmallIcon" }
+
+        val channelDescription = inputData.getString(KEY_CHANNEL_DESCRIPTION)
+
+        val activities = inputData.getString(KEY_ACTIVITIES)
+            ?.deserialize<Map<String, String>>()
+            ?.mapNotNull { (key, value) ->
+                LoggingExceptionHandler.runCatching(defaultValue = null) {
+                    key to Class.forName(value) as Class<out Activity>
+                }
+            }
+            ?.toMap()
+
+        val defaultActivity = inputData.getString(KEY_ACTIVITY_DEFAULT)?.let {
+            LoggingExceptionHandler.runCatching(defaultValue = null) {
+                Class.forName(it) as Class<out Activity>
+            }
+        }
+        requireNotNull(defaultActivity) { "defaultActivity is null" }
+
+        val state: MessageHandlingState? = inputData.getString(KEY_STATE)?.deserialize()
+        requireNotNull(state) { "State is null" }
+
+        PushNotificationManager.tryNotifyRemoteMessage(
+            context = this.applicationContext,
+            remoteMessage = message,
+            channelId = channelId,
+            channelName = channelName,
+            pushSmallIcon = pushSmallIcon,
+            channelDescription = channelDescription,
+            activities = activities,
+            defaultActivity = defaultActivity,
+            notificationId = notificationId,
+            state = state.copy(attemptNumber = state.attemptNumber + 1),
+        )
+        Result.success()
     }
 
 }

@@ -20,14 +20,12 @@ open class MessageHandlingDefault : MessageHandlingCallback {
         context: Context,
         message: RemoteMessage,
         state: MessageHandlingState,
-    ): Bitmap? {
-        return message.imageUrl?.let { url ->
-            val connection = URL(url).openConnection().apply {
-                readTimeout = IMAGE_CONNECTION_TIMEOUT
-                connectTimeout = IMAGE_CONNECTION_TIMEOUT
-            }
-            BitmapFactory.decodeStream(connection.getInputStream())
+    ): Bitmap? = message.imageUrl?.let { url ->
+        val connection = URL(url).openConnection().apply {
+            readTimeout = IMAGE_CONNECTION_TIMEOUT
+            connectTimeout = IMAGE_CONNECTION_TIMEOUT
         }
+        BitmapFactory.decodeStream(connection.getInputStream())
     }
 
     override fun onImageLoadingFailed(
@@ -35,8 +33,6 @@ open class MessageHandlingDefault : MessageHandlingCallback {
         message: RemoteMessage,
         state: MessageHandlingState,
         error: Throwable,
-    ): ImageRetryStrategy {
-        return ImageRetryStrategy.NoRetry()
-    }
+    ): ImageRetryStrategy = ImageRetryStrategy.NoRetry()
 
 }
