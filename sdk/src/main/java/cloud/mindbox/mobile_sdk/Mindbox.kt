@@ -17,7 +17,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBas
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.pushes.*
-import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -80,7 +79,7 @@ object Mindbox {
      *
      * @see handleRemoteMessage
      * @see MessageHandlingCallback
-     * @see MessageHandlingCallback.Default
+     * @see MessageHandlingDefault
      */
     fun setMessageHandlingCallback(callback: MessageHandlingCallback) {
         PushNotificationManager.remoteMessageHandling = callback

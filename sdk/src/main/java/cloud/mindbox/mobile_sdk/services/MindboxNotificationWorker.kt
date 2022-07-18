@@ -14,50 +14,46 @@ import com.google.gson.Gson
 
 internal class MindboxNotificationWorker(
     appContext: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = LoggingExceptionHandler.runCatchingSuspending(
-        defaultValue = Result.failure()
+        defaultValue = Result.failure(),
     ) {
-        val data = inputData
-
-        val notificationId: Int = data.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
+        val notificationId = inputData.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
         require(notificationId != EMPTY_INT) { "Empty notification Id" }
 
-        val message: RemoteMessage? = data.getString(KEY_REMOTE_MESSAGE)?.deserialize()
+        val message: RemoteMessage? = inputData.getString(KEY_REMOTE_MESSAGE)?.deserialize()
         requireNotNull(message) { "RemoteMessage is null" }
 
-        val channelId: String? = data.getString(KEY_CHANNEL_ID)
+        val channelId = inputData.getString(KEY_CHANNEL_ID)
         requireNotNull(channelId) { "channelId is null" }
 
-        val channelName: String? = data.getString(KEY_CHANNEL_NAME)
+        val channelName = inputData.getString(KEY_CHANNEL_NAME)
         requireNotNull(channelName) { "channelName is null" }
 
-        val pushSmallIcon: Int = data.getInt(KEY_SMALL_ICON_RES, EMPTY_INT)
+        val pushSmallIcon = inputData.getInt(KEY_SMALL_ICON_RES, EMPTY_INT)
         require(notificationId != EMPTY_INT) { "Empty pushSmallIcon" }
 
-        val channelDescription: String? = data.getString(KEY_CHANNEL_DESCRIPTION)
+        val channelDescription = inputData.getString(KEY_CHANNEL_DESCRIPTION)
 
-        val activities: Map<String, Class<out Activity>>? = data.getString(KEY_ACTIVITIES)
+        val activities = inputData.getString(KEY_ACTIVITIES)
             ?.deserialize<Map<String, String>>()
-            ?.mapNotNull {  (key, value) ->
+            ?.mapNotNull { (key, value) ->
                 LoggingExceptionHandler.runCatching(defaultValue = null) {
-                    @Suppress("unchecked_cast")
                     key to Class.forName(value) as Class<out Activity>
                 }
             }
             ?.toMap()
 
-        val defaultActivity: Class<out Activity>? = data.getString(KEY_ACTIVITY_DEFAULT)?.let {
-                LoggingExceptionHandler.runCatching(defaultValue = null) {
-                    @Suppress("unchecked_cast")
-                    Class.forName(it) as Class<out Activity>
-                }
+        val defaultActivity = inputData.getString(KEY_ACTIVITY_DEFAULT)?.let {
+            LoggingExceptionHandler.runCatching(defaultValue = null) {
+                Class.forName(it) as Class<out Activity>
             }
+        }
         requireNotNull(defaultActivity) { "defaultActivity is null" }
 
-        val state: MessageHandlingState? = data.getString(KEY_STATE)?.deserialize()
+        val state: MessageHandlingState? = inputData.getString(KEY_STATE)?.deserialize()
         requireNotNull(state) { "State is null" }
 
         PushNotificationManager.tryNotifyRemoteMessage(
@@ -70,7 +66,7 @@ internal class MindboxNotificationWorker(
             activities = activities,
             defaultActivity = defaultActivity,
             notificationId = notificationId,
-            state = state.copy(attemptNumber = state.attemptNumber + 1)
+            state = state.copy(attemptNumber = state.attemptNumber + 1),
         )
         Result.success()
     }
@@ -97,6 +93,7 @@ internal class MindboxNotificationWorker(
                 gson.toJson(this)
             }
         }
+
         private inline fun <reified T : Any> String.deserialize(): T? {
             return LoggingExceptionHandler.runCatching(defaultValue = null) {
                 gson.fromJson(this, T::class.java)
@@ -112,11 +109,11 @@ internal class MindboxNotificationWorker(
             channelDescription: String?,
             activities: Map<String, Class<out Activity>>?,
             defaultActivity: Class<out Activity>,
-            state: MessageHandlingState
+            state: MessageHandlingState,
         ): Data {
             val messageString: String? = remoteMessage.serialize()
-            val activitiesString: String? = activities?.mapValues { it.value.name }?.serialize()
-            val defaultActivityString: String? = defaultActivity.name
+            val activitiesString: String? = activities?.mapValues { it.value.canonicalName }?.serialize()
+            val defaultActivityString: String? = defaultActivity.canonicalName
             val stateString: String? = state.serialize()
 
             return Data.Builder()

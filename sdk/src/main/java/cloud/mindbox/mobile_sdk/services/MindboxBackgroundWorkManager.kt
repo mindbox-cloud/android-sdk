@@ -12,7 +12,9 @@ import java.util.concurrent.TimeUnit
 internal object BackgroundWorkManager {
 
     private const val INITIAL_DELAY = 120L
-    private const val NOTIFICATION_WORKER_TAG = "NotificationWorker"
+
+    private val NOTIFICATION_WORKER_TAG =
+        "MindboxNotificationWorkManager${MindboxPreferences.hostAppName}"
 
     private val WORKER_TAG =
         "MindboxBackgroundWorkManager${MindboxPreferences.hostAppName}"
@@ -48,7 +50,7 @@ internal object BackgroundWorkManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
         delay: Long,
-        state: MessageHandlingState
+        state: MessageHandlingState,
     ) = LoggingExceptionHandler.runCatching {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -62,7 +64,7 @@ internal object BackgroundWorkManager {
             activities = activities,
             defaultActivity = defaultActivity,
             notificationId = notificationId,
-            state = state
+            state = state,
         )
         val request = OneTimeWorkRequestBuilder<MindboxNotificationWorker>()
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
