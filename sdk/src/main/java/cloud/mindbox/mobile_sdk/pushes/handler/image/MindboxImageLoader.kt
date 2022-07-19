@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 
 /**
  * Interface for loading an image from a message
+ *
+ * @see MindboxImageLoader.Companion.default
  */
 interface MindboxImageLoader {
 

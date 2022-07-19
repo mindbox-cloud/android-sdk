@@ -82,14 +82,13 @@ object Mindbox {
      * when calling the [handleRemoteMessage] function.
      *
      * Standard image failure handling strategies:
-     * @see MindboxImageFailureHandler.Companion.applyDefaultImageStrategy
-     * @see MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy
-     * @see MindboxImageFailureHandler.Companion.retryOrCancelStrategy
-     * @see MindboxImageFailureHandler.Companion.retryOrDefaultStrategy
-     * @see MindboxImageFailureHandler.Companion.cancellationStrategy
+     *  - applyDefaultImageStrategy (Used by default)
+     *  - applyDefaultAndRetryStrategy
+     *  - retryOrCancelStrategy
+     *  - retryOrDefaultStrategy
+     *  - cancellationStrategy
+     * See [MindboxImageFailureHandler] for more information.
      *
-     * Default image loader:
-     * @see MindboxImageLoader.Companion.Default
      *
      * Example:
      *
@@ -99,7 +98,7 @@ object Mindbox {
      *          ...
      *          val defaultImage = ContextCompat.getDrawable(this, R.drawable.ic_placeholder)?.toBitmap()
      *          Mindbox.setMessageHandling(
-     *              imageLoader = MindboxImageLoader.Default,
+     *              imageLoader = MindboxImageLoader.default(),
      *              imageFailureHandler = MindboxImageFailureHandler.applyDefaultAndRetryStrategy(
      *                  maxAttempts = 5,
      *                  delay = 3_000,
