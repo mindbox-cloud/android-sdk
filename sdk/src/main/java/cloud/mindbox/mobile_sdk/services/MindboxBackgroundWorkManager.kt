@@ -79,7 +79,6 @@ internal object BackgroundWorkManager {
             .enqueue()
     }
 
-    private fun getUniqueWorkerNameFor(notificationId: Int): String {
-        return "$NOTIFICATION_WORKER_TAG-$notificationId"
-    }
+    private fun getUniqueWorkerNameFor(id: Int): String = "$NOTIFICATION_WORKER_TAG-$id"
+
 }

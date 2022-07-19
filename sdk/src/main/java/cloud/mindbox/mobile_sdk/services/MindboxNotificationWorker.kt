@@ -32,15 +32,17 @@ internal class MindboxNotificationWorker(
 
         private val gson = Gson()
 
-        private fun <T : Any> T.serialize(): String? =
-            LoggingExceptionHandler.runCatching(defaultValue = null) {
-                gson.toJson(this)
-            }
+        private fun <T> T.serialize(): String? = LoggingExceptionHandler.runCatching(
+            defaultValue = null,
+        ) {
+            gson.toJson(this)
+        }
 
-        private inline fun <reified T : Any> String.deserialize(): T? =
-            LoggingExceptionHandler.runCatching(defaultValue = null) {
-                gson.fromJson(this, T::class.java)
-            }
+        private inline fun <reified T> String.deserialize() = LoggingExceptionHandler.runCatching(
+            defaultValue = null,
+        ) {
+            gson.fromJson(this, T::class.java)
+        }
 
         fun inputData(
             notificationId: Int,
