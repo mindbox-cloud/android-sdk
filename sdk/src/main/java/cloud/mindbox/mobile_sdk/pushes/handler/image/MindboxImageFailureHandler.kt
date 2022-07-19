@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 /**
  * Interface for handling errors when loading an image
  *
- * @see MindboxImageFailureHandler.Companion.applyDefaultImageStrategy
+ * @see MindboxImageFailureHandler.Companion.applyDefaultStrategy
  * @see MindboxImageFailureHandler.Companion.cancellationStrategy
  * @see MindboxImageFailureHandler.Companion.retryOrCancelStrategy
  * @see MindboxImageFailureHandler.Companion.retryOrDefaultStrategy

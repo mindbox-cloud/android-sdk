@@ -21,7 +21,7 @@ fun MindboxImageFailureHandler.Companion.retryOrDefaultStrategy(
 ): MindboxImageFailureHandler = RetryOrDefaultStrategyImpl(
     maxAttempts = maxAttempts,
     delay = delay,
-    defaultImage = defaultImage
+    defaultImage = defaultImage,
 )
 
 internal class RetryOrDefaultStrategyImpl(

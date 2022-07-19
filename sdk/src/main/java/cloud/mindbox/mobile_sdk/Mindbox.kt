@@ -82,7 +82,7 @@ object Mindbox {
      * when calling the [handleRemoteMessage] function.
      *
      * Standard image failure handling strategies:
-     *  - applyDefaultImageStrategy (Used by default)
+     *  - applyDefaultStrategy (Used by default)
      *  - applyDefaultAndRetryStrategy
      *  - retryOrCancelStrategy
      *  - retryOrDefaultStrategy
