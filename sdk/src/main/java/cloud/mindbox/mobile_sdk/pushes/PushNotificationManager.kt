@@ -164,54 +164,48 @@ internal object PushNotificationManager {
         }
 
         when (fallback) {
-            is ImageRetryStrategy.Retry -> {
-                retryNotifyRemoteMessage(
-                    context = context,
-                    notificationId = notificationId,
-                    remoteMessage = remoteMessage,
-                    channelId = channelId,
-                    channelName = channelName,
-                    pushSmallIcon = pushSmallIcon,
-                    channelDescription = channelDescription,
-                    activities = activities,
-                    defaultActivity = defaultActivity,
-                    state = state,
-                    delay = fallback.delay,
-                )
-            }
+            is ImageRetryStrategy.Retry -> retryNotifyRemoteMessage(
+                context = context,
+                notificationId = notificationId,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                pushSmallIcon = pushSmallIcon,
+                channelDescription = channelDescription,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                state = state,
+                delay = fallback.delay,
+            )
             is ImageRetryStrategy.Cancel -> {}
-            is ImageRetryStrategy.ApplyDefaultAndRetry -> {
-                allowAndRetryNotifyRemoteMessage(
-                    context = applicationContext,
-                    notificationManager = notificationManager,
-                    remoteMessage = remoteMessage,
-                    channelId = channelId,
-                    channelName = channelName,
-                    channelDescription = channelDescription,
-                    notificationId = notificationId,
-                    pushSmallIcon = pushSmallIcon,
-                    activities = activities,
-                    defaultActivity = defaultActivity,
-                    delay = fallback.delay,
-                    imagePlaceholder = fallback.placeholder,
-                    currentState = state,
-                )
-            }
-            is ImageRetryStrategy.ApplyDefault -> {
-                allowNotifyRemoteMessage(
-                    context = applicationContext,
-                    notificationManager = notificationManager,
-                    remoteMessage = remoteMessage,
-                    channelId = channelId,
-                    channelName = channelName,
-                    channelDescription = channelDescription,
-                    notificationId = notificationId,
-                    pushSmallIcon = pushSmallIcon,
-                    activities = activities,
-                    defaultActivity = defaultActivity,
-                    imagePlaceholder = fallback.defaultImage,
-                )
-            }
+            is ImageRetryStrategy.ApplyDefaultAndRetry -> applyDefaultAndRetryNotifyRemoteMessage(
+                context = applicationContext,
+                notificationManager = notificationManager,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                channelDescription = channelDescription,
+                notificationId = notificationId,
+                pushSmallIcon = pushSmallIcon,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                delay = fallback.delay,
+                imagePlaceholder = fallback.defaultImage,
+                currentState = state,
+            )
+            is ImageRetryStrategy.ApplyDefault -> applyDefaultNotifyRemoteMessage(
+                context = applicationContext,
+                notificationManager = notificationManager,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                channelDescription = channelDescription,
+                notificationId = notificationId,
+                pushSmallIcon = pushSmallIcon,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                imagePlaceholder = fallback.defaultImage,
+            )
             null -> {
                 notifyRemoteMessage(
                     context = applicationContext,
@@ -240,18 +234,10 @@ internal object PushNotificationManager {
         notificationManager: NotificationManager,
         notificationId: Int,
         state: MessageHandlingState,
-    ): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val isNotificationActive = isNotificationActive(notificationManager, notificationId)
-
-            if (state.attemptNumber > 1 && state.isMessageDisplayed && !isNotificationActive) {
-                //If this is not the first attempt and notification was shown and the notification is not active,
-                //then it is considered to have been canceled
-                return true
-            }
-        }
-        return false
-    }
+    ) = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            state.attemptNumber > 1 &&
+            state.isMessageDisplayed &&
+            !isNotificationActive(notificationManager, notificationId)
 
     private fun retryNotifyRemoteMessage(
         context: Context,
@@ -265,23 +251,21 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>,
         state: MessageHandlingState,
         delay: Long,
-    ) {
-        BackgroundWorkManager.startNotificationWork(
-            context = context,
-            notificationId = notificationId,
-            remoteMessage = remoteMessage,
-            channelId = channelId,
-            channelName = channelName,
-            pushSmallIcon = pushSmallIcon,
-            channelDescription = channelDescription,
-            activities = activities,
-            defaultActivity = defaultActivity,
-            delay = delay,
-            state = state,
-        )
-    }
+    ) = BackgroundWorkManager.startNotificationWork(
+        context = context,
+        notificationId = notificationId,
+        remoteMessage = remoteMessage,
+        channelId = channelId,
+        channelName = channelName,
+        pushSmallIcon = pushSmallIcon,
+        channelDescription = channelDescription,
+        activities = activities,
+        defaultActivity = defaultActivity,
+        delay = delay,
+        state = state,
+    )
 
-    private fun allowAndRetryNotifyRemoteMessage(
+    private fun applyDefaultAndRetryNotifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
         remoteMessage: RemoteMessage,
@@ -333,7 +317,7 @@ internal object PushNotificationManager {
         )
     }
 
-    private fun allowNotifyRemoteMessage(
+    private fun applyDefaultNotifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
         remoteMessage: RemoteMessage,

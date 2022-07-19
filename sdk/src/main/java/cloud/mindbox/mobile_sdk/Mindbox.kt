@@ -78,6 +78,16 @@ object Mindbox {
      * Allows you to specify additional components for message handling
      * when calling the [handleRemoteMessage] function.
      *
+     * Standard image failure handling strategies:
+     * @see MindboxImageFailureHandler.Companion.applyDefaultImageStrategy
+     * @see MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy
+     * @see MindboxImageFailureHandler.Companion.retryOrCancelStrategy
+     * @see MindboxImageFailureHandler.Companion.retryOrDefaultStrategy
+     * @see MindboxImageFailureHandler.Companion.cancellationStrategy
+     *
+     * Default image loader:
+     * @see MindboxImageLoader.Companion.Default
+     *
      * Example:
      *
      *  class App : Application {
@@ -102,8 +112,8 @@ object Mindbox {
      * @see handleRemoteMessage
      */
     fun setMessageHandling(
-        imageLoader: MindboxImageLoader = MindboxImageLoader.Default,
-        imageFailureHandler: MindboxImageFailureHandler = MindboxImageFailureHandler.Default,
+        imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
+        imageFailureHandler: MindboxImageFailureHandler = PushNotificationManager.messageHandler.imageFailureHandler,
     ) {
         PushNotificationManager.messageHandler = MindboxMessageHandler(
             imageFailureHandler = imageFailureHandler,

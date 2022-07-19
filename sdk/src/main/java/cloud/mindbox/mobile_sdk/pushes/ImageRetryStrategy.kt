@@ -41,7 +41,7 @@ sealed class ImageRetryStrategy {
      * This only works correctly on SDK >= 23
      *
      * @param delay Delay before retry in milliseconds
-     * @param placeholder Optional image to replace the desired
+     * @param defaultImage An optional image to replace the desired one if the download fails
      *
      * @see BitmapFactory.decodeResource
      * @see androidx.core.graphics.drawable.toBitmap
@@ -49,7 +49,7 @@ sealed class ImageRetryStrategy {
     @RequiresApi(Build.VERSION_CODES.M)
     data class ApplyDefaultAndRetry(
         val delay: Long = 0L,
-        val placeholder: Bitmap? = null,
+        val defaultImage: Bitmap? = null,
     ) : ImageRetryStrategy()
 
 }

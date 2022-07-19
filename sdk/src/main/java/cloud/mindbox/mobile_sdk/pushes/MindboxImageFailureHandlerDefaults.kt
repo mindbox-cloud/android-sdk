@@ -178,7 +178,7 @@ internal class ApplyDefaultAndRetryStrategyImpl(
         return if (state.attemptNumber > maxAttempts) {
             ImageRetryStrategy.ApplyDefault(defaultImage = defaultImage)
         } else {
-            ImageRetryStrategy.ApplyDefaultAndRetry(delay = delay, placeholder = defaultImage)
+            ImageRetryStrategy.ApplyDefaultAndRetry(delay = delay, defaultImage = defaultImage)
         }
     }
 
