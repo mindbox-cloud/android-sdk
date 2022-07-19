@@ -1,15 +1,15 @@
-package cloud.mindbox.mobile_sdk.pushes
+package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import java.net.URL
 
 /**
  * Default image loading implementation
  */
-val MindboxImageLoader.Companion.Default: MindboxImageLoader
-    get() = DefaultLoader
+fun MindboxImageLoader.Companion.default(): MindboxImageLoader = DefaultLoader
 
 private val DefaultLoader: MindboxImageLoader = MindboxImageLoaderDefault()
 

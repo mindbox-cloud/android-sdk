@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.pushes
+package cloud.mindbox.mobile_sdk.pushes.handler
 
 /**
  * Current conditions under which the image is loaded

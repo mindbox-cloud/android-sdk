@@ -2,11 +2,10 @@ package cloud.mindbox.mobile_sdk.services
 
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.WorkerParameters
-import cloud.mindbox.mobile_sdk.pushes.MessageHandlingState
+import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -33,17 +32,15 @@ internal class MindboxNotificationWorker(
 
         private val gson = Gson()
 
-        private fun <T : Any> T.serialize(): String? {
-            return LoggingExceptionHandler.runCatching(defaultValue = null) {
+        private fun <T : Any> T.serialize(): String? =
+            LoggingExceptionHandler.runCatching(defaultValue = null) {
                 gson.toJson(this)
             }
-        }
 
-        private inline fun <reified T : Any> String.deserialize(): T? {
-            return LoggingExceptionHandler.runCatching(defaultValue = null) {
+        private inline fun <reified T : Any> String.deserialize(): T? =
+            LoggingExceptionHandler.runCatching(defaultValue = null) {
                 gson.fromJson(this, T::class.java)
             }
-        }
 
         fun inputData(
             notificationId: Int,

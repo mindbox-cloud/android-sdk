@@ -1,7 +1,8 @@
-package cloud.mindbox.mobile_sdk.pushes
+package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
 import android.graphics.Bitmap
+import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 
 /**
  * Interface for loading an image from a message

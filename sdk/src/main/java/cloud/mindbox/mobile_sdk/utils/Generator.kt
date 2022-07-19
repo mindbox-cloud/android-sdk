@@ -6,8 +6,7 @@ internal object Generator {
 
     private val atomicInteger = AtomicInteger()
 
-    fun generateUniqueInt(): Int {
-        return System.currentTimeMillis().toInt() + atomicInteger.incrementAndGet()
-    }
+    fun generateUniqueInt(): Int =
+        System.currentTimeMillis().toInt() + atomicInteger.incrementAndGet()
 
 }

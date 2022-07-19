@@ -17,6 +17,9 @@ import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBas
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
 import cloud.mindbox.mobile_sdk.pushes.*
+import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
+import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
+import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -112,8 +115,8 @@ object Mindbox {
      * @see handleRemoteMessage
      */
     fun setMessageHandling(
-        imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
         imageFailureHandler: MindboxImageFailureHandler = PushNotificationManager.messageHandler.imageFailureHandler,
+        imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
     ) {
         PushNotificationManager.messageHandler = MindboxMessageHandler(
             imageFailureHandler = imageFailureHandler,

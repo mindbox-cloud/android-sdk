@@ -1,6 +1,8 @@
-package cloud.mindbox.mobile_sdk.pushes
+package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
+import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 
 /**
  * Interface for handling errors when loading an image
