@@ -71,6 +71,12 @@ internal object PushNotificationManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
+
+        Mindbox.onPushReceived(
+            context = context.applicationContext,
+            uniqKey = remoteMessage.uniqueKey,
+        )
+
         tryNotifyRemoteMessage(
             notificationId = Generator.generateUniqueInt(),
             context = context,
@@ -105,9 +111,6 @@ internal object PushNotificationManager {
             message = "Notify message ${remoteMessage.uniqueKey} started with state $state",
         )
         val applicationContext = context.applicationContext
-
-        val uniqueKey = remoteMessage.uniqueKey
-        Mindbox.onPushReceived(applicationContext, uniqueKey)
 
         val notificationManager: NotificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
