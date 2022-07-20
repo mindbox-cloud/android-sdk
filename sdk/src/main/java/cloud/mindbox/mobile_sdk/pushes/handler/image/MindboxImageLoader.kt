@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 import android.content.Context
 import android.graphics.Bitmap
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 
 /**
  * Interface for loading an image from a message
@@ -18,6 +19,7 @@ interface MindboxImageLoader {
      *
      * @param context Android context
      * @param message Notification message
+     * @param state Current state of message handling
      *
      * @return Bitmap or null.
      * If the bitmap is null, then the message will be displayed without image
@@ -26,7 +28,8 @@ interface MindboxImageLoader {
      */
     fun onLoadImage(
         context: Context,
-        message: RemoteMessage
+        message: RemoteMessage,
+        state: MessageHandlingState,
     ): Bitmap?
 
 }

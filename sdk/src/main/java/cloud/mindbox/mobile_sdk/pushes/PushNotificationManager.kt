@@ -126,6 +126,7 @@ internal object PushNotificationManager {
                 messageHandler.imageLoader.onLoadImage(
                     context = context,
                     message = remoteMessage,
+                    state = state,
                 )
             }
         }

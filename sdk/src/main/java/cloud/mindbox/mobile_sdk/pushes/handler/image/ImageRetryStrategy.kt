@@ -13,7 +13,9 @@ sealed class ImageRetryStrategy {
     /**
      * Cancel the process that needed the image
      */
-    object Cancel : ImageRetryStrategy()
+    object Cancel : ImageRetryStrategy() {
+        override fun toString() = "Cancel"
+    }
 
     /**
      * Continue the process without the desired image
