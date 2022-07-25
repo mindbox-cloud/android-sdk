@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.utils.Generator
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.UnknownHostException
 import kotlin.random.Random
 
 internal object PushNotificationManager {
@@ -144,11 +145,19 @@ internal object PushNotificationManager {
         }
 
         val fallback = image.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this,
-                message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed",
-                exception = error,
-            )
+            if (error is UnknownHostException) {
+                MindboxLoggerImpl.e(
+                    parent = this,
+                    message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed:" +
+                            "\n${error.stackTraceToString()}",
+                )
+            } else {
+                MindboxLoggerImpl.e(
+                    parent = this,
+                    message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed:",
+                    exception = error,
+                )
+            }
             messageHandler.imageFailureHandler.onImageLoadingFailed(
                 context = context,
                 message = remoteMessage,
