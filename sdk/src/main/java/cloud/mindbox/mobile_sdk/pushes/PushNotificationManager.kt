@@ -36,6 +36,10 @@ internal object PushNotificationManager {
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
+    internal fun buildLogMessage(message: RemoteMessage, log: String): String {
+        return "Notify message ${message.uniqueKey}: $log"
+    }
+
     internal fun isNotificationsEnabled(
         context: Context,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
@@ -93,6 +97,7 @@ internal object PushNotificationManager {
                 isMessageDisplayed = false,
             ),
         )
+        true
     }
 
     internal suspend fun tryNotifyRemoteMessage(
@@ -106,10 +111,13 @@ internal object PushNotificationManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
         state: MessageHandlingState,
-    ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
+    ) {
         MindboxLoggerImpl.d(
             parent = this,
-            message = "Notify message ${remoteMessage.uniqueKey} started with state $state",
+            message = buildLogMessage(
+                message = remoteMessage,
+                log = "Started with state - $state",
+            ),
         )
         val applicationContext = context.applicationContext
 
@@ -119,42 +127,68 @@ internal object PushNotificationManager {
         if (isNotificationCancelled(notificationManager, notificationId, state)) {
             MindboxLoggerImpl.d(
                 parent = this,
-                message = "Notify message ${remoteMessage.uniqueKey}: An attempt to update " +
-                        "the notification was canceled because the notification was canceled",
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "An attempt to update the notification was canceled " +
+                            "because the notification was deleted",
+                ),
             )
-            return@runCatchingSuspending true
+            return
         }
 
         val image = withContext(Dispatchers.IO) {
             runCatching {
-                messageHandler.imageLoader.onLoadImage(
+                MindboxLoggerImpl.d(
+                    parent = PushNotificationManager,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading started",
+                    ),
+                )
+                val bitmap = messageHandler.imageLoader.onLoadImage(
                     context = context,
                     message = remoteMessage,
                     state = state,
                 )
+                MindboxLoggerImpl.d(
+                    parent = PushNotificationManager,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading complete, bitmap=$bitmap",
+                    ),
+                )
+                bitmap
             }
         }
 
         if (isNotificationCancelled(notificationManager, notificationId, state)) {
             MindboxLoggerImpl.d(
                 parent = this,
-                message = "Notify message ${remoteMessage.uniqueKey}: An attempt to update " +
-                        "the notification was canceled because the notification was canceled",
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "An attempt to update the notification was canceled " +
+                            "because the notification was deleted",
+                ),
             )
-            return@runCatchingSuspending true
+            return
         }
 
         val fallback = image.exceptionOrNull()?.let { error ->
             if (error is UnknownHostException) {
                 MindboxLoggerImpl.e(
                     parent = this,
-                    message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed:" +
-                            "\n${error.stackTraceToString()}",
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading failed:\n${error.stackTraceToString()}",
+                    ),
                 )
             } else {
                 MindboxLoggerImpl.e(
                     parent = this,
-                    message = "Notify message ${remoteMessage.uniqueKey}: Image loading failed:",
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading failed:",
+                    ),
                     exception = error,
                 )
             }
@@ -166,8 +200,10 @@ internal object PushNotificationManager {
             ).also {
                 MindboxLoggerImpl.d(
                     parent = this,
-                    message = "Notify message ${remoteMessage.uniqueKey}: Solution for failed " +
-                            "image loading - $it",
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Solution for failed image loading - $it",
+                    ),
                 )
             }
         }
@@ -175,7 +211,10 @@ internal object PushNotificationManager {
         if (fallback is ImageRetryStrategy.ApplyDefaultAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             MindboxLoggerImpl.e(
                 parent = this,
-                message = "ShowAndRetry works correctly only on SDK >= 23",
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "ApplyDefaultAndRetry works correctly only on SDK >= 23",
+                ),
             )
         }
 
@@ -238,12 +277,13 @@ internal object PushNotificationManager {
                 )
                 MindboxLoggerImpl.d(
                     parent = this,
-                    message = "Notify message ${remoteMessage.uniqueKey}: successfully notified",
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Successfully notified!",
+                    ),
                 )
             }
         }
-
-        true
     }
 
     private fun isNotificationCancelled(

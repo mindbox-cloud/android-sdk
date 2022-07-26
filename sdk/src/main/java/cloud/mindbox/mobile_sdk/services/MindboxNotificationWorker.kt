@@ -2,9 +2,8 @@ package cloud.mindbox.mobile_sdk.services
 
 import android.app.Activity
 import android.content.Context
-import androidx.work.CoroutineWorker
-import androidx.work.Data
-import androidx.work.WorkerParameters
+import androidx.work.*
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
@@ -18,7 +17,12 @@ internal class MindboxNotificationWorker(
 
     companion object {
 
+        val defaultBackoffPolicy = BackoffPolicy.EXPONENTIAL
+        val defaultBackoffDelayMillis = WorkRequest.DEFAULT_BACKOFF_DELAY_MILLIS
+
         private const val EMPTY_INT = 0
+
+        private const val MAX_RETRY_COUNT = 10
 
         private const val KEY_NOTIFICATION_ID = "notification_id"
         private const val KEY_REMOTE_MESSAGE = "remote_message"
@@ -114,19 +118,46 @@ internal class MindboxNotificationWorker(
         val state: MessageHandlingState? = inputData.getString(KEY_STATE)?.deserialize()
         requireNotNull(state) { "State is null" }
 
-        PushNotificationManager.tryNotifyRemoteMessage(
-            context = this.applicationContext,
-            remoteMessage = message,
-            channelId = channelId,
-            channelName = channelName,
-            pushSmallIcon = pushSmallIcon,
-            channelDescription = channelDescription,
-            activities = activities,
-            defaultActivity = defaultActivity,
-            notificationId = notificationId,
-            state = state.copy(attemptNumber = state.attemptNumber + 1),
-        )
-        Result.success()
+        try {
+            //Under normal conditions, everything should start successfully,
+            //but still, if something goes wrong, it's worth trying to start again
+            PushNotificationManager.tryNotifyRemoteMessage(
+                context = this.applicationContext,
+                remoteMessage = message,
+                channelId = channelId,
+                channelName = channelName,
+                pushSmallIcon = pushSmallIcon,
+                channelDescription = channelDescription,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                notificationId = notificationId,
+                state = state.copy(attemptNumber = state.attemptNumber + 1 + runAttemptCount),
+            )
+            Result.success()
+        } catch (e: Throwable) {
+            if (runAttemptCount >= MAX_RETRY_COUNT) {
+                MindboxLoggerImpl.e(
+                    parent = PushNotificationManager,
+                    message = PushNotificationManager.buildLogMessage(
+                        message = message,
+                        log = "Failed:",
+                    ),
+                    exception = e,
+                )
+                Result.failure()
+            } else {
+                MindboxLoggerImpl.e(
+                    parent = PushNotificationManager,
+                    message = PushNotificationManager.buildLogMessage(
+                        message = message,
+                        log = "Failed, retry scheduled:",
+                    ),
+                    exception = e
+                )
+                Result.retry()
+            }
+        }
+
     }
 
 }

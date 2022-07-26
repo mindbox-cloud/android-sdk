@@ -71,6 +71,11 @@ internal object BackgroundWorkManager {
             .addTag(NOTIFICATION_WORKER_TAG)
             .setInputData(data)
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                MindboxNotificationWorker.defaultBackoffPolicy,
+                MindboxNotificationWorker.defaultBackoffDelayMillis,
+                TimeUnit.MILLISECONDS
+            )
             .build()
         val uniqueName = getUniqueWorkerNameFor(notificationId)
         WorkManager
