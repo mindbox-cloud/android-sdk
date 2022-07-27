@@ -138,14 +138,15 @@ internal object PushNotificationManager {
 
         val image = withContext(Dispatchers.IO) {
             runCatching {
+                val imageLoader = messageHandler.imageLoader
                 MindboxLoggerImpl.d(
                     parent = PushNotificationManager,
                     message = buildLogMessage(
                         message = remoteMessage,
-                        log = "Image loading started",
+                        log = "Image loading started, imageLoader=$imageLoader",
                     ),
                 )
-                val bitmap = messageHandler.imageLoader.onLoadImage(
+                val bitmap = imageLoader.onLoadImage(
                     context = context,
                     message = remoteMessage,
                     state = state,
@@ -192,7 +193,15 @@ internal object PushNotificationManager {
                     exception = error,
                 )
             }
-            messageHandler.imageFailureHandler.onImageLoadingFailed(
+            val imageFailureHandler = messageHandler.imageFailureHandler
+            MindboxLoggerImpl.d(
+                parent = this,
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "Image loading error will be handled in $imageFailureHandler",
+                ),
+            )
+            imageFailureHandler.onImageLoadingFailed(
                 context = context,
                 message = remoteMessage,
                 state = state,

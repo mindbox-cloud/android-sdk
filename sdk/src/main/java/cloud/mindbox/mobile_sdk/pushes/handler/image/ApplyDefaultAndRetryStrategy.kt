@@ -39,7 +39,7 @@ internal class ApplyDefaultAndRetryStrategyImpl(
         message: RemoteMessage,
         state: MessageHandlingState,
         error: Throwable,
-    ): ImageRetryStrategy = if (state.attemptNumber > maxAttempts) {
+    ): ImageRetryStrategy = if (state.attemptNumber >= maxAttempts) {
         ImageRetryStrategy.ApplyDefault(defaultImage = defaultImage)
     } else {
         ImageRetryStrategy.ApplyDefaultAndRetry(delay = delay, defaultImage = defaultImage)

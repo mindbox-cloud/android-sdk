@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import java.net.URL
@@ -26,12 +27,26 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
         context: Context,
         message: RemoteMessage,
         state: MessageHandlingState,
-    ): Bitmap? = message.imageUrl?.let { url ->
-        val connection = URL(url).openConnection().apply {
+    ): Bitmap? {
+        val imageUrl = message.imageUrl
+        val logMessage = buildString {
+            append("Image loading started, imageUrl=")
+            append(imageUrl)
+            if (imageUrl == null) {
+                append(" (Image upload is not required)")
+            }
+        }
+        MindboxLoggerImpl.d(this, logMessage)
+        if (imageUrl == null) return null
+        val connection = URL(imageUrl).openConnection().apply {
             readTimeout = IMAGE_CONNECTION_TIMEOUT
             connectTimeout = IMAGE_CONNECTION_TIMEOUT
         }
-        BitmapFactory.decodeStream(connection.getInputStream())
+        val bytes = connection.getInputStream().use { input -> input.readBytes() }
+        MindboxLoggerImpl.d(this, "Loading complete, image size - ${bytes.size}")
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        MindboxLoggerImpl.d(this, "Image successfully decoded, bitmap=$bitmap")
+        return bitmap
     }
 
 }
