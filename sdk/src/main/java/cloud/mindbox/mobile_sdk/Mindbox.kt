@@ -788,6 +788,9 @@ object Mindbox {
 
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
+        val timezone = if (configuration.shouldCreateCustomer) {
+            TimeZone.getDefault().id
+        } else null
         val initData = InitData(
             token = pushToken ?: "",
             isTokenAvailable = isTokenAvailable,
@@ -797,6 +800,7 @@ object Mindbox {
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
             notificationProvider = notificationProvider,
+            ianaTimeZone = timezone
         )
 
         MindboxPreferences.deviceUuid = deviceUuid
