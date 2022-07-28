@@ -145,7 +145,9 @@ object Mindbox {
      * @see disposePushTokenSubscription
      */
     fun subscribePushToken(subscription: (String?) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
+        val subscriptionId = "Subscription-${UUID.randomUUID()} " +
+                "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
+                "IN Mindbox.disposePushTokenSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.pushToken)
@@ -211,7 +213,9 @@ object Mindbox {
      * @see disposeDeviceUuidSubscription
      */
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
+        val subscriptionId = "Subscription-${UUID.randomUUID()} " +
+                "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
+                "IN Mindbox.disposeDeviceUuidSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.deviceUuid)
