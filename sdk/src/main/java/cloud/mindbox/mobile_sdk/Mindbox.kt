@@ -16,10 +16,10 @@ import cloud.mindbox.mobile_sdk.models.operation.OperationBody
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
-import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
-import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
-import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.*
+import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
+import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
+import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -78,6 +78,52 @@ object Mindbox {
     internal var pushServiceHandler: PushServiceHandler? = null
 
     /**
+     * Allows you to specify additional components for message handling
+     * when calling the [handleRemoteMessage] function.
+     *
+     * Standard image failure handling strategies:
+     *  - applyDefaultStrategy (Used by default)
+     *  - applyDefaultAndRetryStrategy
+     *  - retryOrCancelStrategy
+     *  - retryOrDefaultStrategy
+     *  - cancellationStrategy
+     * See [MindboxImageFailureHandler] for more information.
+     *
+     *
+     * Example:
+     *
+     *  class App : Application {
+     *
+     *      override fun onCreate() {
+     *          ...
+     *          val defaultImage = ContextCompat.getDrawable(this, R.drawable.ic_placeholder)?.toBitmap()
+     *          Mindbox.setMessageHandling(
+     *              imageLoader = MindboxImageLoader.default(),
+     *              imageFailureHandler = MindboxImageFailureHandler.applyDefaultAndRetryStrategy(
+     *                  maxAttempts = 5,
+     *                  delay = 3_000,
+     *                  defaultImage = defaultImage,
+     *              )
+     *          )
+     *          ...
+     *      }
+     *  }
+     *
+     * @see MindboxImageLoader
+     * @see MindboxImageFailureHandler
+     * @see handleRemoteMessage
+     */
+    fun setMessageHandling(
+        imageFailureHandler: MindboxImageFailureHandler = PushNotificationManager.messageHandler.imageFailureHandler,
+        imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
+    ) {
+        PushNotificationManager.messageHandler = MindboxMessageHandler(
+            imageFailureHandler = imageFailureHandler,
+            imageLoader = imageLoader,
+        )
+    }
+
+    /**
      * Subscribe to gets token from push service used by SDK
      *
      * @param subscription - invocation function with push token
@@ -99,7 +145,9 @@ object Mindbox {
      * @see disposePushTokenSubscription
      */
     fun subscribePushToken(subscription: (String?) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
+        val subscriptionId = "Subscription-${UUID.randomUUID()} " +
+                "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
+                "IN Mindbox.disposePushTokenSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.pushToken)
@@ -165,7 +213,9 @@ object Mindbox {
      * @see disposeDeviceUuidSubscription
      */
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
-        val subscriptionId = UUID.randomUUID().toString()
+        val subscriptionId = "Subscription-${UUID.randomUUID()} " +
+                "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
+                "IN Mindbox.disposeDeviceUuidSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.deviceUuid)

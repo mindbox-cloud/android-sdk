@@ -85,7 +85,11 @@ internal class LifecycleManager(
     }
 
     fun isTrackVisitSent(): Boolean {
-        currentIntent?.let(::sendTrackVisit)
+        currentIntent?.let { intent ->
+            if (updateHashesList(intent.hashCode())) {
+                sendTrackVisit(intent)
+            }
+        }
         return currentIntent != null
     }
 
@@ -102,13 +106,13 @@ internal class LifecycleManager(
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    private fun onAppMovedToBackground() {
+    private fun onAppMovedToBackground() = LoggingExceptionHandler.runCatching {
         isAppInBackground = true
         cancelKeepAliveTimer()
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() {
+    private fun onAppMovedToForeground() = LoggingExceptionHandler.runCatching {
         onAppMovedToForeground.invoke()
         if (!skipSendingTrackVisit) {
             currentIntent?.let(::sendTrackVisit)
@@ -146,16 +150,16 @@ internal class LifecycleManager(
     }
 
     private fun updateHashesList(code: Int) = LoggingExceptionHandler.runCatching(defaultValue = true) {
-        if (!intentHashes.contains(code)) {
-            if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
-                intentHashes.removeAt(0)
+            if (!intentHashes.contains(code)) {
+                if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
+                    intentHashes.removeAt(0)
+                }
+                intentHashes.add(code)
+                true
+            } else {
+                false
             }
-            intentHashes.add(code)
-            true
-        } else {
-            false
         }
-    }
 
     private fun startKeepAliveTimer() = LoggingExceptionHandler.runCatching {
         cancelKeepAliveTimer()

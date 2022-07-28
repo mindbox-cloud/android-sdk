@@ -1,22 +1,27 @@
 package cloud.mindbox.mobile_sdk.pushes
 
-import android.app.Activity
+import android.app.*
 import android.app.Notification.DEFAULT_ALL
 import android.app.Notification.VISIBILITY_PRIVATE
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.DrawableRes
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
+import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
+import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.Generator
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.UnknownHostException
 import kotlin.random.Random
 
 internal object PushNotificationManager {
@@ -28,7 +33,13 @@ internal object PushNotificationManager {
     private const val EXTRA_PAYLOAD = "push_payload"
 
     private const val MAX_ACTIONS_COUNT = 3
-    private const val IMAGE_CONNECTION_TIMEOUT = 30000
+
+    internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
+
+    internal fun buildLogMessage(
+        message: RemoteMessage,
+        log: String,
+    ): String = "Notify message ${message.uniqueKey}: $log"
 
     internal fun isNotificationsEnabled(
         context: Context,
@@ -46,7 +57,17 @@ internal object PushNotificationManager {
         }
     }
 
-    internal fun handleRemoteMessage(
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun isNotificationActive(
+        notificationManager: NotificationManager,
+        notificationId: Int,
+    ): Boolean = LoggingExceptionHandler.runCatching(
+        defaultValue = false,
+    ) {
+        notificationManager.activeNotifications.find { it.id == notificationId } != null
+    }
+
+    internal suspend fun handleRemoteMessage(
         context: Context,
         remoteMessage: RemoteMessage,
         channelId: String,
@@ -55,55 +76,438 @@ internal object PushNotificationManager {
         channelDescription: String?,
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
-    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+    ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
+
+        Mindbox.onPushReceived(
+            context = context.applicationContext,
+            uniqKey = remoteMessage.uniqueKey,
+        )
+
+        tryNotifyRemoteMessage(
+            notificationId = Generator.generateUniqueInt(),
+            context = context,
+            remoteMessage = remoteMessage,
+            channelId = channelId,
+            channelName = channelName,
+            pushSmallIcon = pushSmallIcon,
+            channelDescription = channelDescription,
+            activities = activities,
+            defaultActivity = defaultActivity,
+            state = MessageHandlingState(
+                attemptNumber = 1,
+                isMessageDisplayed = false,
+            ),
+        )
+        true
+    }
+
+    internal suspend fun tryNotifyRemoteMessage(
+        notificationId: Int,
+        context: Context,
+        remoteMessage: RemoteMessage,
+        channelId: String,
+        channelName: String,
+        @DrawableRes pushSmallIcon: Int,
+        channelDescription: String?,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+        state: MessageHandlingState,
+    ) {
+        MindboxLoggerImpl.d(
+            parent = this,
+            message = buildLogMessage(
+                message = remoteMessage,
+                log = "Started with state - $state",
+            ),
+        )
+        val applicationContext = context.applicationContext
+
+        val notificationManager: NotificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (isNotificationCancelled(notificationManager, notificationId, state)) {
+            MindboxLoggerImpl.d(
+                parent = this,
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "An attempt to update the notification was canceled " +
+                            "because the notification was deleted",
+                ),
+            )
+            return
+        }
+
+        val image = withContext(Dispatchers.IO) {
+            runCatching {
+                val imageLoader = messageHandler.imageLoader
+                MindboxLoggerImpl.d(
+                    parent = PushNotificationManager,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading started, imageLoader=$imageLoader",
+                    ),
+                )
+                val bitmap = imageLoader.onLoadImage(
+                    context = context,
+                    message = remoteMessage,
+                    state = state,
+                )
+                MindboxLoggerImpl.d(
+                    parent = PushNotificationManager,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading complete, bitmap=$bitmap",
+                    ),
+                )
+                bitmap
+            }
+        }
+
+        if (isNotificationCancelled(notificationManager, notificationId, state)) {
+            MindboxLoggerImpl.d(
+                parent = this,
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "An attempt to update the notification was canceled " +
+                            "because the notification was deleted",
+                ),
+            )
+            return
+        }
+
+        val fallback = image.exceptionOrNull()?.let { error ->
+            if (error is UnknownHostException) {
+                MindboxLoggerImpl.e(
+                    parent = this,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading failed:\n${error.stackTraceToString()}",
+                    ),
+                )
+            } else {
+                MindboxLoggerImpl.e(
+                    parent = this,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Image loading failed:",
+                    ),
+                    exception = error,
+                )
+            }
+            val imageFailureHandler = messageHandler.imageFailureHandler
+            MindboxLoggerImpl.d(
+                parent = this,
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "Image loading error will be handled in $imageFailureHandler",
+                ),
+            )
+            imageFailureHandler.onImageLoadingFailed(
+                context = context,
+                message = remoteMessage,
+                state = state,
+                error = error,
+            ).also {
+                MindboxLoggerImpl.d(
+                    parent = this,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Solution for failed image loading - $it",
+                    ),
+                )
+            }
+        }
+
+        if (fallback is ImageRetryStrategy.ApplyDefaultAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            MindboxLoggerImpl.e(
+                parent = this,
+                message = buildLogMessage(
+                    message = remoteMessage,
+                    log = "ApplyDefaultAndRetry works correctly only on SDK >= 23",
+                ),
+            )
+        }
+
+        when (fallback) {
+            is ImageRetryStrategy.Retry -> retryNotifyRemoteMessage(
+                context = context,
+                notificationId = notificationId,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                pushSmallIcon = pushSmallIcon,
+                channelDescription = channelDescription,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                state = state,
+                delay = fallback.delay,
+            )
+            is ImageRetryStrategy.Cancel -> {}
+            is ImageRetryStrategy.ApplyDefaultAndRetry -> applyDefaultAndRetryNotifyRemoteMessage(
+                context = applicationContext,
+                notificationManager = notificationManager,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                channelDescription = channelDescription,
+                notificationId = notificationId,
+                pushSmallIcon = pushSmallIcon,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                delay = fallback.delay,
+                imagePlaceholder = fallback.defaultImage,
+                currentState = state,
+            )
+            is ImageRetryStrategy.ApplyDefault -> applyDefaultNotifyRemoteMessage(
+                context = applicationContext,
+                notificationManager = notificationManager,
+                remoteMessage = remoteMessage,
+                channelId = channelId,
+                channelName = channelName,
+                channelDescription = channelDescription,
+                notificationId = notificationId,
+                pushSmallIcon = pushSmallIcon,
+                activities = activities,
+                defaultActivity = defaultActivity,
+                imagePlaceholder = fallback.defaultImage,
+            )
+            null -> {
+                notifyRemoteMessage(
+                    context = applicationContext,
+                    notificationManager = notificationManager,
+                    remoteMessage = remoteMessage,
+                    channelId = channelId,
+                    channelName = channelName,
+                    channelDescription = channelDescription,
+                    notificationId = notificationId,
+                    pushSmallIcon = pushSmallIcon,
+                    activities = activities,
+                    defaultActivity = defaultActivity,
+                    image = image.getOrNull(),
+                )
+                MindboxLoggerImpl.d(
+                    parent = this,
+                    message = buildLogMessage(
+                        message = remoteMessage,
+                        log = "Successfully notified!",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun isNotificationCancelled(
+        notificationManager: NotificationManager,
+        notificationId: Int,
+        state: MessageHandlingState,
+    ) = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            state.attemptNumber > 1 &&
+            state.isMessageDisplayed &&
+            !isNotificationActive(notificationManager, notificationId)
+
+    private fun retryNotifyRemoteMessage(
+        context: Context,
+        notificationId: Int,
+        remoteMessage: RemoteMessage,
+        channelId: String,
+        channelName: String,
+        pushSmallIcon: Int,
+        channelDescription: String?,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+        state: MessageHandlingState,
+        delay: Long,
+    ) = BackgroundWorkManager.startNotificationWork(
+        context = context,
+        notificationId = notificationId,
+        remoteMessage = remoteMessage,
+        channelId = channelId,
+        channelName = channelName,
+        pushSmallIcon = pushSmallIcon,
+        channelDescription = channelDescription,
+        activities = activities,
+        defaultActivity = defaultActivity,
+        delay = delay,
+        state = state,
+    )
+
+    private fun applyDefaultAndRetryNotifyRemoteMessage(
+        context: Context,
+        notificationManager: NotificationManager,
+        remoteMessage: RemoteMessage,
+        channelId: String,
+        channelName: String,
+        channelDescription: String?,
+        notificationId: Int,
+        pushSmallIcon: Int,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+        delay: Long,
+        imagePlaceholder: Bitmap?,
+        currentState: MessageHandlingState,
+    ) {
+        createNotificationChannel(
+            notificationManager = notificationManager,
+            channelId = channelId,
+            channelName = channelName,
+            channelDescription = channelDescription,
+        )
+        val notification = buildNotification(
+            context = context,
+            notificationId = notificationId,
+            uniqueKey = remoteMessage.uniqueKey,
+            title = remoteMessage.title,
+            text = remoteMessage.description,
+            pushActions = remoteMessage.pushActions,
+            pushLink = remoteMessage.pushLink,
+            payload = remoteMessage.payload,
+            image = imagePlaceholder,
+            channelId = channelId,
+            pushSmallIcon = pushSmallIcon,
+            activities = activities,
+            defaultActivity = defaultActivity,
+        )
+        notificationManager.notify(notificationId, notification)
+        BackgroundWorkManager.startNotificationWork(
+            context = context,
+            notificationId = notificationId,
+            remoteMessage = remoteMessage,
+            channelId = channelId,
+            channelName = channelName,
+            pushSmallIcon = pushSmallIcon,
+            channelDescription = channelDescription,
+            activities = activities,
+            defaultActivity = defaultActivity,
+            delay = delay,
+            state = currentState.copy(isMessageDisplayed = true),
+        )
+    }
+
+    private fun applyDefaultNotifyRemoteMessage(
+        context: Context,
+        notificationManager: NotificationManager,
+        remoteMessage: RemoteMessage,
+        channelId: String,
+        channelName: String,
+        channelDescription: String?,
+        notificationId: Int,
+        pushSmallIcon: Int,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+        imagePlaceholder: Bitmap?,
+    ) {
+        createNotificationChannel(
+            notificationManager = notificationManager,
+            channelId = channelId,
+            channelName = channelName,
+            channelDescription = channelDescription,
+        )
+        val notification = buildNotification(
+            context = context,
+            notificationId = notificationId,
+            uniqueKey = remoteMessage.uniqueKey,
+            title = remoteMessage.title,
+            text = remoteMessage.description,
+            pushActions = remoteMessage.pushActions,
+            pushLink = remoteMessage.pushLink,
+            payload = remoteMessage.payload,
+            image = imagePlaceholder,
+            channelId = channelId,
+            pushSmallIcon = pushSmallIcon,
+            activities = activities,
+            defaultActivity = defaultActivity,
+        )
+        notificationManager.notify(notificationId, notification)
+    }
+
+    private fun notifyRemoteMessage(
+        context: Context,
+        notificationManager: NotificationManager,
+        remoteMessage: RemoteMessage,
+        channelId: String,
+        channelName: String,
+        channelDescription: String?,
+        notificationId: Int,
+        pushSmallIcon: Int,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+        image: Bitmap?,
+    ) {
+        createNotificationChannel(
+            notificationManager = notificationManager,
+            channelId = channelId,
+            channelName = channelName,
+            channelDescription = channelDescription,
+        )
+        val notification = buildNotification(
+            context = context,
+            notificationId = notificationId,
+            uniqueKey = remoteMessage.uniqueKey,
+            title = remoteMessage.title,
+            text = remoteMessage.description,
+            pushActions = remoteMessage.pushActions,
+            pushLink = remoteMessage.pushLink,
+            payload = remoteMessage.payload,
+            image = image,
+            channelId = channelId,
+            pushSmallIcon = pushSmallIcon,
+            activities = activities,
+            defaultActivity = defaultActivity,
+        )
+        notificationManager.notify(notificationId, notification)
+    }
+
+    private fun buildNotification(
+        context: Context,
+        notificationId: Int,
+        uniqueKey: String,
+        title: String,
+        text: String,
+        pushActions: List<PushAction>,
+        pushLink: String?,
+        payload: String?,
+        image: Bitmap?,
+        channelId: String,
+        @DrawableRes pushSmallIcon: Int,
+        activities: Map<String, Class<out Activity>>?,
+        defaultActivity: Class<out Activity>,
+    ): Notification {
         val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
         }
-
-        val applicationContext = context.applicationContext
-        val notificationId = Random.nextInt()
-
-        val uniqueKey = remoteMessage.uniqueKey
-        Mindbox.onPushReceived(applicationContext, uniqueKey)
-
-        val pushActions = remoteMessage.pushActions
-        val title = remoteMessage.title
-        val text = remoteMessage.description
-        val builder = NotificationCompat.Builder(applicationContext, channelId)
+        return NotificationCompat.Builder(context, channelId)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(pushSmallIcon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(DEFAULT_ALL)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .handlePushClick(
-                context,
-                notificationId,
-                uniqueKey,
-                remoteMessage.payload,
-                remoteMessage.pushLink,
-                correctedLinksActivities,
-                defaultActivity,
+                context = context,
+                notificationId = notificationId,
+                uniqueKey = uniqueKey,
+                payload = payload,
+                pushLink = pushLink,
+                activities = correctedLinksActivities,
+                defaultActivity = defaultActivity,
             )
             .handleActions(
-                context,
-                notificationId,
-                uniqueKey,
-                remoteMessage.payload,
-                pushActions,
-                correctedLinksActivities,
-                defaultActivity,
+                context = context,
+                notificationId = notificationId,
+                uniqueKey = uniqueKey,
+                payload = payload,
+                pushActions = pushActions,
+                activities = correctedLinksActivities,
+                defaultActivity = defaultActivity,
             )
-            .setNotificationStyle(remoteMessage.imageUrl, title, text)
-
-        val notificationManager: NotificationManager =
-            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        createNotificationChannel(notificationManager, channelId, channelName, channelDescription)
-
-        notificationManager.notify(notificationId, builder.build())
-
-        true
+            .setNotificationStyle(
+                image = image,
+                title = title,
+                text = text,
+            )
+            .build()
     }
 
     internal fun getUniqKeyFromPushIntent(
@@ -223,20 +627,17 @@ internal object PushNotificationManager {
     }
 
     private fun NotificationCompat.Builder.setNotificationStyle(
-        url: String?,
+        image: Bitmap?,
         title: String,
         text: String?,
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
-                url.takeIf { !it.isNullOrEmpty() }?.let {
-                    val connection = URL(url).openConnection().apply {
-                        readTimeout = IMAGE_CONNECTION_TIMEOUT
-                        connectTimeout = IMAGE_CONNECTION_TIMEOUT
-                    }
-                    BitmapFactory.decodeStream(connection.getInputStream())
-                        ?.let { imageBitmap -> setImage(imageBitmap, title, text) }
-                } ?: setText(text)
+                if (image != null) {
+                    setImage(image, title, text)
+                } else {
+                    setText(text)
+                }
             },
             defaultValue = { setText(text) }
         )

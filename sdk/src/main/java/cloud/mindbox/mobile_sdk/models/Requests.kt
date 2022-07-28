@@ -22,6 +22,7 @@ internal data class MindboxRequest(
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null,
+    val isDebug: Boolean,
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
     companion object {
@@ -107,7 +108,7 @@ internal data class MindboxRequest(
 
     //Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
-        if (BuildConfig.DEBUG) {
+        if (isDebug) {
             LoggingExceptionHandler.runCatching {
                 MindboxLoggerImpl.e(
                     this,
@@ -142,7 +143,7 @@ internal data class MindboxRequest(
     private fun isJsonObject(body: String) = body.startsWith("{") && body.endsWith("}")
 
     private fun logResponse(response: NetworkResponse?) {
-        if (BuildConfig.DEBUG) {
+        if (isDebug) {
             LoggingExceptionHandler.runCatching {
                 MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
 
@@ -154,7 +155,7 @@ internal data class MindboxRequest(
     }
 
     private fun logBodyResponse(json: String?) {
-        if (BuildConfig.DEBUG) {
+        if (isDebug) {
             LoggingExceptionHandler.runCatching {
                 MindboxLoggerImpl.d(this, "$json")
             }
@@ -169,7 +170,7 @@ internal data class MindboxRequest(
     }
 
     private fun logEndResponse() {
-        if (BuildConfig.DEBUG) {
+        if (isDebug) {
             LoggingExceptionHandler.runCatching {
                 MindboxLoggerImpl.d(this, "<--- End of response")
             }
