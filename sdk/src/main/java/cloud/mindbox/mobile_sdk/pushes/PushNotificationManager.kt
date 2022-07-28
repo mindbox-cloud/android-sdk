@@ -36,9 +36,10 @@ internal object PushNotificationManager {
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
-    internal fun buildLogMessage(message: RemoteMessage, log: String): String {
-        return "Notify message ${message.uniqueKey}: $log"
-    }
+    internal fun buildLogMessage(
+        message: RemoteMessage,
+        log: String,
+    ): String = "Notify message ${message.uniqueKey}: $log"
 
     internal fun isNotificationsEnabled(
         context: Context,

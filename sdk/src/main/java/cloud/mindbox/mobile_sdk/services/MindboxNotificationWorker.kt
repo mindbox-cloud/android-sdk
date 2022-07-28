@@ -152,7 +152,7 @@ internal class MindboxNotificationWorker(
                         message = message,
                         log = "Failed, retry scheduled:",
                     ),
-                    exception = e
+                    exception = e,
                 )
                 Result.retry()
             }
