@@ -363,6 +363,7 @@ object Mindbox {
                     updateAppInfo(context)
                     MindboxEventManager.sendEventsIfExist(context)
                 }
+                MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }
 
             // Handle back app in foreground
@@ -391,7 +392,8 @@ object Mindbox {
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
                         isAppInBackground = !isApplicationResumed,
-                        onAppMovedToForeground = {
+                        onActivityStarted = { activity ->
+                            UuidCopyManager.onAppMovedToForeground(activity)
                             mindboxScope.launch {
                                 if (!MindboxPreferences.isFirstInitialize) {
                                     updateAppInfo(context)
