@@ -16,6 +16,7 @@ internal object MindboxPreferences {
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
     private const val KEY_INSTANCE_ID = "key_instance_id"
     private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
+    private const val KEY_UUID_DEBUG_ENABLED = "key_uuid_debug_enabled"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
 
     var isFirstInitialize: Boolean
@@ -110,6 +111,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_NOTIFICATION_PROVIDER, value)
+            }
+        }
+
+    var uuidDebugEnabled: Boolean
+        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
+            SharedPreferencesManager.getBoolean(KEY_UUID_DEBUG_ENABLED, true)
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_UUID_DEBUG_ENABLED, value)
             }
         }
 }
