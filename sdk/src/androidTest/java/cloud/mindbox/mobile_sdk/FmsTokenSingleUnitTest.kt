@@ -60,15 +60,6 @@ class FmsTokenSingleUnitTest {
         initCoreComponents()
     }
 
-    @Test
-    fun subscribeIdGeneration_isCorrect() {
-        val subscribeId = Mindbox.subscribePushToken { }
-
-        Mindbox.disposePushTokenSubscription(subscribeId)
-
-        Assert.assertEquals(true, subscribeId.isUuid())
-    }
-
     @After
     fun clear() {
         clearPreferences()

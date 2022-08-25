@@ -58,15 +58,6 @@ class DeviceUuidSingleUnitTest {
         initCoreComponents()
     }
 
-    @Test
-    fun subscribeIdGeneration_isCorrect() {
-        val subscribeId = Mindbox.subscribeDeviceUuid { }
-
-        Mindbox.disposeDeviceUuidSubscription(subscribeId)
-
-        Assert.assertEquals(true, subscribeId.isUuid())
-    }
-
     @After
     fun clear() {
         clearPreferences()
