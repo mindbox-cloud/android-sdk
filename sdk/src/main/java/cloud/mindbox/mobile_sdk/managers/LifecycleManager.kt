@@ -20,6 +20,8 @@ internal class LifecycleManager(
     private var currentActivityName: String?,
     private var currentIntent: Intent?,
     private var isAppInBackground: Boolean,
+    private var onActivityResumed: (resumedActivity: Activity) -> Unit,
+    private var onActivityPaused: (pausedActivity: Activity) -> Unit,
     private var onActivityStarted: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
@@ -31,8 +33,8 @@ internal class LifecycleManager(
 
         private const val TIMER_PERIOD = 1200000L
         private const val MAX_INTENT_HASHES_SIZE = 50
-
     }
+
 
     private var isIntentChanged = true
     private var timer: Timer? = null
@@ -64,11 +66,11 @@ internal class LifecycleManager(
     }
 
     override fun onActivityResumed(activity: Activity) {
-
+        onActivityResumed.invoke(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {
-
+        onActivityPaused.invoke(activity)
     }
 
     override fun onActivityStopped(activity: Activity) {
@@ -149,7 +151,8 @@ internal class LifecycleManager(
         }
     }
 
-    private fun updateHashesList(code: Int) = LoggingExceptionHandler.runCatching(defaultValue = true) {
+    private fun updateHashesList(code: Int) =
+        LoggingExceptionHandler.runCatching(defaultValue = true) {
             if (!intentHashes.contains(code)) {
                 if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
                     intentHashes.removeAt(0)

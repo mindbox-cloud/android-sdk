@@ -4,10 +4,12 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.mobile_sdk.inapp.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -76,6 +78,8 @@ object Mindbox {
     private lateinit var lifecycleManager: LifecycleManager
 
     internal var pushServiceHandler: PushServiceHandler? = null
+
+    internal var inAppMessageManager = InAppMessageManager()
 
     /**
      * Allows you to specify additional components for message handling
@@ -399,6 +403,13 @@ object Mindbox {
                                     updateAppInfo(context)
                                 }
                             }
+                        },
+                        onActivityPaused = {
+                            inAppMessageManager.onPauseCurrentActivity()
+                        },
+                        onActivityResumed = { resumedActivity ->
+                            //TODO не забыть передавать контроль за затемнением
+                            inAppMessageManager.onResumeCurrentActivity(resumedActivity, false)
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {

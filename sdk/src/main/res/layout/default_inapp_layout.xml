@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cloud.mindbox.mobile_sdk.inapp.InAppFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:id="@+id/iafl_root"
+    android:focusableInTouchMode="true"
+    android:focusable="true"
+    android:layout_marginVertical="60dp"
+    android:layout_marginHorizontal="20dp"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/iv_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:src="@tools:sample/avatars" />
+
+    <ImageView
+        android:id="@+id/iv_close"
+        android:layout_width="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_menu_close_clear_cancel" />
+</cloud.mindbox.mobile_sdk.inapp.InAppFrameLayout>
