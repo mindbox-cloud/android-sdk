@@ -3,10 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp
 import android.content.Context
 import android.util.AttributeSet
 import android.view.KeyEvent
-import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
+import androidx.constraintlayout.widget.ConstraintLayout
 
-class InAppFrameLayout : FrameLayout, BackButtonLayout {
+internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     private var backButtonHandler: BackButtonHandler? = null
 
@@ -23,8 +23,7 @@ class InAppFrameLayout : FrameLayout, BackButtonLayout {
         defStyleAttr: Int,
         defStyleRes: Int,
     ) : super(
-        context, attrs, defStyleAttr, defStyleRes) {
-    }
+        context, attrs, defStyleAttr, defStyleRes)
 
     override fun setDismissListener(listener: OnClickListener) {
         backButtonHandler = BackButtonHandler(this, listener)
