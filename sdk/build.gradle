@@ -18,6 +18,9 @@ dependencies {
     testImplementation testDependencies.junit
     androidTestImplementation testDependencies.androidx_junit
     androidTestImplementation testDependencies.espresso
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    // Koin for Android
+    implementation "io.insert-koin:koin-android:3.2.0"
 
     // coroutines
     implementation sdkDependencies.kotlinx_coroutines_core
@@ -37,4 +40,5 @@ dependencies {
     // Handle app lifecycle
     implementation sdkDependencies.androidx_lifecycle
 
+    implementation 'com.squareup.picasso:picasso:2.8'
 }

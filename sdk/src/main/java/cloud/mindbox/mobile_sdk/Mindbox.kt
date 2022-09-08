@@ -8,6 +8,8 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.mobile_sdk.inapp.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.appModule
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -25,6 +27,8 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
+import org.koin.core.context.startKoin
+import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -76,6 +80,8 @@ object Mindbox {
     private lateinit var lifecycleManager: LifecycleManager
 
     internal var pushServiceHandler: PushServiceHandler? = null
+
+    private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
 
     /**
      * Allows you to specify additional components for message handling
@@ -365,6 +371,9 @@ object Mindbox {
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }
+            startKoin {
+                modules(appModule)
+            }
 
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
@@ -399,6 +408,13 @@ object Mindbox {
                                     updateAppInfo(context)
                                 }
                             }
+                        },
+                        onActivityPaused = { pausedActivity ->
+                            inAppMessageManager?.onPauseCurrentActivity(pausedActivity)
+                        },
+                        onActivityResumed = { resumedActivity ->
+                            //TODO не забыть передавать контроль за затемнением
+                            inAppMessageManager?.onResumeCurrentActivity(resumedActivity, false)
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
