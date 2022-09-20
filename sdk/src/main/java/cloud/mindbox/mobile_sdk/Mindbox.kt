@@ -25,6 +25,8 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -76,6 +78,8 @@ object Mindbox {
     private lateinit var lifecycleManager: LifecycleManager
 
     internal var pushServiceHandler: PushServiceHandler? = null
+
+    private val mutex = Mutex()
 
     /**
      * Allows you to specify additional components for message handling
@@ -763,13 +767,19 @@ object Mindbox {
 
     private suspend fun getDeviceId(
         context: Context,
-    ): String = if (MindboxPreferences.isFirstInitialize) {
-        val adid = mindboxScope.async {
-            pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
+    ): String {
+        mutex.withLock {
+            return if (MindboxPreferences.deviceUuid.isEmpty()) {
+                val adid = mindboxScope.async {
+                    pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
+                }
+                val adidResult = adid.await()
+                MindboxPreferences.deviceUuid = adidResult
+                adidResult
+            } else {
+                MindboxPreferences.deviceUuid
+            }
         }
-        adid.await()
-    } else {
-        MindboxPreferences.deviceUuid
     }
 
     private suspend fun firstInitialization(
@@ -803,7 +813,6 @@ object Mindbox {
             ianaTimeZone = timezone
         )
 
-        MindboxPreferences.deviceUuid = deviceUuid
         MindboxPreferences.pushToken = pushToken
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId

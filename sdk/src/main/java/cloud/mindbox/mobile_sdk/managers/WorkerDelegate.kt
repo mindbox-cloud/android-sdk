@@ -7,9 +7,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import kotlinx.coroutines.*
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import kotlinx.coroutines.launch
 import java.util.concurrent.CountDownLatch
 
 internal class WorkerDelegate {
