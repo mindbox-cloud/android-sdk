@@ -12,9 +12,13 @@ import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.models.EventType
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 
 internal class InAppMessageManager {
@@ -42,6 +46,9 @@ internal class InAppMessageManager {
         currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
+        GlobalScope.launch {
+            GatewayManager.eventFlow.emit(EventType.AppInstalled)
+        }
     }
 
 
