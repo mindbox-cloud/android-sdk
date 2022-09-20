@@ -19,6 +19,7 @@ internal data class InitData(
     @SerializedName("instanceId") val instanceId: String,
     @SerializedName("version") private val version: Int = INIT_DATA_VERSION,
     @SerializedName("notificationProvider") val notificationProvider: String,
+    @SerializedName("ianaTimeZone") val ianaTimeZone: String?,
 )
 
 internal data class UpdateData(
