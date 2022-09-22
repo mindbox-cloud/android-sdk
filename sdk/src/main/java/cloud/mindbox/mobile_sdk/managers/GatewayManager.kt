@@ -34,7 +34,7 @@ internal object GatewayManager {
 
     private val gson by lazy { Gson() }
     val eventFlow = MutableSharedFlow<EventType>()
-    private val gatewayScope by lazy { CoroutineScope(Dispatchers.Main + Job()) }
+    private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
@@ -139,7 +139,8 @@ internal object GatewayManager {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) },
+                errorsListener = { volleyError ->
+                    handleError(volleyError, onSuccess, onError) },
                 isDebug = isDebug,
             ).apply {
                 setShouldCache(false)

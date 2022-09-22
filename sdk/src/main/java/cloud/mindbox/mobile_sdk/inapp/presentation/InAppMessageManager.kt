@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -95,6 +96,7 @@ internal class InAppMessageManager {
                     .load(inAppType.imageUrl)
                     .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
                     .fit()
+                    .centerCrop()
                     .into(currentRoot?.findViewById(R.id.iv_content), object : Callback {
                         override fun onSuccess() {
                             currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {

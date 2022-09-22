@@ -439,8 +439,9 @@ object Mindbox {
         startKoin {
             modules(appModule, dataModule)
         }
-        inAppInteractor.fetchInAppConfig(context, configuration)
+
         mindboxScope.launch {
+            GatewayManager.eventFlow.emit(EventType.AppInstalled)
             inAppInteractor.processEventAndConfig(context, configuration).collect { inAppMessage ->
                 withContext(Dispatchers.Main)
                 {
@@ -450,6 +451,8 @@ object Mindbox {
                 }
             }
         }
+
+        inAppInteractor.fetchInAppConfig(context, configuration)
 
     }
 
