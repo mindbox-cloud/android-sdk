@@ -51,7 +51,7 @@ internal object PushNotificationManager {
                 return@runCatching false
             }
             manager.notificationChannels
-                .firstOrNull { it.importance == NotificationManager.IMPORTANCE_NONE } == null
+                .any { it.importance != NotificationManager.IMPORTANCE_NONE }
         } else {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
