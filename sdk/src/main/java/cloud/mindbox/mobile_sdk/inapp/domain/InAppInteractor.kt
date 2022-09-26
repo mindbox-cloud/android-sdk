@@ -3,9 +3,12 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepository
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import org.koin.java.KoinJavaComponent.inject
 
 internal class InAppInteractor {

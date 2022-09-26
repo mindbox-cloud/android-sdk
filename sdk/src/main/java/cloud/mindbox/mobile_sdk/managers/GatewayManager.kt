@@ -33,7 +33,7 @@ internal object GatewayManager {
 
 
     private val gson by lazy { Gson() }
-    val eventFlow = MutableSharedFlow<EventType>()
+    val eventFlow = MutableSharedFlow<InAppEventType>()
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
@@ -127,9 +127,6 @@ internal object GatewayManager {
             val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
             val isDebug = BuildConfiguration.isDebug(context)
-            gatewayScope.launch {
-                eventFlow.emit(event.eventType)
-            }
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -140,7 +137,8 @@ internal object GatewayManager {
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError ->
-                    handleError(volleyError, onSuccess, onError) },
+                    handleError(volleyError, onSuccess, onError)
+                },
                 isDebug = isDebug,
             ).apply {
                 setShouldCache(false)

@@ -30,6 +30,8 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
@@ -439,9 +441,7 @@ object Mindbox {
         startKoin {
             modules(appModule, dataModule)
         }
-
         mindboxScope.launch {
-            GatewayManager.eventFlow.emit(EventType.AppInstalled)
             inAppInteractor.processEventAndConfig(context, configuration).collect { inAppMessage ->
                 withContext(Dispatchers.Main)
                 {

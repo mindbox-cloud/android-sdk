@@ -9,7 +9,10 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
@@ -31,6 +34,9 @@ internal object MindboxEventManager {
         } else {
             EventType.AppInstalledWithoutCustomer
         }
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
+        }
         asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
     }
 
@@ -38,24 +44,35 @@ internal object MindboxEventManager {
         context: Context,
         initData: UpdateData,
     ) = LoggingExceptionHandler.runCatching {
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.AppInfoUpdated))
+        }
         asyncOperation(
             context,
             Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
     }
 
-    fun pushDelivered(context: Context, uniqKey: String) = asyncOperation(
-        context,
-        Event(
-            eventType = EventType.PushDelivered,
-            additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
-        ),
-    )
+    fun pushDelivered(context: Context, uniqKey: String) {
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.PushDelivered))
+        }
+        asyncOperation(
+            context,
+            Event(
+                eventType = EventType.PushDelivered,
+                additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
+            ),
+        )
+    }
 
     fun pushClicked(
         context: Context,
         clickData: TrackClickData,
     ) = LoggingExceptionHandler.runCatching {
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.PushClicked))
+        }
         asyncOperation(
             context,
             Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
@@ -66,19 +83,28 @@ internal object MindboxEventManager {
         context: Context,
         trackVisitData: TrackVisitData,
     ) = LoggingExceptionHandler.runCatching {
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.TrackVisit))
+        }
         asyncOperation(
             context,
             Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
         )
     }
 
-    fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
-        context,
-        Event(
-            eventType = EventType.AsyncOperation(name),
-            body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
-        ),
-    )
+    fun asyncOperation(context: Context, name: String, body: String) {
+        val event = EventType.AsyncOperation(name)
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event))
+        }
+        asyncOperation(
+            context,
+            Event(
+                eventType = event,
+                body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
+            ),
+        )
+    }
 
     private fun asyncOperation(
         context: Context,
@@ -123,6 +149,9 @@ internal object MindboxEventManager {
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
+        }
 
         GatewayManager.sendEvent(
             context = context,
@@ -146,6 +175,10 @@ internal object MindboxEventManager {
 
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
+
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
+        }
 
         GatewayManager.sendEvent(
             context = context,

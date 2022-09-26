@@ -4,7 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
-import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
@@ -18,6 +18,7 @@ import com.google.gson.GsonBuilder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -65,8 +66,10 @@ internal class InAppRepository {
     fun listenInAppConfig(
         context: Context,
         configuration: MindboxConfiguration,
-    ): Flow<Pair<InAppDto, EventType>> {
-        return MindboxPreferences.inAppConfigFlow.combine(GatewayManager.eventFlow) { jsonConfig, event ->
+    ): Flow<Pair<InAppDto, InAppEventType>> {
+        return MindboxPreferences.inAppConfigFlow.combine(GatewayManager.eventFlow.onStart {
+            emit(InAppEventType.AppStartup)
+        }) { jsonConfig, event ->
             checkSegmentation(context,
                 configuration,
                 GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(PayloadDto::class.java,

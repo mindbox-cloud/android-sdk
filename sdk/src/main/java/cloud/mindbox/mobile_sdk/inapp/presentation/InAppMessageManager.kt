@@ -47,9 +47,6 @@ internal class InAppMessageManager {
         currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
-        GlobalScope.launch {
-            GatewayManager.eventFlow.emit(EventType.AppInstalled)
-        }
     }
 
 
