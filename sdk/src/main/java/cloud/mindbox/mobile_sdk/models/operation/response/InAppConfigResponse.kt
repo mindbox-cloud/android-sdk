@@ -3,12 +3,12 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-data class InAppConfigResponse(
+internal data class InAppConfigResponse(
     @SerializedName("inapps")
     val inApps: List<InAppDto>?,
 )
 
-data class InAppDto(
+internal data class InAppDto(
     @SerializedName("id")
     val id: String,
     @SerializedName("targeting")
@@ -17,12 +17,12 @@ data class InAppDto(
     val form: FormDto?,
 )
 
-data class FormDto(
+internal data class FormDto(
     @SerializedName("variants")
     val variants: List<PayloadDto>?,
 )
 
-data class TargetingDto(
+internal data class TargetingDto(
     @SerializedName("${"$"}type")
     val type: String?,
     @SerializedName("segmentation")
@@ -31,7 +31,7 @@ data class TargetingDto(
     val segment: String?
 )
 
-sealed class PayloadDto {
+internal sealed class PayloadDto {
     class SimpleImage(
         @SerializedName("${"$"}type")
         val type: String?,
