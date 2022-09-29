@@ -49,7 +49,7 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
-                            if (inApp.targeting.segment != "" || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
+                            if (inApp.targeting.segment == "" || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
                                 continuation.resume(inApp.form.variants.first())
                             }
                         }
