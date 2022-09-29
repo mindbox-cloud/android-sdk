@@ -3,12 +3,14 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.Payload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
@@ -24,12 +26,13 @@ internal class InAppInteractor {
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
-            .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
+            .combine(inAppRepositoryImpl.listenInAppEvents().onStart {
+                emit(MindboxEventManager.appStarted())
+            }) { config, event ->
                 when (val type = checkSegmentation(context, configuration, config)) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(type.imageUrl,
                         type.redirectUrl,
                         type.intentPayload)
-                    else -> InAppType.NoInApp
                 }
             }
     }
@@ -43,10 +46,12 @@ internal class InAppInteractor {
             interactorScope.launch {
                 inAppRepositoryImpl.fetchSegmentations(context,
                     configuration,
-                    config).customerSegmentations.forEach { customerSegmentationInAppResponse ->
+                    config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
-                        if (inApp.targeting.segment == customerSegmentationInAppResponse.segment.ids.externalId || customerSegmentationInAppResponse.segment.ids.externalId == "") {
-                            continuation.resume(inApp.form.variants.first())
+                        forEach { customerSegmentationInAppResponse ->
+                            if (inApp.targeting.segment != "" || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
+                                continuation.resume(inApp.form.variants.first())
+                            }
                         }
                     }
                 }

@@ -18,7 +18,7 @@ import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.Picasso
 
 
-internal class InAppMessageViewDisplayerImpl: InAppMessageViewDisplayer {
+internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     private var currentRoot: ViewGroup? = null
     private var currentBlur: View? = null
@@ -74,38 +74,42 @@ internal class InAppMessageViewDisplayerImpl: InAppMessageViewDisplayer {
                     currentRoot?.removeView(currentBlur)
                 }
                 currentDialog?.setOnClickListener {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(inAppType.redirectUrl))
+                    val browserIntent =
+                        Intent(Intent.ACTION_VIEW, Uri.parse(inAppType.redirectUrl)).putExtra("intentData",
+                            inAppType.intentData)
                     browserIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                     browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     currentActivity?.startActivity(browserIntent)
                 }
-
                 currentBlur?.setOnClickListener {
                     currentRoot?.removeView(currentDialog)
                     currentRoot?.removeView(currentBlur)
                 }
-                Picasso.get()
-                    .load(inAppType.imageUrl)
-                    .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-                    .fit()
-                    .centerCrop()
-                    .into(currentRoot?.findViewById(R.id.iv_content), object : Callback {
-                        override fun onSuccess() {
-                            currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                setOnClickListener {
-                                    currentRoot?.removeView(currentDialog)
-                                    currentRoot?.removeView(currentBlur)
+                with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
+                    Picasso.get()
+                        .load(inAppType.imageUrl)
+                        .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
+                        .fit()
+                        .centerCrop()
+                        .into(this, object : Callback {
+                            override fun onSuccess() {
+                                currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
+                                    setOnClickListener {
+                                        currentRoot?.removeView(currentDialog)
+                                        currentRoot?.removeView(currentBlur)
+                                    }
+                                    isVisible = true
                                 }
-                                isVisible = true
                             }
-                        }
 
-                        override fun onError(e: Exception?) {
-                            currentRoot?.removeView(currentDialog)
-                            currentRoot?.removeView(currentBlur)
-                        }
+                            override fun onError(e: Exception?) {
+                                currentRoot?.removeView(currentDialog)
+                                currentRoot?.removeView(currentBlur)
+                                this@with?.isVisible = false
+                            }
 
-                    })
+                        })
+                }
             }
             else -> {
                 //TODO add inapp processing

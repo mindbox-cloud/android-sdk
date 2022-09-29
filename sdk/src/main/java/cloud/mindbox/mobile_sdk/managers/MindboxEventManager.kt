@@ -34,9 +34,6 @@ internal object MindboxEventManager {
         } else {
             EventType.AppInstalledWithoutCustomer
         }
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
-        }
         asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
     }
 
@@ -44,9 +41,6 @@ internal object MindboxEventManager {
         context: Context,
         initData: UpdateData,
     ) = LoggingExceptionHandler.runCatching {
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.AppInfoUpdated))
-        }
         asyncOperation(
             context,
             Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
@@ -54,9 +48,6 @@ internal object MindboxEventManager {
     }
 
     fun pushDelivered(context: Context, uniqKey: String) {
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.PushDelivered))
-        }
         asyncOperation(
             context,
             Event(
@@ -70,9 +61,6 @@ internal object MindboxEventManager {
         context: Context,
         clickData: TrackClickData,
     ) = LoggingExceptionHandler.runCatching {
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.PushClicked))
-        }
         asyncOperation(
             context,
             Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
@@ -83,28 +71,25 @@ internal object MindboxEventManager {
         context: Context,
         trackVisitData: TrackVisitData,
     ) = LoggingExceptionHandler.runCatching {
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(EventType.TrackVisit))
-        }
         asyncOperation(
             context,
             Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
         )
     }
 
-    fun asyncOperation(context: Context, name: String, body: String) {
-        val event = EventType.AsyncOperation(name)
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event))
-        }
+    fun asyncOperation(context: Context, name: String, body: String) =
         asyncOperation(
             context,
             Event(
-                eventType = event,
+                eventType = EventType.AsyncOperation(name),
                 body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
             ),
         )
+
+    fun appStarted(): InAppEventType.AppStartup {
+        return InAppEventType.AppStartup
     }
+
 
     private fun asyncOperation(
         context: Context,
@@ -112,6 +97,7 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
         Mindbox.mindboxScope.launch(poolDispatcher) {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
@@ -149,10 +135,6 @@ internal object MindboxEventManager {
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
-        }
-
         GatewayManager.sendEvent(
             context = context,
             configuration = configuration,
@@ -176,10 +158,6 @@ internal object MindboxEventManager {
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
 
-        Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
-        }
-
         GatewayManager.sendEvent(
             context = context,
             configuration = configuration,
@@ -193,7 +171,13 @@ internal object MindboxEventManager {
     private fun createSyncEvent(
         name: String,
         bodyJson: String,
-    ) = Event(eventType = EventType.SyncOperation(name), body = bodyJson)
+    ): Event {
+        val eventType = EventType.SyncOperation(name)
+        Mindbox.mindboxScope.launch {
+            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
+        }
+        return Event(eventType = eventType, body = bodyJson)
+    }
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()

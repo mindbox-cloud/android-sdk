@@ -66,9 +66,7 @@ internal class InAppRepositoryImpl : InAppRepository {
     }
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
-        return GatewayManager.eventFlow.onStart {
-            emit(InAppEventType.AppStartup)
-        }
+        return GatewayManager.eventFlow
     }
 
     override fun listenInAppConfig(): Flow<InAppConfig> {

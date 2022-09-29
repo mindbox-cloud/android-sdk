@@ -28,8 +28,6 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
-    private const val IN_APP_CONFIG_URL =
-        "/inapps/byendpoint/someTestMobileEndpoint.json"
 
 
     private val gson by lazy { Gson() }
@@ -38,6 +36,10 @@ internal object GatewayManager {
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
+    }
+
+    private fun getConfigUrl(configuration: MindboxConfiguration): String {
+        return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
     }
 
     private fun buildEventUrl(
@@ -299,7 +301,7 @@ internal object GatewayManager {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(StringRequest(Request.Method.GET,
-                    "https://${configuration.domain}$IN_APP_CONFIG_URL",
+                    getConfigUrl(configuration),
                     { response ->
                         continuation.resume(response)
                     },
