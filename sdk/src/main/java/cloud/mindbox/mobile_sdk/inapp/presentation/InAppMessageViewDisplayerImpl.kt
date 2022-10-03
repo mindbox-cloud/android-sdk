@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
+import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
 
 
@@ -75,7 +76,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                 }
                 currentDialog?.setOnClickListener {
                     val browserIntent =
-                        Intent(Intent.ACTION_VIEW, Uri.parse(inAppType.redirectUrl)).putExtra("intentData",
+                        Intent(Intent.ACTION_VIEW,
+                            Uri.parse(inAppType.redirectUrl)).putExtra("intentData",
                             inAppType.intentData)
                     browserIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                     browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -89,6 +91,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     Picasso.get()
                         .load(inAppType.imageUrl)
                         .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
+                        .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
                         .fit()
                         .centerCrop()
                         .into(this, object : Callback {

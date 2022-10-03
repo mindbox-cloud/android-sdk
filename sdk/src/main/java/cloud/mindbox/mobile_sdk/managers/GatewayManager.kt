@@ -31,7 +31,7 @@ internal object GatewayManager {
 
 
     private val gson by lazy { Gson() }
-    val eventFlow = MutableSharedFlow<InAppEventType>()
+    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {

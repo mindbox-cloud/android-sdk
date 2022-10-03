@@ -26,9 +26,7 @@ internal class InAppInteractor {
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
-            .combine(inAppRepositoryImpl.listenInAppEvents().onStart {
-                emit(MindboxEventManager.appStarted())
-            }) { config, event ->
+            .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
                 when (val type = checkSegmentation(context, configuration, config)) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(type.imageUrl,
                         type.redirectUrl,
@@ -49,7 +47,7 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
-                            if (inApp.targeting.segment == "" || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
+                            if (inApp.targeting == null || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
                                 continuation.resume(inApp.form.variants.first())
                             }
                         }

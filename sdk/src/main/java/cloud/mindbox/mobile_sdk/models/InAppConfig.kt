@@ -6,7 +6,7 @@ internal data class InAppConfig(
 
 internal data class InApp(
     val id: String,
-    val targeting: Targeting,
+    val targeting: Targeting?,
     val form: Form,
 )
 

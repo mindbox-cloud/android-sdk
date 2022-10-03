@@ -431,6 +431,9 @@ object Mindbox {
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
                 inAppMessageManager.initInAppMessages(context, configuration)
+                mindboxScope.launch {
+                    GatewayManager.eventFlow.emit(MindboxEventManager.appStarted())
+                }
             }
         }
     }

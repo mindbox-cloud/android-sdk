@@ -58,7 +58,7 @@ internal class InAppRepositoryImpl : InAppRepository {
                         GatewayManager.convertBodyToJson(
                             Gson().toJson(SegmentationCheckRequest(
                                 config.inApps.map { inAppDto ->
-                                    SegmentationDataRequest(IdsRequest(inAppDto.targeting.segmentation))
+                                    SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
                                 }),
                                 SegmentationCheckRequest::class.java))!!)))
             }

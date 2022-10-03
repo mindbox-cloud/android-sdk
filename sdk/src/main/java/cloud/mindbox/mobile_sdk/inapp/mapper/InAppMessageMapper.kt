@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
+import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 
 internal class InAppMessageMapper {
 
@@ -12,11 +13,7 @@ internal class InAppMessageMapper {
             inAppConfigResponse.inApps?.map { inAppDto ->
                 InApp(
                     id = inAppDto.id,
-                    targeting = Targeting(
-                        type = inAppDto.targeting?.type ?: "",
-                        segmentation = inAppDto.targeting?.segmentation ?: "",
-                        segment = inAppDto.targeting?.segment ?: ""
-                    ),
+                    targeting = mapTargetingDtoToTargeting(inAppDto.targeting),
                     form = Form(
                         variants = inAppDto.form?.variants?.map { payloadDto ->
                             when (payloadDto) {
@@ -34,6 +31,14 @@ internal class InAppMessageMapper {
                 )
             } ?: emptyList()
         )
+    }
+
+    private fun mapTargetingDtoToTargeting(targetingDto: TargetingDto?): Targeting? {
+        return if (targetingDto != null) Targeting(
+            type = targetingDto.type ?: "",
+            segmentation = targetingDto.segmentation ?: "",
+            segment = targetingDto.segment ?: ""
+        ) else null
     }
 
     fun mapSegmentationCheckResponseToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
