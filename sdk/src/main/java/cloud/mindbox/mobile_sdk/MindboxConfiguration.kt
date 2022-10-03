@@ -20,6 +20,7 @@ class MindboxConfiguration private constructor(
     internal val versionCode: String,
     internal val subscribeCustomerIfCreated: Boolean,
     internal val shouldCreateCustomer: Boolean,
+    internal val uuidDebugEnabled: Boolean,
 ) {
 
     constructor(builder: Builder) : this(
@@ -32,6 +33,7 @@ class MindboxConfiguration private constructor(
         versionCode = builder.versionCode,
         subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
         shouldCreateCustomer = builder.shouldCreateCustomer,
+        uuidDebugEnabled = builder.uuidDebugEnabled,
     )
 
     internal fun copy(
@@ -44,6 +46,7 @@ class MindboxConfiguration private constructor(
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
+        uuidDebugEnabled: Boolean = this.uuidDebugEnabled,
     ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
@@ -54,6 +57,7 @@ class MindboxConfiguration private constructor(
         versionCode = versionCode,
         subscribeCustomerIfCreated = subscribeCustomerIfCreated,
         shouldCreateCustomer = shouldCreateCustomer,
+        uuidDebugEnabled = uuidDebugEnabled,
     )
 
     /**
@@ -76,6 +80,7 @@ class MindboxConfiguration private constructor(
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
         internal var shouldCreateCustomer: Boolean = true
+        internal var uuidDebugEnabled: Boolean = true
 
         /**
          * Specifies deviceUUID for Mindbox
@@ -115,6 +120,19 @@ class MindboxConfiguration private constructor(
          */
         fun shouldCreateCustomer(shouldCreateCustomer: Boolean): Builder {
             this.shouldCreateCustomer = shouldCreateCustomer
+            return this
+        }
+
+        /**
+         * Specifies if Mindbox UUID copy to clipboard functionality is enabled. If enabled - UUID
+         * can be copied to clipboard by minimizing and maximizing your app 5 times in 10 seconds
+         *
+         * @param uuidDebugEnabled - flag which determines if Mindbox UUID copy to clipboard
+         * functionality is enabled.
+         * Default value is true.
+         */
+        fun uuidDebugEnabled(uuidDebugEnabled: Boolean): Builder {
+            this.uuidDebugEnabled = uuidDebugEnabled
             return this
         }
 

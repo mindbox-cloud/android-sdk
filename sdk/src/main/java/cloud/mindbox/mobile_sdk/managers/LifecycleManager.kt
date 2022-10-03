@@ -20,7 +20,7 @@ internal class LifecycleManager(
     private var currentActivityName: String?,
     private var currentIntent: Intent?,
     private var isAppInBackground: Boolean,
-    private var onAppMovedToForeground: () -> Unit,
+    private var onActivityStarted: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
 
@@ -45,6 +45,7 @@ internal class LifecycleManager(
     }
 
     override fun onActivityStarted(activity: Activity) = LoggingExceptionHandler.runCatching {
+        onActivityStarted.invoke(activity)
         val areActivitiesEqual = currentActivityName == activity.javaClass.name
         val intent = activity.intent
         isIntentChanged = if (currentIntent != intent) {
@@ -113,7 +114,6 @@ internal class LifecycleManager(
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     private fun onAppMovedToForeground() = LoggingExceptionHandler.runCatching {
-        onAppMovedToForeground.invoke()
         if (!skipSendingTrackVisit) {
             currentIntent?.let(::sendTrackVisit)
         } else {

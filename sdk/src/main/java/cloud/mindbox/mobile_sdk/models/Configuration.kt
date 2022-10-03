@@ -30,5 +30,4 @@ internal data class Configuration(
         subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated,
         shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer
     )
-
 }
