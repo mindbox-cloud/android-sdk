@@ -16,12 +16,12 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
+import com.android.volley.VolleyError
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -29,15 +29,33 @@ import kotlin.coroutines.suspendCoroutine
 internal class InAppRepositoryImpl : InAppRepository {
 
     private val repositoryScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, error ->
-            MindboxLoggerImpl.e(InAppRepositoryImpl::class.java, error.message ?: "")
-        })
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
 
 
     override fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
-        repositoryScope.launch {
+        repositoryScope.launch(CoroutineExceptionHandler { _, error ->
+            if (error is VolleyError) {
+                when (error.networkResponse.statusCode) {
+                    GatewayManager.CONFIG_NOT_FOUND -> {
+                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
+                        MindboxPreferences.inAppConfig = ""
+                    }
+                    GatewayManager.CONFIG_NOT_UPDATED -> {
+                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
+                        repositoryScope.launch {
+                            MindboxPreferences.inAppConfigFlow.emit(MindboxPreferences.inAppConfig)
+                        }
+                    }
+                    else -> {
+                        MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
+                    }
+                }
+            } else {
+                MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
+            }
+        }) {
             with(GatewayManager.fetchInAppConfig(context, configuration))
             {
                 MindboxPreferences.inAppConfig = this
@@ -86,6 +104,7 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     companion object {
         private const val TYPE_JSON_NAME = "\$type"
+        private const val ERROR_TAG = "InAppRepositoryImpl"
 
         /**
          * Типы картинок

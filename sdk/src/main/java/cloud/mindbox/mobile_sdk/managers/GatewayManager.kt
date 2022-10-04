@@ -28,6 +28,8 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
+    const val CONFIG_NOT_UPDATED = 304
+    const val CONFIG_NOT_FOUND = 404
 
 
     private val gson by lazy { Gson() }
