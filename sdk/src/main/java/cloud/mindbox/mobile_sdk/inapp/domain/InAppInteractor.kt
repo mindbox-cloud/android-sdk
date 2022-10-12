@@ -1,15 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.SdkValidation
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.Payload
-import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -66,11 +63,12 @@ internal class InAppInteractor {
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
-        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting.segment
+        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
     }
 
     private fun validateSdkVersion(inApp: InApp): Boolean {
-        return inApp.maxVersion
+        return (inApp.minVersion?.let { min -> min > 0 }
+            ?: true) && (inApp.maxVersion?.let { max -> max < 0 } ?: true)
     }
 
 
