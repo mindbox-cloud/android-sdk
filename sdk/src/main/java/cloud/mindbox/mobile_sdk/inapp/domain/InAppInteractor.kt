@@ -1,16 +1,19 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.SdkValidation
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.Payload
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
@@ -47,7 +50,9 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
-                            if (inApp.targeting == null || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
+                            if (inApp.targeting == null || (validateSegmentation(inApp,
+                                    customerSegmentationInAppResponse) && validateSdkVersion(inApp))
+                            ) {
                                 continuation.resume(inApp.form.variants.first())
                             }
                         }
@@ -55,6 +60,17 @@ internal class InAppInteractor {
                 }
             }
         }
+    }
+
+    private fun validateSegmentation(
+        inApp: InApp,
+        customerSegmentationInApp: CustomerSegmentationInApp,
+    ): Boolean {
+        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting.segment
+    }
+
+    private fun validateSdkVersion(inApp: InApp): Boolean {
+        return inApp.maxVersion
     }
 
 
