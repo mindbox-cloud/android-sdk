@@ -37,7 +37,7 @@ internal class InAppRepositoryImpl : InAppRepository {
     override fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         repositoryScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
-                when (error.networkResponse.statusCode) {
+                when (error?.networkResponse?.statusCode) {
                     GatewayManager.CONFIG_NOT_FOUND -> {
                         MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
                         MindboxPreferences.inAppConfig = ""
