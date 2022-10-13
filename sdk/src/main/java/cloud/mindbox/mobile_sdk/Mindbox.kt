@@ -414,7 +414,7 @@ object Mindbox {
                         onActivityResumed = { resumedActivity ->
                             //TODO не забыть передавать контроль за затемнением
                             inAppMessageManager.onResumeCurrentActivity(resumedActivity,
-                                false)
+                                true)
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
