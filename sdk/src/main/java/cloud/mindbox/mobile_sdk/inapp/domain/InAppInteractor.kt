@@ -36,6 +36,11 @@ internal class InAppInteractor {
             }
     }
 
+    fun saveShownInApp()
+    {
+        inAppRepositoryImpl
+    }
+
     private suspend fun checkSegmentation(
         context: Context,
         configuration: MindboxConfiguration,

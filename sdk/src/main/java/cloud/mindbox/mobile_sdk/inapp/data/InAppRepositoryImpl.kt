@@ -33,6 +33,15 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
 
+    //private val shownInApps: HashSet<String>
+
+/*
+    init {
+        shownInApps = HashSet()
+        shownInApps = MindboxPreferences.shownInAppIds
+    }
+*/
+
 
     override fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         repositoryScope.launch(CoroutineExceptionHandler { _, error ->
@@ -85,6 +94,10 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
         return GatewayManager.eventFlow
+    }
+
+    override fun saveShownInApp(id: String) {
+       // shownInApps.add(id)
     }
 
     override fun listenInAppConfig(): Flow<InAppConfig> {

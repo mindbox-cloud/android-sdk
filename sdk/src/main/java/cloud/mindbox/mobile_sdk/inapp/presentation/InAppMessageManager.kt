@@ -24,7 +24,8 @@ internal class InAppMessageManager {
             inAppInteractor.processEventAndConfig(context, configuration).collect { inAppMessage ->
                 withContext(Dispatchers.Main)
                 {
-                    if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not()) {
+                    if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
+                        IS_IN_APP_SHOWN = true
                         inAppMessageViewDisplayer.showInAppMessage(inAppMessage)
                     }
                 }
@@ -41,8 +42,10 @@ internal class InAppMessageManager {
         inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
     }
 
+
     companion object {
         const val CURRENT_IN_APP_VERSION = 1
+        private var IS_IN_APP_SHOWN = false
     }
 
 }
