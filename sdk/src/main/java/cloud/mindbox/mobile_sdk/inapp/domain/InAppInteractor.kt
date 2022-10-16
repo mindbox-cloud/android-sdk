@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppConfig
@@ -51,6 +52,7 @@ internal class InAppInteractor {
                                     customerSegmentationInAppResponse) && validateSdkVersion(inApp))
                             ) {
                                 continuation.resume(inApp.form.variants.first())
+                                return@apply
                             }
                         }
                     }
@@ -67,8 +69,9 @@ internal class InAppInteractor {
     }
 
     private fun validateSdkVersion(inApp: InApp): Boolean {
-        return (inApp.minVersion?.let { min -> min > 0 }
-            ?: true) && (inApp.maxVersion?.let { max -> max < 0 } ?: true)
+        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true))
     }
 
 

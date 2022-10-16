@@ -6,8 +6,6 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
-import cloud.mindbox.mobile_sdk.managers.GatewayManager
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -41,6 +39,10 @@ internal class InAppMessageManager {
 
     fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
+    }
+
+    companion object {
+        const val CURRENT_IN_APP_VERSION = 1
     }
 
 }
