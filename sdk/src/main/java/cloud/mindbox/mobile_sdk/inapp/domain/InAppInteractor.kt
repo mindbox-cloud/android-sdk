@@ -36,7 +36,7 @@ internal class InAppInteractor {
             }
     }
 
-    fun saveShownInApp(id: String) {
+    private fun saveShownInApp(id: String) {
         inAppRepositoryImpl.saveShownInApp(id)
     }
 
@@ -53,7 +53,7 @@ internal class InAppInteractor {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
                             if (inApp.targeting == null || (validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse) && validateSdkVersion(inApp) && validateInAppShown(
+                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppShown(
                                     inApp))
                             ) {
                                 saveShownInApp(inApp.id)
@@ -78,7 +78,7 @@ internal class InAppInteractor {
         return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
     }
 
-    private fun validateSdkVersion(inApp: InApp): Boolean {
+    private fun validateInAppVersion(inApp: InApp): Boolean {
         return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true))
