@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.android.volley.VolleyError
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -33,20 +34,23 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
 
-    //private val shownInApps: HashSet<String>
 
-/*
-    init {
-        shownInApps = HashSet()
-        shownInApps = MindboxPreferences.shownInAppIds
+    private val shownInApps: HashSet<String> = if (MindboxPreferences.shownInAppIds.isBlank()) {
+        HashSet()
+    } else {
+        Gson().fromJson(MindboxPreferences.shownInAppIds,
+            object : TypeToken<HashSet<String>>() {}.type)
     }
-*/
+
+    override fun getShownInApps(): HashSet<String> {
+        return shownInApps
+    }
 
 
     override fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         repositoryScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
-                when (error?.networkResponse?.statusCode) {
+                when (error.networkResponse?.statusCode) {
                     GatewayManager.CONFIG_NOT_FOUND -> {
                         MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
                         MindboxPreferences.inAppConfig = ""
@@ -97,7 +101,9 @@ internal class InAppRepositoryImpl : InAppRepository {
     }
 
     override fun saveShownInApp(id: String) {
-       // shownInApps.add(id)
+        shownInApps.add(id)
+        MindboxPreferences.shownInAppIds =
+            Gson().toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
     }
 
     override fun listenInAppConfig(): Flow<InAppConfig> {

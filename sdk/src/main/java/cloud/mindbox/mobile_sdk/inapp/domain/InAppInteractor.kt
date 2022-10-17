@@ -36,9 +36,8 @@ internal class InAppInteractor {
             }
     }
 
-    fun saveShownInApp()
-    {
-        inAppRepositoryImpl
+    fun saveShownInApp(id: String) {
+        inAppRepositoryImpl.saveShownInApp(id)
     }
 
     private suspend fun checkSegmentation(
@@ -54,8 +53,10 @@ internal class InAppInteractor {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
                             if (inApp.targeting == null || (validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse) && validateSdkVersion(inApp))
+                                    customerSegmentationInAppResponse) && validateSdkVersion(inApp) && validateInAppShown(
+                                    inApp))
                             ) {
+                                saveShownInApp(inApp.id)
                                 continuation.resume(inApp.form.variants.first())
                                 return@apply
                             }
@@ -64,6 +65,10 @@ internal class InAppInteractor {
                 }
             }
         }
+    }
+
+    private fun validateInAppShown(inApp: InApp): Boolean {
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
     private fun validateSegmentation(
