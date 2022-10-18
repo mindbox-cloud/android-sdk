@@ -17,6 +17,7 @@ import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
+import java.net.URL
 
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
@@ -28,7 +29,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
-        currentRoot = activity.window.decorView.findViewById(android.R.id.content)
+        currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
@@ -75,13 +76,14 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.removeView(currentBlur)
                 }
                 currentDialog?.setOnClickListener {
-                    val browserIntent =
-                        Intent(Intent.ACTION_VIEW,
-                            Uri.parse(inAppType.redirectUrl)).putExtra("intentData",
-                            inAppType.intentData)
-                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    currentActivity?.startActivity(browserIntent)
+                    if (inAppType.redirectUrl.isNotBlank()) {
+                        currentActivity?.startActivity(Intent(Intent.ACTION_VIEW,
+                            Uri.parse(inAppType.redirectUrl)).putExtra(EXTRA_NAME,
+                            inAppType.intentData).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    }
                 }
                 currentBlur?.setOnClickListener {
                     currentRoot?.removeView(currentDialog)
@@ -123,6 +125,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
+        private const val EXTRA_NAME = "INTENT_DATA"
     }
 }
 

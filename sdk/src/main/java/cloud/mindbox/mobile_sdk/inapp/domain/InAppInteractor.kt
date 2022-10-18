@@ -52,6 +52,8 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
+                            if ((inApp.targeting == null || validateSegmentation(inApp,
+                                    customerSegmentationInAppResponse)) && validateSdkVersion(inApp)
                             if (inApp.targeting == null || (validateSegmentation(inApp,
                                     customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppShown(
                                     inApp))
