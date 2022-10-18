@@ -6,6 +6,7 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.URLUtil
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -68,34 +69,39 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         when (inAppType) {
             is InAppType.SimpleImage -> {
                 if (inAppType.imageUrl.isNotBlank()) {
-                currentRoot?.addView(currentBlur)
-                currentRoot?.addView(currentDialog)
-                currentDialog?.requestFocus()
+                    currentRoot?.addView(currentBlur)
+                    currentRoot?.addView(currentDialog)
+                    currentDialog?.requestFocus()
 
-                currentDialog?.setDismissListener {
-                    currentRoot?.removeView(currentDialog)
-                    currentRoot?.removeView(currentBlur)
-                }
-                currentDialog?.setOnClickListener {
-                    if (inAppType.redirectUrl.isNotBlank() && currentActivity != null) {
-                        val intent = Intent(Intent.ACTION_VIEW,
-                            Uri.parse(inAppType.redirectUrl)).putExtra(EXTRA_NAME,
-                            inAppType.intentData).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        if (intent.resolveActivity(currentActivity!!.packageManager) != null) {
-                            currentActivity?.startActivity(intent)
-                        } else {
-                            MindboxLoggerImpl.e(LOG_TAG,
-                                "${inAppType.redirectUrl} cannot be processed")
+                    currentDialog?.setDismissListener {
+                        currentRoot?.removeView(currentDialog)
+                        currentRoot?.removeView(currentBlur)
+                    }
+                    currentDialog?.setOnClickListener {
+                        if (inAppType.redirectUrl.isNotBlank() && currentActivity != null) {
+                            val intent = Intent(Intent.ACTION_VIEW,
+                                Uri.parse(inAppType.redirectUrl)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                if (inAppType.intentData.isNotBlank()) {
+                                    putExtra(EXTRA_NAME,
+                                        inAppType.intentData)
+                                }
+                            }
+                            if (intent.resolveActivity(currentActivity!!.packageManager) != null || URLUtil.isValidUrl(
+                                    inAppType.redirectUrl)
+                            ) {
+                                currentActivity?.startActivity(intent)
+                            } else {
+                                MindboxLoggerImpl.e(LOG_TAG,
+                                    "${inAppType.redirectUrl} cannot be processed")
+                            }
                         }
                     }
-                }
-                currentBlur?.setOnClickListener {
-                    currentRoot?.removeView(currentDialog)
-                    currentRoot?.removeView(currentBlur)
-                }
+                    currentBlur?.setOnClickListener {
+                        currentRoot?.removeView(currentDialog)
+                        currentRoot?.removeView(currentBlur)
+                    }
 
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
                         Picasso.get()
@@ -113,6 +119,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         }
                                         isVisible = true
                                     }
+                                    currentBlur?.isVisible = true
                                 }
 
                                 override fun onError(e: Exception?) {
