@@ -13,11 +13,11 @@ import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
-import java.net.URL
 
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
@@ -76,13 +76,19 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.removeView(currentBlur)
                 }
                 currentDialog?.setOnClickListener {
-                    if (inAppType.redirectUrl.isNotBlank()) {
-                        currentActivity?.startActivity(Intent(Intent.ACTION_VIEW,
+                    if (inAppType.redirectUrl.isNotBlank() && currentActivity != null) {
+                        val intent = Intent(Intent.ACTION_VIEW,
                             Uri.parse(inAppType.redirectUrl)).putExtra(EXTRA_NAME,
                             inAppType.intentData).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        })
+                        }
+                        if (intent.resolveActivity(currentActivity!!.packageManager) != null) {
+                            currentActivity?.startActivity(intent)
+                        } else {
+                            MindboxLoggerImpl.e(LOG_TAG,
+                                "${inAppType.redirectUrl} cannot be processed")
+                        }
                     }
                 }
                 currentBlur?.setOnClickListener {
@@ -125,6 +131,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
+        private const val LOG_TAG = "InAppMessageViewDisplayerImpl"
         private const val EXTRA_NAME = "INTENT_DATA"
     }
 }
