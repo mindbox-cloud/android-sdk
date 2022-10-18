@@ -28,7 +28,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
-        currentRoot = activity.window.decorView.findViewById(android.R.id.content)
+        currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
