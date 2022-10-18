@@ -67,6 +67,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     override fun showInAppMessage(inAppType: InAppType) {
         when (inAppType) {
             is InAppType.SimpleImage -> {
+                if (inAppType.imageUrl.isNotBlank()) {
                 currentRoot?.addView(currentBlur)
                 currentRoot?.addView(currentDialog)
                 currentDialog?.requestFocus()
@@ -95,31 +96,33 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.removeView(currentDialog)
                     currentRoot?.removeView(currentBlur)
                 }
-                with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                    Picasso.get()
-                        .load(inAppType.imageUrl)
-                        .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-                        .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
-                        .fit()
-                        .centerCrop()
-                        .into(this, object : Callback {
-                            override fun onSuccess() {
-                                currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                    setOnClickListener {
-                                        currentRoot?.removeView(currentDialog)
-                                        currentRoot?.removeView(currentBlur)
+
+                    with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
+                        Picasso.get()
+                            .load(inAppType.imageUrl)
+                            .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
+                            .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
+                            .fit()
+                            .centerCrop()
+                            .into(this, object : Callback {
+                                override fun onSuccess() {
+                                    currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
+                                        setOnClickListener {
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
+                                        isVisible = true
                                     }
-                                    isVisible = true
                                 }
-                            }
 
-                            override fun onError(e: Exception?) {
-                                currentRoot?.removeView(currentDialog)
-                                currentRoot?.removeView(currentBlur)
-                                this@with?.isVisible = false
-                            }
+                                override fun onError(e: Exception?) {
+                                    currentRoot?.removeView(currentDialog)
+                                    currentRoot?.removeView(currentBlur)
+                                    this@with?.isVisible = false
+                                }
 
-                        })
+                            })
+                    }
                 }
             }
             else -> {
