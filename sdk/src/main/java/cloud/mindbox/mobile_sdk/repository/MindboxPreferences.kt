@@ -57,7 +57,7 @@ internal object MindboxPreferences {
         }
         set(value) {
             LoggingExceptionHandler.runCatching {
-                SharedPreferencesManager.put(KEY_DEVICE_UUID, value)
+                SharedPreferencesManager.putSync(KEY_DEVICE_UUID, value)
             }
         }
 

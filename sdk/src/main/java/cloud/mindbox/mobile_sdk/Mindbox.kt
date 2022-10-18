@@ -32,6 +32,8 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.flow.collect
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -86,6 +88,8 @@ object Mindbox {
 
     private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
     private val inAppInteractor: InAppInteractor by inject(InAppInteractor::class.java)
+
+    private val mutex = Mutex()
 
     /**
      * Allows you to specify additional components for message handling
@@ -798,13 +802,19 @@ object Mindbox {
 
     private suspend fun getDeviceId(
         context: Context,
-    ): String = if (MindboxPreferences.isFirstInitialize) {
-        val adid = mindboxScope.async {
-            pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
+    ): String {
+        mutex.withLock {
+            return if (MindboxPreferences.deviceUuid.isEmpty()) {
+                val adid = mindboxScope.async {
+                    pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
+                }
+                val adidResult = adid.await()
+                MindboxPreferences.deviceUuid = adidResult
+                adidResult
+            } else {
+                MindboxPreferences.deviceUuid
+            }
         }
-        adid.await()
-    } else {
-        MindboxPreferences.deviceUuid
     }
 
     private suspend fun firstInitialization(
@@ -823,6 +833,9 @@ object Mindbox {
 
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
+        val timezone = if (configuration.shouldCreateCustomer) {
+            TimeZone.getDefault().id
+        } else null
         val initData = InitData(
             token = pushToken ?: "",
             isTokenAvailable = isTokenAvailable,
@@ -832,9 +845,9 @@ object Mindbox {
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
             notificationProvider = notificationProvider,
+            ianaTimeZone = timezone
         )
 
-        MindboxPreferences.deviceUuid = deviceUuid
         MindboxPreferences.pushToken = pushToken
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
