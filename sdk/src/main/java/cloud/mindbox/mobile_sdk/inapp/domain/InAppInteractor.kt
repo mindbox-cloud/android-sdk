@@ -53,9 +53,7 @@ internal class InAppInteractor {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
                             if ((inApp.targeting == null || validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse)) && validateSdkVersion(inApp)
-                            if (inApp.targeting == null || (validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppShown(
+                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
                                     inApp))
                             ) {
                                 saveShownInApp(inApp.id)
@@ -69,7 +67,7 @@ internal class InAppInteractor {
         }
     }
 
-    private fun validateInAppShown(inApp: InApp): Boolean {
+    private fun validateInAppNotShown(inApp: InApp): Boolean {
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
