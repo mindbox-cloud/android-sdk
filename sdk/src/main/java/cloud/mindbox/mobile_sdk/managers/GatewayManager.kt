@@ -302,14 +302,16 @@ internal object GatewayManager {
     suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(StringRequest(Request.Method.GET,
+                ?.addToRequestQueue(StringRequest(
+                    Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
                         continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)
-                    }))
+                    },
+                ))
         }
 
     }

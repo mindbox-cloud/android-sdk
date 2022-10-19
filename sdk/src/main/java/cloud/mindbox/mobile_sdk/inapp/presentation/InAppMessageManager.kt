@@ -19,7 +19,12 @@ internal class InAppMessageManager {
     private val inAppInteractor: InAppInteractor by inject(InAppInteractor::class.java)
 
 
+    fun registerCurrentActivity(activity: Activity) {
+        inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
+    }
+
     fun initInAppMessages(context: Context, configuration: MindboxConfiguration) {
+
         Mindbox.mindboxScope.launch {
             inAppInteractor.processEventAndConfig(context, configuration).collect { inAppMessage ->
                 withContext(Dispatchers.Main)

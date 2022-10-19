@@ -395,6 +395,10 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
+                    if (activity != null) {
+                        inAppMessageManager.registerCurrentActivity(activity)
+                    }
+
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,

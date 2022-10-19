@@ -48,6 +48,26 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         ) as InAppConstraintLayout
     }
 
+    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+    {
+        currentRoot = activity.window.decorView.rootView as ViewGroup
+        currentBlur = if (shouldUseBlur) {
+            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+                currentRoot, false
+            )
+        } else {
+            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+                currentRoot, false
+            ).apply {
+                setBackgroundColor(ContextCompat.getColor(activity, android.R.color.transparent))
+            }
+        }
+        currentActivity = activity
+        currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
+            currentRoot, false
+        ) as InAppConstraintLayout
+    }
+
 
     override fun onPauseCurrentActivity(activity: Activity) {
         if (currentActivity == activity) {
