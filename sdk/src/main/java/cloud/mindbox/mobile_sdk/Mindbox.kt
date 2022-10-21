@@ -8,8 +8,9 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
-import cloud.mindbox.mobile_sdk.inapp.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.appModule
+import cloud.mindbox.mobile_sdk.inapp.di.appModule
+import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -348,7 +349,9 @@ object Mindbox {
     ) {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
-
+            startKoin {
+                modules(appModule, dataModule)
+            }
             initScope.launch {
                 val checkResult = checkConfig(configuration)
 
@@ -371,10 +374,6 @@ object Mindbox {
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }
-            startKoin {
-                modules(appModule)
-            }
-
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
                 val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
@@ -396,6 +395,10 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
+                    if (activity != null) {
+                        inAppMessageManager.registerCurrentActivity(activity)
+                    }
+
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
@@ -410,11 +413,12 @@ object Mindbox {
                             }
                         },
                         onActivityPaused = { pausedActivity ->
-                            inAppMessageManager?.onPauseCurrentActivity(pausedActivity)
+                            inAppMessageManager.onPauseCurrentActivity(pausedActivity)
                         },
                         onActivityResumed = { resumedActivity ->
                             //TODO не забыть передавать контроль за затемнением
-                            inAppMessageManager?.onResumeCurrentActivity(resumedActivity, false)
+                            inAppMessageManager.onResumeCurrentActivity(resumedActivity,
+                                true)
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
@@ -430,9 +434,14 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
+                inAppMessageManager.initInAppMessages(context, configuration)
+                mindboxScope.launch {
+                    GatewayManager.eventFlow.emit(MindboxEventManager.appStarted())
+                }
             }
         }
     }
+
 
     /**
      * Method to initialise push services

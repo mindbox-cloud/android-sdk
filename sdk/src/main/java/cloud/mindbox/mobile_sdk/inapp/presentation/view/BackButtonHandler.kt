@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp
+package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.view.KeyEvent
 import android.view.View

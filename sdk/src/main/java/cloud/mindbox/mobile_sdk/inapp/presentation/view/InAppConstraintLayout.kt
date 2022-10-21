@@ -1,10 +1,12 @@
-package cloud.mindbox.mobile_sdk.inapp
+package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
 import android.util.AttributeSet
 import android.view.KeyEvent
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BackButtonHandler
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BackButtonLayout
 
 internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
