@@ -7,9 +7,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import kotlinx.coroutines.*
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import kotlinx.coroutines.launch
 import java.util.concurrent.CountDownLatch
 
 internal class WorkerDelegate {
@@ -76,7 +76,17 @@ internal class WorkerDelegate {
 
         events.forEachIndexed { index, event ->
             if (isWorkerStopped) return@runCatching
-            sendEvent(context, configuration, deviceUuid, event, parent, index, eventsCount)
+            sendEvent(
+                context = context,
+                configuration = configuration,
+                deviceUuid = deviceUuid,
+                event = event,
+                parent = parent,
+                index = index,
+                eventsCount = eventsCount,
+                shouldStartWorker = false,
+                shouldCountOffset = true,
+            )
         }
     }
 
@@ -89,10 +99,17 @@ internal class WorkerDelegate {
         index: Int = 0,
         eventsCount: Int = 1,
         shouldStartWorker: Boolean = false,
+        shouldCountOffset: Boolean = true,
     ) {
         val countDownLatch = CountDownLatch(1)
 
-        GatewayManager.sendAsyncEvent(context, configuration, deviceUuid, event) { isSent ->
+        GatewayManager.sendAsyncEvent(
+            context = context,
+            configuration = configuration,
+            deviceUuid = deviceUuid,
+            event = event,
+            shouldCountOffset = shouldCountOffset
+        ) { isSent ->
             Mindbox.mindboxScope.launch {
                 if (isSent) {
                     DbManager.removeEventFromQueue(event)

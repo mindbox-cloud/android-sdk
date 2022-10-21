@@ -43,6 +43,17 @@ internal object SharedPreferencesManager {
     ) = LoggingExceptionHandler.runCatching { preferences.edit().putString(key, value).apply() }
 
     /**
+     * Saves [String] into the Preferences synchronously.
+     *
+     * @param key Key with which Shared preferences to
+     * @param value Object of [String] class to save
+     **/
+    fun putSync(
+        key: String,
+        value: String?,
+    ) = LoggingExceptionHandler.runCatching { preferences.edit().putString(key, value).commit() }
+
+    /**
      * Saves [Boolean] into the Preferences.
      *
      * @param key Key with which Shared preferences to

@@ -40,5 +40,7 @@ dependencies {
     // Handle app lifecycle
     implementation sdkDependencies.androidx_lifecycle
 
+    testImplementation 'junit:junit:4.13.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     implementation 'com.squareup.picasso:picasso:2.8'
 }

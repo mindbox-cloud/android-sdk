@@ -47,6 +47,7 @@ internal object GatewayManager {
     private fun buildEventUrl(
         configuration: Configuration,
         deviceUuid: String,
+        shouldCountOffset: Boolean,
         event: Event,
     ): String {
 
@@ -64,18 +65,21 @@ internal object GatewayManager {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
-                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] = getTimeOffset(event.enqueueTimestamp)
+                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
+                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
             is EventType.PushDelivered -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
                     event.additionalFields?.get(EventParameters.UNIQ_KEY.fieldName) ?: ""
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
-                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] = getTimeOffset(event.enqueueTimestamp)
+                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
+                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
-                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] = getTimeOffset(event.enqueueTimestamp)
+                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
+                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
             is EventType.SyncOperation -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
@@ -91,12 +95,14 @@ internal object GatewayManager {
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
+        shouldCountOffset: Boolean,
         isSentListener: (Boolean) -> Unit,
     ) = sendEvent(
         context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
+        shouldCountOffset = shouldCountOffset,
         onSuccess = { isSentListener.invoke(true) },
         onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) },
     )
@@ -107,6 +113,7 @@ internal object GatewayManager {
         deviceUuid: String,
         event: Event,
         classOfT: Class<T>,
+        shouldCountOffset: Boolean,
         onSuccess: (T) -> Unit,
         onError: (MindboxError) -> Unit,
     ) = sendEvent(
@@ -114,6 +121,7 @@ internal object GatewayManager {
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
+        shouldCountOffset = shouldCountOffset,
         onSuccess = { body -> handleSuccessResponse(body, onSuccess, onError, classOfT) },
         onError = onError,
     )
@@ -123,12 +131,13 @@ internal object GatewayManager {
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
+        shouldCountOffset: Boolean,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
     ) {
         try {
             val requestType: Int = getRequestType(event.eventType)
-            val url: String = buildEventUrl(configuration, deviceUuid, event)
+            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
             val isDebug = BuildConfiguration.isDebug(context)
             val request = MindboxRequest(
@@ -170,7 +179,10 @@ internal object GatewayManager {
 
     private fun getTimeOffset(
         timeMls: Long,
-    ): String = (System.currentTimeMillis() - timeMls).toString()
+        shouldCountOffset: Boolean
+    ): String = if (shouldCountOffset) {
+        (System.currentTimeMillis() - timeMls).toString()
+    } else "0"
 
     private fun <T : OperationResponseBaseInternal> handleSuccessResponse(
         data: String,

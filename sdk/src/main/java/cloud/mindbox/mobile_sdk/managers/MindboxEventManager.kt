@@ -108,12 +108,13 @@ internal object MindboxEventManager {
                     MindboxLoggerImpl.e(this, "Configuration was not initialized")
                 } else {
                     WorkerDelegate().sendEvent(
-                        context,
-                        configuration,
-                        deviceUuid,
-                        event,
+                        context = context,
+                        configuration = configuration,
+                        deviceUuid = deviceUuid,
+                        event = event,
                         parent = this@MindboxEventManager,
                         shouldStartWorker = true,
+                        shouldCountOffset = false
                     )
                     if (isInstallEvent) MindboxPreferences.isFirstInitialize = false
                 }
@@ -141,6 +142,7 @@ internal object MindboxEventManager {
             deviceUuid = deviceUuid,
             event = event,
             classOfT = classOfV,
+            shouldCountOffset = false,
             onSuccess = onSuccess,
             onError = onError,
         )
@@ -163,6 +165,7 @@ internal object MindboxEventManager {
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = event,
+            shouldCountOffset = false,
             onSuccess = onSuccess,
             onError = onError,
         )
