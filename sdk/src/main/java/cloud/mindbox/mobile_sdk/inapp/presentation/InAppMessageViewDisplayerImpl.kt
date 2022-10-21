@@ -6,6 +6,7 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.URLUtil
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -13,6 +14,7 @@ import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
@@ -28,6 +30,26 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+        currentRoot = activity.window.decorView.rootView as ViewGroup
+        currentBlur = if (shouldUseBlur) {
+            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+                currentRoot, false
+            )
+        } else {
+            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+                currentRoot, false
+            ).apply {
+                setBackgroundColor(ContextCompat.getColor(activity, android.R.color.transparent))
+            }
+        }
+        currentActivity = activity
+        currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
+            currentRoot, false
+        ) as InAppConstraintLayout
+    }
+
+    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+    {
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
@@ -66,52 +88,68 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     override fun showInAppMessage(inAppType: InAppType) {
         when (inAppType) {
             is InAppType.SimpleImage -> {
-                currentRoot?.addView(currentBlur)
-                currentRoot?.addView(currentDialog)
-                currentDialog?.requestFocus()
+                if (inAppType.imageUrl.isNotBlank()) {
+                    currentRoot?.addView(currentBlur)
+                    currentRoot?.addView(currentDialog)
+                    currentDialog?.requestFocus()
 
-                currentDialog?.setDismissListener {
-                    currentRoot?.removeView(currentDialog)
-                    currentRoot?.removeView(currentBlur)
-                }
-                currentDialog?.setOnClickListener {
-                    val browserIntent =
-                        Intent(Intent.ACTION_VIEW,
-                            Uri.parse(inAppType.redirectUrl)).putExtra("intentData",
-                            inAppType.intentData)
-                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    currentActivity?.startActivity(browserIntent)
-                }
-                currentBlur?.setOnClickListener {
-                    currentRoot?.removeView(currentDialog)
-                    currentRoot?.removeView(currentBlur)
-                }
-                with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                    Picasso.get()
-                        .load(inAppType.imageUrl)
-                        .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-                        .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
-                        .fit()
-                        .centerCrop()
-                        .into(this, object : Callback {
-                            override fun onSuccess() {
-                                currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                    setOnClickListener {
-                                        currentRoot?.removeView(currentDialog)
-                                        currentRoot?.removeView(currentBlur)
-                                    }
-                                    isVisible = true
+                    currentDialog?.setDismissListener {
+                        currentRoot?.removeView(currentDialog)
+                        currentRoot?.removeView(currentBlur)
+                    }
+                    currentDialog?.setOnClickListener {
+                        if (inAppType.redirectUrl.isNotBlank() && currentActivity != null) {
+                            val intent = Intent(Intent.ACTION_VIEW,
+                                Uri.parse(inAppType.redirectUrl)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                if (inAppType.intentData.isNotBlank()) {
+                                    putExtra(EXTRA_NAME,
+                                        inAppType.intentData)
                                 }
                             }
-
-                            override fun onError(e: Exception?) {
-                                currentRoot?.removeView(currentDialog)
-                                currentRoot?.removeView(currentBlur)
-                                this@with?.isVisible = false
+                            if (intent.resolveActivity(currentActivity!!.packageManager) != null || URLUtil.isValidUrl(
+                                    inAppType.redirectUrl)
+                            ) {
+                                currentActivity?.startActivity(intent)
+                            } else {
+                                MindboxLoggerImpl.e(LOG_TAG,
+                                    "${inAppType.redirectUrl} cannot be processed")
                             }
+                        }
+                    }
+                    currentBlur?.setOnClickListener {
+                        currentRoot?.removeView(currentDialog)
+                        currentRoot?.removeView(currentBlur)
+                    }
 
-                        })
+                    with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
+                        Picasso.get()
+                            .load(inAppType.imageUrl)
+                            .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
+                            .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
+                            .fit()
+                            .centerCrop()
+                            .into(this, object : Callback {
+                                override fun onSuccess() {
+                                    currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
+                                        setOnClickListener {
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
+                                        isVisible = true
+                                    }
+                                    currentBlur?.isVisible = true
+                                }
+
+                                override fun onError(e: Exception?) {
+                                    currentRoot?.removeView(currentDialog)
+                                    currentRoot?.removeView(currentBlur)
+                                    this@with?.isVisible = false
+                                }
+
+                            })
+                    }
                 }
             }
             else -> {
@@ -123,6 +161,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
+        private const val LOG_TAG = "InAppMessageViewDisplayerImpl"
+        private const val EXTRA_NAME = "INTENT_DATA"
     }
 }
 

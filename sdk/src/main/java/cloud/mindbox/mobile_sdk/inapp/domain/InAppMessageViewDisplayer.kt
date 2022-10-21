@@ -9,4 +9,6 @@ interface InAppMessageViewDisplayer {
     fun onPauseCurrentActivity(activity: Activity)
 
     fun showInAppMessage(inAppType: InAppType)
+
+    fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 }

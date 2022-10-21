@@ -6,6 +6,8 @@ internal data class InAppConfig(
 
 internal data class InApp(
     val id: String,
+    val minVersion: Int?,
+    val maxVersion: Int?,
     val targeting: Targeting?,
     val form: Form,
 )

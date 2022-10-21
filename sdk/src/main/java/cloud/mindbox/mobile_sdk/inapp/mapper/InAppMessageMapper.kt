@@ -27,7 +27,9 @@ internal class InAppMessageMapper {
                                 }
                             }
                         } ?: emptyList()
-                    )
+                    ),
+                    minVersion = inAppDto.sdkVersion?.minVersion,
+                    maxVersion = inAppDto.sdkVersion?.maxVersion
                 )
             } ?: emptyList()
         )

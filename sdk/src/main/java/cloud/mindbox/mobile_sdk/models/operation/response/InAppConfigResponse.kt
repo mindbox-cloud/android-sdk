@@ -11,10 +11,19 @@ internal data class InAppConfigResponse(
 internal data class InAppDto(
     @SerializedName("id")
     val id: String,
+    @SerializedName("sdkVersion")
+    val sdkVersion: SdkVersion?,
     @SerializedName("targeting")
     val targeting: TargetingDto?,
     @SerializedName("form")
     val form: FormDto?,
+)
+
+internal data class SdkVersion(
+    @SerializedName("min")
+    val minVersion: Int?,
+    @SerializedName("max")
+    val maxVersion: Int?,
 )
 
 internal data class FormDto(
@@ -28,7 +37,7 @@ internal data class TargetingDto(
     @SerializedName("segmentation")
     val segmentation: String?,
     @SerializedName("segment")
-    val segment: String?
+    val segment: String?,
 )
 
 internal sealed class PayloadDto {

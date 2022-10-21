@@ -3,14 +3,15 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.Payload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
@@ -35,6 +36,10 @@ internal class InAppInteractor {
             }
     }
 
+    private fun saveShownInApp(id: String) {
+        inAppRepositoryImpl.saveShownInApp(id)
+    }
+
     private suspend fun checkSegmentation(
         context: Context,
         configuration: MindboxConfiguration,
@@ -47,14 +52,36 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
-                            if (inApp.targeting == null || customerSegmentationInAppResponse.segment.ids.externalId == inApp.targeting.segment) {
+                            if ((inApp.targeting == null || validateSegmentation(inApp,
+                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
+                                    inApp))
+                            ) {
+                                saveShownInApp(inApp.id)
                                 continuation.resume(inApp.form.variants.first())
+                                return@apply
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun validateInAppNotShown(inApp: InApp): Boolean {
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
+    }
+
+    private fun validateSegmentation(
+        inApp: InApp,
+        customerSegmentationInApp: CustomerSegmentationInApp,
+    ): Boolean {
+        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
+    }
+
+    private fun validateInAppVersion(inApp: InApp): Boolean {
+        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true))
     }
 
 
