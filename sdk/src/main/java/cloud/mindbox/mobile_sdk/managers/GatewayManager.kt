@@ -28,16 +28,20 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
-    private const val IN_APP_CONFIG_URL =
-        "/inapps/byendpoint/someTestMobileEndpoint.json"
+    const val CONFIG_NOT_UPDATED = 304
+    const val CONFIG_NOT_FOUND = 404
 
 
     private val gson by lazy { Gson() }
-    val eventFlow = MutableSharedFlow<EventType>()
-    private val gatewayScope by lazy { CoroutineScope(Dispatchers.Main + Job()) }
+    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
+    private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
+    }
+
+    private fun getConfigUrl(configuration: MindboxConfiguration): String {
+        return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
     }
 
     private fun buildEventUrl(
@@ -127,9 +131,6 @@ internal object GatewayManager {
             val url: String = buildEventUrl(configuration, deviceUuid, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
             val isDebug = BuildConfiguration.isDebug(context)
-            gatewayScope.launch {
-                eventFlow.emit(event.eventType)
-            }
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -139,7 +140,9 @@ internal object GatewayManager {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) },
+                errorsListener = { volleyError ->
+                    handleError(volleyError, onSuccess, onError)
+                },
                 isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
@@ -299,14 +302,16 @@ internal object GatewayManager {
     suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(StringRequest(Request.Method.GET,
-                    "https://${configuration.domain}$IN_APP_CONFIG_URL",
+                ?.addToRequestQueue(StringRequest(
+                    Request.Method.GET,
+                    getConfigUrl(configuration),
                     { response ->
                         continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)
-                    }))
+                    },
+                ))
         }
 
     }

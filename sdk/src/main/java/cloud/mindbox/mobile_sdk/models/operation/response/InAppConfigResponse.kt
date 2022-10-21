@@ -3,35 +3,44 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-data class InAppConfigResponse(
+internal data class InAppConfigResponse(
     @SerializedName("inapps")
     val inApps: List<InAppDto>?,
 )
 
-data class InAppDto(
+internal data class InAppDto(
     @SerializedName("id")
     val id: String,
+    @SerializedName("sdkVersion")
+    val sdkVersion: SdkVersion?,
     @SerializedName("targeting")
     val targeting: TargetingDto?,
     @SerializedName("form")
     val form: FormDto?,
 )
 
-data class FormDto(
+internal data class SdkVersion(
+    @SerializedName("min")
+    val minVersion: Int?,
+    @SerializedName("max")
+    val maxVersion: Int?,
+)
+
+internal data class FormDto(
     @SerializedName("variants")
     val variants: List<PayloadDto>?,
 )
 
-data class TargetingDto(
+internal data class TargetingDto(
     @SerializedName("${"$"}type")
     val type: String?,
     @SerializedName("segmentation")
     val segmentation: String?,
     @SerializedName("segment")
-    val segment: String?
+    val segment: String?,
 )
 
-sealed class PayloadDto {
+internal sealed class PayloadDto {
     class SimpleImage(
         @SerializedName("${"$"}type")
         val type: String?,

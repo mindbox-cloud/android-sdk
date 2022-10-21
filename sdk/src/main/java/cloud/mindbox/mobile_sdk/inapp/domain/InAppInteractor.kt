@@ -2,31 +2,91 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.inapp.data.InAppRepository
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.models.InApp
+import cloud.mindbox.mobile_sdk.models.InAppConfig
+import cloud.mindbox.mobile_sdk.models.Payload
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractor {
-    private val inAppRepository: InAppRepository by inject(InAppRepository::class.java)
+    private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
+    private val interactorScope = CoroutineScope(Dispatchers.IO)
 
     fun processEventAndConfig(
         context: Context,
         configuration: MindboxConfiguration,
     ): Flow<InAppType> {
-        return inAppRepository.listenInAppConfig(context, configuration).map { pair ->
-            when (val type = pair.first.form?.variants?.first()) {
-                is PayloadDto.SimpleImage -> InAppType.SimpleImage(type.imageUrl!!,
-                    type.redirectUrl!!,
-                    type.intentPayload!!)
-                else -> InAppType.NoInApp
+        return inAppRepositoryImpl.listenInAppConfig()
+            //TODO add eventProcessing
+            .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
+                when (val type = checkSegmentation(context, configuration, config)) {
+                    is Payload.SimpleImage -> InAppType.SimpleImage(type.imageUrl,
+                        type.redirectUrl,
+                        type.intentPayload)
+                }
+            }
+    }
+
+    private fun saveShownInApp(id: String) {
+        inAppRepositoryImpl.saveShownInApp(id)
+    }
+
+    private suspend fun checkSegmentation(
+        context: Context,
+        configuration: MindboxConfiguration,
+        config: InAppConfig,
+    ): Payload {
+        return suspendCoroutine { continuation ->
+            interactorScope.launch {
+                inAppRepositoryImpl.fetchSegmentations(context,
+                    configuration,
+                    config).customerSegmentations.apply {
+                    config.inApps.forEach { inApp ->
+                        forEach { customerSegmentationInAppResponse ->
+                            if ((inApp.targeting == null || validateSegmentation(inApp,
+                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
+                                    inApp))
+                            ) {
+                                saveShownInApp(inApp.id)
+                                continuation.resume(inApp.form.variants.first())
+                                return@apply
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
+    private fun validateInAppNotShown(inApp: InApp): Boolean {
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
+    }
+
+    private fun validateSegmentation(
+        inApp: InApp,
+        customerSegmentationInApp: CustomerSegmentationInApp,
+    ): Boolean {
+        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
+    }
+
+    private fun validateInAppVersion(inApp: InApp): Boolean {
+        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
+            ?: true))
+    }
+
+
     fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
-        inAppRepository.fetchInAppConfig(context, configuration)
+        inAppRepositoryImpl.fetchInAppConfig(context, configuration)
     }
 
 }
