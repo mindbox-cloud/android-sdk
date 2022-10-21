@@ -36,6 +36,10 @@ internal class InAppInteractor {
             }
     }
 
+    private fun saveShownInApp(id: String) {
+        inAppRepositoryImpl.saveShownInApp(id)
+    }
+
     private suspend fun checkSegmentation(
         context: Context,
         configuration: MindboxConfiguration,
@@ -49,8 +53,10 @@ internal class InAppInteractor {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
                             if ((inApp.targeting == null || validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse)) && validateSdkVersion(inApp)
+                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
+                                    inApp))
                             ) {
+                                saveShownInApp(inApp.id)
                                 continuation.resume(inApp.form.variants.first())
                                 return@apply
                             }
@@ -61,6 +67,10 @@ internal class InAppInteractor {
         }
     }
 
+    private fun validateInAppNotShown(inApp: InApp): Boolean {
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
+    }
+
     private fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
@@ -68,7 +78,7 @@ internal class InAppInteractor {
         return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
     }
 
-    private fun validateSdkVersion(inApp: InApp): Boolean {
+    private fun validateInAppVersion(inApp: InApp): Boolean {
         return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true))

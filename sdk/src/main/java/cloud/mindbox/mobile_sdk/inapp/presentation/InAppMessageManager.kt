@@ -19,12 +19,18 @@ internal class InAppMessageManager {
     private val inAppInteractor: InAppInteractor by inject(InAppInteractor::class.java)
 
 
+    fun registerCurrentActivity(activity: Activity) {
+        inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
+    }
+
     fun initInAppMessages(context: Context, configuration: MindboxConfiguration) {
+
         Mindbox.mindboxScope.launch {
             inAppInteractor.processEventAndConfig(context, configuration).collect { inAppMessage ->
                 withContext(Dispatchers.Main)
                 {
-                    if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not()) {
+                    if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
+                        IS_IN_APP_SHOWN = true
                         inAppMessageViewDisplayer.showInAppMessage(inAppMessage)
                     }
                 }
@@ -41,8 +47,10 @@ internal class InAppMessageManager {
         inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
     }
 
+
     companion object {
         const val CURRENT_IN_APP_VERSION = 1
+        private var IS_IN_APP_SHOWN = false
     }
 
 }

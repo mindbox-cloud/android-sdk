@@ -20,4 +20,8 @@ internal interface InAppRepository {
     fun listenInAppConfig(): Flow<InAppConfig>
 
     fun listenInAppEvents(): Flow<InAppEventType>
+
+    fun saveShownInApp(id: String)
+
+    fun getShownInApps(): HashSet<String>
 }
