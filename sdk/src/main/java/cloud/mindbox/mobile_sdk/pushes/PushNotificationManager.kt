@@ -44,17 +44,7 @@ internal object PushNotificationManager {
     internal fun isNotificationsEnabled(
         context: Context,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = true) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            if (manager?.areNotificationsEnabled() != true) {
-                return@runCatching false
-            }
-            manager.notificationChannels
-                .any { it.importance != NotificationManager.IMPORTANCE_NONE }
-        } else {
-            NotificationManagerCompat.from(context).areNotificationsEnabled()
-        }
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
