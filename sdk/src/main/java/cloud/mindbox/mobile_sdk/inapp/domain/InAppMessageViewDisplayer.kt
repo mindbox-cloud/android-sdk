@@ -8,7 +8,11 @@ interface InAppMessageViewDisplayer {
 
     fun onPauseCurrentActivity(activity: Activity)
 
-    fun showInAppMessage(inAppType: InAppType)
+    suspend fun showInAppMessage(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    )
 
     fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 }

@@ -6,10 +6,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
@@ -44,6 +46,18 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     override fun getShownInApps(): HashSet<String> {
         return shownInApps
+    }
+
+    override fun sendInAppShown(context: Context, inAppId: String) {
+        MindboxEventManager.inAppShown(context,
+            IN_APP_OPERATION_VIEW_TYPE,
+            Gson().toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+    }
+
+    override fun sendInAppClicked(context: Context, inAppId: String) {
+        MindboxEventManager.inAppClicked(context,
+            IN_APP_OPERATION_CLICK_TYPE,
+            Gson().toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
 
@@ -124,6 +138,8 @@ internal class InAppRepositoryImpl : InAppRepository {
     companion object {
         private const val TYPE_JSON_NAME = "\$type"
         private const val ERROR_TAG = "InAppRepositoryImpl"
+        private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.View"
+        private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 
         /**
          * Типы картинок

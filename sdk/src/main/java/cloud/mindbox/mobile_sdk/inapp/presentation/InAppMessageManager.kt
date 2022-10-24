@@ -31,12 +31,26 @@ internal class InAppMessageManager {
                 {
                     if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
                         IS_IN_APP_SHOWN = true
-                        inAppMessageViewDisplayer.showInAppMessage(inAppMessage)
+                        inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
+                            onInAppClick = {
+                                sendInAppClicked(context, inAppMessage.inAppId)
+                            },
+                            onInAppShown = {
+                                sendInAppShown(context, inAppMessage.inAppId)
+                            })
                     }
                 }
             }
         }
         inAppInteractor.fetchInAppConfig(context, configuration)
+    }
+
+    private fun sendInAppShown(context: Context, inAppId: String) {
+        inAppInteractor.sendInAppShown(context, inAppId)
+    }
+
+    private fun sendInAppClicked(context: Context, inAppId: String) {
+        inAppInteractor.sendInAppClicked(context, inAppId)
     }
 
     fun onPauseCurrentActivity(activity: Activity) {

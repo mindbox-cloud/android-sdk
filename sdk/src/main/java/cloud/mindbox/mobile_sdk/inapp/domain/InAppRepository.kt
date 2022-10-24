@@ -24,4 +24,8 @@ internal interface InAppRepository {
     fun saveShownInApp(id: String)
 
     fun getShownInApps(): HashSet<String>
+
+    fun sendInAppShown(context: Context, inAppId: String)
+
+    fun sendInAppClicked(context: Context, inAppId: String)
 }

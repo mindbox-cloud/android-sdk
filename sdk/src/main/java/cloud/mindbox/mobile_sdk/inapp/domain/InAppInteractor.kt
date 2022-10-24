@@ -28,10 +28,13 @@ internal class InAppInteractor {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
-                when (val type = checkSegmentation(context, configuration, config)) {
-                    is Payload.SimpleImage -> InAppType.SimpleImage(type.imageUrl,
-                        type.redirectUrl,
-                        type.intentPayload)
+                val inApp =
+                    checkSegmentation(context, configuration, config)
+                when (val type = inApp.form.variants.first()) {
+                    is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
+                        imageUrl = type.imageUrl,
+                        redirectUrl = type.redirectUrl,
+                        intentData = type.intentPayload)
                 }
             }
     }
@@ -44,7 +47,7 @@ internal class InAppInteractor {
         context: Context,
         configuration: MindboxConfiguration,
         config: InAppConfig,
-    ): Payload {
+    ): InApp {
         return suspendCoroutine { continuation ->
             interactorScope.launch {
                 inAppRepositoryImpl.fetchSegmentations(context,
@@ -57,7 +60,7 @@ internal class InAppInteractor {
                                     inApp))
                             ) {
                                 saveShownInApp(inApp.id)
-                                continuation.resume(inApp.form.variants.first())
+                                continuation.resume(inApp)
                                 return@apply
                             }
                         }
@@ -66,6 +69,15 @@ internal class InAppInteractor {
             }
         }
     }
+
+    fun sendInAppShown(context: Context, inAppId: String) {
+        inAppRepositoryImpl.sendInAppShown(context, inAppId)
+    }
+
+    fun sendInAppClicked(context: Context, inAppId: String) {
+        inAppRepositoryImpl.sendInAppClicked(context, inAppId)
+    }
+
 
     private fun validateInAppNotShown(inApp: InApp): Boolean {
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()

@@ -57,6 +57,14 @@ internal object MindboxEventManager {
         )
     }
 
+    fun inAppShown(context: Context, operationName: String, body: String) {
+        asyncOperation(context, operationName, body)
+    }
+
+    fun inAppClicked(context: Context, operationName: String, body: String) {
+        asyncOperation(context, operationName, body)
+    }
+
     fun pushClicked(
         context: Context,
         clickData: TrackClickData,

@@ -48,8 +48,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         ) as InAppConstraintLayout
     }
 
-    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
-    {
+    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
@@ -85,7 +84,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentBlur = null
     }
 
-    override fun showInAppMessage(inAppType: InAppType) {
+    override suspend fun showInAppMessage(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    ) {
         when (inAppType) {
             is InAppType.SimpleImage -> {
                 if (inAppType.imageUrl.isNotBlank()) {
@@ -111,6 +114,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             if (intent.resolveActivity(currentActivity!!.packageManager) != null || URLUtil.isValidUrl(
                                     inAppType.redirectUrl)
                             ) {
+                                onInAppClick()
                                 currentActivity?.startActivity(intent)
                             } else {
                                 MindboxLoggerImpl.e(LOG_TAG,
@@ -140,6 +144,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         isVisible = true
                                     }
                                     currentBlur?.isVisible = true
+                                    onInAppShown()
                                 }
 
                                 override fun onError(e: Exception?) {
