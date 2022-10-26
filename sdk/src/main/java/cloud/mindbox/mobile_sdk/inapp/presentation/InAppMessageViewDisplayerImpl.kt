@@ -101,6 +101,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                         currentRoot?.removeView(currentBlur)
                     }
                     currentDialog?.setOnClickListener {
+                        currentDialog?.isEnabled = false
+                        onInAppClick()
                         if (inAppType.redirectUrl.isNotBlank() && currentActivity != null) {
                             val intent = Intent(Intent.ACTION_VIEW,
                                 Uri.parse(inAppType.redirectUrl)).apply {
@@ -114,7 +116,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             if (intent.resolveActivity(currentActivity!!.packageManager) != null || URLUtil.isValidUrl(
                                     inAppType.redirectUrl)
                             ) {
-                                onInAppClick()
                                 currentActivity?.startActivity(intent)
                             } else {
                                 MindboxLoggerImpl.e(LOG_TAG,
