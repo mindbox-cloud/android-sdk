@@ -69,12 +69,6 @@ internal class InAppRepositoryImpl : InAppRepository {
                         MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
                         MindboxPreferences.inAppConfig = ""
                     }
-                    GatewayManager.CONFIG_NOT_UPDATED -> {
-                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
-                        repositoryScope.launch {
-                            MindboxPreferences.inAppConfigFlow.emit(MindboxPreferences.inAppConfig)
-                        }
-                    }
                     else -> {
                         MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
                     }
@@ -138,7 +132,7 @@ internal class InAppRepositoryImpl : InAppRepository {
     companion object {
         private const val TYPE_JSON_NAME = "\$type"
         private const val ERROR_TAG = "InAppRepositoryImpl"
-        private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.View"
+        private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
         private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 
         /**
