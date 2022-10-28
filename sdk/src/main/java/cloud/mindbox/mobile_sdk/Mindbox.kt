@@ -446,6 +446,11 @@ object Mindbox {
         }
     }
 
+    fun registerInAppCallback()
+    {
+        inAppMessageManager
+    }
+
 
     /**
      * Method to initialise push services
@@ -996,6 +1001,7 @@ object Mindbox {
             )
         }
     }
+
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
 

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.app.Activity
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 
 interface InAppMessageViewDisplayer {
 
@@ -15,4 +16,6 @@ interface InAppMessageViewDisplayer {
     )
 
     fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+
+    fun registerInAppCallback(inAppCallback: InAppCallback)
 }

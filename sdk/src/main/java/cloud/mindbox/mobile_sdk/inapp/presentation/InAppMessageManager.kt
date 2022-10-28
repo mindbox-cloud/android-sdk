@@ -18,7 +18,6 @@ internal class InAppMessageManager {
         InAppMessageViewDisplayerImpl::class.java)
     private val inAppInteractor: InAppInteractor by inject(InAppInteractor::class.java)
 
-
     fun registerCurrentActivity(activity: Activity) {
         inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
     }
@@ -43,6 +42,11 @@ internal class InAppMessageManager {
             }
         }
         inAppInteractor.fetchInAppConfig(context, configuration)
+    }
+
+    fun registerInAppCallback(inAppCallback: InAppCallback)
+    {
+        inAppMessageViewDisplayer
     }
 
     private fun sendInAppShown(context: Context, inAppId: String) {
