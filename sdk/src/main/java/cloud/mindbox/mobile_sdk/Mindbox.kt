@@ -10,6 +10,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.inapp.di.appModule
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -446,9 +447,9 @@ object Mindbox {
         }
     }
 
-    fun registerInAppCallback()
+    fun registerInAppCallback(inAppCallback: InAppCallback)
     {
-        inAppMessageManager
+        inAppMessageManager.registerInAppCallback(inAppCallback)
     }
 
 
