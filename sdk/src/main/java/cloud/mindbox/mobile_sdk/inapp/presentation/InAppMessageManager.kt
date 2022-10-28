@@ -30,6 +30,7 @@ internal class InAppMessageManager {
                 {
                     if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
                         IS_IN_APP_SHOWN = true
+                        inAppInteractor.saveShownInApp(inAppMessage.inAppId)
                         inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
                             onInAppClick = {
                                 sendInAppClicked(context, inAppMessage.inAppId)
@@ -44,9 +45,8 @@ internal class InAppMessageManager {
         inAppInteractor.fetchInAppConfig(context, configuration)
     }
 
-    fun registerInAppCallback(inAppCallback: InAppCallback)
-    {
-        inAppMessageViewDisplayer
+    fun registerInAppCallback(inAppCallback: InAppCallback) {
+        inAppMessageViewDisplayer.registerInAppCallback(inAppCallback)
     }
 
     private fun sendInAppShown(context: Context, inAppId: String) {

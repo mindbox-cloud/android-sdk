@@ -39,7 +39,7 @@ internal class InAppInteractor {
             }
     }
 
-    private fun saveShownInApp(id: String) {
+    fun saveShownInApp(id: String) {
         inAppRepositoryImpl.saveShownInApp(id)
     }
 
@@ -59,7 +59,6 @@ internal class InAppInteractor {
                                     customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
                                     inApp))
                             ) {
-                                saveShownInApp(inApp.id)
                                 continuation.resume(inApp)
                                 return@apply
                             }
