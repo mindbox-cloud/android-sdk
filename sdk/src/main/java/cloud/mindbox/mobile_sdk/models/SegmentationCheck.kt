@@ -11,22 +11,22 @@ internal data class SegmentationCheckInApp(
 
 internal data class CustomerSegmentationInApp(
     @SerializedName("segmentation")
-    val segmentation: SegmentationInApp,
+    val segmentation: SegmentationInApp?,
     @SerializedName("segment")
-    val segment: SegmentInApp,
+    val segment: SegmentInApp?,
 )
 
 internal data class IdsInApp(
     @SerializedName("externalId")
-    val externalId: String,
+    val externalId: String?,
 )
 
 internal data class SegmentationInApp(
     @SerializedName("ids")
-    val ids: IdsInApp,
+    val ids: IdsInApp?,
 )
 
 internal data class SegmentInApp(
     @SerializedName("ids")
-    val ids: IdsInApp,
+    val ids: IdsInApp?,
 )

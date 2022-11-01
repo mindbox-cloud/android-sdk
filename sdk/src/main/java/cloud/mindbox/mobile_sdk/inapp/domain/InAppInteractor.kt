@@ -55,7 +55,7 @@ internal class InAppInteractor {
                     config).customerSegmentations.apply {
                     config.inApps.forEach { inApp ->
                         forEach { customerSegmentationInAppResponse ->
-                            if ((inApp.targeting == null || validateSegmentation(inApp,
+                            if ((validateSegmentation(inApp,
                                     customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
                                     inApp))
                             ) {
@@ -86,7 +86,26 @@ internal class InAppInteractor {
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
-        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
+        return when {
+            (inApp.targeting == null) -> {
+                false
+            }
+            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
+                false
+            }
+            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
+                false
+            }
+            (inApp.targeting.segmentation == null && inApp.targeting.segment == null) -> {
+                true
+            }
+            (customerSegmentationInApp.segment == null) -> {
+                false
+            }
+            else -> {
+                inApp.targeting.segment == customerSegmentationInApp.segment.ids?.externalId
+            }
+        }
     }
 
     private fun validateInAppVersion(inApp: InApp): Boolean {
