@@ -43,7 +43,6 @@ internal class InAppInteractor {
         config: InAppConfig,
         segmentationCheckInApp: SegmentationCheckInApp,
     ): InApp {
-
         return suspendCoroutine { continuation ->
             config.inApps.forEach { inApp ->
                 segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
