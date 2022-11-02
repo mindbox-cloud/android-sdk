@@ -38,8 +38,8 @@ internal class InAppMessageMapper {
     private fun mapTargetingDtoToTargeting(targetingDto: TargetingDto?): Targeting? {
         return if (targetingDto != null) Targeting(
             type = targetingDto.type ?: "",
-            segmentation = targetingDto.segmentation ?: "",
-            segment = targetingDto.segment ?: ""
+            segmentation = targetingDto.segmentation,
+            segment = targetingDto.segment
         ) else null
     }
 
@@ -50,11 +50,10 @@ internal class InAppMessageMapper {
                 CustomerSegmentationInApp(
                     segmentation = SegmentationInApp(
                         IdsInApp(customerSegmentationInAppResponse.segmentation?.ids?.externalId
-                            ?: "")
+                        )
                     ),
                     segment = SegmentInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId
-                            ?: "")
+                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
                     )
                 )
             } ?: emptyList()
