@@ -421,7 +421,7 @@ object Mindbox {
                             inAppMessageManager.onPauseCurrentActivity(pausedActivity)
                         },
                         onActivityResumed = { resumedActivity ->
-                            //TODO не забыть передавать контроль за затемнением
+                            //TODO implement control for blur
                             inAppMessageManager.onResumeCurrentActivity(resumedActivity,
                                 true)
                         },
