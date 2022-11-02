@@ -36,7 +36,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             ).apply {
-                setBackgroundColor(ContextCompat.getColor(activity, android.R.color.transparent))
+                setBackgroundColor(ContextCompat.getColor(activity,
+                    android.R.color.transparent))
             }
         }
         currentActivity = activity
@@ -55,7 +56,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             ).apply {
-                setBackgroundColor(ContextCompat.getColor(activity, android.R.color.transparent))
+                setBackgroundColor(ContextCompat.getColor(activity,
+                    android.R.color.transparent))
             }
         }
         currentActivity = activity
@@ -161,7 +163,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     companion object {
         var isInAppMessageActive = false
         private const val LOG_TAG = "InAppMessageViewDisplayerImpl"
-        private const val EXTRA_NAME = "INTENT_DATA"
     }
 }
 

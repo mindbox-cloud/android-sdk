@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
-    fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
+    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
 
     suspend fun fetchSegmentations(
         context: Context,

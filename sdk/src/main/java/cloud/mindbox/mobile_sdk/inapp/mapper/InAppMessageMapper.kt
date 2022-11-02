@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
@@ -58,5 +61,12 @@ internal class InAppMessageMapper {
                 )
             } ?: emptyList()
         )
+    }
+
+    fun mapInAppDtoToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
+        return SegmentationCheckRequest(
+            config.inApps.map { inAppDto ->
+                SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
+            })
     }
 }

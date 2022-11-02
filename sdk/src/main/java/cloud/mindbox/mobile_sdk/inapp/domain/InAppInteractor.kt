@@ -4,22 +4,15 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
-import cloud.mindbox.mobile_sdk.models.InApp
-import cloud.mindbox.mobile_sdk.models.InAppConfig
-import cloud.mindbox.mobile_sdk.models.Payload
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import cloud.mindbox.mobile_sdk.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractor {
     private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
-    private val interactorScope = CoroutineScope(Dispatchers.IO)
 
     fun processEventAndConfig(
         context: Context,
@@ -29,7 +22,9 @@ internal class InAppInteractor {
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
                 val inApp =
-                    checkSegmentation(context, configuration, config)
+                    checkSegmentation(config, inAppRepositoryImpl.fetchSegmentations(context,
+                        configuration,
+                        config))
                 when (val type = inApp.form.variants.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
@@ -43,26 +38,21 @@ internal class InAppInteractor {
         inAppRepositoryImpl.saveShownInApp(id)
     }
 
+
     private suspend fun checkSegmentation(
-        context: Context,
-        configuration: MindboxConfiguration,
         config: InAppConfig,
+        segmentationCheckInApp: SegmentationCheckInApp,
     ): InApp {
+
         return suspendCoroutine { continuation ->
-            interactorScope.launch {
-                inAppRepositoryImpl.fetchSegmentations(context,
-                    configuration,
-                    config).customerSegmentations.apply {
-                    config.inApps.forEach { inApp ->
-                        forEach { customerSegmentationInAppResponse ->
-                            if ((validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
-                                    inApp))
-                            ) {
-                                continuation.resume(inApp)
-                                return@apply
-                            }
-                        }
+            config.inApps.forEach { inApp ->
+                segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
+                    if ((validateSegmentation(inApp,
+                            customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
+                            inApp))
+                    ) {
+                        continuation.resume(inApp)
+                        return@suspendCoroutine
                     }
                 }
             }
@@ -115,7 +105,7 @@ internal class InAppInteractor {
     }
 
 
-    fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
+    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(context, configuration)
     }
 

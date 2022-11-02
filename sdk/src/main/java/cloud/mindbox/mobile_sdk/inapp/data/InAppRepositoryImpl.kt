@@ -4,45 +4,38 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInApp
-import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
-import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
-import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
-import com.android.volley.VolleyError
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.java.KoinJavaComponent.inject
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 internal class InAppRepositoryImpl : InAppRepository {
 
-    private val repositoryScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
+    private val gson: Gson by inject(Gson::class.java)
 
-
-    private val shownInApps: HashSet<String> = if (MindboxPreferences.shownInAppIds.isBlank()) {
-        HashSet()
-    } else {
-        Gson().fromJson(MindboxPreferences.shownInAppIds,
-            object : TypeToken<HashSet<String>>() {}.type)
+    private val shownInApps: HashSet<String> = LoggingExceptionHandler.runCatching(HashSet()) {
+        if (MindboxPreferences.shownInAppIds.isBlank()) {
+            HashSet()
+        } else {
+            Gson().fromJson(MindboxPreferences.shownInAppIds,
+                object : TypeToken<HashSet<String>>() {}.type)
+        }
     }
+
 
     override fun getShownInApps(): HashSet<String> {
         return shownInApps
@@ -51,37 +44,20 @@ internal class InAppRepositoryImpl : InAppRepository {
     override fun sendInAppShown(context: Context, inAppId: String) {
         MindboxEventManager.inAppShown(context,
             IN_APP_OPERATION_VIEW_TYPE,
-            Gson().toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
     override fun sendInAppClicked(context: Context, inAppId: String) {
         MindboxEventManager.inAppClicked(context,
             IN_APP_OPERATION_CLICK_TYPE,
-            Gson().toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
 
-    override fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
-        repositoryScope.launch(CoroutineExceptionHandler { _, error ->
-            if (error is VolleyError) {
-                when (error.networkResponse?.statusCode) {
-                    GatewayManager.CONFIG_NOT_FOUND -> {
-                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
-                        MindboxPreferences.inAppConfig = ""
-                    }
-                    else -> {
-                        MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
-                    }
-                }
-            } else {
-                MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
-            }
-        }) {
-            with(GatewayManager.fetchInAppConfig(context, configuration))
-            {
-                MindboxPreferences.inAppConfig = this
-            }
-        }
+    override suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
+        MindboxPreferences.inAppConfig =
+            GatewayManager.fetchInAppConfig(context,
+                configuration)
     }
 
     override suspend fun fetchSegmentations(
@@ -89,29 +65,19 @@ internal class InAppRepositoryImpl : InAppRepository {
         configuration: MindboxConfiguration,
         config: InAppConfig,
     ): SegmentationCheckInApp {
-        return suspendCoroutine { continuation ->
-            repositoryScope.launch {
-                continuation.resume(inAppMapper.mapSegmentationCheckResponseToSegmentationCheck(
-                    GatewayManager.checkSegmentation(context,
-                        configuration,
-                        GatewayManager.convertBodyToJson(
-                            Gson().toJson(SegmentationCheckRequest(
-                                config.inApps.map { inAppDto ->
-                                    SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
-                                }),
-                                SegmentationCheckRequest::class.java))!!)))
-            }
-        }
+        return inAppMapper.mapSegmentationCheckResponseToSegmentationCheck(
+            GatewayManager.checkSegmentation(context,
+                configuration, inAppMapper.mapInAppDtoToSegmentationCheckRequest(config)))
     }
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
-        return GatewayManager.eventFlow
+        return MindboxEventManager.eventFlow
     }
 
     override fun saveShownInApp(id: String) {
         shownInApps.add(id)
         MindboxPreferences.shownInAppIds =
-            Gson().toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
+            gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
     }
 
     override fun listenInAppConfig(): Flow<InAppConfig> {
@@ -131,7 +97,6 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     companion object {
         private const val TYPE_JSON_NAME = "\$type"
-        private const val ERROR_TAG = "InAppRepositoryImpl"
         private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
         private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 

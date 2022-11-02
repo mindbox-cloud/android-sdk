@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
@@ -21,6 +22,9 @@ internal object MindboxEventManager {
     private const val NULL_JSON = "null"
 
     private val gson = Gson()
+
+    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
+
 
     private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
@@ -105,7 +109,7 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
         Mindbox.mindboxScope.launch(poolDispatcher) {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
+            eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
@@ -185,7 +189,7 @@ internal object MindboxEventManager {
     ): Event {
         val eventType = EventType.SyncOperation(name)
         Mindbox.mindboxScope.launch {
-            GatewayManager.eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
+            eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
         }
         return Event(eventType = eventType, body = bodyJson)
     }

@@ -29,10 +29,10 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
-import org.koin.core.context.startKoin
-import org.koin.java.KoinJavaComponent.inject
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.koin.core.context.startKoin
+import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -441,7 +441,7 @@ object Mindbox {
                 applicationLifecycle.addObserver(lifecycleManager)
                 inAppMessageManager.initInAppMessages(context, configuration)
                 mindboxScope.launch {
-                    GatewayManager.eventFlow.emit(MindboxEventManager.appStarted())
+                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                 }
             }
         }
@@ -455,8 +455,7 @@ object Mindbox {
      *  @param inAppCallback used to provide required callback implementation
      **/
 
-    fun registerInAppCallback(inAppCallback: InAppCallback)
-    {
+    fun registerInAppCallback(inAppCallback: InAppCallback) {
         inAppMessageManager.registerInAppCallback(inAppCallback)
     }
 
