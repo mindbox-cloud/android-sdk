@@ -447,6 +447,14 @@ object Mindbox {
         }
     }
 
+    /**
+     * Method to register callback for InApp Message
+     *
+     *  Call this method after you call [Mindbox.init]
+     *
+     *  @param inAppCallback used to provide required callback implementation
+     **/
+
     fun registerInAppCallback(inAppCallback: InAppCallback)
     {
         inAppMessageManager.registerInAppCallback(inAppCallback)

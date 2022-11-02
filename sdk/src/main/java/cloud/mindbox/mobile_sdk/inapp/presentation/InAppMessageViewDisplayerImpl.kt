@@ -64,6 +64,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         ) as InAppConstraintLayout
     }
 
+
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         this.inAppCallback = inAppCallback
     }
@@ -98,7 +99,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentDialog?.requestFocus()
 
                     currentDialog?.setDismissListener {
-                        inAppCallback?.onInAppClosed(inAppType.inAppId)
+                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
                         currentRoot?.removeView(currentDialog)
                         currentRoot?.removeView(currentBlur)
                     }
@@ -114,7 +115,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                         }
                     }
                     currentBlur?.setOnClickListener {
-                        inAppCallback?.onInAppClosed(inAppType.inAppId)
+                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
                         currentRoot?.removeView(currentDialog)
                         currentRoot?.removeView(currentBlur)
                     }
@@ -130,7 +131,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                 override fun onSuccess() {
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
-                                            inAppCallback?.onInAppClosed(inAppType.inAppId)
+                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
                                         }

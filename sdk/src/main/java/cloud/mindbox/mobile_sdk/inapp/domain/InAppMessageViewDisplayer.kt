@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 
-interface InAppMessageViewDisplayer {
+internal interface InAppMessageViewDisplayer {
 
     fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 
