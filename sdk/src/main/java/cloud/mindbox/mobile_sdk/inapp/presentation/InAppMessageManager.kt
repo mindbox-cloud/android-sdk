@@ -62,7 +62,9 @@ internal class InAppMessageManager {
                         }
                     }
                 } else {
-                    MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
+                    LoggingExceptionHandler.runCatching {
+
+                    }
                 }
             }) {
                 inAppInteractor.fetchInAppConfig(context, configuration)
