@@ -8,6 +8,10 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.mobile_sdk.inapp.di.appModule
+import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -27,6 +31,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.koin.core.context.startKoin
+import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -78,6 +84,8 @@ object Mindbox {
     private lateinit var lifecycleManager: LifecycleManager
 
     internal var pushServiceHandler: PushServiceHandler? = null
+
+    private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
 
     private val mutex = Mutex()
 
@@ -346,7 +354,9 @@ object Mindbox {
     ) {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
-
+            startKoin {
+                modules(appModule, dataModule)
+            }
             initScope.launch {
                 val checkResult = checkConfig(configuration)
 
@@ -369,7 +379,6 @@ object Mindbox {
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }
-
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
                 val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
@@ -391,6 +400,10 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
+                    if (activity != null) {
+                        inAppMessageManager.registerCurrentActivity(activity)
+                    }
+
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
@@ -403,6 +416,14 @@ object Mindbox {
                                     updateAppInfo(context)
                                 }
                             }
+                        },
+                        onActivityPaused = { pausedActivity ->
+                            inAppMessageManager.onPauseCurrentActivity(pausedActivity)
+                        },
+                        onActivityResumed = { resumedActivity ->
+                            //TODO implement control for blur
+                            inAppMessageManager.onResumeCurrentActivity(resumedActivity,
+                                true)
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
@@ -418,9 +439,26 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
+                inAppMessageManager.initInAppMessages(context, configuration)
+                mindboxScope.launch {
+                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                }
             }
         }
     }
+
+    /**
+     * Method to register callback for InApp Message
+     *
+     *  Call this method after you call [Mindbox.init]
+     *
+     *  @param inAppCallback used to provide required callback implementation
+     **/
+
+    fun registerInAppCallback(inAppCallback: InAppCallback) {
+        inAppMessageManager.registerInAppCallback(inAppCallback)
+    }
+
 
     /**
      * Method to initialise push services
@@ -971,6 +1009,7 @@ object Mindbox {
             )
         }
     }
+
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
 

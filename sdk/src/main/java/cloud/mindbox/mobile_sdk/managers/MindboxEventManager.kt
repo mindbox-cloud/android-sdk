@@ -9,7 +9,11 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
@@ -18,6 +22,9 @@ internal object MindboxEventManager {
     private const val NULL_JSON = "null"
 
     private val gson = Gson()
+
+    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
+
 
     private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
@@ -44,13 +51,23 @@ internal object MindboxEventManager {
         )
     }
 
-    fun pushDelivered(context: Context, uniqKey: String) = asyncOperation(
-        context,
-        Event(
-            eventType = EventType.PushDelivered,
-            additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
-        ),
-    )
+    fun pushDelivered(context: Context, uniqKey: String) {
+        asyncOperation(
+            context,
+            Event(
+                eventType = EventType.PushDelivered,
+                additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
+            ),
+        )
+    }
+
+    fun inAppShown(context: Context, operationName: String, body: String) {
+        asyncOperation(context, operationName, body)
+    }
+
+    fun inAppClicked(context: Context, operationName: String, body: String) {
+        asyncOperation(context, operationName, body)
+    }
 
     fun pushClicked(
         context: Context,
@@ -72,13 +89,19 @@ internal object MindboxEventManager {
         )
     }
 
-    fun asyncOperation(context: Context, name: String, body: String) = asyncOperation(
-        context,
-        Event(
-            eventType = EventType.AsyncOperation(name),
-            body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
-        ),
-    )
+    fun asyncOperation(context: Context, name: String, body: String) =
+        asyncOperation(
+            context,
+            Event(
+                eventType = EventType.AsyncOperation(name),
+                body = if (body.isNotBlank() && body != NULL_JSON) body else EMPTY_JSON_OBJECT,
+            ),
+        )
+
+    fun appStarted(): InAppEventType.AppStartup {
+        return InAppEventType.AppStartup
+    }
+
 
     private fun asyncOperation(
         context: Context,
@@ -86,6 +109,7 @@ internal object MindboxEventManager {
     ) = LoggingExceptionHandler.runCatching {
         runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
         Mindbox.mindboxScope.launch(poolDispatcher) {
+            eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
@@ -124,7 +148,6 @@ internal object MindboxEventManager {
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
-
         GatewayManager.sendEvent(
             context = context,
             configuration = configuration,
@@ -163,7 +186,13 @@ internal object MindboxEventManager {
     private fun createSyncEvent(
         name: String,
         bodyJson: String,
-    ) = Event(eventType = EventType.SyncOperation(name), body = bodyJson)
+    ): Event {
+        val eventType = EventType.SyncOperation(name)
+        Mindbox.mindboxScope.launch {
+            eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
+        }
+        return Event(eventType = eventType, body = bodyJson)
+    }
 
     private fun checkConfiguration(onError: (MindboxError) -> Unit): Configuration? {
         val configuration = DbManager.getConfigurations()

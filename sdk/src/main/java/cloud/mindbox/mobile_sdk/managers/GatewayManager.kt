@@ -1,29 +1,43 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
 import com.android.volley.VolleyError
+import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
-
     private val gson by lazy { Gson() }
-    private val gatewayScope by lazy { CoroutineScope(Dispatchers.Main + Job()) }
+    private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
+
+    private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
+        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
+    }
+
+    private fun getConfigUrl(configuration: MindboxConfiguration): String {
+        return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
+    }
 
     private fun buildEventUrl(
         configuration: Configuration,
@@ -41,7 +55,8 @@ internal object GatewayManager {
             is EventType.AppInstalledWithoutCustomer,
             is EventType.AppInfoUpdated,
             is EventType.PushClicked,
-            is EventType.AsyncOperation -> {
+            is EventType.AsyncOperation,
+            -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
@@ -120,7 +135,6 @@ internal object GatewayManager {
             val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
             val isDebug = BuildConfiguration.isDebug(context)
-
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -130,7 +144,9 @@ internal object GatewayManager {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) },
+                errorsListener = { volleyError ->
+                    handleError(volleyError, onSuccess, onError)
+                },
                 isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
@@ -151,13 +167,14 @@ internal object GatewayManager {
         is EventType.PushClicked,
         is EventType.TrackVisit,
         is EventType.AsyncOperation,
-        is EventType.SyncOperation -> Request.Method.POST
+        is EventType.SyncOperation,
+        -> Request.Method.POST
         is EventType.PushDelivered -> Request.Method.GET
     }
 
     private fun getTimeOffset(
         timeMls: Long,
-        shouldCountOffset: Boolean
+        shouldCountOffset: Boolean,
     ): String = if (shouldCountOffset) {
         (System.currentTimeMillis() - timeMls).toString()
     } else "0"
@@ -201,7 +218,8 @@ internal object GatewayManager {
             when (val status = errorBody?.status) {
                 null -> onError.invoke(MindboxError.UnknownServer())
                 MindboxResponse.STATUS_SUCCESS,
-                MindboxResponse.STATUS_TRANSACTION_ALREADY_PROCESSED -> {
+                MindboxResponse.STATUS_TRANSACTION_ALREADY_PROCESSED,
+                -> {
                     onSuccess.invoke(String(errorData))
                 }
                 MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
@@ -263,5 +281,49 @@ internal object GatewayManager {
     private fun isAsyncSent(statusCode: Int?) = statusCode?.let { code ->
         code < 300 || code in 400..499
     } ?: false
+
+    suspend fun checkSegmentation(
+        context: Context,
+        configuration: MindboxConfiguration,
+        segmentationCheckRequest: SegmentationCheckRequest,
+    ): SegmentationCheckResponse {
+        return suspendCoroutine { continuation ->
+            MindboxServiceGenerator.getInstance(context)
+                ?.addToRequestQueue(MindboxRequest(Request.Method.POST,
+                    getSegmentationUrl(configuration),
+                    DbManager.getConfigurations()!!,
+                    convertBodyToJson(
+                        gson.toJson(segmentationCheckRequest,
+                            SegmentationCheckRequest::class.java))!!,
+                    { response ->
+                        gatewayScope.launch {
+                            continuation.resume(gson.fromJson(response.toString(),
+                                SegmentationCheckResponse::class.java))
+                        }
+                    },
+                    { error ->
+                        continuation.resumeWithException(error)
+                    }, true))
+        }
+
+    }
+
+    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration): String {
+        return suspendCoroutine { continuation ->
+            MindboxServiceGenerator.getInstance(context)
+                ?.addToRequestQueue(StringRequest(
+                    Request.Method.GET,
+                    getConfigUrl(configuration),
+                    { response ->
+                        continuation.resume(response)
+                    },
+                    { error ->
+                        continuation.resumeWithException(error)
+                    },
+                ))
+        }
+
+    }
+
 
 }
