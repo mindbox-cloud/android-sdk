@@ -349,13 +349,14 @@ object Mindbox {
 
             initScope.launch {
                 val checkResult = checkConfig(configuration)
+                val validatedConfiguration = validateConfiguration(configuration)
+                DbManager.saveConfigurations(Configuration(configuration))
 
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
-                    softReinitialization(context, checkResult, configuration)
+                    softReinitialization(context)
                 }
 
                 if (checkResult == ConfigUpdate.UPDATED) {
-                    val validatedConfiguration = validateConfiguration(configuration)
                     firstInitialization(context, validatedConfiguration)
 
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
@@ -794,7 +795,7 @@ object Mindbox {
         val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
 
-        DbManager.saveConfigurations(Configuration(configuration))
+
 
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
@@ -888,19 +889,11 @@ object Mindbox {
     }
 
     private fun softReinitialization(
-        context: Context,
-        checkResult: ConfigUpdate,
-        configuration: MindboxConfiguration,
+        context: Context
     ) {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()
         BackgroundWorkManager.cancelAllWork(context)
-
-        if (checkResult == ConfigUpdate.UPDATED_SCC) {
-            val validatedConfiguration = validateConfiguration(configuration)
-            DbManager.saveConfigurations(Configuration(validatedConfiguration))
-        }
-
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()
     }
