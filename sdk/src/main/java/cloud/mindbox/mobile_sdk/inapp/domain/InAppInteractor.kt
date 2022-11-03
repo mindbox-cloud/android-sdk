@@ -4,22 +4,15 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
-import cloud.mindbox.mobile_sdk.models.InApp
-import cloud.mindbox.mobile_sdk.models.InAppConfig
-import cloud.mindbox.mobile_sdk.models.Payload
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import cloud.mindbox.mobile_sdk.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractor {
     private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
-    private val interactorScope = CoroutineScope(Dispatchers.IO)
 
     fun processEventAndConfig(
         context: Context,
@@ -28,44 +21,51 @@ internal class InAppInteractor {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
-                when (val type = checkSegmentation(context, configuration, config)) {
-                    is Payload.SimpleImage -> InAppType.SimpleImage(type.imageUrl,
-                        type.redirectUrl,
-                        type.intentPayload)
+                val inApp =
+                    checkSegmentation(config, inAppRepositoryImpl.fetchSegmentations(context,
+                        configuration,
+                        config))
+                when (val type = inApp.form.variants.first()) {
+                    is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
+                        imageUrl = type.imageUrl,
+                        redirectUrl = type.redirectUrl,
+                        intentData = type.intentPayload)
                 }
             }
     }
 
-    private fun saveShownInApp(id: String) {
+    fun saveShownInApp(id: String) {
         inAppRepositoryImpl.saveShownInApp(id)
     }
 
+
     private suspend fun checkSegmentation(
-        context: Context,
-        configuration: MindboxConfiguration,
         config: InAppConfig,
-    ): Payload {
+        segmentationCheckInApp: SegmentationCheckInApp,
+    ): InApp {
         return suspendCoroutine { continuation ->
-            interactorScope.launch {
-                inAppRepositoryImpl.fetchSegmentations(context,
-                    configuration,
-                    config).customerSegmentations.apply {
-                    config.inApps.forEach { inApp ->
-                        forEach { customerSegmentationInAppResponse ->
-                            if ((inApp.targeting == null || validateSegmentation(inApp,
-                                    customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
-                                    inApp))
-                            ) {
-                                saveShownInApp(inApp.id)
-                                continuation.resume(inApp.form.variants.first())
-                                return@apply
-                            }
-                        }
+            config.inApps.forEach { inApp ->
+                segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
+                    if ((validateSegmentation(inApp,
+                            customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
+                            inApp))
+                    ) {
+                        continuation.resume(inApp)
+                        return@suspendCoroutine
                     }
                 }
             }
         }
     }
+
+    fun sendInAppShown(context: Context, inAppId: String) {
+        inAppRepositoryImpl.sendInAppShown(context, inAppId)
+    }
+
+    fun sendInAppClicked(context: Context, inAppId: String) {
+        inAppRepositoryImpl.sendInAppClicked(context, inAppId)
+    }
+
 
     private fun validateInAppNotShown(inApp: InApp): Boolean {
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
@@ -75,7 +75,26 @@ internal class InAppInteractor {
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
-        return customerSegmentationInApp.segment.ids.externalId == inApp.targeting?.segment
+        return when {
+            (inApp.targeting == null) -> {
+                false
+            }
+            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
+                false
+            }
+            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
+                false
+            }
+            (inApp.targeting.segmentation == null && inApp.targeting.segment == null) -> {
+                true
+            }
+            (customerSegmentationInApp.segment == null) -> {
+                false
+            }
+            else -> {
+                inApp.targeting.segment == customerSegmentationInApp.segment.ids?.externalId
+            }
+        }
     }
 
     private fun validateInAppVersion(inApp: InApp): Boolean {
@@ -85,7 +104,7 @@ internal class InAppInteractor {
     }
 
 
-    fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
+    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(context, configuration)
     }
 

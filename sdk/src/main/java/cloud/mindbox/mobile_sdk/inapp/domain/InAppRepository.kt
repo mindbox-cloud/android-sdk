@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
-    fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
+    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
 
     suspend fun fetchSegmentations(
         context: Context,
@@ -24,4 +24,8 @@ internal interface InAppRepository {
     fun saveShownInApp(id: String)
 
     fun getShownInApps(): HashSet<String>
+
+    fun sendInAppShown(context: Context, inAppId: String)
+
+    fun sendInAppClicked(context: Context, inAppId: String)
 }

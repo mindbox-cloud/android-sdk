@@ -18,8 +18,8 @@ internal data class Form(
 
 internal data class Targeting(
     val type: String,
-    val segmentation: String,
-    val segment: String,
+    val segmentation: String?,
+    val segment: String?,
 )
 
 internal sealed class Payload {

@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
@@ -38,8 +41,8 @@ internal class InAppMessageMapper {
     private fun mapTargetingDtoToTargeting(targetingDto: TargetingDto?): Targeting? {
         return if (targetingDto != null) Targeting(
             type = targetingDto.type ?: "",
-            segmentation = targetingDto.segmentation ?: "",
-            segment = targetingDto.segment ?: ""
+            segmentation = targetingDto.segmentation,
+            segment = targetingDto.segment
         ) else null
     }
 
@@ -50,14 +53,20 @@ internal class InAppMessageMapper {
                 CustomerSegmentationInApp(
                     segmentation = SegmentationInApp(
                         IdsInApp(customerSegmentationInAppResponse.segmentation?.ids?.externalId
-                            ?: "")
+                        )
                     ),
                     segment = SegmentInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId
-                            ?: "")
+                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
                     )
                 )
             } ?: emptyList()
         )
+    }
+
+    fun mapInAppDtoToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
+        return SegmentationCheckRequest(
+            config.inApps.map { inAppDto ->
+                SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
+            })
     }
 }

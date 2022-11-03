@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -17,7 +18,6 @@ import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
 import org.json.JSONException
 import org.json.JSONObject
 import kotlin.coroutines.resume
@@ -28,12 +28,7 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
-    const val CONFIG_NOT_UPDATED = 304
-    const val CONFIG_NOT_FOUND = 404
-
-
     private val gson by lazy { Gson() }
-    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
     private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
@@ -179,7 +174,7 @@ internal object GatewayManager {
 
     private fun getTimeOffset(
         timeMls: Long,
-        shouldCountOffset: Boolean
+        shouldCountOffset: Boolean,
     ): String = if (shouldCountOffset) {
         (System.currentTimeMillis() - timeMls).toString()
     } else "0"
@@ -268,7 +263,7 @@ internal object GatewayManager {
         }
     }
 
-    fun convertBodyToJson(body: String?): JSONObject? {
+    private fun convertBodyToJson(body: String?): JSONObject? {
         return if (body == null) {
             null
         } else try {
@@ -290,14 +285,16 @@ internal object GatewayManager {
     suspend fun checkSegmentation(
         context: Context,
         configuration: MindboxConfiguration,
-        jsonObj: JSONObject,
+        segmentationCheckRequest: SegmentationCheckRequest,
     ): SegmentationCheckResponse {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(MindboxRequest(Request.Method.POST,
                     getSegmentationUrl(configuration),
                     DbManager.getConfigurations()!!,
-                    jsonObj,
+                    convertBodyToJson(
+                        gson.toJson(segmentationCheckRequest,
+                            SegmentationCheckRequest::class.java))!!,
                     { response ->
                         gatewayScope.launch {
                             continuation.resume(gson.fromJson(response.toString(),
