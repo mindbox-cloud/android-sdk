@@ -30,7 +30,7 @@ internal class InAppInteractor {
                     filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
                 val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
                     inAppsWithoutTargeting.first()
-                } else if (inAppsWithoutTargeting.isNotEmpty()) {
+                } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
                     checkSegmentation(filteredConfig,
                         inAppRepositoryImpl.fetchSegmentations(context,
                             configuration,
@@ -85,8 +85,8 @@ internal class InAppInteractor {
         segmentationCheckInApp: SegmentationCheckInApp,
     ): InApp? {
         return suspendCoroutine { continuation ->
-            config.inApps.forEach { inApp ->
-                segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
+            config.inApps.iterator().forEach { inApp ->
+                segmentationCheckInApp.customerSegmentations.iterator().forEach { customerSegmentationInAppResponse ->
                     if (validateSegmentation(inApp, customerSegmentationInAppResponse)) {
                         continuation.resume(inApp)
                         return@suspendCoroutine
