@@ -153,7 +153,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     }
                 }
             }
-            InAppType.NoInAppType -> {}
             else -> {
                 //TODO add inapp processing
             }
