@@ -1,12 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.models.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -20,24 +20,42 @@ internal class InAppInteractor {
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
-            .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
-                val inApp =
-                    checkSegmentation(config, inAppRepositoryImpl.fetchSegmentations(context,
-                        configuration,
-                        config))
+            .combine(inAppRepositoryImpl.listenInAppEvents()
+                .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
+                val filteredConfig = prefilterConfig(config)
+                val noTargetingFilteredConfig = filterNoTargeting(filteredConfig)
+                val inApp = if (noTargetingFilteredConfig.inApps.isNotEmpty()) {
+                    checkSegmentation(filteredConfig,
+                        inAppRepositoryImpl.fetchSegmentations(context,
+                            configuration,
+                            noTargetingFilteredConfig))
+                } else if (filteredConfig.inApps.isNotEmpty()) {
+                    filteredConfig.inApps.first()
+                } else {
+                    return@combine InAppType.NoInAppType
+                }
+
                 when (val type = inApp.form.variants.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
                         intentData = type.intentPayload)
                 }
-            }
+            }.shareIn(Mindbox.mindboxScope, SharingStarted.Eagerly, replay = 3)
+    }
+
+    private fun prefilterConfig(config: InAppConfig): InAppConfig {
+        return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
+            .filter { inApp -> validateInAppNotShown(inApp) })
+    }
+
+    private fun filterNoTargeting(config: InAppConfig): InAppConfig {
+        return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
     }
 
     fun saveShownInApp(id: String) {
         inAppRepositoryImpl.saveShownInApp(id)
     }
-
 
     private suspend fun checkSegmentation(
         config: InAppConfig,
@@ -46,10 +64,7 @@ internal class InAppInteractor {
         return suspendCoroutine { continuation ->
             config.inApps.forEach { inApp ->
                 segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
-                    if ((validateSegmentation(inApp,
-                            customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
-                            inApp))
-                    ) {
+                    if (validateSegmentation(inApp, customerSegmentationInAppResponse)) {
                         continuation.resume(inApp)
                         return@suspendCoroutine
                     }
