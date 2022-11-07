@@ -25,26 +25,29 @@ internal class InAppInteractor {
             .combine(inAppRepositoryImpl.listenInAppEvents()
                 .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
                 val filteredConfig = prefilterConfig(config)
-                val noTargetingFilteredConfig = filterNoTargeting(filteredConfig)
-                val showAllInApps =
-                    filteredConfig.inApps.subtract(noTargetingFilteredConfig.inApps.toSet())
-                val inApp = if (showAllInApps.isNotEmpty()) {
-                    showAllInApps.first()
-                } else {
+                val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
+                val inAppsWithoutTargeting =
+                    filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
+                val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
+                    inAppsWithoutTargeting.first()
+                } else if (inAppsWithoutTargeting.isNotEmpty()) {
                     checkSegmentation(filteredConfig,
                         inAppRepositoryImpl.fetchSegmentations(context,
                             configuration,
-                            noTargetingFilteredConfig))
+                            filteredConfigWithTargeting))
+                } else {
+                    null
                 }
 
 
-                when (val type = inApp.form.variants.first()) {
+                when (val type = inApp?.form?.variants?.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
                         intentData = type.intentPayload)
+                    else -> null
                 }
-            }
+            }.filterNotNull()
     }
 
     private fun prefilterConfig(config: InAppConfig): InAppConfig {
@@ -69,7 +72,7 @@ internal class InAppInteractor {
         }
     }
 
-    private fun filterNoTargeting(config: InAppConfig): InAppConfig {
+    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
         return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
     }
 
@@ -80,7 +83,7 @@ internal class InAppInteractor {
     private suspend fun checkSegmentation(
         config: InAppConfig,
         segmentationCheckInApp: SegmentationCheckInApp,
-    ): InApp {
+    ): InApp? {
         return suspendCoroutine { continuation ->
             config.inApps.forEach { inApp ->
                 segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
@@ -90,6 +93,7 @@ internal class InAppInteractor {
                     }
                 }
             }
+            continuation.resume(null)
         }
     }
 
