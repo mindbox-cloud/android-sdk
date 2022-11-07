@@ -7,6 +7,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -20,11 +22,22 @@ internal class InAppInteractor {
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
             //TODO add eventProcessing
-            .combine(inAppRepositoryImpl.listenInAppEvents()) { config, event ->
-                val inApp =
-                    checkSegmentation(config, inAppRepositoryImpl.fetchSegmentations(context,
-                        configuration,
-                        config))
+            .combine(inAppRepositoryImpl.listenInAppEvents()
+                .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
+                val filteredConfig = prefilterConfig(config)
+                val noTargetingFilteredConfig = filterNoTargeting(filteredConfig)
+                val showAllInApps =
+                    filteredConfig.inApps.subtract(noTargetingFilteredConfig.inApps.toSet())
+                val inApp = if (showAllInApps.isNotEmpty()) {
+                    showAllInApps.first()
+                } else {
+                    checkSegmentation(filteredConfig,
+                        inAppRepositoryImpl.fetchSegmentations(context,
+                            configuration,
+                            noTargetingFilteredConfig))
+                }
+
+
                 when (val type = inApp.form.variants.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
@@ -34,10 +47,35 @@ internal class InAppInteractor {
             }
     }
 
+    private fun prefilterConfig(config: InAppConfig): InAppConfig {
+        return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
+            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
+    }
+
+    private fun validateInAppTargeting(inApp: InApp): Boolean {
+        return when {
+            (inApp.targeting == null) -> {
+                false
+            }
+            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
+                false
+            }
+            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
+                false
+            }
+            else -> {
+                true
+            }
+        }
+    }
+
+    private fun filterNoTargeting(config: InAppConfig): InAppConfig {
+        return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
+    }
+
     fun saveShownInApp(id: String) {
         inAppRepositoryImpl.saveShownInApp(id)
     }
-
 
     private suspend fun checkSegmentation(
         config: InAppConfig,
@@ -46,10 +84,7 @@ internal class InAppInteractor {
         return suspendCoroutine { continuation ->
             config.inApps.forEach { inApp ->
                 segmentationCheckInApp.customerSegmentations.forEach { customerSegmentationInAppResponse ->
-                    if ((validateSegmentation(inApp,
-                            customerSegmentationInAppResponse) && validateInAppVersion(inApp) && validateInAppNotShown(
-                            inApp))
-                    ) {
+                    if (validateSegmentation(inApp, customerSegmentationInAppResponse)) {
                         continuation.resume(inApp)
                         return@suspendCoroutine
                     }
@@ -75,25 +110,10 @@ internal class InAppInteractor {
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
-        return when {
-            (inApp.targeting == null) -> {
-                false
-            }
-            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
-                false
-            }
-            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
-                false
-            }
-            (inApp.targeting.segmentation == null && inApp.targeting.segment == null) -> {
-                true
-            }
-            (customerSegmentationInApp.segment == null) -> {
-                false
-            }
-            else -> {
-                inApp.targeting.segment == customerSegmentationInApp.segment.ids?.externalId
-            }
+        return if (customerSegmentationInApp.segment == null) {
+            false
+        } else {
+            inApp.targeting?.segment == customerSegmentationInApp.segment.ids?.externalId
         }
     }
 
@@ -107,5 +127,4 @@ internal class InAppInteractor {
     suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(context, configuration)
     }
-
 }

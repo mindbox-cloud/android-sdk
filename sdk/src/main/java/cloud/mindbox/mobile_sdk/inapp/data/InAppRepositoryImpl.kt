@@ -31,7 +31,7 @@ internal class InAppRepositoryImpl : InAppRepository {
         if (MindboxPreferences.shownInAppIds.isBlank()) {
             HashSet()
         } else {
-            Gson().fromJson(MindboxPreferences.shownInAppIds,
+            gson.fromJson(MindboxPreferences.shownInAppIds,
                 object : TypeToken<HashSet<String>>() {}.type)
         }
     }
