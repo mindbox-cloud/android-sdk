@@ -105,23 +105,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                         currentRoot?.removeView(currentDialog)
                         currentRoot?.removeView(currentBlur)
                     }
-                    currentDialog?.setOnClickListener {
-                        currentDialog?.isEnabled = false
-                        onInAppClick()
-                        inAppCallback?.onInAppClick(inAppType.inAppId,
-                            inAppType.redirectUrl,
-                            inAppType.intentData)
-                        if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
-                            currentRoot?.removeView(currentDialog)
-                            currentRoot?.removeView(currentBlur)
-                        }
-                    }
-                    currentBlur?.setOnClickListener {
-                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                        currentRoot?.removeView(currentDialog)
-                        currentRoot?.removeView(currentBlur)
-                    }
-
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
                         Picasso.get()
                             .load(inAppType.imageUrl)
@@ -133,6 +116,22 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                 override fun onSuccess() {
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
+                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
+                                        currentDialog?.setOnClickListener {
+                                            currentDialog?.isEnabled = false
+                                            onInAppClick()
+                                            inAppCallback?.onInAppClick(inAppType.inAppId,
+                                                inAppType.redirectUrl,
+                                                inAppType.intentData)
+                                            if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
+                                                currentRoot?.removeView(currentDialog)
+                                                currentRoot?.removeView(currentBlur)
+                                            }
+                                        }
+                                        currentBlur?.setOnClickListener {
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
