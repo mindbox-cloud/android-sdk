@@ -4,7 +4,9 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
+import com.android.volley.VolleyError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
@@ -31,14 +33,22 @@ internal class InAppInteractor {
                 val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
                     inAppsWithoutTargeting.first()
                 } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
-                    checkSegmentation(filteredConfig,
-                        inAppRepositoryImpl.fetchSegmentations(context,
-                            configuration,
-                            filteredConfigWithTargeting))
+                    runCatching {
+                        checkSegmentation(filteredConfig,
+                            inAppRepositoryImpl.fetchSegmentations(context,
+                                configuration,
+                                filteredConfigWithTargeting))
+                    }.getOrElse { throwable ->
+                        if (throwable is VolleyError) {
+                            MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
+                            null
+                        } else {
+                            throw throwable
+                        }
+                    }
                 } else {
                     null
                 }
-
 
                 when (val type = inApp?.form?.variants?.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,

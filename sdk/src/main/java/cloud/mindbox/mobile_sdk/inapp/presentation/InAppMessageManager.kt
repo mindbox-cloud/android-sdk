@@ -10,11 +10,8 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 
 internal class InAppMessageManager {
@@ -30,47 +27,46 @@ internal class InAppMessageManager {
     }
 
     fun initInAppMessages(context: Context, configuration: MindboxConfiguration) {
-        Mindbox.mindboxScope.launch(Dispatchers.IO) {
-            launch {
-                inAppInteractor.processEventAndConfig(context, configuration)
-                    .collect { inAppMessage ->
-                        withContext(Dispatchers.Main)
-                        {
-                            if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
-                                IS_IN_APP_SHOWN = true
-                                inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
-                                    onInAppClick = {
-                                        sendInAppClicked(context, inAppMessage.inAppId)
-                                    },
-                                    onInAppShown = {
-                                        inAppInteractor.saveShownInApp(inAppMessage.inAppId)
-                                        sendInAppShown(context, inAppMessage.inAppId)
-                                    })
-                            }
+        Mindbox.mindboxScope.launch {
+            inAppInteractor.processEventAndConfig(context, configuration)
+                .collect { inAppMessage ->
+                    withContext(Dispatchers.Main)
+                    {
+                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
+                            IS_IN_APP_SHOWN = true
+                            inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
+                                onInAppClick = {
+                                    sendInAppClicked(context, inAppMessage.inAppId)
+                                },
+                                onInAppShown = {
+                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+                                    sendInAppShown(context, inAppMessage.inAppId)
+                                })
                         }
-                    }
-            }
-            launch(CoroutineExceptionHandler { _, error ->
-                if (error is VolleyError) {
-                    when (error.networkResponse?.statusCode) {
-                        CONFIG_NOT_FOUND -> {
-                            MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "")
-                            MindboxPreferences.inAppConfig = ""
-                        }
-                        else -> {
-                            MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "")
-                        }
-                    }
-                } else {
-                    LoggingExceptionHandler.runCatching {
-
                     }
                 }
-            }) {
-                inAppInteractor.fetchInAppConfig(context, configuration)
-            }
-
         }
+        Mindbox.mindboxScope.launch(CoroutineExceptionHandler { _, error ->
+            if (error is VolleyError) {
+                when (error.networkResponse?.statusCode) {
+                    CONFIG_NOT_FOUND -> {
+                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "", error)
+                        MindboxPreferences.inAppConfig = ""
+                    }
+                    else -> {
+                        MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
+                        MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "", error)
+                    }
+                }
+            } else {
+                LoggingExceptionHandler.runCatching {
+
+                }
+            }
+        }) {
+            inAppInteractor.fetchInAppConfig(context, configuration)
+        }
+
     }
 
     fun registerInAppCallback(inAppCallback: InAppCallback) {
