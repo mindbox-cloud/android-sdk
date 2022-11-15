@@ -5,6 +5,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -18,7 +19,7 @@ internal class InAppMessageManager {
 
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer by inject(
         InAppMessageViewDisplayerImpl::class.java)
-    private val inAppInteractor: InAppInteractor by inject(InAppInteractor::class.java)
+    private val inAppInteractorImpl: InAppInteractor by inject(InAppInteractorImpl::class.java)
 
     fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
@@ -28,7 +29,7 @@ internal class InAppMessageManager {
 
     fun initInAppMessages(context: Context, configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch {
-            inAppInteractor.processEventAndConfig(context, configuration)
+            inAppInteractorImpl.processEventAndConfig(context, configuration)
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
@@ -39,7 +40,7 @@ internal class InAppMessageManager {
                                     sendInAppClicked(context, inAppMessage.inAppId)
                                 },
                                 onInAppShown = {
-                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+                                    inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
                                     sendInAppShown(context, inAppMessage.inAppId)
                                 })
                         }
@@ -64,7 +65,7 @@ internal class InAppMessageManager {
                 }
             }
         }) {
-            inAppInteractor.fetchInAppConfig(context, configuration)
+            inAppInteractorImpl.fetchInAppConfig(context, configuration)
         }
 
     }
@@ -76,11 +77,11 @@ internal class InAppMessageManager {
     }
 
     private fun sendInAppShown(context: Context, inAppId: String) {
-        inAppInteractor.sendInAppShown(context, inAppId)
+        inAppInteractorImpl.sendInAppShown(context, inAppId)
     }
 
     private fun sendInAppClicked(context: Context, inAppId: String) {
-        inAppInteractor.sendInAppClicked(context, inAppId)
+        inAppInteractorImpl.sendInAppClicked(context, inAppId)
     }
 
     fun onPauseCurrentActivity(activity: Activity) {

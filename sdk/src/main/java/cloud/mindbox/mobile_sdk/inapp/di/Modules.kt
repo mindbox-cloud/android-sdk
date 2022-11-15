@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
@@ -14,7 +14,7 @@ internal val appModule = module {
 }
 internal val dataModule = module {
     single { InAppRepositoryImpl() }
-    single { InAppInteractor() }
+    single { InAppInteractorImpl() }
     single { InAppMessageMapper() }
     single { Gson() }
 }
