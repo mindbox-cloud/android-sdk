@@ -2,6 +2,12 @@ package cloud.mindbox.mobile_sdk.repository
 
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import java.util.*
 
 internal object MindboxPreferences {
@@ -18,6 +24,33 @@ internal object MindboxPreferences {
     private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
     private const val KEY_UUID_DEBUG_ENABLED = "key_uuid_debug_enabled"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
+    private const val IN_APP_CONFIG = "IN_APP_CONFIG"
+    private const val SHOWN_IDS = "SHOWN_IDS"
+
+    private val prefScope = CoroutineScope(Dispatchers.Default)
+    val inAppConfigFlow: MutableSharedFlow<String> = MutableSharedFlow()
+    var inAppConfig: String
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(IN_APP_CONFIG) ?: ""
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(IN_APP_CONFIG, value)
+                prefScope.launch {
+                    inAppConfigFlow.emit(value)
+                }
+            }
+        }
+
+    var shownInAppIds: String
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(SHOWN_IDS, "") ?: ""
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(SHOWN_IDS, value)
+            }
+        }
 
     var isFirstInitialize: Boolean
         get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
@@ -80,7 +113,8 @@ internal object MindboxPreferences {
             }
         }
 
-    fun resetAppInfoUpdated() = SharedPreferencesManager.put(KEY_INFO_UPDATED_VERSION, DEFAULT_INFO_UPDATED_VERSION)
+    fun resetAppInfoUpdated() =
+        SharedPreferencesManager.put(KEY_INFO_UPDATED_VERSION, DEFAULT_INFO_UPDATED_VERSION)
 
     val infoUpdatedVersion: Int
         @Synchronized get() = LoggingExceptionHandler.runCatching(

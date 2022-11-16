@@ -15,6 +15,8 @@ interface MindboxLogger {
 
     fun w(parent: Any, message: String)
 
+    fun w(parent: Any, message: String, exception: Throwable)
+
 }
 
 internal object MindboxLoggerImpl : MindboxLogger {
@@ -59,6 +61,12 @@ internal object MindboxLoggerImpl : MindboxLogger {
     override fun w(parent: Any, message: String) {
         if (level.value <= Level.WARN.value) {
             Log.w(TAG, buildMessage(parent, message))
+        }
+    }
+
+    override fun w(parent: Any, message: String, exception: Throwable) {
+        if (level.value <= Level.WARN.value) {
+            Log.w(TAG, buildMessage(parent, message), exception)
         }
     }
 
