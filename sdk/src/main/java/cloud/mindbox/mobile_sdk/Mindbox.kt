@@ -440,7 +440,7 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
-                inAppMessageManager.initInAppMessages(context, configuration)
+                inAppMessageManager.initInAppMessages(configuration)
                 mindboxScope.launch {
                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                 }
@@ -834,7 +834,6 @@ object Mindbox {
         val instanceId = generateRandomUuid()
 
 
-
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
         val timezone = if (configuration.shouldCreateCustomer) {
@@ -927,7 +926,7 @@ object Mindbox {
     }
 
     private fun softReinitialization(
-        context: Context
+        context: Context,
     ) {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()

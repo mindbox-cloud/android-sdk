@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
-import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
@@ -11,8 +10,11 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 
 internal class InAppMessageManager {
@@ -27,9 +29,9 @@ internal class InAppMessageManager {
         }
     }
 
-    fun initInAppMessages(context: Context, configuration: MindboxConfiguration) {
+    fun initInAppMessages(configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch {
-            inAppInteractorImpl.processEventAndConfig(context, configuration)
+            inAppInteractorImpl.processEventAndConfig(configuration)
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
@@ -37,11 +39,11 @@ internal class InAppMessageManager {
                             IS_IN_APP_SHOWN = true
                             inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
                                 onInAppClick = {
-                                    sendInAppClicked(context, inAppMessage.inAppId)
+                                    sendInAppClicked(inAppMessage.inAppId)
                                 },
                                 onInAppShown = {
                                     inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
-                                    sendInAppShown(context, inAppMessage.inAppId)
+                                    sendInAppShown(inAppMessage.inAppId)
                                 })
                         }
                     }
@@ -65,9 +67,8 @@ internal class InAppMessageManager {
                 }
             }
         }) {
-            inAppInteractorImpl.fetchInAppConfig(context, configuration)
+            inAppInteractorImpl.fetchInAppConfig(configuration)
         }
-
     }
 
     fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -76,12 +77,12 @@ internal class InAppMessageManager {
         }
     }
 
-    private fun sendInAppShown(context: Context, inAppId: String) {
-        inAppInteractorImpl.sendInAppShown(context, inAppId)
+    private fun sendInAppShown(inAppId: String) {
+        inAppInteractorImpl.sendInAppShown(inAppId)
     }
 
-    private fun sendInAppClicked(context: Context, inAppId: String) {
-        inAppInteractorImpl.sendInAppClicked(context, inAppId)
+    private fun sendInAppClicked(inAppId: String) {
+        inAppInteractorImpl.sendInAppClicked(inAppId)
     }
 
     fun onPauseCurrentActivity(activity: Activity) {
@@ -99,7 +100,7 @@ internal class InAppMessageManager {
 
     companion object {
         const val CURRENT_IN_APP_VERSION = 1
-        private var IS_IN_APP_SHOWN = false
+        var IS_IN_APP_SHOWN = false
         const val CONFIG_NOT_FOUND = 404
         private const val ERROR_TAG = "InAppMessageManager"
     }

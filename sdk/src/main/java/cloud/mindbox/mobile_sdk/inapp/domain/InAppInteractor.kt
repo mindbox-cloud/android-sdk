@@ -1,21 +1,35 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.models.InApp
+import cloud.mindbox.mobile_sdk.models.InAppConfig
 import kotlinx.coroutines.flow.Flow
 
-interface InAppInteractor {
+internal interface InAppInteractor {
 
     fun processEventAndConfig(
-        context: Context,
         configuration: MindboxConfiguration,
     ): Flow<InAppType>
 
     fun saveShownInApp(id: String)
 
-    fun sendInAppShown(context: Context, inAppId: String)
+    fun sendInAppShown(inAppId: String)
 
-    fun sendInAppClicked(context: Context, inAppId: String)
+    fun sendInAppClicked(inAppId: String)
 
-    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
+    fun validateInAppVersion(inApp: InApp): Boolean
+
+    fun validateSegmentation(
+        inApp: InApp,
+        customerSegmentationInApp: CustomerSegmentationInApp,
+    ): Boolean
+
+    fun getConfigWithTargeting(config: InAppConfig): InAppConfig
+
+    fun prefilterConfig(config: InAppConfig): InAppConfig
+
+    fun validateInAppTargeting(inApp: InApp): Boolean
+
+    suspend fun fetchInAppConfig(configuration: MindboxConfiguration)
 }

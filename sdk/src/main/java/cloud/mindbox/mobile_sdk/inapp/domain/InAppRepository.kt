@@ -1,21 +1,22 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInApp
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
-    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration)
+    suspend fun fetchInAppConfig(configuration: MindboxConfiguration)
 
     suspend fun fetchSegmentations(
-        context: Context,
         configuration: MindboxConfiguration,
         config: InAppConfig,
     ): SegmentationCheckInApp
+
+    fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse
 
     fun listenInAppConfig(): Flow<InAppConfig>
 
@@ -25,7 +26,7 @@ internal interface InAppRepository {
 
     fun getShownInApps(): HashSet<String>
 
-    fun sendInAppShown(context: Context, inAppId: String)
+    fun sendInAppShown(inAppId: String)
 
-    fun sendInAppClicked(context: Context, inAppId: String)
+    fun sendInAppClicked(inAppId: String)
 }

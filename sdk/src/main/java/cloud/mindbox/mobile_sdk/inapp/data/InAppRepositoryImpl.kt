@@ -26,6 +26,7 @@ internal class InAppRepositoryImpl : InAppRepository {
 
     private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
     private val gson: Gson by inject(Gson::class.java)
+    private val context: Context by inject(Context::class.java)
 
     private val shownInApps: HashSet<String> = LoggingExceptionHandler.runCatching(HashSet()) {
         if (MindboxPreferences.shownInAppIds.isBlank()) {
@@ -41,27 +42,26 @@ internal class InAppRepositoryImpl : InAppRepository {
         return shownInApps
     }
 
-    override fun sendInAppShown(context: Context, inAppId: String) {
+    override fun sendInAppShown(inAppId: String) {
         MindboxEventManager.inAppShown(context,
             IN_APP_OPERATION_VIEW_TYPE,
             gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
-    override fun sendInAppClicked(context: Context, inAppId: String) {
+    override fun sendInAppClicked(inAppId: String) {
         MindboxEventManager.inAppClicked(context,
             IN_APP_OPERATION_CLICK_TYPE,
             gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
 
-    override suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
+    override suspend fun fetchInAppConfig(configuration: MindboxConfiguration) {
         MindboxPreferences.inAppConfig =
             GatewayManager.fetchInAppConfig(context,
                 configuration)
     }
 
     override suspend fun fetchSegmentations(
-        context: Context,
         configuration: MindboxConfiguration,
         config: InAppConfig,
     ): SegmentationCheckInApp {
@@ -83,27 +83,30 @@ internal class InAppRepositoryImpl : InAppRepository {
     override fun listenInAppConfig(): Flow<InAppConfig> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfig ->
             inAppMapper.mapInAppConfigResponseToInAppConfig(
-                GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
-                    PayloadDto::class.java,
-                    TYPE_JSON_NAME)
-                    .registerSubtype(PayloadDto.SimpleImage::class.java,
-                        SIMPLE_IMAGE_JSON_NAME))
-                    .create()
-                    .fromJson(inAppConfig,
-                        InAppConfigResponse::class.java)
-            )
+                deserializeConfigToConfigDto(inAppConfig))
         }
     }
 
+    override fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse {
+        return GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
+            PayloadDto::class.java,
+            TYPE_JSON_NAME)
+            .registerSubtype(PayloadDto.SimpleImage::class.java,
+                SIMPLE_IMAGE_JSON_NAME))
+            .create()
+            .fromJson(inAppConfig,
+                InAppConfigResponse::class.java)
+    }
+
     companion object {
-        private const val TYPE_JSON_NAME = "\$type"
+        const val TYPE_JSON_NAME = "\$type"
         private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
         private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 
         /**
          * Типы картинок
          **/
-        private const val SIMPLE_IMAGE_JSON_NAME = "simpleImage"
+        const val SIMPLE_IMAGE_JSON_NAME = "simpleImage"
     }
 
 

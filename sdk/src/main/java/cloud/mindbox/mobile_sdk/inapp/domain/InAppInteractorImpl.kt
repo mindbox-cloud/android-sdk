@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
@@ -19,7 +18,6 @@ internal class InAppInteractorImpl : InAppInteractor {
     private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
 
     override fun processEventAndConfig(
-        context: Context,
         configuration: MindboxConfiguration,
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
@@ -35,7 +33,7 @@ internal class InAppInteractorImpl : InAppInteractor {
                 } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
                     runCatching {
                         checkSegmentation(filteredConfig,
-                            inAppRepositoryImpl.fetchSegmentations(context,
+                            inAppRepositoryImpl.fetchSegmentations(
                                 configuration,
                                 filteredConfigWithTargeting))
                     }.getOrElse { throwable ->
@@ -60,12 +58,12 @@ internal class InAppInteractorImpl : InAppInteractor {
             }.filterNotNull()
     }
 
-    private fun prefilterConfig(config: InAppConfig): InAppConfig {
+    override fun prefilterConfig(config: InAppConfig): InAppConfig {
         return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
     }
 
-    private fun validateInAppTargeting(inApp: InApp): Boolean {
+    override fun validateInAppTargeting(inApp: InApp): Boolean {
         return when {
             (inApp.targeting == null) -> {
                 false
@@ -82,7 +80,7 @@ internal class InAppInteractorImpl : InAppInteractor {
         }
     }
 
-    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
+    override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
         return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
     }
 
@@ -108,12 +106,12 @@ internal class InAppInteractorImpl : InAppInteractor {
         }
     }
 
-    override fun sendInAppShown(context: Context, inAppId: String) {
-        inAppRepositoryImpl.sendInAppShown(context, inAppId)
+    override fun sendInAppShown(inAppId: String) {
+        inAppRepositoryImpl.sendInAppShown(inAppId)
     }
 
-    override fun sendInAppClicked(context: Context, inAppId: String) {
-        inAppRepositoryImpl.sendInAppClicked(context, inAppId)
+    override fun sendInAppClicked(inAppId: String) {
+        inAppRepositoryImpl.sendInAppClicked(inAppId)
     }
 
 
@@ -121,7 +119,7 @@ internal class InAppInteractorImpl : InAppInteractor {
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
-    private fun validateSegmentation(
+    override fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
@@ -132,14 +130,14 @@ internal class InAppInteractorImpl : InAppInteractor {
         }
     }
 
-    private fun validateInAppVersion(inApp: InApp): Boolean {
+    override fun validateInAppVersion(inApp: InApp): Boolean {
         return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
             ?: true))
     }
 
 
-    override suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
-        inAppRepositoryImpl.fetchInAppConfig(context, configuration)
+    override suspend fun fetchInAppConfig(configuration: MindboxConfiguration) {
+        inAppRepositoryImpl.fetchInAppConfig(configuration)
     }
 }
