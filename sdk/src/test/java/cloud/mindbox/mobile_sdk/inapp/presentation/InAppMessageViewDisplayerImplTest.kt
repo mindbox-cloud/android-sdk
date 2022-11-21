@@ -12,6 +12,7 @@ internal class InAppMessageViewDisplayerImplTest {
     @Mock
     private lateinit var inAppMessageViewDisplayerImpl: InAppMessageViewDisplayer
 
+    //тест под удаление
     @Test
     fun `show in-app messages test`() {
         runBlocking {
