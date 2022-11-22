@@ -4,7 +4,7 @@ import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -15,21 +15,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.java.KoinJavaComponent.inject
 
-internal class InAppMessageManager {
+internal class InAppMessageManagerImpl(
+    private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
+    private val inAppInteractorImpl: InAppInteractor,
+) : InAppMessageManager {
 
-    private val inAppMessageViewDisplayer: InAppMessageViewDisplayer by inject(
-        InAppMessageViewDisplayerImpl::class.java)
-    private val inAppInteractorImpl: InAppInteractor by inject(InAppInteractorImpl::class.java)
-
-    fun registerCurrentActivity(activity: Activity) {
+    override fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
         }
     }
 
-    fun initInAppMessages(configuration: MindboxConfiguration) {
+    override fun listenEventAndInApp(configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch {
             inAppInteractorImpl.processEventAndConfig(configuration)
                 .collect { inAppMessage ->
@@ -49,6 +47,9 @@ internal class InAppMessageManager {
                     }
                 }
         }
+    }
+
+    override fun requestConfig(configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
@@ -71,7 +72,12 @@ internal class InAppMessageManager {
         }
     }
 
-    fun registerInAppCallback(inAppCallback: InAppCallback) {
+    override fun initInAppMessages(configuration: MindboxConfiguration) {
+        listenEventAndInApp(configuration)
+        requestConfig(configuration)
+    }
+
+    override fun registerInAppCallback(inAppCallback: InAppCallback) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.registerInAppCallback(inAppCallback)
         }
@@ -85,13 +91,13 @@ internal class InAppMessageManager {
         inAppInteractorImpl.sendInAppClicked(inAppId)
     }
 
-    fun onPauseCurrentActivity(activity: Activity) {
+    override fun onPauseCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
         }
     }
 
-    fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
         }

@@ -1,8 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import com.android.volley.VolleyError
@@ -10,12 +9,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import org.koin.java.KoinJavaComponent.inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-internal class InAppInteractorImpl : InAppInteractor {
-    private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
+internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
+    InAppInteractor {
 
     override fun processEventAndConfig(
         configuration: MindboxConfiguration,
@@ -131,8 +129,8 @@ internal class InAppInteractorImpl : InAppInteractor {
     }
 
     override fun validateInAppVersion(inApp: InApp): Boolean {
-        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
+        return ((inApp.minVersion?.let { min -> min <= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION }
+            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION }
             ?: true))
     }
 

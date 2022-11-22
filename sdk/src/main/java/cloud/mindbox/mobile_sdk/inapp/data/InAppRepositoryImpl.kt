@@ -20,13 +20,12 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import org.koin.java.KoinJavaComponent.inject
 
-internal class InAppRepositoryImpl : InAppRepository {
-
-    private val inAppMapper: InAppMessageMapper by inject(InAppMessageMapper::class.java)
-    private val gson: Gson by inject(Gson::class.java)
-    private val context: Context by inject(Context::class.java)
+internal class InAppRepositoryImpl(
+    private val inAppMapper: InAppMessageMapper,
+    private val gson: Gson,
+    private val context: Context,
+) : InAppRepository {
 
     private val shownInApps: HashSet<String> = LoggingExceptionHandler.runCatching(HashSet()) {
         if (MindboxPreferences.shownInAppIds.isBlank()) {

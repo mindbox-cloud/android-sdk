@@ -10,8 +10,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.inapp.di.appModule
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -31,6 +31,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
@@ -355,6 +356,7 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             startKoin {
+                androidContext(context)
                 modules(appModule, dataModule)
             }
             initScope.launch {

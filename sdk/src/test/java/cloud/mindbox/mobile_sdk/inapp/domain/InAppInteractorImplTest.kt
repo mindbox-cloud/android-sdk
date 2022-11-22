@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseStub
 import kotlinx.coroutines.runBlocking
@@ -86,20 +86,20 @@ internal class InAppInteractorImplTest {
     @Test
     fun `in-app version is lower than required`() {
         assertFalse(inAppInteractor.validateInAppVersion(InAppStub.get()
-            .copy(maxVersion = InAppMessageManager.CURRENT_IN_APP_VERSION - 1)))
+            .copy(maxVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1)))
     }
 
     @Test
     fun `in-app version is higher than required`() {
         assertFalse(inAppInteractor.validateInAppVersion(InAppStub.get()
-            .copy(minVersion = InAppMessageManager.CURRENT_IN_APP_VERSION + 1)))
+            .copy(minVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1)))
     }
 
     @Test
     fun `in-app version is out of range`() {
         assertFalse(inAppInteractor.validateInAppVersion(InAppStub.get()
-            .copy(minVersion = InAppMessageManager.CURRENT_IN_APP_VERSION + 1,
-                maxVersion = InAppMessageManager.CURRENT_IN_APP_VERSION - 1)))
+            .copy(minVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1,
+                maxVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1)))
     }
 
     @Test

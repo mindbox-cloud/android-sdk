@@ -26,7 +26,7 @@ class InAppRepositoryImplTest {
     @Test
     fun `simple image response mapping success test`() {
         val rez =
-            inAppRepository.deserializeConfigToConfigDto(InAppConfigResponseStub.getConfigResponseErrorJson())
+            inAppRepository.deserializeConfigToConfigDto(InAppConfigResponseStub.getConfigResponseJson())
         assertTrue((rez != null) && (rez.inApps!!.first().form?.variants!!.first() is PayloadDto.SimpleImage))
     }
 
