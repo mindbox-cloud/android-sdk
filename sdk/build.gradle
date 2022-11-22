@@ -25,6 +25,9 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     // Koin for Android
     implementation "io.insert-koin:koin-android:3.2.0"
+    testImplementation "io.mockk:mockk:1.13.2"
+    testImplementation "io.mockk:mockk-android:1.13.2"
+    testImplementation "io.mockk:mockk-agent:1.13.2"
 
     // coroutines
     implementation sdkDependencies.kotlinx_coroutines_core

@@ -36,6 +36,12 @@ class InAppRepositoryImplTest {
         )
     }
 
+    @Test
+    fun `simple image response mapping empty string test`() {
+        assertNull(inAppRepository.deserializeConfigToConfigDto("")
+        )
+    }
+
     @Test(expected = Error::class)
     fun `simple image response mapping malformed test`() {
         assertThrows(JsonSyntaxException::class.java) {

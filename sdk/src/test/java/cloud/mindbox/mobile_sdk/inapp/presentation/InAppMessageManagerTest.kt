@@ -104,7 +104,8 @@ internal class InAppMessageManagerTest {
                 flow<InAppType> {
                     throw VolleyError()
                 }
-            };
+            }
+            inAppMessageManager.listenEventAndInApp(mindboxConfiguration);
             {
                 runBlocking {
                     inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
@@ -128,13 +129,10 @@ internal class InAppMessageManagerTest {
                 flow<InAppType> {
                     error("")
                 }
-            };
+            }
+            inAppMessageManager.listenEventAndInApp(mindboxConfiguration);
             { runBlocking { inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration) } }
                 .shouldNotThrow()
-
-
         }
     }
-
-
 }
