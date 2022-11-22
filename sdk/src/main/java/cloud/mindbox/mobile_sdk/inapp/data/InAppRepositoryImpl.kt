@@ -1,9 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppConfig
@@ -81,17 +84,19 @@ internal class InAppRepositoryImpl : InAppRepository {
     }
 
     override fun listenInAppConfig(): Flow<InAppConfig> {
-        return MindboxPreferences.inAppConfigFlow.map { inAppConfig ->
-            inAppMapper.mapInAppConfigResponseToInAppConfig(
+        return MindboxPreferences.inAppConfigFlow.map { inAppConfigDto ->
+            val config = inAppMapper.mapInAppConfigResponseToInAppConfig(
                 GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
                     PayloadDto::class.java,
                     TYPE_JSON_NAME)
                     .registerSubtype(PayloadDto.SimpleImage::class.java,
                         SIMPLE_IMAGE_JSON_NAME))
                     .create()
-                    .fromJson(inAppConfig,
+                    .fromJson(inAppConfigDto,
                         InAppConfigResponse::class.java)
             )
+            MindboxLoggerImpl.d(this, "Providing config: $config")
+            config
         }
     }
 

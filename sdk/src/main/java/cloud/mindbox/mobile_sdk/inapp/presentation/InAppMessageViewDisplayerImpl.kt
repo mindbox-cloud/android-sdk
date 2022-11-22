@@ -11,10 +11,12 @@ import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
+import java.lang.RuntimeException
 
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
@@ -27,6 +29,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+        MindboxLoggerImpl.d(this, "onResumeCurrentActivity: ${activity.hashCode()}")
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
@@ -47,6 +50,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     }
 
     override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+        MindboxLoggerImpl.d(this, "registerCurrentActivity: ${activity.hashCode()}")
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
@@ -73,6 +77,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
+        MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
             currentActivity = null
         }
@@ -96,6 +101,9 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         when (inAppType) {
             is InAppType.SimpleImage -> {
                 if (inAppType.imageUrl.isNotBlank()) {
+                    if (currentRoot == null) {
+                        MindboxLoggerImpl.e(this, "failed to show inapp: currentRoot is null")
+                    }
                     currentRoot?.addView(currentBlur)
                     currentRoot?.addView(currentDialog)
                     currentDialog?.requestFocus()
@@ -106,6 +114,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                         currentRoot?.removeView(currentBlur)
                     }
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
+                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl, "try to show inapp")
                         Picasso.get()
                             .load(inAppType.imageUrl)
                             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
@@ -139,17 +148,26 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         isVisible = true
                                     }
                                     currentBlur?.isVisible = true
+                                    MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
+                                        "inapp shown")
                                     onInAppShown()
                                 }
 
                                 override fun onError(e: Exception?) {
+                                    MindboxLoggerImpl.e(
+                                        parent = this@InAppMessageViewDisplayerImpl,
+                                        message = "Failed to load inapp image",
+                                        exception = e
+                                            ?: RuntimeException("Failed to load inapp image")
+                                    )
                                     currentRoot?.removeView(currentDialog)
                                     currentRoot?.removeView(currentBlur)
                                     this@with?.isVisible = false
                                 }
-
                             })
                     }
+                } else {
+                    MindboxLoggerImpl.d(this, "inapp image url is blank")
                 }
             }
             else -> {
