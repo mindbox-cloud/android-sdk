@@ -1,19 +1,17 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
+import io.mockk.impl.annotations.InjectMockKs
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import org.mockito.Mock
-import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
 
 internal class InAppMessageViewDisplayerImplTest {
 
-    @Mock
+    @InjectMockKs
     private lateinit var inAppMessageViewDisplayerImpl: InAppMessageViewDisplayer
 
     //тест под удаление
-    @Test
+    /*@Test
     fun `show in-app messages test`() {
         runBlocking {
             whenever(inAppMessageViewDisplayerImpl.showInAppMessage(any(),
@@ -21,5 +19,5 @@ internal class InAppMessageViewDisplayerImplTest {
                 any())).thenCallRealMethod()
             inAppMessageViewDisplayerImpl.showInAppMessage(any(), any(), any())
         }
-    }
+    }*/
 }

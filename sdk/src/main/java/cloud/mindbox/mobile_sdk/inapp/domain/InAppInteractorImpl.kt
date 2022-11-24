@@ -18,7 +18,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     override fun processEventAndConfig(
         configuration: MindboxConfiguration,
     ): Flow<InAppType> {
-        return inAppRepositoryImpl.listenInAppConfig()
+        return inAppRepositoryImpl.listenInAppConfig().filterNotNull()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
                 .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
@@ -114,7 +114,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
 
 
     private fun validateInAppNotShown(inApp: InApp): Boolean {
-        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
+        return inAppRepositoryImpl.shownInApps.contains(inApp.id).not()
     }
 
     override fun validateSegmentation(

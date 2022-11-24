@@ -10,11 +10,8 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
@@ -29,6 +26,7 @@ internal class InAppMessageManagerImpl(
 
     override fun listenEventAndInApp(configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch {
+            delay(1000)
             inAppInteractorImpl.processEventAndConfig(configuration)
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
@@ -49,17 +47,22 @@ internal class InAppMessageManagerImpl(
         }
     }
 
+    /**
+     * In case of 404 clear config
+     * In case of other network error use cached version
+     * Otherwise do nothing
+     **/
     override fun requestConfig(configuration: MindboxConfiguration) {
         Mindbox.mindboxScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
                     CONFIG_NOT_FOUND -> {
-                        MindboxLoggerImpl.w(ERROR_TAG, error.message ?: "", error)
+                        MindboxLoggerImpl.w(InAppMessageManagerImpl, error.message ?: "", error)
                         MindboxPreferences.inAppConfig = ""
                     }
                     else -> {
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
-                        MindboxLoggerImpl.e(ERROR_TAG, error.message ?: "", error)
+                        MindboxLoggerImpl.e(InAppMessageManagerImpl, error.message ?: "", error)
                     }
                 }
             } else {
@@ -68,6 +71,7 @@ internal class InAppMessageManagerImpl(
                 }
             }
         }) {
+            delay(1000)
             inAppInteractorImpl.fetchInAppConfig(configuration)
         }
     }
@@ -108,7 +112,6 @@ internal class InAppMessageManagerImpl(
         const val CURRENT_IN_APP_VERSION = 1
         var IS_IN_APP_SHOWN = false
         const val CONFIG_NOT_FOUND = 404
-        private const val ERROR_TAG = "InAppMessageManager"
     }
 
 }

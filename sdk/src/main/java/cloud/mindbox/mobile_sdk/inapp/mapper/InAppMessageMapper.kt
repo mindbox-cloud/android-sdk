@@ -11,7 +11,8 @@ import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 
 internal class InAppMessageMapper {
 
-    fun mapInAppConfigResponseToInAppConfig(inAppConfigResponse: InAppConfigResponse): InAppConfig {
+    fun mapInAppConfigResponseToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
+        if (inAppConfigResponse == null) return null
         return InAppConfig(
             inAppConfigResponse.inApps?.map { inAppDto ->
                 InApp(

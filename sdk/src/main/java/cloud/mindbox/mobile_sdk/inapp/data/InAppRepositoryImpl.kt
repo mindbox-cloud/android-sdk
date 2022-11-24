@@ -27,19 +27,16 @@ internal class InAppRepositoryImpl(
     private val context: Context,
 ) : InAppRepository {
 
-    private val shownInApps: HashSet<String> = LoggingExceptionHandler.runCatching(HashSet()) {
-        if (MindboxPreferences.shownInAppIds.isBlank()) {
-            HashSet()
-        } else {
-            gson.fromJson(MindboxPreferences.shownInAppIds,
-                object : TypeToken<HashSet<String>>() {}.type)
+    override val shownInApps: HashSet<String>
+        get() = LoggingExceptionHandler.runCatching(HashSet()) {
+            if (MindboxPreferences.shownInAppIds.isBlank()) {
+                HashSet()
+            } else {
+                gson.fromJson(MindboxPreferences.shownInAppIds,
+                    object : TypeToken<HashSet<String>>() {}.type)
+            }
         }
-    }
 
-
-    override fun getShownInApps(): HashSet<String> {
-        return shownInApps
-    }
 
     override fun sendInAppShown(inAppId: String) {
         MindboxEventManager.inAppShown(context,
@@ -79,22 +76,24 @@ internal class InAppRepositoryImpl(
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
     }
 
-    override fun listenInAppConfig(): Flow<InAppConfig> {
+    override fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfig ->
             inAppMapper.mapInAppConfigResponseToInAppConfig(
                 deserializeConfigToConfigDto(inAppConfig))
         }
     }
 
-    override fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse {
-        return GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
-            PayloadDto::class.java,
-            TYPE_JSON_NAME)
-            .registerSubtype(PayloadDto.SimpleImage::class.java,
-                SIMPLE_IMAGE_JSON_NAME))
-            .create()
-            .fromJson(inAppConfig,
-                InAppConfigResponse::class.java)
+    override fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse? {
+        return runCatching {
+            GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
+                PayloadDto::class.java,
+                TYPE_JSON_NAME)
+                .registerSubtype(PayloadDto.SimpleImage::class.java,
+                    SIMPLE_IMAGE_JSON_NAME))
+                .create()
+                .fromJson(inAppConfig,
+                    InAppConfigResponse::class.java)
+        }.getOrNull()
     }
 
     companion object {

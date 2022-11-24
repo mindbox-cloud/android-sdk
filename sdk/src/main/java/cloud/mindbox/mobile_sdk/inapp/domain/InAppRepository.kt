@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
+
+    val shownInApps: HashSet<String>
+
     suspend fun fetchInAppConfig(configuration: MindboxConfiguration)
 
     suspend fun fetchSegmentations(
@@ -16,15 +19,13 @@ internal interface InAppRepository {
         config: InAppConfig,
     ): SegmentationCheckInApp
 
-    fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse
+    fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse?
 
-    fun listenInAppConfig(): Flow<InAppConfig>
+    fun listenInAppConfig(): Flow<InAppConfig?>
 
     fun listenInAppEvents(): Flow<InAppEventType>
 
     fun saveShownInApp(id: String)
-
-    fun getShownInApps(): HashSet<String>
 
     fun sendInAppShown(inAppId: String)
 

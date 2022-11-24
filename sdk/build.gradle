@@ -9,6 +9,9 @@ android {
                     "${rootProject.projectDir}/proguard/proguard-volley.pro",
                     "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -18,9 +21,7 @@ dependencies {
     testImplementation testDependencies.junit
     androidTestImplementation testDependencies.androidx_junit
     androidTestImplementation testDependencies.espresso
-    testImplementation testDependencies.mockito
     testImplementation testDependencies.kotlinx_coroutines_test
-    testImplementation 'org.mockito:mockito-inline:2.13.0'
     testImplementation 'app.cash.turbine:turbine:0.12.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     // Koin for Android

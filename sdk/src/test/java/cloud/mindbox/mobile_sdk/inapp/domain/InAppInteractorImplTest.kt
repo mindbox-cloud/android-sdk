@@ -1,33 +1,30 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
-import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.IdsInApp
+import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.SegmentInApp
+import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseStub
-import kotlinx.coroutines.runBlocking
+import io.mockk.MockKAnnotations
+import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.OverrideMockKs
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.junit.MockitoJUnitRunner
-import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
 
-@RunWith(MockitoJUnitRunner::class)
 internal class InAppInteractorImplTest {
 
-    @Mock
+    @MockK
+    private lateinit var inAppRepository: InAppRepository
+
+    @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
 
     @Before
     fun onTestStart() {
-        runBlocking {
-            whenever(inAppInteractor.validateInAppVersion(any())).thenCallRealMethod()
-            whenever(inAppInteractor.validateSegmentation(any(), any())).thenCallRealMethod()
-            whenever(inAppInteractor.validateInAppTargeting(any())).thenCallRealMethod()
-            whenever(inAppInteractor.getConfigWithTargeting(any())).thenCallRealMethod()
-        }
+        MockKAnnotations.init(this)
     }
 
     @Test
