@@ -56,7 +56,7 @@ internal class InAppMessageManager {
                     else -> {
                         // needed to trigger flow event
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
-                        MindboxLoggerImpl.e(this, "Failed to get config", error)
+                        MindboxLoggerImpl.w(this, "Failed to get config", error)
                     }
                 }
             } else {

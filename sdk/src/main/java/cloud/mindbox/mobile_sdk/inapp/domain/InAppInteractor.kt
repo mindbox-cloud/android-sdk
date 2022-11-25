@@ -23,6 +23,7 @@ internal class InAppInteractor {
         configuration: MindboxConfiguration,
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
+            .filterNotNull()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
                 .filter { inAppEventType ->

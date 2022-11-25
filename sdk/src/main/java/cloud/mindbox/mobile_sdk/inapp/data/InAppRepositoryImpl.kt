@@ -83,7 +83,7 @@ internal class InAppRepositoryImpl : InAppRepository {
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
     }
 
-    override fun listenInAppConfig(): Flow<InAppConfig> {
+    override fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfigDto ->
             val config = inAppMapper.mapInAppConfigResponseToInAppConfig(
                 GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
