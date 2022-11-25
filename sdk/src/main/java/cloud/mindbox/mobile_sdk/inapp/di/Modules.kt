@@ -2,14 +2,11 @@ package cloud.mindbox.mobile_sdk.inapp.di
 
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.*
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 

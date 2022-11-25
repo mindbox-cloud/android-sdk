@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.collect
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractorImpl: InAppInteractor,
+    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
@@ -24,9 +25,11 @@ internal class InAppMessageManagerImpl(
         }
     }
 
+    private val inAppScope =
+        CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
+
     override fun listenEventAndInApp(configuration: MindboxConfiguration) {
-        Mindbox.mindboxScope.launch {
-            delay(1000)
+        inAppScope.launch {
             inAppInteractorImpl.processEventAndConfig(configuration)
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
@@ -53,7 +56,7 @@ internal class InAppMessageManagerImpl(
      * Otherwise do nothing
      **/
     override fun requestConfig(configuration: MindboxConfiguration) {
-        Mindbox.mindboxScope.launch(CoroutineExceptionHandler { _, error ->
+        inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
                     CONFIG_NOT_FOUND -> {
@@ -71,7 +74,6 @@ internal class InAppMessageManagerImpl(
                 }
             }
         }) {
-            delay(1000)
             inAppInteractorImpl.fetchInAppConfig(configuration)
         }
     }

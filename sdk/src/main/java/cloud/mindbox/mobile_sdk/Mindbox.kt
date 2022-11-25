@@ -70,7 +70,7 @@ object Mindbox {
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
 
-    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+    val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
     private val infoUpdatedThreadDispatcher = Executors.newSingleThreadExecutor()
