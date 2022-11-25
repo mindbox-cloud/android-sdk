@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppConfig
@@ -79,7 +80,9 @@ internal class InAppRepositoryImpl(
     override fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfig ->
             inAppMapper.mapInAppConfigResponseToInAppConfig(
-                deserializeConfigToConfigDto(inAppConfig))
+                deserializeConfigToConfigDto(inAppConfig)).apply {
+                MindboxLoggerImpl.d(this@InAppRepositoryImpl, "Providing config: $this")
+            }
         }
     }
 

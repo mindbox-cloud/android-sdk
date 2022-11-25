@@ -12,32 +12,34 @@ import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 internal class InAppMessageMapper {
 
     fun mapInAppConfigResponseToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
-        if (inAppConfigResponse == null) return null
-        return InAppConfig(
-            inAppConfigResponse.inApps?.map { inAppDto ->
-                InApp(
-                    id = inAppDto.id,
-                    targeting = mapTargetingDtoToTargeting(inAppDto.targeting),
-                    form = Form(
-                        variants = inAppDto.form?.variants?.map { payloadDto ->
-                            when (payloadDto) {
-                                is PayloadDto.SimpleImage -> {
-                                    Payload.SimpleImage(
-                                        type = "",
-                                        imageUrl = payloadDto.imageUrl ?: "",
-                                        redirectUrl = payloadDto.redirectUrl ?: "",
-                                        intentPayload = payloadDto.intentPayload ?: ""
-                                    )
+        return inAppConfigResponse?.let { inAppConfigDto ->
+            InAppConfig(
+                inAppConfigDto.inApps?.map { inAppDto ->
+                    InApp(
+                        id = inAppDto.id,
+                        targeting = mapTargetingDtoToTargeting(inAppDto.targeting),
+                        form = Form(
+                            variants = inAppDto.form?.variants?.map { payloadDto ->
+                                when (payloadDto) {
+                                    is PayloadDto.SimpleImage -> {
+                                        Payload.SimpleImage(
+                                            type = "",
+                                            imageUrl = payloadDto.imageUrl ?: "",
+                                            redirectUrl = payloadDto.redirectUrl ?: "",
+                                            intentPayload = payloadDto.intentPayload ?: ""
+                                        )
+                                    }
                                 }
-                            }
-                        } ?: emptyList()
-                    ),
-                    minVersion = inAppDto.sdkVersion?.minVersion,
-                    maxVersion = inAppDto.sdkVersion?.maxVersion
-                )
-            } ?: emptyList()
-        )
+                            } ?: emptyList()
+                        ),
+                        minVersion = inAppDto.sdkVersion?.minVersion,
+                        maxVersion = inAppDto.sdkVersion?.maxVersion
+                    )
+                } ?: emptyList()
+            )
+        }
     }
+
 
     private fun mapTargetingDtoToTargeting(targetingDto: TargetingDto?): Targeting? {
         return if (targetingDto != null) Targeting(

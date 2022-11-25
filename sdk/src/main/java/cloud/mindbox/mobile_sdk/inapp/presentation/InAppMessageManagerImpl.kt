@@ -60,18 +60,17 @@ internal class InAppMessageManagerImpl(
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
                     CONFIG_NOT_FOUND -> {
-                        MindboxLoggerImpl.w(InAppMessageManagerImpl, error.message ?: "", error)
+                        MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
                         MindboxPreferences.inAppConfig = ""
                     }
                     else -> {
+                        // needed to trigger flow event
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
-                        MindboxLoggerImpl.e(InAppMessageManagerImpl, error.message ?: "", error)
+                        MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)
                     }
                 }
             } else {
-                LoggingExceptionHandler.runCatching {
-
-                }
+                MindboxLoggerImpl.e(this, "Failed to get config", error)
             }
         }) {
             inAppInteractorImpl.fetchInAppConfig(configuration)
