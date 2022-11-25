@@ -89,6 +89,8 @@ object Mindbox {
 
     private val mutex = Mutex()
 
+    private var diInitialized: Boolean = false
+
     /**
      * Allows you to specify additional components for message handling
      * when calling the [handleRemoteMessage] function.
@@ -354,8 +356,11 @@ object Mindbox {
     ) {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
-            startKoin {
-                modules(appModule, dataModule)
+            if (!diInitialized) {
+                startKoin {
+                    modules(appModule, dataModule)
+                }
+                diInitialized = true
             }
             initScope.launch {
                 val checkResult = checkConfig(configuration)
