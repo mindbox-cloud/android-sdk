@@ -26,26 +26,10 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                 val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
                 val inAppsWithoutTargeting =
                     filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
-                val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
-                    inAppsWithoutTargeting.first()
-                } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
-                    runCatching {
-                        checkSegmentation(filteredConfig,
-                            inAppRepositoryImpl.fetchSegmentations(
-                                configuration,
-                                filteredConfigWithTargeting))
-                    }.getOrElse { throwable ->
-                        if (throwable is VolleyError) {
-                            MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
-                            null
-                        } else {
-                            throw throwable
-                        }
-                    }
-                } else {
-                    null
-                }
-
+                val inApp = chooseInAppToShow(inAppsWithoutTargeting,
+                    filteredConfigWithTargeting,
+                    filteredConfig,
+                    configuration)
                 when (val type = inApp?.form?.variants?.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
@@ -54,6 +38,33 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                     else -> null
                 }
             }.filterNotNull()
+    }
+
+    override suspend fun chooseInAppToShow(
+        inAppsWithoutTargeting: Set<InApp>,
+        filteredConfigWithTargeting: InAppConfig,
+        filteredConfig: InAppConfig,
+        configuration: MindboxConfiguration,
+    ): InApp? {
+        return if (inAppsWithoutTargeting.isNotEmpty()) {
+            inAppsWithoutTargeting.first()
+        } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
+            runCatching {
+                checkSegmentation(filteredConfig,
+                    inAppRepositoryImpl.fetchSegmentations(
+                        configuration,
+                        filteredConfigWithTargeting))
+            }.getOrElse { throwable ->
+                if (throwable is VolleyError) {
+                    MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
+                    null
+                } else {
+                    throw throwable
+                }
+            }
+        } else {
+            null
+        }
     }
 
     override fun prefilterConfig(config: InAppConfig): InAppConfig {

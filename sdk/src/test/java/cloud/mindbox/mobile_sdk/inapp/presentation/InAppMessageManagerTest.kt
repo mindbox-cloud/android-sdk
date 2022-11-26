@@ -45,6 +45,9 @@ internal class InAppMessageManagerTest {
     @OptIn(DelicateCoroutinesApi::class)
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
 
+    /**
+     * sets a thread to be used as main dispatcher for running on JVM
+     * **/
     @Before
     fun onTestStart() {
         Dispatchers.setMain(mainThreadSurrogate)
@@ -93,15 +96,16 @@ internal class InAppMessageManagerTest {
             StandardTestDispatcher(testScheduler))
         mockkObject(LoggingExceptionHandler)
         coEvery {
-            LoggingExceptionHandler.runCatching<Unit>(any())
+            MindboxLoggerImpl.e(any(), any())
         } just runs
+        val error = Error()
         coEvery {
             inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
-        }.throws(Error())
+        }.throws(error)
         inAppMessageManager.requestConfig(mindboxConfiguration)
         advanceUntilIdle()
         verify(exactly = 1) {
-            LoggingExceptionHandler.runCatching<Unit>(any())
+            MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
         }
     }
 

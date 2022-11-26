@@ -11,6 +11,7 @@ android {
     }
     testOptions {
         unitTests.returnDefaultValues = true
+        unitTests.includeAndroidResources = true
     }
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
@@ -28,13 +29,19 @@ dependencies {
     androidTestImplementation testDependencies.androidx_junit
     androidTestImplementation testDependencies.espresso
     testImplementation testDependencies.kotlinx_coroutines_test
-    testImplementation 'app.cash.turbine:turbine:0.12.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation testDependencies.turbine
+
+    testImplementation testDependencies.mockk
+    testImplementation testDependencies.mockk_android
+    testImplementation testDependencies.mockk_agent
+
+    testImplementation testDependencies.robolectric
+
+
+    // ConstraintLayout
+    implementation sdkDependencies.constraint_layout
     // Koin for Android
-    implementation "io.insert-koin:koin-android:3.2.0"
-    testImplementation "io.mockk:mockk:1.13.2"
-    testImplementation "io.mockk:mockk-android:1.13.2"
-    testImplementation "io.mockk:mockk-agent:1.13.2"
+    implementation sdkDependencies.koin
 
     // coroutines
     implementation sdkDependencies.kotlinx_coroutines_core

@@ -23,7 +23,7 @@ internal class InAppMessageMapper {
                                 when (payloadDto) {
                                     is PayloadDto.SimpleImage -> {
                                         Payload.SimpleImage(
-                                            type = "",
+                                            type = payloadDto.type ?: "",
                                             imageUrl = payloadDto.imageUrl ?: "",
                                             redirectUrl = payloadDto.redirectUrl ?: "",
                                             intentPayload = payloadDto.intentPayload ?: ""

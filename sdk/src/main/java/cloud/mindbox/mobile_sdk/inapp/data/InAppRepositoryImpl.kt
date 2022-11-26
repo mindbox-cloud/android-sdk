@@ -90,7 +90,7 @@ internal class InAppRepositoryImpl(
         return runCatching {
             GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
                 PayloadDto::class.java,
-                TYPE_JSON_NAME)
+                TYPE_JSON_NAME, true)
                 .registerSubtype(PayloadDto.SimpleImage::class.java,
                     SIMPLE_IMAGE_JSON_NAME))
                 .create()

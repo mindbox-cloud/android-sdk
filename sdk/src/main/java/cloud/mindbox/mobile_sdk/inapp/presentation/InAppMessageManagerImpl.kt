@@ -70,7 +70,7 @@ internal class InAppMessageManagerImpl(
                     }
                 }
             } else {
-                MindboxLoggerImpl.e(this, "Failed to get config", error)
+                MindboxLoggerImpl.e(this@InAppMessageManagerImpl::class, "Failed to get config", error)
             }
         }) {
             inAppInteractorImpl.fetchInAppConfig(configuration)

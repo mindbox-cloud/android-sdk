@@ -1,17 +1,30 @@
 package cloud.mindbox.mobile_sdk.models
 
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
+import cloud.mindbox.mobile_sdk.models.operation.response.*
 
 internal class InAppStub {
 
     companion object {
-        fun get() = InApp(id = "",
-            minVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1,
-            maxVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1,
-            targeting = Targeting(type = "", segmentation = "12345", segment = "12345"),
+        fun getInApp(): InApp = InApp(id = "",
+            minVersion = null,
+            maxVersion = null,
+            targeting = Targeting(type = "", segmentation = "", segment = ""),
             form = Form(variants = listOf(Payload.SimpleImage(type = "",
                 imageUrl = "",
                 redirectUrl = "",
                 intentPayload = ""))))
+
+        fun getInAppDto(): InAppDto = InAppDto(id = "",
+            sdkVersion = SdkVersion(minVersion = null, maxVersion = null),
+            targeting = TargetingDto(type = null, segmentation = null, segment = null),
+            form = FormDto(variants = listOf(PayloadDto.SimpleImage(type = null,
+                imageUrl = null,
+                redirectUrl = null,
+                intentPayload = null))))
+
+        fun getSimpleImageDto() = PayloadDto.SimpleImage(type = null,
+            imageUrl = null,
+            redirectUrl = null,
+            intentPayload = null)
     }
 }

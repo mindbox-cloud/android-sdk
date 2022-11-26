@@ -12,6 +12,13 @@ internal interface InAppInteractor {
         configuration: MindboxConfiguration,
     ): Flow<InAppType>
 
+    suspend fun chooseInAppToShow(
+        inAppsWithoutTargeting: Set<InApp>,
+        filteredConfigWithTargeting: InAppConfig,
+        filteredConfig: InAppConfig,
+        configuration: MindboxConfiguration,
+    ): InApp?
+
     fun saveShownInApp(id: String)
 
     fun sendInAppShown(inAppId: String)
