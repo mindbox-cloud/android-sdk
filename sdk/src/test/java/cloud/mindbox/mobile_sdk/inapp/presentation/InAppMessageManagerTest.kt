@@ -110,61 +110,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws network error non 404`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler))
-        mockkConstructor(NetworkResponse::class)
-        val networkResponse = mockk<NetworkResponse>()
-        NetworkResponse::class.java.declaredFields[0].apply {
-            isAccessible = true
-            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
-            modifiersField.isAccessible = true
-            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
-
-        }.setInt(networkResponse,
-            403)
-        every {
-            MindboxPreferences getProperty MindboxPreferences::inAppConfig.name
-        }.answers {
-            "test"
-        }
-        coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
-        }.throws(VolleyError(networkResponse))
-        inAppMessageManager.requestConfig(mindboxConfiguration)
-        advanceUntilIdle()
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
-        }
-    }
-
-    @Test
-    fun `in app config throws network error 404`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler))
-        mockkConstructor(NetworkResponse::class)
-        val networkResponse = mockk<NetworkResponse>()
-        NetworkResponse::class.java.declaredFields[0].apply {
-            isAccessible = true
-            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
-            modifiersField.isAccessible = true
-            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
-
-        }.setInt(networkResponse,
-            404)
-        coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
-        }.throws(VolleyError(networkResponse))
-        inAppMessageManager.requestConfig(mindboxConfiguration)
-        advanceUntilIdle()
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
-        }
-    }
-
-    @Test
     fun `in app messages success message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -220,5 +165,62 @@ internal class InAppMessageManagerTest {
     } catch (ex: Exception) {
         throw Error("expected not to throw!", ex)
     }
+
+    @Test
+    fun `in-app config throws network error non 404`() = runTest {
+        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            StandardTestDispatcher(testScheduler))
+        mockkConstructor(NetworkResponse::class)
+        val networkResponse = mockk<NetworkResponse>()
+        NetworkResponse::class.java.declaredFields[0].apply {
+            isAccessible = true
+            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
+            modifiersField.isAccessible = true
+            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
+
+        }.setInt(networkResponse,
+            403)
+        every {
+            MindboxPreferences getProperty MindboxPreferences::inAppConfig.name
+        }.answers {
+            "test"
+        }
+        coEvery {
+            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+        }.throws(VolleyError(networkResponse))
+        inAppMessageManager.requestConfig(mindboxConfiguration)
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        }
+    }
+
+    @Test
+    fun `in app config throws network error 404`() = runTest {
+        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            StandardTestDispatcher(testScheduler))
+        mockkConstructor(NetworkResponse::class)
+        val networkResponse = mockk<NetworkResponse>()
+        NetworkResponse::class.java.declaredFields[0].apply {
+            isAccessible = true
+            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
+            modifiersField.isAccessible = true
+            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
+
+        }.setInt(networkResponse,
+            404)
+        coEvery {
+            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+        }.throws(VolleyError(networkResponse))
+        inAppMessageManager.requestConfig(mindboxConfiguration)
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
+        }
+    }
+
+
 }
 
