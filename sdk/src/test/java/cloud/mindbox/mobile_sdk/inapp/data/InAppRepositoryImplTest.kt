@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.inapp.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
@@ -8,36 +9,43 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
-import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
+import io.mockk.mockkClass
 import io.mockk.mockkObject
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.koin.test.KoinTest
+import org.koin.test.KoinTestRule
+import org.koin.test.get
+import org.koin.test.mock.MockProviderRule
 
-internal class InAppRepositoryImplTest {
+internal class InAppRepositoryImplTest : KoinTest {
 
     @get:Rule
-    val mockkRule = MockKRule(this)
+    val koinTestRule = KoinTestRule.create {
+        modules(dataModule)
+    }
 
-    @MockK
     private lateinit var inAppMessageMapper: InAppMessageMapper
 
-    @MockK
     private lateinit var gson: Gson
 
-    @MockK
     private lateinit var context: Context
 
-    @OverrideMockKs
     private lateinit var inAppRepository: InAppRepositoryImpl
 
     @Before
     fun onTestStart() {
+        gson = get()
+        inAppRepository = InAppRepositoryImpl(mockkClass(InAppMessageMapper::class),
+            gson,
+            mockk())
         mockkObject(MindboxPreferences)
     }
+
 
     @Test
     fun `shown inApp ids is not empty and is a valid json`() {
@@ -45,21 +53,11 @@ internal class InAppRepositoryImplTest {
             "ad487f74-924f-44f0-b4f7-f239ea5643c5")
         every { MindboxPreferences.shownInAppIds } returns
                 "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
-        every {
-            gson.fromJson<HashSet<String>>(any<String>(),
-                object : TypeToken<HashSet<String>>() {}.type)
-        } returns
-                hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
-                    "ad487f74-924f-44f0-b4f7-f239ea5643c5")
         assertTrue(inAppRepository.shownInApps.containsAll(testHashSet))
     }
 
     @Test
     fun `shownInApp ids returns null`() {
-        every {
-            gson.fromJson<HashSet<String>>(any<String>(),
-                object : TypeToken<HashSet<String>>() {}.type)
-        } returns null
         every { MindboxPreferences.shownInAppIds } returns "a"
         assertNotNull(inAppRepository.shownInApps)
     }
@@ -75,10 +73,6 @@ internal class InAppRepositoryImplTest {
     @Test
     fun `shown inApp ids is not empty and is not a json`() {
         every { MindboxPreferences.shownInAppIds } returns "123"
-        every {
-            gson.fromJson<HashSet<String>>(any<String>(),
-                object : TypeToken<HashSet<String>>() {}.type)
-        } returns hashSetOf()
         val expectedResult = hashSetOf<String>()
         val actualResult = inAppRepository.shownInApps
         assertTrue(actualResult.containsAll(expectedResult))
@@ -127,7 +121,7 @@ internal class InAppRepositoryImplTest {
         val actualResult =
             inAppRepository.deserializeConfigToConfigDto(successJson)
         assertNotNull(actualResult)
-        assertEquals(actualResult, expectedResult)
+        assertEquals(expectedResult, actualResult)
     }
 
     @Test

@@ -12,12 +12,9 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -88,13 +85,7 @@ internal class InAppRepositoryImpl(
 
     override fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse? {
         return runCatching {
-            GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
-                PayloadDto::class.java,
-                TYPE_JSON_NAME, true)
-                .registerSubtype(PayloadDto.SimpleImage::class.java,
-                    SIMPLE_IMAGE_JSON_NAME))
-                .create()
-                .fromJson(inAppConfig,
+            gson.fromJson(inAppConfig,
                     InAppConfigResponse::class.java)
         }.getOrNull()
     }

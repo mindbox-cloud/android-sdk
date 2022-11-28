@@ -39,6 +39,8 @@ dependencies {
     implementation sdkDependencies.constraint_layout
     // Koin for Android
     implementation sdkDependencies.koin
+    implementation sdkDependencies.koin_test
+    implementation sdkDependencies.koin_junit4
 
     // coroutines
     implementation sdkDependencies.kotlinx_coroutines_core
