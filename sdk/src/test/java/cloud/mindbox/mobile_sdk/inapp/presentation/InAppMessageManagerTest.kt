@@ -51,9 +51,6 @@ internal class InAppMessageManagerTest {
     @Before
     fun onTestStart() {
         Dispatchers.setMain(mainThreadSurrogate)
-        coEvery {
-            inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
-        } just runs
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -130,9 +127,16 @@ internal class InAppMessageManagerTest {
             awaitItem()
             awaitComplete()
         }
-        /*coVerify(exactly = 1) {
-            inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
-        }*/
+        every {
+            runBlocking {
+                inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
+            }
+        } just runs
+        verify(exactly = 1)  {
+            runBlocking {
+                inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
+            }
+        }
     }
 
     @Test
