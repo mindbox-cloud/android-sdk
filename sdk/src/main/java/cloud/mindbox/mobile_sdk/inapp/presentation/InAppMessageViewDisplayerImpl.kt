@@ -16,7 +16,6 @@ import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
-import java.lang.RuntimeException
 
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
@@ -32,10 +31,12 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         MindboxLoggerImpl.d(this, "onResumeCurrentActivity: ${activity.hashCode()}")
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
+            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             )
         } else {
+            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             ).apply {
@@ -53,10 +54,12 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         MindboxLoggerImpl.d(this, "registerCurrentActivity: ${activity.hashCode()}")
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
+            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             )
         } else {
+            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
             LayoutInflater.from(activity).inflate(R.layout.blur_layout,
                 currentRoot, false
             ).apply {
@@ -81,10 +84,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         if (currentActivity == activity) {
             currentActivity = null
         }
-        hideDefaultInAppMessage()
+        hideInAppMessage()
     }
 
-    private fun hideDefaultInAppMessage() {
+    private fun hideInAppMessage() {
         isInAppMessageActive = false
         currentRoot?.removeView(currentBlur)
         currentRoot?.removeView(currentDialog)
@@ -167,7 +170,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             })
                     }
                 } else {
-                    MindboxLoggerImpl.d(this, "inapp image url is blank")
+                    MindboxLoggerImpl.d(this, "in-app image url is blank")
                 }
             }
             else -> {
@@ -179,7 +182,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
-        private const val LOG_TAG = "InAppMessageViewDisplayerImpl"
     }
 }
 

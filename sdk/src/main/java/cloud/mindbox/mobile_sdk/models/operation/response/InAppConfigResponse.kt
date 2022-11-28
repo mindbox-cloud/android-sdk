@@ -41,7 +41,7 @@ internal data class TargetingDto(
 )
 
 internal sealed class PayloadDto {
-    class SimpleImage(
+    data class SimpleImage(
         @SerializedName("${"$"}type")
         val type: String?,
         @SerializedName("imageUrl")

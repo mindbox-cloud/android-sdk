@@ -1,161 +1,42 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.models.*
-import com.android.volley.VolleyError
+import cloud.mindbox.mobile_sdk.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.models.InApp
+import cloud.mindbox.mobile_sdk.models.InAppConfig
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import org.koin.java.KoinJavaComponent.inject
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
-internal class InAppInteractor {
-    private val inAppRepositoryImpl: InAppRepository by inject(InAppRepositoryImpl::class.java)
+internal interface InAppInteractor {
 
     fun processEventAndConfig(
-        context: Context,
         configuration: MindboxConfiguration,
-    ): Flow<InAppType> {
-        return inAppRepositoryImpl.listenInAppConfig()
-            .filterNotNull()
-            //TODO add eventProcessing
-            .combine(inAppRepositoryImpl.listenInAppEvents()
-                .filter { inAppEventType ->
-                    MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
-                    inAppEventType is InAppEventType.AppStartup
-                }) { config, event ->
-                val filteredConfig = prefilterConfig(config)
-                MindboxLoggerImpl.d(this,
-                    "Filtered config has ${filteredConfig.inApps.size} inapps")
-                val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
-                val inAppsWithoutTargeting =
-                    filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
-                val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
-                    inAppsWithoutTargeting.first().also {
-                        MindboxLoggerImpl.d(this,
-                            "Inapp without targeting found: ${it.id}")
-                    }
-                } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
-                    runCatching {
-                        checkSegmentation(filteredConfig,
-                            inAppRepositoryImpl.fetchSegmentations(context,
-                                configuration,
-                                filteredConfigWithTargeting))
-                    }.getOrElse { throwable ->
-                        if (throwable is VolleyError) {
-                            MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
-                            null
-                        } else {
-                            throw throwable
-                        }
-                    }
-                } else {
-                    null
-                }
+    ): Flow<InAppType>
 
-                when (val type = inApp?.form?.variants?.first()) {
-                    is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
-                        imageUrl = type.imageUrl,
-                        redirectUrl = type.redirectUrl,
-                        intentData = type.intentPayload)
-                    else -> {
-                        MindboxLoggerImpl.d(this,
-                            "No innaps to show found")
-                        null
-                    }
-                }
-            }.filterNotNull()
-    }
-
-    private fun prefilterConfig(config: InAppConfig): InAppConfig {
-        MindboxLoggerImpl.d(this,
-            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
-        return config.copy(inApps = config.inApps
-            .filter { inApp -> validateInAppVersion(inApp) }
-            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) }
-        )
-    }
-
-    private fun validateInAppTargeting(inApp: InApp): Boolean {
-        return when {
-            (inApp.targeting == null) -> {
-                false
-            }
-            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
-                false
-            }
-            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
-                false
-            }
-            else -> {
-                true
-            }
-        }
-    }
-
-    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
-        return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
-    }
-
-    fun saveShownInApp(id: String) {
-        inAppRepositoryImpl.saveShownInApp(id)
-    }
-
-    private suspend fun checkSegmentation(
+    suspend fun chooseInAppToShow(
         config: InAppConfig,
-        segmentationCheckInApp: SegmentationCheckInApp,
-    ): InApp? {
-        return suspendCoroutine { continuation ->
-            config.inApps.iterator().forEach { inApp ->
-                segmentationCheckInApp.customerSegmentations.iterator().forEach { customerSegmentationInAppResponse ->
-                    if (validateSegmentation(inApp, customerSegmentationInAppResponse)) {
-                        continuation.resume(inApp)
-                        return@suspendCoroutine
-                    }
-                }
-            }
-            continuation.resume(null)
-        }
-    }
+        configuration: MindboxConfiguration,
+    ): InApp?
 
-    fun sendInAppShown(context: Context, inAppId: String) {
-        inAppRepositoryImpl.sendInAppShown(context, inAppId)
-    }
+    fun saveShownInApp(id: String)
 
-    fun sendInAppClicked(context: Context, inAppId: String) {
-        inAppRepositoryImpl.sendInAppClicked(context, inAppId)
-    }
+    fun sendInAppShown(inAppId: String)
 
+    fun sendInAppClicked(inAppId: String)
 
-    private fun validateInAppNotShown(inApp: InApp): Boolean {
-        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
-    }
+    fun validateInAppVersion(inApp: InApp): Boolean
 
-    private fun validateSegmentation(
+    fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
-    ): Boolean {
-        return if (customerSegmentationInApp.segment == null) {
-            false
-        } else {
-            inApp.targeting?.segment == customerSegmentationInApp.segment.ids?.externalId
-        }
-    }
+    ): Boolean
 
-    private fun validateInAppVersion(inApp: InApp): Boolean {
-        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true))
-    }
+    fun validateInAppNotShown(inApp: InApp): Boolean
 
+    fun getConfigWithTargeting(config: InAppConfig): InAppConfig
 
-    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
-        inAppRepositoryImpl.fetchInAppConfig(context, configuration)
-    }
+    fun prefilterConfig(config: InAppConfig): InAppConfig
+
+    fun validateInAppTargeting(inApp: InApp): Boolean
+
+    suspend fun fetchInAppConfig(configuration: MindboxConfiguration)
 }

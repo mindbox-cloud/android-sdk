@@ -23,7 +23,7 @@ internal data class Targeting(
 )
 
 internal sealed class Payload {
-    class SimpleImage(
+    data class SimpleImage(
         val type: String,
         val imageUrl: String,
         val redirectUrl: String,
