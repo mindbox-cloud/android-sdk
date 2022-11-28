@@ -109,7 +109,7 @@ internal class InAppMessageManagerTest {
         }
     }
 
-  /*  @Test
+    @Test
     fun `in app messages success message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -128,12 +128,12 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
         inAppMessageInteractor.processEventAndConfig(mindboxConfiguration).test {
             awaitItem()
-            coVerify(exactly = 1) {
-                inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
-            }
             awaitComplete()
         }
-    }*/
+        coVerify(exactly = 1) {
+            inAppMessageViewDisplayer.showInAppMessage(any(), any(), any())
+        }
+    }
 
     @Test
     fun `in app messages error message`() = runTest {
