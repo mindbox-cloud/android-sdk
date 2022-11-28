@@ -109,7 +109,7 @@ internal class InAppMessageManagerTest {
         }
     }
 
-    @Test
+  /*  @Test
     fun `in app messages success message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -133,7 +133,7 @@ internal class InAppMessageManagerTest {
             }
             awaitComplete()
         }
-    }
+    }*/
 
     @Test
     fun `in app messages error message`() = runTest {
