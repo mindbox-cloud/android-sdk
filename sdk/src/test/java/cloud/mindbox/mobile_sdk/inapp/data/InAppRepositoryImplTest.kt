@@ -55,6 +55,16 @@ internal class InAppRepositoryImplTest {
     }
 
     @Test
+    fun `shownInApp ids returns null`() {
+        every {
+            gson.fromJson<HashSet<String>>(any<String>(),
+                object : TypeToken<HashSet<String>>() {}.type)
+        } returns null
+        every { MindboxPreferences.shownInAppIds } returns "a"
+        assertNotNull(inAppRepository.shownInApps)
+    }
+
+    @Test
     fun `shown inApp ids empty`() {
         val expectedIds = hashSetOf<String>()
         every { MindboxPreferences.shownInAppIds } returns ""
@@ -77,14 +87,37 @@ internal class InAppRepositoryImplTest {
     @Test
     fun `simple image response mapping success test`() {
         val successJson =
-            "{\"inapps\":[{\"id\":\"040810aa-d135-49f4-8916-7e68dcc61c71\",\"sdkVersion\":{\"min\":1,\"max\":null},\"targeting\":{\"segmentation\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"segment\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"\$type\":\"simple\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg\",\"redirectUrl\":\"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71\",\"intentPayload\":\"123\",\"\$type\":\"simpleImage\"}]}}]}"
+            """{"inapps":[
+                |{
+                |"id":"040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"sdkVersion":
+                |{
+                |"min":1,
+                |"max":null
+                |},
+                |"targeting":{
+                |"segmentation":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"segment":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"${"$"}type":"simple"
+                |},
+                |"form":{
+                |"variants":[
+                |{
+                |"imageUrl":"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                |"redirectUrl":"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"intentPayload":"123",
+                |"${"$"}type":"simpleImage"
+                |}]}}]}"""
+                .trimMargin()
 
         val expectedResult = InAppConfigStub.getConfigDto()
             .copy(inApps = listOf(InAppStub.getInAppDto()
                 .copy(id = "040810aa-d135-49f4-8916-7e68dcc61c71",
                     sdkVersion = InAppStub.getInAppDto().sdkVersion?.copy(minVersion = 1,
                         maxVersion = null),
-                    targeting = InAppStub.getInAppDto().targeting?.copy(type = "simple", segmentation = "af30f24d-5097-46bd-94b9-4274424a87a7", segment = "af30f24d-5097-46bd-94b9-4274424a87a7"),
+                    targeting = InAppStub.getInAppDto().targeting?.copy(type = "simple",
+                        segmentation = "af30f24d-5097-46bd-94b9-4274424a87a7",
+                        segment = "af30f24d-5097-46bd-94b9-4274424a87a7"),
                     form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                         .copy(
                             type = "simpleImage",
@@ -98,9 +131,37 @@ internal class InAppRepositoryImplTest {
     }
 
     @Test
-    fun `simple image response mapping error test`() {
+    fun `simple image response mapping invalid json test`() {
+        val errorJson = "123"
+        assertNull(inAppRepository.deserializeConfigToConfigDto(errorJson))
+
+    }
+
+    @Test
+    fun `simple image response mapping unknown type test`() {
         val errorJson =
-            "{\"inapps\":[{\"id\":\"040810aa-d135-49f4-8916-7e68dcc61c71\",\"sdkVersion\":{\"min\":1,\"max\":null},\"targeting\":{\"segmentation\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"segment\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"$\type\":\"simple\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg\",\"redirectUrl\":\"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71\",\"intentPayload\":\"123\",\"\$type\":\"simpleI5mage\"}]}}]}"
+            """{"inapps":[
+                |{
+                |"id":"040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"sdkVersion":
+                |{
+                |"min":1,
+                |"max":null
+                |},
+                |"targeting":{
+                |"segmentation":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"segment":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"${"$"}type":"simple"
+                |},
+                |"form":{
+                |"variants":[
+                |{
+                |"imageUrl":"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                |"redirectUrl":"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"intentPayload":"123",
+                |"${"$"}type":"sim5pleImage"
+                |}]}}]}"""
+                .trimMargin()
         assertNull(inAppRepository.deserializeConfigToConfigDto(errorJson))
     }
 
@@ -112,8 +173,28 @@ internal class InAppRepositoryImplTest {
     @Test
     fun `simple image response mapping malformed test`() {
         val malformedJson =
-            "\"inapps\":[{\"id\":\"040810aa-d135-49f4-8916-7e68dcc61c71\",\"sdkVersion\":{\"min\":1,\"max\":null},\"targeting\":{\"segmentation\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"segment\":\"af30f24d-5097-46bd-94b9-4274424a87a7\",\"$\type\":\"simple\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg\",\"redirectUrl\":\"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71\",\"intentPayload\":\"123\",\"\$type\":\"simpleImage\"}]}}]}"
-
+            """{"inapps":[
+                |{
+                |"id":"040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"sdkVersion":
+                |{
+                |"min":1,
+                |"max":null
+                |},
+                |"targeting":{
+                |"segmentation":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"segment":"af30f24d-5097-46bd-94b9-4274424a87a7",
+                |"${"$"}type":"simple"
+                |},
+                |"form":{
+                |"variants":[
+                |{
+                |"imageUrl":"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                |"redirectUrl":"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"intentPayload":"123",
+                |"${"$"}type":"simpleImage"
+                |}]}]}"""
+                .trimMargin()
         assertNull(inAppRepository.deserializeConfigToConfigDto(malformedJson))
     }
 

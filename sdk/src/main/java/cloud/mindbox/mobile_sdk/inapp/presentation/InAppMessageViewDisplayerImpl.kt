@@ -20,11 +20,11 @@ import com.squareup.picasso.Picasso
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
-    override var currentRoot: ViewGroup? = null
-    override var currentBlur: View? = null
-    override var currentDialog: InAppConstraintLayout? = null
-    override var currentActivity: Activity? = null
-    override var inAppCallback: InAppCallback? = null
+    private var currentRoot: ViewGroup? = null
+    private var currentBlur: View? = null
+    private var currentDialog: InAppConstraintLayout? = null
+    private var currentActivity: Activity? = null
+    private var inAppCallback: InAppCallback? = null
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {

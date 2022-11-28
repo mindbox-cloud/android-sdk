@@ -1,27 +1,140 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
+import com.android.volley.VolleyError
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppInteractorImplTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
     @MockK
+    private lateinit var mindboxConfiguration: MindboxConfiguration
+
+    @MockK
     private lateinit var inAppRepository: InAppRepository
 
     @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
+
+
+    @Test
+    fun `should choose in-app without targeting`() = runTest {
+        every {
+            inAppRepository.shownInApps
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        val expectedResult = InAppStub.getInApp()
+            .copy(targeting = InAppStub.getInApp().targeting?.copy(segmentation = null,
+                segment = null))
+        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
+            .copy(listOf(InAppStub.getInApp()
+                .copy(targeting = InAppStub.getInApp().targeting?.copy(segmentation = null,
+                    segment = null)),
+                (InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
+                        "123",
+                        segment = "456"))))),
+            configuration = mindboxConfiguration)
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `should choose in-app with targeting`() = runTest {
+        every {
+            inAppRepository.shownInApps
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy(customerSegmentations = listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
+                        SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
+                            "123")),
+                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
+                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
+                                "456")))))
+        val expectedResult = InAppStub.getInApp()
+            .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
+                segmentation = "123",
+                segment = "456"))
+        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
+            .copy(listOf(InAppStub.getInApp()
+                .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
+                    "123",
+                    segment = "456")))),
+            configuration = mindboxConfiguration)
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `should return null if no in-apps present`() = runTest {
+        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
+            .copy(listOf()),
+            configuration = mindboxConfiguration)
+        assertNull(actualResult)
+    }
+
+    @Test
+    fun `should return null if network exception`() = runTest {
+        every {
+            inAppRepository.shownInApps
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+
+        } throws VolleyError()
+        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
+            .copy(listOf(InAppStub.getInApp()
+                .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
+                    "123",
+                    segment = "456")))),
+            configuration = mindboxConfiguration)
+        assertNull(actualResult)
+    }
+
+    @Test
+    fun `should throw exception if non network error`() = runTest {
+        every {
+            inAppRepository.shownInApps
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+
+        } throws Error()
+
+        assertThrows(Error::class.java) {
+            runBlocking {
+                inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
+                    .copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
+                            "123",
+                            segment = "456")))),
+                    configuration = mindboxConfiguration)
+            }
+        }
+    }
 
     @Test
     fun `config has only targeting in-apps`() {
@@ -48,6 +161,41 @@ internal class InAppInteractorImplTest {
             }
         }
         assertTrue(rez)
+    }
+
+    @Test
+    fun `validate in-app was shown list is empty`() {
+        every { inAppRepository.shownInApps } returns HashSet()
+        assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()))
+    }
+
+    @Test
+    fun `validate in-app was shown list isn't empty but does not contain current in-app id`() {
+        every { inAppRepository.shownInApps } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+            "ad487f74-924f-44f0-b4f7-f239ea5643c5")
+        assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp().copy(id = "123")))
+    }
+
+    @Test
+    fun `validate in-app was shown list isn't empty and contains current in-app id`() {
+        every { inAppRepository.shownInApps } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+            "ad487f74-924f-44f0-b4f7-f239ea5643c5")
+        assertFalse(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()
+            .copy(id = "71110297-58ad-4b3c-add1-60df8acb9e5e")))
+    }
+
+    @Test
+    fun `in-app has segmentation and segment`() {
+        assertTrue(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
+            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = "213",
+                segmentation = "345"))))
+    }
+
+    @Test
+    fun `in-app has no segmentation and no segment`() {
+        assertTrue(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
+            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = null,
+                segmentation = null))))
     }
 
     @Test
@@ -130,7 +278,7 @@ internal class InAppInteractorImplTest {
     @Test
     fun `in-app version no max version`() {
         assertTrue(inAppInteractor.validateInAppVersion(InAppStub.getInApp()
-            .copy(minVersion = null)))
+            .copy(maxVersion = null)))
     }
 
     @Test

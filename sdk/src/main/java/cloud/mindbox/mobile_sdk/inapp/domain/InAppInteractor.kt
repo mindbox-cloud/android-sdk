@@ -13,9 +13,7 @@ internal interface InAppInteractor {
     ): Flow<InAppType>
 
     suspend fun chooseInAppToShow(
-        inAppsWithoutTargeting: Set<InApp>,
-        filteredConfigWithTargeting: InAppConfig,
-        filteredConfig: InAppConfig,
+        config: InAppConfig,
         configuration: MindboxConfiguration,
     ): InApp?
 
@@ -31,6 +29,8 @@ internal interface InAppInteractor {
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean
+
+    fun validateInAppNotShown(inApp: InApp): Boolean
 
     fun getConfigWithTargeting(config: InAppConfig): InAppConfig
 

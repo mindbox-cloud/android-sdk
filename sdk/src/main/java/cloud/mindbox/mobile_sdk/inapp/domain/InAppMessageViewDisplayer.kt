@@ -8,12 +8,6 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 
 internal interface InAppMessageViewDisplayer {
 
-    var currentRoot: ViewGroup?
-    var currentBlur: View?
-    var currentDialog: InAppConstraintLayout?
-    var currentActivity: Activity?
-    var inAppCallback: InAppCallback?
-
     fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 
     fun onPauseCurrentActivity(activity: Activity)

@@ -22,13 +22,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
                 .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
-                val filteredConfig = prefilterConfig(config)
-                val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
-                val inAppsWithoutTargeting =
-                    filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
-                val inApp = chooseInAppToShow(inAppsWithoutTargeting,
-                    filteredConfigWithTargeting,
-                    filteredConfig,
+                val inApp = chooseInAppToShow(config,
                     configuration)
                 when (val type = inApp?.form?.variants?.first()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
@@ -41,11 +35,13 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
     override suspend fun chooseInAppToShow(
-        inAppsWithoutTargeting: Set<InApp>,
-        filteredConfigWithTargeting: InAppConfig,
-        filteredConfig: InAppConfig,
+        config: InAppConfig,
         configuration: MindboxConfiguration,
     ): InApp? {
+        val filteredConfig = prefilterConfig(config)
+        val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
+        val inAppsWithoutTargeting =
+            filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
         return if (inAppsWithoutTargeting.isNotEmpty()) {
             inAppsWithoutTargeting.first()
         } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
@@ -124,7 +120,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
 
-    private fun validateInAppNotShown(inApp: InApp): Boolean {
+    override fun validateInAppNotShown(inApp: InApp): Boolean {
         return inAppRepositoryImpl.shownInApps.contains(inApp.id).not()
     }
 

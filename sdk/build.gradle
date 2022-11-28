@@ -11,7 +11,6 @@ android {
     }
     testOptions {
         unitTests.returnDefaultValues = true
-        unitTests.includeAndroidResources = true
     }
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
@@ -34,8 +33,6 @@ dependencies {
     testImplementation testDependencies.mockk
     testImplementation testDependencies.mockk_android
     testImplementation testDependencies.mockk_agent
-
-    testImplementation testDependencies.robolectric
 
 
     // ConstraintLayout
