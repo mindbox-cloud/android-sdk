@@ -90,6 +90,9 @@ internal class InAppInteractorImplTest {
 
     @Test
     fun `should return null if no in-apps present`() = runTest {
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
         val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
             .copy(listOf()),
             configuration = mindboxConfiguration)
