@@ -25,15 +25,16 @@ internal class InAppRepositoryImpl(
     private val context: Context,
 ) : InAppRepository {
 
-    override val shownInApps: HashSet<String>
-        get() = LoggingExceptionHandler.runCatching(HashSet()) {
+    override fun getShownInApps(): HashSet<String> {
+        return LoggingExceptionHandler.runCatching(HashSet()) {
             if (MindboxPreferences.shownInAppIds.isBlank()) {
                 HashSet()
             } else {
                 gson.fromJson(MindboxPreferences.shownInAppIds,
-                    object : TypeToken<HashSet<String>>() {}.type)
+                    object : TypeToken<HashSet<String>>() {}.type) ?: HashSet()
             }
         }
+    }
 
 
     override fun sendInAppShown(inAppId: String) {
@@ -69,7 +70,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveShownInApp(id: String) {
-        shownInApps.add(id)
+        val shownInApps = getShownInApps().apply { add(id) }
         MindboxPreferences.shownInAppIds =
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
     }

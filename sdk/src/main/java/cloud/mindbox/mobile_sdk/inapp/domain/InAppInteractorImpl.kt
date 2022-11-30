@@ -21,7 +21,10 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return inAppRepositoryImpl.listenInAppConfig().filterNotNull()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
-                .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
+                .filter { inAppEventType ->
+                    MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
+                    inAppEventType is InAppEventType.AppStartup
+                }) { config, event ->
                 val inApp = chooseInAppToShow(config,
                     configuration)
                 when (val type = inApp?.form?.variants?.first()) {
@@ -29,7 +32,11 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
                         intentData = type.intentPayload)
-                    else -> null
+                    else -> {
+                        MindboxLoggerImpl.d(this,
+                            "No innaps to show found")
+                        null
+                    }
                 }
             }.filterNotNull()
     }
@@ -39,11 +46,16 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         configuration: MindboxConfiguration,
     ): InApp? {
         val filteredConfig = prefilterConfig(config)
+        MindboxLoggerImpl.d(this,
+            "Filtered config has ${filteredConfig.inApps.size} inapps")
         val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
         val inAppsWithoutTargeting =
             filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
         return if (inAppsWithoutTargeting.isNotEmpty()) {
-            inAppsWithoutTargeting.first()
+            inAppsWithoutTargeting.first().also {
+                MindboxLoggerImpl.d(this,
+                    "Inapp without targeting found: ${it.id}")
+            }
         } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
             runCatching {
                 checkSegmentation(filteredConfig,
@@ -64,6 +76,8 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
     override fun prefilterConfig(config: InAppConfig): InAppConfig {
+        MindboxLoggerImpl.d(this,
+            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
     }
@@ -86,7 +100,12 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
     override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
-        return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
+        return config.copy(
+            inApps = config.inApps.filter { inApp ->
+                inApp.targeting?.segmentation != null
+                        && inApp.targeting.segment != null
+            }
+        )
     }
 
     override fun saveShownInApp(id: String) {
@@ -121,7 +140,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
 
 
     override fun validateInAppNotShown(inApp: InApp): Boolean {
-        return inAppRepositoryImpl.shownInApps.contains(inApp.id).not()
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
     override fun validateSegmentation(
