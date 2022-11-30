@@ -8,11 +8,8 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import io.mockk.every
+import io.mockk.*
 import io.mockk.junit4.MockKRule
-import io.mockk.mockk
-import io.mockk.mockkClass
-import io.mockk.mockkObject
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -53,20 +50,20 @@ internal class InAppRepositoryImplTest : KoinTest {
             "ad487f74-924f-44f0-b4f7-f239ea5643c5")
         every { MindboxPreferences.shownInAppIds } returns
                 "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
-        assertTrue(inAppRepository.shownInApps.containsAll(testHashSet))
+        assertTrue(inAppRepository.getShownInApps().containsAll(testHashSet))
     }
 
     @Test
     fun `shownInApp ids returns null`() {
         every { MindboxPreferences.shownInAppIds } returns "a"
-        assertNotNull(inAppRepository.shownInApps)
+        assertNotNull(inAppRepository.getShownInApps())
     }
 
     @Test
     fun `shown inApp ids empty`() {
         val expectedIds = hashSetOf<String>()
         every { MindboxPreferences.shownInAppIds } returns ""
-        val actualIds = inAppRepository.shownInApps
+        val actualIds = inAppRepository.getShownInApps()
         assertTrue(expectedIds.containsAll(actualIds))
     }
 
@@ -74,8 +71,21 @@ internal class InAppRepositoryImplTest : KoinTest {
     fun `shown inApp ids is not empty and is not a json`() {
         every { MindboxPreferences.shownInAppIds } returns "123"
         val expectedResult = hashSetOf<String>()
-        val actualResult = inAppRepository.shownInApps
+        val actualResult = inAppRepository.getShownInApps()
         assertTrue(actualResult.containsAll(expectedResult))
+    }
+
+    @Test
+    fun `save shown inApp success`() {
+        val expectedJson = """
+            ["123","456"]
+        """.trimIndent()
+        every { MindboxPreferences.shownInAppIds } returns "[123]"
+        val test = inAppRepository.getShownInApps()
+        inAppRepository.saveShownInApp("456")
+        verify (exactly = 1) {
+            MindboxPreferences.shownInAppIds = expectedJson
+        }
     }
 
     @Test
