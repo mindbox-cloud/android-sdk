@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.domain
+package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 sealed class InAppType(open val inAppId: String) {
 

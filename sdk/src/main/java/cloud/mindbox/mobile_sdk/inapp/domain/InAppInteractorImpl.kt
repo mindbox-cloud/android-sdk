@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
@@ -81,16 +82,16 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
     }
-
+    //TODO починить
     override fun validateInAppTargeting(inApp: InApp): Boolean {
         return when {
             (inApp.targeting == null) -> {
                 false
             }
-            (inApp.targeting.segmentation == null && inApp.targeting.segment != null) -> {
+            (inApp.targeting.type == null && inApp.targeting.type != null) -> {
                 false
             }
-            (inApp.targeting.segmentation != null && inApp.targeting.segment == null) -> {
+            (inApp.targeting.type != null && inApp.targeting.type == null) -> {
                 false
             }
             else -> {
@@ -98,12 +99,12 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             }
         }
     }
-
+    //TODO починить
     override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
         return config.copy(
             inApps = config.inApps.filter { inApp ->
-                inApp.targeting?.segmentation != null
-                        && inApp.targeting.segment != null
+                inApp.targeting?.type != null
+                        && inApp.targeting?.type != null
             }
         )
     }
@@ -143,6 +144,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
+    //TODO починить
     override fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
@@ -150,7 +152,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return if (customerSegmentationInApp.segment == null) {
             false
         } else {
-            inApp.targeting?.segment == customerSegmentationInApp.segment.ids?.externalId
+            inApp.targeting?.type == customerSegmentationInApp.segment.ids?.externalId
         }
     }
 

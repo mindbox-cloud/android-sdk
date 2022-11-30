@@ -315,7 +315,25 @@ internal object GatewayManager {
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
-                        continuation.resume(response)
+                        continuation.resume("""{"inapps":[
+                |{
+                |"id":"040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"sdkVersion":
+                |{
+                |"min":1,
+                |"max":null
+                |},
+                |"targeting":{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segmentation_internal_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segment_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2"},{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segmentation_internal_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segment_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2"},{"${"$"}type":"segment","kind":"negative","segmentation_external_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c","segmentation_internal_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c","segment_external_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c"}]}]},
+                |"form":{
+                |"variants":[
+                |{
+                |"imageUrl":"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                |"redirectUrl":"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                |"intentPayload":"123",
+                |"${"$"}type":"simpleImage"
+                |}]}}]}"""
+                            .trimMargin())
+                        //continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)

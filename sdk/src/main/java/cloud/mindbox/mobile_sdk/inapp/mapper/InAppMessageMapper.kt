@@ -1,5 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
+import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
@@ -7,7 +10,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
-import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 
 internal class InAppMessageMapper {
 
@@ -41,12 +43,40 @@ internal class InAppMessageMapper {
     }
 
 
-    private fun mapTargetingDtoToTargeting(targetingDto: TargetingDto?): Targeting? {
-        return if (targetingDto != null) Targeting(
-            type = targetingDto.type ?: "",
-            segmentation = targetingDto.segmentation,
-            segment = targetingDto.segment
-        ) else null
+    private fun mapTargetingDtoToTargeting(targetingDto: TreeTargetingDto?): TreeTargeting? {
+        return if (targetingDto != null)
+            when (targetingDto) {
+                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
+                is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
+                    InAppRepositoryImpl.AND_JSON_NAME,
+                    mapNodesDtoToNodes(targetingDto.nodes))
+                is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
+                    Kind.POSITIVE,
+                    targetingDto.segmentationExternalId,
+                    targetingDto.segmentationInternalId,
+                    targetingDto.segment_external_id)
+                is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
+                    mapNodesDtoToNodes(targetingDto.nodes))
+            }
+        else null
+    }
+
+    private fun mapNodesDtoToNodes(nodesDto: List<TreeTargetingDto>): List<TreeTargeting> {
+        return nodesDto.map { treeTargetingDto ->
+            when (treeTargetingDto) {
+                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
+                is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
+                    InAppRepositoryImpl.AND_JSON_NAME,
+                    mapNodesDtoToNodes(treeTargetingDto.nodes))
+                is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.segmentationExternalId,
+                    treeTargetingDto.segmentationInternalId,
+                    treeTargetingDto.segment_external_id)
+                is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
+                    mapNodesDtoToNodes(treeTargetingDto.nodes))
+            }
+        }
     }
 
     fun mapSegmentationCheckResponseToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
@@ -69,7 +99,8 @@ internal class InAppMessageMapper {
     fun mapInAppDtoToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
         return SegmentationCheckRequest(
             config.inApps.map { inAppDto ->
-                SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
+                //TODO починить
+                SegmentationDataRequest(IdsRequest(""))
             })
     }
 }

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 
+import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.annotations.SerializedName
 
 internal data class InAppConfigResponse(
@@ -14,7 +15,7 @@ internal data class InAppDto(
     @SerializedName("sdkVersion")
     val sdkVersion: SdkVersion?,
     @SerializedName("targeting")
-    val targeting: TargetingDto?,
+    val targeting: TreeTargetingDto?,
     @SerializedName("form")
     val form: FormDto?,
 )

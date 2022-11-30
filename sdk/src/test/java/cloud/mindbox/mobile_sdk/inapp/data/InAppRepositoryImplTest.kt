@@ -88,7 +88,7 @@ internal class InAppRepositoryImplTest : KoinTest {
         }
     }
 
-    @Test
+    /*@Test
     fun `simple image response mapping success test`() {
         val successJson =
             """{"inapps":[
@@ -132,7 +132,7 @@ internal class InAppRepositoryImplTest : KoinTest {
             inAppRepository.deserializeConfigToConfigDto(successJson)
         assertNotNull(actualResult)
         assertEquals(expectedResult, actualResult)
-    }
+    }*/
 
     @Test
     fun `simple image response mapping invalid json test`() {

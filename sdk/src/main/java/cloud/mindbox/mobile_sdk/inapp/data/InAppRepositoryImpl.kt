@@ -78,17 +78,17 @@ internal class InAppRepositoryImpl(
     override fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfig ->
             inAppMapper.mapInAppConfigResponseToInAppConfig(
-                deserializeConfigToConfigDto(inAppConfig)).apply {
+                deserializeConfigToConfigDto(inAppConfig.filter { it.isWhitespace().not() })).apply {
                 MindboxLoggerImpl.d(this@InAppRepositoryImpl, "Providing config: $this")
             }
         }
     }
 
     override fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse? {
-        return runCatching {
-            gson.fromJson(inAppConfig,
-                    InAppConfigResponse::class.java)
-        }.getOrNull()
+        return   gson.fromJson(inAppConfig,
+            InAppConfigResponse::class.java)//runCatching {
+
+        //}.getOrNull()
     }
 
     companion object {
@@ -97,9 +97,19 @@ internal class InAppRepositoryImpl(
         private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 
         /**
-         * Типы картинок
+         * Тargeting types
+         **/
+        const val TRUE_JSON_NAME = "true"
+        const val AND_JSON_NAME = "and"
+        const val OR_JSON_NAME = "or"
+        const val SEGMENT_JSON_NAME = "segment"
+
+        /**
+         * In-app types
          **/
         const val SIMPLE_IMAGE_JSON_NAME = "simpleImage"
+
+
     }
 
 

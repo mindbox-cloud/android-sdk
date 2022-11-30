@@ -1,10 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.app.Activity
-import android.view.View
-import android.view.ViewGroup
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 
 internal interface InAppMessageViewDisplayer {
 

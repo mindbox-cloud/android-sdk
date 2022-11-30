@@ -5,11 +5,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.*
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
+import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
-import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.Dispatchers
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -21,11 +20,23 @@ internal val dataModule = module {
     factory<InAppRepository> { InAppRepositoryImpl(get(), get(), androidContext()) }
     factory<InAppInteractor> { InAppInteractorImpl(get()) }
     single { InAppMessageMapper() }
-    single { GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
-        PayloadDto::class.java,
-        InAppRepositoryImpl.TYPE_JSON_NAME, true)
-        .registerSubtype(PayloadDto.SimpleImage::class.java,
-            InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
-        .create() }
+    single {
+        GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
+            PayloadDto::class.java,
+            InAppRepositoryImpl.TYPE_JSON_NAME, true)
+            .registerSubtype(PayloadDto.SimpleImage::class.java,
+                InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
+            .registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(TreeTargetingDto::class.java,
+                InAppRepositoryImpl.TYPE_JSON_NAME,
+                true).registerSubtype(TreeTargetingDto.TrueNodeDto::class.java,
+                InAppRepositoryImpl.TRUE_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.IntersectionNodeDto::class.java,
+                    InAppRepositoryImpl.AND_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.UnionNodeDto::class.java,
+                    InAppRepositoryImpl.OR_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.SegmentNodeDto::class.java,
+                    InAppRepositoryImpl.SEGMENT_JSON_NAME))
+            .create()
+    }
 }
 
