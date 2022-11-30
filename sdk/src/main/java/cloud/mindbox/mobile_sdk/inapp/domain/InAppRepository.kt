@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
-    val shownInApps: HashSet<String>
+    fun getShownInApps(): HashSet<String>
 
     suspend fun fetchInAppConfig(configuration: MindboxConfiguration)
 

@@ -86,7 +86,12 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
     override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
-        return config.copy(inApps = config.inApps.filter { inApp -> inApp.targeting?.segmentation != null && inApp.targeting.segment != null })
+        return config.copy(
+            inApps = config.inApps.filter { inApp ->
+                inApp.targeting?.segmentation != null
+                        && inApp.targeting.segment != null
+            }
+        )
     }
 
     override fun saveShownInApp(id: String) {
@@ -121,7 +126,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
 
 
     override fun validateInAppNotShown(inApp: InApp): Boolean {
-        return inAppRepositoryImpl.shownInApps.contains(inApp.id).not()
+        return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
     override fun validateSegmentation(

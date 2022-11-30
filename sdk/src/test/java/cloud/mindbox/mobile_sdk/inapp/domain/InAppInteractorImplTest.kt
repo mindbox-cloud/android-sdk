@@ -37,7 +37,7 @@ internal class InAppInteractorImplTest {
     @Test
     fun `should choose in-app without targeting`() = runTest {
         every {
-            inAppRepository.shownInApps
+            inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
             inAppRepository.fetchSegmentations(mindboxConfiguration, any())
@@ -61,7 +61,7 @@ internal class InAppInteractorImplTest {
     @Test
     fun `should choose in-app with targeting`() = runTest {
         every {
-            inAppRepository.shownInApps
+            inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
             inAppRepository.fetchSegmentations(mindboxConfiguration, any())
@@ -99,7 +99,7 @@ internal class InAppInteractorImplTest {
     @Test
     fun `should return null if network exception`() = runTest {
         every {
-            inAppRepository.shownInApps
+            inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
             inAppRepository.fetchSegmentations(mindboxConfiguration, any())
@@ -117,7 +117,7 @@ internal class InAppInteractorImplTest {
     @Test
     fun `should throw exception if non network error`() = runTest {
         every {
-            inAppRepository.shownInApps
+            inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
             inAppRepository.fetchSegmentations(mindboxConfiguration, any())
@@ -165,20 +165,20 @@ internal class InAppInteractorImplTest {
 
     @Test
     fun `validate in-app was shown list is empty`() {
-        every { inAppRepository.shownInApps } returns HashSet()
+        every { inAppRepository.getShownInApps() } returns HashSet()
         assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()))
     }
 
     @Test
     fun `validate in-app was shown list isn't empty but does not contain current in-app id`() {
-        every { inAppRepository.shownInApps } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+        every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
             "ad487f74-924f-44f0-b4f7-f239ea5643c5")
         assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp().copy(id = "123")))
     }
 
     @Test
     fun `validate in-app was shown list isn't empty and contains current in-app id`() {
-        every { inAppRepository.shownInApps } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+        every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
             "ad487f74-924f-44f0-b4f7-f239ea5643c5")
         assertFalse(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()
             .copy(id = "71110297-58ad-4b3c-add1-60df8acb9e5e")))
