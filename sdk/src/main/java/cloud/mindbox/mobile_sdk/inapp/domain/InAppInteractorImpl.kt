@@ -77,7 +77,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
 
     override fun prefilterConfig(config: InAppConfig): InAppConfig {
         MindboxLoggerImpl.d(this,
-            "Already shown innaps: ${inAppRepositoryImpl.shownInApps}")
+            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
     }
