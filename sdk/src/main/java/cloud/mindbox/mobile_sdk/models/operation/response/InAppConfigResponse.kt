@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 
+import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.annotations.SerializedName
 
@@ -52,4 +53,20 @@ internal sealed class PayloadDto {
         @SerializedName("intentPayload")
         val intentPayload: String?,
     ) : PayloadDto()
+}
+
+internal data class InAppConfigResponseBlank(
+    @SerializedName("inapps")
+    val inApps: List<InAppDtoBlank>?,
+) {
+    internal data class InAppDtoBlank(
+        @SerializedName("id")
+        val id: String,
+        @SerializedName("sdkVersion")
+        val sdkVersion: SdkVersion?,
+        @SerializedName("targeting")
+        val targeting: TargetingDto?,
+        @SerializedName("form")
+        val form: JsonObject?, // FormDto. Parsed after filtering inApp versions.
+    )
 }

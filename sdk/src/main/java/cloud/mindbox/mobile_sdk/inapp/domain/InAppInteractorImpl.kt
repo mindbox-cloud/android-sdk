@@ -4,7 +4,7 @@ import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -79,7 +79,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     override fun prefilterConfig(config: InAppConfig): InAppConfig {
         MindboxLoggerImpl.d(this,
             "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
-        return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
+        return config.copy(inApps = config.inApps
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
     }
     //TODO починить
@@ -155,13 +155,6 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             inApp.targeting?.type == customerSegmentationInApp.segment.ids?.externalId
         }
     }
-
-    override fun validateInAppVersion(inApp: InApp): Boolean {
-        return ((inApp.minVersion?.let { min -> min <= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION }
-            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION }
-            ?: true))
-    }
-
 
     override suspend fun fetchInAppConfig(configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(configuration)

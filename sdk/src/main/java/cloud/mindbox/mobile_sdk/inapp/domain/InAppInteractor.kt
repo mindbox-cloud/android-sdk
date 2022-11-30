@@ -24,8 +24,6 @@ internal interface InAppInteractor {
 
     fun sendInAppClicked(inAppId: String)
 
-    fun validateInAppVersion(inApp: InApp): Boolean
-
     fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,

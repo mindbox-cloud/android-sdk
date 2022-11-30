@@ -1,10 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.models.InApp
-import cloud.mindbox.mobile_sdk.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.SegmentationCheckInApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import kotlinx.coroutines.flow.Flow
 
@@ -18,8 +17,6 @@ internal interface InAppRepository {
         configuration: MindboxConfiguration,
         config: InAppConfig,
     ): SegmentationCheckInApp
-
-    fun deserializeConfigToConfigDto(inAppConfig: String): InAppConfigResponse?
 
     fun listenInAppConfig(): Flow<InAppConfig?>
 
