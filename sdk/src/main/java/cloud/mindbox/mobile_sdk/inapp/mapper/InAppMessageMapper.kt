@@ -4,12 +4,27 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
+import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 
 internal class InAppMessageMapper {
+    fun mapToInAppDto (
+        inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
+        formDto: FormDto?,
+    ): InAppDto {
+        return inAppDtoBlank.let { inApp ->
+            InAppDto(
+                id = inApp.id,
+                sdkVersion = inApp.sdkVersion,
+                targeting = inApp.targeting,
+                form = formDto
+            )
+        }
+    }
 
     fun mapInAppConfigResponseToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
         return inAppConfigResponse?.let { inAppConfigDto ->

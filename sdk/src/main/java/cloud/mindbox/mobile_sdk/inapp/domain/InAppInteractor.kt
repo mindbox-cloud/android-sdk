@@ -59,7 +59,7 @@ internal class InAppInteractor {
                     null
                 }
 
-                when (val type = inApp?.form?.variants?.first()) {
+                when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
@@ -77,7 +77,6 @@ internal class InAppInteractor {
         MindboxLoggerImpl.d(this,
             "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps
-            .filter { inApp -> validateInAppVersion(inApp) }
             .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) }
         )
     }
@@ -147,13 +146,6 @@ internal class InAppInteractor {
             inApp.targeting?.segment == customerSegmentationInApp.segment.ids?.externalId
         }
     }
-
-    private fun validateInAppVersion(inApp: InApp): Boolean {
-        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true))
-    }
-
 
     suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(context, configuration)
