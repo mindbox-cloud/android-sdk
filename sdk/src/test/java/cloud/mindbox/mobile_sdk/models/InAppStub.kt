@@ -1,5 +1,9 @@
 package cloud.mindbox.mobile_sdk.models
 
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Payload
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Targeting
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 
 internal class InAppStub {
