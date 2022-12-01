@@ -32,7 +32,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                 }) { config, event ->
                 val inApp = chooseInAppToShow(config,
                     configuration)
-                when (val type = inApp?.form?.variants?.first()) {
+                when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
