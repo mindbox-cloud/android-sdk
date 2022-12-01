@@ -3,21 +3,19 @@ package cloud.mindbox.mobile_sdk.inapp.data
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
+import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
-import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
@@ -95,6 +93,7 @@ internal class InAppRepositoryImpl(
                     inAppMapper.mapToInAppDto(
                         inAppDtoBlank = inAppDtoBlank,
                         formDto = deserializeToInAppFormDto(inAppDtoBlank.form),
+                        targetingDto = deserializeToInAppTargetingDto(inAppDtoBlank.targeting)
                     )
                 }
             val filteredConfig = InAppConfigResponse(
@@ -107,6 +106,21 @@ internal class InAppRepositoryImpl(
                 )
             }
         }
+    }
+
+    private fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto? {
+        val result = runCatching {
+            gson.fromJson(inAppTreeTargeting, TreeTargetingDto::class.java)
+        }
+        result.exceptionOrNull()?.let { error ->
+            MindboxLoggerImpl.e(
+                parent = this@InAppRepositoryImpl,
+                message = "Failed to parse JsonObject: $inAppTreeTargeting",
+                exception = error
+            )
+        }
+        return result.getOrNull()
+
     }
 
     private fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank? {

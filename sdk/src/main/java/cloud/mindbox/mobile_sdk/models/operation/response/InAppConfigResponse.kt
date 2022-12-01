@@ -65,7 +65,7 @@ internal data class InAppConfigResponseBlank(
         @SerializedName("sdkVersion")
         val sdkVersion: SdkVersion?,
         @SerializedName("targeting")
-        val targeting: TargetingDto?,
+        val targeting: JsonObject?,
         @SerializedName("form")
         val form: JsonObject?, // FormDto. Parsed after filtering inApp versions.
     )
