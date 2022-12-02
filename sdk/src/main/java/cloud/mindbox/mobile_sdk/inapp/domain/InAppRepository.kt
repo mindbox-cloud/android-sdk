@@ -17,7 +17,7 @@ internal interface InAppRepository {
         config: InAppConfig,
     ): SegmentationCheckInApp
 
-    fun listenInAppConfig(): Flow<InAppConfig>
+    fun listenInAppConfig(): Flow<InAppConfig?>
 
     fun listenInAppEvents(): Flow<InAppEventType>
 

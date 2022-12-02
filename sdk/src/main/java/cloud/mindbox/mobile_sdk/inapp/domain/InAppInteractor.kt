@@ -23,15 +23,24 @@ internal class InAppInteractor {
         configuration: MindboxConfiguration,
     ): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig()
+            .filterNotNull()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
-                .filter { inAppEventType -> inAppEventType is InAppEventType.AppStartup }) { config, event ->
+                .filter { inAppEventType ->
+                    MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
+                    inAppEventType is InAppEventType.AppStartup
+                }) { config, event ->
                 val filteredConfig = prefilterConfig(config)
+                MindboxLoggerImpl.d(this,
+                    "Filtered config has ${filteredConfig.inApps.size} inapps")
                 val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
                 val inAppsWithoutTargeting =
                     filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
                 val inApp = if (inAppsWithoutTargeting.isNotEmpty()) {
-                    inAppsWithoutTargeting.first()
+                    inAppsWithoutTargeting.first().also {
+                        MindboxLoggerImpl.d(this,
+                            "Inapp without targeting found: ${it.id}")
+                    }
                 } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
                     runCatching {
                         checkSegmentation(filteredConfig,
@@ -50,19 +59,26 @@ internal class InAppInteractor {
                     null
                 }
 
-                when (val type = inApp?.form?.variants?.first()) {
+                when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
                         intentData = type.intentPayload)
-                    else -> null
+                    else -> {
+                        MindboxLoggerImpl.d(this,
+                            "No innaps to show found")
+                        null
+                    }
                 }
             }.filterNotNull()
     }
 
     private fun prefilterConfig(config: InAppConfig): InAppConfig {
-        return config.copy(inApps = config.inApps.filter { inApp -> validateInAppVersion(inApp) }
-            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
+        MindboxLoggerImpl.d(this,
+            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
+        return config.copy(inApps = config.inApps
+            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) }
+        )
     }
 
     private fun validateInAppTargeting(inApp: InApp): Boolean {
@@ -130,13 +146,6 @@ internal class InAppInteractor {
             inApp.targeting?.segment == customerSegmentationInApp.segment.ids?.externalId
         }
     }
-
-    private fun validateInAppVersion(inApp: InApp): Boolean {
-        return ((inApp.minVersion?.let { min -> min <= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true) && (inApp.maxVersion?.let { max -> max >= InAppMessageManager.CURRENT_IN_APP_VERSION }
-            ?: true))
-    }
-
 
     suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration) {
         inAppRepositoryImpl.fetchInAppConfig(context, configuration)
