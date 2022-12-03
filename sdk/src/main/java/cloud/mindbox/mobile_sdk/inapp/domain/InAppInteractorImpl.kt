@@ -2,11 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Payload
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
@@ -84,31 +79,48 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         MindboxLoggerImpl.d(this,
             "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps
-            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp) })
+            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp.targeting) })
     }
-    //TODO починить
-    override fun validateInAppTargeting(inApp: InApp): Boolean {
+
+    override fun validateInAppTargeting(targeting: TreeTargeting?): Boolean {
         return when {
-            (inApp.targeting == null) -> {
+            (targeting == null) -> {
                 false
             }
-            (inApp.targeting.type == null && inApp.targeting.type != null) -> {
-                false
+            (targeting is TreeTargeting.UnionNode) -> {
+                var isValid = false
+                for (internalTargeting in targeting.nodes) {
+                    if (validateInAppTargeting(internalTargeting)) {
+                        isValid = true
+                    }
+                }
+                isValid
             }
-            (inApp.targeting.type != null && inApp.targeting.type == null) -> {
-                false
+            (targeting is TreeTargeting.IntersectionNode) -> {
+                var isValid = true
+                for (internalTargeting in targeting.nodes) {
+                    if (!validateInAppTargeting(internalTargeting)) {
+                        isValid = false
+                    }
+                }
+                isValid
+            }
+            (targeting is TreeTargeting.SegmentNode) -> {
+                targeting.segment_external_id != null
+                        && targeting.segmentationInternalId != null
+                        && targeting.segmentationExternalId != null
+                        && targeting.kind != null
             }
             else -> {
                 true
             }
         }
     }
-    //TODO починить
+
     override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
         return config.copy(
             inApps = config.inApps.filter { inApp ->
-                inApp.targeting?.type != null
-                        && inApp.targeting?.type != null
+                inApp.targeting !is TreeTargeting.TrueNode
             }
         )
     }
@@ -148,7 +160,6 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
-    //TODO починить
     override fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
@@ -156,7 +167,8 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         return if (customerSegmentationInApp.segment == null) {
             false
         } else {
-            inApp.targeting?.type == customerSegmentationInApp.segment.ids?.externalId
+            inApp.targeting?.getCustomerIsInTargeting(customerSegmentationInApp.segment.ids?.externalId)
+                ?: false
         }
     }
 

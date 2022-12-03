@@ -296,10 +296,8 @@ internal object GatewayManager {
                         gson.toJson(segmentationCheckRequest,
                             SegmentationCheckRequest::class.java))!!,
                     { response ->
-                        gatewayScope.launch {
-                            continuation.resume(gson.fromJson(response.toString(),
-                                SegmentationCheckResponse::class.java))
-                        }
+                        continuation.resume(gson.fromJson(response.toString(),
+                            SegmentationCheckResponse::class.java))
                     },
                     { error ->
                         continuation.resumeWithException(error)
@@ -323,7 +321,7 @@ internal object GatewayManager {
                 |"min":1,
                 |"max":null
                 |},
-                |"targeting":{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segmentation_internal_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segment_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2"},{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segmentation_internal_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2","segment_external_id":"1aaf004b-1af7-4c76-aa53-7e6c6f78f8b2"},{"${"$"}type":"segment","kind":"negative","segmentation_external_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c","segmentation_internal_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c","segment_external_id":"43bf7c63-b337-449b-89a7-62f8d742fe8c"}]}]},
+                |"targeting":{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segmentation_internal_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segment_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa"},{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"af30f24d-5097-46bd-94b9-4274424a87a7","segmentation_internal_id":"af30f24d-5097-46bd-94b9-4274424a87a7","segment_external_id":"af30f24d-5097-46bd-94b9-4274424a87a7"},{"${"$"}type":"segment","kind":"negative","segmentation_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segmentation_internal_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segment_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa"}]}]},
                 |"form":{
                 |"variants":[
                 |{

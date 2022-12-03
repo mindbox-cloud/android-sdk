@@ -33,15 +33,6 @@ internal data class FormDto(
     val variants: List<PayloadDto>?,
 )
 
-internal data class TargetingDto(
-    @SerializedName("${"$"}type")
-    val type: String?,
-    @SerializedName("segmentation")
-    val segmentation: String?,
-    @SerializedName("segment")
-    val segment: String?,
-)
-
 internal sealed class PayloadDto {
     data class SimpleImage(
         @SerializedName("${"$"}type")

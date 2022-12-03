@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 internal interface ITargeting {
-    fun getCustomerIsInTargeting(segment: String): Boolean
+    fun getCustomerIsInTargeting(segment: String?): Boolean
 }
 
 internal enum class Kind {
@@ -12,7 +12,7 @@ internal enum class Kind {
 internal sealed class TreeTargeting(open val type: String) : ITargeting {
 
     data class TrueNode(override val type: String) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(segment: String): Boolean {
+        override fun getCustomerIsInTargeting(segment: String?): Boolean {
             return true
         }
     }
@@ -21,7 +21,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(segment: String): Boolean {
+        override fun getCustomerIsInTargeting(segment: String?): Boolean {
             var rez = true
             for (node in nodes) {
                 if (node.getCustomerIsInTargeting(segment).not()) {
@@ -36,7 +36,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(segment: String): Boolean {
+        override fun getCustomerIsInTargeting(segment: String?): Boolean {
             var rez = false
             for (node in nodes) {
                 if (node.getCustomerIsInTargeting(segment)) {
@@ -49,15 +49,16 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
 
     internal data class SegmentNode(
         override val type: String,
-        val kind: Kind,
-        val segmentationExternalId: String,
-        val segmentationInternalId: String,
-        val segment_external_id: String,
+        val kind: Kind?,
+        val segmentationExternalId: String?,
+        val segmentationInternalId: String?,
+        val segment_external_id: String?,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(segment: String): Boolean {
+        override fun getCustomerIsInTargeting(segment: String?): Boolean {
             return when (kind) {
                 Kind.POSITIVE -> segment_external_id == segment
                 Kind.NEGATIVE -> segment_external_id != segment
+                null -> false
             }
         }
     }

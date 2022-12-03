@@ -104,15 +104,40 @@ internal class InAppMessageMapper {
                         IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
                     )
                 )
-            } ?: emptyList()
+            }?.distinct() ?: emptyList()
         )
     }
 
     fun mapToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
         return SegmentationCheckRequest(
-            config.inApps.map { inAppDto ->
-                //TODO починить
-                SegmentationDataRequest(IdsRequest(""))
+            config.inApps.flatMap { inAppDto ->
+                getTargetingSegmentList(inAppDto.targeting).map { segment ->
+                    SegmentationDataRequest(IdsRequest(segment))
+                }
             })
+    }
+
+    private fun getTargetingSegmentList(targeting: TreeTargeting?): List<String> {
+        return when (targeting) {
+            is TreeTargeting.IntersectionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingSegmentList(treeTargeting)
+                }
+            }
+            is TreeTargeting.SegmentNode -> {
+                targeting.segmentationExternalId?.let { sei ->
+                    listOf(sei)
+                } ?: emptyList()
+            }
+
+            is TreeTargeting.UnionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingSegmentList(treeTargeting)
+                }
+            }
+            else -> {
+                emptyList()
+            }
+        }
     }
 }

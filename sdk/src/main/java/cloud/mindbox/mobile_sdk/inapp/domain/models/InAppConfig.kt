@@ -1,7 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
-
 internal data class InAppConfig(
     val inApps: List<InApp>,
 )
@@ -16,12 +14,6 @@ internal data class InApp(
 
 internal data class Form(
     val variants: List<Payload>,
-)
-
-internal data class Targeting(
-    val type: String,
-    val segmentation: String?,
-    val segment: String?,
 )
 
 internal sealed class Payload {
