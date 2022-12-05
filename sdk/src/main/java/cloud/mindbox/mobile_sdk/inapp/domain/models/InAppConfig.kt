@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.models
+package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 internal data class InAppConfig(
     val inApps: List<InApp>,

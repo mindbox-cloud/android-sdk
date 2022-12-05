@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
-import cloud.mindbox.mobile_sdk.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppStub
 
 internal class InAppConfigStub {
