@@ -8,7 +8,7 @@ internal data class InApp(
     val id: String,
     val minVersion: Int?,
     val maxVersion: Int?,
-    val targeting: TreeTargeting?,
+    val targeting: TreeTargeting,
     val form: Form,
 )
 

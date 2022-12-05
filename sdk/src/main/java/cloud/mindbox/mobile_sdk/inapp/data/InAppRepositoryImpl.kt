@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
@@ -28,6 +29,7 @@ internal class InAppRepositoryImpl(
     private val inAppMapper: InAppMessageMapper,
     private val gson: Gson,
     private val context: Context,
+    private val inAppValidator: InAppValidator,
 ) : InAppRepository {
 
     override fun getShownInApps(): HashSet<String> {
@@ -88,13 +90,17 @@ internal class InAppRepositoryImpl(
             )
             val configBlank = deserializeToConfigDtoBlank(inAppConfigString)
             val filteredInApps = configBlank?.inApps
-                ?.filter { validateInAppVersion(it) }
+                ?.filter { inAppDtoBlank ->
+                    validateInAppVersion(inAppDtoBlank)
+                }
                 ?.map { inAppDtoBlank ->
                     inAppMapper.mapToInAppDto(
                         inAppDtoBlank = inAppDtoBlank,
                         formDto = deserializeToInAppFormDto(inAppDtoBlank.form),
                         targetingDto = deserializeToInAppTargetingDto(inAppDtoBlank.targeting)
                     )
+                }?.filter { inAppDto ->
+                    inAppValidator.validateInApp(inAppDto)
                 }
             val filteredConfig = InAppConfigResponse(
                 inApps = filteredInApps
@@ -161,6 +167,7 @@ internal class InAppRepositoryImpl(
         } ?: true
         return minVersionValid && maxVersionValid
     }
+
 
     companion object {
         const val TYPE_JSON_NAME = "\$type"

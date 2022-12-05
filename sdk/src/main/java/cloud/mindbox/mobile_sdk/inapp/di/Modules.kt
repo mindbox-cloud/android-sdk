@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.*
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
@@ -17,8 +18,9 @@ internal val appModule = module {
     factory<InAppMessageManager> { InAppMessageManagerImpl(get(), get()) }
 }
 internal val dataModule = module {
-    factory<InAppRepository> { InAppRepositoryImpl(get(), get(), androidContext()) }
+    factory<InAppRepository> { InAppRepositoryImpl(get(), get(), androidContext(), get()) }
     factory<InAppInteractor> { InAppInteractorImpl(get()) }
+    single<InAppValidator> { InAppValidatorImpl() }
     single { InAppMessageMapper() }
     single {
         GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(

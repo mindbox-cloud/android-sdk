@@ -30,7 +30,7 @@ internal data class SdkVersion(
 
 internal data class FormDto(
     @SerializedName("variants")
-    val variants: List<PayloadDto>?,
+    val variants: List<PayloadDto?>?,
 )
 
 internal sealed class PayloadDto {

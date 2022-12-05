@@ -49,16 +49,15 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
 
     internal data class SegmentNode(
         override val type: String,
-        val kind: Kind?,
-        val segmentationExternalId: String?,
-        val segmentationInternalId: String?,
-        val segment_external_id: String?,
+        val kind: Kind,
+        val segmentationExternalId: String,
+        val segmentationInternalId: String,
+        val segment_external_id: String,
     ) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(segment: String?): Boolean {
             return when (kind) {
                 Kind.POSITIVE -> segment_external_id == segment
                 Kind.NEGATIVE -> segment_external_id != segment
-                null -> false
             }
         }
     }

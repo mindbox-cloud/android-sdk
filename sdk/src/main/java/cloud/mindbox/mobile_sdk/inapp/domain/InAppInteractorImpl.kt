@@ -79,42 +79,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         MindboxLoggerImpl.d(this,
             "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps
-            .filter { inApp -> validateInAppNotShown(inApp) && validateInAppTargeting(inApp.targeting) })
-    }
-
-    override fun validateInAppTargeting(targeting: TreeTargeting?): Boolean {
-        return when {
-            (targeting == null) -> {
-                false
-            }
-            (targeting is TreeTargeting.UnionNode) -> {
-                var isValid = false
-                for (internalTargeting in targeting.nodes) {
-                    if (validateInAppTargeting(internalTargeting)) {
-                        isValid = true
-                    }
-                }
-                isValid
-            }
-            (targeting is TreeTargeting.IntersectionNode) -> {
-                var isValid = true
-                for (internalTargeting in targeting.nodes) {
-                    if (!validateInAppTargeting(internalTargeting)) {
-                        isValid = false
-                    }
-                }
-                isValid
-            }
-            (targeting is TreeTargeting.SegmentNode) -> {
-                targeting.segment_external_id != null
-                        && targeting.segmentationInternalId != null
-                        && targeting.segmentationExternalId != null
-                        && targeting.kind != null
-            }
-            else -> {
-                true
-            }
-        }
+            .filter { inApp -> validateInAppNotShown(inApp)})
     }
 
     override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
