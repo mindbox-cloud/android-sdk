@@ -3,7 +3,7 @@ set -e
 version=$(cat gradle.properties | grep SDK_VERSION_NAME | cut -f2 -d"=")
 token=$1
 user=$2
-branch=${GITHUB_REF##*/}
+branch=${GITHUB_REF_NAME}
 repo_full_name=$(git config --get remote.origin.url | sed 's/.*:\/\/github.com\///;s/.git$//' | cut -f2 -d":")
 generate_post_data() {
   cat <<EOF
@@ -24,8 +24,8 @@ set-tag() {
 prepare-release-data() {
   if [[ $version =~ ^[0-9.]+$ ]]; then
     name="Release-$version"
-#    release_notes_1=$(curl -s --show-error --user "$user:$token" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$repo_full_name/pulls?base=$branch" | grep "\"body\":" | cut -f2- -d:)
-#    release_notes="${release_notes_1:2:${#release_notes_1}-4}"
+    #    release_notes_1=$(curl -s --show-error --user "$user:$token" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$repo_full_name/pulls?base=$branch" | grep "\"body\":" | cut -f2- -d:)
+    #    release_notes="${release_notes_1:2:${#release_notes_1}-4}"
     release_notes=""
     body="# What's new:\n$release_notes"
     prerelease=false
