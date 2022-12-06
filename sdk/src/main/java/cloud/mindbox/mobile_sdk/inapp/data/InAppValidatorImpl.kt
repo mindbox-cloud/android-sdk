@@ -8,42 +8,45 @@ import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 internal class InAppValidatorImpl : InAppValidator {
 
     private fun validateInAppTargeting(targeting: TreeTargetingDto?): Boolean {
-        return when {
-            (targeting == null) -> {
+        return when (targeting) {
+            null -> {
                 false
             }
-            (targeting is TreeTargetingDto.UnionNodeDto) -> {
-                var isValid = false
-                for (internalTargeting in targeting.nodes ?: return false) {
-                    if (validateInAppTargeting(internalTargeting)) {
-                        isValid = true
-                    }
-                }
-                isValid
-            }
-            (targeting is TreeTargetingDto.IntersectionNodeDto) -> {
+            is TreeTargetingDto.UnionNodeDto -> {
+                if (targeting.nodes.isNullOrEmpty()) return false
                 var isValid = true
-                for (internalTargeting in targeting.nodes ?: return false) {
+                for (internalTargeting in targeting.nodes) {
                     if (!validateInAppTargeting(internalTargeting)) {
                         isValid = false
                     }
                 }
                 isValid
             }
-            (targeting is TreeTargetingDto.SegmentNodeDto) -> {
+            is TreeTargetingDto.IntersectionNodeDto -> {
+                if (targeting.nodes.isNullOrEmpty()) return false
+                var isValid = true
+                for (internalTargeting in targeting.nodes) {
+                    if (!validateInAppTargeting(internalTargeting)) {
+                        isValid = false
+                    }
+                }
+                isValid
+            }
+            is TreeTargetingDto.SegmentNodeDto -> {
                 targeting.segment_external_id != null
                         && targeting.segmentationInternalId != null
+                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
                         && targeting.segmentationExternalId != null
-                        && targeting.kind != null
                         && targeting.type != null
             }
-            else -> {
+            is TreeTargetingDto.TrueNodeDto -> {
                 true
             }
         }
     }
 
     private fun validateFormDto(inApp: InAppDto): Boolean {
+        if (inApp.form?.variants.isNullOrEmpty()) return false
         var isValid = true
         inApp.form?.variants?.forEach { payloadDto ->
             when {
@@ -61,5 +64,13 @@ internal class InAppValidatorImpl : InAppValidator {
 
     override fun validateInApp(inApp: InAppDto): Boolean {
         return validateInAppTargeting(inApp.targeting) and validateFormDto(inApp)
+    }
+
+    companion object {
+        /**
+         * KIND VALUES
+         * **/
+        private const val POSITIVE = "positive"
+        private const val NEGATIVE = "negative"
     }
 }

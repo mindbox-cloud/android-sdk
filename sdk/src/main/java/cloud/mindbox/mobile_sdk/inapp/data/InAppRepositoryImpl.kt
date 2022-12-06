@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -9,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -46,30 +46,28 @@ internal class InAppRepositoryImpl(
 
     override fun sendInAppShown(inAppId: String) {
         MindboxEventManager.inAppShown(context,
-            IN_APP_OPERATION_VIEW_TYPE,
             gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
     override fun sendInAppClicked(inAppId: String) {
         MindboxEventManager.inAppClicked(context,
-            IN_APP_OPERATION_CLICK_TYPE,
             gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
 
-    override suspend fun fetchInAppConfig(configuration: MindboxConfiguration) {
+    override suspend fun fetchInAppConfig() {
         MindboxPreferences.inAppConfig =
             GatewayManager.fetchInAppConfig(context,
-                configuration)
+                DbManager.getConfigurations()!!)
     }
 
     override suspend fun fetchSegmentations(
-        configuration: MindboxConfiguration,
         config: InAppConfig,
     ): SegmentationCheckInApp {
         return inAppMapper.mapToSegmentationCheck(
             GatewayManager.checkSegmentation(context,
-                configuration, inAppMapper.mapToSegmentationCheckRequest(config)))
+                DbManager.getConfigurations()!!,
+                inAppMapper.mapToSegmentationCheckRequest(config)))
     }
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
@@ -171,8 +169,6 @@ internal class InAppRepositoryImpl(
 
     companion object {
         const val TYPE_JSON_NAME = "\$type"
-        private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
-        private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
 
         /**
          * Тargeting types

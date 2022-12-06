@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.util.Log
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -30,9 +29,6 @@ internal class InAppMessageManagerTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
-
-    @MockK
-    private lateinit var mindboxConfiguration: MindboxConfiguration
 
     @MockK
     private lateinit var inAppMessageInteractor: InAppInteractor
@@ -73,15 +69,15 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler))
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+            inAppMessageInteractor.fetchInAppConfig()
 
         } just runs
-        inAppMessageManager.requestConfig(mindboxConfiguration)
+        inAppMessageManager.requestConfig()
         advanceUntilIdle();
         {
             coVerify(exactly = 1)
             {
-                inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+                inAppMessageInteractor.fetchInAppConfig()
             }
         }.shouldNotThrow()
     }
@@ -97,9 +93,9 @@ internal class InAppMessageManagerTest {
         } just runs
         val error = Error()
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+            inAppMessageInteractor.fetchInAppConfig()
         }.throws(error)
-        inAppMessageManager.requestConfig(mindboxConfiguration)
+        inAppMessageManager.requestConfig()
         advanceUntilIdle()
         verify(exactly = 1) {
             MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
@@ -112,7 +108,7 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler))
         every {
-            inAppMessageInteractor.processEventAndConfig(mindboxConfiguration)
+            inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
                 emit(InAppType.SimpleImage(inAppId = "123",
@@ -121,9 +117,9 @@ internal class InAppMessageManagerTest {
                     intentData = ""))
             }
         }
-        inAppMessageManager.listenEventAndInApp(mindboxConfiguration)
+        inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-        inAppMessageInteractor.processEventAndConfig(mindboxConfiguration).test {
+        inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
         }
@@ -145,7 +141,7 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler))
         every {
-            inAppMessageInteractor.processEventAndConfig(mindboxConfiguration)
+            inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
                 error("test error")
@@ -154,9 +150,9 @@ internal class InAppMessageManagerTest {
         every {
             MindboxLoggerImpl.e(any(), any(), any())
         } just runs
-        inAppMessageManager.listenEventAndInApp(mindboxConfiguration)
+        inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-        inAppMessageInteractor.processEventAndConfig(mindboxConfiguration).test {
+        inAppMessageInteractor.processEventAndConfig().test {
             awaitError()
             verify(exactly = 1) {
                 MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", any())
@@ -191,9 +187,9 @@ internal class InAppMessageManagerTest {
             "test"
         }
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+            inAppMessageInteractor.fetchInAppConfig()
         }.throws(VolleyError(networkResponse))
-        inAppMessageManager.requestConfig(mindboxConfiguration)
+        inAppMessageManager.requestConfig()
         advanceUntilIdle()
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
@@ -216,9 +212,9 @@ internal class InAppMessageManagerTest {
         }.setInt(networkResponse,
             404)
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig(mindboxConfiguration)
+            inAppMessageInteractor.fetchInAppConfig()
         }.throws(VolleyError(networkResponse))
-        inAppMessageManager.requestConfig(mindboxConfiguration)
+        inAppMessageManager.requestConfig()
         advanceUntilIdle()
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""

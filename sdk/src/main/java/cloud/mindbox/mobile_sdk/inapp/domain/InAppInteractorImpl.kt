@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -15,9 +14,7 @@ import kotlin.coroutines.suspendCoroutine
 internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
     InAppInteractor {
 
-    override fun processEventAndConfig(
-        configuration: MindboxConfiguration,
-    ): Flow<InAppType> {
+    override fun processEventAndConfig(): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig().filterNotNull()
             //TODO add eventProcessing
             .combine(inAppRepositoryImpl.listenInAppEvents()
@@ -25,8 +22,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                     MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
                     inAppEventType is InAppEventType.AppStartup
                 }) { config, event ->
-                val inApp = chooseInAppToShow(config,
-                    configuration)
+                val inApp = chooseInAppToShow(config)
                 when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
@@ -41,9 +37,8 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             }.filterNotNull()
     }
 
-    override suspend fun chooseInAppToShow(
+    private suspend fun chooseInAppToShow(
         config: InAppConfig,
-        configuration: MindboxConfiguration,
     ): InApp? {
         val filteredConfig = prefilterConfig(config)
         MindboxLoggerImpl.d(this,
@@ -59,9 +54,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
             runCatching {
                 checkSegmentation(filteredConfig,
-                    inAppRepositoryImpl.fetchSegmentations(
-                        configuration,
-                        filteredConfigWithTargeting))
+                    inAppRepositoryImpl.fetchSegmentations(filteredConfigWithTargeting))
             }.getOrElse { throwable ->
                 if (throwable is VolleyError) {
                     MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
@@ -75,17 +68,17 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
         }
     }
 
-    override fun prefilterConfig(config: InAppConfig): InAppConfig {
+    private fun prefilterConfig(config: InAppConfig): InAppConfig {
         MindboxLoggerImpl.d(this,
             "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
         return config.copy(inApps = config.inApps
-            .filter { inApp -> validateInAppNotShown(inApp)})
+            .filter { inApp -> validateInAppNotShown(inApp) })
     }
 
-    override fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
+    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
         return config.copy(
             inApps = config.inApps.filter { inApp ->
-                inApp.targeting !is TreeTargeting.TrueNode
+                inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING
             }
         )
     }
@@ -121,23 +114,18 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     }
 
 
-    override fun validateInAppNotShown(inApp: InApp): Boolean {
+    private fun validateInAppNotShown(inApp: InApp): Boolean {
         return inAppRepositoryImpl.getShownInApps().contains(inApp.id).not()
     }
 
-    override fun validateSegmentation(
+    private fun validateSegmentation(
         inApp: InApp,
         customerSegmentationInApp: CustomerSegmentationInApp,
     ): Boolean {
-        return if (customerSegmentationInApp.segment == null) {
-            false
-        } else {
-            inApp.targeting?.getCustomerIsInTargeting(customerSegmentationInApp.segment.ids?.externalId)
-                ?: false
-        }
+        return inApp.targeting.getCustomerIsInTargeting(customerSegmentationInApp)
     }
 
-    override suspend fun fetchInAppConfig(configuration: MindboxConfiguration) {
-        inAppRepositoryImpl.fetchInAppConfig(configuration)
+    override suspend fun fetchInAppConfig() {
+        inAppRepositoryImpl.fetchInAppConfig()
     }
 }

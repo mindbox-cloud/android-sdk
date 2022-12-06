@@ -111,7 +111,7 @@ internal class InAppMessageMapper {
                         IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
                     )
                 )
-            }?.distinct() ?: emptyList()
+            } ?: emptyList()
         )
     }
 
@@ -124,7 +124,7 @@ internal class InAppMessageMapper {
             })
     }
 
-    private fun getTargetingSegmentList(targeting: TreeTargeting?): List<String> {
+    private fun getTargetingSegmentList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->

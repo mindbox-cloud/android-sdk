@@ -1,34 +1,27 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
-import android.content.Context
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppTypeStub
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import io.mockk.*
-import io.mockk.junit4.MockKRule
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.java.KoinJavaComponent
 import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
-import org.koin.test.get
 import org.koin.test.inject
-import org.koin.test.mock.MockProviderRule
 
 // also tests Gson RuntimeTypeAdapterFactory deserialization and InAppMessageMapper
 internal class InAppRepositoryImplTest : KoinTest {
@@ -40,6 +33,7 @@ internal class InAppRepositoryImplTest : KoinTest {
 
     private val gson: Gson by inject()
     private val inAppMessageMapper: InAppMessageMapper by inject()
+    private val inAppValidatorImpl: InAppValidator by inject()
 
     private lateinit var inAppRepository: InAppRepositoryImpl
 
@@ -48,7 +42,8 @@ internal class InAppRepositoryImplTest : KoinTest {
         inAppRepository = InAppRepositoryImpl(
             inAppMapper = inAppMessageMapper,
             gson = gson,
-            context = mockk()
+            context = mockk(),
+            inAppValidatorImpl
         )
         mockkObject(MindboxPreferences)
     }
@@ -91,7 +86,6 @@ internal class InAppRepositoryImplTest : KoinTest {
             |["123","456"]
         """.trimMargin()
         every { MindboxPreferences.shownInAppIds } returns "[123]"
-        val test = inAppRepository.getShownInApps()
         inAppRepository.saveShownInApp("456")
         verify(exactly = 1) {
             MindboxPreferences.shownInAppIds = expectedJson
@@ -110,9 +104,7 @@ internal class InAppRepositoryImplTest : KoinTest {
                     |"max": null
                   |},
                   |"targeting": {
-                    |"segmentation": "af30f24d-5097-46bd-94b9-4274424a87a7",
-                    |"segment": "af30f24d-5097-46bd-94b9-4274424a87a7",
-                    |"${'$'}type": "simple"
+                    |"${'$'}type": "true"
                   |},
                   |"form": {
                     |"variants": [
@@ -134,9 +126,7 @@ internal class InAppRepositoryImplTest : KoinTest {
                 .copy(id = "040810aa-d135-49f4-8916-7e68dcc61c71",
                     minVersion = 1,
                     maxVersion = null,
-                    targeting = InAppStub.getInApp().targeting?.copy(type = "simple",
-                        segmentation = "af30f24d-5097-46bd-94b9-4274424a87a7",
-                        segment = "af30f24d-5097-46bd-94b9-4274424a87a7"),
+                    targeting = InAppStub.getTargetingTrueNode().copy(type = "true"),
                     form = InAppStub.getInApp().form.copy(variants = listOf(InAppStub.getSimpleImage()
                         .copy(
                             type = "simpleImage",
@@ -171,17 +161,20 @@ internal class InAppRepositoryImplTest : KoinTest {
     }
 
     @Test
-    fun `inApp with unknown version and type filtered test`() {
+    fun `inApp with unknown version and type and targeting filtered test`() {
         val unknownInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
         val validInAppId = "040810aa-d135-49f4-8916-7e68dcc61c71"
         val json = """
                 |{
                   |"inapps": [
                     |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
+                      |"id": "11111111-d135-49f4-8916-7e68dcc61c70",
                       |"sdkVersion": {
-                        |"min": $unknownInAppVersion,
-                        |"max": null
+                       |"min": 1,
+                       |"max": null
+                      |},
+                      |"targeting": {
+                        |"unknown": "unknown"
                       |},
                       |"form": {
                         |"variants": [
@@ -193,10 +186,51 @@ internal class InAppRepositoryImplTest : KoinTest {
                       |}
                     |},
                     |{
+                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
+                      |"sdkVersion": {
+                       |"min": 1,
+                       |"max": null
+                      |},
+                      |"targeting": {
+                        |"${'$'}type": "true"
+                      |},
+                      |"form": {
+                        |"variants": [
+                          |{
+                            |"unknown": "123",
+                            |"${'$'}type": "unknownType"
+                          |}
+                        |]
+                      |}
+                    |},
+                    |{
+                      |"id": "11111111-d135-49f4-8916-7e68dcc61c72",
+                      |"sdkVersion": {
+                        |"min": $unknownInAppVersion,
+                        |"max": null
+                      |},
+                      |"targeting": {
+                        |"${'$'}type": "true"
+                      |},
+                      |"form": {
+                        |"variants": [
+                         |{
+                            |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                            |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                            |"intentPayload": "123",
+                            |"${'$'}type": "simpleImage"
+                          |}
+                        |]
+                      |}
+                    |},
+                    |{
                       |"id": "$validInAppId",
                       |"sdkVersion": {
                         |"min": 1,
                         |"max": null
+                      |},
+                      |"targeting": {
+                        |"${'$'}type": "true"
                       |},
                       |"form": {
                         |"variants": [
@@ -244,18 +278,31 @@ internal class InAppRepositoryImplTest : KoinTest {
     fun `in-app version is lower than required`() {
         val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": 0,
-                        |"max": $lowInAppVersion
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": 1,
+                    |"max": $lowInAppVersion
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -271,18 +318,31 @@ internal class InAppRepositoryImplTest : KoinTest {
     fun `in-app version is higher than required`() {
         val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": $highInAppVersion,
-                        |"max": null
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": $highInAppVersion,
+                    |"max": null
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -299,18 +359,31 @@ internal class InAppRepositoryImplTest : KoinTest {
         val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
         val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": $highInAppVersion,
-                        |"max": $lowInAppVersion
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": $highInAppVersion,
+                    |"max": $lowInAppVersion
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -326,18 +399,31 @@ internal class InAppRepositoryImplTest : KoinTest {
     fun `in-app version no min version`() {
         val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": null,
-                        |"max": $highInAppVersion
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": null,
+                    |"max": $highInAppVersion
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -353,18 +439,31 @@ internal class InAppRepositoryImplTest : KoinTest {
     fun `in-app version no max version`() {
         val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": $lowInAppVersion,
-                        |"max": null
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": $lowInAppVersion,
+                    |"max": null
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -379,18 +478,31 @@ internal class InAppRepositoryImplTest : KoinTest {
     @Test
     fun `in-app version no limitations`() {
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": null,
-                        |"max": null
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": null,
+                    |"max": null
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
@@ -407,18 +519,31 @@ internal class InAppRepositoryImplTest : KoinTest {
         val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
         val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
         val json = """
+            |{
+              |"inapps": [
                 |{
-                  |"inapps": [
-                    |{
-                      |"id": "11111111-d135-49f4-8916-7e68dcc61c71",
-                      |"sdkVersion": {
-                        |"min": $lowInAppVersion,
-                        |"max": $highInAppVersion
+                  |"id": "040810aa-d135-49f4-8916-7e68dcc61c71",
+                  |"sdkVersion": {
+                    |"min": $lowInAppVersion,
+                    |"max": $highInAppVersion
+                  |},
+                  |"targeting": {
+                    |"${'$'}type": "true"
+                  |},
+                  |"form": {
+                    |"variants": [
+                      |{
+                        |"imageUrl": "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                        |"redirectUrl": "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                        |"intentPayload": "123",
+                        |"${'$'}type": "simpleImage"
                       |}
-                    |}
-                  |]
+                    |]
+                  |}
                 |}
-            """.trimMargin()
+              |]
+            |}
+        """.trimMargin()
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {

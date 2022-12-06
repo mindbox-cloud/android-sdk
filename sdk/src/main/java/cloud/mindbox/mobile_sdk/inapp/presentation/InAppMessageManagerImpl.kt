@@ -28,9 +28,9 @@ internal class InAppMessageManagerImpl(
     private val inAppScope =
         CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
-    override fun listenEventAndInApp(configuration: MindboxConfiguration) {
+    override fun listenEventAndInApp() {
         inAppScope.launch {
-            inAppInteractorImpl.processEventAndConfig(configuration)
+            inAppInteractorImpl.processEventAndConfig()
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
@@ -55,7 +55,7 @@ internal class InAppMessageManagerImpl(
      * In case of other network error use cached version
      * Otherwise do nothing
      **/
-    override fun requestConfig(configuration: MindboxConfiguration) {
+    override fun requestConfig() {
         inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
@@ -73,13 +73,13 @@ internal class InAppMessageManagerImpl(
                 MindboxLoggerImpl.e(this@InAppMessageManagerImpl::class, "Failed to get config", error)
             }
         }) {
-            inAppInteractorImpl.fetchInAppConfig(configuration)
+            inAppInteractorImpl.fetchInAppConfig()
         }
     }
 
-    override fun initInAppMessages(configuration: MindboxConfiguration) {
-        listenEventAndInApp(configuration)
-        requestConfig(configuration)
+    override fun initInAppMessages() {
+        listenEventAndInApp()
+        requestConfig()
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
