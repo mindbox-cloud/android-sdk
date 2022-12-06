@@ -306,6 +306,7 @@ internal object GatewayManager {
     }
 
     suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
+        // уберу после код ревью
         val testJson1 = """{
 	"${"$"}type": "true"
 }""".trimIndent()
@@ -346,9 +347,9 @@ internal object GatewayManager {
 		{
 			"${"$"}type": "segment",
 			"kind": "negative",
-			"segmentation_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
-			"segmentation_internal_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
-			"segment_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083"
+			"segmentation_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
+			"segmentation_internal_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
+			"segment_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7"
 		}
 	]
 }""".trimIndent()
@@ -361,7 +362,7 @@ internal object GatewayManager {
                 |"min":1,
                 |"max":null
                 |},
-                |"targeting":$testJson5,
+                |"targeting":$testJson4,
                 |"form":{
                 |"variants":[
                 |{
