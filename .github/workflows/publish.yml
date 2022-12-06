@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'support/2.1'
     paths-ignore:
       - '**.md'
     tags-ignore:

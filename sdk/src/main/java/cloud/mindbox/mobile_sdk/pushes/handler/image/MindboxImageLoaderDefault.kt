@@ -42,9 +42,7 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
             readTimeout = IMAGE_CONNECTION_TIMEOUT
             connectTimeout = IMAGE_CONNECTION_TIMEOUT
         }
-        val bytes = connection.getInputStream().use { input -> input.readBytes() }
-        MindboxLoggerImpl.d(this, "Loading complete, image size - ${bytes.size}")
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        val bitmap = BitmapFactory.decodeStream(connection.getInputStream())
         MindboxLoggerImpl.d(this, "Image successfully decoded, bitmap=$bitmap")
         return bitmap
     }
