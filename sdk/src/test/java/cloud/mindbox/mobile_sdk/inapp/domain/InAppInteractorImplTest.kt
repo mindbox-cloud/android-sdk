@@ -9,8 +9,7 @@ import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import com.android.volley.VolleyError
-import io.mockk.coEvery
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
@@ -38,6 +37,7 @@ internal class InAppInteractorImplTest {
     @Before
     fun onTestStart() {
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        every { inAppRepository.sendInAppTargetingHit(any()) } just runs
     }
 
 
