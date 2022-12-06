@@ -23,6 +23,9 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                     inAppEventType is InAppEventType.AppStartup
                 }) { config, event ->
                 val inApp = chooseInAppToShow(config)
+                inApp?.let {
+                    inAppRepositoryImpl.sendInAppTargetingHit(it.id)
+                }
                 when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,

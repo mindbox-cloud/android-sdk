@@ -54,6 +54,11 @@ internal class InAppRepositoryImpl(
             gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
     }
 
+    override fun sendInAppTargetingHit(inAppId: String) {
+        MindboxEventManager.inAppTargetingHit(context,
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+    }
+
 
     override suspend fun fetchInAppConfig() {
         MindboxPreferences.inAppConfig =
