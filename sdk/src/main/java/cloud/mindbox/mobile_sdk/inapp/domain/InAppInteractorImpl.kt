@@ -93,13 +93,10 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
     ): InApp? {
         return suspendCoroutine { continuation ->
             config.inApps.iterator().forEach { inApp ->
-                segmentationCheckInApp.customerSegmentations.iterator()
-                    .forEach { customerSegmentationInAppResponse ->
-                        if (validateSegmentation(inApp, customerSegmentationInAppResponse)) {
-                            continuation.resume(inApp)
-                            return@suspendCoroutine
-                        }
-                    }
+                if (validateSegmentation(inApp, segmentationCheckInApp.customerSegmentations)) {
+                    continuation.resume(inApp)
+                    return@suspendCoroutine
+                }
             }
             continuation.resume(null)
         }
@@ -120,9 +117,9 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
 
     private fun validateSegmentation(
         inApp: InApp,
-        customerSegmentationInApp: CustomerSegmentationInApp,
+        customerSegmentationInAppList: List<CustomerSegmentationInApp>,
     ): Boolean {
-        return inApp.targeting.getCustomerIsInTargeting(customerSegmentationInApp)
+        return inApp.targeting.getCustomerIsInTargeting(customerSegmentationInAppList)
     }
 
     override suspend fun fetchInAppConfig() {

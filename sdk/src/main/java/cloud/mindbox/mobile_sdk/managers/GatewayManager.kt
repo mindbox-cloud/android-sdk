@@ -346,9 +346,9 @@ internal object GatewayManager {
 		{
 			"${"$"}type": "segment",
 			"kind": "negative",
-			"segmentation_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segmentation_internal_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segment_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7"
+			"segmentation_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
+			"segmentation_internal_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
+			"segment_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083"
 		}
 	]
 }""".trimIndent()

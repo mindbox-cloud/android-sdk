@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 internal interface ITargeting {
-    fun getCustomerIsInTargeting(csia: CustomerSegmentationInApp): Boolean
+    fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean
 
     fun preCheckTargeting(): SegmentationCheckResult
 }
@@ -14,7 +14,7 @@ internal enum class Kind {
 internal sealed class TreeTargeting(open val type: String) : ITargeting {
 
     internal data class TrueNode(override val type: String) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(csia: CustomerSegmentationInApp): Boolean {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return true
         }
 
@@ -27,16 +27,20 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(csia: CustomerSegmentationInApp): Boolean {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             var rez = true
             for (node in nodes) {
-                if (node is SegmentNode) {
-                    if (node.getCustomerIsInTargeting(csia).not() && node.shouldProcessNode(csia.segmentation?.ids?.externalId)) {
-                        rez = false
-                    }
-                } else {
-                    if (node.getCustomerIsInTargeting(csia).not()) {
-                        rez = false
+                for (csia in csiaList) {
+                    if ((node is SegmentNode)) {
+                        if (node.shouldProcessSegmentation(csia.segmentation?.ids?.externalId) && node.getCustomerIsInTargeting(
+                                csiaList).not()
+                        ) {
+                            rez = false
+                        }
+                    } else {
+                        if (node.getCustomerIsInTargeting(csiaList).not()) {
+                            rez = false
+                        }
                     }
                 }
             }
@@ -58,18 +62,23 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(csia: CustomerSegmentationInApp): Boolean {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             var rez = false
             for (node in nodes) {
-                if (node is SegmentNode) {
-                    if (node.getCustomerIsInTargeting(csia) && node.shouldProcessNode(csia.segmentation?.ids?.externalId)) {
-                        rez = true
-                    }
-                } else {
-                    if (node.getCustomerIsInTargeting(csia)) {
-                        rez = true
+                for (csia in csiaList) {
+                    if (node is SegmentNode) {
+                        if (node.shouldProcessSegmentation(csia.segmentation?.ids?.externalId) && node.getCustomerIsInTargeting(
+                                csiaList)
+                        ) {
+                            rez = true
+                        }
+                    } else {
+                        if (node.getCustomerIsInTargeting(csiaList)) {
+                            rez = true
+                        }
                     }
                 }
+
             }
             return rez
         }
@@ -92,14 +101,14 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         val segmentationInternalId: String,
         val segment_external_id: String,
     ) : TreeTargeting(type) {
-        override fun getCustomerIsInTargeting(csia: CustomerSegmentationInApp): Boolean {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return when (kind) {
-                Kind.POSITIVE -> csia.segment?.ids?.externalId == segment_external_id
-                Kind.NEGATIVE -> csia.segment?.ids?.externalId == null
+                Kind.POSITIVE -> csiaList.find { csia -> csia.segmentation?.ids?.externalId == segmentationExternalId }?.segment?.ids?.externalId == segment_external_id
+                Kind.NEGATIVE -> csiaList.find { csia -> csia.segmentation?.ids?.externalId == segmentationExternalId }?.segment?.ids?.externalId == null
             }
         }
 
-        fun shouldProcessNode(segmentation: String?): Boolean {
+        fun shouldProcessSegmentation(segmentation: String?): Boolean {
             return (segmentation == segmentationExternalId)
         }
 
