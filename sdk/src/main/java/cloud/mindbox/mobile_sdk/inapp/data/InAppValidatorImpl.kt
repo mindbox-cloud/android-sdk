@@ -48,7 +48,7 @@ internal class InAppValidatorImpl : InAppValidator {
     private fun validateFormDto(inApp: InAppDto): Boolean {
         if (inApp.form?.variants.isNullOrEmpty()) return false
         var isValid = true
-        inApp.form?.variants?.forEach { payloadDto ->
+        inApp.form?.variants?.iterator()?.forEach { payloadDto ->
             when {
                 (payloadDto == null) -> {
                     isValid = false
