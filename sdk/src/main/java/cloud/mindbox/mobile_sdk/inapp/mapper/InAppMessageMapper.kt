@@ -35,8 +35,7 @@ internal class InAppMessageMapper {
                 inAppConfigDto.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
-                        targeting = mapTargetingDtoToTargeting(inAppDto.targeting!!,
-                            geoTargetingDto),
+                        targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!), geoTargetingDto).first(),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
@@ -62,36 +61,6 @@ internal class InAppMessageMapper {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun mapTargetingDtoToTargeting(
-        targetingDto: TreeTargetingDto,
-        geoTargetingDto: GeoTargetingDto?,
-    ): TreeTargeting {
-        return when (targetingDto) {
-            is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
-            is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
-                InAppRepositoryImpl.AND_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>, geoTargetingDto))
-            is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
-                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                targetingDto.segmentationExternalId!!,
-                targetingDto.segmentationInternalId!!,
-                targetingDto.segment_external_id!!)
-            is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>, geoTargetingDto))
-            is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,
-                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                targetingDto.ids as List<String>, geoTargetingDto?.cityId ?: "")
-            is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(InAppRepositoryImpl.TYPE_JSON_NAME,
-                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                targetingDto.ids as List<String>, geoTargetingDto?.countryId ?: "")
-            is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(InAppRepositoryImpl.TYPE_JSON_NAME,
-                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                targetingDto.ids as List<String>, geoTargetingDto?.regionId ?: "")
-        }
-    }
-
-
     /**
      * Cast is ok as long as validator removes all the in-apps with null values
      * **/
@@ -111,7 +80,6 @@ internal class InAppMessageMapper {
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segmentationInternalId!!,
                     treeTargetingDto.segment_external_id!!)
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
                     mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>,

@@ -15,15 +15,24 @@ import org.koin.dsl.module
 
 internal val appModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
-    factory<InAppMessageManager> { InAppMessageManagerImpl(get(), get()) }
+    factory<InAppMessageManager> {
+        InAppMessageManagerImpl(inAppMessageViewDisplayer = get(),
+            inAppInteractorImpl = get())
+    }
 }
 internal val dataModule = module {
-    factory<InAppRepository> { InAppRepositoryImpl(get(), get(), androidContext(), get()) }
+    factory<InAppRepository> {
+        InAppRepositoryImpl(inAppMapper = get(),
+            gson = get(),
+            context = androidContext(),
+            inAppValidator = get())
+    }
     factory<InAppInteractor> { InAppInteractorImpl(get()) }
     single<InAppValidator> { InAppValidatorImpl() }
     single { InAppMessageMapper() }
     single {
-        GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
+        GsonBuilder().registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
             PayloadDto::class.java,
             InAppRepositoryImpl.TYPE_JSON_NAME, true)
             .registerSubtype(PayloadDto.SimpleImage::class.java,
