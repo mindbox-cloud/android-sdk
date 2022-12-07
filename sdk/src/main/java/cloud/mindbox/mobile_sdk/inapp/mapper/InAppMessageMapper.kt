@@ -82,15 +82,12 @@ internal class InAppMessageMapper {
     fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
         return SegmentationCheckInApp(
             status = segmentationCheckResponse.status ?: "",
-            customerSegmentations = segmentationCheckResponse.customerSegmentations?.map { customerSegmentationInAppResponse ->
+            customerSegmentations = segmentationCheckResponse.customerSegmentations?.filter { customerSegmentationInAppResponse ->
+                customerSegmentationInAppResponse.segmentation?.ids?.externalId != null
+            }?.map { customerSegmentationInAppResponse ->
                 CustomerSegmentationInApp(
-                    segmentation = SegmentationInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segmentation?.ids?.externalId
-                        )
-                    ),
-                    segment = SegmentInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
-                    )
+                    customerSegmentationInAppResponse.segmentation?.ids?.externalId!!,
+                    customerSegmentationInAppResponse.segment?.ids?.externalId ?: ""
                 )
             } ?: emptyList()
         )
