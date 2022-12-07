@@ -9,6 +9,9 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 internal object DbManager {
@@ -104,6 +107,16 @@ internal object DbManager {
             null
         }
     }
+
+    fun listenConfigurations(): Flow<Configuration> {
+        return try {
+            mindboxDb.configurationDao().listenConfiguration()
+        } catch (e: RuntimeException) {
+            MindboxLoggerImpl.e(this, "Error reading from database", e)
+            flowOf(null)
+        }.filterNotNull()
+    }
+
 
     private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
         defaultValue = listOf(),

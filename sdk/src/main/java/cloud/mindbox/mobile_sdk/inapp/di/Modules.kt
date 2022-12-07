@@ -15,30 +15,47 @@ import org.koin.dsl.module
 
 internal val appModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
-    factory<InAppMessageManager> { InAppMessageManagerImpl(get(), get()) }
+    factory<InAppMessageManager> {
+        InAppMessageManagerImpl(inAppMessageViewDisplayer = get(),
+            inAppInteractorImpl = get())
+    }
 }
 internal val dataModule = module {
-    factory<InAppRepository> { InAppRepositoryImpl(get(), get(), androidContext(), get()) }
+    factory<InAppRepository> {
+        InAppRepositoryImpl(inAppMapper = get(),
+            gson = get(),
+            context = androidContext(),
+            inAppValidator = get())
+    }
     factory<InAppInteractor> { InAppInteractorImpl(get()) }
     single<InAppValidator> { InAppValidatorImpl() }
     single { InAppMessageMapper() }
     single {
-        GsonBuilder().registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(
+        GsonBuilder().registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
             PayloadDto::class.java,
-            InAppRepositoryImpl.TYPE_JSON_NAME, true)
-            .registerSubtype(PayloadDto.SimpleImage::class.java,
-                InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
-            .registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(TreeTargetingDto::class.java,
-                InAppRepositoryImpl.TYPE_JSON_NAME,
-                true).registerSubtype(TreeTargetingDto.TrueNodeDto::class.java,
-                InAppRepositoryImpl.TRUE_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.IntersectionNodeDto::class.java,
-                    InAppRepositoryImpl.AND_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.UnionNodeDto::class.java,
-                    InAppRepositoryImpl.OR_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.SegmentNodeDto::class.java,
-                    InAppRepositoryImpl.SEGMENT_JSON_NAME))
-            .create()
+            InAppRepositoryImpl.TYPE_JSON_NAME, true
+        ).registerSubtype(
+            PayloadDto.SimpleImage::class.java,
+                InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME
+            )
+        ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory.of(
+                    TreeTargetingDto::class.java, InAppRepositoryImpl.TYPE_JSON_NAME, true
+                ).registerSubtype(
+                        TreeTargetingDto.TrueNodeDto::class.java,
+                        InAppRepositoryImpl.TRUE_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.IntersectionNodeDto::class.java,
+                        InAppRepositoryImpl.AND_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.UnionNodeDto::class.java,
+                        InAppRepositoryImpl.OR_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.SegmentNodeDto::class.java,
+                        InAppRepositoryImpl.SEGMENT_JSON_NAME
+                )
+            ).create()
     }
 }
 
