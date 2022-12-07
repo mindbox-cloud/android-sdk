@@ -1,5 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
+import kotlinx.coroutines.flow.collect
+import org.koin.java.KoinJavaComponent.inject
+
 internal interface ITargeting {
     fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean
 
@@ -19,7 +26,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            return SegmentationCheckResult.TRUE
+            return SegmentationCheckResult.IMMEDIATE
         }
     }
 
@@ -29,6 +36,8 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         val ids: List<String>,
         val countryId: String,
     ) : TreeTargeting(type) {
+        private val inAppGeoRepositoryImpl: InAppGeoRepository by inject(InAppGeoRepositoryImpl::class.java)
+
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId)
                 .not()
@@ -96,7 +105,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            var rez: SegmentationCheckResult = SegmentationCheckResult.TRUE
+            var rez: SegmentationCheckResult = SegmentationCheckResult.IMMEDIATE
             for (node in nodes) {
                 if (node.preCheckTargeting() == SegmentationCheckResult.PENDING) {
                     rez = SegmentationCheckResult.PENDING
@@ -132,7 +141,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            var rez: SegmentationCheckResult = SegmentationCheckResult.TRUE
+            var rez: SegmentationCheckResult = SegmentationCheckResult.IMMEDIATE
             for (node in nodes) {
                 if (node.preCheckTargeting() == SegmentationCheckResult.PENDING) {
                     rez = SegmentationCheckResult.PENDING
@@ -166,6 +175,6 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
 }
 
 enum class SegmentationCheckResult {
-    TRUE,
+    IMMEDIATE,
     PENDING
 }

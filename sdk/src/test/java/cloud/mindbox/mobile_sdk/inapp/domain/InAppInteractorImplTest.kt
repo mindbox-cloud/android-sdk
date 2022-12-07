@@ -213,7 +213,7 @@ internal class InAppInteractorImplTest {
                                 InAppStub.getTargetingSegmentNode()))),
                 ))) as InAppConfig
             invocationRez.inApps.forEach { inApp ->
-                if (inApp.targeting.preCheckTargeting() == SegmentationCheckResult.TRUE) {
+                if (inApp.targeting.preCheckTargeting() == SegmentationCheckResult.IMMEDIATE) {
                     rez = false
                 }
             }
@@ -730,7 +730,7 @@ internal class InAppInteractorImplTest {
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
                             .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "123", "132", "456"))),
+                                .copy("segment", kind = Kind.POSITIVE, "123", "456"))),
                         id = validId))))
             }
         }

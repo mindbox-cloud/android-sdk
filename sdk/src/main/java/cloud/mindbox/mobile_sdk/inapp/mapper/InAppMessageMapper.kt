@@ -11,6 +11,11 @@ import cloud.mindbox.mobile_sdk.models.operation.response.*
 
 internal class InAppMessageMapper {
 
+    fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting
+    {
+        return GeoTargeting(geoTargetingDto.cityId?: "", geoTargetingDto.regionId?: "", geoTargetingDto.countryId?: "")
+    }
+
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
         formDto: FormDto?,

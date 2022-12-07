@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
+import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.*
@@ -27,16 +28,24 @@ internal val dataModule = module {
             context = androidContext(),
             inAppValidator = get())
     }
-    factory<InAppInteractor> { InAppInteractorImpl(get()) }
+    factory<InAppGeoRepository> {
+        InAppGeoRepositoryImpl(context = androidContext(),
+            inAppMessageMapper = get(),
+            gson = get())
+    }
+    factory<InAppInteractor> {
+        InAppInteractorImpl(inAppRepositoryImpl = get(),
+            inAppGeoRepositoryImpl = get())
+    }
     single<InAppValidator> { InAppValidatorImpl() }
     single { InAppMessageMapper() }
     single {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
-            PayloadDto::class.java,
-            InAppRepositoryImpl.TYPE_JSON_NAME, true)
-            .registerSubtype(PayloadDto.SimpleImage::class.java,
-                InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
+                PayloadDto::class.java,
+                InAppRepositoryImpl.TYPE_JSON_NAME, true)
+                .registerSubtype(PayloadDto.SimpleImage::class.java,
+                    InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
             .registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(TreeTargetingDto::class.java,
                 InAppRepositoryImpl.TYPE_JSON_NAME,
                 true).registerSubtype(TreeTargetingDto.TrueNodeDto::class.java,

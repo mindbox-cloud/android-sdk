@@ -34,7 +34,6 @@ internal class InAppStub {
             return TreeTargeting.SegmentNode(type = "",
                 kind = Kind.NEGATIVE,
                 segmentationExternalId = "",
-                segmentationInternalId = "",
                 segment_external_id = "")
         }
 

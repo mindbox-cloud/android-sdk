@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -11,7 +12,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
+internal class InAppInteractorImpl(
+    private val inAppRepositoryImpl: InAppRepository,
+    private val inAppGeoRepositoryImpl: InAppGeoRepositoryImpl
+) :
     InAppInteractor {
 
     override fun processEventAndConfig(): Flow<InAppType> {

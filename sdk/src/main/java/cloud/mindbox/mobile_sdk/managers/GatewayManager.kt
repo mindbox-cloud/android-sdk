@@ -340,6 +340,4 @@ internal object GatewayManager {
         }
 
     }
-
-
 }
