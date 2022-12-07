@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 internal interface ITargeting {
     fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean
+}
 
+internal interface PreCheckTargeting {
     fun preCheckTargeting(): SegmentationCheckResult
 }
 
@@ -11,7 +13,7 @@ internal enum class Kind {
     NEGATIVE
 }
 
-internal sealed class TreeTargeting(open val type: String) : ITargeting {
+internal sealed class TreeTargeting(open val type: String) : ITargeting, PreCheckTargeting {
 
     internal data class TrueNode(override val type: String) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
@@ -32,7 +34,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
             for (node in nodes) {
                 for (csia in csiaList) {
                     if ((node is SegmentNode)) {
-                        if (node.shouldProcessSegmentation(csia.segmentation?.ids?.externalId) && node.getCustomerIsInTargeting(
+                        if (node.shouldProcessSegmentation(csia.segmentation) && node.getCustomerIsInTargeting(
                                 csiaList).not()
                         ) {
                             rez = false
@@ -67,7 +69,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
             for (node in nodes) {
                 for (csia in csiaList) {
                     if (node is SegmentNode) {
-                        if (node.shouldProcessSegmentation(csia.segmentation?.ids?.externalId) && node.getCustomerIsInTargeting(
+                        if (node.shouldProcessSegmentation(csia.segmentation) && node.getCustomerIsInTargeting(
                                 csiaList)
                         ) {
                             rez = true
@@ -98,16 +100,20 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val kind: Kind,
         val segmentationExternalId: String,
-        val segment_external_id: String,
+        val segmentExternalId: String,
     ) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return when (kind) {
-                Kind.POSITIVE -> csiaList.find { csia -> csia.segmentation?.ids?.externalId == segmentationExternalId }?.segment?.ids?.externalId == segment_external_id
-                Kind.NEGATIVE -> csiaList.find { csia -> csia.segmentation?.ids?.externalId == segmentationExternalId }?.segment?.ids?.externalId == null
+                Kind.POSITIVE -> csiaList.find { csia -> csia.segmentation == segmentationExternalId }
+                    ?.segment == segmentExternalId
+                Kind.NEGATIVE -> csiaList.find { csia -> csia.segmentation == segmentationExternalId }
+                    ?.segment
+                    ?.let { it != segmentExternalId } == true
+
             }
         }
 
-        fun shouldProcessSegmentation(segmentation: String?): Boolean {
+        fun shouldProcessSegmentation(segmentation: String): Boolean {
             return (segmentation == segmentationExternalId)
         }
 

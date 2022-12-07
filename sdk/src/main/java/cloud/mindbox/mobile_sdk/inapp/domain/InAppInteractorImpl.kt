@@ -40,24 +40,33 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             }.filterNotNull()
     }
 
+
+    private fun findInAppToShowWithoutCheckingSegmentations(configWithImmediatePreCheck: InAppConfig): InApp? {
+        return configWithImmediatePreCheck.inApps.find { inApp ->
+            inApp.targeting.getCustomerIsInTargeting(emptyList())
+        }
+    }
+
+
     private suspend fun chooseInAppToShow(
         config: InAppConfig,
     ): InApp? {
         val filteredConfig = prefilterConfig(config)
         MindboxLoggerImpl.d(this,
             "Filtered config has ${filteredConfig.inApps.size} inapps")
-        val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
-        val inAppsWithoutTargeting =
-            filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
-        return if (inAppsWithoutTargeting.isNotEmpty()) {
-            inAppsWithoutTargeting.first().also {
-                MindboxLoggerImpl.d(this,
-                    "Inapp without targeting found: ${it.id}")
-            }
-        } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
+        val configWithInAppsBeforeFirstPendingPreCheck = getConfigWithInAppsBeforeFirstPendingPreCheck(filteredConfig)
+        val configWithInAppsStartingWithFirstPendingPreCheck =
+            filteredConfig.copy(inApps = filteredConfig.inApps.subtract(configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet())
+                .toList())
+        return if (configWithInAppsBeforeFirstPendingPreCheck.inApps.isNotEmpty() && findInAppToShowWithoutCheckingSegmentations(
+                configWithInAppsBeforeFirstPendingPreCheck) != null
+        ) {
+            findInAppToShowWithoutCheckingSegmentations(configWithInAppsBeforeFirstPendingPreCheck)
+
+        } else if (configWithInAppsStartingWithFirstPendingPreCheck.inApps.isNotEmpty()) {
             runCatching {
                 checkSegmentation(filteredConfig,
-                    inAppRepositoryImpl.fetchSegmentations(filteredConfigWithTargeting))
+                    inAppRepositoryImpl.fetchSegmentations(configWithInAppsStartingWithFirstPendingPreCheck))
             }.getOrElse { throwable ->
                 if (throwable is VolleyError) {
                     MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
@@ -78,11 +87,10 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             .filter { inApp -> validateInAppNotShown(inApp) })
     }
 
-    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
+    private fun getConfigWithInAppsBeforeFirstPendingPreCheck(config: InAppConfig): InAppConfig {
         return config.copy(
-            inApps = config.inApps.filter { inApp ->
-                inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING
-            }
+            inApps = config.inApps.subList(0,
+                config.inApps.indexOfFirst { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING })
         )
     }
 
