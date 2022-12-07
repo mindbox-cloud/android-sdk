@@ -1,12 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
-import kotlinx.coroutines.flow.collect
-import org.koin.java.KoinJavaComponent.inject
-
 internal interface ITargeting {
     fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean
 }
@@ -38,7 +31,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         val ids: List<String>,
         val countryId: String,
     ) : TreeTargeting(type) {
-        private val inAppGeoRepositoryImpl: InAppGeoRepository by inject(InAppGeoRepositoryImpl::class.java)
+
 
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId)
@@ -46,7 +39,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            return SegmentationCheckResult.PENDING
+            return SegmentationCheckResult.IMMEDIATE
         }
     }
 
@@ -56,13 +49,14 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         val ids: List<String>,
         val cityId: String,
     ) : TreeTargeting(type) {
+
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             return if (kind == Kind.POSITIVE) ids.contains(cityId) else ids.contains(cityId)
                 .not()
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            return SegmentationCheckResult.PENDING
+            return SegmentationCheckResult.IMMEDIATE
         }
     }
 
@@ -78,7 +72,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         }
 
         override fun preCheckTargeting(): SegmentationCheckResult {
-            return SegmentationCheckResult.PENDING
+            return SegmentationCheckResult.IMMEDIATE
         }
     }
 
