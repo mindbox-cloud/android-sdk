@@ -98,7 +98,6 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         override val type: String,
         val kind: Kind,
         val segmentationExternalId: String,
-        val segmentationInternalId: String,
         val segment_external_id: String,
     ) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {

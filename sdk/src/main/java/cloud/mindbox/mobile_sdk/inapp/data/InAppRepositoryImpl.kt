@@ -22,8 +22,12 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 internal class InAppRepositoryImpl(
     private val inAppMapper: InAppMessageMapper,
@@ -61,19 +65,28 @@ internal class InAppRepositoryImpl(
 
 
     override suspend fun fetchInAppConfig() {
-        MindboxPreferences.inAppConfig =
-            GatewayManager.fetchInAppConfig(context,
-                DbManager.getConfigurations()!!)
+        DbManager.listenConfigurations().collect { configuration ->
+            MindboxPreferences.inAppConfig =
+                GatewayManager.fetchInAppConfig(context,
+                    configuration)
+        }
     }
 
     override suspend fun fetchSegmentations(
         config: InAppConfig,
     ): SegmentationCheckInApp {
-        return inAppMapper.mapToSegmentationCheck(
-            GatewayManager.checkSegmentation(context,
-                DbManager.getConfigurations()!!,
-                inAppMapper.mapToSegmentationCheckRequest(config)))
+        return suspendCoroutine { continuation ->
+            CoroutineScope(context = SupervisorJob()).launch {
+                DbManager.listenConfigurations().collect { configuration ->
+                    continuation.resume(inAppMapper.mapToSegmentationCheck(GatewayManager.checkSegmentation(
+                        context,
+                        configuration,
+                        inAppMapper.mapToSegmentationCheckRequest(config))))
+                }
+            }
+        }
     }
+
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
         return MindboxEventManager.eventFlow

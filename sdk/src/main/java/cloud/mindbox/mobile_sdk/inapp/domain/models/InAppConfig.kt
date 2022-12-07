@@ -24,3 +24,4 @@ internal sealed class Payload {
         val intentPayload: String,
     ) : Payload()
 }
+
