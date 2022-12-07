@@ -1284,6 +1284,337 @@ internal class InAppInteractorImplTest {
             awaitComplete()
         }
     }
+
+    @Test
+    fun `customer is in intersection of positive country success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive country error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative country error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative country success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive region success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive region error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative region error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative region success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive city success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive city error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative city error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative city success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
 }
 
 

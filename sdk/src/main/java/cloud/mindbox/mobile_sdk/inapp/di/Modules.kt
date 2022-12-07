@@ -37,7 +37,13 @@ internal val dataModule = module {
                 .registerSubtype(TreeTargetingDto.UnionNodeDto::class.java,
                     InAppRepositoryImpl.OR_JSON_NAME)
                 .registerSubtype(TreeTargetingDto.SegmentNodeDto::class.java,
-                    InAppRepositoryImpl.SEGMENT_JSON_NAME))
+                    InAppRepositoryImpl.SEGMENT_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.CountryNodeDto::class.java,
+                    InAppRepositoryImpl.COUNTRY_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.CityNodeDto::class.java,
+                    InAppRepositoryImpl.CITY_JSON_NAME)
+                .registerSubtype(TreeTargetingDto.RegionNodeDto::class.java,
+                    InAppRepositoryImpl.REGION_JSON_NAME))
             .create()
     }
 }

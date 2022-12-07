@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences

@@ -23,6 +23,54 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting {
         }
     }
 
+    internal data class CountryNode(
+        override val type: String,
+        val kind: Kind,
+        val ids: List<String>,
+        val countryId: String,
+    ) : TreeTargeting(type) {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
+            return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId)
+                .not()
+        }
+
+        override fun preCheckTargeting(): SegmentationCheckResult {
+            return SegmentationCheckResult.PENDING
+        }
+    }
+
+    internal data class CityNode(
+        override val type: String,
+        val kind: Kind,
+        val ids: List<String>,
+        val cityId: String,
+    ) : TreeTargeting(type) {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
+            return if (kind == Kind.POSITIVE) ids.contains(cityId) else ids.contains(cityId)
+                .not()
+        }
+
+        override fun preCheckTargeting(): SegmentationCheckResult {
+            return SegmentationCheckResult.PENDING
+        }
+    }
+
+    internal data class RegionNode(
+        override val type: String,
+        val kind: Kind,
+        val ids: List<String>,
+        val regionId: String,
+    ) : TreeTargeting(type) {
+        override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
+            return if (kind == Kind.POSITIVE) ids.contains(regionId) else ids.contains(regionId)
+                .not()
+        }
+
+        override fun preCheckTargeting(): SegmentationCheckResult {
+            return SegmentationCheckResult.PENDING
+        }
+    }
+
     internal data class IntersectionNode(
         override val type: String,
         val nodes: List<TreeTargeting>,

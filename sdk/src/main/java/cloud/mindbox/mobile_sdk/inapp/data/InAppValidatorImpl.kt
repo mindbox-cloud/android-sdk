@@ -40,7 +40,22 @@ internal class InAppValidatorImpl : InAppValidator {
                         && targeting.type != null
             }
             is TreeTargetingDto.TrueNodeDto -> {
-                true
+                targeting.type != null
+            }
+            is TreeTargetingDto.CityNodeDto -> {
+                targeting.type != null
+                        && targeting.ids.isNullOrEmpty().not()
+                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+            }
+            is TreeTargetingDto.CountryNodeDto -> {
+                targeting.type != null
+                        && targeting.ids.isNullOrEmpty().not()
+                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+            }
+            is TreeTargetingDto.RegionNodeDto -> {
+                targeting.type != null
+                        && targeting.ids.isNullOrEmpty().not()
+                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
             }
         }
     }

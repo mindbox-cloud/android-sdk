@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
@@ -25,13 +26,17 @@ internal class InAppMessageMapper {
         }
     }
 
-    fun mapToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
+    fun mapToInAppConfig(
+        inAppConfigResponse: InAppConfigResponse?,
+        geoTargetingDto: GeoTargetingDto?,
+    ): InAppConfig? {
         return inAppConfigResponse?.let { inAppConfigDto ->
             InAppConfig(
                 inAppConfigDto.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
-                        targeting = mapTargetingDtoToTargeting(inAppDto.targeting!!),
+                        targeting = mapTargetingDtoToTargeting(inAppDto.targeting!!,
+                            geoTargetingDto),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
@@ -58,19 +63,31 @@ internal class InAppMessageMapper {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun mapTargetingDtoToTargeting(targetingDto: TreeTargetingDto): TreeTargeting {
+    private fun mapTargetingDtoToTargeting(
+        targetingDto: TreeTargetingDto,
+        geoTargetingDto: GeoTargetingDto?,
+    ): TreeTargeting {
         return when (targetingDto) {
             is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
             is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                 InAppRepositoryImpl.AND_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>))
+                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>, geoTargetingDto))
             is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
-                Kind.POSITIVE,
+                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                 targetingDto.segmentationExternalId!!,
                 targetingDto.segmentationInternalId!!,
                 targetingDto.segment_external_id!!)
             is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>))
+                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>, geoTargetingDto))
+            is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                targetingDto.ids as List<String>, geoTargetingDto?.cityId ?: "")
+            is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                targetingDto.ids as List<String>, geoTargetingDto?.countryId ?: "")
+            is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                if (targetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                targetingDto.ids as List<String>, geoTargetingDto?.regionId ?: "")
         }
     }
 
@@ -80,20 +97,34 @@ internal class InAppMessageMapper {
      * **/
 
     @Suppress("UNCHECKED_CAST")
-    private fun mapNodesDtoToNodes(nodesDto: List<TreeTargetingDto>): List<TreeTargeting> {
+    private fun mapNodesDtoToNodes(
+        nodesDto: List<TreeTargetingDto>,
+        geoTargetingDto: GeoTargetingDto?,
+    ): List<TreeTargeting> {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     InAppRepositoryImpl.AND_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
+                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>,
+                        geoTargetingDto))
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     treeTargetingDto.segmentationExternalId!!,
                     treeTargetingDto.segmentationInternalId!!,
                     treeTargetingDto.segment_external_id!!)
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
+                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>,
+                        geoTargetingDto))
+                is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>, geoTargetingDto?.cityId ?: "")
+                is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>, geoTargetingDto?.countryId ?: "")
+                is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>, geoTargetingDto?.regionId ?: "")
             }
         }
     }

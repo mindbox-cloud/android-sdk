@@ -81,9 +81,17 @@ class InAppValidatorImplTest {
     }
 
     @Test
-    fun `validate targeting dto is TrueNode`() {
+    fun `validate targeting dto is TrueNode with correct type`() {
         assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
-            .copy(targeting = InAppStub.getTargetingTrueNodeDto(),
+            .copy(targeting = InAppStub.getTargetingTrueNodeDto().copy(type = "true"),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is TrueNode with incorrect type`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = InAppStub.getTargetingTrueNodeDto().copy(type = null),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -309,6 +317,168 @@ class InAppValidatorImplTest {
                             segmentationExternalId = "asda",
                             segmentationInternalId = "234",
                             segment_external_id = "asds"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and type is not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = InAppStub.getTargetingCountryNodeDto()
+                .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and kind not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCountryNodeDto()
+                .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and ids not null`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCountryNodeDto()
+                .copy(type = "country", kind = "positive", ids = null)),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and ids is empty`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCountryNodeDto()
+                .copy(type = "country", kind = "positive", ids = emptyList())),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and its valid with negative kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCountryNodeDto()
+                .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is Country node and its valid with positive kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCountryNodeDto()
+                .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and type is not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = InAppStub.getTargetingCityNodeDto()
+                .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and kind not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCityNodeDto()
+                .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and ids not null`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCityNodeDto()
+                .copy(type = "country", kind = "positive", ids = null)),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and ids is empty`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCityNodeDto()
+                .copy(type = "country", kind = "positive", ids = emptyList())),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and its valid with negative kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCityNodeDto()
+                .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is city node and its valid with positive kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingCityNodeDto()
+                .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and type is not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = InAppStub.getTargetingRegionNodeDto()
+                .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and kind not valid`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingRegionNodeDto()
+                .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and ids not null`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingRegionNodeDto()
+                .copy(type = "country", kind = "positive", ids = null)),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and ids is empty`() {
+        assertFalse(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingRegionNodeDto()
+                .copy(type = "country", kind = "positive", ids = emptyList())),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and its valid with negative kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingRegionNodeDto()
+                .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
+                    .copy(type = "def", imageUrl = "abc"))))))
+    }
+
+    @Test
+    fun `validate targeting dto is region node and its valid with positive kind`() {
+        assertTrue(inAppValidator.validateInApp(InAppStub.getInAppDto()
+            .copy(targeting = (InAppStub.getTargetingRegionNodeDto()
+                .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
