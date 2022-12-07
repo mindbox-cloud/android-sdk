@@ -6,18 +6,10 @@ internal data class SegmentationCheckInApp(
 )
 
 internal data class CustomerSegmentationInApp(
-    val segmentation: SegmentationInApp?,
-    val segment: SegmentInApp?,
-)
-
-internal data class IdsInApp(
-    val externalId: String?,
-)
-
-internal data class SegmentationInApp(
-    val ids: IdsInApp?,
-)
-
-internal data class SegmentInApp(
-    val ids: IdsInApp?,
-)
+    val segmentation: String,
+    val segment: String = NO_SEGMENT,
+) {
+    companion object {
+        const val NO_SEGMENT = ""
+    }
+}
