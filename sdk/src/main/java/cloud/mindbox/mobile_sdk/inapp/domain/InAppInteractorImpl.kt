@@ -58,9 +58,11 @@ internal class InAppInteractorImpl(
         val filteredConfig = prefilterConfig(config)
         MindboxLoggerImpl.d(this,
             "Filtered config has ${filteredConfig.inApps.size} inapps")
-        val configWithInAppsBeforeFirstPendingPreCheck = getConfigWithInAppsBeforeFirstPendingPreCheck(filteredConfig)
+        val configWithInAppsBeforeFirstPendingPreCheck =
+            getConfigWithInAppsBeforeFirstPendingPreCheck(filteredConfig)
         val configWithInAppsStartingWithFirstPendingPreCheck =
-            filteredConfig.copy(inApps = filteredConfig.inApps.subtract(configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet())
+            filteredConfig.copy(inApps = filteredConfig.inApps.subtract(
+                configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet())
                 .toList())
         return if (configWithInAppsBeforeFirstPendingPreCheck.inApps.isNotEmpty() && findInAppToShowWithoutCheckingSegmentations(
                 configWithInAppsBeforeFirstPendingPreCheck) != null
@@ -70,11 +72,16 @@ internal class InAppInteractorImpl(
         } else if (configWithInAppsStartingWithFirstPendingPreCheck.inApps.isNotEmpty()) {
             runCatching {
                 checkSegmentation(filteredConfig,
-                    inAppRepositoryImpl.fetchSegmentations(configWithInAppsStartingWithFirstPendingPreCheck))
+                    inAppRepositoryImpl.fetchSegmentations(
+                        configWithInAppsStartingWithFirstPendingPreCheck))
             }.getOrElse { throwable ->
                 if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
-                    null
+                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                    configWithInAppsStartingWithFirstPendingPreCheck.inApps
+                        .filter { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.TRUE }
+                        .find { inApp ->
+                            inApp.targeting.getCustomerIsInTargeting(emptyList())
+                        }
                 } else {
                     throw throwable
                 }
