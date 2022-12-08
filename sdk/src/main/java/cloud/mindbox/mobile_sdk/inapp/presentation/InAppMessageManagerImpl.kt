@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
@@ -70,7 +69,9 @@ internal class InAppMessageManagerImpl(
                     }
                 }
             } else {
-                MindboxLoggerImpl.e(this@InAppMessageManagerImpl::class, "Failed to get config", error)
+                MindboxLoggerImpl.e(this@InAppMessageManagerImpl::class,
+                    "Failed to get config",
+                    error)
             }
         }) {
             inAppInteractorImpl.fetchInAppConfig()
@@ -80,6 +81,13 @@ internal class InAppMessageManagerImpl(
     override fun initInAppMessages() {
         listenEventAndInApp()
         requestConfig()
+        requestGeo()
+    }
+
+    private fun requestGeo() {
+        inAppScope.launch {
+            inAppInteractorImpl.fetchGeo()
+        }
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {

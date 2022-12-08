@@ -14,4 +14,6 @@ internal interface InAppInteractor {
     fun sendInAppClicked(inAppId: String)
 
     suspend fun fetchInAppConfig()
+
+    suspend fun fetchGeo()
 }

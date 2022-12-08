@@ -28,7 +28,6 @@ internal object MindboxPreferences {
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
-    val inAppGeoFlow: MutableSharedFlow<String> = MutableSharedFlow()
     var inAppGeo: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
             SharedPreferencesManager.getString(IN_APP_GEO) ?: ""
@@ -36,9 +35,6 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(IN_APP_GEO, value)
-                prefScope.launch {
-                    inAppGeoFlow.emit(value)
-                }
             }
         }
     val inAppConfigFlow: MutableSharedFlow<String> = MutableSharedFlow()

@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -14,7 +13,7 @@ import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractorImpl(
     private val inAppRepositoryImpl: InAppRepository,
-    private val inAppGeoRepositoryImpl: InAppGeoRepositoryImpl
+    private val inAppGeoRepositoryImpl: InAppGeoRepository,
 ) :
     InAppInteractor {
 
@@ -78,7 +77,7 @@ internal class InAppInteractorImpl(
                 if (throwable is VolleyError) {
                     MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
                     configWithInAppsStartingWithFirstPendingPreCheck.inApps
-                        .filter { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.TRUE }
+                        .filter { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.IMMEDIATE }
                         .find { inApp ->
                             inApp.targeting.getCustomerIsInTargeting(emptyList())
                         }
@@ -99,9 +98,11 @@ internal class InAppInteractorImpl(
     }
 
     private fun getConfigWithInAppsBeforeFirstPendingPreCheck(config: InAppConfig): InAppConfig {
-        return config.copy(
+        val calcultation =
+            config.inApps.indexOfFirst { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING }
+        return if (calcultation == -1) config else config.copy(
             inApps = config.inApps.subList(0,
-                config.inApps.indexOfFirst { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING })
+                calcultation)
         )
     }
 
@@ -146,5 +147,9 @@ internal class InAppInteractorImpl(
 
     override suspend fun fetchInAppConfig() {
         inAppRepositoryImpl.fetchInAppConfig()
+    }
+
+    override suspend fun fetchGeo() {
+        inAppGeoRepositoryImpl.fetchGeo()
     }
 }

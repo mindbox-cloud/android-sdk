@@ -6,9 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
-import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
@@ -34,6 +32,9 @@ internal class InAppInteractorImplTest {
     @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
 
+    @MockK
+    private lateinit var inAppGeoRepository: InAppGeoRepository
+
     @Before
     fun onTestStart() {
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
@@ -47,15 +48,11 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
             flow {
-                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                emit(InAppConfigStub.getConfig().copy(inApps = listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingTrueNode(), id = validId),
                     InAppStub.getInApp()
                         .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
@@ -76,17 +73,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp().copy(status = "success",
-            customerSegmentations = listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        externalId = "999")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            externalId = "777")))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -98,8 +84,7 @@ internal class InAppInteractorImplTest {
                                 .copy(type = "segment",
                                     kind = Kind.POSITIVE,
                                     segmentationExternalId = "999",
-                                    segment_external_id = "777",
-                                    segmentationInternalId = "434"))),
+                                    segmentExternalId = "777"))),
                         id = validId),
                     InAppStub.getInApp()
                         .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
@@ -136,10 +121,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } throws VolleyError()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -165,10 +146,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } throws Error()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -225,10 +202,6 @@ internal class InAppInteractorImplTest {
     fun `validate in-app was shown list is empty`() = runTest {
         every { inAppRepository.getShownInApps() } returns HashSet()
         val validId = "123456"
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -253,10 +226,6 @@ internal class InAppInteractorImplTest {
             every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
                 "ad487f74-924f-44f0-b4f7-f239ea5643c5")
             val validId = "123456"
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -281,18 +250,6 @@ internal class InAppInteractorImplTest {
         every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
             "ad487f74-924f-44f0-b4f7-f239ea5643c5", "123")
         val validId = "123456"
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -303,12 +260,16 @@ internal class InAppInteractorImplTest {
                         .copy(id = validId,
                             targeting = InAppStub.getTargetingUnionNode().copy("or",
                                 nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
-                                    InAppStub.getTargetingSegmentNode().copy("segment",
+                                    .copy(type = "segment",
+                                        kind = Kind.NEGATIVE,
+                                        segmentationExternalId = "456",
+                                        segmentExternalId = "132"),
+                                    InAppStub.getTargetingSegmentNode().copy(
+                                        type = "segment",
                                         kind = Kind.POSITIVE,
-                                        "123",
-                                        "132",
-                                        "123")))))))
+                                        segmentationExternalId = "123",
+                                        segmentExternalId = "132",
+                                    )))))))
             }
         }
         inAppInteractor.processEventAndConfig().test {
@@ -323,25 +284,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -349,9 +291,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.POSITIVE, "123", "132", "123"),
+                            .copy("segment", kind = Kind.POSITIVE, "123", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "456", "132", "456"))),
+                                .copy("segment", kind = Kind.POSITIVE, "456", "132"))),
                         id = validId))))
             }
         }
@@ -367,28 +309,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy(
-                "Success",
-                listOf(
-                    SegmentationCheckInAppStub.getCustomerSegmentation()
-                        .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                                "345")),
-                            segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                                ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                    "345")
-                            )),
-                    SegmentationCheckInAppStub.getCustomerSegmentation()
-                        .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                                "123")),
-                            segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                                ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                    null)))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -398,17 +318,15 @@ internal class InAppInteractorImplTest {
                         .copy(targeting = InAppStub.getTargetingIntersectionNode()
                             .copy(type = "and",
                                 nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                    .copy("segment",
+                                    .copy(type = "segment",
                                         kind = Kind.POSITIVE,
-                                        "345",
-                                        "132",
-                                        "345"),
+                                        segmentationExternalId = "345",
+                                        segmentExternalId = "132"),
                                     InAppStub.getTargetingSegmentNode()
-                                        .copy("segment",
+                                        .copy(type = "segment",
                                             kind = Kind.POSITIVE,
-                                            "123",
-                                            "132",
-                                            "123"))),
+                                            segmentationExternalId = "123",
+                                            segmentExternalId = "132"))),
                             id = validId))))
             }
         }
@@ -423,25 +341,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "789")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -449,9 +348,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "789", "132", "789"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "789", "132"))),
                         id = validId))))
             }
         }
@@ -467,25 +366,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "789")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -493,9 +373,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "789", "132", "789"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "789", "132"))),
                         id = validId))))
             }
         }
@@ -511,25 +391,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "456")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "123")
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "123")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -538,13 +399,12 @@ internal class InAppInteractorImplTest {
                         .copy(targeting = InAppStub.getTargetingIntersectionNode()
                             .copy(type = "and",
                                 nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "123"),
                                     InAppStub.getTargetingSegmentNode()
                                         .copy("segment",
                                             kind = Kind.NEGATIVE,
                                             "123",
-                                            "132",
-                                            "456"))),
+                                            "132"))),
                             id = validId))))
                 }
             }
@@ -561,25 +421,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "456")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "123")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -588,13 +429,12 @@ internal class InAppInteractorImplTest {
                         .copy(targeting = InAppStub.getTargetingIntersectionNode()
                             .copy(type = "and",
                                 nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "123"),
                                     InAppStub.getTargetingSegmentNode()
                                         .copy("segment",
                                             kind = Kind.NEGATIVE,
                                             "123",
-                                            "132",
-                                            "456"))),
+                                            "132"))),
                             id = validId))))
                 }
             }
@@ -610,25 +450,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "456")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "123")
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "123")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "123")
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -637,13 +458,12 @@ internal class InAppInteractorImplTest {
                         .copy(targeting = InAppStub.getTargetingIntersectionNode()
                             .copy(type = "and",
                                 nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "132"),
                                     InAppStub.getTargetingSegmentNode()
                                         .copy("segment",
                                             kind = Kind.NEGATIVE,
                                             "123",
-                                            "132",
-                                            "123"))),
+                                            "132"))),
                             id = validId))))
                 }
             }
@@ -658,25 +478,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -684,9 +485,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "123", "132", "456"))),
+                                .copy("segment", kind = Kind.POSITIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -702,25 +503,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -728,7 +510,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
                                 .copy("segment", kind = Kind.POSITIVE, "123", "456"))),
                         id = validId))))
@@ -746,25 +528,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "124")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -772,9 +535,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "123", "132", "124"))),
+                                .copy("segment", kind = Kind.POSITIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -790,25 +553,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -816,9 +560,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.POSITIVE, "456", "132", "123"),
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "123", "132", "456"))),
+                                .copy("segment", kind = Kind.POSITIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -833,25 +577,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -859,9 +584,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "123", "132", "123"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -877,25 +602,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -903,9 +609,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "123", "132", "123"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -921,25 +627,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -947,9 +634,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "123", "132", "123"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -965,25 +652,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "123")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -991,9 +659,9 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingSegmentNode()
-                            .copy("segment", kind = Kind.NEGATIVE, "456", "132", "456"),
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
                             InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "123", "132", "123"))),
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
                         id = validId))))
             }
         }
@@ -1009,25 +677,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "234")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "234")
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "345")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "345")
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -1035,9 +684,9 @@ internal class InAppInteractorImplTest {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                         .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "234", "132", "234"),
+                                .copy("segment", kind = Kind.POSITIVE, "234", "132"),
                                 InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.NEGATIVE, "345", "132", "345"))),
+                                    .copy("segment", kind = Kind.NEGATIVE, "345", "132"))),
                             id = validId))))
                 }
             }
@@ -1054,25 +703,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "345")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "345")
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "234")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -1080,9 +710,9 @@ internal class InAppInteractorImplTest {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                         .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "345", "132", "345"),
+                                .copy("segment", kind = Kind.POSITIVE, "345", "132"),
                                 InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132", "234"))),
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132"))),
                             id = validId))))
                 }
             }
@@ -1099,25 +729,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "345")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "234")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -1125,9 +736,9 @@ internal class InAppInteractorImplTest {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                         .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "345", "132", "345"),
+                                .copy("segment", kind = Kind.POSITIVE, "345", "132"),
                                 InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132", "234"))),
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132"))),
                             id = validId))))
                 }
             }
@@ -1144,25 +755,6 @@ internal class InAppInteractorImplTest {
             every {
                 inAppRepository.getShownInApps()
             } returns HashSet()
-            coEvery {
-                inAppRepository.fetchSegmentations(any())
-
-            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "345")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "234")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "234")
-                        ))))
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -1170,9 +762,9 @@ internal class InAppInteractorImplTest {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                         .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "345", "132", "345"),
+                                .copy("segment", kind = Kind.POSITIVE, "345", "132"),
                                 InAppStub.getTargetingSegmentNode()
-                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132", "234"))),
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132"))),
                             id = validId))))
                 }
             }
@@ -1188,26 +780,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "456")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            null)
-                    )),
-                SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "123")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                null)
-                        ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1216,7 +788,7 @@ internal class InAppInteractorImplTest {
                     .copy(id = "123",
                         targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.POSITIVE, "456", "132", "456")))),
+                                .copy("segment", kind = Kind.POSITIVE, "456", "132")))),
                     InAppStub.getInApp()
                         .copy(
                             id = validId, targeting = InAppStub.getTargetingUnionNode().copy("or",
@@ -1224,8 +796,7 @@ internal class InAppInteractorImplTest {
                                     .copy("segment",
                                         kind = Kind.NEGATIVE,
                                         "123",
-                                        "132",
-                                        "123")))))))
+                                        "132")))))))
             }
         }
         inAppInteractor.processEventAndConfig().test {
@@ -1240,25 +811,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "123")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "456")
-                    )), SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                        "124")),
-                    segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                        ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                            "124")
-                    ))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1267,7 +819,7 @@ internal class InAppInteractorImplTest {
                     .copy(targeting = InAppStub.getTargetingIntersectionNode()
                         .copy(type = "and",
                             nodes = listOf(InAppStub.getTargetingSegmentNode()
-                                .copy("segment", kind = Kind.NEGATIVE, "123", "132", "456"),
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"),
                                 InAppStub.getTargetingTrueNode())), id = "123"),
                     InAppStub.getInApp()
                         .copy(id = validId,
@@ -1275,8 +827,7 @@ internal class InAppInteractorImplTest {
                                 nodes = listOf(InAppStub.getTargetingSegmentNode().copy("segment",
                                     kind = Kind.POSITIVE,
                                     "124",
-                                    "132",
-                                    "124")))))))
+                                    "132")))))))
             }
         }
         inAppInteractor.processEventAndConfig().test {
@@ -1291,10 +842,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1302,7 +849,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCountryNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1319,10 +866,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1330,7 +873,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCountryNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }
@@ -1346,10 +889,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1357,7 +896,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCountryNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1373,10 +912,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1384,7 +919,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCountryNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }
@@ -1401,10 +936,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1412,7 +943,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingRegionNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1429,10 +960,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1440,7 +967,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingRegionNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }
@@ -1456,10 +983,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1467,7 +990,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingRegionNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1483,10 +1006,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1494,7 +1013,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingRegionNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }
@@ -1511,10 +1030,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1522,7 +1037,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCityNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1539,10 +1054,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1550,7 +1061,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCityNode()
-                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }
@@ -1566,10 +1077,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1577,7 +1084,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCityNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456")))),
                         id = validId)
                 )))
             }
@@ -1593,10 +1100,6 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -1604,7 +1107,7 @@ internal class InAppInteractorImplTest {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
                     .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
                         nodes = listOf(InAppStub.getTargetingCityNode()
-                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456"), "123"))),
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456")))),
                         id = validId)
                 )))
             }

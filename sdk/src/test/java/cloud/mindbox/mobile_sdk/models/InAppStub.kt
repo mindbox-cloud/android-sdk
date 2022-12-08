@@ -34,7 +34,7 @@ internal class InAppStub {
             return TreeTargeting.SegmentNode(type = "",
                 kind = Kind.NEGATIVE,
                 segmentationExternalId = "",
-                segment_external_id = "")
+                segmentExternalId = "")
         }
 
         fun getTargetingUnionNode(): TreeTargeting.UnionNode {
@@ -80,15 +80,15 @@ internal class InAppStub {
         }
 
         fun getTargetingCountryNode(): TreeTargeting.CountryNode {
-            return TreeTargeting.CountryNode(type = "", kind = Kind.POSITIVE, ids = emptyList(), "")
+            return TreeTargeting.CountryNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
         fun getTargetingCityNode(): TreeTargeting.CityNode {
-            return TreeTargeting.CityNode(type = "", kind = Kind.POSITIVE, ids = emptyList(), "")
+            return TreeTargeting.CityNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
         fun getTargetingRegionNode(): TreeTargeting.RegionNode {
-            return TreeTargeting.RegionNode(type = "", kind = Kind.POSITIVE, ids = emptyList(), "")
+            return TreeTargeting.RegionNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
         fun getSimpleImage() = Payload.SimpleImage(

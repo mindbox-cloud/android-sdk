@@ -43,26 +43,37 @@ internal val dataModule = module {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
                 PayloadDto::class.java,
-                InAppRepositoryImpl.TYPE_JSON_NAME, true)
-                .registerSubtype(PayloadDto.SimpleImage::class.java,
-                    InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME))
-            .registerTypeAdapterFactory(RuntimeTypeAdapterFactory.of(TreeTargetingDto::class.java,
+                InAppRepositoryImpl.TYPE_JSON_NAME, true
+            ).registerSubtype(
+                PayloadDto.SimpleImage::class.java,
+                InAppRepositoryImpl.SIMPLE_IMAGE_JSON_NAME
+            )
+        ).registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
+                TreeTargetingDto::class.java,
                 InAppRepositoryImpl.TYPE_JSON_NAME,
-                true).registerSubtype(TreeTargetingDto.TrueNodeDto::class.java,
-                InAppRepositoryImpl.TRUE_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.IntersectionNodeDto::class.java,
-                    InAppRepositoryImpl.AND_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.UnionNodeDto::class.java,
-                    InAppRepositoryImpl.OR_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.SegmentNodeDto::class.java,
-                    InAppRepositoryImpl.SEGMENT_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.CountryNodeDto::class.java,
-                    InAppRepositoryImpl.COUNTRY_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.CityNodeDto::class.java,
-                    InAppRepositoryImpl.CITY_JSON_NAME)
-                .registerSubtype(TreeTargetingDto.RegionNodeDto::class.java,
-                    InAppRepositoryImpl.REGION_JSON_NAME))
-            .create()
+                true).registerSubtype(
+                TreeTargetingDto.TrueNodeDto::class.java,
+                InAppRepositoryImpl.TRUE_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.IntersectionNodeDto::class.java,
+                InAppRepositoryImpl.AND_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.UnionNodeDto::class.java,
+                InAppRepositoryImpl.OR_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.SegmentNodeDto::class.java,
+                InAppRepositoryImpl.SEGMENT_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.CountryNodeDto::class.java,
+                InAppRepositoryImpl.COUNTRY_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.CityNodeDto::class.java,
+                InAppRepositoryImpl.CITY_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.RegionNodeDto::class.java,
+                InAppRepositoryImpl.REGION_JSON_NAME)).create()
+
     }
 }
 

@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -23,10 +22,13 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -36,6 +38,7 @@ internal class InAppRepositoryImpl(
     private val context: Context,
     private val inAppValidator: InAppValidator,
 ) : InAppRepository {
+
 
     override fun getShownInApps(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {
@@ -73,21 +76,41 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override suspend fun fetchSegmentations(
-        config: InAppConfig,
-    ): SegmentationCheckInApp {
-        return suspendCoroutine { continuation ->
-            CoroutineScope(context = SupervisorJob()).launch {
+    private val listOfSegmentations =
+        mutableListOf<Pair<String, CompletableDeferred<SegmentationCheckInApp>>>()
+
+    override fun getSegmentations(
+        id: String,
+        deferredRez: CompletableDeferred<SegmentationCheckInApp>,
+    ) {
+        listOfSegmentations.add(id to deferredRez)
+    }
+
+    override suspend fun runFetchingSegmentation() {
+        DbManager.listenConfigurations().collect { configuration ->
+            val rez = GatewayManager.checkSegmentation(context,
+                configuration,
+                inAppMapper.mapToSegmentationCheckRequest(listOfSegmentations))
+            listOfSegmentations.forEach {
+                it.second.complete(inAppMapper.mapToSegmentationCheck(rez))
+            }
+        }
+
+    }
+
+    override suspend fun fetchSegmentations(config: InAppConfig): SegmentationCheckInApp {
+        return suspendCoroutine {
+            CoroutineScope(Dispatchers.IO).launch {
                 DbManager.listenConfigurations().collect { configuration ->
-                    continuation.resume(inAppMapper.mapToSegmentationCheck(GatewayManager.checkSegmentation(
+                    it.resume(inAppMapper.mapToSegmentationCheck(GatewayManager.checkSegmentation(
                         context,
                         configuration,
                         inAppMapper.mapToSegmentationCheckRequest(config))))
                 }
             }
+
         }
     }
-
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
         return MindboxEventManager.eventFlow
@@ -122,11 +145,8 @@ internal class InAppRepositoryImpl(
             val filteredConfig = InAppConfigResponse(
                 inApps = filteredInApps
             )
-            val geoInfo = runCatching {
-                checkGeoTargeting()
-            }.getOrNull()
 
-            return@map inAppMapper.mapToInAppConfig(filteredConfig, geoInfo)
+            return@map inAppMapper.mapToInAppConfig(filteredConfig)
                 .also { inAppConfig ->
                     MindboxLoggerImpl.d(
                         parent = this@InAppRepositoryImpl,
@@ -134,10 +154,6 @@ internal class InAppRepositoryImpl(
                     )
                 }
         }
-    }
-
-    private suspend fun checkGeoTargeting(): GeoTargetingDto {
-        return GatewayManager.checkGeoTargeting(context, DbManager.getConfigurations()!!)
     }
 
     private fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto? {

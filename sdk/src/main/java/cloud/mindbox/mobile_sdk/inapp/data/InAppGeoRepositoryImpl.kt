@@ -8,9 +8,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
 import com.google.gson.Gson
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -35,11 +35,9 @@ internal class InAppGeoRepositoryImpl(
         }
     }
 
-    override fun listenGeo(): Flow<GeoTargeting> {
-        return MindboxPreferences.inAppGeoFlow.map { geoFlow ->
-            gson.fromJson(geoFlow, GeoTargeting::class.java)
+    override fun geoGeo(): GeoTargeting {
+        return LoggingExceptionHandler.runCatching(GeoTargeting("", "", "")) {
+            gson.fromJson(MindboxPreferences.inAppGeo, GeoTargeting::class.java)
         }
     }
-
-
 }

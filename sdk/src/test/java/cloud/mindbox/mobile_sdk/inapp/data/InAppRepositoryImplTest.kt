@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.inapp.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
-import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -14,8 +13,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -25,6 +26,7 @@ import org.koin.test.KoinTestRule
 import org.koin.test.inject
 
 // also tests Gson RuntimeTypeAdapterFactory deserialization and InAppMessageMapper
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppRepositoryImplTest : KoinTest {
 
     @get:Rule
@@ -44,11 +46,10 @@ internal class InAppRepositoryImplTest : KoinTest {
             inAppMapper = inAppMessageMapper,
             gson = gson,
             context = mockk(),
-            inAppValidatorImpl
+            inAppValidator = inAppValidatorImpl
         )
         mockkObject(MindboxPreferences)
     }
-
 
     @Test
     fun `shown inApp ids is not empty and is a valid json`() {

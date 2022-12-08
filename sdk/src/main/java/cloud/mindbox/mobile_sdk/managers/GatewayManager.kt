@@ -321,8 +321,8 @@ internal object GatewayManager {
                         continuation.resumeWithException(error)
                     }, true))
         }
-
     }
+
 
     suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
@@ -331,6 +331,7 @@ internal object GatewayManager {
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
+
                         continuation.resume(response)
                     },
                     { error ->
