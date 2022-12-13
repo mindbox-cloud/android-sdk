@@ -25,6 +25,7 @@ internal class InAppInteractorImpl(
                     MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
                     inAppEventType is InAppEventType.AppStartup
                 }) { config, event ->
+                fetchGeoTargetingInfo(config)
                 val inApp = chooseInAppToShow(config)
                 inApp?.let {
                     inAppRepositoryImpl.sendInAppTargetingHit(it.id)
@@ -43,13 +44,53 @@ internal class InAppInteractorImpl(
             }.filterNotNull()
     }
 
+    private suspend fun fetchGeoTargetingInfo(config: InAppConfig) {
+        var isGeoCheckRequired = false
+        for (inApp in config.inApps) {
+            if (isGeoCheckRequired) {
+                break
+            } else {
+                isGeoCheckRequired = checkGeoTargeting(listOf(inApp.targeting))
+            }
+        }
+        if (isGeoCheckRequired) {
+            inAppGeoRepositoryImpl.fetchGeo()
+        }
+    }
+
+    private fun checkGeoTargeting(targetings: List<TreeTargeting>): Boolean {
+        var isGeoTargetingExist = false
+        for (targeting in targetings) {
+            when (targeting) {
+                is TreeTargeting.CityNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.CountryNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.IntersectionNode -> {
+                    checkGeoTargeting(targeting.nodes)
+                }
+                is TreeTargeting.RegionNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.UnionNode -> {
+                    checkGeoTargeting(targeting.nodes)
+                }
+                else -> {}
+            }
+        }
+        return isGeoTargetingExist
+    }
 
     private fun findInAppToShowWithoutCheckingSegmentations(configWithImmediatePreCheck: InAppConfig): InApp? {
         return configWithImmediatePreCheck.inApps.find { inApp ->
             inApp.targeting.getCustomerIsInTargeting(emptyList())
         }
     }
-
 
     private suspend fun chooseInAppToShow(
         config: InAppConfig,
@@ -147,9 +188,5 @@ internal class InAppInteractorImpl(
 
     override suspend fun fetchInAppConfig() {
         inAppRepositoryImpl.fetchInAppConfig()
-    }
-
-    override suspend fun fetchGeo() {
-        inAppGeoRepositoryImpl.fetchGeo()
     }
 }

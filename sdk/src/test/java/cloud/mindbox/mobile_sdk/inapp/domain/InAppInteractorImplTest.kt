@@ -6,7 +6,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
+import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
@@ -45,6 +47,10 @@ internal class InAppInteractorImplTest {
     @Test
     fun `should choose in-app without targeting`() = runTest {
         val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
@@ -73,6 +79,13 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp().copy(status = "success",
+            customerSegmentations = listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "999",
+                    segment = "777")))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -121,6 +134,10 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } throws VolleyError()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -146,6 +163,10 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } throws Error()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -202,6 +223,10 @@ internal class InAppInteractorImplTest {
     fun `validate in-app was shown list is empty`() = runTest {
         every { inAppRepository.getShownInApps() } returns HashSet()
         val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -226,6 +251,10 @@ internal class InAppInteractorImplTest {
             every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
                 "ad487f74-924f-44f0-b4f7-f239ea5643c5")
             val validId = "123456"
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             every {
                 inAppRepository.listenInAppConfig()
             } answers {
@@ -250,6 +279,12 @@ internal class InAppInteractorImplTest {
         every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
             "ad487f74-924f-44f0-b4f7-f239ea5643c5", "123")
         val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "123", segment = "123")))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -284,6 +319,14 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", segment = "123"),
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "456", segment = "456")
+            ))
         every {
             inAppRepository.listenInAppConfig()
         } answers {
@@ -309,6 +352,28 @@ internal class InAppInteractorImplTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy(
+                "Success",
+                listOf(
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
+                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
+                                "345")),
+                            segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
+                                ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
+                                    "345")
+                            )),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
+                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
+                                "123")),
+                            segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
+                                ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
+                                    null)))))
         every {
             inAppRepository.listenInAppConfig()
         } answers {

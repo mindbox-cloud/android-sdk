@@ -81,13 +81,6 @@ internal class InAppMessageManagerImpl(
     override fun initInAppMessages() {
         listenEventAndInApp()
         requestConfig()
-        requestGeo()
-    }
-
-    private fun requestGeo() {
-        inAppScope.launch {
-            inAppInteractorImpl.fetchGeo()
-        }
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {

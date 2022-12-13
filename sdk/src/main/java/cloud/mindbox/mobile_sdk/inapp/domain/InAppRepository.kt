@@ -12,13 +12,6 @@ internal interface InAppRepository {
 
     suspend fun fetchInAppConfig()
 
-    fun getSegmentations(
-        id: String,
-        deferredRez: CompletableDeferred<SegmentationCheckInApp>,
-    )
-
-    suspend fun runFetchingSegmentation()
-
     suspend fun fetchSegmentations(config: InAppConfig): SegmentationCheckInApp
 
     fun listenInAppConfig(): Flow<InAppConfig?>

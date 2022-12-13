@@ -13,6 +13,7 @@ import com.android.volley.VolleyError
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 internal class InAppGeoRepositoryImpl(
@@ -30,8 +31,9 @@ internal class InAppGeoRepositoryImpl(
                 MindboxPreferences.inAppGeo = MindboxPreferences.inAppGeo
             }
             MindboxLoggerImpl.e(InAppGeoRepositoryImpl::class.java, "Error when trying to get geo")
-        }.collect { geoTargeting ->
+        }.first { geoTargeting ->
             MindboxPreferences.inAppGeo = gson.toJson(geoTargeting)
+            true
         }
     }
 
