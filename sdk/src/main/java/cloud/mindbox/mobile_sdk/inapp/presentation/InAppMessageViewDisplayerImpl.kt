@@ -117,7 +117,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                         currentRoot?.removeView(currentBlur)
                     }
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl, "try to show inapp")
+                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
+                            "try to show inapp with id ${inAppType.inAppId}")
                         Picasso.get()
                             .load(inAppType.imageUrl)
                             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)

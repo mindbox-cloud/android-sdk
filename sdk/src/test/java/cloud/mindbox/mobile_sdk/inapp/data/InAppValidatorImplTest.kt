@@ -125,7 +125,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "negative",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -139,7 +139,7 @@ class InAppValidatorImplTest {
                         .copy(type = null, kind = "positive",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -153,7 +153,7 @@ class InAppValidatorImplTest {
                         .copy(type = "rrr", kind = "lll",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -167,7 +167,7 @@ class InAppValidatorImplTest {
                         .copy(type = "rrr", kind = null,
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -181,7 +181,7 @@ class InAppValidatorImplTest {
                         .copy(type = "rrr", kind = "lll",
                             segmentationExternalId = null,
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -195,7 +195,7 @@ class InAppValidatorImplTest {
                         .copy(type = "rrr", kind = "lll",
                             segmentationExternalId = "asd",
                             segmentationInternalId = null,
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -209,7 +209,7 @@ class InAppValidatorImplTest {
                         .copy(type = "rrr", kind = "lll",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = null))),
+                            segmentExternalId = null))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -232,7 +232,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "positive",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -246,7 +246,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "negative",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = "123"))),
+                            segmentExternalId = "123"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -260,7 +260,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "positive",
                             segmentationExternalId = "asd",
                             segmentationInternalId = "def",
-                            segment_external_id = null))),
+                            segmentExternalId = null))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -274,7 +274,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "positive",
                             segmentationExternalId = null,
                             segmentationInternalId = "def",
-                            segment_external_id = "asds"))),
+                            segmentExternalId = "asds"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -288,7 +288,7 @@ class InAppValidatorImplTest {
                         .copy(type = "segment", kind = "positive",
                             segmentationExternalId = "asda",
                             segmentationInternalId = null,
-                            segment_external_id = "asds"))),
+                            segmentExternalId = "asds"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -302,7 +302,7 @@ class InAppValidatorImplTest {
                         .copy(type = null, kind = "positive",
                             segmentationExternalId = "asda",
                             segmentationInternalId = "234",
-                            segment_external_id = "asds"))),
+                            segmentExternalId = "asds"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }
@@ -316,7 +316,7 @@ class InAppValidatorImplTest {
                         .copy(type = "asd1", kind = "ads",
                             segmentationExternalId = "asda",
                             segmentationInternalId = "234",
-                            segment_external_id = "asds"))),
+                            segmentExternalId = "asds"))),
                 form = InAppStub.getInAppDto().form?.copy(variants = listOf(InAppStub.getSimpleImageDto()
                     .copy(type = "def", imageUrl = "abc"))))))
     }

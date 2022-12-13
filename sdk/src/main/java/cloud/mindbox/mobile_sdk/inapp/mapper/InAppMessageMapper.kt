@@ -84,7 +84,7 @@ internal class InAppMessageMapper {
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segment_external_id!!)
+                    treeTargetingDto.segmentExternalId!!)
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
                     mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,

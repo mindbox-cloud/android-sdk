@@ -74,7 +74,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         val ids: List<String>,
     ) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
-            val regionId = inAppGeoRepositoryImpl.geoGeo().countryId
+            val regionId = inAppGeoRepositoryImpl.geoGeo().regionId
             return if (kind == Kind.POSITIVE) ids.contains(regionId) else ids.contains(regionId)
                 .not()
         }
@@ -91,17 +91,17 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             var rez = true
             for (node in nodes) {
-                for (csia in csiaList) {
-                    if ((node is SegmentNode)) {
+                if ((node is SegmentNode)) {
+                    for (csia in csiaList) {
                         if (node.shouldProcessSegmentation(csia.segmentation) && node.getCustomerIsInTargeting(
                                 csiaList).not()
                         ) {
                             rez = false
                         }
-                    } else {
-                        if (node.getCustomerIsInTargeting(csiaList).not()) {
-                            rez = false
-                        }
+                    }
+                } else {
+                    if (node.getCustomerIsInTargeting(csiaList).not()) {
+                        rez = false
                     }
                 }
             }
@@ -126,20 +126,19 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, PreChec
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {
             var rez = false
             for (node in nodes) {
-                for (csia in csiaList) {
-                    if (node is SegmentNode) {
+                if (node is SegmentNode) {
+                    for (csia in csiaList) {
                         if (node.shouldProcessSegmentation(csia.segmentation) && node.getCustomerIsInTargeting(
                                 csiaList)
                         ) {
                             rez = true
                         }
-                    } else {
-                        if (node.getCustomerIsInTargeting(csiaList)) {
-                            rez = true
-                        }
+                    }
+                } else {
+                    if (node.getCustomerIsInTargeting(csiaList)) {
+                        rez = true
                     }
                 }
-
             }
             return rez
         }

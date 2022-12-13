@@ -61,7 +61,7 @@ internal class InAppStub {
             return TreeTargetingDto.SegmentNodeDto(
                 type = "",
                 kind = "",
-                segment_external_id = "",
+                segmentExternalId = "",
                 segmentationExternalId = "",
                 segmentationInternalId = ""
             )

@@ -44,7 +44,7 @@ internal class InAppValidatorImpl : InAppValidator {
                 isValid
             }
             is TreeTargetingDto.SegmentNodeDto -> {
-                val rez = targeting.segment_external_id != null
+                val rez = targeting.segmentExternalId != null
                         && targeting.segmentationInternalId != null
                         && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
                         && targeting.segmentationExternalId != null
