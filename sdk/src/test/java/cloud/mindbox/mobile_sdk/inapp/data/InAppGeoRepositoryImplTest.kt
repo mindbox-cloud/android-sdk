@@ -17,11 +17,13 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertEquals
+import org.junit.Assert.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InAppGeoRepositoryImplTest {
@@ -101,9 +103,11 @@ class InAppGeoRepositoryImplTest {
         every {
             gson.toJson(geoTargeting)
         } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
-        inAppGeoRepository.fetchGeo()
-        verify {
-            MindboxPreferences.inAppGeo = MindboxPreferences.inAppGeo
+        assertThrows(VolleyError::class.java) {
+            runBlocking {
+                inAppGeoRepository.fetchGeo()
+
+            }
         }
     }
 
@@ -118,7 +122,7 @@ class InAppGeoRepositoryImplTest {
         val geoTargetingDto = GeoTargetingDto(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
-        } throws VolleyError()
+        } throws Error()
 
         val geoTargeting = GeoTargeting(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
@@ -127,9 +131,11 @@ class InAppGeoRepositoryImplTest {
         every {
             gson.toJson(geoTargeting)
         } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
-        inAppGeoRepository.fetchGeo()
-        verify {
-            MindboxLoggerImpl.e(InAppGeoRepositoryImpl::class.java, "Error when trying to get geo")
+        assertThrows(Error::class.java) {
+            runBlocking {
+                inAppGeoRepository.fetchGeo()
+
+            }
         }
     }
 
