@@ -96,7 +96,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentBlur = null
     }
 
-    override suspend fun showInAppMessage(
+    override fun showInAppMessage(
         inAppType: InAppType,
         onInAppClick: () -> Unit,
         onInAppShown: () -> Unit,
