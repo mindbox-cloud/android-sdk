@@ -32,6 +32,8 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.loadKoinModules
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
@@ -358,10 +360,13 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             if (!diInitialized) {
-                startKoin {
-                    androidContext(context)
-                    modules(appModule, dataModule)
-                }
+                val modules = listOf(appModule, dataModule)
+                GlobalContext.getKoinApplicationOrNull()
+                    ?.let { loadKoinModules(modules) }
+                    ?: startKoin {
+                        androidContext(context)
+                        modules(modules)
+                    }
                 diInitialized = true
             }
             initScope.launch {
