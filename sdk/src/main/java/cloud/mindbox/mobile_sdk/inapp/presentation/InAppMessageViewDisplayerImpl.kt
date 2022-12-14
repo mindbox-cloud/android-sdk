@@ -194,6 +194,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                                 currentRoot?.removeView(currentBlur)
                                             }
                                         }
+                                        currentDialog?.setDismissListener {
+                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
                                         currentBlur?.setOnClickListener {
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             currentRoot?.removeView(currentDialog)
