@@ -147,7 +147,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     }
 
 
-    override fun showInAppMessage(
+    private fun showInAppMessage(
         inAppType: InAppType,
         onInAppClick: () -> Unit,
         onInAppShown: () -> Unit,
