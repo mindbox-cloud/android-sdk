@@ -27,9 +27,6 @@ internal class InAppInteractorImpl(
                 }) { config, event ->
                 fetchGeoTargetingInfo(config)
                 val inApp = chooseInAppToShow(config)
-                inApp?.let {
-                    inAppRepositoryImpl.sendInAppTargetingHit(it.id)
-                }
                 when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
                         imageUrl = type.imageUrl,
