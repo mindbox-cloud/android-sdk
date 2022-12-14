@@ -51,7 +51,15 @@ internal class InAppInteractorImpl(
             }
         }
         if (isGeoCheckRequired) {
-            inAppGeoRepositoryImpl.fetchGeo()
+            runCatching {
+                inAppGeoRepositoryImpl.fetchGeo()
+            }.onFailure { throwable ->
+                if (throwable is VolleyError) {
+                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                } else {
+                    throw throwable
+                }
+            }
         }
     }
 
