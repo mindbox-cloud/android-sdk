@@ -39,7 +39,7 @@ internal class LifecycleManager(
     private var isIntentChanged = true
     private var timer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
-
+    var isCurrentActivityResumed = true
     private var skipSendingTrackVisit = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
@@ -67,10 +67,12 @@ internal class LifecycleManager(
 
     override fun onActivityResumed(activity: Activity) {
         onActivityResumed.invoke(activity)
+        isCurrentActivityResumed = true
     }
 
     override fun onActivityPaused(activity: Activity) {
         onActivityPaused.invoke(activity)
+        isCurrentActivityResumed = false
     }
 
     override fun onActivityStopped(activity: Activity) {

@@ -408,9 +408,6 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
-                    if (activity != null) {
-                        inAppMessageManager.registerCurrentActivity(activity)
-                    }
 
 
                     lifecycleManager = LifecycleManager(
@@ -447,6 +444,10 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
+                val activity = context as? Activity
+                if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                    inAppMessageManager.registerCurrentActivity(activity)
+                }
                 inAppMessageManager.initInAppMessages()
                 mindboxScope.launch {
                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
