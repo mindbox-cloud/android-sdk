@@ -33,9 +33,8 @@ internal class InAppMessageManagerImpl(
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
-                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not() && IS_IN_APP_SHOWN.not()) {
-                            IS_IN_APP_SHOWN = true
-                            inAppMessageViewDisplayer.showInAppMessage(inAppType = inAppMessage,
+                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not()) {
+                            inAppMessageViewDisplayer.tryShowInAppMessage(inAppType = inAppMessage,
                                 onInAppClick = {
                                     sendInAppClicked(inAppMessage.inAppId)
                                 },
@@ -112,7 +111,6 @@ internal class InAppMessageManagerImpl(
 
     companion object {
         const val CURRENT_IN_APP_VERSION = 2
-        var IS_IN_APP_SHOWN = false
         const val CONFIG_NOT_FOUND = 404
     }
 

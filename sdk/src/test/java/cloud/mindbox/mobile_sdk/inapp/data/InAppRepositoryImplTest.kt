@@ -26,7 +26,6 @@ import org.koin.test.KoinTestRule
 import org.koin.test.inject
 
 // also tests Gson RuntimeTypeAdapterFactory deserialization and InAppMessageMapper
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppRepositoryImplTest : KoinTest {
 
     @get:Rule

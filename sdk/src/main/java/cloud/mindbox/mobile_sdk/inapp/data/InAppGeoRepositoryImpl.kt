@@ -26,11 +26,6 @@ internal class InAppGeoRepositoryImpl(
             inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(GatewayManager.checkGeoTargeting(
                 context,
                 configuration))
-        }.catch { error ->
-            if (error is VolleyError) {
-                MindboxPreferences.inAppGeo = MindboxPreferences.inAppGeo
-            }
-            MindboxLoggerImpl.e(InAppGeoRepositoryImpl::class.java, "Error when trying to get geo")
         }.first { geoTargeting ->
             MindboxPreferences.inAppGeo = gson.toJson(geoTargeting)
             true
