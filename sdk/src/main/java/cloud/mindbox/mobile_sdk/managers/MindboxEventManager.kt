@@ -23,6 +23,7 @@ internal object MindboxEventManager {
 
     private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
     private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
+    private const val IN_APP_OPERATION_TARGETING_TYPE = "Inapp.Targeting"
 
     private val gson = Gson()
 
@@ -70,6 +71,10 @@ internal object MindboxEventManager {
 
     fun inAppClicked(context: Context, body: String) {
         asyncOperation(context, IN_APP_OPERATION_CLICK_TYPE, body)
+    }
+
+    fun inAppTargetingHit(context: Context, body: String) {
+        asyncOperation(context, IN_APP_OPERATION_TARGETING_TYPE, body)
     }
 
     fun pushClicked(

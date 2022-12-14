@@ -933,7 +933,7 @@ object Mindbox {
     }
 
     private fun softReinitialization(
-        context: Context
+        context: Context,
     ) {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()

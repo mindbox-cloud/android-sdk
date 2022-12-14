@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
+internal class InAppInteractorImpl(
+    private val inAppRepositoryImpl: InAppRepository,
+    private val inAppGeoRepositoryImpl: InAppGeoRepository,
+) :
     InAppInteractor {
 
     override fun processEventAndConfig(): Flow<InAppType> {
@@ -22,6 +25,7 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
                     MindboxLoggerImpl.d(this, "Event triggered: $inAppEventType")
                     inAppEventType is InAppEventType.AppStartup
                 }) { config, event ->
+                fetchGeoTargetingInfo(config)
                 val inApp = chooseInAppToShow(config)
                 when (val type = inApp?.form?.variants?.firstOrNull()) {
                     is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
@@ -37,28 +41,84 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             }.filterNotNull()
     }
 
+    private suspend fun fetchGeoTargetingInfo(config: InAppConfig) {
+        var isGeoCheckRequired = false
+        for (inApp in config.inApps) {
+            if (isGeoCheckRequired) {
+                break
+            } else {
+                isGeoCheckRequired = checkGeoTargeting(listOf(inApp.targeting))
+            }
+        }
+        if (isGeoCheckRequired) {
+            inAppGeoRepositoryImpl.fetchGeo()
+        }
+    }
+
+    private fun checkGeoTargeting(targetings: List<TreeTargeting>): Boolean {
+        var isGeoTargetingExist = false
+        for (targeting in targetings) {
+            when (targeting) {
+                is TreeTargeting.CityNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.CountryNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.IntersectionNode -> {
+                    isGeoTargetingExist = checkGeoTargeting(targeting.nodes)
+                }
+                is TreeTargeting.RegionNode -> {
+                    isGeoTargetingExist = true
+                    break
+                }
+                is TreeTargeting.UnionNode -> {
+                    isGeoTargetingExist = checkGeoTargeting(targeting.nodes)
+                }
+                else -> {}
+            }
+        }
+        return isGeoTargetingExist
+    }
+
+    private fun findInAppToShowWithoutCheckingSegmentations(configWithImmediatePreCheck: InAppConfig): InApp? {
+        return configWithImmediatePreCheck.inApps.find { inApp ->
+            inApp.targeting.getCustomerIsInTargeting(emptyList())
+        }
+    }
+
     private suspend fun chooseInAppToShow(
         config: InAppConfig,
     ): InApp? {
         val filteredConfig = prefilterConfig(config)
         MindboxLoggerImpl.d(this,
             "Filtered config has ${filteredConfig.inApps.size} inapps")
-        val filteredConfigWithTargeting = getConfigWithTargeting(filteredConfig)
-        val inAppsWithoutTargeting =
-            filteredConfig.inApps.subtract(filteredConfigWithTargeting.inApps.toSet())
-        return if (inAppsWithoutTargeting.isNotEmpty()) {
-            inAppsWithoutTargeting.first().also {
-                MindboxLoggerImpl.d(this,
-                    "Inapp without targeting found: ${it.id}")
-            }
-        } else if (filteredConfigWithTargeting.inApps.isNotEmpty()) {
+        val configWithInAppsBeforeFirstPendingPreCheck =
+            getConfigWithInAppsBeforeFirstPendingPreCheck(filteredConfig)
+        val configWithInAppsStartingWithFirstPendingPreCheck =
+            filteredConfig.copy(inApps = filteredConfig.inApps.subtract(
+                configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet())
+                .toList())
+        return if (configWithInAppsBeforeFirstPendingPreCheck.inApps.isNotEmpty() && findInAppToShowWithoutCheckingSegmentations(
+                configWithInAppsBeforeFirstPendingPreCheck) != null
+        ) {
+            findInAppToShowWithoutCheckingSegmentations(configWithInAppsBeforeFirstPendingPreCheck)
+
+        } else if (configWithInAppsStartingWithFirstPendingPreCheck.inApps.isNotEmpty()) {
             runCatching {
                 checkSegmentation(filteredConfig,
-                    inAppRepositoryImpl.fetchSegmentations(filteredConfigWithTargeting))
+                    inAppRepositoryImpl.fetchSegmentations(
+                        configWithInAppsStartingWithFirstPendingPreCheck))
             }.getOrElse { throwable ->
                 if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e("", throwable.message ?: "", throwable)
-                    null
+                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                    configWithInAppsStartingWithFirstPendingPreCheck.inApps
+                        .filter { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.IMMEDIATE }
+                        .find { inApp ->
+                            inApp.targeting.getCustomerIsInTargeting(emptyList())
+                        }
                 } else {
                     throw throwable
                 }
@@ -75,11 +135,12 @@ internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppReposit
             .filter { inApp -> validateInAppNotShown(inApp) })
     }
 
-    private fun getConfigWithTargeting(config: InAppConfig): InAppConfig {
-        return config.copy(
-            inApps = config.inApps.filter { inApp ->
-                inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING
-            }
+    private fun getConfigWithInAppsBeforeFirstPendingPreCheck(config: InAppConfig): InAppConfig {
+        val calcultation =
+            config.inApps.indexOfFirst { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING }
+        return if (calcultation == -1) config else config.copy(
+            inApps = config.inApps.subList(0,
+                calcultation)
         )
     }
 

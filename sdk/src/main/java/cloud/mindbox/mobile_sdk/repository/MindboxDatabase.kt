@@ -49,6 +49,7 @@ internal abstract class MindboxDatabase : RoomDatabase() {
 
     abstract fun configurationDao(): ConfigurationsDao
 
+
     abstract fun eventsDao(): EventsDao
 
 }

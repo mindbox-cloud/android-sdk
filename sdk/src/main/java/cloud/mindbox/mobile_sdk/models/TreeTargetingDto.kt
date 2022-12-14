@@ -29,11 +29,38 @@ internal sealed class TreeTargetingDto {
         val type: String?,
         @SerializedName("kind")
         val kind: String?,
-        @SerializedName("segmentation_external_id")
+        @SerializedName("segmentationExternalId")
         val segmentationExternalId: String?,
-        @SerializedName("segmentation_internal_id")
+        @SerializedName("segmentationInternalId")
         val segmentationInternalId: String?,
-        @SerializedName("segment_external_id")
-        val segment_external_id: String?,
+        @SerializedName("segmentExternalId")
+        val segmentExternalId: String?,
+    ) : TreeTargetingDto()
+
+    internal data class CountryNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("ids")
+        val ids: List<String?>?,
+    ) : TreeTargetingDto()
+
+    internal data class CityNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("ids")
+        val ids: List<String>?,
+    ) : TreeTargetingDto()
+
+    internal data class RegionNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("ids")
+        val ids: List<String?>?,
     ) : TreeTargetingDto()
 }
