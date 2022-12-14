@@ -5,8 +5,6 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -26,8 +24,19 @@ internal object MindboxPreferences {
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
     private const val IN_APP_CONFIG = "IN_APP_CONFIG"
     private const val SHOWN_IDS = "SHOWN_IDS"
+    private const val IN_APP_GEO = "IN_APP_GEO"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
+
+    var inAppGeo: String
+        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(IN_APP_GEO) ?: ""
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(IN_APP_GEO, value)
+            }
+        }
     val inAppConfigFlow: MutableSharedFlow<String> = MutableSharedFlow()
     var inAppConfig: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {

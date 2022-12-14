@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
@@ -11,9 +12,7 @@ internal interface InAppRepository {
 
     suspend fun fetchInAppConfig()
 
-    suspend fun fetchSegmentations(
-        config: InAppConfig,
-    ): SegmentationCheckInApp
+    suspend fun fetchSegmentations(config: InAppConfig): SegmentationCheckInApp
 
     fun listenInAppConfig(): Flow<InAppConfig?>
 

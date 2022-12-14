@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -281,6 +282,24 @@ internal object GatewayManager {
         code < 300 || code in 400..499
     } ?: false
 
+    suspend fun checkGeoTargeting(context: Context, configuration: Configuration): GeoTargetingDto {
+        return suspendCoroutine { continuation ->
+            MindboxServiceGenerator.getInstance(context)
+                ?.addToRequestQueue(MindboxRequest(Request.Method.GET,
+                    "https://${configuration.domain}/geo",
+                    configuration,
+                    null,
+                    { jsonObject ->
+                        continuation.resume(gson.fromJson(jsonObject.toString(),
+                            GeoTargetingDto::class.java))
+                    },
+                    { error ->
+                        continuation.resumeWithException(error)
+                    },
+                    true))
+        }
+    }
+
     suspend fun checkSegmentation(
         context: Context,
         configuration: Configuration,
@@ -302,84 +321,18 @@ internal object GatewayManager {
                         continuation.resumeWithException(error)
                     }, true))
         }
-
     }
 
+
     suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
-        // уберу после код ревью
-        val testJson1 = """{
-	"${"$"}type": "true"
-}""".trimIndent()
-        val testJson2 = """{
-	"${"$"}type": "and",
-	"nodes": [
-		{
-			"${"$"}type": "segment",
-			"kind": "positive",
-			"segmentation_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
-			"segmentation_internal_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083",
-			"segment_external_id": "2caa3a60-b6e3-47a9-80bc-b768a29f5083"
-		}
-	]
-}""".trimIndent()
-        val testJson3 = """{
-	"${"$"}type": "or",
-	"nodes": [
-		{
-			"${"$"}type": "segment",
-			"kind": "negative",
-			"segmentation_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segmentation_internal_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segment_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7"
-		}
-	]
-}""".trimIndent()
-        val testJson4 = """{
-	"${"$"}type": "or",
-	"nodes": [
-		{
-			"${"$"}type": "segment",
-			"kind": "positive",
-			"segmentation_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segmentation_internal_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segment_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7"
-		},
-		{
-			"${"$"}type": "segment",
-			"kind": "negative",
-			"segmentation_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segmentation_internal_id": "af30f24d-5097-46bd-94b9-4274424a87a7",
-			"segment_external_id": "af30f24d-5097-46bd-94b9-4274424a87a7"
-		}
-	]
-}""".trimIndent()
-        val testJson5 = """{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segmentation_internal_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segment_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa"},{"${"$"}type":"or","nodes":[{"${"$"}type":"segment","kind":"positive","segmentation_external_id":"af30f24d-5097-46bd-94b9-4274424a87a7","segmentation_internal_id":"af30f24d-5097-46bd-94b9-4274424a87a7","segment_external_id":"af30f24d-5097-46bd-94b9-4274424a87a7"},{"${"$"}type":"segment","kind":"negative","segmentation_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segmentation_internal_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa","segment_external_id":"47507a40-7cc9-4ea1-af68-7c8096d7d1aa"}]}]}"""
-        val testJson = """{"inapps":[
-                |{
-                |"id":"040810aa-d135-49f4-8916-7e68dcc61c71",
-                |"sdkVersion":
-                |{
-                |"min":1,
-                |"max":null
-                |},
-                |"targeting":$testJson4,
-                |"form":{
-                |"variants":[
-                |{
-                |"imageUrl":"https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
-                |"redirectUrl":"https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
-                |"intentPayload":"123",
-                |"${"$"}type":"simpleImage"
-                |}]}}]}"""
-            .trimMargin()
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(StringRequest(
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
-                        continuation.resume(testJson)
-                        //continuation.resume(response)
+
+                        continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)
@@ -388,6 +341,4 @@ internal object GatewayManager {
         }
 
     }
-
-
 }

@@ -1,14 +1,22 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import kotlinx.coroutines.Deferred
 
 internal class InAppMessageMapper {
+
+    fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
+        return GeoTargeting(geoTargetingDto.cityId ?: "",
+            geoTargetingDto.regionId ?: "",
+            geoTargetingDto.countryId ?: "")
+    }
 
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
@@ -25,13 +33,15 @@ internal class InAppMessageMapper {
         }
     }
 
-    fun mapToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
+    fun mapToInAppConfig(
+        inAppConfigResponse: InAppConfigResponse?,
+    ): InAppConfig? {
         return inAppConfigResponse?.let { inAppConfigDto ->
             InAppConfig(
                 inAppConfigDto.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
-                        targeting = mapTargetingDtoToTargeting(inAppDto.targeting!!),
+                        targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
@@ -57,30 +67,14 @@ internal class InAppMessageMapper {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun mapTargetingDtoToTargeting(targetingDto: TreeTargetingDto): TreeTargeting {
-        return when (targetingDto) {
-            is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
-            is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
-                InAppRepositoryImpl.AND_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>))
-            is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
-                Kind.POSITIVE,
-                targetingDto.segmentationExternalId!!,
-                targetingDto.segmentationInternalId!!,
-                targetingDto.segment_external_id!!)
-            is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
-                mapNodesDtoToNodes(targetingDto.nodes as List<TreeTargetingDto>))
-        }
-    }
-
-
     /**
      * Cast is ok as long as validator removes all the in-apps with null values
      * **/
 
     @Suppress("UNCHECKED_CAST")
-    private fun mapNodesDtoToNodes(nodesDto: List<TreeTargetingDto>): List<TreeTargeting> {
+    private fun mapNodesDtoToNodes(
+        nodesDto: List<TreeTargetingDto>,
+    ): List<TreeTargeting> {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
@@ -90,10 +84,18 @@ internal class InAppMessageMapper {
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segmentationInternalId!!,
-                    treeTargetingDto.segment_external_id!!)
+                    treeTargetingDto.segmentExternalId!!)
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
                     mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
+                is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>)
+                is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>)
+                is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    treeTargetingDto.ids as List<String>)
             }
         }
     }
@@ -101,18 +103,21 @@ internal class InAppMessageMapper {
     fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
         return SegmentationCheckInApp(
             status = segmentationCheckResponse.status ?: "",
-            customerSegmentations = segmentationCheckResponse.customerSegmentations?.map { customerSegmentationInAppResponse ->
+            customerSegmentations = segmentationCheckResponse.customerSegmentations?.filter { customerSegmentationInAppResponse ->
+                customerSegmentationInAppResponse.segmentation?.ids?.externalId != null
+            }?.map { customerSegmentationInAppResponse ->
                 CustomerSegmentationInApp(
-                    segmentation = SegmentationInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segmentation?.ids?.externalId
-                        )
-                    ),
-                    segment = SegmentInApp(
-                        IdsInApp(customerSegmentationInAppResponse.segment?.ids?.externalId)
-                    )
+                    customerSegmentationInAppResponse.segmentation?.ids?.externalId!!,
+                    customerSegmentationInAppResponse.segment?.ids?.externalId ?: ""
                 )
             } ?: emptyList()
         )
+    }
+
+    fun mapToSegmentationCheckRequest(segmentationExternalIds: List<Pair<String, Deferred<SegmentationCheckInApp>>>): SegmentationCheckRequest {
+        return SegmentationCheckRequest(segmentationExternalIds.map { id ->
+            SegmentationDataRequest(IdsRequest(id.first))
+        })
     }
 
     fun mapToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {

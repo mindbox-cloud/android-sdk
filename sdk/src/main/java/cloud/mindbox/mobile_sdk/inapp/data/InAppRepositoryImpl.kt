@@ -23,6 +23,8 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 internal class InAppRepositoryImpl(
@@ -31,6 +33,7 @@ internal class InAppRepositoryImpl(
     private val context: Context,
     private val inAppValidator: InAppValidator,
 ) : InAppRepository {
+
 
     override fun getShownInApps(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {
@@ -61,18 +64,22 @@ internal class InAppRepositoryImpl(
 
 
     override suspend fun fetchInAppConfig() {
-        MindboxPreferences.inAppConfig =
-            GatewayManager.fetchInAppConfig(context,
-                DbManager.getConfigurations()!!)
+        DbManager.listenConfigurations().collect { configuration ->
+            MindboxPreferences.inAppConfig =
+                GatewayManager.fetchInAppConfig(context,
+                    configuration)
+        }
     }
 
-    override suspend fun fetchSegmentations(
-        config: InAppConfig,
-    ): SegmentationCheckInApp {
-        return inAppMapper.mapToSegmentationCheck(
-            GatewayManager.checkSegmentation(context,
-                DbManager.getConfigurations()!!,
-                inAppMapper.mapToSegmentationCheckRequest(config)))
+    override suspend fun fetchSegmentations(config: InAppConfig): SegmentationCheckInApp {
+        return DbManager.listenConfigurations().map { configuration ->
+            GatewayManager.checkSegmentation(
+                context,
+                configuration,
+                inAppMapper.mapToSegmentationCheckRequest(config))
+        }.map { segmentationCheckResponse ->
+            inAppMapper.mapToSegmentationCheck(segmentationCheckResponse)
+        }.first()
     }
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
@@ -108,12 +115,14 @@ internal class InAppRepositoryImpl(
             val filteredConfig = InAppConfigResponse(
                 inApps = filteredInApps
             )
-            return@map inAppMapper.mapToInAppConfig(filteredConfig).also { inAppConfig ->
-                MindboxLoggerImpl.d(
-                    parent = this@InAppRepositoryImpl,
-                    message = "Providing config: $inAppConfig"
-                )
-            }
+
+            return@map inAppMapper.mapToInAppConfig(filteredConfig)
+                .also { inAppConfig ->
+                    MindboxLoggerImpl.d(
+                        parent = this@InAppRepositoryImpl,
+                        message = "Providing config: $inAppConfig"
+                    )
+                }
         }
     }
 
@@ -182,6 +191,9 @@ internal class InAppRepositoryImpl(
         const val AND_JSON_NAME = "and"
         const val OR_JSON_NAME = "or"
         const val SEGMENT_JSON_NAME = "segment"
+        const val COUNTRY_JSON_NAME = "country"
+        const val CITY_JSON_NAME = "city"
+        const val REGION_JSON_NAME = "region"
 
         /**
          * In-app types
