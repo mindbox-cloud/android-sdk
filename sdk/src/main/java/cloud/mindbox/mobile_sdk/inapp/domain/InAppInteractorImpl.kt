@@ -71,14 +71,14 @@ internal class InAppInteractorImpl(
                     break
                 }
                 is TreeTargeting.IntersectionNode -> {
-                    checkGeoTargeting(targeting.nodes)
+                    isGeoTargetingExist = checkGeoTargeting(targeting.nodes)
                 }
                 is TreeTargeting.RegionNode -> {
                     isGeoTargetingExist = true
                     break
                 }
                 is TreeTargeting.UnionNode -> {
-                    checkGeoTargeting(targeting.nodes)
+                    isGeoTargetingExist = checkGeoTargeting(targeting.nodes)
                 }
                 else -> {}
             }

@@ -110,12 +110,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.addView(currentBlur)
                     currentRoot?.addView(currentDialog)
                     currentDialog?.requestFocus()
-
-                    currentDialog?.setDismissListener {
-                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                        currentRoot?.removeView(currentDialog)
-                        currentRoot?.removeView(currentBlur)
-                    }
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
                         MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}")
@@ -143,6 +137,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                                 currentRoot?.removeView(currentDialog)
                                                 currentRoot?.removeView(currentBlur)
                                             }
+                                        }
+                                        currentDialog?.setDismissListener {
+                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
                                         }
                                         currentBlur?.setOnClickListener {
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
