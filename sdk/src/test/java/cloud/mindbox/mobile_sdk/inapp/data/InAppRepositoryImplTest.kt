@@ -1,34 +1,26 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
-import android.content.Context
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppTypeStub
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import io.mockk.*
-import io.mockk.junit4.MockKRule
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.java.KoinJavaComponent
 import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
-import org.koin.test.get
 import org.koin.test.inject
-import org.koin.test.mock.MockProviderRule
 
 // also tests Gson RuntimeTypeAdapterFactory deserialization and InAppMessageMapper
 internal class InAppRepositoryImplTest : KoinTest {

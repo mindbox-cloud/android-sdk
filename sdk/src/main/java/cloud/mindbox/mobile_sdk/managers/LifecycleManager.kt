@@ -40,6 +40,12 @@ internal class LifecycleManager(
     private var timer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
 
+    /**
+     * True by default.
+     * Has to be true because Activity.onResume() triggers before Lifecycle Manager is registered
+     * when Mindbox.init() was called in Activity.onCreate()
+     **/
+    var isCurrentActivityResumed = true
     private var skipSendingTrackVisit = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
@@ -66,10 +72,12 @@ internal class LifecycleManager(
     }
 
     override fun onActivityResumed(activity: Activity) {
+        isCurrentActivityResumed = true
         onActivityResumed.invoke(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {
+        isCurrentActivityResumed = false
         onActivityPaused.invoke(activity)
     }
 
