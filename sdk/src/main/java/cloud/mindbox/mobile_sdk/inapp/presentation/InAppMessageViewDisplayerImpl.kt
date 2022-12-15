@@ -55,6 +55,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -86,6 +88,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -116,9 +120,14 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         onInAppShown: () -> Unit,
     ) {
         if (isUiPresent()) {
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is going to be shown immediately")
             showInAppMessage(inAppType, onInAppClick, onInAppShown)
+
         } else {
             addToInAppQueue(inAppType, onInAppClick, onInAppShown)
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later")
         }
     }
 
