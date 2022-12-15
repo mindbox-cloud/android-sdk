@@ -1,10 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
-import android.app.ActivityManager
-import android.content.ComponentName
-import android.content.Context
-import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -62,7 +58,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         ) as InAppConstraintLayout
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
-            with(inAppQueue.first) {
+            with(inAppQueue.pop()) {
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -92,7 +88,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
             currentRoot, false
         ) as InAppConstraintLayout
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
-            with(inAppQueue.first) {
+            with(inAppQueue.pop()) {
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -111,10 +107,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         if (currentActivity == activity) {
             currentActivity = null
         }
-        hideInAppMessage()
+        clearUI()
     }
 
-    private fun hideInAppMessage() {
+    private fun clearUI() {
         currentInAppId?.let { id ->
             inAppCallback?.onInAppDismissed(id)
         }
@@ -172,43 +168,43 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             .centerCrop()
                             .into(this, object : Callback {
                                 override fun onSuccess() {
+                                    currentInAppId = inAppType.inAppId
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                        currentDialog?.setDismissListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                        }
                                         setOnClickListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                        }
-                                        currentDialog?.setOnClickListener {
-                                            currentDialog?.isEnabled = false
-                                            onInAppClick()
-                                            inAppCallback?.onInAppClick(inAppType.inAppId,
-                                                inAppType.redirectUrl,
-                                                inAppType.intentData)
-                                            if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
-                                                currentRoot?.removeView(currentDialog)
-                                                currentRoot?.removeView(currentBlur)
-                                            }
-                                        }
-                                        currentDialog?.setDismissListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                        }
-                                        currentBlur?.setOnClickListener {
+                                            isInAppMessageActive = false
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
                                         }
                                         isVisible = true
                                     }
+                                    currentDialog?.setOnClickListener {
+                                        currentDialog?.isEnabled = false
+                                        onInAppClick()
+                                        inAppCallback?.onInAppClick(inAppType.inAppId,
+                                            inAppType.redirectUrl,
+                                            inAppType.intentData)
+                                        if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
+                                    }
+                                    currentDialog?.setDismissListener {
+                                        isInAppMessageActive = false
+                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        currentRoot?.removeView(currentDialog)
+                                        currentRoot?.removeView(currentBlur)
+                                    }
+                                    currentBlur?.setOnClickListener {
+                                        isInAppMessageActive = false
+                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        currentRoot?.removeView(currentDialog)
+                                        currentRoot?.removeView(currentBlur)
+                                    }
                                     currentBlur?.isVisible = true
                                     MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
                                         "inapp shown")
+                                    isInAppMessageActive = true
                                     onInAppShown()
                                 }
 
@@ -233,7 +229,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                 //TODO add inapp processing
             }
         }
-        isInAppMessageActive = true
     }
 
     companion object {
