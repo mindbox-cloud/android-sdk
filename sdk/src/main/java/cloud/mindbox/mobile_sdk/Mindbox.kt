@@ -406,6 +406,7 @@ object Mindbox: MindboxKoinComponent {
                         )
                     }
 
+
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
