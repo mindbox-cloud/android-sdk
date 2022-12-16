@@ -6,14 +6,11 @@ import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.dsl.koinApplication
 
-private lateinit var appContext: Context
 
-fun initKoin(context: Context) {
-    appContext = context
-}
+lateinit var koin: Koin
 
-val koin: Koin by lazy {
-    koinApplication {
+fun initKoin(appContext: Context) {
+    koin = koinApplication {
         androidContext(appContext)
         modules(appModule, dataModule)
     }.koin

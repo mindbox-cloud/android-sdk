@@ -8,6 +8,7 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.di.initKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
@@ -36,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object Mindbox {
+object Mindbox : MindboxKoinComponent {
 
     /**
      * Used for determination app open from push
@@ -355,7 +356,7 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             if (!diInitialized) {
-                initKoin(context)
+                initKoin(context.applicationContext)
                 diInitialized = true
             }
             initScope.launch {

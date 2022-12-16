@@ -18,7 +18,7 @@ internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractorImpl: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
-) : InAppMessageManager, MindboxKoinComponent {
+) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
