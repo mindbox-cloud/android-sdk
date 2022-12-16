@@ -28,7 +28,7 @@ internal class InAppRepositoryImpl(
     private val inAppMapper: InAppMessageMapper,
     private val gson: Gson,
     private val context: Context,
-) : InAppRepository, MindboxKoinComponent {
+) : InAppRepository {
 
     override fun getShownInApps(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {

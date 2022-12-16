@@ -31,13 +31,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object Mindbox : MindboxKoinComponent {
+object Mindbox: MindboxKoinComponent {
 
     /**
      * Used for determination app open from push
@@ -84,7 +86,7 @@ object Mindbox : MindboxKoinComponent {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-    private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
+    private val inAppMessageManager: InAppMessageManager by inject()
 
     private val mutex = Mutex()
 

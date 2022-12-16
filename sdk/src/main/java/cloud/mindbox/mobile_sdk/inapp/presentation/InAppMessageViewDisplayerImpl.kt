@@ -21,7 +21,7 @@ import com.squareup.picasso.Picasso
 import java.util.*
 
 
-internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer, MindboxKoinComponent {
+internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     private var currentRoot: ViewGroup? = null
     private var currentBlur: View? = null

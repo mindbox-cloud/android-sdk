@@ -14,7 +14,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
-    InAppInteractor, MindboxKoinComponent {
+    InAppInteractor {
 
     override fun processEventAndConfig(
         configuration: MindboxConfiguration,
