@@ -12,7 +12,9 @@ import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.component.KoinComponent
 import org.koin.dsl.module
+
 
 internal val appModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }

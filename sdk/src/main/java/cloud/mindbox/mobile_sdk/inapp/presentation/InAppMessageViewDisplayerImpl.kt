@@ -8,6 +8,7 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -59,6 +60,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -87,8 +90,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
+
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
                 showInAppMessage(inAppType = inAppType,
                     onInAppClick = onInAppClick,
                     onInAppShown = onInAppShown)
@@ -103,11 +109,40 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
+        currentInAppId?.let { id ->
+            inAppCallback?.onInAppDismissed(id)
+        }
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
             currentActivity = null
         }
         clearUI()
+        clearUI()
+    }
+
+    override fun tryShowInAppMessage(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    ) {
+        if (isUiPresent()) {
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is going to be shown immediately")
+            showInAppMessage(inAppType, onInAppClick, onInAppShown)
+
+        } else {
+            addToInAppQueue(inAppType, onInAppClick, onInAppShown)
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later")
+        }
+    }
+
+    private fun addToInAppQueue(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    ) {
+        inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
     }
 
     private fun clearUI() {
@@ -157,6 +192,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.addView(currentBlur)
                     currentRoot?.addView(currentDialog)
                     currentDialog?.requestFocus()
+
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
                         MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}")
