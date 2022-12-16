@@ -8,7 +8,6 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -117,7 +116,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
             currentActivity = null
         }
         clearUI()
-        clearUI()
     }
 
     override fun tryShowInAppMessage(
@@ -137,14 +135,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         }
     }
 
-    private fun addToInAppQueue(
-        inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
-    ) {
-        inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
-    }
-
     private fun clearUI() {
         currentInAppId?.let { id ->
             inAppCallback?.onInAppDismissed(id)
@@ -155,18 +145,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentRoot = null
         currentDialog = null
         currentBlur = null
-    }
-
-    override fun tryShowInAppMessage(
-        inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
-    ) {
-        if (isUiPresent()) {
-            showInAppMessage(inAppType, onInAppClick, onInAppShown)
-        } else {
-            addToInAppQueue(inAppType, onInAppClick, onInAppShown)
-        }
     }
 
     private fun addToInAppQueue(
