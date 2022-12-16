@@ -7,8 +7,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl

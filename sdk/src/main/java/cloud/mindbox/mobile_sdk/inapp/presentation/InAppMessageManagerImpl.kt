@@ -112,7 +112,7 @@ internal class InAppMessageManagerImpl(
 
 
     companion object {
-        const val CURRENT_IN_APP_VERSION = 1
+        const val CURRENT_IN_APP_VERSION = 2
         const val CONFIG_NOT_FOUND = 404
     }
 

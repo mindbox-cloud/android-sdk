@@ -11,7 +11,6 @@ import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
