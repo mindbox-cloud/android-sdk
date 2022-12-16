@@ -1,8 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckInApp
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper

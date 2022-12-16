@@ -8,14 +8,18 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
 import com.squareup.picasso.MemoryPolicy
 import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
+import java.util.*
 
 
 internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
@@ -25,6 +29,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     private var currentDialog: InAppConstraintLayout? = null
     private var currentActivity: Activity? = null
     private var inAppCallback: InAppCallback? = null
+    private var currentInAppId: String? = null
+    private val inAppQueue = LinkedList<InAppTypeWrapper>()
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -48,6 +54,16 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
+
+        if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
+            with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
+                showInAppMessage(inAppType = inAppType,
+                    onInAppClick = onInAppClick,
+                    onInAppShown = onInAppShown)
+            }
+        }
     }
 
     override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -71,6 +87,16 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
+
+        if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
+            with(inAppQueue.pop()) {
+                MindboxLoggerImpl.d(this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue")
+                showInAppMessage(inAppType = inAppType,
+                    onInAppClick = onInAppClick,
+                    onInAppShown = onInAppShown)
+            }
+        }
     }
 
 
@@ -80,14 +106,46 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
+        currentInAppId?.let { id ->
+            inAppCallback?.onInAppDismissed(id)
+        }
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
             currentActivity = null
         }
-        hideInAppMessage()
+        clearUI()
     }
 
-    private fun hideInAppMessage() {
+    override fun tryShowInAppMessage(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    ) {
+        if (isUiPresent()) {
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is going to be shown immediately")
+            showInAppMessage(inAppType, onInAppClick, onInAppShown)
+
+        } else {
+            addToInAppQueue(inAppType, onInAppClick, onInAppShown)
+            MindboxLoggerImpl.d(this,
+                "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later")
+        }
+    }
+
+    private fun addToInAppQueue(
+        inAppType: InAppType,
+        onInAppClick: () -> Unit,
+        onInAppShown: () -> Unit,
+    ) {
+        inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
+    }
+
+    private fun isUiPresent(): Boolean =
+        (currentRoot != null) && (currentDialog != null) && (currentBlur != null)
+
+
+    private fun clearUI() {
         isInAppMessageActive = false
         currentRoot?.removeView(currentBlur)
         currentRoot?.removeView(currentDialog)
@@ -96,7 +154,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentBlur = null
     }
 
-    override fun showInAppMessage(
+    private fun showInAppMessage(
         inAppType: InAppType,
         onInAppClick: () -> Unit,
         onInAppShown: () -> Unit,
@@ -110,6 +168,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentRoot?.addView(currentBlur)
                     currentRoot?.addView(currentDialog)
                     currentDialog?.requestFocus()
+
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
                         MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}")
@@ -121,38 +180,43 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             .centerCrop()
                             .into(this, object : Callback {
                                 override fun onSuccess() {
+                                    currentInAppId = inAppType.inAppId
+                                    currentDialog?.setDismissListener {
+                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        currentRoot?.removeView(currentDialog)
+                                        isInAppMessageActive = false
+                                        currentRoot?.removeView(currentBlur)
+                                    }
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                        }
-                                        currentDialog?.setOnClickListener {
-                                            currentDialog?.isEnabled = false
-                                            onInAppClick()
-                                            inAppCallback?.onInAppClick(inAppType.inAppId,
-                                                inAppType.redirectUrl,
-                                                inAppType.intentData)
-                                            if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
-                                                currentRoot?.removeView(currentDialog)
-                                                currentRoot?.removeView(currentBlur)
-                                            }
-                                        }
-                                        currentDialog?.setDismissListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                        }
-                                        currentBlur?.setOnClickListener {
+                                            isInAppMessageActive = false
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
                                         }
                                         isVisible = true
                                     }
+                                    currentDialog?.setOnClickListener {
+                                        currentDialog?.isEnabled = false
+                                        onInAppClick()
+                                        inAppCallback?.onInAppClick(inAppType.inAppId,
+                                            inAppType.redirectUrl,
+                                            inAppType.intentData)
+                                        if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
+                                            currentRoot?.removeView(currentDialog)
+                                            currentRoot?.removeView(currentBlur)
+                                        }
+                                    }
+                                    currentBlur?.setOnClickListener {
+                                        isInAppMessageActive = false
+                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        currentRoot?.removeView(currentDialog)
+                                        currentRoot?.removeView(currentBlur)
+                                    }
                                     currentBlur?.isVisible = true
                                     MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
                                         "inapp shown")
+                                    isInAppMessageActive = true
                                     onInAppShown()
                                 }
 
@@ -177,7 +241,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                 //TODO add inapp processing
             }
         }
-        isInAppMessageActive = true
     }
 
     companion object {

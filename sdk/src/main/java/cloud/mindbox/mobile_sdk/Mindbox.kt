@@ -8,8 +8,8 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
-import cloud.mindbox.mobile_sdk.inapp.di.appModule
-import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
+import cloud.mindbox.mobile_sdk.inapp.di.initKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.Level
@@ -31,17 +31,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.GlobalContext
-import org.koin.core.context.loadKoinModules
-import org.koin.core.context.startKoin
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object Mindbox {
+object Mindbox: MindboxKoinComponent {
 
     /**
      * Used for determination app open from push
@@ -88,7 +86,7 @@ object Mindbox {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-    private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
+    private val inAppMessageManager: InAppMessageManager by inject()
 
     private val mutex = Mutex()
 
@@ -360,13 +358,7 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             if (!diInitialized) {
-                val modules = listOf(appModule, dataModule)
-                GlobalContext.getKoinApplicationOrNull()
-                    ?.let { loadKoinModules(modules) }
-                    ?: startKoin {
-                        androidContext(context)
-                        modules(modules)
-                    }
+                initKoin(context.applicationContext)
                 diInitialized = true
             }
             initScope.launch {
@@ -413,10 +405,6 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
-                    if (activity != null) {
-                        inAppMessageManager.registerCurrentActivity(activity)
-                    }
-
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
@@ -452,7 +440,12 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
-                inAppMessageManager.initInAppMessages()
+
+                val activity = context as? Activity
+                if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                    inAppMessageManager.registerCurrentActivity(activity)
+                }
+                inAppMessageManager.initInAppMessages(configuration)
                 mindboxScope.launch {
                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                 }

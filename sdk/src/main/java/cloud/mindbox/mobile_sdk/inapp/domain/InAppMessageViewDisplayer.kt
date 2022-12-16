@@ -10,7 +10,7 @@ internal interface InAppMessageViewDisplayer {
 
     fun onPauseCurrentActivity(activity: Activity)
 
-    fun showInAppMessage(
+    fun tryShowInAppMessage(
         inAppType: InAppType,
         onInAppClick: () -> Unit,
         onInAppShown: () -> Unit,
