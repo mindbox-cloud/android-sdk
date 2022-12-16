@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -30,7 +31,7 @@ internal class InAppRepositoryImpl(
     private val inAppMapper: InAppMessageMapper,
     private val gson: Gson,
     private val context: Context,
-) : InAppRepository {
+) : InAppRepository, MindboxKoinComponent {
 
     override fun getShownInApps(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {

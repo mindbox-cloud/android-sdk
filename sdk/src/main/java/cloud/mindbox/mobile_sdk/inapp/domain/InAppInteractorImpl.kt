@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -18,7 +19,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractorImpl(private val inAppRepositoryImpl: InAppRepository) :
-    InAppInteractor {
+    InAppInteractor, MindboxKoinComponent {
 
     override fun processEventAndConfig(
         configuration: MindboxConfiguration,
