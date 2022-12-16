@@ -8,9 +8,6 @@ internal class SegmentationCheckInAppStub {
             SegmentationCheckInApp("", listOf(getCustomerSegmentation()))
 
         fun getCustomerSegmentation(): CustomerSegmentationInApp =
-            CustomerSegmentationInApp(segmentation = SegmentationInApp(IdsInApp(externalId = null)),
-                segment = SegmentInApp(
-                    IdsInApp(externalId = null
-                    )))
+            CustomerSegmentationInApp(segmentation = "", segment = "")
     }
 }

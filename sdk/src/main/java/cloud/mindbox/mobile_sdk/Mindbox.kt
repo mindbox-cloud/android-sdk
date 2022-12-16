@@ -406,6 +406,7 @@ object Mindbox: MindboxKoinComponent {
                         )
                     }
 
+
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
@@ -445,7 +446,7 @@ object Mindbox: MindboxKoinComponent {
                 if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                     inAppMessageManager.registerCurrentActivity(activity)
                 }
-                inAppMessageManager.initInAppMessages(configuration)
+                inAppMessageManager.initInAppMessages()
                 mindboxScope.launch {
                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                 }
