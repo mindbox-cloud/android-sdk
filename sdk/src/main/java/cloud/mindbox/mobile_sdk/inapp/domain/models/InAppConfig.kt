@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.models
+package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 internal data class InAppConfig(
     val inApps: List<InApp>,
@@ -23,7 +23,7 @@ internal data class Targeting(
 )
 
 internal sealed class Payload {
-    class SimpleImage(
+    data class SimpleImage(
         val type: String,
         val imageUrl: String,
         val redirectUrl: String,

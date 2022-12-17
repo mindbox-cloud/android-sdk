@@ -8,10 +8,10 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
-import cloud.mindbox.mobile_sdk.inapp.di.appModule
-import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
+import cloud.mindbox.mobile_sdk.inapp.di.initKoin
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -31,14 +31,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.koin.core.context.startKoin
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object Mindbox {
+object Mindbox: MindboxKoinComponent {
 
     /**
      * Used for determination app open from push
@@ -69,7 +70,7 @@ object Mindbox {
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
 
-    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+    val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
     private val infoUpdatedThreadDispatcher = Executors.newSingleThreadExecutor()
@@ -85,7 +86,7 @@ object Mindbox {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-    private val inAppMessageManager: InAppMessageManager by inject(InAppMessageManager::class.java)
+    private val inAppMessageManager: InAppMessageManager by inject()
 
     private val mutex = Mutex()
 
@@ -357,9 +358,7 @@ object Mindbox {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             if (!diInitialized) {
-                startKoin {
-                    modules(appModule, dataModule)
-                }
+                initKoin(context.applicationContext)
                 diInitialized = true
             }
             initScope.launch {
@@ -406,10 +405,6 @@ object Mindbox {
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
-                    if (activity != null) {
-                        inAppMessageManager.registerCurrentActivity(activity)
-                    }
-
 
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
@@ -445,7 +440,12 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
-                inAppMessageManager.initInAppMessages(context, configuration)
+
+                val activity = context as? Activity
+                if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                    inAppMessageManager.registerCurrentActivity(activity)
+                }
+                inAppMessageManager.initInAppMessages(configuration)
                 mindboxScope.launch {
                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                 }
@@ -839,7 +839,6 @@ object Mindbox {
         val instanceId = generateRandomUuid()
 
 
-
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
         val timezone = if (configuration.shouldCreateCustomer) {
@@ -932,7 +931,7 @@ object Mindbox {
     }
 
     private fun softReinitialization(
-        context: Context
+        context: Context,
     ) {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()

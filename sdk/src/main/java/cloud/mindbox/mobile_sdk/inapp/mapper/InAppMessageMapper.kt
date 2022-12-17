@@ -1,17 +1,23 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
-import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Payload
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Targeting
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.TargetingDto
 
 internal class InAppMessageMapper {
+
     fun mapToInAppDto (
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
         formDto: FormDto?,
@@ -26,7 +32,7 @@ internal class InAppMessageMapper {
         }
     }
 
-    fun mapInAppConfigResponseToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
+    fun mapToInAppConfig(inAppConfigResponse: InAppConfigResponse?): InAppConfig? {
         return inAppConfigResponse?.let { inAppConfigDto ->
             InAppConfig(
                 inAppConfigDto.inApps?.map { inAppDto ->
@@ -38,7 +44,7 @@ internal class InAppMessageMapper {
                                 when (payloadDto) {
                                     is PayloadDto.SimpleImage -> {
                                         Payload.SimpleImage(
-                                            type = "",
+                                            type = payloadDto.type ?: "",
                                             imageUrl = payloadDto.imageUrl ?: "",
                                             redirectUrl = payloadDto.redirectUrl ?: "",
                                             intentPayload = payloadDto.intentPayload ?: ""
@@ -64,7 +70,7 @@ internal class InAppMessageMapper {
         ) else null
     }
 
-    fun mapSegmentationCheckResponseToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
+    fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
         return SegmentationCheckInApp(
             status = segmentationCheckResponse.status ?: "",
             customerSegmentations = segmentationCheckResponse.customerSegmentations?.map { customerSegmentationInAppResponse ->
@@ -81,7 +87,7 @@ internal class InAppMessageMapper {
         )
     }
 
-    fun mapInAppDtoToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
+    fun mapToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
         return SegmentationCheckRequest(
             config.inApps.map { inAppDto ->
                 SegmentationDataRequest(IdsRequest(inAppDto.targeting?.segmentation))
