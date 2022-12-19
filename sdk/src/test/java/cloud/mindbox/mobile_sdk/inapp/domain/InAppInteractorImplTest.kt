@@ -1,7 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import app.cash.turbine.test
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult
@@ -15,6 +16,8 @@ import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
+import io.mockk.mockkClass
+import io.mockk.mockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -55,6 +58,8 @@ internal class InAppInteractorImplTest : KoinTest {
 
     @Before
     fun onTestStart() {
+        mockkObject(MindboxKoin)
+        every { MindboxKoin.koin } returns getKoin()
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
         every { inAppRepository.sendInAppTargetingHit(any()) } just runs
         inAppGeoRepository = declareMock {

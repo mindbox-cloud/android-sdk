@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
