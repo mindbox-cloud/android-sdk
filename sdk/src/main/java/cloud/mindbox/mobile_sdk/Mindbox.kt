@@ -8,8 +8,7 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
-import cloud.mindbox.mobile_sdk.inapp.di.initKoin
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.Level
@@ -31,15 +30,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
-import org.koin.java.KoinJavaComponent.inject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-object Mindbox: MindboxKoinComponent {
+object Mindbox {
 
     /**
      * Used for determination app open from push
@@ -86,11 +82,11 @@ object Mindbox: MindboxKoinComponent {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-    private val inAppMessageManager: InAppMessageManager by inject()
+    private val inAppMessageManager: InAppMessageManager by lazy {
+        MindboxKoin.koin.get(InAppMessageManager::class)
+    }
 
     private val mutex = Mutex()
-
-    private var diInitialized: Boolean = false
 
     /**
      * Allows you to specify additional components for message handling
@@ -357,10 +353,6 @@ object Mindbox: MindboxKoinComponent {
     ) {
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
-            if (!diInitialized) {
-                initKoin(context.applicationContext)
-                diInitialized = true
-            }
             initScope.launch {
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
@@ -768,6 +760,7 @@ object Mindbox: MindboxKoinComponent {
     }
 
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
+        MindboxKoin.init(context.applicationContext)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         setPushServiceHandler(context, pushServices)

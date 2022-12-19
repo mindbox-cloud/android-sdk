@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
-import org.koin.java.KoinJavaComponent.inject
+import org.koin.core.component.inject
 
 internal interface ITargeting {
     fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean
@@ -17,11 +17,10 @@ internal enum class Kind {
     NEGATIVE
 }
 
-internal sealed class TreeTargeting(open val type: String) : ITargeting, PreCheckTargeting {
+internal sealed class TreeTargeting(open val type: String) : ITargeting, PreCheckTargeting,
+    MindboxKoin.MindboxKoinComponent {
 
-    protected val inAppRepositoryImpl: InAppRepository by inject(InAppRepository::class.java)
-    protected val inAppGeoRepositoryImpl: InAppGeoRepository by inject(InAppGeoRepository::class.java)
-
+    protected val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
 
     internal data class TrueNode(override val type: String) : TreeTargeting(type) {
         override fun getCustomerIsInTargeting(csiaList: List<CustomerSegmentationInApp>): Boolean {

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
@@ -9,6 +10,7 @@ import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import io.mockk.every
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkClass
+import io.mockk.mockkObject
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -40,6 +42,8 @@ class TreeTargetingTest : KoinTest {
 
     @Before
     fun onTestStart() {
+        mockkObject(MindboxKoin)
+        every { MindboxKoin.koin } returns getKoin()
         inAppGeoRepository = declareMock()
         every { inAppGeoRepository.geoGeo() } returns GeoTargetingStub.getGeoTargeting()
             .copy(cityId = "123",
