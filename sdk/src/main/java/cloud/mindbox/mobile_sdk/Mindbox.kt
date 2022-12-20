@@ -88,6 +88,8 @@ object Mindbox {
 
     private val mutex = Mutex()
 
+    private var firstInitCall: Boolean = true
+
     /**
      * Allows you to specify additional components for message handling
      * when calling the [handleRemoteMessage] function.
@@ -434,14 +436,17 @@ object Mindbox {
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
 
-                val activity = context as? Activity
-                if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                    inAppMessageManager.registerCurrentActivity(activity)
+                if (firstInitCall) {
+                    val activity = context as? Activity
+                    if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                        inAppMessageManager.registerCurrentActivity(activity)
+                    }
+                    inAppMessageManager.initInAppMessages()
+                    mindboxScope.launch {
+                        MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                    }
                 }
-                inAppMessageManager.initInAppMessages()
-                mindboxScope.launch {
-                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                }
+                firstInitCall = false
             }
         }
     }
