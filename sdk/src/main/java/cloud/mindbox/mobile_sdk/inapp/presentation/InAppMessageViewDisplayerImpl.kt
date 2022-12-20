@@ -104,8 +104,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
-        currentInAppId?.let { id ->
-            inAppCallback?.onInAppDismissed(id)
+        if (isInAppMessageActive) {
+            currentInAppId?.let { id ->
+                inAppCallback?.onInAppDismissed(id)
+            }
         }
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
