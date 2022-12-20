@@ -27,7 +27,7 @@ internal object MindboxEventManager {
 
     private val gson = Gson()
 
-    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 1)
+    val eventFlow = MutableSharedFlow<InAppEventType>(replay = 20)
 
 
     private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
