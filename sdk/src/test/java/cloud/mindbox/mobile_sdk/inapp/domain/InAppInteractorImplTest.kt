@@ -1,7 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.di.dataModule
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
@@ -11,18 +12,34 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
+import io.mockk.mockkClass
+import io.mockk.mockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.koin.test.KoinTest
+import org.koin.test.KoinTestRule
+import org.koin.test.mock.MockProviderRule
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class InAppInteractorImplTest {
+internal class InAppInteractorImplTest: KoinTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
+
+    @get:Rule
+    val koinTestRule = KoinTestRule.create {
+        modules(dataModule)
+    }
+
+    @get:Rule
+    val mockProvider = MockProviderRule.create { clazz ->
+        mockkClass(clazz)
+    }
 
     @MockK
     private lateinit var mindboxConfiguration: MindboxConfiguration
@@ -33,6 +50,11 @@ internal class InAppInteractorImplTest {
     @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
 
+    @Before
+    fun onTestStart() {
+        mockkObject(MindboxKoin)
+        every { MindboxKoin.koin } returns getKoin()
+    }
 
     @Test
     fun `should choose in-app without targeting`() = runTest {

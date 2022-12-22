@@ -8,7 +8,6 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoinComponent
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -105,8 +104,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
-        currentInAppId?.let { id ->
-            inAppCallback?.onInAppDismissed(id)
+        if (isInAppMessageActive) {
+            currentInAppId?.let { id ->
+                inAppCallback?.onInAppDismissed(id)
+            }
         }
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
