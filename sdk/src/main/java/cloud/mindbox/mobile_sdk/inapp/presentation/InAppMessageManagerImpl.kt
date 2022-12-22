@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
@@ -28,9 +27,9 @@ internal class InAppMessageManagerImpl(
     private val inAppScope =
         CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
-    override fun listenEventAndInApp(configuration: MindboxConfiguration) {
+    override fun listenEventAndInApp() {
         inAppScope.launch {
-            inAppInteractorImpl.processEventAndConfig(configuration)
+            inAppInteractorImpl.processEventAndConfig()
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
@@ -54,7 +53,7 @@ internal class InAppMessageManagerImpl(
      * In case of other network error use cached version
      * Otherwise do nothing
      **/
-    override fun requestConfig(configuration: MindboxConfiguration) {
+    override fun requestConfig() {
         inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
@@ -74,13 +73,13 @@ internal class InAppMessageManagerImpl(
                     error)
             }
         }) {
-            inAppInteractorImpl.fetchInAppConfig(configuration)
+            inAppInteractorImpl.fetchInAppConfig()
         }
     }
 
-    override fun initInAppMessages(configuration: MindboxConfiguration) {
-        listenEventAndInApp(configuration)
-        requestConfig(configuration)
+    override fun initInAppMessages() {
+        listenEventAndInApp()
+        requestConfig()
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -111,7 +110,7 @@ internal class InAppMessageManagerImpl(
 
 
     companion object {
-        const val CURRENT_IN_APP_VERSION = 1
+        const val CURRENT_IN_APP_VERSION = 3
         const val CONFIG_NOT_FOUND = 404
     }
 

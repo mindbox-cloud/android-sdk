@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
+import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -31,11 +31,11 @@ internal object GatewayManager {
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
-    private fun getSegmentationUrl(configuration: MindboxConfiguration): String {
+    private fun getSegmentationUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
     }
 
-    private fun getConfigUrl(configuration: MindboxConfiguration): String {
+    private fun getConfigUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
     }
 
@@ -282,39 +282,56 @@ internal object GatewayManager {
         code < 300 || code in 400..499
     } ?: false
 
+    suspend fun checkGeoTargeting(context: Context, configuration: Configuration): GeoTargetingDto {
+        return suspendCoroutine { continuation ->
+            MindboxServiceGenerator.getInstance(context)
+                ?.addToRequestQueue(MindboxRequest(Request.Method.GET,
+                    "https://${configuration.domain}/geo",
+                    configuration,
+                    null,
+                    { jsonObject ->
+                        continuation.resume(gson.fromJson(jsonObject.toString(),
+                            GeoTargetingDto::class.java))
+                    },
+                    { error ->
+                        continuation.resumeWithException(error)
+                    },
+                    true))
+        }
+    }
+
     suspend fun checkSegmentation(
         context: Context,
-        configuration: MindboxConfiguration,
+        configuration: Configuration,
         segmentationCheckRequest: SegmentationCheckRequest,
     ): SegmentationCheckResponse {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(MindboxRequest(Request.Method.POST,
                     getSegmentationUrl(configuration),
-                    DbManager.getConfigurations()!!,
+                    configuration,
                     convertBodyToJson(
                         gson.toJson(segmentationCheckRequest,
                             SegmentationCheckRequest::class.java))!!,
                     { response ->
-                        gatewayScope.launch {
-                            continuation.resume(gson.fromJson(response.toString(),
-                                SegmentationCheckResponse::class.java))
-                        }
+                        continuation.resume(gson.fromJson(response.toString(),
+                            SegmentationCheckResponse::class.java))
                     },
                     { error ->
                         continuation.resumeWithException(error)
                     }, true))
         }
-
     }
 
-    suspend fun fetchInAppConfig(context: Context, configuration: MindboxConfiguration): String {
+
+    suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(StringRequest(
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
+
                         continuation.resume(response)
                     },
                     { error ->
@@ -324,6 +341,4 @@ internal object GatewayManager {
         }
 
     }
-
-
 }

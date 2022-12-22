@@ -8,18 +8,12 @@ internal data class InApp(
     val id: String,
     val minVersion: Int?,
     val maxVersion: Int?,
-    val targeting: Targeting?,
+    val targeting: TreeTargeting,
     val form: Form,
 )
 
 internal data class Form(
     val variants: List<Payload>,
-)
-
-internal data class Targeting(
-    val type: String,
-    val segmentation: String?,
-    val segment: String?,
 )
 
 internal sealed class Payload {
@@ -30,3 +24,4 @@ internal sealed class Payload {
         val intentPayload: String,
     ) : Payload()
 }
+

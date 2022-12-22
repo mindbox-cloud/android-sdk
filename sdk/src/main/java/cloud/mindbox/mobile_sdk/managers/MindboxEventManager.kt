@@ -21,6 +21,10 @@ internal object MindboxEventManager {
     private const val EMPTY_JSON_OBJECT = "{}"
     private const val NULL_JSON = "null"
 
+    private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
+    private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
+    private const val IN_APP_OPERATION_TARGETING_TYPE = "Inapp.Targeting"
+
     private val gson = Gson()
 
     val eventFlow = MutableSharedFlow<InAppEventType>(replay = 20)
@@ -61,12 +65,16 @@ internal object MindboxEventManager {
         )
     }
 
-    fun inAppShown(context: Context, operationName: String, body: String) {
-        asyncOperation(context, operationName, body)
+    fun inAppShown(context: Context, body: String) {
+        asyncOperation(context, IN_APP_OPERATION_VIEW_TYPE, body)
     }
 
-    fun inAppClicked(context: Context, operationName: String, body: String) {
-        asyncOperation(context, operationName, body)
+    fun inAppClicked(context: Context, body: String) {
+        asyncOperation(context, IN_APP_OPERATION_CLICK_TYPE, body)
+    }
+
+    fun inAppTargetingHit(context: Context, body: String) {
+        asyncOperation(context, IN_APP_OPERATION_TARGETING_TYPE, body)
     }
 
     fun pushClicked(

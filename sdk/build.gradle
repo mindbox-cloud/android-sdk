@@ -52,6 +52,7 @@ dependencies {
 
     // DB
     implementation sdkDependencies.room
+    implementation sdkDependencies.room_ktx
     kapt sdkDependencies.room_compiler
 
     //work manager

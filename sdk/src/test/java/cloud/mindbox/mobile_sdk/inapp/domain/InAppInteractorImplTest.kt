@@ -1,21 +1,26 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import app.cash.turbine.test
+import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult
+import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import com.android.volley.VolleyError
-import io.mockk.coEvery
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkClass
 import io.mockk.mockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -24,9 +29,10 @@ import org.junit.Test
 import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
 import org.koin.test.mock.MockProviderRule
+import org.koin.test.mock.declareMock
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class InAppInteractorImplTest: KoinTest {
+internal class InAppInteractorImplTest : KoinTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
@@ -42,72 +48,96 @@ internal class InAppInteractorImplTest: KoinTest {
     }
 
     @MockK
-    private lateinit var mindboxConfiguration: MindboxConfiguration
-
-    @MockK
     private lateinit var inAppRepository: InAppRepository
 
     @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
 
+    @MockK
+    private lateinit var inAppGeoRepository: InAppGeoRepository
+
     @Before
     fun onTestStart() {
         mockkObject(MindboxKoin)
         every { MindboxKoin.koin } returns getKoin()
+        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        every { inAppRepository.sendInAppTargetingHit(any()) } just runs
+        inAppGeoRepository = declareMock {
+            coEvery { inAppGeoRepository.fetchGeo() } just runs
+        }
+        every {
+            inAppGeoRepository.geoGeo()
+        } returns GeoTargetingStub.getGeoTargeting().copy(cityId = "123",
+            regionId = "456",
+            countryId = "789")
     }
+
 
     @Test
     fun `should choose in-app without targeting`() = runTest {
+        val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        coEvery {
-            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
-
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-        val expectedResult = InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(segmentation = null,
-                segment = null))
-        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
-            .copy(listOf(InAppStub.getInApp()
-                .copy(targeting = InAppStub.getInApp().targeting?.copy(segmentation = null,
-                    segment = null)),
-                (InAppStub.getInApp()
-                    .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
-                        "123",
-                        segment = "456"))))),
-            configuration = mindboxConfiguration)
-        assertEquals(expectedResult, actualResult)
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(inApps = listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingTrueNode(), id = validId),
+                    InAppStub.getInApp()
+                        .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
+
 
     @Test
     fun `should choose in-app with targeting`() = runTest {
+        val validId = "123456"
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+            inAppRepository.fetchSegmentations(any())
 
-        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
-            .copy(customerSegmentations = listOf(
-                SegmentationCheckInAppStub.getCustomerSegmentation()
-                    .copy(segmentation = SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.copy(
-                        SegmentationCheckInAppStub.getCustomerSegmentation().segmentation?.ids?.copy(
-                            "123")),
-                        segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                            ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                                "456")))))
-        val expectedResult = InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
-                segmentation = "123",
-                segment = "456"))
-        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
-            .copy(listOf(InAppStub.getInApp()
-                .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
-                    "123",
-                    segment = "456")))),
-            configuration = mindboxConfiguration)
-        assertEquals(expectedResult, actualResult)
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp().copy(status = "success",
+            customerSegmentations = listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "999",
+                    segment = "777")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingTrueNode(),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy(type = "segment",
+                                    kind = Kind.POSITIVE,
+                                    segmentationExternalId = "999",
+                                    segmentExternalId = "777"))),
+                        id = validId),
+                    InAppStub.getInApp()
+                        .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
@@ -115,72 +145,102 @@ internal class InAppInteractorImplTest: KoinTest {
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
-        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
-            .copy(listOf()),
-            configuration = mindboxConfiguration)
-        assertNull(actualResult)
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(emptyList()))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
     }
 
     @Test
     fun `should return null if network exception`() = runTest {
+        val validId = "123456"
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+            inAppRepository.fetchSegmentations(any())
 
         } throws VolleyError()
-        val actualResult = inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
-            .copy(listOf(InAppStub.getInApp()
-                .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
-                    "123",
-                    segment = "456")))),
-            configuration = mindboxConfiguration)
-        assertNull(actualResult)
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingTrueNode(),
+                            InAppStub.getTargetingSegmentNode())), id = validId),
+                    InAppStub.getInApp()
+                        .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
     }
 
     @Test
     fun `should throw exception if non network error`() = runTest {
+        val validId = "123456"
         every {
             inAppRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(mindboxConfiguration, any())
+            inAppRepository.fetchSegmentations(any())
 
         } throws Error()
-
-        assertThrows(Error::class.java) {
-            runBlocking {
-                inAppInteractor.chooseInAppToShow(InAppConfigStub.getConfig()
-                    .copy(listOf(InAppStub.getInApp()
-                        .copy(targeting = InAppStub.getInApp().targeting?.copy(type = "asd",
-                            "123",
-                            segment = "456")))),
-                    configuration = mindboxConfiguration)
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingTrueNode(),
+                            InAppStub.getTargetingSegmentNode())), id = validId),
+                    InAppStub.getInApp()
+                        .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))))))
             }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertTrue(awaitError() is Error)
         }
     }
 
     @Test
     fun `config has only targeting in-apps`() {
         var rez = true
-        inAppInteractor.getConfigWithTargeting(InAppConfigStub.getConfig()
-            .copy(inApps = listOf(
-                InAppStub.getInApp().copy(targeting = InAppStub.getInApp().targeting?.copy(
-                    segmentation = null,
-                    segment = null)),
-                InAppStub.getInApp().copy(targeting = InAppStub.getInApp().targeting?.copy(
-                    segmentation = "abc",
-                    segment = null)),
-                InAppStub.getInApp().copy(targeting = InAppStub.getInApp().targeting?.copy(
-                    segmentation = null,
-                    segment = "xb")),
-                InAppStub.getInApp().copy(targeting = InAppStub.getInApp().targeting?.copy(
-                    segmentation = "abc",
-                    segment = "xb"))
-            ))).inApps.forEach { inApp ->
-            inApp.targeting?.apply {
-                if (segmentation == null || segment == null) {
+        inAppInteractor.javaClass.getDeclaredMethod("getConfigWithInAppsBeforeFirstPendingPreCheck",
+            InAppConfig::class.java).apply {
+            isAccessible = true
+            val invocationRez = invoke(inAppInteractor, InAppConfigStub.getConfig()
+                .copy(inApps = listOf(
+                    InAppStub.getInApp().copy(targeting = InAppStub.getTargetingTrueNode()),
+                    InAppStub.getInApp().copy(targeting = InAppStub.getTargetingUnionNode()
+                        .copy("or",
+                            nodes = listOf(InAppStub.getTargetingTrueNode(),
+                                InAppStub.getTargetingSegmentNode()))),
+                    InAppStub.getInApp().copy(targeting = InAppStub.getTargetingIntersectionNode()
+                        .copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))),
+                    InAppStub.getInApp().copy(targeting = InAppStub.getTargetingUnionNode()
+                        .copy("or",
+                            nodes = listOf(InAppStub.getTargetingIntersectionNode()
+                                .copy(type = "and",
+                                    nodes = listOf(InAppStub.getTargetingSegmentNode())),
+                                InAppStub.getTargetingSegmentNode()))),
+                ))) as InAppConfig
+            invocationRez.inApps.forEach { inApp ->
+                if (inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING) {
                     rez = false
                 }
             }
@@ -189,89 +249,1162 @@ internal class InAppInteractorImplTest: KoinTest {
     }
 
     @Test
-    fun `validate in-app was shown list is empty`() {
+    fun `validate in-app was shown list is empty`() = runTest {
         every { inAppRepository.getShownInApps() } returns HashSet()
-        assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()))
+        val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingTrueNode(), id = validId),
+                    InAppStub.getInApp()
+                        .copy(id = "123", targeting = InAppStub.getTargetingUnionNode().copy("or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingSegmentNode()))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `validate in-app was shown list isn't empty but does not contain current in-app id`() {
+    fun `validate in-app was shown list isn't empty but does not contain current in-app id`() =
+        runTest {
+            every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+                "ad487f74-924f-44f0-b4f7-f239ea5643c5")
+            val validId = "123456"
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingTrueNode(), id = validId),
+                        InAppStub.getInApp()
+                            .copy(id = "123",
+                                targeting = InAppStub.getTargetingUnionNode().copy("or",
+                                    nodes = listOf(InAppStub.getTargetingSegmentNode(),
+                                        InAppStub.getTargetingSegmentNode()))))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                assertEquals(validId, awaitItem().inAppId)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `validate in-app was shown list isn't empty and contains current in-app id`() = runTest {
         every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
-            "ad487f74-924f-44f0-b4f7-f239ea5643c5")
-        assertTrue(inAppInteractor.validateInAppNotShown(InAppStub.getInApp().copy(id = "123")))
+            "ad487f74-924f-44f0-b4f7-f239ea5643c5", "123")
+        val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "123"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "132")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingTrueNode(), id = "123"),
+                    InAppStub.getInApp()
+                        .copy(id = validId,
+                            targeting = InAppStub.getTargetingUnionNode().copy("or",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy(type = "segment",
+                                        kind = Kind.NEGATIVE,
+                                        segmentationExternalId = "456",
+                                        segmentExternalId = "132"),
+                                    InAppStub.getTargetingSegmentNode().copy(
+                                        type = "segment",
+                                        kind = Kind.POSITIVE,
+                                        segmentationExternalId = "123",
+                                        segmentExternalId = "132",
+                                    )))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `validate in-app was shown list isn't empty and contains current in-app id`() {
-        every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
-            "ad487f74-924f-44f0-b4f7-f239ea5643c5")
-        assertFalse(inAppInteractor.validateInAppNotShown(InAppStub.getInApp()
-            .copy(id = "71110297-58ad-4b3c-add1-60df8acb9e5e")))
+    fun `customer is in intersection of two positives segmentation both success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "132"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "456", segment = "132")
+            ))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.POSITIVE, "123", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "456", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `in-app has segmentation and segment`() {
-        assertTrue(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = "213",
-                segmentation = "345"))))
+    fun `customer is in intersection of two positives segmentation error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy(
+                "Success",
+                listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "345", segment = "345"),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "123", segment = "132")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig()
+                    .copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingIntersectionNode()
+                            .copy(type = "and",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy(type = "segment",
+                                        kind = Kind.POSITIVE,
+                                        segmentationExternalId = "345",
+                                        segmentExternalId = "132"),
+                                    InAppStub.getTargetingSegmentNode()
+                                        .copy(type = "segment",
+                                            kind = Kind.POSITIVE,
+                                            segmentationExternalId = "123",
+                                            segmentExternalId = "132"))),
+                            id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `in-app has no segmentation and no segment`() {
-        assertTrue(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = null,
-                segmentation = null))))
+    fun `customer is in intersection of two negatives segmentation success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "133"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "789", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "789", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `in-app has no targeting`() {
-        assertFalse(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
-            .copy(targeting = null)))
+    fun `customer is in intersection of two negatives segmentation error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "132"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "789", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "789", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `in-app has no segmentation`() {
-        assertFalse(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(
-                segmentation = null))))
+    fun `customer is in intersection of one positive and one negative segmentation success`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "456", segment = "123"),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "123", segment = "")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingIntersectionNode()
+                            .copy(type = "and",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "123"),
+                                    InAppStub.getTargetingSegmentNode()
+                                        .copy("segment",
+                                            kind = Kind.NEGATIVE,
+                                            "123",
+                                            "132"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                assertEquals(validId, awaitItem().inAppId)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in intersection of one positive and one negative segmentation positive error`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "456", segment = ""),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "123", segment = "")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingIntersectionNode()
+                            .copy(type = "and",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "123"),
+                                    InAppStub.getTargetingSegmentNode()
+                                        .copy("segment",
+                                            kind = Kind.NEGATIVE,
+                                            "123",
+                                            "132"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in intersection of one positive and one negative segmentation negative error`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "456", segment = "123"),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "123", segment = "123")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingIntersectionNode()
+                            .copy(type = "and",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.POSITIVE, "456", "132"),
+                                    InAppStub.getTargetingSegmentNode()
+                                        .copy("segment",
+                                            kind = Kind.NEGATIVE,
+                                            "123",
+                                            "132"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in union of two positives segmentation first segmentation true`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "132"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "123", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `in-app has no segment`() {
-        assertFalse(inAppInteractor.validateInAppTargeting(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(
-                segment = null))))
+    fun `customer is in union of two positives segmentation second segmentation true`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = ""),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "456")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "123", "456"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `customer has no segmentation`() {
-        assertFalse(inAppInteractor.validateSegmentation(InAppStub.getInApp(),
-            SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                        null)
-                ))))
+    fun `customer is in union of two positives segmentation both segmentation true`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "123"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "124")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.POSITIVE, "456", "123"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "123", "124"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `customer is in segmentation`() {
-        assertTrue(inAppInteractor.validateSegmentation(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = "123")),
-            SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                        "123")
-                ))))
+    fun `customer is in union of two positives segmentation both segmentation false`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = ""),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.POSITIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "123", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
     }
 
     @Test
-    fun `customer is not in segmentation`() {
-        assertFalse(inAppInteractor.validateSegmentation(InAppStub.getInApp()
-            .copy(targeting = InAppStub.getInApp().targeting?.copy(segment = "1234")),
-            SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(segment = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.copy(
-                    ids = SegmentationCheckInAppStub.getCustomerSegmentation().segment?.ids?.copy(
-                        "123")
-                ))))
+    fun `customer is in union of two negatives second true segmentation`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "456"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "456"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
     }
+
+    @Test
+    fun `customer is in union of two negatives first true segmentation`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "243"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "132", segment = "123")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "132", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in union of two negatives both true segmentation`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "133"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "133")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in union of two negatives both false segmentation`() = runTest {
+        val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = "132"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "132")))
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingSegmentNode()
+                            .copy("segment", kind = Kind.NEGATIVE, "456", "132"),
+                            InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"))),
+                        id = validId))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in union of one positive and one negative segmentation positive check`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "234", segment = "234"),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "345", segment = "345")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "234", "234"),
+                                InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.NEGATIVE, "345", "345"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                assertEquals(validId, awaitItem().inAppId)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in union of one positive and one negative segmentation both true check`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "345", segment = "345"),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "234", segment = "")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "345", "345"),
+                                InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "123"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                assertEquals(validId, awaitItem().inAppId)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in union of one positive and one negative segmentation negative check`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "345", segment = ""),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "234", segment = "")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "345", "132"),
+                                InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                assertEquals(validId, awaitItem().inAppId)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `customer is in union of one positive and one negative segmentation both false check`() =
+        runTest {
+            val validId = "123456"
+            every {
+                inAppRepository.getShownInApps()
+            } returns HashSet()
+            coEvery {
+                inAppRepository.fetchSegmentations(any())
+
+            } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+                .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "345", segment = ""),
+                    SegmentationCheckInAppStub.getCustomerSegmentation()
+                        .copy(segmentation = "234", segment = "132")))
+            every {
+                inAppRepository.listenInAppConfig()
+            } answers {
+                flow {
+                    emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                        .copy(targeting = InAppStub.getTargetingUnionNode().copy(type = "or",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "345", "132"),
+                                InAppStub.getTargetingSegmentNode()
+                                    .copy("segment", kind = Kind.NEGATIVE, "234", "132"))),
+                            id = validId))))
+                }
+            }
+            inAppInteractor.processEventAndConfig().test {
+                awaitComplete()
+            }
+        }
+
+
+    @Test
+    fun `customer is not in segmentation for second in-app`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "456", segment = ""),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "123", segment = "")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(id = "123",
+                        targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.POSITIVE, "456", "132")))),
+                    InAppStub.getInApp()
+                        .copy(
+                            id = validId, targeting = InAppStub.getTargetingUnionNode().copy("or",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                    .copy("segment",
+                                        kind = Kind.NEGATIVE,
+                                        "123",
+                                        "132")))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in segmentation for second in-app`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+            .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+                .copy(segmentation = "123", segment = "132"),
+                SegmentationCheckInAppStub.getCustomerSegmentation()
+                    .copy(segmentation = "124", segment = "132")))
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode()
+                        .copy(type = "and",
+                            nodes = listOf(InAppStub.getTargetingSegmentNode()
+                                .copy("segment", kind = Kind.NEGATIVE, "123", "132"),
+                                InAppStub.getTargetingTrueNode())), id = "123"),
+                    InAppStub.getInApp()
+                        .copy(id = validId,
+                            targeting = InAppStub.getTargetingUnionNode().copy("or",
+                                nodes = listOf(InAppStub.getTargetingSegmentNode().copy("segment",
+                                    kind = Kind.POSITIVE,
+                                    "124",
+                                    "132")))))))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive country success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("country", kind = Kind.POSITIVE, listOf("789", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive country error`() = runTest {
+        val validId = "123456"
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("country", kind = Kind.POSITIVE, listOf("124", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative country error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy(type = "country", kind = Kind.NEGATIVE,
+                                ids = listOf("789", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative country success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCountryNode()
+                            .copy("country", kind = Kind.NEGATIVE, listOf("124", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive region success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("region", kind = Kind.POSITIVE, listOf("123", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive region error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("region", kind = Kind.POSITIVE, listOf("123", "455")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative region error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("region", kind = Kind.NEGATIVE, listOf("123", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative region success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingRegionNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "455")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive city success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("123", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of positive city error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.POSITIVE, listOf("124", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative city error`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("123", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `customer is in intersection of negative city success`() = runTest {
+        val validId = "123456"
+        every {
+            inAppRepository.getShownInApps()
+        } returns HashSet()
+        coEvery {
+            inAppRepository.fetchSegmentations(any())
+
+        } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
+        every {
+            inAppRepository.listenInAppConfig()
+        } answers {
+            flow {
+                emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
+                    .copy(targeting = InAppStub.getTargetingIntersectionNode().copy(type = "and",
+                        nodes = listOf(InAppStub.getTargetingCityNode()
+                            .copy("segment", kind = Kind.NEGATIVE, listOf("124", "456")))),
+                        id = validId)
+                )))
+            }
+        }
+        inAppInteractor.processEventAndConfig().test {
+            assertEquals(validId, awaitItem().inAppId)
+            awaitComplete()
+        }
+    }
+
 }
+
+

@@ -74,11 +74,13 @@ internal class LifecycleManager(
     override fun onActivityResumed(activity: Activity) {
         isCurrentActivityResumed = true
         onActivityResumed.invoke(activity)
+        isCurrentActivityResumed = true
     }
 
     override fun onActivityPaused(activity: Activity) {
         isCurrentActivityResumed = false
         onActivityPaused.invoke(activity)
+        isCurrentActivityResumed = false
     }
 
     override fun onActivityStopped(activity: Activity) {

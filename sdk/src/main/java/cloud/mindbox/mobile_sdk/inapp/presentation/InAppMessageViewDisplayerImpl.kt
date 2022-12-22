@@ -9,7 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -29,6 +29,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     private var inAppCallback: InAppCallback? = null
     private var currentInAppId: String? = null
     private val inAppQueue = LinkedList<InAppTypeWrapper>()
+
+
+    private fun isUiPresent(): Boolean =
+        (currentRoot != null) && (currentDialog != null) && (currentBlur != null)
 
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -104,11 +108,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
 
     override fun onPauseCurrentActivity(activity: Activity) {
-        if (isInAppMessageActive) {
-            currentInAppId?.let { id ->
-                inAppCallback?.onInAppDismissed(id)
-            }
-        }
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
             currentActivity = null
@@ -133,6 +132,20 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         }
     }
 
+    private fun clearUI() {
+        if (isInAppMessageActive) {
+            currentInAppId?.let { id ->
+                inAppCallback?.onInAppDismissed(id)
+            }
+        }
+        isInAppMessageActive = false
+        currentRoot?.removeView(currentBlur)
+        currentRoot?.removeView(currentDialog)
+        currentRoot = null
+        currentDialog = null
+        currentBlur = null
+    }
+
     private fun addToInAppQueue(
         inAppType: InAppType,
         onInAppClick: () -> Unit,
@@ -141,18 +154,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
     }
 
-    private fun isUiPresent(): Boolean =
-        (currentRoot != null) && (currentDialog != null) && (currentBlur != null)
-
-
-    private fun clearUI() {
-        isInAppMessageActive = false
-        currentRoot?.removeView(currentBlur)
-        currentRoot?.removeView(currentDialog)
-        currentRoot = null
-        currentDialog = null
-        currentBlur = null
-    }
 
     private fun showInAppMessage(
         inAppType: InAppType,
@@ -170,7 +171,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentDialog?.requestFocus()
 
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl, "try to show inapp")
+                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
+                            "try to show inapp with id ${inAppType.inAppId}")
                         Picasso.get()
                             .load(inAppType.imageUrl)
                             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
@@ -180,12 +182,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             .into(this, object : Callback {
                                 override fun onSuccess() {
                                     currentInAppId = inAppType.inAppId
-                                    currentDialog?.setDismissListener {
-                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                        currentRoot?.removeView(currentDialog)
-                                        isInAppMessageActive = false
-                                        currentRoot?.removeView(currentBlur)
-                                    }
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
                                             isInAppMessageActive = false
@@ -205,6 +201,12 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
                                         }
+                                    }
+                                    currentDialog?.setDismissListener {
+                                        isInAppMessageActive = false
+                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        currentRoot?.removeView(currentDialog)
+                                        currentRoot?.removeView(currentBlur)
                                     }
                                     currentBlur?.setOnClickListener {
                                         isInAppMessageActive = false
