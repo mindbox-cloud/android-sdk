@@ -18,14 +18,14 @@ internal class InAppGeoRepositoryImpl(
     private val gson: Gson,
 ) : InAppGeoRepository {
     override suspend fun fetchGeo() {
-        DbManager.listenConfigurations().map { configuration ->
-            inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(GatewayManager.checkGeoTargeting(
-                context,
-                configuration))
-        }.first { geoTargeting ->
-            MindboxPreferences.inAppGeo = gson.toJson(geoTargeting)
-            true
-        }
+        val configuration = DbManager.listenConfigurations().first()
+        val geoTargeting = inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(
+            geoTargetingDto = GatewayManager.checkGeoTargeting(
+                context = context,
+                configuration = configuration
+            )
+        )
+        MindboxPreferences.inAppGeo = gson.toJson(geoTargeting)
     }
 
     override fun geoGeo(): GeoTargeting {

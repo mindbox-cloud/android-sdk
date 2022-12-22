@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
@@ -111,7 +110,7 @@ internal class InAppMessageManagerImpl(
 
 
     companion object {
-        const val CURRENT_IN_APP_VERSION = 2
+        const val CURRENT_IN_APP_VERSION = 3
         const val CONFIG_NOT_FOUND = 404
     }
 
