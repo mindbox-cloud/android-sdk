@@ -124,14 +124,10 @@ internal class InAppMessageManagerTest {
             awaitComplete()
         }
         every {
-            runBlocking {
-                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
-            }
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         } just runs
         verify(exactly = 1)  {
-            runBlocking {
-                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
-            }
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         }
     }
 
