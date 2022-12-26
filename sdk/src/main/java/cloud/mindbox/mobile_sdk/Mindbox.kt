@@ -11,6 +11,7 @@ import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -862,6 +863,21 @@ object Mindbox {
                 tokenCallbacks.remove(key)
             }
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
+    }
+
+    /**
+     * Must be called just before [Mindbox.init]
+     *
+     * Sets list of activities that does not show in-app messages. In-app message will be delayed shown
+     * when the first activity not from black list enters Resumed state.
+     *
+     * @param activityBlackList list of activity classes on which in-app messages should not be shown
+     */
+    @Deprecated("Method will be removed in upcoming releases")
+    fun setInAppBlackList(
+        activityBlackList: List<Class<out Activity>>,
+    ) {
+        InAppMessageViewDisplayerImpl.activityBlackList = activityBlackList
     }
 
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {

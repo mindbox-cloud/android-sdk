@@ -36,6 +36,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         MindboxLoggerImpl.d(this, "onResumeCurrentActivity: ${activity.hashCode()}")
+        if (activityBlackList?.contains(activity.javaClass) == true) {
+            MindboxLoggerImpl.d(this, "Activity is in blackList. Skipping...")
+            return
+        }
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
@@ -80,6 +84,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         MindboxLoggerImpl.d(this, "registerCurrentActivity: ${activity.hashCode()}")
+        if (activityBlackList?.contains(activity.javaClass) == true) {
+            MindboxLoggerImpl.d(this, "Activity is in blackList. Skipping...")
+            return
+        }
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
@@ -279,6 +287,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
+        var activityBlackList: List<Class<out Activity>>? = null
     }
 }
 
