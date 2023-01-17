@@ -16,7 +16,7 @@ internal object MindboxKoin {
         if (isInitialized()) return
         koin = koinApplication {
             androidContext(appContext)
-            modules(appModule, dataModule)
+            modules(appModule, dataModule, monitoringModule)
         }.koin
     }
 
