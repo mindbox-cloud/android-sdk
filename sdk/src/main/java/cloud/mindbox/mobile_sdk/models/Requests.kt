@@ -22,7 +22,6 @@ internal data class MindboxRequest(
     val jsonRequest: JSONObject? = null,
     val listener: Response.Listener<JSONObject>? = null,
     val errorsListener: Response.ErrorListener? = null,
-    val isDebug: Boolean,
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
     companion object {
@@ -108,33 +107,32 @@ internal data class MindboxRequest(
 
     //Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
-        if (isDebug) {
-            LoggingExceptionHandler.runCatching {
-                MindboxLoggerImpl.e(
-                    this,
-                    "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
-                )
-                try {
+        LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.e(
+                this,
+                "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
+            )
+            try {
+                volleyError.networkResponse?.allHeaders?.joinToString (
+                    separator = System.getProperty("line.separator") ?: "\n"
+                ) { header ->
+                    "${header.name}: ${header.value}"
+                }?.let { MindboxLoggerImpl.d(this, it) }
 
-                    volleyError.networkResponse?.allHeaders?.asIterable()?.forEach { header ->
-                        MindboxLoggerImpl.d(this, "${header.name}: ${header.value}")
-                    }
-
-                    val json = String(
-                        volleyError.networkResponse?.data ?: ByteArray(0),
-                        Charset.forName(
-                            HttpHeaderParser.parseCharset(
-                                volleyError.networkResponse?.headers ?: emptyMap()
-                            )
+                val json = String(
+                    volleyError.networkResponse?.data ?: ByteArray(0),
+                    Charset.forName(
+                        HttpHeaderParser.parseCharset(
+                            volleyError.networkResponse?.headers ?: emptyMap()
                         )
                     )
+                )
 
-                    logBodyResponse(json)
-                } catch (e: Exception) {
-                    logError(e)
-                } finally {
-                    logEndResponse()
-                }
+                logBodyResponse(json)
+            } catch (e: Exception) {
+                logError(e)
+            } finally {
+                logEndResponse()
             }
         }
         return volleyError
@@ -143,22 +141,20 @@ internal data class MindboxRequest(
     private fun isJsonObject(body: String) = body.startsWith("{") && body.endsWith("}")
 
     private fun logResponse(response: NetworkResponse?) {
-        if (isDebug) {
-            LoggingExceptionHandler.runCatching {
-                MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
+        LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
 
-                response?.allHeaders?.asIterable()?.forEach { header ->
-                    MindboxLoggerImpl.d(this, "${header.name}: ${header.value}")
-                }
-            }
+            response?.allHeaders?.joinToString (
+                separator = System.getProperty("line.separator") ?: "\n"
+            ) { header ->
+                "${header.name}: ${header.value}"
+            }?.let { MindboxLoggerImpl.d(this, it) }
         }
     }
 
     private fun logBodyResponse(json: String?) {
-        if (isDebug) {
-            LoggingExceptionHandler.runCatching {
-                MindboxLoggerImpl.d(this, "$json")
-            }
+        LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.d(this, "$json")
         }
     }
 
@@ -170,10 +166,8 @@ internal data class MindboxRequest(
     }
 
     private fun logEndResponse() {
-        if (isDebug) {
-            LoggingExceptionHandler.runCatching {
-                MindboxLoggerImpl.d(this, "<--- End of response")
-            }
+        LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.d(this, "<--- End of response")
         }
     }
 

@@ -130,6 +130,9 @@ object Mindbox {
         imageFailureHandler: MindboxImageFailureHandler = PushNotificationManager.messageHandler.imageFailureHandler,
         imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
     ) {
+        MindboxLoggerImpl.d(this, "setMessageHandling " +
+                "imageFailureHandler: ${imageFailureHandler.javaClass.simpleName}, " +
+                "imageLoader: ${imageLoader.javaClass.simpleName}")
         PushNotificationManager.messageHandler = MindboxMessageHandler(
             imageFailureHandler = imageFailureHandler,
             imageLoader = imageLoader,
@@ -148,7 +151,10 @@ object Mindbox {
         level = DeprecationLevel.WARNING,
         replaceWith = ReplaceWith("subscribePushToken"),
     )
-    fun subscribeFmsToken(subscription: (String?) -> Unit) = subscribePushToken(subscription)
+    fun subscribeFmsToken(subscription: (String?) -> Unit): String {
+        MindboxLoggerImpl.d(this, "subscribeFmsToken")
+        return subscribePushToken(subscription)
+    }
 
     /**
      * Subscribe to gets token from push service used by SDK
@@ -158,6 +164,7 @@ object Mindbox {
      * @see disposePushTokenSubscription
      */
     fun subscribePushToken(subscription: (String?) -> Unit): String {
+        MindboxLoggerImpl.d(this, "subscribePushToken")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
                 "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
                 "IN Mindbox.disposePushTokenSubscription(...))"
@@ -183,7 +190,10 @@ object Mindbox {
     )
     fun disposeFmsTokenSubscription(
         subscriptionId: String,
-    ) = disposePushTokenSubscription(subscriptionId)
+    ) {
+        MindboxLoggerImpl.d(this, "disposeFmsTokenSubscription")
+        disposePushTokenSubscription(subscriptionId)
+    }
 
     /**
      * Removes push token subscription if it is no longer necessary
@@ -191,6 +201,7 @@ object Mindbox {
      * @param subscriptionId - identifier of the subscription to remove
      */
     fun disposePushTokenSubscription(subscriptionId: String) {
+        MindboxLoggerImpl.d(this, "disposePushTokenSubscription")
         tokenCallbacks.remove(subscriptionId)
     }
 
@@ -202,12 +213,16 @@ object Mindbox {
         level = DeprecationLevel.WARNING,
         replaceWith = ReplaceWith("getPushTokenSaveDate"),
     )
-    fun getFmsTokenSaveDate() = getPushTokenSaveDate()
+    fun getFmsTokenSaveDate(): String {
+        MindboxLoggerImpl.d(this, "getFmsTokenSaveDate")
+        return getPushTokenSaveDate()
+    }
 
     /**
      * Returns date of push token saving
      */
     fun getPushTokenSaveDate(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
+        MindboxLoggerImpl.d(this, "getPushTokenSaveDate")
         MindboxPreferences.tokenSaveDate
     }
 
@@ -215,6 +230,7 @@ object Mindbox {
      * Returns SDK version
      */
     fun getSdkVersion(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
+        MindboxLoggerImpl.d(this, "getSdkVersion")
         BuildConfig.VERSION_NAME
     }
 
@@ -226,6 +242,7 @@ object Mindbox {
      * @see disposeDeviceUuidSubscription
      */
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
+        MindboxLoggerImpl.d(this, "subscribeDeviceUuid")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
                 "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
                 "IN Mindbox.disposeDeviceUuidSubscription(...))"
@@ -245,6 +262,7 @@ object Mindbox {
      * @param subscriptionId - identifier of the subscription to remove
      */
     fun disposeDeviceUuidSubscription(subscriptionId: String) {
+        MindboxLoggerImpl.d(this, "disposeDeviceUuidSubscription")
         deviceUuidCallbacks.remove(subscriptionId)
     }
 
@@ -256,6 +274,7 @@ object Mindbox {
      * @param token - token of push service
      */
     fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "updatePushToken. token: $token")
         if (token.trim().isNotEmpty()) {
             initComponents(context)
 
@@ -263,6 +282,9 @@ object Mindbox {
                 mindboxScope.launch {
                     updateAppInfo(context, token)
                 }
+            } else {
+                MindboxLoggerImpl.d(this, "updatePushToken. " +
+                        "MindboxPreferences.isFirstInitialize == true. Skipping update.")
             }
         }
     }
@@ -275,6 +297,7 @@ object Mindbox {
      * @param uniqKey - unique identifier of push notification
      */
     fun onPushReceived(context: Context, uniqKey: String) = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey")
         initComponents(context)
         MindboxEventManager.pushDelivered(context, uniqKey)
 
@@ -298,6 +321,7 @@ object Mindbox {
         uniqKey: String,
         buttonUniqKey: String?,
     ) = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onPushClicked. uniqKey: $uniqKey, buttonUniqKey: $buttonUniqKey")
         initComponents(context)
         MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
 
@@ -324,6 +348,7 @@ object Mindbox {
         context: Context,
         intent: Intent,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+        MindboxLoggerImpl.d(this, "onPushClicked with intent")
         PushNotificationManager.getUniqKeyFromPushIntent(intent)
             ?.let { uniqKey ->
                 val pushButtonUniqKey = PushNotificationManager
@@ -354,6 +379,9 @@ object Mindbox {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
+            MindboxLoggerImpl.d(this, "init. " +
+                    "configuration: $configuration, pushServices: " +
+                    pushServices.joinToString(", ") { it.javaClass.simpleName })
             initComponents(context, pushServices)
             initScope.launch {
                 val checkResult = checkConfig(configuration)
@@ -460,6 +488,7 @@ object Mindbox {
      **/
 
     fun registerInAppCallback(inAppCallback: InAppCallback) {
+        MindboxLoggerImpl.d(this, "registerInAppCallback")
         inAppMessageManager.registerInAppCallback(inAppCallback)
     }
 
@@ -478,7 +507,11 @@ object Mindbox {
     fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
-    ) = initComponents(context, pushServices)
+    ) {
+        MindboxLoggerImpl.d(this, "init. pushServices: " +
+                pushServices.joinToString(", ") { it.javaClass.simpleName })
+        initComponents(context, pushServices)
+    }
 
     private fun setPushServiceHandler(
         context: Context,
@@ -546,8 +579,11 @@ object Mindbox {
      * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
      */
     fun onNewIntent(intent: Intent?) = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onNewIntent. intent: $intent")
         if (Mindbox::lifecycleManager.isInitialized) {
             lifecycleManager.onNewIntent(intent)
+        } else {
+            MindboxLoggerImpl.d(this, "onNewIntent. LifecycleManager is not initialized. Skipping.")
         }
     }
 
@@ -558,6 +594,7 @@ object Mindbox {
      * is [Level.INFO]. [Level.NONE] turns off all logs.
      */
     fun setLogLevel(level: Level) {
+        MindboxLoggerImpl.d(this, "setLogLevel. level: $level")
         MindboxLoggerImpl.level = level
     }
 
@@ -574,7 +611,10 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T,
-    ) = asyncOperation(context, operationSystemName, operationBody)
+    ) {
+        MindboxLoggerImpl.d(this, "executeAsyncOperation (deprecated). operationSystemName: $operationSystemName")
+        asyncOperation(context, operationSystemName, operationBody)
+    }
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -588,7 +628,10 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBody: T,
-    ) = asyncOperation(context, operationSystemName, operationBody)
+    ) {
+        MindboxLoggerImpl.d(this, "executeAsyncOperation. operationSystemName: $operationSystemName")
+        asyncOperation(context, operationSystemName, operationBody)
+    }
 
     /**
      * Creates and deliveries event with specified name and body. Recommended call this method from
@@ -602,7 +645,11 @@ object Mindbox {
         context: Context,
         operationSystemName: String,
         operationBodyJson: String,
-    ) = asyncOperation(context, operationSystemName, operationBodyJson)
+    ) {
+        MindboxLoggerImpl.d(this, "executeAsyncOperation (with operationBodyJson). " +
+                "operationSystemName: $operationSystemName")
+        asyncOperation(context, operationSystemName, operationBodyJson)
+    }
 
     /**
      * Creates and deliveries event synchronously with specified name and body.
@@ -646,6 +693,8 @@ object Mindbox {
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit,
     ) {
+        MindboxLoggerImpl.d(this, "executeSyncOperation. " +
+                "operationSystemName: $operationSystemName, classOfV: ${classOfV.simpleName}")
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
                 MindboxEventManager.syncOperation(
@@ -676,6 +725,8 @@ object Mindbox {
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
     ) {
+        MindboxLoggerImpl.d(this, "executeSyncOperation (with operationBodyJson). " +
+                "operationSystemName: $operationSystemName, operationBodyJson: $operationBodyJson")
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             mindboxScope.launch {
                 MindboxEventManager.syncOperation(
@@ -717,9 +768,25 @@ object Mindbox {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
-        val convertedMessage = message?.let {
-            pushServiceHandler?.convertToRemoteMessage(message)
-        } ?: return@runCatching false
+        MindboxLoggerImpl.d(this, "handleRemoteMessage. channelId: $channelId, " +
+                "channelName: $channelName, channelDescription: $channelDescription, " +
+                "defaultActivity: ${defaultActivity.simpleName}, " +
+                "activities: ${
+                    activities?.map { "${it.key}: ${it.value.simpleName}" }?.joinToString(", ")
+                }")
+        if (message == null) {
+            MindboxLoggerImpl.d(this, "handleRemoteMessage. Message is null.")
+            return@runCatching false
+        }
+        if (pushServiceHandler == null) {
+            MindboxLoggerImpl.d(this, "handleRemoteMessage. PushServiceHandler is null.")
+        }
+        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message)
+        if (convertedMessage == null) {
+            return@runCatching false
+        } else {
+            MindboxLoggerImpl.d(this, "handleRemoteMessage. ConvertedMessage: $convertedMessage")
+        }
 
         runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
@@ -743,7 +810,10 @@ object Mindbox {
      */
     fun getUrlFromPushIntent(
         intent: Intent?,
-    ): String? = intent?.let(PushNotificationManager::getUrlFromPushIntent)
+    ): String? {
+        MindboxLoggerImpl.d(this, "getUrlFromPushIntent. intent: $intent")
+        return intent?.let(PushNotificationManager::getUrlFromPushIntent)
+    }
 
     /**
      * Retrieves payload from intent generated by notification manager
@@ -753,7 +823,10 @@ object Mindbox {
      */
     fun getPayloadFromPushIntent(
         intent: Intent?,
-    ) = intent?.let(PushNotificationManager::getPayloadFromPushIntent)
+    ): String? {
+        MindboxLoggerImpl.d(this, "getPayloadFromPushIntent. intent: $intent")
+        return intent?.let(PushNotificationManager::getPayloadFromPushIntent)
+    }
 
     private fun deliverToken(token: String?) {
         Executors.newSingleThreadScheduledExecutor().schedule({
@@ -765,6 +838,8 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
+        MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
+                pushServices?.joinToString(", ") { it.javaClass.simpleName })
         MindboxKoin.init(context.applicationContext)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
@@ -788,6 +863,7 @@ object Mindbox {
         operationSystemName: String,
         operationBodyJson: String,
     ) {
+        MindboxLoggerImpl.d(this, "asyncOperation. operationBodyJson: $operationBodyJson")
         if (validateOperationAndInitializeComponents(context, operationSystemName)) {
             MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
         }
@@ -804,6 +880,7 @@ object Mindbox {
                 this,
                 "Operation name is incorrect. It should contain only latin letters, number, '-' or '.' and length from 1 to 250.",
             )
+            return@runCatching false
         }
         true
     }

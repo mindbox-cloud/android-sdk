@@ -126,6 +126,8 @@ internal object MindboxEventManager {
                 val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
                 if (!isInitialized || configuration == null) {
                     MindboxLoggerImpl.e(this, "Configuration was not initialized")
+                    MindboxLoggerImpl.d(this, "isFirstInitialize: $MindboxPreferences.isFirstInitialize, " +
+                            "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
                 } else {
                     WorkerDelegate().sendEvent(
                         context = context,
@@ -153,6 +155,7 @@ internal object MindboxEventManager {
         val configuration = checkConfiguration(onError) ?: return@runCatching
 
         val json = gson.toJson(body)
+        MindboxLoggerImpl.d(this, "syncOperation. json: $json")
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
