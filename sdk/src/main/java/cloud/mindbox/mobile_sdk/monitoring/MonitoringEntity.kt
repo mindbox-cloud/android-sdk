@@ -12,7 +12,7 @@ data class MonitoringEntity(
     @ColumnInfo(name = COLUMN_TIMESTAMP)
     val timestamp: Long,
     @ColumnInfo(name = COLUMN_LOG)
-    val log: String,
+    val log: String
 ) {
 
     companion object {

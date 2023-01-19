@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
 import android.content.Context
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent

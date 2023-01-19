@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.monitoring.MonitoringManager
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
+import org.koin.core.component.inject
 import java.time.Instant
 
 interface MindboxLogger {
@@ -23,20 +24,20 @@ interface MindboxLogger {
 
 }
 
-internal object MindboxLoggerImpl : MindboxLogger {
+internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinComponent {
 
     private const val TAG = "Mindbox"
 
     private val DEFAULT_LOG_LEVEL = Level.ERROR
 
-    private val monitoringManager: MonitoringManager by lazy {
-        MindboxKoin.koin.get(MonitoringManager::class)
-    }
+    private val monitoringManager: MonitoringManager by inject()
 
     private val monitoringScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
             Log.e(TAG, "Mindbox monitoring caught unhandled error", throwable)
         })
+
+
 
     init {
 
@@ -46,6 +47,10 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     @Volatile
     internal var level: Level = DEFAULT_LOG_LEVEL
+
+    /**
+     * All the methods below should be used only after Mindbox.initComponents method was called
+     */
 
     override fun i(parent: Any, message: String) {
         if (level.value <= Level.INFO.value) {
@@ -75,7 +80,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
         if (level.value <= Level.ERROR.value) {
             val logMessage = buildMessage(parent, message)
             Log.e(TAG, logMessage, exception)
-            saveLog(logMessage)
+            saveLog(logMessage+ exception.stackTraceToString())
         }
     }
 
@@ -91,7 +96,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
         if (level.value <= Level.WARN.value) {
             val logMessage = buildMessage(parent, message)
             Log.w(TAG, logMessage, exception)
-            saveLog(logMessage)
+            saveLog(logMessage + exception.stackTraceToString())
         }
     }
 
