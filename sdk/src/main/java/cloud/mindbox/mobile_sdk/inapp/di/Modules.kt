@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
+import androidx.room.Room
 import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
@@ -9,12 +10,26 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringDatabase
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringManager
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringMapper
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
+internal const val monitoringDatabaseName = "MonitoringDatabase"
 
+internal val monitoringModule = module {
+    single { MonitoringMapper(gson = get()) }
+    single { MonitoringManager(monitoringDao = get(), monitoringMapper = get()) }
+    factory {
+        Room.databaseBuilder(androidContext(),
+            MonitoringDatabase::class.java,
+            monitoringDatabaseName).build()
+    }
+    single { get<MonitoringDatabase>().monitoringDao() }
+}
 internal val appModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
     factory<InAppMessageManager> {
@@ -74,7 +89,6 @@ internal val dataModule = module {
             ).registerSubtype(
                 TreeTargetingDto.RegionNodeDto::class.java,
                 InAppRepositoryImpl.REGION_JSON_NAME)).create()
-
     }
 }
 

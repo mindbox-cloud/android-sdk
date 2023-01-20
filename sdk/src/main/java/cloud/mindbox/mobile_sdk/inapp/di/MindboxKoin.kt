@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.di
 
 import android.content.Context
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
@@ -16,7 +17,7 @@ internal object MindboxKoin {
         if (isInitialized()) return
         koin = koinApplication {
             androidContext(appContext)
-            modules(appModule, dataModule)
+            modules(appModule, dataModule, monitoringModule)
         }.koin
     }
 
