@@ -60,6 +60,19 @@ class MindboxConfiguration private constructor(
         uuidDebugEnabled = uuidDebugEnabled,
     )
 
+    override fun toString(): String {
+        return "MindboxConfiguration(previousInstallationId = $previousInstallationId, " +
+                "previousDeviceUUID = $previousDeviceUUID, " +
+                "endpointId = $endpointId, " +
+                "domain = $domain, " +
+                "packageName = $packageName, " +
+                "versionName = $versionName, " +
+                "versionCode = $versionCode, " +
+                "subscribeCustomerIfCreated = $subscribeCustomerIfCreated, " +
+                "shouldCreateCustomer = $shouldCreateCustomer, " +
+                "uuidDebugEnabled = $uuidDebugEnabled)"
+    }
+
     /**
      * A Builder for MindboxConfiguration
      */

@@ -53,6 +53,7 @@ internal class LifecycleManager(
     }
 
     override fun onActivityStarted(activity: Activity) = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onActivityStarted. activity: ${activity.javaClass.simpleName}")
         onActivityStarted.invoke(activity)
         val areActivitiesEqual = currentActivityName == activity.javaClass.name
         val intent = activity.intent
@@ -72,18 +73,21 @@ internal class LifecycleManager(
     }
 
     override fun onActivityResumed(activity: Activity) {
+        MindboxLoggerImpl.d(this, "onActivityResumed. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = true
         onActivityResumed.invoke(activity)
         isCurrentActivityResumed = true
     }
 
     override fun onActivityPaused(activity: Activity) {
+        MindboxLoggerImpl.d(this, "onActivityPaused. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = false
         onActivityPaused.invoke(activity)
         isCurrentActivityResumed = false
     }
 
     override fun onActivityStopped(activity: Activity) {
+        MindboxLoggerImpl.d(this, "onActivityStopped. activity: ${activity.javaClass.simpleName}")
         if (currentIntent == null || currentActivityName == null) {
             updateActivityParameters(activity)
         }
@@ -120,12 +124,14 @@ internal class LifecycleManager(
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
     private fun onAppMovedToBackground() = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onAppMovedToBackground")
         isAppInBackground = true
         cancelKeepAliveTimer()
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     private fun onAppMovedToForeground() = LoggingExceptionHandler.runCatching {
+        MindboxLoggerImpl.d(this, "onAppMovedToForeground")
         if (!skipSendingTrackVisit) {
             currentIntent?.let(::sendTrackVisit)
         } else {

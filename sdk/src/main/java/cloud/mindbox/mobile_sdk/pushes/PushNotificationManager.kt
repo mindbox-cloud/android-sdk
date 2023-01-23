@@ -88,6 +88,7 @@ internal object PushNotificationManager {
                 isMessageDisplayed = false,
             ),
         )
+        MindboxLoggerImpl.d(this, "handleRemoteMessage success")
         true
     }
 

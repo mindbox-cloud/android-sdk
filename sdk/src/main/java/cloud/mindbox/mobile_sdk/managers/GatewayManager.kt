@@ -134,7 +134,6 @@ internal object GatewayManager {
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
-            val isDebug = BuildConfiguration.isDebug(context)
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -147,7 +146,6 @@ internal object GatewayManager {
                 errorsListener = { volleyError ->
                     handleError(volleyError, onSuccess, onError)
                 },
-                isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -295,8 +293,7 @@ internal object GatewayManager {
                     },
                     { error ->
                         continuation.resumeWithException(error)
-                    },
-                    true))
+                    }))
         }
     }
 
@@ -319,7 +316,7 @@ internal object GatewayManager {
                     },
                     { error ->
                         continuation.resumeWithException(error)
-                    }, true))
+                    }))
         }
     }
 
