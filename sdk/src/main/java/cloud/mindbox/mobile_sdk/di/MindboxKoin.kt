@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.di
+package cloud.mindbox.mobile_sdk.di
 
 import android.content.Context
 import kotlinx.coroutines.runBlocking
@@ -11,7 +11,7 @@ internal object MindboxKoin {
     lateinit var koin: Koin
         private set
 
-    fun isInitialized() = ::koin.isInitialized
+    fun isInitialized() = MindboxKoin::koin.isInitialized
 
     fun init(appContext: Context) {
         if (isInitialized()) return

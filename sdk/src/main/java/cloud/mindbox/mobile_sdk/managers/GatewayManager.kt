@@ -1,10 +1,12 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
+import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
@@ -14,12 +16,14 @@ import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
+import com.android.volley.Request.Method
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -168,8 +172,8 @@ internal object GatewayManager {
         is EventType.TrackVisit,
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
-        -> Request.Method.POST
-        is EventType.PushDelivered -> Request.Method.GET
+        -> Method.POST
+        is EventType.PushDelivered -> Method.GET
     }
 
     private fun getTimeOffset(
@@ -285,18 +289,26 @@ internal object GatewayManager {
     suspend fun checkGeoTargeting(context: Context, configuration: Configuration): GeoTargetingDto {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(MindboxRequest(Request.Method.GET,
-                    "https://${configuration.domain}/geo",
-                    configuration,
-                    null,
-                    { jsonObject ->
-                        continuation.resume(gson.fromJson(jsonObject.toString(),
-                            GeoTargetingDto::class.java))
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    },
-                    true))
+                ?.addToRequestQueue(
+                    MindboxRequest(
+                        Method.GET,
+                        "https://${configuration.domain}/geo",
+                        configuration,
+                        null,
+                        { jsonObject ->
+                            continuation.resume(
+                                gson.fromJson(
+                                    jsonObject.toString(),
+                                    GeoTargetingDto::class.java
+                                )
+                            )
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        },
+                        true
+                    )
+                )
         }
     }
 
@@ -307,19 +319,60 @@ internal object GatewayManager {
     ): SegmentationCheckResponse {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(MindboxRequest(Request.Method.POST,
-                    getSegmentationUrl(configuration),
-                    configuration,
-                    convertBodyToJson(
-                        gson.toJson(segmentationCheckRequest,
-                            SegmentationCheckRequest::class.java))!!,
-                    { response ->
-                        continuation.resume(gson.fromJson(response.toString(),
-                            SegmentationCheckResponse::class.java))
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    }, true))
+                ?.addToRequestQueue(
+                    MindboxRequest(
+                        Method.POST,
+                        getSegmentationUrl(configuration),
+                        configuration,
+                        convertBodyToJson(
+                            gson.toJson(
+                                segmentationCheckRequest,
+                                SegmentationCheckRequest::class.java
+                            )
+                        )!!,
+                        { response ->
+                            continuation.resume(
+                                gson.fromJson(
+                                    response.toString(),
+                                    SegmentationCheckResponse::class.java
+                                )
+                            )
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        }, true
+                    )
+                )
+        }
+    }
+
+    fun sendLogEvent(logs: LogResponseDto, context: Context, configuration: Configuration) {
+        try {
+            val url =
+                "https://api.mindbox.ru/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}}&transactionId=${
+                    UUID.randomUUID()
+                }"
+            val jsonRequest: JSONObject? = convertBodyToJson(gson.toJson(logs))
+            val isDebug = BuildConfiguration.isDebug(context)
+            val request = MindboxRequest(
+                methodType = Method.POST,
+                fullUrl = url,
+                configuration = configuration,
+                jsonRequest = jsonRequest,
+                listener = {
+                    Log.d("Success", "Sending logs success")
+                },
+                errorsListener = { volleyError ->
+                    Log.e("Error", "Sending logs was failure with exception", volleyError)
+                },
+                isDebug = isDebug,
+            ).apply {
+                setShouldCache(false)
+                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+            }
+            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
+        } catch (e: Exception) {
+            Log.e("Error", "Sending event was failure with exception", e)
         }
     }
 
@@ -327,17 +380,19 @@ internal object GatewayManager {
     suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(StringRequest(
-                    Request.Method.GET,
-                    getConfigUrl(configuration),
-                    { response ->
+                ?.addToRequestQueue(
+                    StringRequest(
+                        Method.GET,
+                        getConfigUrl(configuration),
+                        { response ->
 
-                        continuation.resume(response)
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    },
-                ))
+                            continuation.resume(response)
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        },
+                    )
+                )
         }
 
     }

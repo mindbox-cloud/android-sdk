@@ -13,8 +13,10 @@ import kotlin.coroutines.suspendCoroutine
 
 internal class InAppInteractorImpl(
     private val inAppRepositoryImpl: InAppRepository,
-    private val inAppGeoRepositoryImpl: InAppGeoRepository,
+    private val inAppGeoRepositoryImpl: InAppGeoRepository
 ) : InAppInteractor {
+
+
 
     override fun processEventAndConfig(): Flow<InAppType> {
         return inAppRepositoryImpl.listenInAppConfig().filterNotNull()
@@ -27,13 +29,17 @@ internal class InAppInteractorImpl(
                 fetchGeoTargetingInfo(config)
                 val inApp = chooseInAppToShow(config)
                 when (val type = inApp?.form?.variants?.firstOrNull()) {
-                    is Payload.SimpleImage -> InAppType.SimpleImage(inAppId = inApp.id,
+                    is Payload.SimpleImage -> InAppType.SimpleImage(
+                        inAppId = inApp.id,
                         imageUrl = type.imageUrl,
                         redirectUrl = type.redirectUrl,
-                        intentData = type.intentPayload)
+                        intentData = type.intentPayload
+                    )
                     else -> {
-                        MindboxLoggerImpl.d(this,
-                            "No innaps to show found")
+                        MindboxLoggerImpl.d(
+                            this,
+                            "No innaps to show found"
+                        )
                         null
                     }
                 }
@@ -100,24 +106,33 @@ internal class InAppInteractorImpl(
         config: InAppConfig,
     ): InApp? {
         val filteredConfig = prefilterConfig(config)
-        MindboxLoggerImpl.d(this,
-            "Filtered config has ${filteredConfig.inApps.size} inapps")
+        MindboxLoggerImpl.d(
+            this,
+            "Filtered config has ${filteredConfig.inApps.size} inapps"
+        )
         val configWithInAppsBeforeFirstPendingPreCheck =
             getConfigWithInAppsBeforeFirstPendingPreCheck(filteredConfig)
         val configWithInAppsStartingWithFirstPendingPreCheck =
-            filteredConfig.copy(inApps = filteredConfig.inApps.subtract(
-                configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet())
-                .toList())
+            filteredConfig.copy(
+                inApps = filteredConfig.inApps.subtract(
+                    configWithInAppsBeforeFirstPendingPreCheck.inApps.toSet()
+                )
+                    .toList()
+            )
         return if (configWithInAppsBeforeFirstPendingPreCheck.inApps.isNotEmpty() && findInAppToShowWithoutCheckingSegmentations(
-                configWithInAppsBeforeFirstPendingPreCheck) != null
+                configWithInAppsBeforeFirstPendingPreCheck
+            ) != null
         ) {
             findInAppToShowWithoutCheckingSegmentations(configWithInAppsBeforeFirstPendingPreCheck)
 
         } else if (configWithInAppsStartingWithFirstPendingPreCheck.inApps.isNotEmpty()) {
             runCatching {
-                checkSegmentation(filteredConfig,
+                checkSegmentation(
+                    filteredConfig,
                     inAppRepositoryImpl.fetchSegmentations(
-                        configWithInAppsStartingWithFirstPendingPreCheck))
+                        configWithInAppsStartingWithFirstPendingPreCheck
+                    )
+                )
             }.getOrElse { throwable ->
                 if (throwable is VolleyError) {
                     MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
@@ -136,8 +151,10 @@ internal class InAppInteractorImpl(
     }
 
     private fun prefilterConfig(config: InAppConfig): InAppConfig {
-        MindboxLoggerImpl.d(this,
-            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}")
+        MindboxLoggerImpl.d(
+            this,
+            "Already shown innaps: ${inAppRepositoryImpl.getShownInApps()}"
+        )
         return config.copy(inApps = config.inApps
             .filter { inApp -> validateInAppNotShown(inApp) })
     }
@@ -146,8 +163,10 @@ internal class InAppInteractorImpl(
         val calcultation =
             config.inApps.indexOfFirst { inApp -> inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING }
         return if (calcultation == -1) config else config.copy(
-            inApps = config.inApps.subList(0,
-                calcultation)
+            inApps = config.inApps.subList(
+                0,
+                calcultation
+            )
         )
     }
 

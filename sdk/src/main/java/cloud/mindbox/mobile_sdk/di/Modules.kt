@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.di
+package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
 import cloud.mindbox.mobile_sdk.inapp.data.InAppGeoRepositoryImpl
@@ -10,9 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringDatabase
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringManager
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringMapper
+import cloud.mindbox.mobile_sdk.monitoring.*
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
 import org.koin.android.ext.koin.androidContext
@@ -21,37 +19,54 @@ import org.koin.dsl.module
 internal const val monitoringDatabaseName = "MonitoringDatabase"
 
 internal val monitoringModule = module {
-    single { MonitoringMapper(gson = get()) }
-    single { MonitoringManager(monitoringDao = get(), monitoringMapper = get()) }
+    single { MonitoringMapper() }
+    single<MonitoringRepository> {
+        MonitoringRepositoryImpl(
+            monitoringDao = get(),
+            monitoringMapper = get(),
+            context = get()
+        )
+    }
+    single<MonitoringInteractor> { MonitoringInteractorImpl(get()) }
     factory {
-        Room.databaseBuilder(androidContext(),
+        Room.databaseBuilder(
+            androidContext(),
             MonitoringDatabase::class.java,
-            monitoringDatabaseName).build()
+            monitoringDatabaseName
+        ).build()
     }
     single { get<MonitoringDatabase>().monitoringDao() }
 }
 internal val appModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
     factory<InAppMessageManager> {
-        InAppMessageManagerImpl(inAppMessageViewDisplayer = get(),
-            inAppInteractorImpl = get())
+        InAppMessageManagerImpl(
+            inAppMessageViewDisplayer = get(),
+            inAppInteractorImpl = get()
+        )
     }
 }
 internal val dataModule = module {
     factory<InAppRepository> {
-        InAppRepositoryImpl(inAppMapper = get(),
+        InAppRepositoryImpl(
+            inAppMapper = get(),
             gson = get(),
             context = androidContext(),
-            inAppValidator = get())
+            inAppValidator = get()
+        )
     }
     factory<InAppGeoRepository> {
-        InAppGeoRepositoryImpl(context = androidContext(),
+        InAppGeoRepositoryImpl(
+            context = androidContext(),
             inAppMessageMapper = get(),
-            gson = get())
+            gson = get()
+        )
     }
     factory<InAppInteractor> {
-        InAppInteractorImpl(inAppRepositoryImpl = get(),
-            inAppGeoRepositoryImpl = get())
+        InAppInteractorImpl(
+            inAppRepositoryImpl = get(),
+            inAppGeoRepositoryImpl = get()
+        )
     }
     single<InAppValidator> { InAppValidatorImpl() }
     single { InAppMessageMapper() }
@@ -68,7 +83,8 @@ internal val dataModule = module {
             RuntimeTypeAdapterFactory.of(
                 TreeTargetingDto::class.java,
                 InAppRepositoryImpl.TYPE_JSON_NAME,
-                true).registerSubtype(
+                true
+            ).registerSubtype(
                 TreeTargetingDto.TrueNodeDto::class.java,
                 InAppRepositoryImpl.TRUE_JSON_NAME
             ).registerSubtype(
@@ -88,7 +104,9 @@ internal val dataModule = module {
                 InAppRepositoryImpl.CITY_JSON_NAME
             ).registerSubtype(
                 TreeTargetingDto.RegionNodeDto::class.java,
-                InAppRepositoryImpl.REGION_JSON_NAME)).create()
+                InAppRepositoryImpl.REGION_JSON_NAME
+            )
+        ).create()
     }
 }
 

@@ -1,14 +1,18 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-import com.google.gson.Gson
+import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 
-class MonitoringMapper(private val gson: Gson) {
+internal class MonitoringMapper {
 
     fun mapLogInfoToMonitoringEntity(timeStamp: Long, message: String): MonitoringEntity {
         return MonitoringEntity(0, timeStamp, message)
     }
 
-    fun mapMonitoringEntityToLogInfo(monitoringEntity: MonitoringEntity): String {
-        return gson.toJson(monitoringEntity)
+    fun mapMonitoringEntityToLogInfo(monitoringStatus: String, requestId: String, monitoringEntityList: List<MonitoringEntity>): LogResponseDto {
+        return monitoringEntityList.fold(
+            initial = LogResponseDto(
+                status = monitoringStatus, requestId = requestId, content = ""
+            )
+        ) { sum, term -> sum.copy(content = term.toString()) }
     }
 }

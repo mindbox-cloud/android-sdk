@@ -110,7 +110,8 @@ internal class InAppRepositoryImpl(
                     inAppValidator.validateInApp(inAppDto)
                 }
             val filteredConfig = InAppConfigResponse(
-                inApps = filteredInApps
+                inApps = filteredInApps,
+                monitoring = configBlank?.monitoring
             )
 
             return@map inAppMapper.mapToInAppConfig(filteredConfig)
