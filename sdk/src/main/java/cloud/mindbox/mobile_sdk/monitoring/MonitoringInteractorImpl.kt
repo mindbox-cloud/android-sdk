@@ -56,7 +56,7 @@ internal class MonitoringInteractorImpl(
                 toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() }) + 1
             )
             while (logsInterval.joinToString().length * 2 > OPERATION_LIMIT) {
-                 logsInterval = logsInterval.drop(1)
+                logsInterval = logsInterval.drop(1)
             }
             logsInterval
         }
@@ -72,10 +72,10 @@ internal class MonitoringInteractorImpl(
         if (logs.isEmpty()) return STATUS_NO_LOGS
         return when {
             (logs.last().time.convertToLongDateMilliSeconds() < logRequest.from.convertToLongDateMilliSeconds()) -> {
-                STATUS_NO_NEW_LOGS + logRequest.to
+                STATUS_NO_NEW_LOGS + logs.last().time
             }
             (logs.first().time.convertToLongDateMilliSeconds() > logRequest.to.convertToLongDateMilliSeconds()) -> {
-                STATUS_NO_OLD_LOGS + logRequest.from
+                STATUS_NO_OLD_LOGS +  logs.first().time
             }
             if (logs.size == 1) logs.joinToString().length * 2 > OPERATION_LIMIT else logs.subList(
                 fromIndex = logs.indexOf(logs.find { logResponse -> logResponse.time.convertToLongDateMilliSeconds() > logRequest.from.convertToLongDateMilliSeconds() }),

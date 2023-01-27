@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
 internal class MonitoringMapper {
 
     fun mapLogInfoToMonitoringEntity(timeStamp: Long, message: String): MonitoringEntity {
-        return MonitoringEntity(0, timeStamp, message)
+        return MonitoringEntity(id = 0, timestamp = timeStamp, log = message)
     }
 
     fun mapMonitoringEntityListToLogResponseList(logs: List<MonitoringEntity>): List<LogResponse> {
@@ -17,10 +17,6 @@ internal class MonitoringMapper {
                 log = monitoringEntity.log
             )
         }
-    }
-
-    fun mapLogRequestDtoBlankToLogRequestDto(logRequest: LogRequestDtoBlank) {
-
     }
 
     fun mapMonitoringEntityToLogInfo(

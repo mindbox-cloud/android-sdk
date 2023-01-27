@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -25,7 +24,7 @@ internal fun String.convertToLongDateMilliSeconds(): Long = runCatching {
 }
 
 internal fun Long.convertToStringDate(): String = runCatching {
-    return ZonedDateTime.ofInstant(Instant.ofEpochSecond(this / 1000), ZoneId.systemDefault())
+    return Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 }.getOrElse {
     Log.e("Mindbox", "Error converting date", it)

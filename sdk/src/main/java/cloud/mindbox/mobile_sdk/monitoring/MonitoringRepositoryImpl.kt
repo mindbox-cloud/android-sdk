@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.convertToStringDate
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -37,7 +38,12 @@ internal class MonitoringRepositoryImpl(
     }
 
     override suspend fun saveLog(timestamp: Long, message: String) {
-        monitoringDao.insertLog(monitoringMapper.mapLogInfoToMonitoringEntity(timestamp, message))
+        monitoringDao.insertLog(
+            monitoringMapper.mapLogInfoToMonitoringEntity(
+                timestamp,
+                timestamp.convertToStringDate() + " " + message
+            )
+        )
     }
 
     override suspend fun getLogs(): List<LogResponse> {
