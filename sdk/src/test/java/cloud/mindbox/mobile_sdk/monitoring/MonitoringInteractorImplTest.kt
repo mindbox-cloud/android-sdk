@@ -99,7 +99,7 @@ class MonitoringInteractorImplTest {
         runTest {
             val startDate = "2023-01-15T00:00:00"
             val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_NO_OLD_LOGS + startDate
+            val validRez = STATUS_NO_OLD_LOGS + "2023-02-14T00:00:00"
             coEvery {
                 monitoringRepository.getLogs()
             } returns listOf(LogResponseStub.get().copy(time = "2023-02-14T00:00:00", log = "abc"))
@@ -123,7 +123,7 @@ class MonitoringInteractorImplTest {
         runTest {
             val startDate = "2023-01-15T00:00:00"
             val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_NO_NEW_LOGS + endDate
+            val validRez = STATUS_NO_NEW_LOGS + "2023-01-14T00:00:00"
             coEvery {
                 monitoringRepository.getLogs()
             } returns listOf(LogResponseStub.get().copy(time = "2023-01-14T00:00:00", log = "abc"))
