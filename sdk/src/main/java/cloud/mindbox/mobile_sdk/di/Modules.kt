@@ -24,10 +24,12 @@ internal val monitoringModule = module {
         MonitoringRepositoryImpl(
             monitoringDao = get(),
             monitoringMapper = get(),
-            context = get()
+            context = get(),
+            gson = get()
         )
     }
-    single<MonitoringInteractor> { MonitoringInteractorImpl(get()) }
+    single { MonitoringValidator() }
+    single<MonitoringInteractor> { MonitoringInteractorImpl(get(), get()) }
     factory {
         Room.databaseBuilder(
             androidContext(),
@@ -42,7 +44,7 @@ internal val appModule = module {
     factory<InAppMessageManager> {
         InAppMessageManagerImpl(
             inAppMessageViewDisplayer = get(),
-            inAppInteractorImpl = get()
+            inAppInteractorImpl = get(), monitoringInteractor = get()
         )
     }
 }
@@ -52,7 +54,8 @@ internal val dataModule = module {
             inAppMapper = get(),
             gson = get(),
             context = androidContext(),
-            inAppValidator = get()
+            inAppValidator = get(),
+            monitoringValidator = get()
         )
     }
     factory<InAppGeoRepository> {

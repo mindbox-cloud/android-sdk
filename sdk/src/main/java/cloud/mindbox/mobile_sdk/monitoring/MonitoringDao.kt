@@ -11,6 +11,6 @@ internal interface MonitoringDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(entity: MonitoringEntity)
 
-    @Query("SELECT * FROM monitoring WHERE timestamp BETWEEN :startInstant and :endInstant ORDER BY timestamp ASC")
-    suspend fun getLogs(startInstant: Long, endInstant: Long): List<MonitoringEntity>
+    @Query("SELECT * FROM monitoring ORDER BY timestamp ASC")
+    suspend fun getLogs(): List<MonitoringEntity>
 }

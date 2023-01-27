@@ -15,7 +15,7 @@ import cloud.mindbox.mobile_sdk.toUrlQueryString
 import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-import com.android.volley.Request
+import com.android.volley.DefaultRetryPolicy.DEFAULT_TIMEOUT_MS
 import com.android.volley.Request.Method
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
@@ -349,7 +349,7 @@ internal object GatewayManager {
     fun sendLogEvent(logs: LogResponseDto, context: Context, configuration: Configuration) {
         try {
             val url =
-                "https://api.mindbox.ru/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}}&transactionId=${
+                "https://api-staging.mindbox.ru/v3/operations/async?endpointId=Test-staging.Test01&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
                     UUID.randomUUID()
                 }"
             val jsonRequest: JSONObject? = convertBodyToJson(gson.toJson(logs))
@@ -368,9 +368,10 @@ internal object GatewayManager {
                 isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
-                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                retryPolicy =
+                    DefaultRetryPolicy(DEFAULT_TIMEOUT_MS, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
-            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
+            MindboxServiceGenerator.getInstance(context)?.addToMonitoringRequestQueue(request)
         } catch (e: Exception) {
             Log.e("Error", "Sending event was failure with exception", e)
         }

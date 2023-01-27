@@ -17,7 +17,7 @@ internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractorImpl: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val monitoringInteractor: MonitoringInteractor
+    private val monitoringInteractor: MonitoringInteractor,
 ) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
@@ -46,7 +46,6 @@ internal class InAppMessageManagerImpl(
                                 })
                         }
                     }
-                    monitoringInteractor.processLogs()
                 }
         }
     }
@@ -71,9 +70,11 @@ internal class InAppMessageManagerImpl(
                     }
                 }
             } else {
-                MindboxLoggerImpl.e(this@InAppMessageManagerImpl::class,
+                MindboxLoggerImpl.e(
+                    this@InAppMessageManagerImpl::class,
                     "Failed to get config",
-                    error)
+                    error
+                )
             }
         }) {
             inAppInteractorImpl.fetchInAppConfig()
@@ -83,7 +84,13 @@ internal class InAppMessageManagerImpl(
     override fun initInAppMessages() {
         listenEventAndInApp()
         requestConfig()
+        initMonitoring()
     }
+
+    private fun initMonitoring() {
+        monitoringInteractor.processLogs()
+    }
+
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         LoggingExceptionHandler.runCatching {

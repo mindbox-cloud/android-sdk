@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
+import cloud.mindbox.mobile_sdk.convertToStringDate
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
+import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
 
 internal class MonitoringMapper {
 
@@ -8,11 +10,28 @@ internal class MonitoringMapper {
         return MonitoringEntity(0, timeStamp, message)
     }
 
-    fun mapMonitoringEntityToLogInfo(monitoringStatus: String, requestId: String, monitoringEntityList: List<MonitoringEntity>): LogResponseDto {
+    fun mapMonitoringEntityListToLogResponseList(logs: List<MonitoringEntity>): List<LogResponse> {
+        return logs.map { monitoringEntity ->
+            LogResponse(
+                time = monitoringEntity.timestamp.convertToStringDate(),
+                log = monitoringEntity.log
+            )
+        }
+    }
+
+    fun mapLogRequestDtoBlankToLogRequestDto(logRequest: LogRequestDtoBlank) {
+
+    }
+
+    fun mapMonitoringEntityToLogInfo(
+        monitoringStatus: String,
+        requestId: String,
+        monitoringEntityList: List<LogResponse>,
+    ): LogResponseDto {
         return monitoringEntityList.fold(
             initial = LogResponseDto(
-                status = monitoringStatus, requestId = requestId, content = ""
+                status = monitoringStatus, requestId = requestId, content = mutableListOf()
             )
-        ) { sum, term -> sum.copy(content = term.toString()) }
+        ) { sum, term -> sum.content.add(term.log); sum }
     }
 }

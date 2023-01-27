@@ -4,7 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(entities = [MonitoringEntity::class], version = 1)
-internal abstract class MonitoringDatabase() : RoomDatabase() {
+internal abstract class MonitoringDatabase : RoomDatabase() {
 
     abstract fun monitoringDao(): MonitoringDao
 

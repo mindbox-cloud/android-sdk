@@ -36,6 +36,17 @@ internal class InAppMessageMapper {
         }
     }
 
+    fun mapToLogRequestDto(
+        logRequestDtoBlank: LogRequestDtoBlank,
+    ): LogRequestDto {
+        return LogRequestDto(
+            requestId = logRequestDtoBlank.requestId!!,
+            deviceId = logRequestDtoBlank.deviceId!!,
+            from = logRequestDtoBlank.from!!,
+            to = logRequestDtoBlank.to!!
+        )
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig? {

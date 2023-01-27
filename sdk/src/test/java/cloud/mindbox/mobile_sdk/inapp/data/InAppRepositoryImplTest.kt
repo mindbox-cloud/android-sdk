@@ -2,18 +2,15 @@ package cloud.mindbox.mobile_sdk.inapp.data
 
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.monitoringModule
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.verify
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -33,13 +30,13 @@ internal class InAppRepositoryImplTest : KoinTest {
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
+        modules(dataModule, monitoringModule)
     }
 
     private val gson: Gson by inject()
     private val inAppMessageMapper: InAppMessageMapper by inject()
     private val inAppValidatorImpl: InAppValidator by inject()
-
+    private val monitoringValidator: MonitoringValidator by inject()
     private lateinit var inAppRepository: InAppRepositoryImpl
 
     @Before
@@ -48,15 +45,18 @@ internal class InAppRepositoryImplTest : KoinTest {
             inAppMapper = inAppMessageMapper,
             gson = gson,
             context = mockk(),
-            inAppValidator = inAppValidatorImpl
+            inAppValidator = inAppValidatorImpl,
+            monitoringValidator = monitoringValidator
         )
         mockkObject(MindboxPreferences)
     }
 
     @Test
     fun `shown inApp ids is not empty and is a valid json`() {
-        val testHashSet = hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
-            "ad487f74-924f-44f0-b4f7-f239ea5643c5")
+        val testHashSet = hashSetOf(
+            "71110297-58ad-4b3c-add1-60df8acb9e5e",
+            "ad487f74-924f-44f0-b4f7-f239ea5643c5"
+        )
         every { MindboxPreferences.shownInAppIds } returns
                 "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
         assertTrue(inAppRepository.getShownInApps().containsAll(testHashSet))
@@ -126,17 +126,28 @@ internal class InAppRepositoryImplTest : KoinTest {
         """.trimMargin()
 
         val expectedResult = InAppConfigStub.getConfig()
-            .copy(inApps = listOf(InAppStub.getInApp()
-                .copy(id = "040810aa-d135-49f4-8916-7e68dcc61c71",
-                    minVersion = 1,
-                    maxVersion = null,
-                    targeting = InAppStub.getTargetingTrueNode().copy(type = "true"),
-                    form = InAppStub.getInApp().form.copy(variants = listOf(InAppStub.getSimpleImage()
+            .copy(
+                inApps = listOf(
+                    InAppStub.getInApp()
                         .copy(
-                            type = "simpleImage",
-                            imageUrl = "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
-                            redirectUrl = "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
-                            intentPayload = "123"))))))
+                            id = "040810aa-d135-49f4-8916-7e68dcc61c71",
+                            minVersion = 1,
+                            maxVersion = null,
+                            targeting = InAppStub.getTargetingTrueNode().copy(type = "true"),
+                            form = InAppStub.getInApp().form.copy(
+                                variants = listOf(
+                                    InAppStub.getSimpleImage()
+                                        .copy(
+                                            type = "simpleImage",
+                                            imageUrl = "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg",
+                                            redirectUrl = "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71",
+                                            intentPayload = "123"
+                                        )
+                                )
+                            )
+                        )
+                )
+            )
 
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }

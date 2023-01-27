@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import android.util.Log
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
 import java.time.LocalDateTime
@@ -14,13 +15,19 @@ internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.ru
         .joinToString(prefix = "?", separator = "&")
 }
 
-internal fun String.convertToLongDateSeconds(): Long {
-    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:SS")).atZone(
+internal fun String.convertToLongDateMilliSeconds(): Long = runCatching {
+    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
         ZoneId.systemDefault()
     ).toEpochSecond() * 1000
+}.getOrElse {
+    Log.e("Mindbox", "Error converting date", it)
+    0L
 }
 
-internal fun Long.convertToStringDate(): String {
+internal fun Long.convertToStringDate(): String = runCatching {
     return ZonedDateTime.ofInstant(Instant.ofEpochSecond(this / 1000), ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:SS"))
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+}.getOrElse {
+    Log.e("Mindbox", "Error converting date", it)
+    ""
 }

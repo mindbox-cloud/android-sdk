@@ -6,6 +6,9 @@ import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
+import com.android.volley.RequestQueue.RequestEvent.REQUEST_FINISHED
+import com.android.volley.RequestQueue.RequestEvent.REQUEST_QUEUED
+import com.android.volley.RequestQueue.RequestEventListener
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
@@ -54,6 +57,27 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     }
 
     internal fun addToRequestQueue(request: StringRequest) {
+        requestQueue?.add(request)
+    }
+
+    internal fun addToMonitoringRequestQueue(request: MindboxRequest) {
+        var startTime: Long? = null
+        var requestEventListener: RequestEventListener? = null
+        requestEventListener = RequestEventListener { queuedRequest, event ->
+            if (event == REQUEST_QUEUED) {
+                startTime = System.currentTimeMillis()
+
+            } else if (request == queuedRequest && event == REQUEST_FINISHED) {
+                requestQueue?.removeRequestEventListener(requestEventListener)
+            } else {
+                if (request == queuedRequest && startTime != null && (startTime!! + 5000) < System.currentTimeMillis()) {
+                    requestQueue?.apply {
+                        cancelAll { cancellableRequest -> cancellableRequest == request }
+                    }
+                }
+            }
+        }
+        requestQueue?.addRequestEventListener(requestEventListener)
         requestQueue?.add(request)
     }
 

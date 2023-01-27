@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.logger
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringRepositoryImpl
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringRepository
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
 import org.koin.core.component.inject
@@ -30,13 +30,12 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
 
     private val DEFAULT_LOG_LEVEL = Level.ERROR
 
-    private val monitoringRepositoryImpl: MonitoringRepositoryImpl by inject()
+    private val monitoringRepositoryImpl: MonitoringRepository by inject()
 
     val monitoringScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
             Log.e(TAG, "Mindbox monitoring caught unhandled error", throwable)
         })
-
 
 
     init {
@@ -80,7 +79,7 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
         if (level.value <= Level.ERROR.value) {
             val logMessage = buildMessage(parent, message)
             Log.e(TAG, logMessage, exception)
-            saveLog(logMessage+ exception.stackTraceToString())
+            saveLog(logMessage + exception.stackTraceToString())
         }
     }
 
