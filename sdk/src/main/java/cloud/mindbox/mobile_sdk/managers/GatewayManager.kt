@@ -349,7 +349,7 @@ internal object GatewayManager {
     fun sendLogEvent(logs: LogResponseDto, context: Context, configuration: Configuration) {
         try {
             val url =
-                "https://api-staging.mindbox.ru/v3/operations/async?endpointId=Test-staging.Test01&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
+                "https://${configuration.domain}/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
                     UUID.randomUUID()
                 }"
             val jsonRequest: JSONObject? = convertBodyToJson(gson.toJson(logs))
