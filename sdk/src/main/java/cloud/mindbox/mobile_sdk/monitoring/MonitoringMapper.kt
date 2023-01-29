@@ -1,19 +1,17 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-import cloud.mindbox.mobile_sdk.convertToStringDate
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
-import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
 
 internal class MonitoringMapper {
 
-    fun mapLogInfoToMonitoringEntity(timeStamp: Long, message: String): MonitoringEntity {
-        return MonitoringEntity(id = 0, timestamp = timeStamp, log = message)
+    fun mapLogInfoToMonitoringEntity(zonedDateTime: String, message: String): MonitoringEntity {
+        return MonitoringEntity(id = 0, zonedDateTime = zonedDateTime, log = message)
     }
 
     fun mapMonitoringEntityListToLogResponseList(logs: List<MonitoringEntity>): List<LogResponse> {
         return logs.map { monitoringEntity ->
             LogResponse(
-                time = monitoringEntity.timestamp.convertToStringDate(),
+                time = monitoringEntity.zonedDateTime,
                 log = monitoringEntity.log
             )
         }

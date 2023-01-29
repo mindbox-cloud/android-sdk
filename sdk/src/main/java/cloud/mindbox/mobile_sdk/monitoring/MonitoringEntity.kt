@@ -10,9 +10,9 @@ internal data class MonitoringEntity(
     @ColumnInfo(name = COLUMN_ID)
     val id: Int,
     @ColumnInfo(name = COLUMN_TIMESTAMP)
-    val timestamp: Long,
+    val zonedDateTime: String,
     @ColumnInfo(name = COLUMN_LOG)
-    val log: String
+    val log: String,
 ) {
 
     companion object {

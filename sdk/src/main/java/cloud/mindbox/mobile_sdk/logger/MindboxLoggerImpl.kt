@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.logger
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.convertToStringDate
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.monitoring.MonitoringRepository
 import com.android.volley.VolleyLog
@@ -101,7 +102,10 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
 
     private fun saveLog(message: String) {
         monitoringScope.launch {
-            monitoringRepositoryImpl.saveLog(Instant.now().toEpochMilli(), message)
+            monitoringRepositoryImpl.saveLog(
+                Instant.now().toEpochMilli().convertToStringDate(),
+                message
+            )
         }
     }
 
