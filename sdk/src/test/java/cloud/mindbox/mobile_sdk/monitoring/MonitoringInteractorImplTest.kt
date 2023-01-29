@@ -25,7 +25,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MonitoringInteractorImplTest {
+internal class MonitoringInteractorImplTest {
 
     @MockK
     private lateinit var monitoringRepository: MonitoringRepository

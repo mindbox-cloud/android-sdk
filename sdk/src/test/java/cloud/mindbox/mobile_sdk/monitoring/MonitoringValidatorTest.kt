@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-class MonitoringValidatorTest {
+internal class MonitoringValidatorTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)

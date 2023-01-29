@@ -3,14 +3,14 @@ package cloud.mindbox.mobile_sdk
 import org.junit.Assert.*
 import org.junit.Test
 
-class ExtensionsTest {
+internal class ExtensionsTest {
 
     @Test
     fun `converting unix time to string`() {
         val time: Long = 1674810809326
         val actualResult = time.convertToStringDate()
         val expectedResult = "2023-01-27T14:13:29"
-        assertEquals(actualResult, expectedResult)
+        assertEquals(expectedResult, actualResult)
     }
 
     @Test

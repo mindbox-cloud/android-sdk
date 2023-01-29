@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-class LogResponseStub {
+internal class LogResponseStub {
     companion object {
-        fun get() = LogResponse("", "")
+        fun get() = LogResponse(time = "", log = "")
     }
 }

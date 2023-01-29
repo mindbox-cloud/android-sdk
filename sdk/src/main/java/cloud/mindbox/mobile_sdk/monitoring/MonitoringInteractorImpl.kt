@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.convertToLongDateMilliSeconds
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.subListInclusive
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.collect
@@ -44,16 +45,14 @@ internal class MonitoringInteractorImpl(
         if (logs.isEmpty()) return emptyList()
         if (logs.first().time.convertToLongDateMilliSeconds() > logRequest.to.convertToLongDateMilliSeconds()) return emptyList()
         if (logs.last().time.convertToLongDateMilliSeconds() < logRequest.from.convertToLongDateMilliSeconds()) return emptyList()
-        if (logs.size == 1 && logs.joinToString().length * 2 < OPERATION_LIMIT) return logs
-        if (logs.size == 1 && logs.joinToString().length * 2 > OPERATION_LIMIT) return emptyList()
-        return if (logs.subList(
+        return if (logs.subListInclusive(
                 fromIndex = logs.indexOf(logs.find { logResponse -> logResponse.time.convertToLongDateMilliSeconds() > logRequest.from.convertToLongDateMilliSeconds() }),
-                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() }) + 1
+                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() })
             ).joinToString().length * 2 < OPERATION_LIMIT
         ) logs else {
-            var logsInterval = logs.subList(
+            var logsInterval = logs.subListInclusive(
                 fromIndex = logs.indexOf(logs.find { logResponse -> logResponse.time.convertToLongDateMilliSeconds() > logRequest.from.convertToLongDateMilliSeconds() }),
-                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() }) + 1
+                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() })
             )
             while (logsInterval.joinToString().length * 2 > OPERATION_LIMIT) {
                 logsInterval = logsInterval.drop(1)
@@ -77,9 +76,9 @@ internal class MonitoringInteractorImpl(
             (logs.first().time.convertToLongDateMilliSeconds() > logRequest.to.convertToLongDateMilliSeconds()) -> {
                 STATUS_NO_OLD_LOGS +  logs.first().time
             }
-            if (logs.size == 1) logs.joinToString().length * 2 > OPERATION_LIMIT else logs.subList(
+            logs.subListInclusive(
                 fromIndex = logs.indexOf(logs.find { logResponse -> logResponse.time.convertToLongDateMilliSeconds() > logRequest.from.convertToLongDateMilliSeconds() }),
-                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() }) + 1
+                toIndex = logs.indexOf(logs.findLast { logResponse -> logResponse.time.convertToLongDateMilliSeconds() < logRequest.to.convertToLongDateMilliSeconds() })
             ).joinToString().length * 2 > OPERATION_LIMIT -> {
                 STATUS_REQUESTED_LOG_IS_TOO_LARGE
             }

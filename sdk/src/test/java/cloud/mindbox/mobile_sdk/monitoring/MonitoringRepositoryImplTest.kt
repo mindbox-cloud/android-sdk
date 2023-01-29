@@ -19,7 +19,7 @@ import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
 import org.koin.test.inject
 
-class MonitoringRepositoryImplTest : KoinTest {
+internal class MonitoringRepositoryImplTest : KoinTest {
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {

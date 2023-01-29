@@ -30,3 +30,7 @@ internal fun Long.convertToStringDate(): String = runCatching {
     Log.e("Mindbox", "Error converting date", it)
     ""
 }
+
+internal fun <T> List<T>.subListInclusive(fromIndex: Int, toIndex: Int): List<T> {
+    return this.subList(fromIndex, toIndex) + this[toIndex]
+}
