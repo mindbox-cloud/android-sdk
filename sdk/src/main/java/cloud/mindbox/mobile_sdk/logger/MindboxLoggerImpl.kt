@@ -38,7 +38,6 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
         })
 
 
-
     init {
 
         VolleyLog.DEBUG = false
@@ -80,7 +79,7 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
         if (level.value <= Level.ERROR.value) {
             val logMessage = buildMessage(parent, message)
             Log.e(TAG, logMessage, exception)
-            saveLog(logMessage+ exception.stackTraceToString())
+            saveLog(logMessage + exception.stackTraceToString())
         }
     }
 
@@ -101,8 +100,10 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
     }
 
     private fun saveLog(message: String) {
-        monitoringScope.launch {
-            monitoringManager.saveLog(Instant.now().toEpochMilli(), message)
+        if (MindboxKoin.isInitialized()) {
+            monitoringScope.launch {
+                monitoringManager.saveLog(Instant.now().toEpochMilli(), message)
+            }
         }
     }
 
