@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.models.operation.OperationBody
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponseBase
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import cloud.mindbox.mobile_sdk.pushes.*
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
@@ -385,7 +386,7 @@ object Mindbox {
             initComponents(context, pushServices)
             MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
-                    pushServices.joinToString(", ") { it.javaClass.simpleName })
+                    pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
             initScope.launch {
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
