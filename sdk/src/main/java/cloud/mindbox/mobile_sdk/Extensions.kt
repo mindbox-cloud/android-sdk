@@ -24,14 +24,12 @@ internal fun String.convertToLongDateMilliSeconds(): Long = runCatching {
 }
 
 internal fun Long.convertToStringDate(): String = runCatching {
-    Log.e("date", Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")))
     return Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-}.getOrThrow()/*.getOrElse {
+}.getOrElse {
     Log.e("Mindbox", "Error converting date", it)
     ""
-}*/
+}
 
 internal fun <T> List<T>.subListInclusive(fromIndex: Int, toIndex: Int): List<T> {
     return this.subList(fromIndex, toIndex) + this[toIndex]
