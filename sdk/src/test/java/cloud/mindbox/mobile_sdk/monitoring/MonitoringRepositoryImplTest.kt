@@ -55,12 +55,15 @@ internal class MonitoringRepositoryImplTest : KoinTest {
         )
         every { MindboxPreferences.logsRequestIds } returns
                 "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
-        assertTrue(monitoringRepository.getRequestIds().containsAll(testHashSet))
+        assertTrue(
+            monitoringRepository.getRequestIds()
+                .containsAll(testHashSet) && testHashSet.containsAll(monitoringRepository.getRequestIds())
+        )
     }
 
     @Test
     fun `log request ids returns null`() {
-        every { MindboxPreferences.logsRequestIds } returns "a"
+        every { MindboxPreferences.logsRequestIds } returns "not_json"
         assertNotNull(monitoringRepository.getRequestIds())
     }
 
@@ -69,11 +72,15 @@ internal class MonitoringRepositoryImplTest : KoinTest {
         val expectedIds = hashSetOf<String>()
         every { MindboxPreferences.logsRequestIds } returns ""
         val actualIds = monitoringRepository.getRequestIds()
-        assertTrue(expectedIds.containsAll(actualIds))
+        assertTrue(
+            expectedIds.containsAll(actualIds) && expectedIds.containsAll(
+                monitoringRepository.getRequestIds()
+            )
+        )
     }
 
     @Test
-    fun `log requestids is not empty and is not a json`() {
+    fun `log request ids is not empty and is not a json`() {
         every { MindboxPreferences.logsRequestIds } returns "123"
         val expectedResult = hashSetOf<String>()
         val actualResult = monitoringRepository.getRequestIds()

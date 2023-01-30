@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 internal class ExtensionsTest {

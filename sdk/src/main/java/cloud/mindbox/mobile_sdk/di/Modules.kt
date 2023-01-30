@@ -35,7 +35,7 @@ internal val monitoringModule = module {
             androidContext(),
             MonitoringDatabase::class.java,
             monitoringDatabaseName
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
     single { get<MonitoringDatabase>().monitoringDao() }
 }
