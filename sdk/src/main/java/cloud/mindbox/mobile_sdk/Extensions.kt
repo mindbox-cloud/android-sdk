@@ -24,6 +24,8 @@ internal fun String.convertToLongDateMilliSeconds(): Long = runCatching {
 }
 
 internal fun Long.convertToStringDate(): String = runCatching {
+    Log.e("date", Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")))
     return Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 }.getOrThrow()/*.getOrElse {
