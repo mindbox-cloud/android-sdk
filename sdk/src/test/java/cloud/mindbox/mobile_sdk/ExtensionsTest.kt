@@ -20,11 +20,12 @@ internal class ExtensionsTest {
 
     @Test
     fun `converting string to unix time`() {
-        val expectedResult: Long = 1674810809326 / 1000
         val time = "2023-01-27T14:13:29"
-        val actualResult =      LocalDateTime.parse(time, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
-            ZoneId.systemDefault()
-        ).toEpochSecond()
+        val expectedResult: Long =
+            LocalDateTime.parse(time, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
+                ZoneId.systemDefault()
+            ).toEpochSecond() * 1000
+        val actualResult = time.convertToLongDateMilliSeconds()
         assertEquals(expectedResult, actualResult)
     }
 
