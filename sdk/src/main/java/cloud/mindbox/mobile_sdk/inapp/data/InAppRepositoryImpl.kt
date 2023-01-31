@@ -17,7 +17,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringValidator
+import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson

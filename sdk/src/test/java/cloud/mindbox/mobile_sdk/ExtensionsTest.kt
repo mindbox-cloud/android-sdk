@@ -2,30 +2,27 @@ package cloud.mindbox.mobile_sdk
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.*
 import java.time.format.DateTimeFormatter
 
 internal class ExtensionsTest {
 
     @Test
-    fun `converting unix time to string`() {
-        val time: Long = 1674810809326
-        val expectedResult = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault())
-            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-        val actualResult = time.convertToStringDate()
+    fun `converting zoned date time to string`() {
+        val time: ZonedDateTime = ZonedDateTime.now()
+        val expectedResult = time.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        val actualResult = time.convertToString()
         assertEquals(expectedResult, actualResult)
     }
 
     @Test
-    fun `converting string to unix time`() {
+    fun `converting string to zoned date time`() {
         val time = "2023-01-27T14:13:29"
-        val expectedResult: Long =
+        val expectedResult: ZonedDateTime =
             LocalDateTime.parse(time, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
-                ZoneId.systemDefault()
-            ).toEpochSecond() * 1000
-        val actualResult = time.convertToLongDateMilliSeconds()
+                ZoneOffset.UTC
+            )
+        val actualResult = time.convertToZonedDateTime()
         assertEquals(expectedResult, actualResult)
     }
 

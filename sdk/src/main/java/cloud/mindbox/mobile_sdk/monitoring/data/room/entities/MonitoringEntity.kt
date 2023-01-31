@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.monitoring
+package cloud.mindbox.mobile_sdk.monitoring.data.room.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

@@ -1,13 +1,19 @@
-package cloud.mindbox.mobile_sdk.monitoring
+package cloud.mindbox.mobile_sdk.monitoring.data.repositories
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
+import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
+import java.time.ZonedDateTime
 
 internal class MonitoringRepositoryImpl(
     private val context: Context,
@@ -36,6 +42,14 @@ internal class MonitoringRepositoryImpl(
             gson.toJson(logRequestIds, object : TypeToken<HashSet<String>>() {}.type)
     }
 
+    override suspend fun getFirstLog(): LogResponse {
+        return monitoringMapper.mapMonitoringEntityToLogResponse(monitoringDao.getFirstLog())
+    }
+
+    override suspend fun getLastLog(): LogResponse {
+        return monitoringMapper.mapMonitoringEntityToLogResponse(monitoringDao.getLastLog())
+    }
+
     override suspend fun saveLog(zonedDateTime: String, message: String) {
         monitoringDao.insertLog(
             monitoringMapper.mapLogInfoToMonitoringEntity(
@@ -45,9 +59,12 @@ internal class MonitoringRepositoryImpl(
         )
     }
 
-    override suspend fun getLogs(): List<LogResponse> {
+    override suspend fun getLogs(
+        startTime: ZonedDateTime,
+        endTime: ZonedDateTime,
+    ): List<LogResponse> {
         return monitoringMapper.mapMonitoringEntityListToLogResponseList(
-            monitoringDao.getLogs()
+            monitoringDao.getLogs(startTime.convertToString(), endTime.convertToString())
         )
     }
 

@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.monitoring.LogRequest
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal data class InAppConfig(
     val inApps: List<InApp>,

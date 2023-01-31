@@ -1,13 +1,14 @@
 package cloud.mindbox.mobile_sdk.logger
 
 import android.util.Log
-import cloud.mindbox.mobile_sdk.convertToStringDate
+import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringRepository
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
 import org.koin.core.component.inject
 import java.time.Instant
+import java.time.ZoneId
 
 interface MindboxLogger {
 
@@ -101,9 +102,10 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
     }
 
     private fun saveLog(message: String) {
+        if (!MindboxKoin.isInitialized()) return
         monitoringScope.launch {
             monitoringRepositoryImpl.saveLog(
-                Instant.now().toEpochMilli().convertToStringDate(),
+                Instant.now().atZone(ZoneId.systemDefault()).convertToString(),
                 message
             )
         }

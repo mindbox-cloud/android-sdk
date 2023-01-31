@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
+import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -8,7 +9,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
-import cloud.mindbox.mobile_sdk.monitoring.LogRequest
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlinx.coroutines.Deferred
 
 internal class InAppMessageMapper {
@@ -78,7 +79,12 @@ internal class InAppMessageMapper {
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {
-                    LogRequest(it.requestId, it.deviceId, it.from, it.to)
+                    LogRequest(
+                        requestId = it.requestId,
+                        deviceId = it.deviceId,
+                        from = it.from.convertToZonedDateTime(),
+                        to = it.to.convertToZonedDateTime()
+                    )
                 } ?: emptyList()
             )
         }

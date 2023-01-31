@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.monitoring
+package cloud.mindbox.mobile_sdk.monitoring.domain.interfaces
 
 internal interface MonitoringInteractor {
 

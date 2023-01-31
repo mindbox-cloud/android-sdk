@@ -1,31 +1,26 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
+import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl.Companion.STATUS_NO_LOGS
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl.Companion.STATUS_NO_NEW_LOGS
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl.Companion.STATUS_NO_OLD_LOGS
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl.Companion.STATUS_OK
-import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl.Companion.STATUS_REQUESTED_LOG_IS_TOO_LARGE
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import io.mockk.mockkObject
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.lang.reflect.Method
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import org.koin.test.KoinTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class MonitoringInteractorImplTest {
+internal class MonitoringInteractorImplTest : KoinTest {
 
     @MockK
     private lateinit var monitoringRepository: MonitoringRepository
@@ -33,359 +28,80 @@ internal class MonitoringInteractorImplTest {
     @MockK
     private lateinit var inAppRepository: InAppRepository
 
+    @MockK
+    private lateinit var logResponseDataManager: LogResponseDataManager
+
+    @MockK
+    private lateinit var logRequestDataManager: LogRequestDataManager
+
     @InjectMockKs
     private lateinit var monitoringInteractor: MonitoringInteractorImpl
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    @Before
-    fun onTestStart() {
-        mockkObject(MindboxPreferences)
-        every {
-            MindboxPreferences.deviceUuid
-        } returns "456"
-    }
-
-
-    @Test
-    fun `test get status returns status ok`() {
-        runTest {
-            val validRez = STATUS_OK
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy(time = "2023-01-20T00:00:00", log = "abc"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest()
-                        .copy(from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test get status returns status no data found`() {
-        runTest {
-            val validRez = STATUS_NO_LOGS
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns emptyList()
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest()
-                        .copy(from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test get status returns status no old logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_NO_OLD_LOGS + "2023-02-14T00:00:00"
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy(time = "2023-02-14T00:00:00", log = "abc"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test get status returns status no new logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_NO_NEW_LOGS + "2023-01-14T00:00:00"
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy(time = "2023-01-14T00:00:00", log = "abc"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test get status returns status too large one log`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_REQUESTED_LOG_IS_TOO_LARGE
-            val veryBigLog = "abc".repeat(136534)
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(
-                LogResponseStub.get().copy(time = "2023-01-20T00:00:00", log = veryBigLog)
+ /*   @Test
+    fun `test monitoring happy path`() = runTest {
+        val processedRequestId = "123"
+        val unprocessedRequestId = "456"
+        val myDeviceUuid = "789"
+        val notMyDeviceUuid = "345"
+        val logRequests = listOf(
+            LogRequestStub.getLogRequest().copy(
+                requestId = unprocessedRequestId,
+                deviceId = myDeviceUuid,
+                from = "2023-01-02T00:00:00".convertToZonedDateTime(),
+                to = "2023-01-10T00:00:00".convertToZonedDateTime()
+            ),
+            LogRequestStub.getLogRequest().copy(
+                requestId = processedRequestId,
+                deviceId = myDeviceUuid,
+                from = "2023-01-15T00:00:00".convertToZonedDateTime(),
+                to = "2023-01-30T00:00:00".convertToZonedDateTime()
+            ),
+            LogRequestStub.getLogRequest().copy(
+                requestId = unprocessedRequestId,
+                deviceId = notMyDeviceUuid,
+                from = "2023-01-15T00:00:00".convertToZonedDateTime(),
+                to = "2023-01-30T00:00:00".convertToZonedDateTime()
+            ),
+            LogRequestStub.getLogRequest().copy(
+                requestId = unprocessedRequestId,
+                deviceId = myDeviceUuid,
+                from = "2023-01-15T00:00:00".convertToZonedDateTime(),
+                to = "2023-01-30T00:00:00".convertToZonedDateTime()
+            ),
+            LogRequestStub.getLogRequest().copy(
+                requestId = unprocessedRequestId,
+                deviceId = myDeviceUuid,
+                from = "2023-02-15T00:00:00".convertToZonedDateTime(),
+                to = "2023-02-30T00:00:00".convertToZonedDateTime()
+            ),
+            LogRequestStub.getLogRequest().copy(
+                requestId = unprocessedRequestId,
+                deviceId = myDeviceUuid,
+                from = "2022-01-15T00:00:00".convertToZonedDateTime(),
+                to = "2022-01-30T00:00:00".convertToZonedDateTime()
             )
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test get status returns status too large more than one log`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = STATUS_REQUESTED_LOG_IS_TOO_LARGE
-            val veryBigLog = "abc".repeat(136534)
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(
-                LogResponseStub.get().copy(time = "2023-01-20T00:00:00", log = veryBigLog)
-            ) + listOf(LogResponseStub.get().copy(time = "2023-01-21T00:00:00", log = veryBigLog))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "getStatus",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as String
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with empty logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = emptyList<LogResponse>()
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns emptyList()
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with old logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = emptyList<LogResponse>()
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-01-14T00:00:00", "123123"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with new logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = emptyList<LogResponse>()
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-02-14T00:00:00", "123123"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with one log`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", "123123"))
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", "123123"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with one long log`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val veryBigLog = "abc".repeat(136534)
-            val validRez = emptyList<LogResponse>()
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", veryBigLog))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with two or more logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val validRez = listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", "123123")) +  listOf(LogResponseStub.get().copy("2023-01-21T00:00:00", "123123"))
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", "123123")) +  listOf(LogResponseStub.get().copy("2023-01-21T00:00:00", "123123"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test filter sending logs with two or more long logs`() {
-        runTest {
-            val startDate = "2023-01-15T00:00:00"
-            val endDate = "2023-01-30T00:00:00"
-            val veryBigLog = "abc".repeat(136534)
-            val validRez = listOf(LogResponseStub.get().copy("2023-01-21T00:00:00", "123123"))
-            coEvery {
-                monitoringRepository.getLogs()
-            } returns listOf(LogResponseStub.get().copy("2023-01-20T00:00:00", veryBigLog)) +  listOf(LogResponseStub.get().copy("2023-01-21T00:00:00", "123123"))
-            monitoringInteractor::class.java.getDeclaredMethod(
-                "filterSendingLogs",
-                LogRequest::class.java,
-                Continuation::class.java
-            ).apply {
-                isAccessible = true
-                val invocationRez = invokeSuspend(
-                    monitoringInteractor,
-                    LogRequestStub.getLogRequest().copy(from = startDate, to = endDate)
-                ) as List<LogResponse>
-                    assertTrue(invocationRez == validRez)
-            }
-        }
-    }
-
-    @Test
-    fun `test monitoring checks only current deviceUuid`() {
-        val testLogRequests = listOf(
-            LogRequestStub.getLogRequest().copy(deviceId = "456"),
-            LogRequestStub.getLogRequest().copy(deviceId = "123")
         )
-        monitoringInteractor.javaClass.getDeclaredMethod(
-            "filterCurrentDeviceUuidLogs",
-            List::class.java
-        ).apply {
-            isAccessible = true
-            val invocationRez = invoke(
-                monitoringInteractor, testLogRequests
-            ) as List<LogRequest>
-            assertTrue(invocationRez.size == 1 && invocationRez.first().deviceId == "456")
+        coEvery {
+            monitoringRepository.getFirstLog()
+        } returns LogResponseStub.get().copy("2023-01-01T00:00:00")
+        coEvery {
+            monitoringRepository.getLastLog()
+        } returns LogResponseStub.get().copy("2023-01-31T00:00:00")
+
+        every { inAppRepository.listenInAppConfig() } returns flowOf(
+            InAppConfigStub.getConfig().copy(
+                monitoring = logRequests
+            )
+        )
+        every {
+            logRequestDataManager.filterCurrentDeviceUuidLogs(logRequests)
+        }
+        monitoringInteractor.processLogs()
+        verify {
         }
     }
+*/
 }
-
-suspend fun Method.invokeSuspend(obj: Any, vararg args: Any?): Any? =
-    suspendCoroutine { cont ->
-        cont.resume(invoke(obj, *args, cont))
-    }

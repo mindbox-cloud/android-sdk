@@ -2,9 +2,10 @@ package cloud.mindbox.mobile_sdk
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -14,23 +15,22 @@ internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.ru
         .joinToString(prefix = "?", separator = "&")
 }
 
-internal fun String.convertToLongDateMilliSeconds(): Long = runCatching {
-    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
-        ZoneId.systemDefault()
-    ).toEpochSecond() * 1000
-}.getOrElse {
-    Log.e("Mindbox", "Error converting date", it)
-    0L
-}
-
-internal fun Long.convertToStringDate(): String = runCatching {
-    return Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+internal fun ZonedDateTime.convertToString() = runCatching {
+    this.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 }.getOrElse {
     Log.e("Mindbox", "Error converting date", it)
     ""
 }
 
-internal fun <T> List<T>.subListInclusive(fromIndex: Int, toIndex: Int): List<T> {
-    return this.subList(fromIndex, toIndex) + this[toIndex]
+
+internal fun String.convertToZonedDateTime(): ZonedDateTime = runCatching {
+    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
+        ZoneOffset.UTC
+    )
+}.getOrElse {
+    Log.e("Mindbox", "Error converting date", it)
+    LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        .atZone(
+            ZoneId.systemDefault()
+        )
 }
