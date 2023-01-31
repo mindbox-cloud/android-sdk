@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.monitoring.domain.managers
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 internal class LogResponseDataManagerImpl : LogResponseDataManager {
@@ -15,10 +16,10 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
         to: ZonedDateTime,
     ): String {
         return when {
-            (lastLog.time.convertToZonedDateTime().isBefore(from)) -> {
+            (lastLog.time.convertToZonedDateTime().isBefore(from.withZoneSameInstant(ZoneId.systemDefault()))) -> {
                 STATUS_NO_NEW_LOGS + lastLog.time
             }
-            (firstLog.time.convertToZonedDateTime().isAfter(to)) -> {
+            (firstLog.time.convertToZonedDateTime().isAfter(to.withZoneSameInstant(ZoneId.systemDefault()))) -> {
                 STATUS_NO_OLD_LOGS + firstLog.time
             }
             filteredLogs.joinToString().length * 2 > OPERATION_LIMIT -> {
@@ -40,8 +41,8 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
         from: ZonedDateTime,
         to: ZonedDateTime,
     ): List<LogResponse> {
-        if (firstLog.time.convertToZonedDateTime().isAfter(to)) return emptyList()
-        if (lastLog.time.convertToZonedDateTime().isBefore(from)) return emptyList()
+        if (firstLog.time.convertToZonedDateTime().isAfter(to.withZoneSameInstant(ZoneId.systemDefault()))) return emptyList()
+        if (lastLog.time.convertToZonedDateTime().isBefore(from.withZoneSameInstant(ZoneId.systemDefault()))) return emptyList()
         return if (filteredLogs.joinToString().length * 2 < OPERATION_LIMIT) filteredLogs else {
             var droppingLogsCount = 1
             while (filteredLogs.dropLast(droppingLogsCount)

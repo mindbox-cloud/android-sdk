@@ -16,7 +16,8 @@ internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.ru
 }
 
 internal fun ZonedDateTime.convertToString() = runCatching {
-    this.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    this.withZoneSameInstant(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
 }.getOrElse {
     Log.e("Mindbox", "Error converting date", it)
     ""
