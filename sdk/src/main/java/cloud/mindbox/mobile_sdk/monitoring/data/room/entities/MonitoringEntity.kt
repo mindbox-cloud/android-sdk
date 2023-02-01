@@ -10,7 +10,7 @@ internal data class MonitoringEntity(
     @ColumnInfo(name = COLUMN_ID)
     val id: Int,
     @ColumnInfo(name = COLUMN_TIMESTAMP)
-    val zonedDateTime: String,
+    val time: String,
     @ColumnInfo(name = COLUMN_LOG)
     val log: String,
 ) {

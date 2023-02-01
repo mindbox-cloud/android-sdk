@@ -105,7 +105,7 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
         if (!MindboxKoin.isInitialized()) return
         monitoringScope.launch {
             monitoringRepositoryImpl.saveLog(
-                Instant.now().atZone(ZoneId.systemDefault()).convertToString(),
+                Instant.now().atZone(ZoneId.systemDefault()),
                 message
             )
         }

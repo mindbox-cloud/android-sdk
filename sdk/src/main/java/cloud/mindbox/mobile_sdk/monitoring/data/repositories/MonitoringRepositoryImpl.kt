@@ -50,11 +50,11 @@ internal class MonitoringRepositoryImpl(
         return monitoringMapper.mapMonitoringEntityToLogResponse(monitoringDao.getLastLog())
     }
 
-    override suspend fun saveLog(zonedDateTime: String, message: String) {
+    override suspend fun saveLog(zonedDateTime: ZonedDateTime, message: String) {
         monitoringDao.insertLog(
             monitoringMapper.mapLogInfoToMonitoringEntity(
-                zonedDateTime,
-                "$zonedDateTime $message"
+                zonedDateTime.convertToString(),
+                "${zonedDateTime.convertToString()} $message"
             )
         )
     }

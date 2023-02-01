@@ -18,5 +18,5 @@ internal interface MonitoringRepository {
         requestId: String,
         logs: List<LogResponse>,
     )
-    suspend fun saveLog(zonedDateTime: String, message: String)
+    suspend fun saveLog(zonedDateTime: ZonedDateTime, message: String)
 }
