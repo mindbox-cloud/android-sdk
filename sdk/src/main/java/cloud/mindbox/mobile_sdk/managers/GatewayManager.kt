@@ -14,7 +14,6 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-import com.android.volley.DefaultRetryPolicy.DEFAULT_TIMEOUT_MS
 import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
@@ -31,6 +30,7 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
+    private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
@@ -363,7 +363,7 @@ internal object GatewayManager {
             ).apply {
                 setShouldCache(false)
                 retryPolicy =
-                    DefaultRetryPolicy(DEFAULT_TIMEOUT_MS, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                    DefaultRetryPolicy(MONITORING_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
             MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
