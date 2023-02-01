@@ -10,17 +10,15 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.monitoring.*
+import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManagerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
+import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogStoringDataManagerImpl
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
 import org.koin.android.ext.koin.androidContext
@@ -41,12 +39,14 @@ internal val monitoringModule = module {
     single { MonitoringValidator() }
     single<LogResponseDataManager> { LogResponseDataManagerImpl() }
     single<LogRequestDataManager> { LogRequestDataManagerImpl() }
+    single<LogStoringDataManager> { LogStoringDataManagerImpl(androidContext()) }
     single<MonitoringInteractor> {
         MonitoringInteractorImpl(
             inAppRepository = get(),
             monitoringRepository = get(),
             logResponseDataManager = get(),
-            logRequestDataManager = get()
+            logRequestDataManager = get(),
+            logStoringDataManager = get()
         )
     }
     factory {

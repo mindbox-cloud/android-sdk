@@ -5,6 +5,8 @@ import java.time.ZonedDateTime
 
 internal interface MonitoringRepository {
 
+    suspend fun deleteFirstLog()
+
     fun getRequestIds(): HashSet<String>
     fun saveRequestId(id: String)
 

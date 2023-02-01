@@ -39,7 +39,7 @@ internal object GatewayManager {
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
+        return "https://${configuration.domain}/mobile/byendpoint/${configuration.endpointId}.json"
     }
 
     private fun buildEventUrl(

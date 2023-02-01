@@ -21,6 +21,10 @@ internal class MonitoringRepositoryImpl(
     private val monitoringMapper: MonitoringMapper,
     private val gson: Gson,
 ) : MonitoringRepository {
+    override suspend fun deleteFirstLog() {
+        monitoringDao.deleteFirstLog()
+    }
+
     override fun getRequestIds(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {
             if (MindboxPreferences.logsRequestIds.isBlank()) {
