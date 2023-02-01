@@ -365,7 +365,7 @@ internal object GatewayManager {
                 retryPolicy =
                     DefaultRetryPolicy(DEFAULT_TIMEOUT_MS, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
-            MindboxServiceGenerator.getInstance(context)?.addToMonitoringRequestQueue(request)
+            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
         } catch (e: Exception) {
             Log.e("Error", "Sending event was failure with exception", e)
         }
