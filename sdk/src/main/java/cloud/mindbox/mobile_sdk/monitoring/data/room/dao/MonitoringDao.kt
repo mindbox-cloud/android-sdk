@@ -9,8 +9,8 @@ internal interface MonitoringDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(entity: MonitoringEntity)
 
-    @Query("DELETE FROM monitoring ORDER BY id ASC LIMIT 1")
-    suspend fun deleteFirstLog()
+   /* @Query("DELETE FROM monitoring ORDER BY id ASC LIMIT 1")
+    suspend fun deleteFirstLog()*/
 
     @Query("SELECT * FROM monitoring WHERE timestamp BETWEEN :startTime and :endTime ORDER BY timestamp ASC")
     suspend fun getLogs(startTime: String, endTime: String): List<MonitoringEntity>

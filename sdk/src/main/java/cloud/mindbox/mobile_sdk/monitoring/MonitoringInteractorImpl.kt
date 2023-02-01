@@ -7,6 +7,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.time.ZonedDateTime
 
 internal class MonitoringInteractorImpl(
     private val inAppRepository: InAppRepository,
@@ -16,15 +17,20 @@ internal class MonitoringInteractorImpl(
     private val logStoringDataManager: LogStoringDataManager,
 ) :
     MonitoringInteractor {
-    override suspend fun saveLog(zonedDateTime: String, message: String) {
-        if (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
-            while (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
-                monitoringRepository.deleteFirstLog()
-            }
-            monitoringRepository.saveLog(zonedDateTime, message)
-        } else {
-            monitoringRepository.saveLog(zonedDateTime, message)
-        }
+    override suspend fun saveLog(zonedDateTime: ZonedDateTime, message: String) {
+        /* if (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
+             while (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
+                 monitoringRepository.deleteFirstLog()
+             }
+             monitoringRepository.saveLog(
+               zonedDateTime, message
+             )
+         } else {
+             monitoringRepository.saveLog(
+                 zonedDateTime, message
+             )
+         }*/
+        monitoringRepository.saveLog(zonedDateTime, message)
     }
 
     override fun processLogs() {

@@ -2,10 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.time.*
 import java.time.format.DateTimeFormatter
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -20,6 +17,10 @@ internal fun ZonedDateTime.convertToString() = runCatching {
 }.getOrElse {
     Log.e("Mindbox", "Error converting date", it)
     ""
+}
+
+internal fun Instant.convertToZonedDateTimeAtUTC(): ZonedDateTime {
+    return this.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC)
 }
 
 
