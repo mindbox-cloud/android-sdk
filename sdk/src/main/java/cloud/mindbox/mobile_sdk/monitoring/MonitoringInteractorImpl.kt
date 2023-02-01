@@ -18,20 +18,12 @@ internal class MonitoringInteractorImpl(
 ) :
     MonitoringInteractor {
     override suspend fun saveLog(zonedDateTime: ZonedDateTime, message: String) {
-        /* if (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
-             while (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
-                 monitoringRepository.deleteFirstLog()
-             }
-             monitoringRepository.saveLog(
-               zonedDateTime, message
-             )
-         } else {
-             monitoringRepository.saveLog(
-                 zonedDateTime, message
-             )
-         }*/
         monitoringRepository.saveLog(zonedDateTime, message)
+        while (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
+            monitoringRepository.deleteFirstLog()
+        }
     }
+
 
     override fun processLogs() {
         MindboxLoggerImpl.monitoringScope.launch {

@@ -22,7 +22,7 @@ internal class MonitoringRepositoryImpl(
     private val gson: Gson,
 ) : MonitoringRepository {
     override suspend fun deleteFirstLog() {
-       // monitoringDao.deleteFirstLog()
+        monitoringDao.deleteFirstLog(monitoringDao.getFirstLog())
     }
 
     override fun getRequestIds(): HashSet<String> {
