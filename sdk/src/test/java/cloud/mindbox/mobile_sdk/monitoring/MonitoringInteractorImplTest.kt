@@ -1,29 +1,21 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
-import io.mockk.coEvery
-import io.mockk.every
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.runTest
 import org.junit.Rule
-import org.junit.Test
 import org.koin.test.KoinTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MonitoringInteractorImplTest : KoinTest {
 
     @MockK
-    private lateinit var monitoringRepository: MonitoringRepository
+    private lateinit var monitoringRepository: MonitoringInteractor
 
     @MockK
     private lateinit var inAppRepository: InAppRepository
@@ -35,7 +27,7 @@ internal class MonitoringInteractorImplTest : KoinTest {
     private lateinit var logRequestDataManager: LogRequestDataManager
 
     @InjectMockKs
-    private lateinit var monitoringInteractor: MonitoringInteractorImpl
+    private lateinit var monitoringInteractor: MonitoringInteractor
 
     @get:Rule
     val mockkRule = MockKRule(this)

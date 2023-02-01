@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.monitoring
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.collect
@@ -13,16 +14,9 @@ internal class MonitoringInteractorImpl(
     private val inAppRepository: InAppRepository,
     private val monitoringRepository: MonitoringRepository,
     private val logResponseDataManager: LogResponseDataManager,
-    private val logRequestDataManager: LogRequestDataManager,
-    private val logStoringDataManager: LogStoringDataManager,
+    private val logRequestDataManager: LogRequestDataManager
 ) :
     MonitoringInteractor {
-    override suspend fun saveLog(zonedDateTime: ZonedDateTime, message: String) {
-        monitoringRepository.saveLog(zonedDateTime, message)
-        while (logStoringDataManager.isDatabaseMemorySizeExceeded()) {
-            monitoringRepository.deleteFirstLog()
-        }
-    }
 
 
     override fun processLogs() {

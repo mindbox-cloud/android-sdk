@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.logger
 import android.util.Log
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
 import org.koin.core.component.inject
@@ -31,7 +31,7 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
 
     private val DEFAULT_LOG_LEVEL = Level.ERROR
 
-    private val monitoringInteractor: MonitoringInteractor by inject()
+    private val monitoringRepository: MonitoringRepository by inject()
 
     val monitoringScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
@@ -103,7 +103,7 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
     private fun saveLog(message: String) {
         if (!MindboxKoin.isInitialized()) return
         monitoringScope.launch {
-            monitoringInteractor.saveLog(
+            monitoringRepository.saveLog(
                 Instant.now().convertToZonedDateTimeAtUTC(),
                 message
             )

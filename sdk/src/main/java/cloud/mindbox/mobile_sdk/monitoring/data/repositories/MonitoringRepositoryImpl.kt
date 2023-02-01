@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -20,6 +21,7 @@ internal class MonitoringRepositoryImpl(
     private val monitoringDao: MonitoringDao,
     private val monitoringMapper: MonitoringMapper,
     private val gson: Gson,
+    private val logStoringDataChecker: LogStoringDataChecker,
 ) : MonitoringRepository {
     override suspend fun deleteFirstLog() {
         monitoringDao.deleteFirstLog(monitoringDao.getFirstLog())
@@ -61,6 +63,9 @@ internal class MonitoringRepositoryImpl(
                 "${zonedDateTime.convertToString()} $message"
             )
         )
+        while (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
+            monitoringDao.deleteFirstLog(monitoringDao.getFirstLog())
+        }
     }
 
     override suspend fun getLogs(
