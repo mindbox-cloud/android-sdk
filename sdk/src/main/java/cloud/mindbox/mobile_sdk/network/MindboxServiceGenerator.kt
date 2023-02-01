@@ -62,27 +62,6 @@ internal class MindboxServiceGenerator constructor(context: Context) {
         // TODO change StringRequest to MindboxRequest or log here
     }
 
-    internal fun addToMonitoringRequestQueue(request: MindboxRequest) {
-        var startTime: Long? = null
-        var requestEventListener: RequestEventListener? = null
-        requestEventListener = RequestEventListener { queuedRequest, event ->
-            if (event == REQUEST_QUEUED) {
-                startTime = System.currentTimeMillis()
-
-            } else if (request == queuedRequest && event == REQUEST_FINISHED) {
-                requestQueue?.removeRequestEventListener(requestEventListener)
-            } else {
-                if (request == queuedRequest && startTime != null && (startTime!! + 5000) < System.currentTimeMillis()) {
-                    requestQueue?.apply {
-                        cancelAll { cancellableRequest -> cancellableRequest == request }
-                    }
-                }
-            }
-        }
-        requestQueue?.addRequestEventListener(requestEventListener)
-        requestQueue?.add(request)
-    }
-
     internal fun addToRequestQueue(request: MindboxRequest) = LoggingExceptionHandler.runCatching {
         requestQueue?.let { requestQueue ->
             requestQueue.add(request)
