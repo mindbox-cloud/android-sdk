@@ -8,11 +8,10 @@ import java.io.File
 class LogStoringDataCheckerImpl(private val context: Context) : LogStoringDataChecker {
 
     override fun isDatabaseMemorySizeExceeded(): Boolean {
-        val dbFolderPath = context.filesDir.absolutePath.replace(
+        val dbFile = File("${context.filesDir.absolutePath.replace(
             "files",
             "databases"
-        )
-        val dbFile = File("$dbFolderPath/$monitoringDatabaseName")
+        )}/$monitoringDatabaseName")
 
         if (!dbFile.exists()) throw Exception("${dbFile.absolutePath} doesn't exist")
 
