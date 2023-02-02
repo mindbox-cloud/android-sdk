@@ -5,10 +5,10 @@ import cloud.mindbox.mobile_sdk.di.monitoringModule
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import io.mockk.every
+import io.mockk.junit4.MockKRule
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.verify
@@ -25,6 +25,10 @@ import org.koin.test.inject
 
 internal class MonitoringRepositoryImplTest : KoinTest {
 
+
+    @get:Rule
+    val mockkRule = MockKRule(this)
+
     @get:Rule
     val koinTestRule = KoinTestRule.create {
         modules(dataModule, monitoringModule, module { androidContext(mockk()) })
@@ -38,8 +42,6 @@ internal class MonitoringRepositoryImplTest : KoinTest {
 
     private lateinit var monitoringRepository: MonitoringRepositoryImpl
 
-    private val logStoringDataChecker: LogStoringDataChecker by inject()
-
 
     @Before
     fun onTestStart() {
@@ -49,7 +51,7 @@ internal class MonitoringRepositoryImplTest : KoinTest {
                 monitoringDao = monitoringDao,
                 monitoringMapper = monitoringMapper,
                 gson = gson,
-                logStoringDataChecker = logStoringDataChecker
+                logStoringDataChecker = mockk()
             )
         mockkObject(MindboxPreferences)
     }

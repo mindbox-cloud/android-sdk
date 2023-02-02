@@ -1,10 +1,14 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.repositories
 
 import android.content.Context
+import android.util.Log
+import androidx.room.RoomDatabase
 import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
+import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
@@ -14,6 +18,8 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.ZonedDateTime
 
 internal class MonitoringRepositoryImpl(
@@ -21,10 +27,10 @@ internal class MonitoringRepositoryImpl(
     private val monitoringDao: MonitoringDao,
     private val monitoringMapper: MonitoringMapper,
     private val gson: Gson,
-    private val logStoringDataChecker: LogStoringDataChecker,
+    private val logStoringDataChecker: LogStoringDataChecker
 ) : MonitoringRepository {
     override suspend fun deleteFirstLog() {
-        monitoringDao.deleteFirstLog(monitoringDao.getFirstLog())
+        monitoringDao.deleteFirstLog()
     }
 
     override fun getRequestIds(): HashSet<String> {
@@ -63,8 +69,20 @@ internal class MonitoringRepositoryImpl(
                 "${zonedDateTime.convertToString()} $message"
             )
         )
-        while (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
-            monitoringDao.deleteFirstLog(monitoringDao.getFirstLog())
+        if (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
+            LogStoringDataCheckerImpl.needCleanLog.set(true)
+            try {
+                Mutex().withLock {
+                    if (LogStoringDataCheckerImpl.deletionIsInProgress.get().not()) {
+                        LogStoringDataCheckerImpl.deletionIsInProgress.set(true)
+                        monitoringDao.deleteFirstTenPercentOfLogs()
+                        Log.d("MindboxTest", "deleteFirstTenPercentOfLogs")
+
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d("MindboxTest", e.stackTraceToString())
+            }
         }
     }
 

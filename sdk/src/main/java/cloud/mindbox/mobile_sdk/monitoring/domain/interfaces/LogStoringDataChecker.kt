@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.monitoring.domain.interfaces
 
-interface LogStoringDataChecker {
+internal interface LogStoringDataChecker {
 
     fun isDatabaseMemorySizeExceeded(): Boolean
+
 }

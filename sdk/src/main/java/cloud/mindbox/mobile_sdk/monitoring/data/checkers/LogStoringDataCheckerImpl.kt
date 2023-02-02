@@ -1,21 +1,31 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.checkers
 
-import android.content.Context
-import cloud.mindbox.mobile_sdk.di.monitoringDatabaseName
+import android.util.Log
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
-class LogStoringDataCheckerImpl(private val context: Context) : LogStoringDataChecker {
+internal class LogStoringDataCheckerImpl(private val dbFile: File) : LogStoringDataChecker {
+
+
+    private var previousSize: Long? = null
 
     override fun isDatabaseMemorySizeExceeded(): Boolean {
-        val dbFile = File("${context.filesDir.absolutePath.replace(
-            "files",
-            "databases"
-        )}/$monitoringDatabaseName")
-
         if (!dbFile.exists()) throw Exception("${dbFile.absolutePath} doesn't exist")
-
-        return dbFile.length() >= MAX_LOG_SIZE
+        val fileSize = dbFile.length()
+        Log.d("MindboxTest", "$fileSize")
+        if (previousSize == null) previousSize = fileSize
+        return if (needCleanLog.get()) {
+            if (fileSize < MAX_LOG_SIZE || previousSize != fileSize) {
+                Log.d("MindboxTest", "isDatabaseMemorySizeExceeded fileSize < MAX_LOG_SIZE")
+                needCleanLog.set(false)
+                deletionIsInProgress.set(false)
+                previousSize = fileSize
+            }
+            false
+        } else {
+            fileSize >= MAX_LOG_SIZE
+        }
     }
 
     companion object {
@@ -23,7 +33,9 @@ class LogStoringDataCheckerImpl(private val context: Context) : LogStoringDataCh
          * Ten megabytes in bytes. It is used as the maximum size of database in memory.
          *
          **/
-        private const val MAX_LOG_SIZE = 10 * 1024 * 1024
+        var needCleanLog: AtomicBoolean = AtomicBoolean(false)
+        var deletionIsInProgress: AtomicBoolean = AtomicBoolean(false)
+        const val MAX_LOG_SIZE = 200 * 1024
 
     }
 }
