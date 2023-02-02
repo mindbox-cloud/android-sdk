@@ -13,11 +13,9 @@ internal class LogStoringDataCheckerImpl(private val dbFile: File) : LogStoringD
     override fun isDatabaseMemorySizeExceeded(): Boolean {
         if (!dbFile.exists()) throw Exception("${dbFile.absolutePath} doesn't exist")
         val fileSize = dbFile.length()
-        Log.d("MindboxTest", "$fileSize")
         if (previousSize == null) previousSize = fileSize
         return if (needCleanLog.get()) {
             if (fileSize < MAX_LOG_SIZE || previousSize != fileSize) {
-                Log.d("MindboxTest", "isDatabaseMemorySizeExceeded fileSize < MAX_LOG_SIZE")
                 needCleanLog.set(false)
                 deletionIsInProgress.set(false)
                 previousSize = fileSize
