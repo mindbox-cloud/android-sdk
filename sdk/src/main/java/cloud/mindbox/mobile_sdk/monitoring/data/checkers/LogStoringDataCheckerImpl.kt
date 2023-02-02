@@ -33,7 +33,7 @@ internal class LogStoringDataCheckerImpl(private val dbFile: File) : LogStoringD
          **/
         var needCleanLog: AtomicBoolean = AtomicBoolean(false)
         var deletionIsInProgress: AtomicBoolean = AtomicBoolean(false)
-        const val MAX_LOG_SIZE = 200 * 1024
+        const val MAX_LOG_SIZE = 10 * 1024 * 1024
 
     }
 }
