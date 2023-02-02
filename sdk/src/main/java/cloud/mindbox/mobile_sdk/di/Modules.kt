@@ -68,7 +68,7 @@ internal val appModule = module {
     }
 }
 internal val dataModule = module {
-    factory<InAppRepository> {
+    single<InAppRepository> {
         InAppRepositoryImpl(
             inAppMapper = get(),
             gson = get(),

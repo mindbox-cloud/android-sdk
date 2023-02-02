@@ -1,33 +1,40 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.checkers
 
-import android.content.Context
+import cloud.mindbox.mobile_sdk.di.monitoringDatabaseName
+import io.mockk.MockK
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
-import io.mockk.junit4.MockKRule
-import org.junit.Assert.assertFalse
-import org.junit.Rule
+import io.mockk.mockkConstructor
+import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import java.io.File
 
+@RunWith(
+    RobolectricTestRunner::class
+)
 class LogStoringDataCheckerImplTest {
-    @get:Rule
-    val mockkRule = MockKRule(this)
 
-    @MockK
-    private lateinit var context: Context
 
-    @InjectMockKs
-    private lateinit var logStoringDataChecker: LogStoringDataCheckerImpl
+    private val logStoringDataChecker =
+        LogStoringDataCheckerImpl(RuntimeEnvironment.getApplication().applicationContext)
+
 
     @Test
-    fun `database memory is not exceeded returns false`() {
-        /*every {
-            context.filesDir.absolutePath.replace(
-                "files",
-                "databases"
-            )
-        } returns ""*/
+    fun `database is not exist`() {
+        assertThrows(Exception::class.java) {
+            logStoringDataChecker.isDatabaseMemorySizeExceeded()
+        }
+    }
 
+    @Test
+    fun `database in memory is not exceeded`() {
+        val filePath = "${RuntimeEnvironment.getApplication().applicationContext.filesDir.absolutePath.replace(
+            "files",
+            "databases"
+        )}/$monitoringDatabaseName"
+        mockkConstructor(File::class)
         assertFalse(logStoringDataChecker.isDatabaseMemorySizeExceeded())
     }
 }

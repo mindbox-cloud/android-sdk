@@ -36,6 +36,7 @@ ext {
         mockk: 'io.mockk:mockk:1.13.2',
         mockk_android: 'io.mockk:mockk-android:1.13.2',
         mockk_agent: 'io.mockk:mockk-agent:1.13.2',
+        robolectric: 'org.robolectric:robolectric:4.9.2'
     ]
 
 }
