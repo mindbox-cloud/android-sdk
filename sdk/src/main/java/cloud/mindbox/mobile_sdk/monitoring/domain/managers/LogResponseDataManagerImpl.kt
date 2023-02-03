@@ -20,6 +20,9 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
             (firstLog.zonedDateTime.isAfter(to)) -> {
                 STATUS_NO_OLD_LOGS + firstLog.zonedDateTime
             }
+            (filteredLogs.isEmpty()) -> {
+                STATUS_NO_LOGS
+            }
             filteredLogs.joinToString().length * 2 > OPERATION_LIMIT -> {
                 STATUS_REQUESTED_LOG_IS_TOO_LARGE
             }
@@ -41,6 +44,7 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
     ): List<LogResponse> {
         if (firstLog.zonedDateTime.isAfter(to)) return emptyList()
         if (lastLog.zonedDateTime.isBefore(from)) return emptyList()
+        if (filteredLogs.isEmpty()) return emptyList()
         return if (filteredLogs.joinToString().length * 2 < OPERATION_LIMIT) filteredLogs else {
             var droppingLogsCount = 1
             while (filteredLogs.dropLast(droppingLogsCount)
@@ -56,6 +60,7 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
         const val STATUS_OK = "Ok"
         const val STATUS_NO_OLD_LOGS = "No data found. The elder log has date: "
         const val STATUS_NO_NEW_LOGS = "No data found. The latest log has date: "
+        const val STATUS_NO_LOGS = "No data found."
         const val STATUS_REQUESTED_LOG_IS_TOO_LARGE = "The requested log size is too large."
         private const val OPERATION_LIMIT = 1024 * 800
     }
