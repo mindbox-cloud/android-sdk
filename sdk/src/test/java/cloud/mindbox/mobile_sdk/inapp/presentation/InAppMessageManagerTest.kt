@@ -40,7 +40,7 @@ internal class InAppMessageManagerTest {
     private lateinit var inAppMessageManager: InAppMessageManagerImpl
 
     @MockK
-    private lateinit var monitoringInteractor: MonitoringInteractor
+    private lateinit var monitoringRepository: MonitoringInteractor
 
     @OptIn(DelicateCoroutinesApi::class)
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
@@ -71,7 +71,7 @@ internal class InAppMessageManagerTest {
     fun `in app config is being fetched`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         coEvery {
             inAppMessageInteractor.fetchInAppConfig()
 
@@ -90,7 +90,7 @@ internal class InAppMessageManagerTest {
     fun `in-app config throws non network error`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         mockkObject(LoggingExceptionHandler)
         coEvery {
             MindboxLoggerImpl.e(any(), any())
@@ -110,7 +110,7 @@ internal class InAppMessageManagerTest {
     fun `in app messages success message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
             inAppMessageInteractor.processEventAndConfig()
         }.answers {
@@ -139,7 +139,7 @@ internal class InAppMessageManagerTest {
     fun `in app messages error message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
             inAppMessageInteractor.processEventAndConfig()
         }.answers {
@@ -170,7 +170,7 @@ internal class InAppMessageManagerTest {
     fun `in-app config throws network error non 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
         NetworkResponse::class.java.declaredFields[0].apply {
@@ -200,7 +200,7 @@ internal class InAppMessageManagerTest {
     fun `in app config throws network error 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringInteractor)
+            StandardTestDispatcher(testScheduler), monitoringRepository)
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
         NetworkResponse::class.java.declaredFields[0].apply {

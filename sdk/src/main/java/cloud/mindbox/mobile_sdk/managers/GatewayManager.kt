@@ -380,7 +380,6 @@ internal object GatewayManager {
                         Request.Method.GET,
                         getConfigUrl(configuration),
                         { response ->
-
                             continuation.resume(response)
                         },
                         { error ->

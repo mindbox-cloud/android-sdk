@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 internal class MonitoringMapper {
 
     fun mapLogInfoToMonitoringEntity(zonedDateTime: String, message: String): MonitoringEntity {
-        return MonitoringEntity(id = 0, time = zonedDateTime, log = message)
+        return MonitoringEntity(time = zonedDateTime, log = message)
     }
 
     fun mapMonitoringEntityListToLogResponseList(logs: List<MonitoringEntity>): List<LogResponse> {

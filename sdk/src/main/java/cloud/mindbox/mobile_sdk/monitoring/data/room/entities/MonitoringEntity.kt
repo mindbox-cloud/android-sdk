@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 internal data class MonitoringEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = COLUMN_ID)
-    val id: Int,
+    val id: Long = 0,
     @ColumnInfo(name = COLUMN_TIMESTAMP)
     val time: String,
     @ColumnInfo(name = COLUMN_LOG)

@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl
+import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
@@ -18,11 +19,11 @@ import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManagerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
-import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogStoringDataManagerImpl
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import java.io.File
 
 internal const val monitoringDatabaseName = "MonitoringDatabase"
 
@@ -33,20 +34,31 @@ internal val monitoringModule = module {
             monitoringDao = get(),
             monitoringMapper = get(),
             context = get(),
-            gson = get()
+            gson = get(),
+            logStoringDataChecker = get()
         )
     }
     single { MonitoringValidator() }
     single<LogResponseDataManager> { LogResponseDataManagerImpl() }
     single<LogRequestDataManager> { LogRequestDataManagerImpl() }
-    single<LogStoringDataManager> { LogStoringDataManagerImpl(androidContext()) }
+    single<LogStoringDataChecker> {
+        LogStoringDataCheckerImpl(
+            File(
+                "${
+                    androidContext().filesDir.absolutePath.replace(
+                        "files",
+                        "databases"
+                    )
+                }/$monitoringDatabaseName"
+            )
+        )
+    }
     single<MonitoringInteractor> {
         MonitoringInteractorImpl(
             inAppRepository = get(),
             monitoringRepository = get(),
             logResponseDataManager = get(),
-            logRequestDataManager = get(),
-            logStoringDataManager = get()
+            logRequestDataManager = get()
         )
     }
     factory {
@@ -63,12 +75,12 @@ internal val appModule = module {
     factory<InAppMessageManager> {
         InAppMessageManagerImpl(
             inAppMessageViewDisplayer = get(),
-            inAppInteractorImpl = get(), monitoringInteractor = get()
+            inAppInteractorImpl = get(), monitoringRepository = get()
         )
     }
 }
 internal val dataModule = module {
-    factory<InAppRepository> {
+    single<InAppRepository> {
         InAppRepositoryImpl(
             inAppMapper = get(),
             gson = get(),

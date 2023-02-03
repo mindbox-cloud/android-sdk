@@ -17,7 +17,7 @@ internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractorImpl: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val monitoringInteractor: MonitoringInteractor,
+    private val monitoringRepository: MonitoringInteractor,
 ) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
@@ -88,7 +88,7 @@ internal class InAppMessageManagerImpl(
     }
 
     private fun initMonitoring() {
-        monitoringInteractor.processLogs()
+        monitoringRepository.processLogs()
     }
 
 
