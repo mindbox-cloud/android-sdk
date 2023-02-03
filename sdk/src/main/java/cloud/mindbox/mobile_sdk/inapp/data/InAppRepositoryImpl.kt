@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -18,46 +17,62 @@ import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class InAppRepositoryImpl(
     private val inAppMapper: InAppMessageMapper,
     private val gson: Gson,
     private val context: Context,
     private val inAppValidator: InAppValidator,
+    private val monitoringValidator: MonitoringValidator,
 ) : InAppRepository {
 
+
+    private val mutex = Mutex()
 
     override fun getShownInApps(): HashSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {
             if (MindboxPreferences.shownInAppIds.isBlank()) {
                 HashSet()
             } else {
-                gson.fromJson(MindboxPreferences.shownInAppIds,
-                    object : TypeToken<HashSet<String>>() {}.type) ?: HashSet()
+                gson.fromJson(
+                    MindboxPreferences.shownInAppIds,
+                    object : TypeToken<HashSet<String>>() {}.type
+                ) ?: HashSet()
             }
         }
     }
 
 
     override fun sendInAppShown(inAppId: String) {
-        MindboxEventManager.inAppShown(context,
-            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+        MindboxEventManager.inAppShown(
+            context,
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java)
+        )
     }
 
     override fun sendInAppClicked(inAppId: String) {
-        MindboxEventManager.inAppClicked(context,
-            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+        MindboxEventManager.inAppClicked(
+            context,
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java)
+        )
     }
 
     override fun sendInAppTargetingHit(inAppId: String) {
-        MindboxEventManager.inAppTargetingHit(context,
-            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java))
+        MindboxEventManager.inAppTargetingHit(
+            context,
+            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java)
+        )
     }
 
 
@@ -91,35 +106,44 @@ internal class InAppRepositoryImpl(
 
     override fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfigString ->
-            MindboxLoggerImpl.d(
-                parent = this@InAppRepositoryImpl,
-                message = "CachedConfig : $inAppConfigString"
-            )
-            val configBlank = deserializeToConfigDtoBlank(inAppConfigString)
-            val filteredInApps = configBlank?.inApps
-                ?.filter { inAppDtoBlank ->
-                    validateInAppVersion(inAppDtoBlank)
-                }
-                ?.map { inAppDtoBlank ->
-                    inAppMapper.mapToInAppDto(
-                        inAppDtoBlank = inAppDtoBlank,
-                        formDto = deserializeToInAppFormDto(inAppDtoBlank.form),
-                        targetingDto = deserializeToInAppTargetingDto(inAppDtoBlank.targeting)
-                    )
-                }?.filter { inAppDto ->
-                    inAppValidator.validateInApp(inAppDto)
-                }
-            val filteredConfig = InAppConfigResponse(
-                inApps = filteredInApps
-            )
+            mutex.withLock {
+                MindboxLoggerImpl.d(
+                    parent = this@InAppRepositoryImpl,
+                    message = "CachedConfig : $inAppConfigString"
+                )
+                val configBlank = deserializeToConfigDtoBlank(inAppConfigString)
+                val filteredInApps = configBlank?.inApps
+                    ?.filter { inAppDtoBlank ->
+                        validateInAppVersion(inAppDtoBlank)
+                    }
+                    ?.map { inAppDtoBlank ->
+                        inAppMapper.mapToInAppDto(
+                            inAppDtoBlank = inAppDtoBlank,
+                            formDto = deserializeToInAppFormDto(inAppDtoBlank.form),
+                            targetingDto = deserializeToInAppTargetingDto(inAppDtoBlank.targeting)
+                        )
+                    }?.filter { inAppDto ->
+                        inAppValidator.validateInApp(inAppDto)
+                    }
+                val filteredMonitoring =
+                    configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
+                        monitoringValidator.validateMonitoring(logRequestDtoBlank)
+                    }?.map { logRequestDtoBlank ->
+                        inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
+                    }
+                val filteredConfig = InAppConfigResponse(
+                    inApps = filteredInApps,
+                    monitoring = filteredMonitoring
+                )
 
-            return@map inAppMapper.mapToInAppConfig(filteredConfig)
-                .also { inAppConfig ->
-                    MindboxLoggerImpl.d(
-                        parent = this@InAppRepositoryImpl,
-                        message = "Providing config: $inAppConfig"
-                    )
-                }
+                return@map inAppMapper.mapToInAppConfig(filteredConfig)
+                    .also { inAppConfig ->
+                        MindboxLoggerImpl.d(
+                            parent = this@InAppRepositoryImpl,
+                            message = "Providing config: $inAppConfig"
+                        )
+                    }
+            }
         }
     }
 

@@ -68,6 +68,7 @@ abstract class PushServiceHandler {
         previousToken: String?,
     ): String? = try {
         val token = getToken(context)
+        MindboxLoggerImpl.d(this, "registerToken. token: $token, previousToken: $previousToken")
         if (!token.isNullOrEmpty() && token != previousToken) {
             MindboxLoggerImpl.i(this, "Token gets or updates from $notificationProvider")
         }

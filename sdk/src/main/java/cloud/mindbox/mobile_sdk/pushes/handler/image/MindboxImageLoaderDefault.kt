@@ -32,12 +32,12 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
         val logMessage = buildString {
             append("Image loading started, imageUrl=")
             append(imageUrl)
-            if (imageUrl == null) {
+            if (imageUrl.isNullOrBlank()) {
                 append(" (Image upload is not required)")
             }
         }
         MindboxLoggerImpl.d(this, logMessage)
-        if (imageUrl == null) return null
+        if (imageUrl.isNullOrBlank()) return null
         val connection = URL(imageUrl).openConnection().apply {
             readTimeout = IMAGE_CONNECTION_TIMEOUT
             connectTimeout = IMAGE_CONNECTION_TIMEOUT

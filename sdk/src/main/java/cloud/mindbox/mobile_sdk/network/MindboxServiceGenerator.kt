@@ -2,10 +2,14 @@ package cloud.mindbox.mobile_sdk.network
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
+import com.android.volley.RequestQueue.RequestEvent.REQUEST_FINISHED
+import com.android.volley.RequestQueue.RequestEvent.REQUEST_QUEUED
+import com.android.volley.RequestQueue.RequestEventListener
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
@@ -55,9 +59,18 @@ internal class MindboxServiceGenerator constructor(context: Context) {
 
     internal fun addToRequestQueue(request: StringRequest) {
         requestQueue?.add(request)
+        // TODO change StringRequest to MindboxRequest or log here
     }
 
     internal fun addToRequestQueue(request: MindboxRequest) = LoggingExceptionHandler.runCatching {
-        requestQueue?.add(request)
+        requestQueue?.let { requestQueue ->
+            requestQueue.add(request)
+            logMindboxRequest(request)
+        }
+    }
+
+    private fun logMindboxRequest(request: MindboxRequest) {
+        MindboxLoggerImpl.d(this, "MindboxRequest added to RequestQueue. " +
+                "Method: ${request.methodType} Url: ${request.fullUrl} Request body: ${request.jsonRequest}")
     }
 }

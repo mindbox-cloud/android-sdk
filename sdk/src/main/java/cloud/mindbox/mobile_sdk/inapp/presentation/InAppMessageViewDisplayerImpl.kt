@@ -136,6 +136,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         if (isInAppMessageActive) {
             currentInAppId?.let { id ->
                 inAppCallback?.onInAppDismissed(id)
+                MindboxLoggerImpl.d(this, "In-app dismissed")
             }
         }
         isInAppMessageActive = false
@@ -186,6 +187,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         setOnClickListener {
                                             isInAppMessageActive = false
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                            MindboxLoggerImpl.d(this, "In-app dismissed")
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
                                         }
@@ -205,12 +207,14 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                     currentDialog?.setDismissListener {
                                         isInAppMessageActive = false
                                         inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        MindboxLoggerImpl.d(this, "In-app dismissed")
                                         currentRoot?.removeView(currentDialog)
                                         currentRoot?.removeView(currentBlur)
                                     }
                                     currentBlur?.setOnClickListener {
                                         isInAppMessageActive = false
                                         inAppCallback?.onInAppDismissed(inAppType.inAppId)
+                                        MindboxLoggerImpl.d(this, "In-app dismissed")
                                         currentRoot?.removeView(currentDialog)
                                         currentRoot?.removeView(currentBlur)
                                     }
