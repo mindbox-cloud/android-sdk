@@ -1,16 +1,17 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
+import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
-import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
@@ -20,6 +21,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -28,6 +30,7 @@ internal object GatewayManager {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
+    private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
@@ -36,7 +39,7 @@ internal object GatewayManager {
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/inapps/byendpoint/${configuration.endpointId}.json"
+        return "https://${configuration.domain}/mobile/byendpoint/${configuration.endpointId}.json"
     }
 
     private fun buildEventUrl(
@@ -134,7 +137,6 @@ internal object GatewayManager {
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
-            val isDebug = BuildConfiguration.isDebug(context)
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -147,7 +149,6 @@ internal object GatewayManager {
                 errorsListener = { volleyError ->
                     handleError(volleyError, onSuccess, onError)
                 },
-                isDebug = isDebug,
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -285,18 +286,25 @@ internal object GatewayManager {
     suspend fun checkGeoTargeting(context: Context, configuration: Configuration): GeoTargetingDto {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(MindboxRequest(Request.Method.GET,
-                    "https://${configuration.domain}/geo",
-                    configuration,
-                    null,
-                    { jsonObject ->
-                        continuation.resume(gson.fromJson(jsonObject.toString(),
-                            GeoTargetingDto::class.java))
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    },
-                    true))
+                ?.addToRequestQueue(
+                    MindboxRequest(
+                        Request.Method.GET,
+                        "https://${configuration.domain}/geo",
+                        configuration,
+                        null,
+                        { jsonObject ->
+                            continuation.resume(
+                                gson.fromJson(
+                                    jsonObject.toString(),
+                                    GeoTargetingDto::class.java
+                                )
+                            )
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        }
+                    )
+                )
         }
     }
 
@@ -307,19 +315,59 @@ internal object GatewayManager {
     ): SegmentationCheckResponse {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(MindboxRequest(Request.Method.POST,
-                    getSegmentationUrl(configuration),
-                    configuration,
-                    convertBodyToJson(
-                        gson.toJson(segmentationCheckRequest,
-                            SegmentationCheckRequest::class.java))!!,
-                    { response ->
-                        continuation.resume(gson.fromJson(response.toString(),
-                            SegmentationCheckResponse::class.java))
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    }, true))
+                ?.addToRequestQueue(
+                    MindboxRequest(
+                        Request.Method.POST,
+                        getSegmentationUrl(configuration),
+                        configuration,
+                        convertBodyToJson(
+                            gson.toJson(
+                                segmentationCheckRequest,
+                                SegmentationCheckRequest::class.java
+                            )
+                        )!!,
+                        { response ->
+                            continuation.resume(
+                                gson.fromJson(
+                                    response.toString(),
+                                    SegmentationCheckResponse::class.java
+                                )
+                            )
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        }
+                    )
+                )
+        }
+    }
+
+    fun sendLogEvent(logs: LogResponseDto, context: Context, configuration: Configuration) {
+        try {
+            val url =
+                "https://${configuration.domain}/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
+                    UUID.randomUUID()
+                }"
+            val jsonRequest: JSONObject? = convertBodyToJson(gson.toJson(logs))
+            val request = MindboxRequest(
+                methodType = Request.Method.POST,
+                fullUrl = url,
+                configuration = configuration,
+                jsonRequest = jsonRequest,
+                listener = {
+                    Log.d("Success", "Sending logs success")
+                },
+                errorsListener = { volleyError ->
+                    Log.e("Error", "Sending logs was failure with exception", volleyError)
+                }
+            ).apply {
+                setShouldCache(false)
+                retryPolicy =
+                    DefaultRetryPolicy(MONITORING_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+            }
+            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
+        } catch (e: Exception) {
+            Log.e("Error", "Sending event was failure with exception", e)
         }
     }
 
@@ -327,18 +375,18 @@ internal object GatewayManager {
     suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(StringRequest(
-                    Request.Method.GET,
-                    getConfigUrl(configuration),
-                    { response ->
-
-                        continuation.resume(response)
-                    },
-                    { error ->
-                        continuation.resumeWithException(error)
-                    },
-                ))
+                ?.addToRequestQueue(
+                    StringRequest(
+                        Request.Method.GET,
+                        getConfigUrl(configuration),
+                        { response ->
+                            continuation.resume(response)
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        },
+                    )
+                )
         }
-
     }
 }

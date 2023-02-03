@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.mapper
 
+import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -8,14 +9,17 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlinx.coroutines.Deferred
 
 internal class InAppMessageMapper {
 
     fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
-        return GeoTargeting(geoTargetingDto.cityId ?: "",
+        return GeoTargeting(
+            geoTargetingDto.cityId ?: "",
             geoTargetingDto.regionId ?: "",
-            geoTargetingDto.countryId ?: "")
+            geoTargetingDto.countryId ?: ""
+        )
     }
 
     fun mapToInAppDto(
@@ -33,12 +37,23 @@ internal class InAppMessageMapper {
         }
     }
 
+    fun mapToLogRequestDto(
+        logRequestDtoBlank: LogRequestDtoBlank,
+    ): LogRequestDto {
+        return LogRequestDto(
+            requestId = logRequestDtoBlank.requestId!!,
+            deviceId = logRequestDtoBlank.deviceId!!,
+            from = logRequestDtoBlank.from!!,
+            to = logRequestDtoBlank.to!!
+        )
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig? {
         return inAppConfigResponse?.let { inAppConfigDto ->
             InAppConfig(
-                inAppConfigDto.inApps?.map { inAppDto ->
+                inApps = inAppConfigDto.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
@@ -62,6 +77,14 @@ internal class InAppMessageMapper {
                         minVersion = inAppDto.sdkVersion?.minVersion,
                         maxVersion = inAppDto.sdkVersion?.maxVersion
                     )
+                } ?: emptyList(),
+                monitoring = inAppConfigResponse.monitoring?.map {
+                    LogRequest(
+                        requestId = it.requestId,
+                        deviceId = it.deviceId,
+                        from = it.from.convertToZonedDateTime(),
+                        to = it.to.convertToZonedDateTime()
+                    )
                 } ?: emptyList()
             )
         }
@@ -80,22 +103,33 @@ internal class InAppMessageMapper {
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     InAppRepositoryImpl.AND_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
-                is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(InAppRepositoryImpl.SEGMENT_JSON_NAME,
+                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                )
+                is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(
+                    InAppRepositoryImpl.SEGMENT_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segmentExternalId!!)
-                is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(InAppRepositoryImpl.OR_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>))
-                is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    treeTargetingDto.segmentExternalId!!
+                )
+                is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(
+                    InAppRepositoryImpl.OR_JSON_NAME,
+                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                )
+                is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
+                    InAppRepositoryImpl.TYPE_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>)
-                is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    treeTargetingDto.ids as List<String>
+                )
+                is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
+                    InAppRepositoryImpl.TYPE_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>)
-                is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(InAppRepositoryImpl.TYPE_JSON_NAME,
+                    treeTargetingDto.ids as List<String>
+                )
+                is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
+                    InAppRepositoryImpl.TYPE_JSON_NAME,
                     if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>)
+                    treeTargetingDto.ids as List<String>
+                )
             }
         }
     }

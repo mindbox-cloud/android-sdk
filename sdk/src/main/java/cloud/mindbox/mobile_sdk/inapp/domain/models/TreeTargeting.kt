@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
 import org.koin.core.component.inject
 

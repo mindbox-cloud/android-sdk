@@ -1,13 +1,26 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 
-import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 
 internal data class InAppConfigResponse(
     @SerializedName("inapps")
     val inApps: List<InAppDto>?,
+    @SerializedName("monitoring")
+    val monitoring: List<LogRequestDto>?,
+)
+
+internal data class LogRequestDto(
+    @SerializedName("requestId")
+    val requestId: String,
+    @SerializedName("deviceUUID")
+    val deviceId: String,
+    @SerializedName("from")
+    val from: String,
+    @SerializedName("to")
+    val to: String,
 )
 
 internal data class InAppDto(
@@ -46,10 +59,29 @@ internal sealed class PayloadDto {
     ) : PayloadDto()
 }
 
+internal data class MonitoringDto(
+    @SerializedName("logs")
+    val logs: List<LogRequestDtoBlank>?,
+)
+
+internal data class LogRequestDtoBlank(
+    @SerializedName("requestId")
+    val requestId: String?,
+    @SerializedName("deviceUUID")
+    val deviceId: String?,
+    @SerializedName("from")
+    val from: String?,
+    @SerializedName("to")
+    val to: String?,
+)
+
 internal data class InAppConfigResponseBlank(
     @SerializedName("inapps")
     val inApps: List<InAppDtoBlank>?,
+    @SerializedName("monitoring")
+    val monitoring: MonitoringDto?,
 ) {
+
     internal data class InAppDtoBlank(
         @SerializedName("id")
         val id: String,

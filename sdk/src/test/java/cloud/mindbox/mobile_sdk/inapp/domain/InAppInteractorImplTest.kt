@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.di.dataModule
+import cloud.mindbox.mobile_sdk.di.dataModule
 import app.cash.turbine.test
-import cloud.mindbox.mobile_sdk.inapp.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult

@@ -6,10 +6,10 @@ import cloud.mindbox.mobile_sdk.models.InAppStub
 internal class InAppConfigStub {
     companion object {
         fun getConfig(): InAppConfig =
-            InAppConfig(inApps = listOf(InAppStub.getInApp()))
+            InAppConfig(inApps = listOf(InAppStub.getInApp()), emptyList())
 
         fun getConfigDto(): InAppConfigResponse =
-            InAppConfigResponse(inApps = listOf(InAppStub.getInAppDto()))
+            InAppConfigResponse(inApps = listOf(InAppStub.getInAppDto()), emptyList())
 
     }
 }
