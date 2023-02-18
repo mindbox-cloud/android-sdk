@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
-import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
+import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository

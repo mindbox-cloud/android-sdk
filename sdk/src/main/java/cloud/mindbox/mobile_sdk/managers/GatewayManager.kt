@@ -2,7 +2,11 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import android.util.Log
+import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.SessionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -21,18 +25,20 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import org.koin.core.component.inject
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-internal object GatewayManager {
+internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
     private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
+    private val sessionManager: SessionManager by inject()
 
     private fun getSegmentationUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
@@ -293,6 +299,7 @@ internal object GatewayManager {
                         configuration,
                         null,
                         { jsonObject ->
+                            sessionManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
                                     jsonObject.toString(),
@@ -301,6 +308,8 @@ internal object GatewayManager {
                             )
                         },
                         { error ->
+                            sessionManager.geoFetchStatus =
+                                GeoFetchStatus.GEO_FETCH_ERROR
                             continuation.resumeWithException(error)
                         }
                     )
@@ -327,6 +336,8 @@ internal object GatewayManager {
                             )
                         )!!,
                         { response ->
+                            sessionManager.segmentationFetchStatus =
+                                SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
                                     response.toString(),
@@ -335,6 +346,8 @@ internal object GatewayManager {
                             )
                         },
                         { error ->
+                            sessionManager.segmentationFetchStatus =
+                                SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                             continuation.resumeWithException(error)
                         }
                     )
@@ -372,7 +385,7 @@ internal object GatewayManager {
     }
 
 
-    suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
+    suspend fun fetchMobileConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(

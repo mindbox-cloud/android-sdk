@@ -1,23 +1,23 @@
-package cloud.mindbox.mobile_sdk.inapp.data
+package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.domainModule
 import cloud.mindbox.mobile_sdk.di.monitoringModule
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import com.google.gson.Gson
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
-import io.mockk.verify
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -26,74 +26,28 @@ import org.koin.test.KoinTestRule
 import org.koin.test.inject
 
 // also tests Gson RuntimeTypeAdapterFactory deserialization and InAppMessageMapper
-internal class InAppRepositoryImplTest : KoinTest {
+internal class MobileConfigRepositoryImplTest : KoinTest {
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
-        modules(dataModule, monitoringModule)
+        modules(dataModule, monitoringModule, domainModule)
     }
 
-    private val gson: Gson by inject()
     private val inAppMessageMapper: InAppMessageMapper by inject()
     private val inAppValidatorImpl: InAppValidator by inject()
     private val monitoringValidator: MonitoringValidator by inject()
-    private lateinit var inAppRepository: InAppRepositoryImpl
+    private lateinit var mobileConfigRepository: MobileConfigRepository
 
     @Before
     fun onTestStart() {
-        inAppRepository = InAppRepositoryImpl(
+        mobileConfigRepository = MobileConfigRepositoryImpl(
             inAppMapper = inAppMessageMapper,
-            gson = gson,
             context = mockk(),
             inAppValidator = inAppValidatorImpl,
-            monitoringValidator = monitoringValidator
+            monitoringValidator = monitoringValidator,
+            mobileConfigSerializationManager = mockk()
         )
         mockkObject(MindboxPreferences)
-    }
-
-    @Test
-    fun `shown inApp ids is not empty and is a valid json`() {
-        val testHashSet = hashSetOf(
-            "71110297-58ad-4b3c-add1-60df8acb9e5e",
-            "ad487f74-924f-44f0-b4f7-f239ea5643c5"
-        )
-        every { MindboxPreferences.shownInAppIds } returns
-                "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
-        assertTrue(inAppRepository.getShownInApps().containsAll(testHashSet))
-    }
-
-    @Test
-    fun `shownInApp ids returns null`() {
-        every { MindboxPreferences.shownInAppIds } returns "a"
-        assertNotNull(inAppRepository.getShownInApps())
-    }
-
-    @Test
-    fun `shown inApp ids empty`() {
-        val expectedIds = hashSetOf<String>()
-        every { MindboxPreferences.shownInAppIds } returns ""
-        val actualIds = inAppRepository.getShownInApps()
-        assertTrue(expectedIds.containsAll(actualIds))
-    }
-
-    @Test
-    fun `shown inApp ids is not empty and is not a json`() {
-        every { MindboxPreferences.shownInAppIds } returns "123"
-        val expectedResult = hashSetOf<String>()
-        val actualResult = inAppRepository.getShownInApps()
-        assertTrue(actualResult.containsAll(expectedResult))
-    }
-
-    @Test
-    fun `save shown inApp success`() {
-        val expectedJson = """
-            |["123","456"]
-        """.trimMargin()
-        every { MindboxPreferences.shownInAppIds } returns "[123]"
-        inAppRepository.saveShownInApp("456")
-        verify(exactly = 1) {
-            MindboxPreferences.shownInAppIds = expectedJson
-        }
     }
 
     @Test
@@ -152,7 +106,7 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(successJson)
                 assertEquals(expectedResult, awaitItem())
             }
@@ -168,7 +122,7 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(errorJson)
                 assertEquals(expectedResult, awaitItem())
             }
@@ -264,11 +218,11 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(1, config?.inApps?.size)
-                assertEquals(validInAppId, config?.inApps?.first()?.id)
+                val inApps = awaitItem()
+                assertEquals(1, inApps?.size)
+                assertEquals(validInAppId, inApps?.first()?.id)
             }
         }
     }
@@ -282,7 +236,7 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(errorJson)
                 assertEquals(expectedResult, awaitItem())
             }
@@ -321,10 +275,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(true, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(true, inApps.isNullOrEmpty())
             }
         }
     }
@@ -361,10 +315,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(true, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(true, inApps.isNullOrEmpty())
             }
         }
     }
@@ -402,10 +356,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(true, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(true, inApps.isNullOrEmpty())
             }
         }
     }
@@ -442,10 +396,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(false, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(false, inApps.isNullOrEmpty())
             }
         }
     }
@@ -482,10 +436,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(false, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(false, inApps.isNullOrEmpty())
             }
         }
     }
@@ -521,10 +475,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(false, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(false, inApps.isNullOrEmpty())
             }
         }
     }
@@ -562,10 +516,10 @@ internal class InAppRepositoryImplTest : KoinTest {
         val flow: MutableSharedFlow<String> = MutableSharedFlow()
         every { MindboxPreferences.inAppConfigFlow }.answers { flow }
         runBlocking {
-            inAppRepository.listenInAppConfig().test {
+            mobileConfigRepository.listenInAppsSection().test {
                 flow.emit(json)
-                val config = awaitItem()
-                assertEquals(false, config?.inApps.isNullOrEmpty())
+                val inApps = awaitItem()
+                assertEquals(false, inApps.isNullOrEmpty())
             }
         }
     }

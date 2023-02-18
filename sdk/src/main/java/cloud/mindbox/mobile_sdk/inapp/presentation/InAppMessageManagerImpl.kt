@@ -2,9 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -16,7 +14,7 @@ import kotlinx.coroutines.flow.collect
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractorImpl: InAppInteractor,
-    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val defaultDispatcher: CoroutineDispatcher,
     private val monitoringRepository: MonitoringInteractor,
 ) : InAppMessageManager {
 
@@ -77,7 +75,7 @@ internal class InAppMessageManagerImpl(
                 )
             }
         }) {
-            inAppInteractorImpl.fetchInAppConfig()
+            inAppInteractorImpl.fetchMobileConfig()
         }
     }
 
@@ -120,7 +118,7 @@ internal class InAppMessageManagerImpl(
 
 
     companion object {
-        const val CURRENT_IN_APP_VERSION = 3
+        const val CURRENT_IN_APP_VERSION = 4
         const val CONFIG_NOT_FOUND = 404
     }
 

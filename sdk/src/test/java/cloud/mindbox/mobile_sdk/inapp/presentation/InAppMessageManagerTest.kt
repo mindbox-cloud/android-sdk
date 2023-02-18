@@ -3,8 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.util.Log
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
@@ -73,7 +72,7 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig()
+            inAppMessageInteractor.fetchMobileConfig()
 
         } just runs
         inAppMessageManager.requestConfig()
@@ -81,7 +80,7 @@ internal class InAppMessageManagerTest {
         {
             coVerify(exactly = 1)
             {
-                inAppMessageInteractor.fetchInAppConfig()
+                inAppMessageInteractor.fetchMobileConfig()
             }
         }.shouldNotThrow()
     }
@@ -97,7 +96,7 @@ internal class InAppMessageManagerTest {
         } just runs
         val error = Error()
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig()
+            inAppMessageInteractor.fetchMobileConfig()
         }.throws(error)
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
@@ -187,7 +186,7 @@ internal class InAppMessageManagerTest {
             "test"
         }
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig()
+            inAppMessageInteractor.fetchMobileConfig()
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
@@ -212,7 +211,7 @@ internal class InAppMessageManagerTest {
         }.setInt(networkResponse,
             404)
         coEvery {
-            inAppMessageInteractor.fetchInAppConfig()
+            inAppMessageInteractor.fetchMobileConfig()
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()

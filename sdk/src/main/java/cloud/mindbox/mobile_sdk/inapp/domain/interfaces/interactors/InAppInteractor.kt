@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.domain
+package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import kotlinx.coroutines.flow.Flow
@@ -13,5 +13,5 @@ internal interface InAppInteractor {
 
     fun sendInAppClicked(inAppId: String)
 
-    suspend fun fetchInAppConfig()
+    suspend fun fetchMobileConfig()
 }

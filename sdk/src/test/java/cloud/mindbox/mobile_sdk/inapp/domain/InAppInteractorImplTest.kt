@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.di.dataModule
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Kind
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckResult
@@ -48,7 +50,7 @@ internal class InAppInteractorImplTest : KoinTest {
     }
 
     @MockK
-    private lateinit var inAppRepository: InAppRepository
+    private lateinit var mobileConfigRepository: MobileConfigRepository
 
     @OverrideMockKs
     private lateinit var inAppInteractor: InAppInteractorImpl
@@ -60,13 +62,13 @@ internal class InAppInteractorImplTest : KoinTest {
     fun onTestStart() {
         mockkObject(MindboxKoin)
         every { MindboxKoin.koin } returns getKoin()
-        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
-        every { inAppRepository.sendInAppTargetingHit(any()) } just runs
+        every { mobileConfigRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        every { mobileConfigRepository.sendInAppTargetingHit(any()) } just runs
         inAppGeoRepository = declareMock {
             coEvery { inAppGeoRepository.fetchGeo() } just runs
         }
         every {
-            inAppGeoRepository.geoGeo()
+            inAppGeoRepository.getGeo()
         } returns GeoTargetingStub.getGeoTargeting().copy(cityId = "123",
             regionId = "456",
             countryId = "789")
@@ -77,14 +79,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `should choose in-app without targeting`() = runTest {
         val validId = "123456"
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(inApps = listOf(InAppStub.getInApp()
@@ -106,17 +108,17 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `should choose in-app with targeting`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp().copy(status = "success",
             customerSegmentations = listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
                 .copy(segmentation = "999",
                     segment = "777")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -143,10 +145,10 @@ internal class InAppInteractorImplTest : KoinTest {
     @Test
     fun `should return null if no in-apps present`() = runTest {
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(emptyList()))
@@ -161,14 +163,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `should return null if network exception`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } throws VolleyError()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -190,14 +192,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `should throw exception if non network error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } throws Error()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -240,7 +242,7 @@ internal class InAppInteractorImplTest : KoinTest {
                                 InAppStub.getTargetingSegmentNode()))),
                 ))) as InAppConfig
             invocationRez.inApps.forEach { inApp ->
-                if (inApp.targeting.preCheckTargeting() == SegmentationCheckResult.PENDING) {
+                if (inApp.targeting.fetchTargetingInfo() == SegmentationCheckResult.PENDING) {
                     rez = false
                 }
             }
@@ -250,14 +252,14 @@ internal class InAppInteractorImplTest : KoinTest {
 
     @Test
     fun `validate in-app was shown list is empty`() = runTest {
-        every { inAppRepository.getShownInApps() } returns HashSet()
+        every { mobileConfigRepository.getShownInApps() } returns HashSet()
         val validId = "123456"
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -277,15 +279,15 @@ internal class InAppInteractorImplTest : KoinTest {
     @Test
     fun `validate in-app was shown list isn't empty but does not contain current in-app id`() =
         runTest {
-            every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+            every { mobileConfigRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
                 "ad487f74-924f-44f0-b4f7-f239ea5643c5")
             val validId = "123456"
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -305,11 +307,11 @@ internal class InAppInteractorImplTest : KoinTest {
 
     @Test
     fun `validate in-app was shown list isn't empty and contains current in-app id`() = runTest {
-        every { inAppRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
+        every { mobileConfigRepository.getShownInApps() } returns hashSetOf("71110297-58ad-4b3c-add1-60df8acb9e5e",
             "ad487f74-924f-44f0-b4f7-f239ea5643c5", "123")
         val validId = "123456"
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -317,7 +319,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "132")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -348,10 +350,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of two positives segmentation both success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(
@@ -361,7 +363,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     .copy(segmentation = "456", segment = "132")
             ))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -383,10 +385,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of two positives segmentation error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy(
@@ -396,7 +398,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "123", segment = "132")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig()
@@ -425,10 +427,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of two negatives segmentation success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -436,7 +438,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "789", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -458,10 +460,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of two negatives segmentation error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -469,7 +471,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "789", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -491,10 +493,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -502,7 +504,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "123", segment = "")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -529,10 +531,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -540,7 +542,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "123", segment = "")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -566,10 +568,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -577,7 +579,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "123", segment = "123")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -602,10 +604,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two positives segmentation first segmentation true`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -613,7 +615,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -635,10 +637,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two positives segmentation second segmentation true`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -646,7 +648,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "456")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -668,10 +670,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two positives segmentation both segmentation true`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -679,7 +681,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "124")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -701,10 +703,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two positives segmentation both segmentation false`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -712,7 +714,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -733,10 +735,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two negatives second true segmentation`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -744,7 +746,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -766,10 +768,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two negatives first true segmentation`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -777,7 +779,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "132", segment = "123")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -799,10 +801,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two negatives both true segmentation`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -810,7 +812,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "133")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -832,7 +834,7 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in union of two negatives both false segmentation`() = runTest {
         val validId = "123456"
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -840,10 +842,10 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "132")))
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -865,10 +867,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -876,7 +878,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "345", segment = "345")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -899,10 +901,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -910,7 +912,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "234", segment = "")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -933,10 +935,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -944,7 +946,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "234", segment = "")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -967,10 +969,10 @@ internal class InAppInteractorImplTest : KoinTest {
         runTest {
             val validId = "123456"
             every {
-                inAppRepository.getShownInApps()
+                mobileConfigRepository.getShownInApps()
             } returns HashSet()
             coEvery {
-                inAppRepository.fetchSegmentations(any())
+                mobileConfigRepository.fetchSegmentations(any())
 
             } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
                 .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -978,7 +980,7 @@ internal class InAppInteractorImplTest : KoinTest {
                     SegmentationCheckInAppStub.getCustomerSegmentation()
                         .copy(segmentation = "234", segment = "132")))
             every {
-                inAppRepository.listenInAppConfig()
+                mobileConfigRepository.listenInAppConfig()
             } answers {
                 flow {
                     emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1000,10 +1002,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is not in segmentation for second in-app`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -1011,7 +1013,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "123", segment = "")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1039,10 +1041,10 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in segmentation for second in-app`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
             .copy("Success", listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
@@ -1050,7 +1052,7 @@ internal class InAppInteractorImplTest : KoinTest {
                 SegmentationCheckInAppStub.getCustomerSegmentation()
                     .copy(segmentation = "124", segment = "132")))
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1078,14 +1080,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive country success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1106,14 +1108,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive country error`() = runTest {
         val validId = "123456"
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1133,14 +1135,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative country error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1161,14 +1163,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative country success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1189,14 +1191,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive region success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1217,14 +1219,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive region error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1244,14 +1246,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative region error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1271,14 +1273,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative region success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1299,14 +1301,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive city success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1327,14 +1329,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of positive city error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1354,14 +1356,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative city error`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()
@@ -1381,14 +1383,14 @@ internal class InAppInteractorImplTest : KoinTest {
     fun `customer is in intersection of negative city success`() = runTest {
         val validId = "123456"
         every {
-            inAppRepository.getShownInApps()
+            mobileConfigRepository.getShownInApps()
         } returns HashSet()
         coEvery {
-            inAppRepository.fetchSegmentations(any())
+            mobileConfigRepository.fetchSegmentations(any())
 
         } returns SegmentationCheckInAppStub.getSegmentationCheckInApp()
         every {
-            inAppRepository.listenInAppConfig()
+            mobileConfigRepository.listenInAppConfig()
         } answers {
             flow {
                 emit(InAppConfigStub.getConfig().copy(listOf(InAppStub.getInApp()

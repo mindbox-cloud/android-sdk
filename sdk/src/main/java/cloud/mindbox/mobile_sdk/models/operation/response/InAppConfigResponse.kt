@@ -46,6 +46,9 @@ internal data class FormDto(
     val variants: List<PayloadDto?>?,
 )
 
+/**
+ * In-app types
+ **/
 internal sealed class PayloadDto {
     data class SimpleImage(
         @SerializedName("${"$"}type")
@@ -56,7 +59,11 @@ internal sealed class PayloadDto {
         val redirectUrl: String?,
         @SerializedName("intentPayload")
         val intentPayload: String?,
-    ) : PayloadDto()
+    ) : PayloadDto() {
+        companion object {
+            const val SIMPLE_IMAGE_JSON_NAME = "simpleImage"
+        }
+    }
 }
 
 internal data class MonitoringDto(

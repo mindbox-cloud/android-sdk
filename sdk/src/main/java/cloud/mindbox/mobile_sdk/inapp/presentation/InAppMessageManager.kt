@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.domain
+package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback

@@ -1,8 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 
@@ -11,13 +14,14 @@ internal class InAppValidatorImpl : InAppValidator {
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
         return when (targeting) {
             null -> {
-                MindboxLoggerImpl.d(InAppRepositoryImpl, "targeting is null for in-app with $id")
+                MindboxLoggerImpl.d(this,
+                    "targeting is null for in-app with $id")
                 false
             }
             is TreeTargetingDto.UnionNodeDto -> {
 
                 if (targeting.nodes.isNullOrEmpty()) {
-                    MindboxLoggerImpl.d(InAppRepositoryImpl,
+                    MindboxLoggerImpl.d(this,
                         "nodes is ${targeting.nodes.toString()} for in-app with id $id")
                     return false
                 }
@@ -31,7 +35,7 @@ internal class InAppValidatorImpl : InAppValidator {
             }
             is TreeTargetingDto.IntersectionNodeDto -> {
                 if (targeting.nodes.isNullOrEmpty()) {
-                    MindboxLoggerImpl.d(InAppRepositoryImpl,
+                    MindboxLoggerImpl.d(this,
                         "nodes is ${targeting.nodes.toString()} for in-app with id $id")
                     return false
                 }
@@ -50,7 +54,7 @@ internal class InAppValidatorImpl : InAppValidator {
                         && targeting.segmentationExternalId != null
                         && targeting.type != null
                 if (!rez) {
-                    MindboxLoggerImpl.d(InAppRepositoryImpl,
+                    MindboxLoggerImpl.d(this,
                         "some segment properties are corrupted")
                 }
                 rez
@@ -73,6 +77,9 @@ internal class InAppValidatorImpl : InAppValidator {
                         && targeting.ids.isNullOrEmpty().not()
                         && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
             }
+            is TreeTargetingDto.OperationNodeDto -> {
+                !(targeting.type.isNullOrEmpty() || targeting.systemName.isNullOrEmpty())
+            }
         }
     }
 
@@ -82,13 +89,13 @@ internal class InAppValidatorImpl : InAppValidator {
         inApp.form?.variants?.iterator()?.forEach { payloadDto ->
             when {
                 (payloadDto == null) -> {
-                    MindboxLoggerImpl.d(InAppRepositoryImpl,
+                    MindboxLoggerImpl.d(this,
                         "payload is null for in-app with id ${inApp.id}")
                     isValid = false
                 }
                 (payloadDto is PayloadDto.SimpleImage) -> {
                     if ((payloadDto.type == null) or (payloadDto.imageUrl == null)) {
-                        MindboxLoggerImpl.d(InAppRepositoryImpl,
+                        MindboxLoggerImpl.d(this,
                             "some properties of in-app with id ${inApp.id} are null. type: ${payloadDto.type}, imageUrl: ${payloadDto.imageUrl}")
                         isValid = false
                     }
@@ -98,6 +105,18 @@ internal class InAppValidatorImpl : InAppValidator {
         }
         return isValid
     }
+
+    override fun validateInAppVersion(inAppDto: InAppConfigResponseBlank.InAppDtoBlank): Boolean {
+        val sdkVersion = inAppDto.sdkVersion ?: return false
+        val minVersionValid = sdkVersion.minVersion?.let { min ->
+            min <= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION
+        } ?: true
+        val maxVersionValid = sdkVersion.maxVersion?.let { max ->
+            max >= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION
+        } ?: true
+        return minVersionValid && maxVersionValid
+    }
+
 
     override fun validateInApp(inApp: InAppDto): Boolean {
         return validateInAppTargeting(inApp.id, inApp.targeting) and validateFormDto(inApp)

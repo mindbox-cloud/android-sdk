@@ -1,16 +1,16 @@
-package cloud.mindbox.mobile_sdk.inapp.data
+package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoTargeting
-import cloud.mindbox.mobile_sdk.inapp.mapper.InAppMessageMapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.VolleyError
-import com.google.gson.Gson
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
@@ -19,14 +19,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertEquals
-import org.junit.Assert.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class InAppGeoRepositoryImplTest {
+internal class InAppGeoRepositoryTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
@@ -34,10 +34,10 @@ class InAppGeoRepositoryImplTest {
     private lateinit var inAppGeoRepository: InAppGeoRepositoryImpl
 
     @MockK
-    private lateinit var gson: Gson
+    private lateinit var context: Context
 
     @MockK
-    private lateinit var context: Context
+    private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
 
     @MockK
     private lateinit var inAppMessageMapper: InAppMessageMapper
@@ -73,7 +73,7 @@ class InAppGeoRepositoryImplTest {
             inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
         every {
-            gson.toJson(geoTargeting)
+            mobileConfigSerializationManager.serializeToGeoString(geoTargeting)
         } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
         inAppGeoRepository.fetchGeo()
         verify {
@@ -101,12 +101,11 @@ class InAppGeoRepositoryImplTest {
             inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
         every {
-            gson.toJson(geoTargeting)
+            mobileConfigSerializationManager.serializeToGeoString(geoTargeting)
         } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
         assertThrows(VolleyError::class.java) {
             runBlocking {
                 inAppGeoRepository.fetchGeo()
-
             }
         }
     }
@@ -129,7 +128,7 @@ class InAppGeoRepositoryImplTest {
             inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
         every {
-            gson.toJson(geoTargeting)
+            mobileConfigSerializationManager.serializeToGeoString(geoTargeting)
         } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
         assertThrows(Error::class.java) {
             runBlocking {
@@ -144,10 +143,9 @@ class InAppGeoRepositoryImplTest {
         every { MindboxPreferences.inAppGeo } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
         val geoTargeting = GeoTargeting(cityId = "123", regionId = "456", countryId = "789")
         every {
-            gson.fromJson("{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}",
-                GeoTargeting::class.java)
+            mobileConfigSerializationManager.deserializeToGeoTargeting("{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}")
         } returns GeoTargeting(cityId = "123", regionId = "456", countryId = "789")
-        assertEquals(geoTargeting, inAppGeoRepository.geoGeo())
+        assertEquals(geoTargeting, inAppGeoRepository.getGeo())
     }
 
     @Test
@@ -155,21 +153,9 @@ class InAppGeoRepositoryImplTest {
         val geoTargeting = GeoTargeting(cityId = "", regionId = "", countryId = "")
         every { MindboxPreferences.inAppGeo } returns ""
         every {
-            gson.fromJson(MindboxPreferences.inAppGeo,
-                GeoTargeting::class.java)
+            mobileConfigSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
         } returns GeoTargeting("", "", "")
-        assertEquals(geoTargeting, inAppGeoRepository.geoGeo())
-    }
-
-    @Test
-    fun `get geo null`() {
-        val geoTargeting = GeoTargeting(cityId = "", regionId = "", countryId = "")
-        every { MindboxPreferences.inAppGeo } returns ""
-        every {
-            gson.fromJson(MindboxPreferences.inAppGeo,
-                GeoTargeting::class.java)
-        } returns null
-        assertEquals(geoTargeting, inAppGeoRepository.geoGeo())
+        assertEquals(geoTargeting, inAppGeoRepository.getGeo())
     }
 
     @Test
@@ -177,9 +163,8 @@ class InAppGeoRepositoryImplTest {
         every { MindboxPreferences.inAppGeo } returns "123"
         val geoTargeting = GeoTargeting(cityId = "", regionId = "", countryId = "")
         every {
-            gson.fromJson(MindboxPreferences.inAppGeo,
-                GeoTargeting::class.java)
+            mobileConfigSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
         } returns GeoTargeting("", "", "")
-        assertEquals(geoTargeting, inAppGeoRepository.geoGeo())
+        assertEquals(geoTargeting, inAppGeoRepository.getGeo())
     }
 }
