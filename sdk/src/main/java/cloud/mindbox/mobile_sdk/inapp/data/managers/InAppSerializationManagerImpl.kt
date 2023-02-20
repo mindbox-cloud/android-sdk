@@ -15,8 +15,7 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
     }
 
     override fun serializeToShownInAppsString(
-        shownInApps: HashSet<String>,
-        inAppId: String,
+        shownInApps: HashSet<String>
     ): String {
         return LoggingExceptionHandler.runCatching("") {
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
@@ -31,6 +30,4 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
             ) ?: HashSet()
         }
     }
-
-
 }

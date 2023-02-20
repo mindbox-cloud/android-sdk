@@ -1,9 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.SessionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoTargeting
@@ -15,14 +15,14 @@ import kotlinx.coroutines.flow.first
 
 internal class InAppGeoRepositoryImpl(
     private val context: Context,
-    private val inAppMessageMapper: InAppMessageMapper,
+    private val inAppMapper: InAppMapper,
     private val geoSerializationManager: GeoSerializationManager,
-    private val sessionManager: SessionManager,
+    private val sessionStorageManager: SessionStorageManager,
 ) : InAppGeoRepository {
 
     override suspend fun fetchGeo() {
         val configuration = DbManager.listenConfigurations().first()
-        val geoTargeting = inAppMessageMapper.mapGeoTargetingDtoToGeoTargeting(
+        val geoTargeting = inAppMapper.mapGeoTargetingDtoToGeoTargeting(
             geoTargetingDto = GatewayManager.checkGeoTargeting(
                 context = context,
                 configuration = configuration
@@ -34,7 +34,7 @@ internal class InAppGeoRepositoryImpl(
 
     override fun getGeoFetchedStatus(): GeoFetchStatus {
         return LoggingExceptionHandler.runCatching(GeoFetchStatus.GEO_FETCH_ERROR) {
-            sessionManager.geoFetchStatus
+            sessionStorageManager.geoFetchStatus
         }
     }
 

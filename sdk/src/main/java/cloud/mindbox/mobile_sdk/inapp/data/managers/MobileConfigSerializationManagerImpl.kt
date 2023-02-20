@@ -51,6 +51,10 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 exception = error
             )
         }
+        result.getOrNull()?.let {
+            if (it.variants == null)
+                return null
+        }
         return result.getOrNull()
     }
 }

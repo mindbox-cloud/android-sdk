@@ -4,8 +4,10 @@ import android.content.Context
 import android.util.Log
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.SessionManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
@@ -38,7 +40,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
-    private val sessionManager: SessionManager by inject()
+    private val sessionStorageManager: SessionStorageManager by inject()
 
     private fun getSegmentationUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
@@ -299,7 +301,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         configuration,
                         null,
                         { jsonObject ->
-                            sessionManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
+                            sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
                                     jsonObject.toString(),
@@ -308,9 +310,9 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            sessionManager.geoFetchStatus =
+                            sessionStorageManager.geoFetchStatus =
                                 GeoFetchStatus.GEO_FETCH_ERROR
-                            continuation.resumeWithException(error)
+                            continuation.resumeWithException(GeoError(error))
                         }
                     )
                 )
@@ -336,7 +338,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         )!!,
                         { response ->
-                            sessionManager.segmentationFetchStatus =
+                            sessionStorageManager.segmentationFetchStatus =
                                 SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
@@ -346,9 +348,9 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            sessionManager.segmentationFetchStatus =
+                            sessionStorageManager.segmentationFetchStatus =
                                 SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-                            continuation.resumeWithException(error)
+                            continuation.resumeWithException(SegmentationError(error))
                         }
                     )
                 )

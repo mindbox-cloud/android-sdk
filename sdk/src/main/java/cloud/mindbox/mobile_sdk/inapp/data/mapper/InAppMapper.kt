@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
@@ -11,7 +10,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
-internal class InAppMessageMapper {
+internal class InAppMapper {
 
     fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
         return GeoTargeting(
@@ -61,7 +60,7 @@ internal class InAppMessageMapper {
                                 when (payloadDto) {
                                     is PayloadDto.SimpleImage -> {
                                         Payload.SimpleImage(
-                                            type = payloadDto.type ?: "",
+                                            type = PayloadDto.SimpleImage.SIMPLE_IMAGE_JSON_NAME,
                                             imageUrl = payloadDto.imageUrl ?: "",
                                             redirectUrl = payloadDto.redirectUrl ?: "",
                                             intentPayload = payloadDto.intentPayload ?: ""
@@ -100,45 +99,47 @@ internal class InAppMessageMapper {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
                 is TreeTargetingDto.OperationNodeDto -> {
-                    TreeTargeting.OperationNode(MobileConfigRepositoryImpl.API_METHOD_CALL_JSON_NAME,
-                        treeTargetingDto.systemName!!)
+                    TreeTargeting.OperationNode(
+                        TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME,
+                        treeTargetingDto.systemName!!
+                    )
                 }
-                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(MobileConfigRepositoryImpl.TRUE_JSON_NAME)
+                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
-                    MobileConfigRepositoryImpl.AND_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                    type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,
+                    nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(
-                    MobileConfigRepositoryImpl.SEGMENT_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segmentExternalId!!
+                    type = TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
+                    segmentExternalId = treeTargetingDto.segmentExternalId!!
                 )
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(
-                    MobileConfigRepositoryImpl.OR_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                    type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
+                    nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
-                    MobileConfigRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.CityNodeDto.CITY_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
                 is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
-                    MobileConfigRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
-                    MobileConfigRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
             }
         }
     }
 
-    fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
-        return SegmentationCheckInApp(
+    fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckWrapper {
+        return SegmentationCheckWrapper(
             status = segmentationCheckResponse.status ?: "",
             customerSegmentations = segmentationCheckResponse.customerSegmentations?.filter { customerSegmentationInAppResponse ->
                 customerSegmentationInAppResponse.segmentation?.ids?.externalId != null

@@ -21,4 +21,8 @@ internal interface InAppRepository {
     fun sendInAppClicked(inAppId: String)
 
     fun sendUserTargeted(inAppId: String)
+
+    fun setInAppShown()
+
+    fun isInAppShown(): Boolean
 }

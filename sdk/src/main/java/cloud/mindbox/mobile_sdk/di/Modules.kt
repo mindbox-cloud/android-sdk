@@ -1,11 +1,12 @@
 package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
@@ -13,7 +14,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryIm
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.SessionManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -107,20 +108,27 @@ internal val domainModule = module {
             inAppRepository = get(),
             inAppSegmentationRepository = get(),
             inAppFilteringManager = get(),
-            inAppEventManager = get()
+            inAppEventManager = get(),
+            inAppChoosingManager = get()
+        )
+    }
+    single<InAppChoosingManager> {
+        InAppChoosingManagerImpl(
+            inAppFilteringManager =
+            get()
         )
     }
     factory<InAppEventManager> {
         InAppEventManagerImpl()
     }
     factory<InAppFilteringManager> {
-        InAppFilteringManagerImpl()
-    }
-    single<SessionManager> {
-        SessionManagerImpl()
+        InAppFilteringManagerImpl(inAppRepository = get())
     }
 }
 internal val dataModule = module {
+    single {
+        SessionStorageManager()
+    }
     single<MobileConfigRepository> {
         MobileConfigRepositoryImpl(
             inAppMapper = get(),
@@ -138,13 +146,15 @@ internal val dataModule = module {
     single<InAppGeoRepository> {
         InAppGeoRepositoryImpl(
             context = androidContext(),
-            inAppMessageMapper = get(),
-            geoSerializationManager = get()
+            inAppMapper = get(),
+            geoSerializationManager = get(),
+            sessionStorageManager = get()
         )
     }
     single<InAppRepository> {
-        InAppRepositoryImpl(context = androidContext(),
-            sessionManager = get(),
+        InAppRepositoryImpl(
+            context = androidContext(),
+            sessionStorageManager = get(),
             inAppSerializationManager = get()
         )
     }
@@ -157,13 +167,14 @@ internal val dataModule = module {
         )
     }
     single<InAppSegmentationRepository> {
-        InAppSegmentationRepositoryImpl(context = androidContext(),
+        InAppSegmentationRepositoryImpl(
+            context = androidContext(),
             inAppMapper = get(),
-            sessionManager = get()
+            sessionStorageManager = get()
         )
     }
     single<InAppValidator> { InAppValidatorImpl() }
-    single { InAppMessageMapper() }
+    single { InAppMapper() }
     single {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(

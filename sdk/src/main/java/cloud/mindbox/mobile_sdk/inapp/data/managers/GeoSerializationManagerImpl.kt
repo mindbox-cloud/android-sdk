@@ -13,7 +13,7 @@ internal class GeoSerializationManagerImpl(private val gson: Gson) : GeoSerializ
             if (inAppGeo.isEmpty()) {
                 GeoTargeting("", "", "")
             } else {
-                gson.fromJson(MindboxPreferences.inAppGeo, GeoTargeting::class.java)
+                gson.fromJson(inAppGeo, GeoTargeting::class.java)
             }
         }
     }

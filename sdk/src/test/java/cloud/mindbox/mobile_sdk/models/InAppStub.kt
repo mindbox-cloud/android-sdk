@@ -1,40 +1,88 @@
 package cloud.mindbox.mobile_sdk.models
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
+import cloud.mindbox.mobile_sdk.models.operation.response.*
 
 internal class InAppStub {
 
     companion object {
-        fun getInApp(): InApp = InApp(id = "",
+        fun getInApp(): InApp = InApp(
+            id = "",
             minVersion = null,
             maxVersion = null,
-            targeting = getTargetingUnionNode().copy(type = "", nodes = listOf(
-                getTargetingTrueNode(), getTargetingSegmentNode())),
-            form = Form(variants = listOf(getSimpleImage())))
+            targeting = getTargetingUnionNode().copy(
+                type = "", nodes = listOf(
+                    getTargetingTrueNode(), getTargetingSegmentNode()
+                )
+            ),
+            form = Form(variants = listOf(getSimpleImage()))
+        )
 
-        fun getInAppDto(): InAppDto = InAppDto(id = "",
+        fun getInAppDto(): InAppDto = InAppDto(
+            id = "",
             sdkVersion = SdkVersion(minVersion = null, maxVersion = null),
             targeting = (TreeTargetingDto.TrueNodeDto("")),
-            form = FormDto(variants = listOf(getSimpleImageDto())))
+            form = FormDto(variants = listOf(getSimpleImageDto()))
+        )
 
-        fun getSimpleImageDto() = PayloadDto.SimpleImage(type = null,
+        fun getInAppDtoBlank(): InAppConfigResponseBlank.InAppDtoBlank {
+            return InAppConfigResponseBlank.InAppDtoBlank(
+                id = "",
+                sdkVersion = null,
+                targeting = null,
+                form = null
+            )
+        }
+
+        fun getFormDto(): FormDto {
+            return FormDto(emptyList())
+        }
+
+        fun getPayloadSimpleImage(): PayloadDto.SimpleImage {
+            return PayloadDto.SimpleImage(
+                type = null,
+                imageUrl = null,
+                redirectUrl = null,
+                intentPayload = null
+            )
+        }
+
+        fun getSdkVersion(): SdkVersion {
+            return SdkVersion(minVersion = null, maxVersion = null)
+        }
+
+        fun getSimpleImageDto() = PayloadDto.SimpleImage(
+            type = null,
             imageUrl = null,
             redirectUrl = null,
-            intentPayload = null)
+            intentPayload = null
+        )
 
         fun getTargetingTrueNode(): TreeTargeting.TrueNode {
             return TreeTargeting.TrueNode(type = "")
         }
 
         fun getTargetingSegmentNode(): TreeTargeting.SegmentNode {
-            return TreeTargeting.SegmentNode(type = "",
+            return TreeTargeting.SegmentNode(
+                type = "",
                 kind = Kind.NEGATIVE,
                 segmentationExternalId = "",
-                segmentExternalId = "")
+                segmentExternalId = ""
+            )
+        }
+
+        fun getTargetingOperationNode(): TreeTargeting.OperationNode {
+            return TreeTargeting.OperationNode(
+                type = "",
+                systemName = ""
+            )
+        }
+
+        fun getTargetingOperationNodeDto(): TreeTargetingDto.OperationNodeDto {
+            return TreeTargetingDto.OperationNodeDto(
+                type = "",
+                systemName = ""
+            )
         }
 
         fun getTargetingUnionNode(): TreeTargeting.UnionNode {

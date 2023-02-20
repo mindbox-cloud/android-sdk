@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppInteractor {
 
+    fun isInAppShown(): Boolean
+    fun setInAppShown()
     fun processEventAndConfig(): Flow<InAppType>
 
     fun saveShownInApp(id: String)

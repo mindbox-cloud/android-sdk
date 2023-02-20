@@ -22,6 +22,12 @@ internal interface ITargeting {
 internal interface TargetingInfo {
     suspend fun fetchTargetingInfo()
 
+    fun hasSegmentationNode(): Boolean
+
+    fun hasGeoNode(): Boolean
+
+    fun hasOperationNode(): Boolean
+
     fun getOperationsSet(): Set<String>
 }
 
@@ -29,7 +35,6 @@ internal enum class Kind {
     POSITIVE,
     NEGATIVE
 }
-
 
 
 internal sealed class TreeTargeting(open val type: String) : ITargeting, TargetingInfo,
@@ -43,6 +48,18 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         override suspend fun fetchTargetingInfo() {
             return
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
         }
 
         override fun getOperationsSet(): Set<String> {
@@ -73,6 +90,18 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         override suspend fun fetchTargetingInfo() {
             return
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return true
         }
 
         override fun getOperationsSet(): Set<String> {
@@ -113,6 +142,18 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 }
             }
         }
+
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return true
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
+        }
     }
 
     internal data class CityNode(
@@ -136,20 +177,22 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override suspend fun fetchTargetingInfo() {
-            runCatching {
-                if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
-                    inAppGeoRepositoryImpl.fetchGeo()
-                }
-            }.onFailure { throwable ->
-                if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                } else {
-                    throw throwable
-                }
+            if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
+                inAppGeoRepositoryImpl.fetchGeo()
             }
         }
 
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
 
+        override fun hasGeoNode(): Boolean {
+            return true
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
+        }
     }
 
     internal data class RegionNode(
@@ -172,17 +215,21 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override suspend fun fetchTargetingInfo() {
-            runCatching {
-                if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
-                    inAppGeoRepositoryImpl.fetchGeo()
-                }
-            }.onFailure { throwable ->
-                if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                } else {
-                    throw throwable
-                }
+            if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
+                inAppGeoRepositoryImpl.fetchGeo()
             }
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return true
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
         }
     }
 
@@ -212,6 +259,30 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             }
         }
 
+        override fun hasSegmentationNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasSegmentationNode())
+                    return true
+            }
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasGeoNode())
+                    return true
+            }
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasOperationNode())
+                    return true
+            }
+            return false
+        }
+
     }
 
     internal data class UnionNode(
@@ -238,6 +309,30 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             for (node in nodes) {
                 node.fetchTargetingInfo()
             }
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasSegmentationNode())
+                    return true
+            }
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasGeoNode())
+                    return true
+            }
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            for (node in nodes) {
+                if (node.hasOperationNode())
+                    return true
+            }
+            return false
         }
     }
 
@@ -267,17 +362,21 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override suspend fun fetchTargetingInfo() {
-            runCatching {
-                if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
-                    inAppSegmentationRepository.fetchSegmentations()
-                }
-            }.getOrElse { throwable ->
-                if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
-                } else {
-                    throw throwable
-                }
+            if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+                inAppSegmentationRepository.fetchSegmentations()
             }
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            return true
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
         }
     }
 }

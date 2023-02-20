@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMessageMapper
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
@@ -21,7 +21,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class MobileConfigRepositoryImpl(
-    private val inAppMapper: InAppMessageMapper,
+    private val inAppMapper: InAppMapper,
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
     private val context: Context,
     private val inAppValidator: InAppValidator,

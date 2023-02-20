@@ -33,7 +33,7 @@ internal class InAppMessageManagerImpl(
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main)
                     {
-                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive.not()) {
+                        if ((InAppMessageViewDisplayerImpl.isInAppMessageActive || isInAppShown()).not()) {
                             inAppMessageViewDisplayer.tryShowInAppMessage(inAppType = inAppMessage,
                                 onInAppClick = {
                                     sendInAppClicked(inAppMessage.inAppId)
@@ -41,6 +41,7 @@ internal class InAppMessageManagerImpl(
                                 onInAppShown = {
                                     inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
                                     sendInAppShown(inAppMessage.inAppId)
+                                    setInAppShown()
                                 })
                         }
                     }
@@ -98,6 +99,14 @@ internal class InAppMessageManagerImpl(
 
     private fun sendInAppShown(inAppId: String) {
         inAppInteractorImpl.sendInAppShown(inAppId)
+    }
+
+    private fun setInAppShown() {
+        inAppInteractorImpl.setInAppShown()
+    }
+
+    private fun isInAppShown(): Boolean {
+        return inAppInteractorImpl.isInAppShown()
     }
 
     private fun sendInAppClicked(inAppId: String) {

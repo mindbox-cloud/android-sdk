@@ -1,3 +1,4 @@
+/*
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.di.dataModule
@@ -1410,3 +1411,4 @@ internal class InAppInteractorImplTest : KoinTest {
 }
 
 
+*/

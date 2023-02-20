@@ -40,7 +40,7 @@ internal class GeoSerializationManagerTest : KoinTest {
     @Test
     fun `deserialize to geo targeting success`() {
         val testJson =
-            "{\"cityId\":\"$validCityId\", \"regionId\":\"$validRegionId\", \"countryId\":\"$validCountryId\"}"
+            "{\"cityId\":\"$validCityId\",\"regionId\":\"$validRegionId\",\"countryId\":\"$validCountryId\"}"
         val expectedResult = GeoTargetingStub.getGeoTargeting().copy(cityId = validCityId,
             regionId = validRegionId,
             countryId = validCountryId)
@@ -88,7 +88,7 @@ internal class GeoSerializationManagerTest : KoinTest {
     @Test
     fun `serialize to geo targeting string success`() {
         val expectedResult =
-            "{\"cityId\":\"$validCityId\", \"regionId\":\"$validRegionId\", \"countryId\":\"$validCountryId\"}"
+            "{\"cityId\":\"$validCityId\",\"regionId\":\"$validRegionId\",\"countryId\":\"$validCountryId\"}"
         val actualResult =
             geoSerializationManager.serializeToGeoString(GeoTargetingStub.getGeoTargeting().copy(
                 cityId = validCityId,

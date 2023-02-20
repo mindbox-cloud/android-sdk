@@ -53,21 +53,21 @@ class TreeTargetingTest : KoinTest {
 
     @Test
     fun `true targeting always true`() {
-        assertTrue(InAppStub.getTargetingTrueNode().checkTargeting(emptyList()))
+        assertTrue(InAppStub.getTargetingTrueNode().checkTargeting())
     }
 
     @Test
     fun `country targeting positive success check`() {
         assertTrue(InAppStub.getTargetingCountryNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `country targeting positive error check`() {
         assertFalse(InAppStub.getTargetingCountryNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
 
     }
 
@@ -75,70 +75,70 @@ class TreeTargetingTest : KoinTest {
     fun `country targeting negative error check`() {
         assertFalse(InAppStub.getTargetingCountryNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `country targeting negative success check`() {
         assertTrue(InAppStub.getTargetingCountryNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `region targeting positive success check`() {
         assertTrue(InAppStub.getTargetingRegionNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `region targeting positive error check`() {
         assertFalse(InAppStub.getTargetingRegionNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("788", "455"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `region targeting negative error check`() {
         assertFalse(InAppStub.getTargetingRegionNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `region targeting negative success check`() {
         assertTrue(InAppStub.getTargetingRegionNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("788", "455"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `city targeting positive success check`() {
         assertTrue(InAppStub.getTargetingCityNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("123", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `city targeting positive error check`() {
         assertFalse(InAppStub.getTargetingCityNode()
             .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `city targeting negative error check`() {
         assertFalse(InAppStub.getTargetingCityNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("123", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `city targeting negative success check`() {
         assertTrue(InAppStub.getTargetingCityNode()
             .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
 
@@ -146,54 +146,42 @@ class TreeTargetingTest : KoinTest {
     fun `segment targeting positive success check`() {
         assertTrue(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(
-                    segmentation = "123",
-                    segment = "234"))))
+            .checkTargeting())
     }
 
     @Test
     fun `segment targeting positive error check`() {
         assertFalse(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(
-                    segmentation = "123",
-                    segment = "233"))))
+            .checkTargeting())
     }
 
     @Test
     fun `segment targeting negative error check`() {
         assertFalse(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(
-                    segmentation = "123",
-                    segment = "234"))))
+            .checkTargeting())
     }
 
     @Test
     fun `segment targeting negative success check`() {
         assertTrue(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
-                .copy(
-                    segmentation = "123",
-                    segment = ""))))
+            .checkTargeting())
     }
 
     @Test
     fun `segment targeting empty list positive check`() {
         assertFalse(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
     fun `segment targeting empty list negative check`() {
         assertFalse(InAppStub.getTargetingSegmentNode()
             .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
@@ -202,7 +190,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("123")),
                 InAppStub.getTargetingRegionNode().copy(kind = Kind.POSITIVE, ids = listOf("456"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
@@ -211,7 +199,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("234")),
                 InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
@@ -220,7 +208,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("123")),
                 InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
 
@@ -230,7 +218,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("123")),
                 InAppStub.getTargetingRegionNode().copy(kind = Kind.POSITIVE, ids = listOf("456"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
@@ -239,7 +227,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("234")),
                 InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
     @Test
@@ -248,7 +236,7 @@ class TreeTargetingTest : KoinTest {
             .copy(nodes = listOf(InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("123")),
                 InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .checkTargeting(emptyList()))
+            .checkTargeting())
     }
 
 }

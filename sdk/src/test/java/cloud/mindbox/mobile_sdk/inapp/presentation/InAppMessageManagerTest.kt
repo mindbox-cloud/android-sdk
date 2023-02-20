@@ -106,7 +106,8 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message`() = runTest {
+    fun `in app messages success message not shown`() = runTest {
+        every { inAppMessageInteractor.isInAppShown() } returns false
         inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
@@ -130,6 +131,36 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         } just runs
         verify(exactly = 1)  {
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `in app messages success message shown`() = runTest {
+        every { inAppMessageInteractor.isInAppShown() } returns true
+        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            StandardTestDispatcher(testScheduler), monitoringRepository)
+        every {
+            inAppMessageInteractor.processEventAndConfig()
+        }.answers {
+            flow {
+                emit(InAppType.SimpleImage(inAppId = "123",
+                    imageUrl = "",
+                    redirectUrl = "",
+                    intentData = ""))
+            }
+        }
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+        inAppMessageInteractor.processEventAndConfig().test {
+            awaitItem()
+            awaitComplete()
+        }
+        every {
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+        } just runs
+        verify(exactly = 0)  {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         }
     }

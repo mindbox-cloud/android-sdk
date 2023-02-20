@@ -1,59 +1,100 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
-import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.di.domainModule
-import cloud.mindbox.mobile_sdk.di.monitoringModule
+import android.content.Context
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.junit4.MockKRule
+import io.mockk.mockkObject
 import io.mockk.verify
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
+import kotlin.test.assertEquals
 
-class InAppRepositoryTest : KoinTest {
+class InAppRepositoryTest {
+
 
     @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule, monitoringModule, domainModule)
+    val mockkRule = MockKRule(this)
+
+    @MockK
+    private lateinit var sessionStorageManager: SessionStorageManager
+
+    @MockK
+    private lateinit var context: Context
+
+    @MockK
+    private lateinit var inAppSerializationManager: InAppSerializationManager
+
+    @OverrideMockKs
+    private lateinit var inAppRepository: InAppRepositoryImpl
+
+
+    @Before
+    fun onTestStart() {
+        mockkObject(MindboxPreferences)
+        mockkObject(MindboxEventManager)
     }
 
-    private val inAppRepository: InAppRepositoryImpl by inject()
-
     @Test
-    fun `shown inApp ids is not empty and is a valid json`() {
-        val testHashSet = hashSetOf(
-            "71110297-58ad-4b3c-add1-60df8acb9e5e",
-            "ad487f74-924f-44f0-b4f7-f239ea5643c5"
+    fun `save operational inApps success`() {
+        val testOperation = "testOperation"
+        val newInApp = InAppStub.getInApp().copy(id = "newInAppId")
+        val existingInApp = InAppStub.getInApp().copy(id = "existingId")
+        val expectedList = mutableListOf(existingInApp, newInApp)
+        every { sessionStorageManager.operationalInApps } returns hashMapOf(
+            testOperation to mutableListOf(
+                existingInApp
+            )
         )
-        every { MindboxPreferences.shownInAppIds } returns
-                "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
-        assertTrue(inAppRepository.getShownInApps().containsAll(testHashSet))
+        inAppRepository.saveOperationalInApp(testOperation, newInApp)
+        assertEquals(expectedList, sessionStorageManager.operationalInApps[testOperation])
     }
 
     @Test
-    fun `shownInApp ids returns null`() {
-        every { MindboxPreferences.shownInAppIds } returns "a"
-        assertNotNull(inAppRepository.getShownInApps())
+    fun `save operation inApps success empty list`() {
+        val testOperation = "testOperation"
+        val newInApp = InAppStub.getInApp().copy(id = "newInAppId")
+        val expectedList = mutableListOf(newInApp)
+        every { sessionStorageManager.operationalInApps } returns hashMapOf()
+        inAppRepository.saveOperationalInApp(testOperation, newInApp)
+        assertEquals(expectedList, sessionStorageManager.operationalInApps[testOperation])
     }
 
     @Test
-    fun `shown inApp ids empty`() {
-        val expectedIds = hashSetOf<String>()
-        every { MindboxPreferences.shownInAppIds } returns ""
-        val actualIds = inAppRepository.getShownInApps()
-        assertTrue(expectedIds.containsAll(actualIds))
+    fun `get operation inApps returns null`() {
+        val testOperation = "testOperation"
+        val expectedResult = mutableListOf<InApp>()
+        every { sessionStorageManager.operationalInApps[testOperation] } returns null
+        val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
+        assertEquals(expectedResult, actualResult)
     }
 
     @Test
-    fun `shown inApp ids is not empty and is not a json`() {
-        every { MindboxPreferences.shownInAppIds } returns "123"
-        val expectedResult = hashSetOf<String>()
-        val actualResult = inAppRepository.getShownInApps()
-        assertTrue(actualResult.containsAll(expectedResult))
+    fun `get operation inApps no inApps`() {
+        val testOperation = "testOperation"
+        val expectedResult = mutableListOf<InApp>()
+        every { sessionStorageManager.operationalInApps[testOperation] } returns expectedResult
+        val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `get operation inApps success`() {
+        val testOperation = "testOperation"
+        val expectedResult = mutableListOf(
+            InAppStub.getInApp()
+        )
+        every { sessionStorageManager.operationalInApps[testOperation] } returns expectedResult
+        val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
+        assertEquals(expectedResult, actualResult)
     }
 
     @Test
@@ -62,9 +103,91 @@ class InAppRepositoryTest : KoinTest {
             |["123","456"]
         """.trimMargin()
         every { MindboxPreferences.shownInAppIds } returns "[123]"
+        every { inAppSerializationManager.deserializeToShownInApps(any()) } returns hashSetOf("123")
+        every { inAppSerializationManager.serializeToShownInAppsString(any()) } returns expectedJson
         inAppRepository.saveShownInApp("456")
         verify(exactly = 1) {
             MindboxPreferences.shownInAppIds = expectedJson
+        }
+    }
+
+    @Test
+    fun `save shown inApp error`() {
+        val expectedJson = """
+            |["123","456"]
+        """.trimMargin()
+        every { MindboxPreferences.shownInAppIds } returns "[123]"
+        every { inAppSerializationManager.deserializeToShownInApps(any()) } returns hashSetOf("123")
+        every { inAppSerializationManager.serializeToShownInAppsString(any()) } returns ""
+        inAppRepository.saveShownInApp("456")
+        verify(exactly = 0) {
+            MindboxPreferences.shownInAppIds = expectedJson
+        }
+    }
+
+    @Test
+    fun `send in app shown success`() {
+        val testInAppId = "testInAppId"
+        val serializedString = "serializedString"
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppShown(testInAppId)
+        verify(exactly = 1) {
+            MindboxEventManager.inAppShown(context, serializedString)
+        }
+    }
+
+    @Test
+    fun `send in app shown empty string`() {
+        val testInAppId = "testInAppId"
+        val serializedString = ""
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppShown(testInAppId)
+        verify(exactly = 0) {
+            MindboxEventManager.inAppShown(context, serializedString)
+        }
+    }
+
+    @Test
+    fun `send in app clicked success`() {
+        val testInAppId = "testInAppId"
+        val serializedString = "serializedString"
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppClicked(testInAppId)
+        verify(exactly = 1) {
+            MindboxEventManager.inAppClicked(context, serializedString)
+        }
+    }
+
+    @Test
+    fun `send in app clicked empty string`() {
+        val testInAppId = "testInAppId"
+        val serializedString = ""
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppClicked(testInAppId)
+        verify(exactly = 0) {
+            MindboxEventManager.inAppClicked(context, serializedString)
+        }
+    }
+
+    @Test
+    fun `send user targeted success`() {
+        val testInAppId = "testInAppId"
+        val serializedString = "serializedString"
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppClicked(testInAppId)
+        verify(exactly = 1) {
+            MindboxEventManager.inAppClicked(context, serializedString)
+        }
+    }
+
+    @Test
+    fun `send user targeted string`() {
+        val testInAppId = "testInAppId"
+        val serializedString = ""
+        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        inAppRepository.sendInAppClicked(testInAppId)
+        verify(exactly = 0) {
+            MindboxEventManager.inAppClicked(context, serializedString)
         }
     }
 }
