@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp

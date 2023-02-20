@@ -59,6 +59,9 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `request segmentations success`() = runTest {
+        every {
+            inAppSegmentationRepository.setSegmentationStatus(any())
+        } just runs
         inAppSegmentationRepository.unShownInApps = mutableListOf(InAppStub.getInApp())
         coEvery { DbManager.listenConfigurations() } answers {
             flow {

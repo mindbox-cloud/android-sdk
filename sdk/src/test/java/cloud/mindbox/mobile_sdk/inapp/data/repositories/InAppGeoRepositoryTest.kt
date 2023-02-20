@@ -1,13 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoTargeting
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -58,6 +55,9 @@ internal class InAppGeoRepositoryTest {
         mockkObject(GatewayManager)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
+        every {
+            inAppGeoRepository.setGeoStatus(any())
+        } just runs
     }
 
     @Test
@@ -68,12 +68,14 @@ internal class InAppGeoRepositoryTest {
             }
         }
         every { configuration.domain } returns ""
-        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
         } returns geoTargetingDto
 
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
@@ -96,12 +98,14 @@ internal class InAppGeoRepositoryTest {
         }
 
         every { configuration.domain } returns ""
-        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
         } throws VolleyError()
 
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
@@ -123,12 +127,14 @@ internal class InAppGeoRepositoryTest {
             }
         }
         every { configuration.domain } returns ""
-        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
         } throws Error()
 
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "123", regionId = "456", countryId = "798")
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+            .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
             inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto)
         } returns geoTargeting
@@ -146,16 +152,19 @@ internal class InAppGeoRepositoryTest {
     @Test
     fun `get geo success`() {
         every { MindboxPreferences.inAppGeo } returns "{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}"
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "123", regionId = "456", countryId = "789")
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+            .copy(cityId = "123", regionId = "456", countryId = "789")
         every {
             geoSerializationManager.deserializeToGeoTargeting("{\"cityId\":\"123\", \"regionId\":\"456\", \"countryId\":\"789\"}")
-        } returns GeoTargetingStub.getGeoTargeting().copy(cityId = "123", regionId = "456", countryId = "789")
+        } returns GeoTargetingStub.getGeoTargeting()
+            .copy(cityId = "123", regionId = "456", countryId = "789")
         assertEquals(geoTargeting, inAppGeoRepository.getGeo())
     }
 
     @Test
     fun `get geo empty string`() {
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
+        val geoTargeting =
+            GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
         every { MindboxPreferences.inAppGeo } returns ""
         every {
             geoSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
@@ -166,7 +175,8 @@ internal class InAppGeoRepositoryTest {
     @Test
     fun `get geo invalid json`() {
         every { MindboxPreferences.inAppGeo } returns "123"
-        val geoTargeting = GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
+        val geoTargeting =
+            GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
         every {
             geoSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
         } returns GeoTargetingStub.getGeoTargeting().copy("", "", "")

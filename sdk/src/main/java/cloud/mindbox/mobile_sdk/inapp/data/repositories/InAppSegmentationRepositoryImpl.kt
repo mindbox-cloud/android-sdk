@@ -42,6 +42,12 @@ internal class InAppSegmentationRepositoryImpl(
             segmentationCheckRequest = inAppMapper.mapToSegmentationCheckRequest(unShownInApps)
         )
         sessionStorageManager.inAppSegmentations = inAppMapper.mapToSegmentationCheck(response)
+        sessionStorageManager.segmentationFetchStatus =
+            SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+    }
+
+    override fun setSegmentationStatus(status: SegmentationFetchStatus) {
+        sessionStorageManager.segmentationFetchStatus = status
     }
 
     override fun getSegmentationFetched(): SegmentationFetchStatus {

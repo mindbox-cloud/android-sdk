@@ -30,6 +30,12 @@ internal class InAppGeoRepositoryImpl(
         )
         MindboxPreferences.inAppGeo =
             geoSerializationManager.serializeToGeoString(geoTargeting)
+        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
+
+    }
+
+    override fun setGeoStatus(status: GeoFetchStatus) {
+        sessionStorageManager.geoFetchStatus = status
     }
 
     override fun getGeoFetchedStatus(): GeoFetchStatus {

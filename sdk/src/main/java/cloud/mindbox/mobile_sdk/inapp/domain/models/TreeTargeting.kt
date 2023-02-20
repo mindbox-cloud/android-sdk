@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import org.koin.core.component.inject
 
@@ -75,12 +77,14 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         private var lastEvent: InAppEventType? = null
         private val operationNodeScope =
             CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
+        private val inAppEventManager: InAppEventManager by inject()
 
         init {
             operationNodeScope.launch {
-                MindboxEventManager.eventFlow.collect { inAppEventType ->
-                    lastEvent = inAppEventType
-                }
+                MindboxEventManager.eventFlow.filter { inAppEventManager.isValidInAppEvent(it) }
+                    .collect { inAppEventType ->
+                        lastEvent = inAppEventType
+                    }
             }
         }
 

@@ -7,6 +7,8 @@ internal interface InAppGeoRepository {
 
     suspend fun fetchGeo()
 
+    fun setGeoStatus(status: GeoFetchStatus)
+
     fun getGeoFetchedStatus(): GeoFetchStatus
 
     fun getGeo(): GeoTargeting

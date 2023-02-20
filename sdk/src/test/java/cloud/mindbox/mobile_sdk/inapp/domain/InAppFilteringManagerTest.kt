@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
+import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
@@ -40,18 +42,84 @@ internal class InAppFilteringManagerTest {
 
     @Test
     fun `filter inApp by event with App startUp`() {
-        val testInApps =  listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
-        val actualResult = inAppFilteringManager.filterInAppsByEvent(testInApps, InAppEventType.AppStartup)
+        val testInApps = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
+        val actualResult =
+            inAppFilteringManager.filterInAppsByEvent(testInApps, InAppEventType.AppStartup)
         assertEquals(testInApps, actualResult)
     }
 
     @Test
     fun `filter inApp by event with Ordinal event`() {
-        val testInApps =  listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
-        val testOperation = "testOperation"
-        every { inAppRepository.getOperationalInAppsByOperation(testOperation) } returns listOf(InAppStub.getInApp().copy(id = "testInAppId"))
-        val actualResult = inAppFilteringManager.filterInAppsByEvent(testInApps, InAppEventType.AppStartup)
-        assertEquals(testInApps, actualResult)
+        val testInApps = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
+        val expectedResult = listOf(InAppStub.getInApp().copy(id = "testInAppId"))
+        every { inAppRepository.getOperationalInAppsByOperation(any()) } returns expectedResult
+        val actualResult =
+            inAppFilteringManager.filterInAppsByEvent(
+                testInApps,
+                InAppEventType.OrdinalEvent(EventType.SyncOperation(""))
+            )
+        assertEquals(expectedResult, actualResult)
     }
+
+    @Test
+    fun `filter inApps without operations`() {
+        val expectedResult = listOf(
+            InAppStub.getInApp()
+                .copy(id = "validId", targeting = TreeTargeting.TrueNode("true"))
+        )
+        val actualResult = inAppFilteringManager.filterOperationFreeInApps(
+            listOf(
+                InAppStub.getInApp()
+                    .copy(
+                        id = "invalidId",
+                        targeting = InAppStub.getTargetingOperationNode().copy("operation", "testSystemName")
+                    ),
+                InAppStub.getInApp()
+                    .copy(id = "validId", targeting = InAppStub.getTargetingTrueNode().copy("true"))
+            )
+        )
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `filter inApps without geo`() {
+        val expectedResult = listOf(
+            InAppStub.getInApp()
+                .copy(id = "validId", targeting = TreeTargeting.TrueNode("true"))
+        )
+        val actualResult = inAppFilteringManager.filterGeoFreeInApps(
+            listOf(
+                InAppStub.getInApp()
+                    .copy(
+                        id = "invalidId",
+                        targeting = InAppStub.getTargetingRegionNode()
+                    ),
+                InAppStub.getInApp()
+                    .copy(id = "validId", targeting = TreeTargeting.TrueNode("true"))
+            )
+        )
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `filter inApps without segmentations`() {
+        val expectedResult = listOf(
+            InAppStub.getInApp()
+                .copy(id = "validId", targeting = TreeTargeting.TrueNode("true"))
+        )
+        val actualResult = inAppFilteringManager.filterSegmentationFreeInApps(
+            listOf(
+                InAppStub.getInApp()
+                    .copy(
+                        id = "invalidId",
+                        targeting = InAppStub.getTargetingSegmentNode()
+                    ),
+                InAppStub.getInApp()
+                    .copy(id = "validId", targeting = TreeTargeting.TrueNode("true"))
+            )
+        )
+        assertEquals(expectedResult, actualResult)
+    }
+
 
 }

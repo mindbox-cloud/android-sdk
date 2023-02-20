@@ -40,7 +40,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
-    private val sessionStorageManager: SessionStorageManager by inject()
 
     private fun getSegmentationUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
@@ -301,7 +300,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         configuration,
                         null,
                         { jsonObject ->
-                            sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
                                     jsonObject.toString(),
@@ -310,8 +308,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            sessionStorageManager.geoFetchStatus =
-                                GeoFetchStatus.GEO_FETCH_ERROR
                             continuation.resumeWithException(GeoError(error))
                         }
                     )
@@ -338,8 +334,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         )!!,
                         { response ->
-                            sessionStorageManager.segmentationFetchStatus =
-                                SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
                             continuation.resume(
                                 gson.fromJson(
                                     response.toString(),
@@ -348,8 +342,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            sessionStorageManager.segmentationFetchStatus =
-                                SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                             continuation.resumeWithException(SegmentationError(error))
                         }
                     )

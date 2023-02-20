@@ -10,6 +10,8 @@ internal interface InAppSegmentationRepository {
 
     suspend fun fetchSegmentations()
 
+    fun setSegmentationStatus(status: SegmentationFetchStatus)
+
     fun getSegmentationFetched(): SegmentationFetchStatus
 
     fun getSegmentations(): List<CustomerSegmentationInApp>
