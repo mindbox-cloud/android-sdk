@@ -21,7 +21,7 @@ internal class InAppInteractorImpl(
 ) : InAppInteractor {
 
     override fun processEventAndConfig(): Flow<InAppType> {
-        return mobileConfigRepository.listenInAppsSection().filterNotNull().onEach { inApps ->
+        return mobileConfigRepository.listenInAppsSection().filterNotNull().map { inApps ->
             inAppFilteringManager.filterNotShownInApps(
                 inAppRepository.getShownInApps(),
                 inApps
@@ -39,9 +39,10 @@ internal class InAppInteractorImpl(
                 }
             }
         }.combine(inAppRepository.listenInAppEvents().filter { event ->
-            MindboxLoggerImpl.d(this, "Event triggered: $event")
+            MindboxLoggerImpl.d(this, "Event triggered: ${event.name}")
             inAppEventManager.isValidInAppEvent(event)
         }) { inApps, event ->
+            MindboxLoggerImpl.d(this, "Event: ${event.name} combined with $inApps")
             inAppChoosingManager.chooseInAppToShow(
                 inAppFilteringManager.filterInAppsByEvent(
                     inApps,

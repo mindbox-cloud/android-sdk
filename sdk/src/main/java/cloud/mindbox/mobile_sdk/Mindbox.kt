@@ -410,6 +410,20 @@ object Mindbox {
                     MindboxEventManager.sendEventsIfExist(context)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
+            }.invokeOnCompletion { throwable ->
+                if (throwable ==  null) {
+                    if (firstInitCall) {
+                        val activity = context as? Activity
+                        if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                            inAppMessageManager.registerCurrentActivity(activity)
+                        }
+                        inAppMessageManager.initInAppMessages()
+                        mindboxScope.launch {
+                            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                        }
+                    }
+                    firstInitCall = false
+                }
             }
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
@@ -470,17 +484,6 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
-                if (firstInitCall) {
-                    val activity = context as? Activity
-                    if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                        inAppMessageManager.registerCurrentActivity(activity)
-                    }
-                    inAppMessageManager.initInAppMessages()
-                    mindboxScope.launch {
-                        MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                    }
-                }
-                firstInitCall = false
             }
         }
     }

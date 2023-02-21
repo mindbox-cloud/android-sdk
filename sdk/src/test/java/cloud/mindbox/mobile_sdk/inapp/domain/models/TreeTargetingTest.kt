@@ -1,16 +1,19 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import android.content.Context
+import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
-import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.models.*
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -327,6 +330,31 @@ class TreeTargetingTest : KoinTest {
                 )
                 .checkTargeting()
         )
+    }
+
+    @Test
+    fun `operation targeting check`() = runTest {
+        mockkObject(MindboxEventManager)
+        mockkObject(MindboxKoin)
+        every { MindboxKoin.koin } returns getKoin()
+        val operation = InAppEventType.OrdinalEvent(
+            EventType.AsyncOperation("testOperation")
+        )
+        MindboxEventManager.eventFlow.emit(
+            operation
+        )
+
+        val inAppEventManager: InAppEventManager = declareMock()
+        every {
+            inAppEventManager.isValidInAppEvent(any())
+        } returns true
+
+        val b = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
+        MindboxEventManager.eventFlow.test {
+            awaitItem()
+            assertTrue(b.checkTargeting())
+        }
+
     }
 
     @Test

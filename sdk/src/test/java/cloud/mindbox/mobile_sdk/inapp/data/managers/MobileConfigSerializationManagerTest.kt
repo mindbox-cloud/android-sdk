@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
@@ -137,6 +138,123 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
         val actualResult =
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "true")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to in app targeting city dto success`() {
+        val expectedResult = InAppStub.getTargetingCityNodeDto()
+            .copy(type = "city", kind = "positive", listOf("123"))
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "city")
+                addProperty("kind", "positive")
+                add("ids", JsonArray().apply {
+                    add("123")
+                })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to in app targeting country dto success`() {
+        val expectedResult = InAppStub.getTargetingCountryNodeDto()
+            .copy(type = "country", kind = "positive", listOf("123"))
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "country")
+                addProperty("kind", "positive")
+                add("ids", JsonArray().apply {
+                    add("123")
+                })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+
+    @Test
+    fun `deserialize to in app targeting region dto success`() {
+        val expectedResult = InAppStub.getTargetingRegionNodeDto()
+            .copy(type = "region", kind = "positive", listOf("123"))
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "region")
+                addProperty("kind", "positive")
+                add("ids", JsonArray().apply {
+                    add("123")
+                })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to in app segment dto success`() {
+        val expectedResult = InAppStub.getTargetingSegmentNodeDto().copy(
+            type = "segment",
+            kind = "positive",
+            segmentExternalId = "123",
+            segmentationExternalId = "213",
+            segmentationInternalId = "222"
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "segment")
+                addProperty("kind", "positive")
+                addProperty("segmentExternalId", "123")
+                addProperty("segmentationExternalId", "213")
+                addProperty("segmentationInternalId", "222")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to in app operation dto success`() {
+        val expectedResult = InAppStub.getTargetingOperationNodeDto().copy(
+            type = "apiMethodCall",
+            systemName = "test"
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "apiMethodCall")
+                addProperty("systemName", "test")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+
+    @Test
+    fun `deserialize to in app intersection dto success`() {
+        val expectedResult = InAppStub.getTargetingIntersectionNodeDto().copy(
+            type = "and",
+            nodes = listOf(InAppStub.getTargetingTrueNodeDto().copy(type = "true"))
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "and")
+                add("nodes", JsonArray().apply {
+                    add(JsonObject().apply {
+                        addProperty("${'$'}type", "true")
+                    })
+                })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to in app union dto success`() {
+        val expectedResult = InAppStub.getTargetingUnionNodeDto().copy(
+            type = "or",
+            nodes = listOf(InAppStub.getTargetingTrueNodeDto().copy(type = "true"))
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "or")
+                add("nodes", JsonArray().apply {
+                    add(JsonObject().apply {
+                        addProperty("${'$'}type", "true")
+                    })
+                })
             })
         assertEquals(expectedResult, actualResult)
     }
