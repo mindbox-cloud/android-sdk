@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.validators
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
+import cloud.mindbox.mobile_sdk.convertToZonedDateTimeWithZ
 import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
+import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -45,7 +47,13 @@ internal class MonitoringValidator {
         return !logRequest.to.isNullOrBlank() && logRequest.to.convertToZonedDateTime() != errorRez
     }
 
-    fun validateMonitoring(logResponse: LogResponse): Boolean {
-        return logResponse.zonedDateTime.year != 1970
+    fun validateMonitoring(monitoringEntity: MonitoringEntity): Boolean {
+        val errorRez = LocalDateTime.parse(
+            "1970-01-01T00:00:00",
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        ).atZone(
+            ZoneOffset.UTC
+        )
+        return monitoringEntity.time.convertToZonedDateTimeWithZ() != errorRez
     }
 }

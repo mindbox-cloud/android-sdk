@@ -89,7 +89,10 @@ internal class MonitoringRepositoryImpl(
     ): List<LogResponse> {
         return monitoringMapper.mapMonitoringEntityListToLogResponseList(
             monitoringDao.getLogs(startTime.convertToString(), endTime.convertToString())
-        ).filter { logResponse -> monitoringValidator.validateMonitoring(logResponse) }
+                .filter { monitoringEntity ->
+                    monitoringValidator.validateMonitoring(monitoringEntity)
+                }
+        )
     }
 
     override suspend fun sendLogs(
