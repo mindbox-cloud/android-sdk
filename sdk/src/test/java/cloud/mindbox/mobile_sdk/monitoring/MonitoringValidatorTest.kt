@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
+import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit4.MockKRule
@@ -116,6 +117,10 @@ internal class MonitoringValidatorTest {
         assertFalse(monitoringValidator.validateMonitoringBlank(LogRequestStub.getLogRequestDtoBlank()
             .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "1970-01-01T00:00:00")
         ))
+    }
+    @Test
+    fun `monitoring validation error dates filter`() {
+        monitoringValidator.validateMonitoring(MonitoringEntity(id = 0, time = "1970-01-01T00:00:00", log = ""))
     }
 
 

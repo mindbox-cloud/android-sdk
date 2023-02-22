@@ -51,7 +51,8 @@ internal class MonitoringRepositoryImplTest : KoinTest {
                 monitoringDao = monitoringDao,
                 monitoringMapper = monitoringMapper,
                 gson = gson,
-                logStoringDataChecker = mockk()
+                logStoringDataChecker = mockk(),
+                monitoringValidator = mockk()
             )
         mockkObject(MindboxPreferences)
     }

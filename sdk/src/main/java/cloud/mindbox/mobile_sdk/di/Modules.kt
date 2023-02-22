@@ -35,7 +35,8 @@ internal val monitoringModule = module {
             monitoringMapper = get(),
             context = get(),
             gson = get(),
-            logStoringDataChecker = get()
+            logStoringDataChecker = get(),
+            monitoringValidator = get()
         )
     }
     single { MonitoringValidator() }
