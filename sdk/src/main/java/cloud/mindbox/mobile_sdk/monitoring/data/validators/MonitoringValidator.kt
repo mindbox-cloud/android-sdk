@@ -2,14 +2,14 @@ package cloud.mindbox.mobile_sdk.monitoring.data.validators
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 internal class MonitoringValidator {
 
-    fun validateMonitoring(logRequest: LogRequestDtoBlank): Boolean {
+    fun validateMonitoringBlank(logRequest: LogRequestDtoBlank): Boolean {
         return validateRequestId(logRequest) && validateDeviceId(logRequest) && validateFrom(
             logRequest
         ) && validateTo(logRequest)
@@ -24,18 +24,28 @@ internal class MonitoringValidator {
     }
 
     private fun validateFrom(logRequest: LogRequestDtoBlank): Boolean {
-        val errorRez =  LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        val errorRez = LocalDateTime.parse(
+            "1970-01-01T00:00:00",
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        )
             .atZone(
-                ZoneId.systemDefault()
+                ZoneOffset.UTC
             )
         return !logRequest.from.isNullOrBlank() && logRequest.from.convertToZonedDateTime() != errorRez
     }
 
     private fun validateTo(logRequest: LogRequestDtoBlank): Boolean {
-        val errorRez =  LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        val errorRez = LocalDateTime.parse(
+            "1970-01-01T00:00:00",
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        )
             .atZone(
-                ZoneId.systemDefault()
+                ZoneOffset.UTC
             )
         return !logRequest.to.isNullOrBlank() && logRequest.to.convertToZonedDateTime() != errorRez
+    }
+
+    fun validateMonitoring(logResponse: LogResponse): Boolean {
+        return logResponse.zonedDateTime.year != 1970
     }
 }

@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.rmappers
 
-import cloud.mindbox.mobile_sdk.convertToZonedDateTime
+import cloud.mindbox.mobile_sdk.convertToZonedDateTimeWithZ
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
@@ -19,7 +19,7 @@ internal class MonitoringMapper {
 
     fun mapMonitoringEntityToLogResponse(monitoringEntity: MonitoringEntity): LogResponse {
         return LogResponse(
-            zonedDateTime = monitoringEntity.time.convertToZonedDateTime(),
+            zonedDateTime = monitoringEntity.time.convertToZonedDateTimeWithZ(),
             log = monitoringEntity.log
         )
     }
@@ -33,6 +33,6 @@ internal class MonitoringMapper {
             initial = LogResponseDto(
                 status = monitoringStatus, requestId = requestId, content = mutableListOf()
             )
-        ) { sum, term -> sum.content.add(term.log); sum }
+        ) { sum, term -> sum.content.add("${term.zonedDateTime} ${term.log}"); sum }
     }
 }

@@ -127,7 +127,7 @@ internal class InAppRepositoryImpl(
                     }
                 val filteredMonitoring =
                     configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
-                        monitoringValidator.validateMonitoring(logRequestDtoBlank)
+                        monitoringValidator.validateMonitoringBlank(logRequestDtoBlank)
                     }?.map { logRequestDtoBlank ->
                         inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
                     }
