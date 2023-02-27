@@ -1,16 +1,25 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import android.content.Context
+import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
-import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
-import io.mockk.every
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.models.*
+import io.mockk.*
 import io.mockk.junit4.MockKRule
-import io.mockk.mockkClass
-import io.mockk.mockkObject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -20,8 +29,10 @@ import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
 import org.koin.test.mock.MockProviderRule
 import org.koin.test.mock.declareMock
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TreeTargetingTest : KoinTest {
 
     @get:Rule
@@ -40,215 +51,398 @@ class TreeTargetingTest : KoinTest {
 
     private lateinit var inAppGeoRepository: InAppGeoRepository
 
+    private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
+
     @Before
     fun onTestStart() {
         mockkObject(MindboxKoin)
         every { MindboxKoin.koin } returns getKoin()
         inAppGeoRepository = declareMock()
-        every { inAppGeoRepository.geoGeo() } returns GeoTargetingStub.getGeoTargeting()
-            .copy(cityId = "123",
+        inAppSegmentationRepository = declareMock()
+        every { inAppGeoRepository.getGeo() } returns GeoTargetingStub.getGeoTargeting()
+            .copy(
+                cityId = "123",
                 regionId = "456",
-                countryId = "789")
+                countryId = "789"
+            )
+        every {
+            inAppGeoRepository.getGeoFetchedStatus()
+        } returns GeoFetchStatus.GEO_FETCH_SUCCESS
+        every {
+            inAppSegmentationRepository.getSegmentationFetched()
+        } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
     @Test
     fun `true targeting always true`() {
-        assertTrue(InAppStub.getTargetingTrueNode().getCustomerIsInTargeting(emptyList()))
+        assertTrue(InAppStub.getTargetingTrueNode().checkTargeting())
     }
 
     @Test
     fun `country targeting positive success check`() {
-        assertTrue(InAppStub.getTargetingCountryNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingCountryNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `country targeting positive error check`() {
-        assertFalse(InAppStub.getTargetingCountryNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingCountryNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
+                .checkTargeting()
+        )
 
     }
 
     @Test
     fun `country targeting negative error check`() {
-        assertFalse(InAppStub.getTargetingCountryNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingCountryNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `country targeting negative success check`() {
-        assertTrue(InAppStub.getTargetingCountryNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingCountryNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `region targeting positive success check`() {
-        assertTrue(InAppStub.getTargetingRegionNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingRegionNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `region targeting positive error check`() {
-        assertFalse(InAppStub.getTargetingRegionNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("788", "455"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingRegionNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("788", "455"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `region targeting negative error check`() {
-        assertFalse(InAppStub.getTargetingRegionNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingRegionNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `region targeting negative success check`() {
-        assertTrue(InAppStub.getTargetingRegionNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("788", "455"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingRegionNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("788", "455"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `city targeting positive success check`() {
-        assertTrue(InAppStub.getTargetingCityNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("123", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingCityNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("123", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `city targeting positive error check`() {
-        assertFalse(InAppStub.getTargetingCityNode()
-            .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingCityNode()
+                .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `city targeting negative error check`() {
-        assertFalse(InAppStub.getTargetingCityNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("123", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingCityNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("123", "456"))
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `city targeting negative success check`() {
-        assertTrue(InAppStub.getTargetingCityNode()
-            .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingCityNode()
+                .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
+                .checkTargeting()
+        )
     }
 
 
     @Test
     fun `segment targeting positive success check`() {
-        assertTrue(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+        every {
+            inAppSegmentationRepository.getSegmentations()
+        } returns listOf(
+            SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "234")
+        )
+        assertTrue(
+            InAppStub.getTargetingSegmentNode()
                 .copy(
-                    segmentation = "123",
-                    segment = "234"))))
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "123",
+                    segmentExternalId = "234"
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `segment targeting positive error check`() {
-        assertFalse(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+        every {
+            inAppSegmentationRepository.getSegmentations()
+        } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
+        assertFalse(
+            InAppStub.getTargetingSegmentNode()
                 .copy(
-                    segmentation = "123",
-                    segment = "233"))))
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "123",
+                    segmentExternalId = "234"
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `segment targeting negative error check`() {
-        assertFalse(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+        every {
+            inAppSegmentationRepository.getSegmentations()
+        } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
+        assertFalse(
+            InAppStub.getTargetingSegmentNode()
                 .copy(
-                    segmentation = "123",
-                    segment = "234"))))
+                    kind = Kind.NEGATIVE,
+                    segmentationExternalId = "123",
+                    segmentExternalId = "234"
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `segment targeting negative success check`() {
-        assertTrue(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(listOf(SegmentationCheckInAppStub.getCustomerSegmentation()
+        every {
+            inAppSegmentationRepository.getSegmentations()
+        } returns listOf(
+            SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "235")
+        )
+        assertTrue(
+            InAppStub.getTargetingSegmentNode()
                 .copy(
-                    segmentation = "123",
-                    segment = ""))))
-    }
-
-    @Test
-    fun `segment targeting empty list positive check`() {
-        assertFalse(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.POSITIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(emptyList()))
-    }
-
-    @Test
-    fun `segment targeting empty list negative check`() {
-        assertFalse(InAppStub.getTargetingSegmentNode()
-            .copy(kind = Kind.NEGATIVE, segmentationExternalId = "123", segmentExternalId = "234")
-            .getCustomerIsInTargeting(emptyList()))
+                    kind = Kind.NEGATIVE,
+                    segmentationExternalId = "123",
+                    segmentExternalId = "234"
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `intersection targeting check both true`() {
-        assertTrue(InAppStub.getTargetingIntersectionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("123")),
-                InAppStub.getTargetingRegionNode().copy(kind = Kind.POSITIVE, ids = listOf("456"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingIntersectionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("123")),
+                        InAppStub.getTargetingRegionNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("456"))
+                    )
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `intersection targeting check both false`() {
-        assertFalse(InAppStub.getTargetingIntersectionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("234")),
-                InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingIntersectionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234")),
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234"))
+                    )
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `intersection targeting check one true one false`() {
-        assertFalse(InAppStub.getTargetingIntersectionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("123")),
-                InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingIntersectionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("123")),
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234"))
+                    )
+                )
+                .checkTargeting()
+        )
     }
 
 
     @Test
     fun `union targeting check both true`() {
-        assertTrue(InAppStub.getTargetingUnionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("123")),
-                InAppStub.getTargetingRegionNode().copy(kind = Kind.POSITIVE, ids = listOf("456"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingUnionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("123")),
+                        InAppStub.getTargetingRegionNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("456"))
+                    )
+                )
+                .checkTargeting()
+        )
     }
 
     @Test
     fun `union targeting check both false`() {
-        assertFalse(InAppStub.getTargetingUnionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("234")),
-                InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertFalse(
+            InAppStub.getTargetingUnionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234")),
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234"))
+                    )
+                )
+                .checkTargeting()
+        )
+    }
+
+    @Test
+    fun `operation targeting check`() = runTest {
+        mockkObject(MindboxEventManager)
+        mockkObject(MindboxKoin)
+        every { MindboxKoin.koin } returns getKoin()
+        val operation = InAppEventType.OrdinalEvent(
+            EventType.AsyncOperation("testOperation")
+        )
+        MindboxEventManager.eventFlow.emit(
+            operation
+        )
+
+        val inAppEventManager: InAppEventManager = declareMock()
+        every {
+            inAppEventManager.isValidInAppEvent(any())
+        } returns true
+
+        val testTargeting = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
+        MindboxEventManager.eventFlow.test {
+            assertTrue(testTargeting.checkTargeting())
+            awaitItem()
+        }
+
     }
 
     @Test
     fun `union targeting check one true one false`() {
-        assertTrue(InAppStub.getTargetingUnionNode()
-            .copy(nodes = listOf(InAppStub.getTargetingCityNode()
-                .copy(kind = Kind.POSITIVE, ids = listOf("123")),
-                InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))))
-            .getCustomerIsInTargeting(emptyList()))
+        assertTrue(
+            InAppStub.getTargetingUnionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("123")),
+                        InAppStub.getTargetingCityNode()
+                            .copy(kind = Kind.POSITIVE, ids = listOf("234"))
+                    )
+                )
+                .checkTargeting()
+        )
+    }
+
+    @Test
+    fun `get operations list in nodes`() {
+        val expectedResult = setOf("testOperation")
+        val actualResult = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingUnionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingIntersectionNode().copy(
+                            nodes = listOf(
+                                InAppStub.getTargetingTrueNode(),
+                                InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingRegionNode(),
+                                InAppStub.getTargetingCityNode(),
+                                InAppStub.getTargetingCountryNode(),
+                                InAppStub.getTargetingOperationNode().copy(
+                                    systemName = "testOperation"
+                                )
+                            )
+                        )
+                    )
+                )
+        ).targeting.getOperationsSet()
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `fetch targetings`() = runTest {
+        coEvery {
+            inAppGeoRepository.fetchGeo()
+        } just runs
+        coEvery {
+            inAppSegmentationRepository.fetchSegmentations()
+        } just runs
+        every {
+            inAppSegmentationRepository.getSegmentationFetched()
+        } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every {
+            inAppGeoRepository.getGeoFetchedStatus()
+        } returns GeoFetchStatus.GEO_NOT_FETCHED
+        InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingUnionNode()
+                .copy(
+                    nodes = listOf(
+                        InAppStub.getTargetingIntersectionNode().copy(
+                            nodes = listOf(
+                                InAppStub.getTargetingTrueNode(),
+                                InAppStub.getTargetingSegmentNode(),
+                                InAppStub.getTargetingRegionNode(),
+                                InAppStub.getTargetingCityNode(),
+                                InAppStub.getTargetingCountryNode(),
+                                InAppStub.getTargetingOperationNode().copy(
+                                    systemName = "testOperation"
+                                )
+                            )
+                        )
+                    )
+                )
+        ).targeting.fetchTargetingInfo()
+        coVerify {
+            inAppGeoRepository.fetchGeo()
+        }
+        coVerify {
+            inAppSegmentationRepository.fetchSegmentations()
+        }
+
     }
 
 }

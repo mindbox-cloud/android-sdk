@@ -73,9 +73,9 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
 }
 
-internal sealed class InAppEventType {
-    object AppStartup : InAppEventType()
-    class OrdinalEvent(val eventType: EventType) : InAppEventType()
+internal sealed class InAppEventType(val name: String) {
+    object AppStartup : InAppEventType("appStartup")
+    class OrdinalEvent(val eventType: EventType) : InAppEventType(eventType.operation)
 }
 
 internal enum class EventParameters(val fieldName: String) {

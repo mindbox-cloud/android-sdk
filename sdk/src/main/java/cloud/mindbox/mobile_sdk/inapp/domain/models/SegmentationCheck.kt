@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-internal data class SegmentationCheckInApp(
+internal data class SegmentationCheckWrapper(
     val status: String,
     val customerSegmentations: List<CustomerSegmentationInApp>,
 )

@@ -10,6 +10,7 @@ internal object LoggingExceptionHandler: ExceptionHandler() {
             MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", exception)
             // todo log crash
         } catch (e: Throwable) {
+            println(e.message)
         }
     }
 

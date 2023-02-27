@@ -2,27 +2,41 @@ package cloud.mindbox.mobile_sdk.models
 
 import com.google.gson.annotations.SerializedName
 
-
+/**
+ * Тargeting types
+ **/
 internal sealed class TreeTargetingDto {
 
     internal data class TrueNodeDto(
         @SerializedName("${"$"}type")
         val type: String?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val TRUE_JSON_NAME = "true"
+        }
+    }
 
     internal data class IntersectionNodeDto(
         @SerializedName("${"$"}type")
         val type: String?,
         @SerializedName("nodes")
         val nodes: List<TreeTargetingDto?>?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val AND_JSON_NAME = "and"
+        }
+    }
 
     internal data class UnionNodeDto(
         @SerializedName("${"$"}type")
         val type: String?,
         @SerializedName("nodes")
         val nodes: List<TreeTargetingDto?>?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val OR_JSON_NAME = "or"
+        }
+    }
 
     internal data class SegmentNodeDto(
         @SerializedName("${"$"}type")
@@ -35,7 +49,11 @@ internal sealed class TreeTargetingDto {
         val segmentationInternalId: String?,
         @SerializedName("segmentExternalId")
         val segmentExternalId: String?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val SEGMENT_JSON_NAME = "segment"
+        }
+    }
 
     internal data class CountryNodeDto(
         @SerializedName("${"$"}type")
@@ -44,7 +62,11 @@ internal sealed class TreeTargetingDto {
         val kind: String?,
         @SerializedName("ids")
         val ids: List<String?>?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val COUNTRY_JSON_NAME = "country"
+        }
+    }
 
     internal data class CityNodeDto(
         @SerializedName("${"$"}type")
@@ -53,7 +75,11 @@ internal sealed class TreeTargetingDto {
         val kind: String?,
         @SerializedName("ids")
         val ids: List<String>?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val CITY_JSON_NAME = "city"
+        }
+    }
 
     internal data class RegionNodeDto(
         @SerializedName("${"$"}type")
@@ -62,5 +88,24 @@ internal sealed class TreeTargetingDto {
         val kind: String?,
         @SerializedName("ids")
         val ids: List<String?>?,
-    ) : TreeTargetingDto()
+    ) : TreeTargetingDto() {
+        companion object {
+            const val REGION_JSON_NAME = "region"
+        }
+    }
+
+    internal data class OperationNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("systemName")
+        val systemName: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val API_METHOD_CALL_JSON_NAME = "apiMethodCall"
+        }
+    }
+
+    companion object {
+        const val TYPE_JSON_NAME = "\$type"
+    }
 }
