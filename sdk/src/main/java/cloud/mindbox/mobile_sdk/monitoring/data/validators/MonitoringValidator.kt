@@ -4,14 +4,13 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeWithZ
 import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
 import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
-import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 internal class MonitoringValidator {
 
-    fun validateMonitoringBlank(logRequest: LogRequestDtoBlank): Boolean {
+    fun validateLogRequestDtoBlank(logRequest: LogRequestDtoBlank): Boolean {
         return validateRequestId(logRequest) && validateDeviceId(logRequest) && validateFrom(
             logRequest
         ) && validateTo(logRequest)

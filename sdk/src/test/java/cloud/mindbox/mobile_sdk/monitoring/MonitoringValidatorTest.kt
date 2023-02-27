@@ -19,7 +19,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation success`() {
-        assertTrue(monitoringValidator.validateMonitoringBlank(
+        assertTrue(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "123", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
@@ -27,7 +27,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation requestId error empty string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
@@ -35,7 +35,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation requestId error null`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = null, deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
@@ -43,7 +43,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation deviceId error empty string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "asd", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
@@ -51,7 +51,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation deviceId error null`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "asd", deviceId = null, from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
@@ -59,7 +59,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation from error empty string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "123", deviceId = "abvc", from = "", to = "2023-01-30T00:00:00")
         ))
@@ -67,7 +67,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation from error null`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "123", deviceId = "abvc", from = null, to = "2023-01-30T00:00:00")
         ))
@@ -76,7 +76,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation from error random string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "123", deviceId = "abvc", from = "null", to = "2023-01-30T00:00:00")
         ))
@@ -84,14 +84,14 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation to error empty string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "")
         ))
     }
     @Test
     fun `monitoring validation to error null`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = null)
         ))
@@ -99,7 +99,7 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation to error random string`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
                 .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "abc")
         ))
@@ -107,14 +107,14 @@ internal class MonitoringValidatorTest {
 
     @Test
     fun `monitoring validation from parsing error`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(LogRequestStub.getLogRequestDtoBlank()
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(LogRequestStub.getLogRequestDtoBlank()
             .copy(requestId = "asd", deviceId = "abvc", from = "1970-01-01T00:00:00", to = "2023-01-15T00:00:00")
         ))
     }
 
     @Test
     fun `monitoring validation to parsing error`() {
-        assertFalse(monitoringValidator.validateMonitoringBlank(LogRequestStub.getLogRequestDtoBlank()
+        assertFalse(monitoringValidator.validateLogRequestDtoBlank(LogRequestStub.getLogRequestDtoBlank()
             .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "1970-01-01T00:00:00")
         ))
     }
