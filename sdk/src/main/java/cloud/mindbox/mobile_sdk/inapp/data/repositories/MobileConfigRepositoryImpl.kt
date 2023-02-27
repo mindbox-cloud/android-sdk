@@ -64,7 +64,7 @@ internal class MobileConfigRepositoryImpl(
                     }
                 val filteredMonitoring =
                     configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
-                        monitoringValidator.validateMonitoring(logRequestDtoBlank)
+                        monitoringValidator.validateLogRequestDtoBlank(logRequestDtoBlank)
                     }?.map { logRequestDtoBlank ->
                         inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
                     }

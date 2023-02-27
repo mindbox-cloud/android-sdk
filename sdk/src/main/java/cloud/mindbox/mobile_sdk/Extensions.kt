@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk
 
-import android.util.Log
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
@@ -40,9 +39,10 @@ internal fun String.convertToZonedDateTime(): ZonedDateTime = runCatching {
 }
 
 internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
-    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")).atZone(
-        ZoneOffset.UTC
-    )
+    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
+        .atZone(
+            ZoneOffset.UTC
+        )
 }.getOrElse {
     MindboxLoggerImpl.e("Mindbox", "Error converting date", it)
     LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
