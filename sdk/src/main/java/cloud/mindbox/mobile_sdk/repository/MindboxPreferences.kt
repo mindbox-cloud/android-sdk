@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.repository
 
-import android.content.SharedPreferences
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +38,7 @@ internal object MindboxPreferences {
                 SharedPreferencesManager.put(LOGS_REQUEST_IDS, value)
             }
         }
+
     var inAppGeo: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
             SharedPreferencesManager.getString(IN_APP_GEO) ?: ""

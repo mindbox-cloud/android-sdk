@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 internal class MonitoringInteractorImpl(
-    private val inAppRepository: InAppRepository,
+    private val mobileConfigRepository: MobileConfigRepository,
     private val monitoringRepository: MonitoringRepository,
     private val logResponseDataManager: LogResponseDataManager,
     private val logRequestDataManager: LogRequestDataManager,
@@ -24,8 +24,8 @@ internal class MonitoringInteractorImpl(
         MindboxLoggerImpl.monitoringScope.launch {
             val firstLog = monitoringRepository.getFirstLog()
             val lastLog = monitoringRepository.getLastLog()
-            inAppRepository.listenInAppConfig().collect { config ->
-                logRequestDataManager.filterCurrentDeviceUuidLogs(config?.monitoring)
+            mobileConfigRepository.listenMonitoringSection().collect { monitoring ->
+                logRequestDataManager.filterCurrentDeviceUuidLogs(monitoring)
                     .filterNot { logRequest ->
                         logRequestDataManager.checkRequestIdProcessed(
                             monitoringRepository.getRequestIds(),

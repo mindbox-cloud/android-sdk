@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.monitoring.data.rmappers
+package cloud.mindbox.mobile_sdk.monitoring.data.mappers
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeWithZ
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto

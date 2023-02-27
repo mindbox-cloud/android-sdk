@@ -9,7 +9,7 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -410,6 +410,20 @@ object Mindbox {
                     MindboxEventManager.sendEventsIfExist(context)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
+            }.invokeOnCompletion { throwable ->
+                if (throwable ==  null) {
+                    if (firstInitCall) {
+                        val activity = context as? Activity
+                        if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                            inAppMessageManager.registerCurrentActivity(activity)
+                        }
+                        inAppMessageManager.initInAppMessages()
+                        mindboxScope.launch {
+                            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                        }
+                    }
+                    firstInitCall = false
+                }
             }
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
@@ -470,17 +484,6 @@ object Mindbox {
 
                 registerActivityLifecycleCallbacks(lifecycleManager)
                 applicationLifecycle.addObserver(lifecycleManager)
-                if (firstInitCall) {
-                    val activity = context as? Activity
-                    if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                        inAppMessageManager.registerCurrentActivity(activity)
-                    }
-                    inAppMessageManager.initInAppMessages()
-                    mindboxScope.launch {
-                        MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                    }
-                }
-                firstInitCall = false
             }
         }
     }

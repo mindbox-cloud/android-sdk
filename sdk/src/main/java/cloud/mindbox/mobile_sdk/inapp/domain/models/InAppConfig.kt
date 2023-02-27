@@ -20,11 +20,23 @@ internal data class Form(
 )
 
 internal sealed class Payload {
+
+    abstract fun mapToInAppType(id: String): InAppType
     data class SimpleImage(
         val type: String,
         val imageUrl: String,
         val redirectUrl: String,
         val intentPayload: String,
-    ) : Payload()
+    ) : Payload() {
+        override fun mapToInAppType(id: String): InAppType {
+            return InAppType.SimpleImage(
+                inAppId = id,
+                imageUrl = imageUrl,
+                redirectUrl = redirectUrl,
+                intentData = intentPayload
+
+            )
+        }
+    }
 }
 
