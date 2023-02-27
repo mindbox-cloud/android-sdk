@@ -12,7 +12,12 @@ import cloud.mindbox.mobile_sdk.models.*
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
@@ -349,10 +354,10 @@ class TreeTargetingTest : KoinTest {
             inAppEventManager.isValidInAppEvent(any())
         } returns true
 
-        val b = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
+        val testTargeting = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
         MindboxEventManager.eventFlow.test {
+            assertTrue(testTargeting.checkTargeting())
             awaitItem()
-            assertTrue(b.checkTargeting())
         }
 
     }

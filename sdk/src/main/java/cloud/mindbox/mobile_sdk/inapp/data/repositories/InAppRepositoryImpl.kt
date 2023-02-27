@@ -30,7 +30,7 @@ internal class InAppRepositoryImpl(
         return sessionStorageManager.operationalInApps[operation] ?: emptyList()
     }
 
-    override fun getShownInApps(): MutableSet<String> {
+    override fun getShownInApps(): Set<String> {
         return inAppSerializationManager.deserializeToShownInApps(MindboxPreferences.shownInAppIds)
     }
 
@@ -39,7 +39,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveShownInApp(id: String) {
-        inAppSerializationManager.serializeToShownInAppsString(getShownInApps().apply { add(id) })
+        inAppSerializationManager.serializeToShownInAppsString(getShownInApps() + id)
             .apply {
                 if (isNotBlank()) {
                     MindboxPreferences.shownInAppIds = this
