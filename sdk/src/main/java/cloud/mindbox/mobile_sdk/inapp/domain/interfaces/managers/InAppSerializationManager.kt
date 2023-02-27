@@ -5,7 +5,7 @@ internal interface InAppSerializationManager {
 
     fun serializeToInAppHandledString(inAppId: String): String
 
-    fun serializeToShownInAppsString(shownInApps: HashSet<String>): String
+    fun serializeToShownInAppsString(shownInApps: MutableSet<String>): String
 
-    fun deserializeToShownInApps(shownInApps: String): HashSet<String>
+    fun deserializeToShownInApps(shownInApps: String): MutableSet<String>
 }

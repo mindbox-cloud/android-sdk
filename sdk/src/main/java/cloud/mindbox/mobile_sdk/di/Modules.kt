@@ -16,7 +16,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -34,7 +39,11 @@ import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManagerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory

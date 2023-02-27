@@ -10,7 +10,7 @@ internal interface InAppRepository {
 
     fun getOperationalInAppsByOperation(operation: String): List<InApp>
 
-    fun getShownInApps(): HashSet<String>
+    fun getShownInApps(): MutableSet<String>
 
     fun listenInAppEvents(): Flow<InAppEventType>
 

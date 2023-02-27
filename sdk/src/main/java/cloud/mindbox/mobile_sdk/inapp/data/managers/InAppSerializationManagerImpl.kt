@@ -15,14 +15,14 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
     }
 
     override fun serializeToShownInAppsString(
-        shownInApps: HashSet<String>
+        shownInApps: MutableSet<String>
     ): String {
         return LoggingExceptionHandler.runCatching("") {
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
         }
     }
 
-    override fun deserializeToShownInApps(shownInApps: String): HashSet<String> {
+    override fun deserializeToShownInApps(shownInApps: String): MutableSet<String> {
         return LoggingExceptionHandler.runCatching(HashSet()) {
             gson.fromJson(
                 shownInApps,

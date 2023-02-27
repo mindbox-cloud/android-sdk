@@ -11,8 +11,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.Flow
 
 internal class InAppRepositoryImpl(
-    private val sessionStorageManager: SessionStorageManager,
     private val context: Context,
+    private val sessionStorageManager: SessionStorageManager,
     private val inAppSerializationManager: InAppSerializationManager,
 ) :
     InAppRepository {
@@ -30,7 +30,7 @@ internal class InAppRepositoryImpl(
         return sessionStorageManager.operationalInApps[operation] ?: emptyList()
     }
 
-    override fun getShownInApps(): HashSet<String> {
+    override fun getShownInApps(): MutableSet<String> {
         return inAppSerializationManager.deserializeToShownInApps(MindboxPreferences.shownInAppIds)
     }
 

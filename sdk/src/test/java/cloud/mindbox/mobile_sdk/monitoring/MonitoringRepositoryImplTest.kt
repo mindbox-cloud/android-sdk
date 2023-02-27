@@ -23,7 +23,7 @@ import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
 import org.koin.test.inject
 
-internal class  MonitoringRepositoryImplTest : KoinTest {
+internal class MonitoringRepositoryImplTest : KoinTest {
 
 
     @get:Rule
