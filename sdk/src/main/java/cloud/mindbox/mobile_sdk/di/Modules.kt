@@ -1,20 +1,20 @@
 package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
@@ -39,11 +39,7 @@ import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManagerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
@@ -95,7 +91,10 @@ internal val monitoringModule = module {
             androidContext(),
             MonitoringDatabase::class.java,
             monitoringDatabaseName
-        ).fallbackToDestructiveMigration().build()
+        )
+            .fallbackToDestructiveMigration()
+            .addMigrations(MonitoringDatabase.MIGRATION_1_2)
+            .build()
     }
     single { get<MonitoringDatabase>().monitoringDao() }
 }

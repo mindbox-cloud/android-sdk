@@ -16,7 +16,7 @@ internal data class MonitoringEntity(
 ) {
 
     companion object {
-        const val TABLE_NAME = "monitoring"
+        const val TABLE_NAME = "mb_monitoring"
         private const val COLUMN_ID = "id"
         private const val COLUMN_TIMESTAMP = "timestamp"
         private const val COLUMN_LOG = "log"
