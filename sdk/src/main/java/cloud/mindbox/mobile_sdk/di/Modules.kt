@@ -16,7 +16,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
