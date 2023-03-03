@@ -89,7 +89,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override fun checkTargeting(): Boolean {
-            return lastEvent?.name?.lowercase() == systemName.lowercase()
+            return lastEvent?.name?.equals(systemName, true) ?: false
         }
 
         override suspend fun fetchTargetingInfo() {
