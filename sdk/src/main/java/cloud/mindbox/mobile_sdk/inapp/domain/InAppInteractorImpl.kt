@@ -42,12 +42,13 @@ internal class InAppInteractorImpl(
             MindboxLoggerImpl.d(this, "Event triggered: ${event.name}")
             inAppEventManager.isValidInAppEvent(event)
         }) { inApps, event ->
-            MindboxLoggerImpl.d(this, "Event: ${event.name} combined with $inApps")
+            val filteredInApps = inAppFilteringManager.filterInAppsByEvent(
+                inApps,
+                event
+            )
+            MindboxLoggerImpl.d(this, "Event: ${event.name} combined with $filteredInApps")
             inAppChoosingManager.chooseInAppToShow(
-                inAppFilteringManager.filterInAppsByEvent(
-                    inApps,
-                    event
-                )
+               filteredInApps
             ).also { inAppType ->
                 inAppType ?: MindboxLoggerImpl.d(
                     this,
