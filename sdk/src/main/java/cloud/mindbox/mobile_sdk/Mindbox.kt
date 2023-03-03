@@ -9,8 +9,8 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -412,7 +412,7 @@ object Mindbox {
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }.invokeOnCompletion { throwable ->
-                if (throwable ==  null) {
+                if (throwable == null) {
                     if (firstInitCall) {
                         val activity = context as? Activity
                         if (activity != null && lifecycleManager.isCurrentActivityResumed) {
@@ -873,7 +873,6 @@ object Mindbox {
      *
      * @param activityBlackList list of activity classes on which in-app messages should not be shown
      */
-    @Deprecated("Method will be removed in upcoming releases")
     fun setInAppBlackList(
         activityBlackList: List<Class<out Activity>>,
     ) {
