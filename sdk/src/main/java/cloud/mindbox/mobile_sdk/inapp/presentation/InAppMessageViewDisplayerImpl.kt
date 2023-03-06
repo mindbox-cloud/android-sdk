@@ -33,9 +33,21 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
     private fun isUiPresent(): Boolean =
         (currentRoot != null) && (currentDialog != null) && (currentBlur != null)
 
+    private fun isActivityBlackListed(activity: Activity): Boolean {
+        if (activityBlackList?.contains(activity.javaClass) == true) {
+            MindboxLoggerImpl.d(
+                this,
+                "Activity: ${activity.javaClass} is in blackList. Skipping..."
+            )
+            return true
+        }
+        return false
+    }
+
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         MindboxLoggerImpl.d(this, "onResumeCurrentActivity: ${activity.hashCode()}")
+        if (isActivityBlackListed(activity)) return
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
@@ -80,6 +92,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         MindboxLoggerImpl.d(this, "registerCurrentActivity: ${activity.hashCode()}")
+        if (isActivityBlackListed(activity)) return
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
@@ -177,7 +190,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         onInAppClick: () -> Unit,
         onInAppShown: () -> Unit,
     ) {
-        inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
+        //TODO Remove when need to show more than one inApp per session
+        if (inAppQueue.isEmpty()) {
+            inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
+        }
     }
 
 
@@ -197,8 +213,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentDialog?.requestFocus()
 
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
-                            "try to show inapp with id ${inAppType.inAppId}")
+                        MindboxLoggerImpl.d(
+                            this@InAppMessageViewDisplayerImpl,
+                            "try to show inapp with id ${inAppType.inAppId}"
+                        )
                         Picasso.get()
                             .load(inAppType.imageUrl)
                             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
@@ -279,6 +297,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
+        var activityBlackList: List<Class<out Activity>>? = null
     }
 }
 
