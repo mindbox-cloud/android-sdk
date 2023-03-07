@@ -281,7 +281,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
     companion object {
         var isInAppMessageActive = false
-        var activityBlackList: List<Class<out Activity>>? = null
     }
 }
 
