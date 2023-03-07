@@ -864,21 +864,6 @@ object Mindbox {
             }
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
-
-    /**
-     * Must be called just before [Mindbox.init]
-     *
-     * Sets list of activities that does not show in-app messages. In-app message will be delayed shown
-     * when the first activity not from black list enters Resumed state.
-     *
-     * @param activityBlackList list of activity classes on which in-app messages should not be shown
-     */
-    fun setInAppBlackList(
-        activityBlackList: List<Class<out Activity>>,
-    ) {
-        InAppMessageViewDisplayerImpl.activityBlackList = activityBlackList
-    }
-
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         MindboxKoin.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
