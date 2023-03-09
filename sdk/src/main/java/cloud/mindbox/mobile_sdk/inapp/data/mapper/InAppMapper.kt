@@ -101,7 +101,7 @@ internal class InAppMapper {
                 is TreeTargetingDto.OperationNodeDto -> {
                     TreeTargeting.OperationNode(
                         TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME,
-                        treeTargetingDto.systemName!!
+                        treeTargetingDto.systemName!!.lowercase()
                     )
                 }
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
