@@ -411,21 +411,26 @@ object Mindbox {
                     MindboxEventManager.sendEventsIfExist(context)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
-            }.invokeOnCompletion { throwable ->
-                if (throwable == null) {
-                    if (firstInitCall) {
-                        val activity = context as? Activity
-                        if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                            inAppMessageManager.registerCurrentActivity(activity)
+            }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                .invokeOnCompletion { throwable ->
+                    if (throwable == null) {
+                        if (firstInitCall) {
+                            val activity = context as? Activity
+                            if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                                inAppMessageManager.registerCurrentActivity(activity)
+                            }
+
+                            mindboxScope.launch {
+                                inAppMessageManager.listenEventAndInApp()
+                                inAppMessageManager.initInAppMessages()
+                                MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                inAppMessageManager.requestConfig().join()
+                            }.initState(InitializeLock.State.APP_STARTED)
+
                         }
-                        inAppMessageManager.initInAppMessages()
-                        mindboxScope.launch {
-                            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                        }
+                        firstInitCall = false
                     }
-                    firstInitCall = false
                 }
-            }
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
                 val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
@@ -720,6 +725,8 @@ object Mindbox {
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
+
                 MindboxEventManager.syncOperation(
                     context = context,
                     name = operationSystemName,
@@ -755,6 +762,7 @@ object Mindbox {
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
                 MindboxEventManager.syncOperation(
                     context = context,
                     name = operationSystemName,
@@ -907,7 +915,10 @@ object Mindbox {
     ) {
         MindboxLoggerImpl.d(this, "asyncOperation. operationBodyJson: $operationBodyJson")
         if (validateOperation(operationSystemName)) {
-            MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
+            initScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
+                MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
+            }
         }
     }
 
@@ -1135,7 +1146,6 @@ object Mindbox {
             )
         }
     }
-
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
 
