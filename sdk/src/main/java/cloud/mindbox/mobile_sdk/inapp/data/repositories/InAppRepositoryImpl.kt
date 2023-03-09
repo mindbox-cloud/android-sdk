@@ -27,7 +27,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun getOperationalInAppsByOperation(operation: String): List<InApp> {
-        return sessionStorageManager.operationalInApps[operation] ?: emptyList()
+        return sessionStorageManager.operationalInApps[operation.lowercase()] ?: emptyList()
     }
 
     override fun getShownInApps(): Set<String> {
