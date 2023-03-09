@@ -72,7 +72,7 @@ class InAppRepositoryTest {
     fun `get operation inApps returns null`() {
         val testOperation = "testOperation"
         val expectedResult = mutableListOf<InApp>()
-        every { sessionStorageManager.operationalInApps[testOperation] } returns null
+        every { sessionStorageManager.operationalInApps[testOperation.lowercase()] } returns null
         val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
         assertEquals(expectedResult, actualResult)
     }
@@ -81,7 +81,7 @@ class InAppRepositoryTest {
     fun `get operation inApps no inApps`() {
         val testOperation = "testOperation"
         val expectedResult = mutableListOf<InApp>()
-        every { sessionStorageManager.operationalInApps[testOperation] } returns expectedResult
+        every { sessionStorageManager.operationalInApps[testOperation.lowercase()] } returns expectedResult
         val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
         assertEquals(expectedResult, actualResult)
     }
@@ -92,7 +92,7 @@ class InAppRepositoryTest {
         val expectedResult = mutableListOf(
             InAppStub.getInApp()
         )
-        every { sessionStorageManager.operationalInApps[testOperation] } returns expectedResult
+        every { sessionStorageManager.operationalInApps[testOperation.lowercase()] } returns expectedResult
         val actualResult = inAppRepository.getOperationalInAppsByOperation(testOperation)
         assertEquals(expectedResult, actualResult)
     }
