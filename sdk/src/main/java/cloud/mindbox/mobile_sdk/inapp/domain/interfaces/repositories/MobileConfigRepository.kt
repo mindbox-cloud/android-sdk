@@ -8,7 +8,7 @@ internal interface MobileConfigRepository {
 
     suspend fun fetchMobileConfig()
 
-    fun listenInAppsSection(): Flow<List<InApp>?>
+    suspend fun getInAppsSection(): List<InApp>
 
     fun listenMonitoringSection(): Flow<List<LogRequest>?>
 

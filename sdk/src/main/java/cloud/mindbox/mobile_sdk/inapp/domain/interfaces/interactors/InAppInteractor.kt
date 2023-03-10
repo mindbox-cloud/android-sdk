@@ -7,7 +7,7 @@ internal interface InAppInteractor {
 
     fun isInAppShown(): Boolean
     fun setInAppShown()
-    fun processEventAndConfig(): Flow<InAppType>
+    suspend fun processEventAndConfig(): Flow<InAppType>
 
     fun saveShownInApp(id: String)
 

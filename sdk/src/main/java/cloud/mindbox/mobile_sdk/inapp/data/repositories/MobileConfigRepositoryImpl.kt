@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -17,6 +18,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -29,6 +31,8 @@ internal class MobileConfigRepositoryImpl(
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
+
+    private var inApps: List<InApp>? = null
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
@@ -90,10 +94,15 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    override fun listenInAppsSection(): Flow<List<InApp>?> {
-        return listenInAppConfig().map { inAppConfig ->
-            inAppConfig?.inApps
+    override suspend fun getInAppsSection(): List<InApp> {
+        InitializeLock.await(InitializeLock.State.APP_STARTED)
+
+        return inApps ?: run {
+            val inAppList: List<InApp> = listenInAppConfig().map { inAppConfig ->
+                inAppConfig?.inApps
+            }.first() ?: listOf()
+            inApps = inAppList
+            inAppList
         }
     }
-
 }

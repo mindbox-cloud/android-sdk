@@ -54,8 +54,8 @@ internal class InAppMessageManagerImpl(
      * In case of other network error use cached version
      * Otherwise do nothing
      **/
-    override fun requestConfig() {
-        inAppScope.launch(CoroutineExceptionHandler { _, error ->
+    override fun requestConfig(): Job {
+        return inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
                     CONFIG_NOT_FOUND -> {
@@ -81,15 +81,8 @@ internal class InAppMessageManagerImpl(
     }
 
     override fun initInAppMessages() {
-        listenEventAndInApp()
-        requestConfig()
-        initMonitoring()
-    }
-
-    private fun initMonitoring() {
         monitoringRepository.processLogs()
     }
-
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         LoggingExceptionHandler.runCatching {
