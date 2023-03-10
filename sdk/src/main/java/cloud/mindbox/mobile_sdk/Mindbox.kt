@@ -473,7 +473,7 @@ object Mindbox {
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
-                                sendTrackVisitEvent(context.applicationContext, source, requestUrl)
+                                sendTrackVisitEvent(context, source, requestUrl)
                             }
                         }
                     )
