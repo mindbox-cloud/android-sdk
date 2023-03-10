@@ -378,10 +378,11 @@ object Mindbox {
      * ```
      */
     fun init(
-        context: Context,
+        passedContext: Context,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
+        val context= passedContext.applicationContext
         LoggingExceptionHandler.runCatching {
             initComponents(context, pushServices)
             MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
@@ -414,7 +415,7 @@ object Mindbox {
             }.invokeOnCompletion { throwable ->
                 if (throwable == null) {
                     if (firstInitCall) {
-                        val activity = context as? Activity
+                        val activity = passedContext as? Activity
                         if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                             inAppMessageManager.registerCurrentActivity(activity)
                         }
