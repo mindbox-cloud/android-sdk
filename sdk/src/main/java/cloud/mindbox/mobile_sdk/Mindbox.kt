@@ -11,7 +11,6 @@ import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -378,13 +377,12 @@ object Mindbox {
      * ```
      */
     fun init(
-        passedContext: Context,
+        context: Context,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
-        val context= passedContext.applicationContext
         LoggingExceptionHandler.runCatching {
-            initComponents(context, pushServices)
+            initComponents(context.applicationContext, pushServices)
             MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
@@ -395,27 +393,27 @@ object Mindbox {
                 MindboxLoggerImpl.d(this, "init. checkResult: $checkResult")
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                     MindboxLoggerImpl.d(this, "init. softReinitialization")
-                    softReinitialization(context)
+                    softReinitialization(context.applicationContext)
                 }
 
                 if (checkResult == ConfigUpdate.UPDATED) {
-                    firstInitialization(context, validatedConfiguration)
+                    firstInitialization(context.applicationContext, validatedConfiguration)
 
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
                         MindboxLoggerImpl.d(this, "Track visit event with source $DIRECT")
-                        sendTrackVisitEvent(context, DIRECT)
+                        sendTrackVisitEvent(context.applicationContext, DIRECT)
                     }
                 } else {
-                    updateAppInfo(context)
-                    MindboxEventManager.sendEventsIfExist(context)
+                    updateAppInfo(context.applicationContext)
+                    MindboxEventManager.sendEventsIfExist(context.applicationContext)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
             }.invokeOnCompletion { throwable ->
                 if (throwable == null) {
                     if (firstInitCall) {
-                        val activity = passedContext as? Activity
+                        val activity = context as? Activity
                         if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                             inAppMessageManager.registerCurrentActivity(activity)
                         }
@@ -458,7 +456,7 @@ object Mindbox {
                             UuidCopyManager.onAppMovedToForeground(activity)
                             mindboxScope.launch {
                                 if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(context)
+                                    updateAppInfo(context.applicationContext)
                                 }
                             }
                         },
@@ -474,7 +472,7 @@ object Mindbox {
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
-                                sendTrackVisitEvent(context, source, requestUrl)
+                                sendTrackVisitEvent(context.applicationContext, source, requestUrl)
                             }
                         }
                     )
