@@ -456,7 +456,7 @@ object Mindbox {
                             UuidCopyManager.onAppMovedToForeground(activity)
                             mindboxScope.launch {
                                 if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(context.applicationContext)
+                                    updateAppInfo(activity.applicationContext)
                                 }
                             }
                         },
@@ -472,7 +472,11 @@ object Mindbox {
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
-                                sendTrackVisitEvent(context.applicationContext, source, requestUrl)
+                                sendTrackVisitEvent(
+                                    MindboxKoin.koin.get(Context::class),
+                                    source,
+                                    requestUrl
+                                )
                             }
                         }
                     )
@@ -863,6 +867,7 @@ object Mindbox {
             }
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
+
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         MindboxKoin.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
