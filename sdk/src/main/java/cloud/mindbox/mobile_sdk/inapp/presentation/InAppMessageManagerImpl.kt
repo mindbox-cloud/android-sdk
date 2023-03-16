@@ -39,6 +39,11 @@ internal class InAppMessageManagerImpl(
                             return@withContext
                         }
 
+                        if (inAppInteractorImpl.isInAppShown()) {
+                            this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
+                            return@withContext
+                        }
+
                         inAppMessageViewDisplayer.tryShowInAppMessage(
                             inAppType = inAppMessage,
                             onInAppClick = { sendInAppClicked(inAppMessage.inAppId) },
