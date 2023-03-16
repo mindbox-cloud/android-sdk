@@ -1,7 +1,6 @@
-package cloud.mindbox.mobile_sdk.inapp.mapper
+package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
-import cloud.mindbox.mobile_sdk.inapp.data.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -10,9 +9,8 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckReques
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
-import kotlinx.coroutines.Deferred
 
-internal class InAppMessageMapper {
+internal class InAppMapper {
 
     fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
         return GeoTargeting(
@@ -62,7 +60,7 @@ internal class InAppMessageMapper {
                                 when (payloadDto) {
                                     is PayloadDto.SimpleImage -> {
                                         Payload.SimpleImage(
-                                            type = payloadDto.type ?: "",
+                                            type = PayloadDto.SimpleImage.SIMPLE_IMAGE_JSON_NAME,
                                             imageUrl = payloadDto.imageUrl ?: "",
                                             redirectUrl = payloadDto.redirectUrl ?: "",
                                             intentPayload = payloadDto.intentPayload ?: ""
@@ -100,42 +98,48 @@ internal class InAppMessageMapper {
     ): List<TreeTargeting> {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
-                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(InAppRepositoryImpl.TRUE_JSON_NAME)
+                is TreeTargetingDto.OperationNodeDto -> {
+                    TreeTargeting.OperationNode(
+                        TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME,
+                        treeTargetingDto.systemName!!.lowercase()
+                    )
+                }
+                is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
-                    InAppRepositoryImpl.AND_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                    type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,
+                    nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(
-                    InAppRepositoryImpl.SEGMENT_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.segmentationExternalId!!,
-                    treeTargetingDto.segmentExternalId!!
+                    type = TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
+                    segmentExternalId = treeTargetingDto.segmentExternalId!!
                 )
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(
-                    InAppRepositoryImpl.OR_JSON_NAME,
-                    mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
+                    type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
+                    nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
-                    InAppRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.CityNodeDto.CITY_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
                 is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
-                    InAppRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
-                    InAppRepositoryImpl.TYPE_JSON_NAME,
-                    if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    treeTargetingDto.ids as List<String>
+                    type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    ids = treeTargetingDto.ids as List<String>
                 )
             }
         }
     }
 
-    fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckInApp {
-        return SegmentationCheckInApp(
+    fun mapToSegmentationCheck(segmentationCheckResponse: SegmentationCheckResponse): SegmentationCheckWrapper {
+        return SegmentationCheckWrapper(
             status = segmentationCheckResponse.status ?: "",
             customerSegmentations = segmentationCheckResponse.customerSegmentations?.filter { customerSegmentationInAppResponse ->
                 customerSegmentationInAppResponse.segmentation?.ids?.externalId != null
@@ -148,15 +152,9 @@ internal class InAppMessageMapper {
         )
     }
 
-    fun mapToSegmentationCheckRequest(segmentationExternalIds: List<Pair<String, Deferred<SegmentationCheckInApp>>>): SegmentationCheckRequest {
-        return SegmentationCheckRequest(segmentationExternalIds.map { id ->
-            SegmentationDataRequest(IdsRequest(id.first))
-        })
-    }
-
-    fun mapToSegmentationCheckRequest(config: InAppConfig): SegmentationCheckRequest {
+    fun mapToSegmentationCheckRequest(inApps: List<InApp>): SegmentationCheckRequest {
         return SegmentationCheckRequest(
-            config.inApps.flatMap { inAppDto ->
+            inApps.flatMap { inAppDto ->
                 getTargetingSegmentList(inAppDto.targeting).map { segment ->
                     SegmentationDataRequest(IdsRequest(segment))
                 }

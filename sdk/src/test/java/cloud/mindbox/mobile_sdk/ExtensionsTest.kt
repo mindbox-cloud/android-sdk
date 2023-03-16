@@ -10,7 +10,7 @@ internal class ExtensionsTest {
     @Test
     fun `converting zoned date time to string`() {
         val time: ZonedDateTime = ZonedDateTime.now()
-        val expectedResult = time.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        val expectedResult = time.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
         val actualResult = time.convertToString()
         assertEquals(expectedResult, actualResult)
     }

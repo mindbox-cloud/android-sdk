@@ -8,7 +8,6 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppMessageViewDisplayer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
@@ -40,30 +39,41 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
-            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+            LayoutInflater.from(activity).inflate(
+                R.layout.blur_layout,
                 currentRoot, false
             )
         } else {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
-            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+            LayoutInflater.from(activity).inflate(
+                R.layout.blur_layout,
                 currentRoot, false
             ).apply {
-                setBackgroundColor(ContextCompat.getColor(activity,
-                    android.R.color.transparent))
+                setBackgroundColor(
+                    ContextCompat.getColor(
+                        activity,
+                        android.R.color.transparent
+                    )
+                )
             }
         }
         currentActivity = activity
-        currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
+        currentDialog = LayoutInflater.from(activity).inflate(
+            R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
-                MindboxLoggerImpl.d(this,
-                    "trying to show in-app with id ${inAppType.inAppId} from queue")
-                showInAppMessage(inAppType = inAppType,
+                MindboxLoggerImpl.d(
+                    this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue"
+                )
+                showInAppMessage(
+                    inAppType = inAppType,
                     onInAppClick = onInAppClick,
-                    onInAppShown = onInAppShown)
+                    onInAppShown = onInAppShown
+                )
             }
         }
     }
@@ -73,30 +83,41 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         currentRoot = activity.window.decorView.rootView as ViewGroup
         currentBlur = if (shouldUseBlur) {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
-            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+            LayoutInflater.from(activity).inflate(
+                R.layout.blur_layout,
                 currentRoot, false
             )
         } else {
             MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
-            LayoutInflater.from(activity).inflate(R.layout.blur_layout,
+            LayoutInflater.from(activity).inflate(
+                R.layout.blur_layout,
                 currentRoot, false
             ).apply {
-                setBackgroundColor(ContextCompat.getColor(activity,
-                    android.R.color.transparent))
+                setBackgroundColor(
+                    ContextCompat.getColor(
+                        activity,
+                        android.R.color.transparent
+                    )
+                )
             }
         }
         currentActivity = activity
-        currentDialog = LayoutInflater.from(activity).inflate(R.layout.default_inapp_layout,
+        currentDialog = LayoutInflater.from(activity).inflate(
+            R.layout.default_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
 
         if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
             with(inAppQueue.pop()) {
-                MindboxLoggerImpl.d(this,
-                    "trying to show in-app with id ${inAppType.inAppId} from queue")
-                showInAppMessage(inAppType = inAppType,
+                MindboxLoggerImpl.d(
+                    this,
+                    "trying to show in-app with id ${inAppType.inAppId} from queue"
+                )
+                showInAppMessage(
+                    inAppType = inAppType,
                     onInAppClick = onInAppClick,
-                    onInAppShown = onInAppShown)
+                    onInAppShown = onInAppShown
+                )
             }
         }
     }
@@ -121,14 +142,18 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         onInAppShown: () -> Unit,
     ) {
         if (isUiPresent()) {
-            MindboxLoggerImpl.d(this,
-                "In-app with id ${inAppType.inAppId} is going to be shown immediately")
+            MindboxLoggerImpl.d(
+                this,
+                "In-app with id ${inAppType.inAppId} is going to be shown immediately"
+            )
             showInAppMessage(inAppType, onInAppClick, onInAppShown)
 
         } else {
             addToInAppQueue(inAppType, onInAppClick, onInAppShown)
-            MindboxLoggerImpl.d(this,
-                "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later")
+            MindboxLoggerImpl.d(
+                this,
+                "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later"
+            )
         }
     }
 
@@ -172,8 +197,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     currentDialog?.requestFocus()
 
                     with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                        MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
-                            "try to show inapp with id ${inAppType.inAppId}")
+                        MindboxLoggerImpl.d(
+                            this@InAppMessageViewDisplayerImpl,
+                            "try to show inapp with id ${inAppType.inAppId}"
+                        )
                         Picasso.get()
                             .load(inAppType.imageUrl)
                             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
@@ -196,9 +223,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                     currentDialog?.setOnClickListener {
                                         currentDialog?.isEnabled = false
                                         onInAppClick()
-                                        inAppCallback?.onInAppClick(inAppType.inAppId,
+                                        inAppCallback?.onInAppClick(
+                                            inAppType.inAppId,
                                             inAppType.redirectUrl,
-                                            inAppType.intentData)
+                                            inAppType.intentData
+                                        )
                                         if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
@@ -219,8 +248,10 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         currentRoot?.removeView(currentBlur)
                                     }
                                     currentBlur?.isVisible = true
-                                    MindboxLoggerImpl.d(this@InAppMessageViewDisplayerImpl,
-                                        "inapp shown")
+                                    MindboxLoggerImpl.d(
+                                        this@InAppMessageViewDisplayerImpl,
+                                        "inapp shown"
+                                    )
                                     isInAppMessageActive = true
                                     onInAppShown()
                                 }

@@ -2,7 +2,13 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import android.util.Log
+import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -21,12 +27,13 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import org.koin.core.component.inject
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-internal object GatewayManager {
+internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
 
     private const val TIMEOUT_DELAY = 60000
     private const val MAX_RETRIES = 0
@@ -301,7 +308,7 @@ internal object GatewayManager {
                             )
                         },
                         { error ->
-                            continuation.resumeWithException(error)
+                            continuation.resumeWithException(GeoError(error))
                         }
                     )
                 )
@@ -335,7 +342,7 @@ internal object GatewayManager {
                             )
                         },
                         { error ->
-                            continuation.resumeWithException(error)
+                            continuation.resumeWithException(SegmentationError(error))
                         }
                     )
                 )
@@ -372,7 +379,7 @@ internal object GatewayManager {
     }
 
 
-    suspend fun fetchInAppConfig(context: Context, configuration: Configuration): String {
+    suspend fun fetchMobileConfig(context: Context, configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             MindboxServiceGenerator.getInstance(context)
                 ?.addToRequestQueue(

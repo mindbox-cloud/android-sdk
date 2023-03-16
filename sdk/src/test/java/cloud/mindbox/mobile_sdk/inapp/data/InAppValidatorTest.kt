@@ -1,13 +1,16 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class InAppValidatorImplTest {
+class InAppValidatorTest {
 
     private val inAppValidator = InAppValidatorImpl()
+
+
 
 
     @Test
@@ -158,6 +161,60 @@ class InAppValidatorImplTest {
                         )
                     )
                 )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targetingDto is OperationNode with correct operation`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto()
+                    .copy(
+                        targeting = InAppStub.getTargetingOperationNodeDto().copy(type = "apiMethodCall", systemName = "notEmpty"),
+                        form = InAppStub.getInAppDto().form?.copy(
+                            variants = listOf(
+                                InAppStub.getSimpleImageDto()
+                                    .copy(type = "def", imageUrl = "abc")
+                            )
+                        )
+                    )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targetingDto is OperationNode with empty operation`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto()
+                    .copy(
+                        targeting = InAppStub.getTargetingOperationNodeDto().copy(type = "apiMethodCall", systemName = ""),
+                        form = InAppStub.getInAppDto().form?.copy(
+                            variants = listOf(
+                                InAppStub.getSimpleImageDto()
+                                    .copy(type = "def", imageUrl = "abc")
+                            )
+                        )
+                    )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targetingDto is OperationNode with null operation`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto()
+                    .copy(
+                        targeting = InAppStub.getTargetingOperationNodeDto().copy(type = "apiMethodCall", systemName = null),
+                        form = InAppStub.getInAppDto().form?.copy(
+                            variants = listOf(
+                                InAppStub.getSimpleImageDto()
+                                    .copy(type = "def", imageUrl = "abc")
+                            )
+                        )
+                    )
             )
         )
     }
@@ -1019,6 +1076,98 @@ class InAppValidatorImplTest {
                             )
                         )
                     )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version is lower than required`() {
+        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        assertFalse(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = null, maxVersion = lowInAppVersion)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version is higher than required`() {
+        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        assertFalse(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = highInAppVersion, maxVersion = null)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version is out of range`() {
+        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        assertFalse(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = highInAppVersion, maxVersion = lowInAppVersion)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version no min version`() {
+        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        assertTrue(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = null, maxVersion = highInAppVersion)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version no max version`() {
+        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        assertTrue(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = lowInAppVersion, maxVersion = null)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version no limitations`() {
+        assertTrue(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = null, maxVersion = null)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `in-app version is in range`() {
+        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        assertTrue(
+            inAppValidator.validateInAppVersion(
+                InAppStub.getInAppDtoBlank().copy(
+                    sdkVersion = InAppStub.getSdkVersion()
+                        .copy(minVersion = lowInAppVersion, maxVersion = highInAppVersion)
+                )
             )
         )
     }

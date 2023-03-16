@@ -1,8 +1,11 @@
 package cloud.mindbox.mobile_sdk
 
-import android.util.Log
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.time.*
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -13,25 +16,38 @@ internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.ru
 }
 
 internal fun ZonedDateTime.convertToString() = runCatching {
-    this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
 }.getOrElse {
-    Log.e("Mindbox", "Error converting date", it)
+    MindboxLoggerImpl.e("Mindbox", "Error converting date", it)
     ""
 }
 
 internal fun Instant.convertToZonedDateTimeAtUTC(): ZonedDateTime {
-    return this.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC)
+    return ZonedDateTime.ofInstant(this, ZoneOffset.UTC)
 }
-
 
 internal fun String.convertToZonedDateTime(): ZonedDateTime = runCatching {
     return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")).atZone(
         ZoneOffset.UTC
     )
 }.getOrElse {
-    Log.e("Mindbox", "Error converting date", it)
+    MindboxLoggerImpl.e("Mindbox", "Error converting date", it)
     LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
         .atZone(
-            ZoneId.systemDefault()
+            ZoneOffset.UTC
         )
 }
+
+internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
+    return LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
+        .atZone(
+            ZoneOffset.UTC
+        )
+}.getOrElse {
+    MindboxLoggerImpl.e("Mindbox", "Error converting date", it)
+    LocalDateTime.parse("1970-01-01T00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+        .atZone(
+            ZoneOffset.UTC
+        )
+}
+

@@ -5,8 +5,9 @@ import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
-import cloud.mindbox.mobile_sdk.monitoring.data.rmappers.MonitoringMapper
+import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
+import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
@@ -25,6 +26,7 @@ internal class MonitoringRepositoryImpl(
     private val monitoringMapper: MonitoringMapper,
     private val gson: Gson,
     private val logStoringDataChecker: LogStoringDataChecker,
+    private val monitoringValidator: MonitoringValidator,
 ) : MonitoringRepository {
     override suspend fun deleteFirstLog() {
         monitoringDao.deleteFirstLog()
@@ -63,7 +65,7 @@ internal class MonitoringRepositoryImpl(
         monitoringDao.insertLog(
             monitoringMapper.mapLogInfoToMonitoringEntity(
                 zonedDateTime.convertToString(),
-                "${zonedDateTime.convertToString()} $message"
+                message
             )
         )
         if (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
@@ -76,7 +78,8 @@ internal class MonitoringRepositoryImpl(
 
                     }
                 }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -86,6 +89,9 @@ internal class MonitoringRepositoryImpl(
     ): List<LogResponse> {
         return monitoringMapper.mapMonitoringEntityListToLogResponseList(
             monitoringDao.getLogs(startTime.convertToString(), endTime.convertToString())
+                .filter { monitoringEntity ->
+                    monitoringValidator.validateMonitoring(monitoringEntity)
+                }
         )
     }
 

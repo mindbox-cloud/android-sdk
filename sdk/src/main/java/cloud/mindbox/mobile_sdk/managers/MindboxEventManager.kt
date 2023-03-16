@@ -73,7 +73,7 @@ internal object MindboxEventManager {
         asyncOperation(context, IN_APP_OPERATION_CLICK_TYPE, body)
     }
 
-    fun inAppTargetingHit(context: Context, body: String) {
+    fun sendUserTargeted(context: Context, body: String) {
         asyncOperation(context, IN_APP_OPERATION_TARGETING_TYPE, body)
     }
 
@@ -126,8 +126,9 @@ internal object MindboxEventManager {
                 val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
                 if (!isInitialized || configuration == null) {
                     MindboxLoggerImpl.e(this, "Configuration was not initialized")
-                    MindboxLoggerImpl.d(this, "isFirstInitialize: $MindboxPreferences.isFirstInitialize, " +
-                            "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
+                    MindboxLoggerImpl.d(this,
+                        "isFirstInitialize: $MindboxPreferences.isFirstInitialize, " +
+                                "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
                 } else {
                     WorkerDelegate().sendEvent(
                         context = context,

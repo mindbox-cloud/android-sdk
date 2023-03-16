@@ -53,51 +53,51 @@ internal object MindboxLoggerImpl : MindboxLogger, MindboxKoin.MindboxKoinCompon
      */
 
     override fun i(parent: Any, message: String) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.INFO.value) {
-            val logMessage = buildMessage(parent, message)
             Log.i(TAG, logMessage)
-            saveLog(logMessage)
         }
+        saveLog(logMessage)
     }
 
     override fun d(parent: Any, message: String) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.DEBUG.value) {
-            val logMessage = buildMessage(parent, message)
             Log.d(TAG, logMessage)
-            saveLog(logMessage)
         }
+        saveLog(logMessage)
     }
 
     override fun e(parent: Any, message: String) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.ERROR.value) {
-            val logMessage = buildMessage(parent, message)
             Log.e(TAG, logMessage)
-            saveLog(logMessage)
         }
+        saveLog(logMessage)
     }
 
     override fun e(parent: Any, message: String, exception: Throwable) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.ERROR.value) {
-            val logMessage = buildMessage(parent, message)
             Log.e(TAG, logMessage, exception)
-            saveLog(logMessage + exception.stackTraceToString())
         }
+        saveLog(logMessage + exception.stackTraceToString())
     }
 
     override fun w(parent: Any, message: String) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.WARN.value) {
-            val logMessage = buildMessage(parent, message)
             Log.w(TAG, logMessage)
-            saveLog(logMessage)
         }
+        saveLog(logMessage)
     }
 
     override fun w(parent: Any, message: String, exception: Throwable) {
+        val logMessage = buildMessage(parent, message)
         if (level.value <= Level.WARN.value) {
-            val logMessage = buildMessage(parent, message)
             Log.w(TAG, logMessage, exception)
-            saveLog(logMessage + exception.stackTraceToString())
         }
+        saveLog(logMessage + exception.stackTraceToString())
     }
 
     private fun saveLog(message: String) {

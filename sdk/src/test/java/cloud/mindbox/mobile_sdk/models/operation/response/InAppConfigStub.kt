@@ -8,8 +8,7 @@ internal class InAppConfigStub {
         fun getConfig(): InAppConfig =
             InAppConfig(inApps = listOf(InAppStub.getInApp()), emptyList())
 
-        fun getConfigDto(): InAppConfigResponse =
-            InAppConfigResponse(inApps = listOf(InAppStub.getInAppDto()), emptyList())
-
+        fun getConfigResponseBlank(): InAppConfigResponseBlank =
+            InAppConfigResponseBlank(emptyList(), null)
     }
 }
