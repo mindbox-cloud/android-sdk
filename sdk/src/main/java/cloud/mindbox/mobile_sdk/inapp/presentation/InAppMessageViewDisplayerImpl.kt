@@ -274,9 +274,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                     MindboxLoggerImpl.d(this, "in-app image url is blank")
                 }
             }
-            else -> {
-                //TODO add inapp processing
-            }
         }
     }
 

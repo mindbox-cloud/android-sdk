@@ -35,11 +35,7 @@ internal class InAppMessageManagerImpl(
                     withContext(Dispatchers.Main) {
                         if (InAppMessageViewDisplayerImpl.isInAppMessageActive) {
                             this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
-                            return@withContext
-                        }
-
-                        if (isInAppShown()) {
-                            this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
+                            // TODO fix skipping second inApp
                             return@withContext
                         }
 
@@ -103,10 +99,6 @@ internal class InAppMessageManagerImpl(
 
     private fun setInAppShown() {
         inAppInteractorImpl.setInAppShown()
-    }
-
-    private fun isInAppShown(): Boolean {
-        return inAppInteractorImpl.isInAppShown()
     }
 
     private fun sendInAppClicked(inAppId: String) {
