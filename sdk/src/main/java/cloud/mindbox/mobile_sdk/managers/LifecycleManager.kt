@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
@@ -25,6 +26,7 @@ internal class LifecycleManager(
     private var onActivityStarted: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
+
 
     companion object {
 
