@@ -189,6 +189,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
         when (inAppType) {
             is InAppType.SimpleImage -> {
                 if (inAppType.imageUrl.isNotBlank()) {
+                    isInAppMessageActive = true
+
                     if (currentRoot == null) {
                         MindboxLoggerImpl.e(this, "failed to show inapp: currentRoot is null")
                     }
@@ -252,7 +254,6 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         this@InAppMessageViewDisplayerImpl,
                                         "inapp shown"
                                     )
-                                    isInAppMessageActive = true
                                     onInAppShown()
                                 }
 
