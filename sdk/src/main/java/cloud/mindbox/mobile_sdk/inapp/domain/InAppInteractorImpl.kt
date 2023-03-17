@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import kotlinx.coroutines.flow.*
 
 internal class InAppInteractorImpl(
@@ -22,12 +23,12 @@ internal class InAppInteractorImpl(
 ) : InAppInteractor {
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
-        val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()?.let { inApps ->
+        val inApps: List<InApp> = mobileConfigRepository.getInAppsSection().let { inApps ->
             inAppFilteringManager.filterNotShownInApps(
                 inAppRepository.getShownInApps(),
                 inApps
             )
-        }?.also { unShownInApps ->
+        }.also { unShownInApps ->
             MindboxLoggerImpl.d(
                 this, "Filtered config has ${unShownInApps.size} inapps"
             )
@@ -37,27 +38,23 @@ internal class InAppInteractorImpl(
                     inAppRepository.saveOperationalInApp(operation, inApp)
                 }
             }
-        } ?: listOf()
+        }
 
         return inAppRepository.listenInAppEvents()
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
             .onEach {
-                MindboxLoggerImpl.d(this, "Event triggered: ${it.name}")
+                mindboxLogD("Event triggered: ${it.name}")
             }.filter {
-                inApps.isNotEmpty()
+                inApps.isNotEmpty().also { mindboxLogD("InApps is empty: ${!it}") }
+            }.filter {
+                !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps = inAppFilteringManager.filterInAppsByEvent(
-                    inApps,
-                    event
-                )
-                MindboxLoggerImpl.d(this, "Event: ${event.name} combined with $filteredInApps")
+                val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
+                mindboxLogD("Event: ${event.name} combined with $filteredInApps")
+
                 inAppChoosingManager.chooseInAppToShow(
                     filteredInApps
-                ).also { inAppType ->
-                    inAppType ?: MindboxLoggerImpl.d(
-                        this, "No innaps to show found"
-                    )
-                }
+                ).also { inAppType -> inAppType ?: mindboxLogD("No innaps to show found") }
             }.filterNotNull()
     }
 
