@@ -193,6 +193,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
 
                     if (currentRoot == null) {
                         MindboxLoggerImpl.e(this, "failed to show inapp: currentRoot is null")
+                        isInAppMessageActive = false
                     }
                     currentRoot?.addView(currentBlur)
                     currentRoot?.addView(currentDialog)
@@ -214,11 +215,11 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                     currentInAppId = inAppType.inAppId
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
-                                            isInAppMessageActive = false
                                             inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                             MindboxLoggerImpl.d(this, "In-app dismissed")
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
+                                            isInAppMessageActive = false
                                         }
                                         isVisible = true
                                     }
@@ -233,21 +234,22 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                         if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
                                             currentRoot?.removeView(currentDialog)
                                             currentRoot?.removeView(currentBlur)
+                                            isInAppMessageActive = false
                                         }
                                     }
                                     currentDialog?.setDismissListener {
-                                        isInAppMessageActive = false
                                         inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                         MindboxLoggerImpl.d(this, "In-app dismissed")
                                         currentRoot?.removeView(currentDialog)
                                         currentRoot?.removeView(currentBlur)
+                                        isInAppMessageActive = false
                                     }
                                     currentBlur?.setOnClickListener {
-                                        isInAppMessageActive = false
                                         inAppCallback?.onInAppDismissed(inAppType.inAppId)
                                         MindboxLoggerImpl.d(this, "In-app dismissed")
                                         currentRoot?.removeView(currentDialog)
                                         currentRoot?.removeView(currentBlur)
+                                        isInAppMessageActive = false
                                     }
                                     currentBlur?.isVisible = true
                                     MindboxLoggerImpl.d(
@@ -266,6 +268,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                                     )
                                     currentRoot?.removeView(currentDialog)
                                     currentRoot?.removeView(currentBlur)
+                                    isInAppMessageActive = false
                                     this@with?.isVisible = false
                                 }
                             })
