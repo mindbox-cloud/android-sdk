@@ -116,7 +116,7 @@ internal object MindboxEventManager {
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             DbManager.addEventToQueue(context, event)
 
-            eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
+            eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType, event.body))
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
@@ -200,7 +200,7 @@ internal object MindboxEventManager {
     ): Event {
         val eventType = EventType.SyncOperation(name)
         Mindbox.mindboxScope.launch {
-            eventFlow.emit(InAppEventType.OrdinalEvent(eventType))
+            eventFlow.emit(InAppEventType.OrdinalEvent(eventType, bodyJson))
         }
         return Event(eventType = eventType, body = bodyJson)
     }

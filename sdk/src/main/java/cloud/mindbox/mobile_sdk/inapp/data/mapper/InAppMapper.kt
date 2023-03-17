@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
+import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -49,9 +50,9 @@ internal class InAppMapper {
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig? {
-        return inAppConfigResponse?.let { inAppConfigDto ->
+        return inAppConfigResponse?.let {
             InAppConfig(
-                inApps = inAppConfigDto.inApps?.map { inAppDto ->
+                inApps = inAppConfigResponse.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
@@ -83,7 +84,10 @@ internal class InAppMapper {
                         from = it.from.convertToZonedDateTime(),
                         to = it.to.convertToZonedDateTime()
                     )
-                } ?: emptyList()
+                } ?: emptyList(),
+                operations = inAppConfigResponse.settings?.map { (key, value) ->
+                    key.enumValue(OperationName.VIEW_PRODUCT) to OperationSystemName(value.systemName)
+                }?.toMap() ?: emptyMap()
             )
         }
     }
@@ -99,7 +103,7 @@ internal class InAppMapper {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
                 is TreeTargetingDto.OperationNodeDto -> {
-                    TreeTargeting.OperationNode(
+                    OperationNode(
                         TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME,
                         treeTargetingDto.systemName!!.lowercase()
                     )
@@ -131,8 +135,24 @@ internal class InAppMapper {
                 )
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
                     type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
-                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
+                    kind = treeTargetingDto.kind.enumValue(Kind.POSITIVE),
                     ids = treeTargetingDto.ids as List<String>
+                )
+                is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
+                    type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(KindSubstring.SUBSTRING),
+                    value = treeTargetingDto.value!!
+                )
+                is TreeTargetingDto.ViewProductCategoryInNodeDto -> ViewProductCategoryInNode(
+                    type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(KindAny.ANY),
+                    values = treeTargetingDto.values?.map { dto ->
+                        ViewProductCategoryInNode.Value(
+                            id = dto.id!!,
+                            externalId = dto.externalId!!,
+                            externalSystemName = dto.externalSystemName!!
+                        )
+                    } ?: listOf()
                 )
             }
         }
@@ -159,6 +179,12 @@ internal class InAppMapper {
                     SegmentationDataRequest(IdsRequest(segment))
                 }
             })
+    }
+
+    fun mapToOperationMap(settingsDto: SettingsDto): Map<String, OperationDto> {
+        return settingsDto.operations?.map { (key, value) ->
+            key!! to OperationDto(value!!.systemName!!)
+        }?.toMap() ?: mapOf()
     }
 
     private fun getTargetingSegmentList(targeting: TreeTargeting): List<String> {

@@ -10,6 +10,23 @@ internal data class InAppConfigResponse(
     val inApps: List<InAppDto>?,
     @SerializedName("monitoring")
     val monitoring: List<LogRequestDto>?,
+    @SerializedName("settings")
+    val settings: Map<String, OperationDto>?,
+)
+
+internal data class SettingsDto(
+    @SerializedName("operations")
+    val operations: Map<String?, OperationDtoBlank?>?
+) {
+    internal data class OperationDtoBlank(
+        @SerializedName("systemName")
+        val systemName: String?
+    )
+}
+
+internal data class OperationDto(
+    @SerializedName("systemName")
+    val systemName: String
 )
 
 internal data class LogRequestDto(
@@ -87,6 +104,8 @@ internal data class InAppConfigResponseBlank(
     val inApps: List<InAppDtoBlank>?,
     @SerializedName("monitoring")
     val monitoring: MonitoringDto?,
+    @SerializedName("settings")
+    val settings: SettingsDto?,
 ) {
 
     internal data class InAppDtoBlank(

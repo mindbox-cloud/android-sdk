@@ -1,6 +1,6 @@
-package cloud.mindbox.mobile_sdk.inapp.data
+package cloud.mindbox.mobile_sdk.inapp.data.validators
 
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
+import cloud.mindbox.mobile_sdk.equalsAny
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -50,7 +50,7 @@ internal class InAppValidatorImpl : InAppValidator {
             is TreeTargetingDto.SegmentNodeDto -> {
                 val rez = targeting.segmentExternalId != null
                         && targeting.segmentationInternalId != null
-                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
                         && targeting.segmentationExternalId != null
                         && targeting.type != null
                 if (!rez) {
@@ -64,21 +64,36 @@ internal class InAppValidatorImpl : InAppValidator {
             }
             is TreeTargetingDto.CityNodeDto -> {
                 targeting.type != null
-                        && targeting.ids.isNullOrEmpty().not()
-                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+                        && !targeting.ids.isNullOrEmpty()
+                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.CountryNodeDto -> {
                 targeting.type != null
-                        && targeting.ids.isNullOrEmpty().not()
-                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+                        && !targeting.ids.isNullOrEmpty()
+                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.RegionNodeDto -> {
                 targeting.type != null
-                        && targeting.ids.isNullOrEmpty().not()
-                        && (targeting.kind.equals(POSITIVE) || targeting.kind.equals(NEGATIVE))
+                        && !targeting.ids.isNullOrEmpty()
+                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.OperationNodeDto -> {
-                !(targeting.type.isNullOrEmpty() || targeting.systemName.isNullOrEmpty())
+                !targeting.type.isNullOrEmpty()
+                        && !targeting.systemName.isNullOrEmpty()
+            }
+            is TreeTargetingDto.ViewProductCategoryNodeDto -> {
+                !targeting.type.isNullOrBlank()
+                        && targeting.kind.equalsAny(SUBSTRING, NOT_SUBSTRING, STARTS_WITH, ENDS_WITH)
+                        && !targeting.value.isNullOrBlank()
+            }
+            is TreeTargetingDto.ViewProductCategoryInNodeDto -> {
+                !targeting.type.isNullOrBlank()
+                        && targeting.kind.equalsAny(ANY, NONE)
+                        && !targeting.values.isNullOrEmpty()
+                        && targeting.values.all { value -> !value.id.isNullOrBlank()
+                            && !value.externalId.isNullOrBlank()
+                            && !value.externalSystemName.isNullOrBlank()
+                }
             }
         }
     }
@@ -117,7 +132,6 @@ internal class InAppValidatorImpl : InAppValidator {
         return minVersionValid && maxVersionValid
     }
 
-
     override fun validateInApp(inApp: InAppDto): Boolean {
         return validateInAppTargeting(inApp.id, inApp.targeting) and validateFormDto(inApp)
     }
@@ -128,5 +142,13 @@ internal class InAppValidatorImpl : InAppValidator {
          * **/
         private const val POSITIVE = "positive"
         private const val NEGATIVE = "negative"
+
+        private const val ANY = "any"
+        private const val NONE = "none"
+
+        private const val SUBSTRING = "substring"
+        private const val NOT_SUBSTRING = "notSubstring"
+        private const val STARTS_WITH = "startsWith"
+        private const val ENDS_WITH = "endsWith"
     }
 }

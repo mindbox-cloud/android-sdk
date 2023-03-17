@@ -51,3 +51,16 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
         )
 }
 
+internal fun String?.equalsAny(vararg values: String): Boolean = values.any { this == it }
+
+inline fun <reified T : Enum<T>> String?.enumValue(default: T): T {
+    return this?.let {
+        enumValues<T>().first { value ->
+            value.name
+                .replace("_", "")
+                .equals(
+                    this.replace("_", "").trim(),
+                    ignoreCase = true)
+        }
+    } ?: default
+}

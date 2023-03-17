@@ -30,7 +30,7 @@ internal interface TargetingInfo {
 
     fun hasOperationNode(): Boolean
 
-    fun getOperationsSet(): Set<String>
+    suspend fun getOperationsSet(): Set<String>
 }
 
 internal enum class Kind {
@@ -38,6 +38,17 @@ internal enum class Kind {
     NEGATIVE
 }
 
+internal enum class KindAny {
+    ANY,
+    NONE,
+}
+
+internal enum class KindSubstring {
+    SUBSTRING,
+    NOT_SUBSTRING,
+    STARTS_WITH,
+    ENDS_WITH
+}
 
 internal sealed class TreeTargeting(open val type: String) : ITargeting, TargetingInfo,
     MindboxKoin.MindboxKoinComponent {
@@ -64,54 +75,9 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return false
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
-    }
-
-    internal data class OperationNode(
-        override val type: String,
-        val systemName: String,
-    ) : TreeTargeting(type) {
-
-        private var lastEvent: InAppEventType? = null
-        private val operationNodeScope =
-            CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
-        private val inAppEventManager: InAppEventManager by inject()
-
-        init {
-            operationNodeScope.launch {
-                MindboxEventManager.eventFlow.filter { inAppEventManager.isValidInAppEvent(it) }
-                    .collect { inAppEventType ->
-                        lastEvent = inAppEventType
-                    }
-            }
-        }
-
-        override fun checkTargeting(): Boolean {
-            return lastEvent?.name?.equals(systemName, true) ?: false
-        }
-
-        override suspend fun fetchTargetingInfo() {
-            return
-        }
-
-        override fun hasSegmentationNode(): Boolean {
-            return false
-        }
-
-        override fun hasGeoNode(): Boolean {
-            return false
-        }
-
-        override fun hasOperationNode(): Boolean {
-            return true
-        }
-
-        override fun getOperationsSet(): Set<String> {
-            return setOf(systemName)
-        }
-
     }
 
     internal data class CountryNode(
@@ -129,7 +95,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -176,7 +142,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -214,7 +180,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -251,7 +217,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -303,7 +269,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -361,7 +327,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 

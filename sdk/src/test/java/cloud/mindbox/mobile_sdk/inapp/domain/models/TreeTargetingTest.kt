@@ -354,7 +354,7 @@ class TreeTargetingTest : KoinTest {
             inAppEventManager.isValidInAppEvent(any())
         } returns true
 
-        val testTargeting = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
+        val testTargeting = OperationNode(systemName = "testOperation", type = "apiMethodCall")
         MindboxEventManager.eventFlow.test {
             assertTrue(testTargeting.checkTargeting())
             awaitItem()
