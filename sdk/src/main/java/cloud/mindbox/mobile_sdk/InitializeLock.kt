@@ -24,6 +24,7 @@ internal object InitializeLock {
 
     internal fun complete(state: State) {
         map[state]?.countDown()
+        mindboxLogD("State $state completed")
     }
 
     internal enum class State {
@@ -36,7 +37,6 @@ internal fun Job.initState(state: InitializeLock.State): Job {
     return this.apply {
         invokeOnCompletion {
             InitializeLock.complete(state)
-            InitializeLock.mindboxLogD("State $state completed")
         }
     }
 }

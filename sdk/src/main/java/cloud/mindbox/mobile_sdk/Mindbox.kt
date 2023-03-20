@@ -424,7 +424,7 @@ object Mindbox {
                                 inAppMessageManager.initInAppMessages()
                                 MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                                 inAppMessageManager.requestConfig().join()
-                            }.initState(InitializeLock.State.APP_STARTED)
+                            }
 
                         }
                         firstInitCall = false
