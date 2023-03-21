@@ -30,6 +30,8 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
+    private var inApps: List<InApp>? = null
+
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
         MindboxPreferences.inAppConfig = GatewayManager.fetchMobileConfig(
@@ -90,10 +92,13 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    override fun listenInAppsSection(): Flow<List<InApp>?> {
-        return listenInAppConfig().map { inAppConfig ->
-            inAppConfig?.inApps
+    override suspend fun getInAppsSection(): List<InApp> {
+        return inApps ?: run {
+            val inAppList: List<InApp> = listenInAppConfig().map { inAppConfig ->
+                inAppConfig?.inApps
+            }.first() ?: listOf()
+            inApps = inAppList
+            inAppList
         }
     }
-
 }

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
@@ -9,11 +10,9 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 internal object MindboxEventManager {
@@ -28,7 +27,6 @@ internal object MindboxEventManager {
     private val gson = Gson()
 
     val eventFlow = MutableSharedFlow<InAppEventType>(replay = 20)
-
 
     private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
@@ -110,13 +108,14 @@ internal object MindboxEventManager {
         return InAppEventType.AppStartup
     }
 
-
     private fun asyncOperation(
         context: Context,
         event: Event,
     ) = LoggingExceptionHandler.runCatching {
-        runBlocking(Dispatchers.IO) { DbManager.addEventToQueue(context, event) }
         Mindbox.mindboxScope.launch(poolDispatcher) {
+            InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            DbManager.addEventToQueue(context, event)
+
             eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType))
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()

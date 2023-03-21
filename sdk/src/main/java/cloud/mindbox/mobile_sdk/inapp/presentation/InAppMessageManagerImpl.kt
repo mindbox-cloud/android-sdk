@@ -4,6 +4,7 @@ import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -31,19 +32,26 @@ internal class InAppMessageManagerImpl(
         inAppScope.launch {
             inAppInteractorImpl.processEventAndConfig()
                 .collect { inAppMessage ->
-                    withContext(Dispatchers.Main)
-                    {
-                        if ((InAppMessageViewDisplayerImpl.isInAppMessageActive || isInAppShown()).not()) {
-                            inAppMessageViewDisplayer.tryShowInAppMessage(inAppType = inAppMessage,
-                                onInAppClick = {
-                                    sendInAppClicked(inAppMessage.inAppId)
-                                },
-                                onInAppShown = {
-                                    inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
-                                    sendInAppShown(inAppMessage.inAppId)
-                                    setInAppShown()
-                                })
+                    withContext(Dispatchers.Main) {
+                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive) {
+                            this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
+                            // TODO fix skipping second inApp
+                            return@withContext
                         }
+
+                        if (inAppInteractorImpl.isInAppShown()) {
+                            this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
+                            return@withContext
+                        }
+
+                        inAppMessageViewDisplayer.tryShowInAppMessage(
+                            inAppType = inAppMessage,
+                            onInAppClick = { sendInAppClicked(inAppMessage.inAppId) },
+                            onInAppShown = {
+                                inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
+                                sendInAppShown(inAppMessage.inAppId)
+                                setInAppShown()
+                            })
                     }
                 }
         }
@@ -54,8 +62,8 @@ internal class InAppMessageManagerImpl(
      * In case of other network error use cached version
      * Otherwise do nothing
      **/
-    override fun requestConfig() {
-        inAppScope.launch(CoroutineExceptionHandler { _, error ->
+    override fun requestConfig(): Job {
+        return inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
                     CONFIG_NOT_FOUND -> {
@@ -81,15 +89,8 @@ internal class InAppMessageManagerImpl(
     }
 
     override fun initInAppMessages() {
-        listenEventAndInApp()
-        requestConfig()
-        initMonitoring()
-    }
-
-    private fun initMonitoring() {
         monitoringRepository.processLogs()
     }
-
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         LoggingExceptionHandler.runCatching {
@@ -103,10 +104,6 @@ internal class InAppMessageManagerImpl(
 
     private fun setInAppShown() {
         inAppInteractorImpl.setInAppShown()
-    }
-
-    private fun isInAppShown(): Boolean {
-        return inAppInteractorImpl.isInAppShown()
     }
 
     private fun sendInAppClicked(inAppId: String) {

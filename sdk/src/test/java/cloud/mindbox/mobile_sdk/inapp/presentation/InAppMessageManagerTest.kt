@@ -112,7 +112,9 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
-            inAppMessageInteractor.processEventAndConfig()
+            runBlocking {
+                inAppMessageInteractor.processEventAndConfig()
+            }
         }.answers {
             flow {
                 emit(InAppType.SimpleImage(inAppId = "123",
@@ -142,7 +144,9 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
-            inAppMessageInteractor.processEventAndConfig()
+            runBlocking {
+                inAppMessageInteractor.processEventAndConfig()
+            }
         }.answers {
             flow {
                 emit(InAppType.SimpleImage(inAppId = "123",
@@ -171,7 +175,9 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
-            inAppMessageInteractor.processEventAndConfig()
+            runBlocking {
+                inAppMessageInteractor.processEventAndConfig()
+            }
         }.answers {
             flow {
                 error("test error")

@@ -11,7 +11,6 @@ import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -383,7 +382,7 @@ object Mindbox {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-            initComponents(context, pushServices)
+            initComponents(context.applicationContext, pushServices)
             MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
@@ -394,38 +393,43 @@ object Mindbox {
                 MindboxLoggerImpl.d(this, "init. checkResult: $checkResult")
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                     MindboxLoggerImpl.d(this, "init. softReinitialization")
-                    softReinitialization(context)
+                    softReinitialization(context.applicationContext)
                 }
 
                 if (checkResult == ConfigUpdate.UPDATED) {
-                    firstInitialization(context, validatedConfiguration)
+                    firstInitialization(context.applicationContext, validatedConfiguration)
 
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
                             && !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
                         MindboxLoggerImpl.d(this, "Track visit event with source $DIRECT")
-                        sendTrackVisitEvent(context, DIRECT)
+                        sendTrackVisitEvent(context.applicationContext, DIRECT)
                     }
                 } else {
-                    updateAppInfo(context)
-                    MindboxEventManager.sendEventsIfExist(context)
+                    updateAppInfo(context.applicationContext)
+                    MindboxEventManager.sendEventsIfExist(context.applicationContext)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
-            }.invokeOnCompletion { throwable ->
-                if (throwable == null) {
-                    if (firstInitCall) {
-                        val activity = context as? Activity
-                        if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                            inAppMessageManager.registerCurrentActivity(activity)
+            }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                .invokeOnCompletion { throwable ->
+                    if (throwable == null) {
+                        if (firstInitCall) {
+                            val activity = context as? Activity
+                            if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                                inAppMessageManager.registerCurrentActivity(activity)
+                            }
+
+                            mindboxScope.launch {
+                                inAppMessageManager.listenEventAndInApp()
+                                inAppMessageManager.initInAppMessages()
+                                MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                inAppMessageManager.requestConfig().join()
+                            }
+
                         }
-                        inAppMessageManager.initInAppMessages()
-                        mindboxScope.launch {
-                            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                        }
+                        firstInitCall = false
                     }
-                    firstInitCall = false
                 }
-            }
             // Handle back app in foreground
             (context.applicationContext as? Application)?.apply {
                 val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
@@ -457,7 +461,7 @@ object Mindbox {
                             UuidCopyManager.onAppMovedToForeground(activity)
                             mindboxScope.launch {
                                 if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(context)
+                                    updateAppInfo(activity.applicationContext)
                                 }
                             }
                         },
@@ -473,7 +477,11 @@ object Mindbox {
                         },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
-                                sendTrackVisitEvent(context, source, requestUrl)
+                                sendTrackVisitEvent(
+                                    MindboxKoin.koin.get(Context::class),
+                                    source,
+                                    requestUrl
+                                )
                             }
                         }
                     )
@@ -720,6 +728,8 @@ object Mindbox {
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
+
                 MindboxEventManager.syncOperation(
                     context = context,
                     name = operationSystemName,
@@ -755,6 +765,7 @@ object Mindbox {
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
                 MindboxEventManager.syncOperation(
                     context = context,
                     name = operationSystemName,
@@ -864,6 +875,7 @@ object Mindbox {
             }
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
+
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         MindboxKoin.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
@@ -892,7 +904,10 @@ object Mindbox {
     ) {
         MindboxLoggerImpl.d(this, "asyncOperation. operationBodyJson: $operationBodyJson")
         if (validateOperation(operationSystemName)) {
-            MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
+            initScope.launch {
+                InitializeLock.await(InitializeLock.State.APP_STARTED)
+                MindboxEventManager.asyncOperation(context, operationSystemName, operationBodyJson)
+            }
         }
     }
 
@@ -1120,7 +1135,6 @@ object Mindbox {
             )
         }
     }
-
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
 
