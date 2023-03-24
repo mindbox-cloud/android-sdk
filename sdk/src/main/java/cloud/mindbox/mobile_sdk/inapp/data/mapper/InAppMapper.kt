@@ -86,7 +86,7 @@ internal class InAppMapper {
                     )
                 } ?: emptyList(),
                 operations = inAppConfigResponse.settings?.map { (key, value) ->
-                    key.enumValue(OperationName.VIEW_PRODUCT) to OperationSystemName(value.systemName)
+                    key.enumValue<OperationName>() to OperationSystemName(value.systemName)
                 }?.toMap() ?: emptyMap()
             )
         }
@@ -135,17 +135,17 @@ internal class InAppMapper {
                 )
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
                     type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
-                    kind = treeTargetingDto.kind.enumValue(Kind.POSITIVE),
+                    kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     ids = treeTargetingDto.ids as List<String>
                 )
                 is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
                     type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
-                    kind = treeTargetingDto.kind.enumValue(KindSubstring.SUBSTRING),
+                    kind = treeTargetingDto.kind.enumValue(),
                     value = treeTargetingDto.value!!
                 )
                 is TreeTargetingDto.ViewProductCategoryInNodeDto -> ViewProductCategoryInNode(
                     type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
-                    kind = treeTargetingDto.kind.enumValue(KindAny.ANY),
+                    kind = treeTargetingDto.kind.enumValue(),
                     values = treeTargetingDto.values?.map { dto ->
                         ViewProductCategoryInNode.Value(
                             id = dto.id!!,

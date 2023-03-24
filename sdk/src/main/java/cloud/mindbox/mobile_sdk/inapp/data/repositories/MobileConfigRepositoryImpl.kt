@@ -21,7 +21,6 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

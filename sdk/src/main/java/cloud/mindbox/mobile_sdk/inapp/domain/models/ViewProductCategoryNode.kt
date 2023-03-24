@@ -10,7 +10,7 @@ import org.koin.core.component.inject
 internal data class ViewProductCategoryNode(
     override val type: String,
     val kind: KindSubstring,
-    val value: String
+    val value: String,
 ) : OperationNodeBase(type) {
 
     private val mobileConfigRepository: MobileConfigRepository by inject()
@@ -21,19 +21,26 @@ internal data class ViewProductCategoryNode(
     }
 
     override fun checkTargeting(): Boolean {
-        val event = lastEvent as InAppEventType.OrdinalEvent
+        val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
         val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
 
-        val externalId = body?.viewProductCategory?.productCategory?.ids?.ids?.get(value) ?: return false
+        val externalIds = body?.viewProductCategory?.productCategory?.ids?.ids?.values
+            ?.filterNotNull() ?: return false
 
-        return lastEvent?.name?.let { category ->
-            return when(kind) {
-                KindSubstring.SUBSTRING -> category.contains(externalId, ignoreCase = true)
-                KindSubstring.NOT_SUBSTRING -> !category.contains(externalId, ignoreCase = true)
-                KindSubstring.STARTS_WITH -> category.startsWith(externalId, ignoreCase = true)
-                KindSubstring.ENDS_WITH -> category.endsWith(externalId, ignoreCase = true)
+        return when (kind) {
+            KindSubstring.SUBSTRING -> externalIds.any { externalId ->
+                externalId.contains(value, ignoreCase = true)
             }
-        } ?: false
+            KindSubstring.NOT_SUBSTRING -> externalIds.any { externalId ->
+                !externalId.contains(value, ignoreCase = true)
+            }
+            KindSubstring.STARTS_WITH -> externalIds.any { externalId ->
+                externalId.startsWith(value, ignoreCase = true)
+            }
+            KindSubstring.ENDS_WITH -> externalIds.any { externalId ->
+                externalId.endsWith(value, ignoreCase = true)
+            }
+        }
     }
 
     override suspend fun getOperationsSet(): Set<String> =

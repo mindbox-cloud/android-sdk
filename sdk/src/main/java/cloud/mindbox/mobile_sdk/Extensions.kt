@@ -53,14 +53,14 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
 
 internal fun String?.equalsAny(vararg values: String): Boolean = values.any { this == it }
 
-inline fun <reified T : Enum<T>> String?.enumValue(default: T): T {
+internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T {
     return this?.let {
-        enumValues<T>().first { value ->
+        enumValues<T>().firstOrNull { value ->
             value.name
                 .replace("_", "")
                 .equals(
                     this.replace("_", "").trim(),
                     ignoreCase = true)
         }
-    } ?: default
+    } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
 }

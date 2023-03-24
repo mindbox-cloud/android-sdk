@@ -22,7 +22,6 @@ internal data class ViewProductCategoryInNode(
 
     override fun checkTargeting(): Boolean {
         val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
-
         val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
 
         val ids = body?.viewProductCategory?.productCategory?.ids?.ids?.map { (key, value) ->
