@@ -134,12 +134,12 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     ViewProductCategoryInNode.Value(
                         id = "123",
                         externalSystemName = "website",
-                        externalId = "CategoryRandomName"
+                        externalId = "categoryrandomname"
                     ),
                     ViewProductCategoryInNode.Value(
                         id = "124",
                         externalSystemName = "shop",
-                        externalId = "CategoryRandomNameShop"
+                        externalId = "CATEGORYRANDOMNAMESHOP"
                     )
                 )
             ),
@@ -148,7 +148,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     ViewProductCategoryInNode.Value(
                         id = "123",
                         externalSystemName = "website",
-                        externalId = "CategoryRandomName"
+                        externalId = "CAtegoryRAndomNAme"
                     )
                 )
             ),

@@ -29,7 +29,7 @@ internal abstract class OperationNodeBase(override val type: String) : TreeTarge
     abstract suspend fun filterEvent(event: InAppEventType): Boolean
 
     override suspend fun fetchTargetingInfo() {
-        // do nothing
+        return
     }
 
     override fun hasSegmentationNode(): Boolean = false
