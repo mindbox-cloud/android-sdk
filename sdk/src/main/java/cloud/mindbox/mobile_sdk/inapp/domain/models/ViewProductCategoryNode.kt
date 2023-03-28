@@ -17,7 +17,7 @@ internal data class ViewProductCategoryNode(
     private val gson: Gson by inject()
 
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return event is InAppEventType.OrdinalEvent
+        return inAppEventManager.isValidViewProductCategoryEvent(event)
     }
 
     override fun checkTargeting(): Boolean {

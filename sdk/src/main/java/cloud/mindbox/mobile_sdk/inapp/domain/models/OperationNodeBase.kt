@@ -14,6 +14,10 @@ import kotlinx.coroutines.launch
 internal abstract class OperationNodeBase(override val type: String) : TreeTargeting(type) {
 
     protected var lastEvent: InAppEventType? = null
+    protected val inAppEventManager: InAppEventManager by lazy {
+        getKoin().get()
+    }
+
     private val operationNodeScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
 
