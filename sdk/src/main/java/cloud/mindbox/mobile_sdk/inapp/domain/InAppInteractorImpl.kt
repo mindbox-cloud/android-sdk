@@ -37,7 +37,7 @@ internal class InAppInteractorImpl(
             inAppSegmentationRepository.unShownInApps = unShownInApps
             for (inApp in unShownInApps) {
                 for (operation in inApp.targeting.getOperationsSet()) {
-                    inAppRepository.saveOperationalInApp(operation, inApp)
+                    inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
                 }
             }
         }

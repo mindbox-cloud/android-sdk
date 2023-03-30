@@ -71,8 +71,8 @@ internal class InAppStub {
             )
         }
 
-        fun getTargetingOperationNode(): TreeTargeting.OperationNode {
-            return TreeTargeting.OperationNode(
+        fun getTargetingOperationNode(): OperationNode {
+            return OperationNode(
                 type = "",
                 systemName = ""
             )
@@ -145,5 +145,41 @@ internal class InAppStub {
             redirectUrl = "",
             intentPayload = ""
         )
+
+        val viewProductCategoryNode: ViewProductCategoryNode
+            get() = ViewProductCategoryNode(
+                type = "viewProductCategoryId",
+                kind = KindSubstring.SUBSTRING,
+                value = ""
+            )
+
+        val viewProductCategoryInNode: ViewProductCategoryInNode
+            get() = ViewProductCategoryInNode(
+                type = "viewProductCategoryIdIn",
+                kind = KindAny.ANY,
+                values = listOf()
+            )
+
+        val viewProductCategoryNodeDto: TreeTargetingDto.ViewProductCategoryNodeDto
+            get() = TreeTargetingDto.ViewProductCategoryNodeDto(
+                type = "",
+                kind = "",
+                value = ""
+            )
+
+        val viewProductCategoryInNodeDto: TreeTargetingDto.ViewProductCategoryInNodeDto
+            get() = TreeTargetingDto.ViewProductCategoryInNodeDto(
+                type = "",
+                kind = "",
+                values = listOf()
+            )
+
+        val viewProductCategoryInValueDto: TreeTargetingDto.ViewProductCategoryInNodeDto.ValueDto
+            get() = TreeTargetingDto.ViewProductCategoryInNodeDto.ValueDto(
+                id = "",
+                externalSystemName = "",
+                externalId = "",
+            )
+
     }
 }

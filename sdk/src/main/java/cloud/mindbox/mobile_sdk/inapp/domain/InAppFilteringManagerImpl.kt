@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -30,9 +29,10 @@ internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepos
         return inApps.filterNot { inApp -> inApp.targeting.hasSegmentationNode() }
     }
 
-    override fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp> {
-        return if (event == InAppEventType.AppStartup) return inApps else inAppRepository.getOperationalInAppsByOperation(
-            event.name
-        )
-    }
+    override fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp> =
+        if (event == InAppEventType.AppStartup)  {
+            inApps
+        } else {
+            inAppRepository.getOperationalInAppsByOperation(event.name)
+        }
 }

@@ -1,20 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import com.android.volley.VolleyError
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
 import org.koin.core.component.inject
 
 internal interface ITargeting {
@@ -30,7 +21,7 @@ internal interface TargetingInfo {
 
     fun hasOperationNode(): Boolean
 
-    fun getOperationsSet(): Set<String>
+    suspend fun getOperationsSet(): Set<String>
 }
 
 internal enum class Kind {
@@ -38,6 +29,17 @@ internal enum class Kind {
     NEGATIVE
 }
 
+internal enum class KindAny {
+    ANY,
+    NONE,
+}
+
+internal enum class KindSubstring {
+    SUBSTRING,
+    NOT_SUBSTRING,
+    STARTS_WITH,
+    ENDS_WITH
+}
 
 internal sealed class TreeTargeting(open val type: String) : ITargeting, TargetingInfo,
     MindboxKoin.MindboxKoinComponent {
@@ -64,54 +66,9 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return false
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
-    }
-
-    internal data class OperationNode(
-        override val type: String,
-        val systemName: String,
-    ) : TreeTargeting(type) {
-
-        private var lastEvent: InAppEventType? = null
-        private val operationNodeScope =
-            CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
-        private val inAppEventManager: InAppEventManager by inject()
-
-        init {
-            operationNodeScope.launch {
-                MindboxEventManager.eventFlow.filter { inAppEventManager.isValidInAppEvent(it) }
-                    .collect { inAppEventType ->
-                        lastEvent = inAppEventType
-                    }
-            }
-        }
-
-        override fun checkTargeting(): Boolean {
-            return lastEvent?.name?.equals(systemName, true) ?: false
-        }
-
-        override suspend fun fetchTargetingInfo() {
-            return
-        }
-
-        override fun hasSegmentationNode(): Boolean {
-            return false
-        }
-
-        override fun hasGeoNode(): Boolean {
-            return false
-        }
-
-        override fun hasOperationNode(): Boolean {
-            return true
-        }
-
-        override fun getOperationsSet(): Set<String> {
-            return setOf(systemName)
-        }
-
     }
 
     internal data class CountryNode(
@@ -129,7 +86,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -176,7 +133,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -214,7 +171,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -251,7 +208,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -296,14 +253,16 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         override fun checkTargeting(): Boolean {
             var rez = false
             for (node in nodes) {
-                if (node.checkTargeting()) {
+                val check = node.checkTargeting()
+                mindboxLogD("Check UnionNode ${node.type}: $check")
+                if (check) {
                     rez = true
                 }
             }
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -361,7 +320,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 

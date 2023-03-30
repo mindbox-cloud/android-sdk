@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRep
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
@@ -19,7 +20,9 @@ internal class InAppChoosingManagerImpl(
         runCatching {
             for (inApp in inApps) {
                 inApp.targeting.fetchTargetingInfo()
-                if (inApp.targeting.checkTargeting()) {
+                val check = inApp.targeting.checkTargeting()
+                mindboxLogD("Check ${inApp.targeting.type}: $check")
+                if (check) {
                     return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
                 }
             }

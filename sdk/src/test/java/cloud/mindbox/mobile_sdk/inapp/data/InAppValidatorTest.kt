@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
+import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import org.junit.Assert.assertFalse

@@ -5,7 +5,17 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 internal data class InAppConfig(
     val inApps: List<InApp>,
     val monitoring: List<LogRequest>,
+    val operations: Map<OperationName, OperationSystemName>,
 )
+
+internal enum class OperationName(val operation: String) {
+    VIEW_PRODUCT("viewProduct"),
+    VIEW_CATEGORY("viewCategory"),
+    SET_CART("setCart"),
+}
+
+@JvmInline
+internal value class OperationSystemName(val systemName: String)
 
 internal data class InApp(
     val id: String,
