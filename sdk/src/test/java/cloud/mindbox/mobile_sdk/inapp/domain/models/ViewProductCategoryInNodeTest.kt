@@ -31,7 +31,6 @@ import org.koin.test.mock.declareMock
 class ViewProductCategoryInNodeTest : KoinTest {
 
     private lateinit var mobileConfigRepository: MobileConfigRepository
-    private lateinit var inAppEventManagerImpl: InAppEventManager
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
@@ -167,10 +166,39 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     )
                 )
             ),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "website",
+                        externalId = "categoryrandomname"
+                    ),
+                    ViewProductCategoryInNode.Value(
+                        id = "124",
+                        externalSystemName = "wEbsitE",
+                        externalId = "Error"
+                    )
+                )
+            ),
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "124",
+                        externalSystemName = "wEbsitE",
+                        externalId = "Error"
+                    ),
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "WEBSITE",
+                        externalId = "categoryrandomname"
+                    ),
+                )
+            )
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(
@@ -191,10 +219,106 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     )
                 )
             ),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
+    }
+
+
+    @Test
+    fun `checkTargeting any with same externalSystemName`() = runTest {
+        val body = """{
+              "viewProductCategory": {
+                "productCategory": {
+                  "ids": {
+                    "website": "123",
+                    "WEBSITE": "456"
+                  }
+                }
+              }
+            }""".trimIndent()
+        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewCategory"), body)
+        val stub = InAppStub.viewProductCategoryInNode.copy(kind = KindAny.ANY)
+
+        listOf(
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "Website",
+                        externalId = "123"
+                    )
+                )
+            ),
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "456",
+                        externalSystemName = "weBsitE",
+                        externalId = "456"
+                    )
+                )
+            ),
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "124",
+                        externalSystemName = "Website",
+                        externalId = "123"
+                    ),
+                    ViewProductCategoryInNode.Value(
+                        id = "124",
+                        externalSystemName = "Website",
+                        externalId = "456"
+                    )
+                )
+            ),
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "website",
+                        externalId = "123"
+                    ),
+                    ViewProductCategoryInNode.Value(
+                        id = "124",
+                        externalSystemName = "wEbsitE",
+                        externalId = "Error"
+                    )
+                )
+            )
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
+            }
+        }
+
+        listOf(
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "website1",
+                        externalId = "123"
+                    )
+                )
+            ),
+            stub.copy(
+                values = listOf(
+                    ViewProductCategoryInNode.Value(
+                        id = "123",
+                        externalSystemName = "website",
+                        externalId = "2"
+                    )
+                )
+            ),
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock->
+                assertFalse(node.toString(), mock.checkTargeting())
+            }
+        }
     }
 
     @Test
@@ -233,10 +357,11 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     )
                 )
             ),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(
@@ -271,10 +396,11 @@ class ViewProductCategoryInNodeTest : KoinTest {
                     )
                 )
             ),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     private fun ViewProductCategoryInNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductCategoryInNode {

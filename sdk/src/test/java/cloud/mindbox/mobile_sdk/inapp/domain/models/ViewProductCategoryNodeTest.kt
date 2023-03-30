@@ -142,18 +142,20 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "a"),
             stub.copy(value = "CategoryRandomNameShop"),
             stub.copy(value = "Shop")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "x"),
             stub.copy(value = "CategoryRandomNameX")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     @Test
@@ -187,20 +189,22 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "x"),
             stub.copy(value = "shop"),
             stub.copy(value = " ")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "CATEGORYRANDOMNAME"),
             stub.copy(value = "random"),
             stub.copy(value = "a"),
             stub.copy(value = "ategoryRandomnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach { targeting ->
-                assertFalse(targeting.toString(), targeting.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     @Test
@@ -225,20 +229,22 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "CATEGORYRANDOMNAMESHOP"),
             stub.copy(value = "c"),
             stub.copy(value = "cA"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "CATEGORYRANDOMNAMESHOP1"),
             stub.copy(value = "ategoryrandomname"),
             stub.copy(value = "a"),
             stub.copy(value = "ategoryRandomnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
 
     }
 
@@ -267,19 +273,21 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "CategoryRandomNameShop"),
             stub.copy(value = "e"),
             stub.copy(value = "p"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "1"),
             stub.copy(value = "1CategoryRandomName"),
             stub.copy(value = "x"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     private fun ViewProductCategoryNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductCategoryNode {
