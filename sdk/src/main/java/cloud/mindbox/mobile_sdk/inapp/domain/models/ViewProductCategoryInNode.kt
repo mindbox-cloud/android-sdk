@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
@@ -16,8 +17,9 @@ internal data class ViewProductCategoryInNode(
     private val mobileConfigRepository: MobileConfigRepository by inject()
     private val gson: Gson by inject()
 
+    private val inAppEventManager: InAppEventManager by inject()
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return event is InAppEventType.OrdinalEvent
+        return inAppEventManager.isValidOperationalEvent(event)
     }
 
     override fun checkTargeting(): Boolean {

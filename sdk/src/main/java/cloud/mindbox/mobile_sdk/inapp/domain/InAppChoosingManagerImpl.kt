@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -31,7 +30,7 @@ internal class InAppChoosingManagerImpl(
                     chooseInAppToShow(inAppFilteringManager.filterGeoFreeInApps(inApps))
                 }
                 is SegmentationError -> {
-                    inAppSegmentationRepository.setSegmentationStatus(SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
+                    inAppSegmentationRepository.setCustomerSegmentationStatus(SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
                     MindboxLoggerImpl.e(this, "Error fetching segmentations", throwable)
                     chooseInAppToShow(inAppFilteringManager.filterSegmentationFreeInApps(inApps))
                 }

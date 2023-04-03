@@ -4,11 +4,10 @@ import android.content.Context
 import android.util.Log
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationRequestDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -27,7 +26,6 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import org.koin.core.component.inject
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -40,9 +38,12 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     private const val MONITORING_DELAY = 5000
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
-
-    private fun getSegmentationUrl(configuration: Configuration): String {
+    private fun getCustomerSegmentationsUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
+    }
+
+    private fun getProductSegmentationUrl(configuration: Configuration): String {
+        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckProductSegments&transactionId=${UUID.randomUUID()}}"
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
@@ -315,7 +316,41 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
         }
     }
 
-    suspend fun checkSegmentation(
+    suspend fun checkProductSegmentation(
+        context: Context,
+        configuration: Configuration,
+        segmentation: ProductSegmentationRequestDto,
+    ): ProductSegmentationResponseDto {
+        return suspendCoroutine { continuation ->
+            MindboxServiceGenerator.getInstance(context)
+                ?.addToRequestQueue(
+                    MindboxRequest(
+                        Request.Method.POST,
+                        getProductSegmentationUrl(configuration),
+                        configuration,
+                        convertBodyToJson(
+                            gson.toJson(
+                                segmentation,
+                                ProductSegmentationRequestDto::class.java
+                            )
+                        )!!,
+                        { response ->
+                            continuation.resume(
+                                gson.fromJson(
+                                    response.toString(),
+                                    ProductSegmentationResponseDto::class.java
+                                )
+                            )
+                        },
+                        { error ->
+                            continuation.resumeWithException(error)
+                        }
+                    )
+                )
+        }
+    }
+
+    suspend fun checkCustomerSegmentations(
         context: Context,
         configuration: Configuration,
         segmentationCheckRequest: SegmentationCheckRequest,
@@ -325,7 +360,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 ?.addToRequestQueue(
                     MindboxRequest(
                         Request.Method.POST,
-                        getSegmentationUrl(configuration),
+                        getCustomerSegmentationsUrl(configuration),
                         configuration,
                         convertBodyToJson(
                             gson.toJson(

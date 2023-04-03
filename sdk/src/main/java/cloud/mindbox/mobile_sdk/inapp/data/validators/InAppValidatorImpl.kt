@@ -14,15 +14,19 @@ internal class InAppValidatorImpl : InAppValidator {
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
         return when (targeting) {
             null -> {
-                MindboxLoggerImpl.d(this,
-                    "targeting is null for in-app with $id")
+                MindboxLoggerImpl.d(
+                    this,
+                    "targeting is null for in-app with $id"
+                )
                 false
             }
             is TreeTargetingDto.UnionNodeDto -> {
 
                 if (targeting.nodes.isNullOrEmpty()) {
-                    MindboxLoggerImpl.d(this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id")
+                    MindboxLoggerImpl.d(
+                        this,
+                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                    )
                     return false
                 }
                 var isValid = true
@@ -35,8 +39,10 @@ internal class InAppValidatorImpl : InAppValidator {
             }
             is TreeTargetingDto.IntersectionNodeDto -> {
                 if (targeting.nodes.isNullOrEmpty()) {
-                    MindboxLoggerImpl.d(this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id")
+                    MindboxLoggerImpl.d(
+                        this,
+                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                    )
                     return false
                 }
                 var isValid = true
@@ -54,8 +60,10 @@ internal class InAppValidatorImpl : InAppValidator {
                         && targeting.segmentationExternalId != null
                         && targeting.type != null
                 if (!rez) {
-                    MindboxLoggerImpl.d(this,
-                        "some segment properties are corrupted")
+                    MindboxLoggerImpl.d(
+                        this,
+                        "some segment properties are corrupted"
+                    )
                 }
                 rez
             }
@@ -83,17 +91,38 @@ internal class InAppValidatorImpl : InAppValidator {
             }
             is TreeTargetingDto.ViewProductCategoryNodeDto -> {
                 !targeting.type.isNullOrBlank()
-                        && targeting.kind.equalsAny(SUBSTRING, NOT_SUBSTRING, STARTS_WITH, ENDS_WITH)
+                        && targeting.kind.equalsAny(
+                    SUBSTRING,
+                    NOT_SUBSTRING,
+                    STARTS_WITH,
+                    ENDS_WITH
+                )
                         && !targeting.value.isNullOrBlank()
             }
             is TreeTargetingDto.ViewProductCategoryInNodeDto -> {
                 !targeting.type.isNullOrBlank()
                         && targeting.kind.equalsAny(ANY, NONE)
                         && !targeting.values.isNullOrEmpty()
-                        && targeting.values.all { value -> !value.id.isNullOrBlank()
+                        && targeting.values.all { value ->
+                    !value.id.isNullOrBlank()
                             && !value.externalId.isNullOrBlank()
                             && !value.externalSystemName.isNullOrBlank()
                 }
+            }
+            is TreeTargetingDto.ViewProductSegmentNodeDto -> {
+                !targeting.type.isNullOrBlank()
+                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
+                        && !targeting.segmentationExternalId.isNullOrBlank()
+                        && !targeting.segmentExternalId.isNullOrBlank()
+                        && !targeting.segmentationInternalId.isNullOrBlank()
+            }
+            is TreeTargetingDto.ViewProductNodeDto -> {
+                !targeting.type.isNullOrBlank() && targeting.kind.equalsAny(
+                    SUBSTRING,
+                    NOT_SUBSTRING,
+                    STARTS_WITH,
+                    ENDS_WITH
+                ) && !targeting.value.isNullOrBlank()
             }
         }
     }
@@ -104,14 +133,18 @@ internal class InAppValidatorImpl : InAppValidator {
         inApp.form?.variants?.iterator()?.forEach { payloadDto ->
             when {
                 (payloadDto == null) -> {
-                    MindboxLoggerImpl.d(this,
-                        "payload is null for in-app with id ${inApp.id}")
+                    MindboxLoggerImpl.d(
+                        this,
+                        "payload is null for in-app with id ${inApp.id}"
+                    )
                     isValid = false
                 }
                 (payloadDto is PayloadDto.SimpleImage) -> {
                     if ((payloadDto.type == null) or (payloadDto.imageUrl == null)) {
-                        MindboxLoggerImpl.d(this,
-                            "some properties of in-app with id ${inApp.id} are null. type: ${payloadDto.type}, imageUrl: ${payloadDto.imageUrl}")
+                        MindboxLoggerImpl.d(
+                            this,
+                            "some properties of in-app with id ${inApp.id} are null. type: ${payloadDto.type}, imageUrl: ${payloadDto.imageUrl}"
+                        )
                         isValid = false
                     }
 

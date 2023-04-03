@@ -5,4 +5,6 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 internal interface InAppEventManager {
 
     fun isValidInAppEvent(event: InAppEventType): Boolean
+
+    fun isValidOperationalEvent(event: InAppEventType): Boolean
 }

@@ -236,6 +236,12 @@ internal val dataModule = module {
             ).registerSubtype(
                 TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
                 TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
+                TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductNodeDto::class.java,
+                TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
             )
         ).create()
     }

@@ -9,4 +9,8 @@ internal class InAppEventManagerImpl : InAppEventManager {
     override fun isValidInAppEvent(event: InAppEventType): Boolean {
         return event is InAppEventType.AppStartup || (event is InAppEventType.OrdinalEvent && (event.eventType is EventType.SyncOperation || event.eventType is EventType.AsyncOperation))
     }
+
+    override fun isValidOperationalEvent(event: InAppEventType): Boolean {
+        return event is InAppEventType.OrdinalEvent && (event.eventType is EventType.SyncOperation || event.eventType is EventType.AsyncOperation)
+    }
 }

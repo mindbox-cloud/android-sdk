@@ -140,6 +140,36 @@ internal sealed class TreeTargetingDto {
         )
     }
 
+    internal data class ViewProductNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("value")
+        val value: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_ID_JSON_NAME = "viewProductId"
+        }
+    }
+
+    internal data class ViewProductSegmentNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("segmentationExternalId")
+        val segmentationExternalId: String?,
+        @SerializedName("segmentationInternalId")
+        val segmentationInternalId: String?,
+        @SerializedName("segmentExternalId")
+        val segmentExternalId: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_SEGMENT_JSON_NAME = "viewProductSegment"
+        }
+    }
+
     companion object {
         const val TYPE_JSON_NAME = "\$type"
     }

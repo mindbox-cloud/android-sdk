@@ -1,20 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
 import org.koin.core.component.inject
 
 internal interface ITargeting {
@@ -316,8 +306,8 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
 
         override fun checkTargeting(): Boolean {
-            if (inAppSegmentationRepository.getSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
-            val segmentationsWrapperList = inAppSegmentationRepository.getSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
+            val segmentationsWrapperList = inAppSegmentationRepository.getCustomerSegmentations()
             return when (kind) {
                 Kind.POSITIVE -> segmentationsWrapperList.find { segmentationWrapper -> segmentationWrapper.segmentation == segmentationExternalId }?.segment == segmentExternalId
                 Kind.NEGATIVE -> segmentationsWrapperList.find { it.segmentation == segmentationExternalId }
@@ -332,8 +322,8 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override suspend fun fetchTargetingInfo() {
-            if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
-                inAppSegmentationRepository.fetchSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+                inAppSegmentationRepository.fetchCustomerSegmentations()
             }
         }
 

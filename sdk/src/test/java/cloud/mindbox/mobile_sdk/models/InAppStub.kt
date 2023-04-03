@@ -85,6 +85,41 @@ internal class InAppStub {
             )
         }
 
+        fun getTargetingViewProductNodeDto(): TreeTargetingDto.ViewProductNodeDto {
+            return TreeTargetingDto.ViewProductNodeDto(
+                type = "",
+                kind = "",
+                value = ""
+            )
+        }
+
+        fun getTargetingViewProductSegmentNodeDto(): TreeTargetingDto.ViewProductSegmentNodeDto {
+            return TreeTargetingDto.ViewProductSegmentNodeDto(
+                type = "",
+                kind = "",
+                segmentExternalId = "",
+                segmentationExternalId = "",
+                segmentationInternalId = ""
+            )
+        }
+
+        fun getTargetingViewProductSegmentNode(): ViewProductSegmentNode {
+            return ViewProductSegmentNode(
+                type = "",
+                kind = Kind.NEGATIVE,
+                segmentationExternalId = "",
+                segmentExternalId = "",
+            )
+        }
+
+        fun getTargetingViewProductNode(): ViewProductNode {
+            return ViewProductNode(
+                type = "",
+                kind = KindSubstring.SUBSTRING,
+                value = ""
+            )
+        }
+
         fun getTargetingUnionNode(): TreeTargeting.UnionNode {
             return TreeTargeting.UnionNode(type = "", nodes = emptyList())
         }
@@ -144,6 +179,14 @@ internal class InAppStub {
             imageUrl = "",
             redirectUrl = "",
             intentPayload = ""
+        )
+
+        val viewProductNode: ViewProductNode = ViewProductNode(
+            type = "", kind = KindSubstring.SUBSTRING, value = ""
+        )
+
+        val viewProductSegmentNode: ViewProductSegmentNode = ViewProductSegmentNode(
+            type = "", kind = Kind.POSITIVE, segmentExternalId = "", segmentationExternalId = ""
         )
 
         val viewProductCategoryNode: ViewProductCategoryNode
