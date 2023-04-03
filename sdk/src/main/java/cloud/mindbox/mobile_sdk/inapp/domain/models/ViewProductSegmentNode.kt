@@ -18,7 +18,6 @@ internal data class ViewProductSegmentNode(
     private val mobileConfigRepository: MobileConfigRepository by inject()
     private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
     private val gson: Gson by inject()
-    private val inAppEventManager: InAppEventManager by inject()
 
     override suspend fun fetchTargetingInfo() {
         val event = lastEvent as? InAppEventType.OrdinalEvent ?: return
@@ -35,7 +34,7 @@ internal data class ViewProductSegmentNode(
     }
 
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidOperationalEvent(event)
+        return inAppEventManager.isValidViewProductEvent(event)
     }
 
     override fun checkTargeting(): Boolean {

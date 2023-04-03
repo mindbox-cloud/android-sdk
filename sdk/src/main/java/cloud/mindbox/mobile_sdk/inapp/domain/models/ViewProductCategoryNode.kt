@@ -17,8 +17,6 @@ internal data class ViewProductCategoryNode(
     private val mobileConfigRepository: MobileConfigRepository by inject()
     private val gson: Gson by inject()
 
-    private val inAppEventManager: InAppEventManager by inject()
-
     override suspend fun filterEvent(event: InAppEventType): Boolean {
         return inAppEventManager.isValidViewProductCategoryEvent(event)
     }

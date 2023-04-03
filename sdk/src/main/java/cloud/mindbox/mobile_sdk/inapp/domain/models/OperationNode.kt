@@ -17,6 +17,6 @@ internal data class OperationNode(
     }
 
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidOperationalEvent(event)
+        return inAppEventManager.isValidInAppEvent(event)
     }
 }

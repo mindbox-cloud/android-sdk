@@ -219,7 +219,7 @@ class InAppSegmentationRepositoryTest {
         }
         inAppSegmentationRepository.fetchProductSegmentation("test1" to "test2", "test3")
         verify(exactly = 1) {
-            sessionStorageManager.inAppProductSegmentations["test1"] = expectedResult
+            sessionStorageManager.inAppProductSegmentations["test2"] = expectedResult
         }
     }
 
