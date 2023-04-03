@@ -6,5 +6,5 @@ internal interface InAppEventManager {
 
     fun isValidInAppEvent(event: InAppEventType): Boolean
 
-    fun isValidOperationalEvent(event: InAppEventType): Boolean
+    fun isValidViewProductCategoryEvent(event: InAppEventType): Boolean
 }

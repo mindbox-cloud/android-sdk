@@ -19,24 +19,28 @@ internal data class ViewProductCategoryInNode(
 
     private val inAppEventManager: InAppEventManager by inject()
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidOperationalEvent(event)
+        return inAppEventManager.isValidViewProductCategoryEvent(event)
     }
 
     override fun checkTargeting(): Boolean {
         val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
         val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
 
-        val ids = body?.viewProductCategory?.productCategory?.ids?.ids?.map { (key, value) ->
-            key.lowercase() to value
-        }?.toMap()
+        val ids = body?.viewProductCategory?.productCategory?.ids?.ids?.toMap()
 
         return ids?.let {
             when (kind) {
-                KindAny.ANY -> values.any { value ->
-                    ids[value.externalSystemName.lowercase()].equals(value.externalId, true)
+                KindAny.ANY -> ids.any { (externalSystemName, externalId) ->
+                    values.any { value ->
+                        value.externalId.equals(externalId, true)
+                                && value.externalSystemName.equals(externalSystemName, true)
+                    }
                 }
-                KindAny.NONE -> values.none { value ->
-                    ids[value.externalSystemName.lowercase()].equals(value.externalId, true)
+                KindAny.NONE -> ids.none { (externalSystemName, externalId) ->
+                    values.any { value ->
+                        value.externalId.equals(externalId, true)
+                                && value.externalSystemName.equals(externalSystemName, true)
+                    }
                 }
             }
         } ?: false

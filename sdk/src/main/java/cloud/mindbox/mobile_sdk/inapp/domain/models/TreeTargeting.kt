@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import com.android.volley.VolleyError
 import org.koin.core.component.inject
 
@@ -252,7 +253,9 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         override fun checkTargeting(): Boolean {
             var rez = false
             for (node in nodes) {
-                if (node.checkTargeting()) {
+                val check = node.checkTargeting()
+                mindboxLogD("Check UnionNode ${node.type}: $check")
+                if (check) {
                     rez = true
                 }
             }

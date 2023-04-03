@@ -14,6 +14,10 @@ import kotlinx.coroutines.launch
 internal abstract class OperationNodeBase(override val type: String) : TreeTargeting(type) {
 
     protected var lastEvent: InAppEventType? = null
+    protected val inAppEventManager: InAppEventManager by lazy {
+        getKoin().get()
+    }
+
     private val operationNodeScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
 
@@ -29,7 +33,7 @@ internal abstract class OperationNodeBase(override val type: String) : TreeTarge
     abstract suspend fun filterEvent(event: InAppEventType): Boolean
 
     override suspend fun fetchTargetingInfo() {
-        // do nothing
+        return
     }
 
     override fun hasSegmentationNode(): Boolean = false

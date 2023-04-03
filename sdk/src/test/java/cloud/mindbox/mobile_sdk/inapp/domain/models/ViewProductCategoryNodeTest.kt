@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.di.domainModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.EventType
@@ -25,6 +27,7 @@ import org.koin.test.KoinTest
 import org.koin.test.KoinTestRule
 import org.koin.test.inject
 import org.koin.test.mock.MockProviderRule
+import org.koin.test.mock.declare
 import org.koin.test.mock.declareMock
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -80,11 +83,13 @@ class ViewProductCategoryNodeTest : KoinTest {
 
     @Test
     fun `filter appStartup event`() = runTest {
+        declare<InAppEventManager> { InAppEventManagerImpl() }
         assertFalse(InAppStub.viewProductCategoryNode.filterEvent(InAppEventType.AppStartup))
     }
 
     @Test
     fun `filter ordinal event`() = runTest {
+        declare<InAppEventManager> { InAppEventManagerImpl() }
         assertTrue(
             InAppStub.viewProductCategoryNode.filterEvent(spyk(InAppEventType.OrdinalEvent(EventType.SyncOperation(""))))
         )
@@ -142,18 +147,20 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "a"),
             stub.copy(value = "CategoryRandomNameShop"),
             stub.copy(value = "Shop")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "x"),
             stub.copy(value = "CategoryRandomNameX")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     @Test
@@ -187,20 +194,22 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "x"),
             stub.copy(value = "shop"),
             stub.copy(value = " ")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "CATEGORYRANDOMNAME"),
             stub.copy(value = "random"),
             stub.copy(value = "a"),
             stub.copy(value = "ategoryRandomnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach { targeting ->
-                assertFalse(targeting.toString(), targeting.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     @Test
@@ -225,20 +234,22 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "CATEGORYRANDOMNAMESHOP"),
             stub.copy(value = "c"),
             stub.copy(value = "cA"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "CATEGORYRANDOMNAMESHOP1"),
             stub.copy(value = "ategoryrandomname"),
             stub.copy(value = "a"),
             stub.copy(value = "ategoryRandomnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
 
     }
 
@@ -267,19 +278,21 @@ class ViewProductCategoryNodeTest : KoinTest {
             stub.copy(value = "CategoryRandomNameShop"),
             stub.copy(value = "e"),
             stub.copy(value = "p"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertTrue(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertTrue(node.toString(), mock.checkTargeting())
             }
+        }
 
         listOf(
             stub.copy(value = "1"),
             stub.copy(value = "1CategoryRandomName"),
             stub.copy(value = "x"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                assertFalse(it.toString(), it.checkTargeting())
+        ).onEach { node ->
+            node.spykLastEvent(event).also { mock ->
+                assertFalse(node.toString(), mock.checkTargeting())
             }
+        }
     }
 
     private fun ViewProductCategoryNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductCategoryNode {

@@ -20,7 +20,7 @@ internal data class ViewProductCategoryNode(
     private val inAppEventManager: InAppEventManager by inject()
 
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidOperationalEvent(event)
+        return inAppEventManager.isValidViewProductCategoryEvent(event)
     }
 
     override fun checkTargeting(): Boolean {
