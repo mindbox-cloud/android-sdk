@@ -53,5 +53,4 @@ internal class InAppEventManagerTest {
         assertFalse(inAppEventManager.isValidInAppEvent(InAppEventType.OrdinalEvent(EventType.AppInstalledWithoutCustomer)))
     }
 
-
 }

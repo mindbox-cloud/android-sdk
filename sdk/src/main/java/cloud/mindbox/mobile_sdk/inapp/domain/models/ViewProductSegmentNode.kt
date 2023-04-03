@@ -18,10 +18,11 @@ internal data class ViewProductSegmentNode(
     private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
     private val gson: Gson by inject()
 
-    override suspend fun fetchTargetingInfo() {
-        val event = lastEvent as? InAppEventType.OrdinalEvent ?: return
-        val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
-        body.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.also { entry ->
+    override suspend fun fetchTargetingInfo(data: TargetingData) {
+        if (data !is TargetingData.OperationBody) return
+
+        val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
+        body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.also { entry ->
             if (entry.value.isNullOrBlank()) return
             runCatching {
                 inAppSegmentationRepository.fetchProductSegmentation(
@@ -32,15 +33,11 @@ internal data class ViewProductSegmentNode(
         } ?: return
     }
 
-    override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidViewProductEvent(event)
-    }
+    override fun checkTargeting(data: TargetingData): Boolean {
+        if (data !is TargetingData.OperationBody) return false
 
-    override fun checkTargeting(): Boolean {
-        val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
-        val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
-        val id =
-            body.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
+        val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
+        val id = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
                 ?: return false
         val segmentationsResult =
             inAppSegmentationRepository.getProductSegmentation(id)?.productSegmentations?.first()?.productList
