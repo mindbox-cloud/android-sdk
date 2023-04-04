@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -43,10 +42,12 @@ internal data class ViewProductSegmentNode(
         val id =
             body.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
                 ?: return false
-        val segmentationsResult = inAppSegmentationRepository.getProductSegmentation(id)
+        val segmentationsResult =
+            inAppSegmentationRepository.getProductSegmentation(id)?.productSegmentations?.first()?.productList
+                ?: return false
         return when (kind) {
-            Kind.POSITIVE -> segmentationsResult?.productSegmentations?.find { segmentationWrapper -> segmentationWrapper.segmentationExternalId == segmentationExternalId }?.segmentExternalId == segmentExternalId
-            Kind.NEGATIVE -> segmentationsResult?.productSegmentations?.find { it.segmentationExternalId == segmentationExternalId }
+            Kind.POSITIVE -> segmentationsResult.any { segmentationWrapper -> segmentationWrapper.segmentationExternalId == segmentationExternalId && segmentationWrapper.segmentExternalId == segmentExternalId }
+            Kind.NEGATIVE -> segmentationsResult.find { it.segmentationExternalId == segmentationExternalId }
                 ?.segmentExternalId
                 ?.let { it != segmentExternalId } == true
         }

@@ -5,6 +5,10 @@ internal data class ProductSegmentationResponse(
     val segmentExternalId: String,
 )
 
+internal data class ProductResponse(
+    val productList: List<ProductSegmentationResponse>,
+)
+
 internal data class ProductSegmentationResponseWrapper(
-    val productSegmentations: List<ProductSegmentationResponse>,
+    val productSegmentations: List<ProductResponse>,
 )

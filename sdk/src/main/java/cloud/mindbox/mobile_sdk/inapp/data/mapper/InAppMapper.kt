@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
@@ -35,11 +36,16 @@ internal class InAppMapper {
     fun mapToProductSegmentationResponse(productSegmentationResponseDto: ProductSegmentationResponseDto): ProductSegmentationResponseWrapper {
         return ProductSegmentationResponseWrapper(
             productSegmentationResponseDto.products?.map { productResponseDto ->
-                ProductSegmentationResponse(
-                    segmentationExternalId = productResponseDto?.segmentations?.first()?.ids?.ids?.values?.first()
-                        ?: "",
-                    segmentExternalId = productResponseDto?.segmentations?.first()?.segment?.ids?.ids?.values?.first()
-                        ?: ""
+                ProductResponse(
+                    productList = productResponseDto?.segmentations?.map { productSegmentations ->
+                        ProductSegmentationResponse(
+                            segmentationExternalId = productSegmentations?.ids?.ids?.values?.first()
+                                ?: "",
+                            segmentExternalId = productSegmentations?.segment?.ids?.ids?.values?.first()
+                                ?: ""
+                        )
+                    } ?: emptyList()
+
                 )
             } ?: emptyList()
         )
