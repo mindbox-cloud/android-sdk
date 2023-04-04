@@ -146,10 +146,16 @@ class InAppSegmentationRepositoryTest {
     fun `get product segmentation success`() {
         val expectedResult = ProductSegmentationResponseWrapper(
             productSegmentations = listOf(
-                ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                    segmentationExternalId = "segmentationExternalId",
-                    segmentExternalId = "segmentExternalId"
+                ProductSegmentationResponseStub.getProductResponse().copy(
+                    productList = listOf(
+                        ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                            .copy(
+                                segmentationExternalId = "segmentationExternalId",
+                                segmentExternalId = "segmentExternalId"
+                            )
+                    )
                 )
+
             )
         )
         every {
@@ -176,13 +182,19 @@ class InAppSegmentationRepositoryTest {
         val result = ProductSegmentationResponseStub.getProductSegmentationResponseDto()
         val expectedResult = ProductSegmentationResponseWrapper(
             productSegmentations = listOf(
-                ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                    segmentationExternalId = "test5",
-                    segmentExternalId = "test5"
+                ProductSegmentationResponseStub.getProductResponse().copy(
+                    productList = listOf(
+                        ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                            .copy(
+                                segmentationExternalId = "test5",
+                                segmentExternalId = "test5"
+                            )
+                    )
                 )
+
             )
         )
-         every {
+        every {
             sessionStorageManager.inAppProductSegmentations
         } returns HashMap()
         every {

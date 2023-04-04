@@ -114,14 +114,21 @@ class ViewProductSegmentNodeTest : KoinTest {
 
     @Test
     fun `check targeting positive success`() = runTest {
+
         val productSegmentation =
             ProductSegmentationResponseStub.getProductSegmentationResponseWrapper()
                 .copy(
                     productSegmentations = listOf(
-                        ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                            segmentationExternalId = "segmentationExternalId",
-                            segmentExternalId = "segmentExternalId"
+                        ProductSegmentationResponseStub.getProductResponse().copy(
+                            productList = listOf(
+                                ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                                    .copy(
+                                        segmentationExternalId = "segmentationExternalId",
+                                        segmentExternalId = "segmentExternalId"
+                                    )
+                            )
                         )
+
                     )
                 )
         val body = """{
@@ -156,10 +163,16 @@ class ViewProductSegmentNodeTest : KoinTest {
             ProductSegmentationResponseStub.getProductSegmentationResponseWrapper()
                 .copy(
                     productSegmentations = listOf(
-                        ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                            segmentationExternalId = "segmentationExternalId",
-                            segmentExternalId = "segmentExternalId"
+                        ProductSegmentationResponseStub.getProductResponse().copy(
+                            productList = listOf(
+                                ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                                    .copy(
+                                        segmentationExternalId = "segmentationExternalId",
+                                        segmentExternalId = "segmentExternalId"
+                                    )
+                            )
                         )
+
                     )
                 )
         val body = """{
@@ -194,10 +207,16 @@ class ViewProductSegmentNodeTest : KoinTest {
             ProductSegmentationResponseStub.getProductSegmentationResponseWrapper()
                 .copy(
                     productSegmentations = listOf(
-                        ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                            segmentationExternalId = "segmentationExternalId",
-                            segmentExternalId = "segmentExternalId"
+                        ProductSegmentationResponseStub.getProductResponse().copy(
+                            productList = listOf(
+                                ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                                    .copy(
+                                        segmentationExternalId = "segmentationExternalId",
+                                        segmentExternalId = "segmentExternalId"
+                                    )
+                            )
                         )
+
                     )
                 )
         val body = """{
@@ -232,10 +251,16 @@ class ViewProductSegmentNodeTest : KoinTest {
             ProductSegmentationResponseStub.getProductSegmentationResponseWrapper()
                 .copy(
                     productSegmentations = listOf(
-                        ProductSegmentationResponseStub.getProductSegmentationsResponse().copy(
-                            segmentationExternalId = "segmentationExternalId",
-                            segmentExternalId = "segmentExternalId"
+                        ProductSegmentationResponseStub.getProductResponse().copy(
+                            productList = listOf(
+                                ProductSegmentationResponseStub.getProductSegmentationsResponse()
+                                    .copy(
+                                        segmentationExternalId = "segmentationExternalId",
+                                        segmentExternalId = "segmentExternalId"
+                                    )
+                            )
                         )
+
                     )
                 )
         val body = """{

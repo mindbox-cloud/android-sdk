@@ -22,8 +22,10 @@ internal class ProductSegmentationResponseStub {
         )
 
         fun getProductSegmentationResponseWrapper() = ProductSegmentationResponseWrapper(
-            productSegmentations = listOf(getProductSegmentationsResponse())
+            productSegmentations = listOf(getProductResponse())
         )
+
+        fun getProductResponse() = ProductResponse(listOf(getProductSegmentationsResponse()))
 
         fun getProductSegmentationsResponse() = ProductSegmentationResponse(
             segmentationExternalId = "",
