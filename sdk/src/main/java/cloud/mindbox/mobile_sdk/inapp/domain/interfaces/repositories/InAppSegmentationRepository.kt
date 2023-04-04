@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
@@ -8,11 +9,15 @@ internal interface InAppSegmentationRepository {
 
     var unShownInApps: List<InApp>
 
-    suspend fun fetchSegmentations()
+    suspend fun fetchCustomerSegmentations()
 
-    fun setSegmentationStatus(status: SegmentationFetchStatus)
+    suspend fun fetchProductSegmentation(product: Pair<String, String>, segmentation: String)
 
-    fun getSegmentationFetched(): SegmentationFetchStatus
+    fun getProductSegmentation(productId: String): ProductSegmentationResponseWrapper?
 
-    fun getSegmentations(): List<CustomerSegmentationInApp>
+    fun setCustomerSegmentationStatus(status: SegmentationFetchStatus)
+
+    fun getCustomerSegmentationFetched(): SegmentationFetchStatus
+
+    fun getCustomerSegmentations(): List<CustomerSegmentationInApp>
 }

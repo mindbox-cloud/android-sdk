@@ -309,8 +309,8 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
 
         override fun checkTargeting(): Boolean {
-            if (inAppSegmentationRepository.getSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
-            val segmentationsWrapperList = inAppSegmentationRepository.getSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
+            val segmentationsWrapperList = inAppSegmentationRepository.getCustomerSegmentations()
             return when (kind) {
                 Kind.POSITIVE -> segmentationsWrapperList.find { segmentationWrapper -> segmentationWrapper.segmentation == segmentationExternalId }?.segment == segmentExternalId
                 Kind.NEGATIVE -> segmentationsWrapperList.find { it.segmentation == segmentationExternalId }
@@ -325,8 +325,8 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         }
 
         override suspend fun fetchTargetingInfo() {
-            if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
-                inAppSegmentationRepository.fetchSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+                inAppSegmentationRepository.fetchCustomerSegmentations()
             }
         }
 

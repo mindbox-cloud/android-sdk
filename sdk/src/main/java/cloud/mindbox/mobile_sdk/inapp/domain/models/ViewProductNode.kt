@@ -7,8 +7,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import com.google.gson.Gson
 import org.koin.core.component.inject
 
-
-internal data class ViewProductCategoryNode(
+internal data class ViewProductNode(
     override val type: String,
     val kind: KindSubstring,
     val value: String,
@@ -17,15 +16,16 @@ internal data class ViewProductCategoryNode(
     private val mobileConfigRepository: MobileConfigRepository by inject()
     private val gson: Gson by inject()
 
+
     override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidViewProductCategoryEvent(event)
+        return inAppEventManager.isValidViewProductEvent(event)
     }
 
     override fun checkTargeting(): Boolean {
         val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
         val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
 
-        val externalIds = body?.viewProductCategory?.productCategory?.ids?.ids?.values
+        val externalIds = body?.viewProductRequest?.product?.ids?.ids?.values
             ?.filterNotNull() ?: return false
 
         return when (kind) {
@@ -44,8 +44,9 @@ internal data class ViewProductCategoryNode(
         }
     }
 
-    override suspend fun getOperationsSet(): Set<String> =
-        mobileConfigRepository.getOperations()[OperationName.VIEW_CATEGORY]?.systemName?.let {
+    override suspend fun getOperationsSet(): Set<String> {
+        return mobileConfigRepository.getOperations()[OperationName.VIEW_PRODUCT]?.systemName?.let {
             setOf(it)
         } ?: setOf()
+    }
 }

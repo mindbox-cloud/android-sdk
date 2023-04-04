@@ -302,6 +302,43 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
     }
 
     @Test
+    fun `deserialize to inapp view product dto success`() {
+        val expectedResult = InAppStub.getTargetingViewProductNodeDto().copy(
+            type = "viewProductId",
+            kind = "substring",
+            value = "test"
+        )
+
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductId")
+                addProperty("kind", "substring")
+                addProperty("value", "test")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to inapp view product segment dto success`() {
+        val expectedResult = InAppStub.getTargetingViewProductSegmentNodeDto().copy(
+            type = "viewProductSegment",
+            kind = "positive",
+            segmentExternalId = "segmentExternalId",
+            segmentationInternalId = "segmentationInternalId",
+            segmentationExternalId = "segmentationExternalId"
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductSegment")
+                addProperty("kind", "positive")
+                addProperty("segmentExternalId", "segmentExternalId")
+                addProperty("segmentationInternalId", "segmentationInternalId")
+                addProperty("segmentationExternalId", "segmentationExternalId")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
     fun `deserialize to inApp targetingDto invalid json object`() {
         assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject()))
     }
@@ -382,7 +419,6 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
             })
         }))
     }
-
 
 
 }

@@ -4,7 +4,9 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
@@ -12,6 +14,42 @@ import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal class InAppMapper {
+
+    fun mapToProductSegmentationRequestDto(
+        product: Pair<String, String>,
+        segmentation: String,
+    ): ProductSegmentationRequestDto {
+        return ProductSegmentationRequestDto(
+            products = listOf(
+                ProductRequestDto(
+                    Ids(product)
+                )
+            ),
+            segmentations = listOf(
+                SegmentationRequestDto(
+                    SegmentationRequestIds(segmentation)
+                )
+            )
+        )
+    }
+
+    fun mapToProductSegmentationResponse(productSegmentationResponseDto: ProductSegmentationResponseDto): ProductSegmentationResponseWrapper {
+        return ProductSegmentationResponseWrapper(
+            productSegmentationResponseDto.products?.map { productResponseDto ->
+                ProductResponse(
+                    productList = productResponseDto?.segmentations?.map { productSegmentations ->
+                        ProductSegmentationResponse(
+                            segmentationExternalId = productSegmentations?.ids?.ids?.values?.first()
+                                ?: "",
+                            segmentExternalId = productSegmentations?.segment?.ids?.ids?.values?.first()
+                                ?: ""
+                        )
+                    } ?: emptyList()
+
+                )
+            } ?: emptyList()
+        )
+    }
 
     fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
         return GeoTargeting(
@@ -153,6 +191,17 @@ internal class InAppMapper {
                             externalSystemName = dto.externalSystemName!!
                         )
                     } ?: listOf()
+                )
+                is TreeTargetingDto.ViewProductNodeDto -> ViewProductNode(
+                    type = TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    value = treeTargetingDto.value!!
+                )
+                is TreeTargetingDto.ViewProductSegmentNodeDto -> ViewProductSegmentNode(
+                    type = TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
+                    segmentExternalId = treeTargetingDto.segmentExternalId!!
                 )
             }
         }

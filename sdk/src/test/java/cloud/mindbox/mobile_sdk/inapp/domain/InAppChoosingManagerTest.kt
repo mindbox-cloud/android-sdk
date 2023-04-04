@@ -80,9 +80,9 @@ internal class InAppChoosingManagerTest : KoinTest {
         every {
             inAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_FETCH_SUCCESS
-        every { inAppSegmentationRepository.getSegmentationFetched() } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        every { inAppSegmentationRepository.getCustomerSegmentationFetched() } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         coEvery {
-            inAppSegmentationRepository.fetchSegmentations()
+            inAppSegmentationRepository.fetchCustomerSegmentations()
         } just runs
         every {
             inAppGeoRepository.setGeoStatus(any())
@@ -95,7 +95,7 @@ internal class InAppChoosingManagerTest : KoinTest {
             countryId = ""
         )
         every {
-            inAppSegmentationRepository.getSegmentations()
+            inAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(
             SegmentationCheckInAppStub.getCustomerSegmentation().copy(
                 segmentation = "segmentationEI",
@@ -214,7 +214,7 @@ internal class InAppChoosingManagerTest : KoinTest {
                 )
         )
         coEvery {
-            inAppSegmentationRepository.fetchSegmentations()
+            inAppSegmentationRepository.fetchCustomerSegmentations()
         } throws SegmentationError(VolleyError())
         every {
             inAppFilteringManager.filterSegmentationFreeInApps(any())
@@ -225,7 +225,7 @@ internal class InAppChoosingManagerTest : KoinTest {
                 )
         )
         every {
-            inAppSegmentationRepository.setSegmentationStatus(any())
+            inAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
@@ -291,10 +291,10 @@ internal class InAppChoosingManagerTest : KoinTest {
         } returns GeoFetchStatus.GEO_NOT_FETCHED
 
         every {
-            inAppSegmentationRepository.getSegmentationFetched()
+            inAppSegmentationRepository.getCustomerSegmentationFetched()
         } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every {
-            inAppSegmentationRepository.setSegmentationStatus(any())
+            inAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
         every {
             inAppGeoRepository.setGeoStatus(any())
@@ -340,7 +340,7 @@ internal class InAppChoosingManagerTest : KoinTest {
                 )
         )
         coEvery {
-            inAppSegmentationRepository.fetchSegmentations()
+            inAppSegmentationRepository.fetchCustomerSegmentations()
         } throws SegmentationError(VolleyError())
         coEvery {
             inAppGeoRepository.fetchGeo()

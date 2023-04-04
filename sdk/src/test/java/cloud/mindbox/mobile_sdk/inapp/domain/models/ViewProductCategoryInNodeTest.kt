@@ -4,6 +4,7 @@ import android.content.Context
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.domainModule
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -34,7 +35,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
+        modules(dataModule, domainModule)
         androidContext(mockkClass(Context::class))
     }
 
@@ -86,7 +87,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
     fun `filter ordinal event`() = runTest {
         declare<InAppEventManager> { InAppEventManagerImpl() }
         assertTrue(
-            InAppStub.viewProductCategoryInNode.filterEvent(mockk<InAppEventType.OrdinalEvent>())
+            InAppStub.viewProductCategoryInNode.filterEvent(InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct")))
         )
     }
 
