@@ -8,15 +8,16 @@ internal data class OperationNode(
     val systemName: String,
 ) : OperationNodeBase(type) {
 
-    override fun checkTargeting(): Boolean {
-        return lastEvent?.name?.equals(systemName, true) ?: false
+    override suspend fun fetchTargetingInfo(data: TargetingData) {
+        return
+    }
+
+    override fun checkTargeting(data: TargetingData): Boolean {
+        if (data !is TargetingData.OperationName) return false
+        return data.triggerEventName.equals(systemName, true)
     }
 
     override suspend fun getOperationsSet(): Set<String> {
         return setOf(systemName)
-    }
-
-    override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidInAppEvent(event)
     }
 }

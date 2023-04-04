@@ -4,8 +4,6 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.di.domainModule
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -36,15 +34,9 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewProductSegmentNodeTest : KoinTest {
 
-
     private lateinit var mobileConfigRepository: MobileConfigRepository
 
     private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
-
-    private val inAppEventManager: InAppEventManager by inject()
-
-    @MockK
-    private lateinit var sessionStorageManager: SessionStorageManager
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
@@ -93,26 +85,6 @@ class ViewProductSegmentNodeTest : KoinTest {
     }
 
     @Test
-    fun `filter appStartup event`() = runTest {
-        Assert.assertFalse(InAppStub.viewProductSegmentNode.filterEvent(InAppEventType.AppStartup))
-    }
-
-    @Test
-    fun `filter ordinal event`() = runTest {
-        Assert.assertTrue(
-            InAppStub.viewProductSegmentNode.filterEvent(
-                spyk(
-                    InAppEventType.OrdinalEvent(
-                        EventType.SyncOperation(
-                            ""
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     fun `check targeting positive success`() = runTest {
 
         val productSegmentation =
@@ -141,7 +113,6 @@ class ViewProductSegmentNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
 
         every {
             inAppSegmentationRepository.getProductSegmentation("ProductRandomName")
@@ -152,9 +123,10 @@ class ViewProductSegmentNodeTest : KoinTest {
             kind = Kind.POSITIVE,
             segmentationExternalId = "segmentationExternalId",
             segmentExternalId = "segmentExternalId"
-        ).spykLastEvent(event)
+        )
 
-        assertTrue(stub.checkTargeting())
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
+        assertTrue(stub.checkTargeting(data))
     }
 
     @Test
@@ -185,7 +157,6 @@ class ViewProductSegmentNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
 
         every {
             inAppSegmentationRepository.getProductSegmentation("ProductRandomName")
@@ -196,9 +167,10 @@ class ViewProductSegmentNodeTest : KoinTest {
             kind = Kind.NEGATIVE,
             segmentationExternalId = "segmentationExternalId",
             segmentExternalId = "otherSegmentExternalId"
-        ).spykLastEvent(event)
+        )
 
-        assertTrue(stub.checkTargeting())
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
+        assertTrue(stub.checkTargeting(data))
     }
 
     @Test
@@ -229,7 +201,6 @@ class ViewProductSegmentNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
 
         every {
             inAppSegmentationRepository.getProductSegmentation("ProductRandomName")
@@ -240,9 +211,10 @@ class ViewProductSegmentNodeTest : KoinTest {
             kind = Kind.NEGATIVE,
             segmentationExternalId = "segmentationExternalId",
             segmentExternalId = "segmentExternalId"
-        ).spykLastEvent(event)
+        )
 
-        assertFalse(stub.checkTargeting())
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
+        assertFalse(stub.checkTargeting(data))
     }
 
     @Test
@@ -273,7 +245,6 @@ class ViewProductSegmentNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
 
         every {
             inAppSegmentationRepository.getProductSegmentation("ProductRandomName")
@@ -284,9 +255,10 @@ class ViewProductSegmentNodeTest : KoinTest {
             kind = Kind.POSITIVE,
             segmentationExternalId = "segmentationExternalId",
             segmentExternalId = "otherSegmentExternalId"
-        ).spykLastEvent(event)
+        )
 
-        assertFalse(stub.checkTargeting())
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
+        assertFalse(stub.checkTargeting(data))
     }
 
     @Test
@@ -295,11 +267,5 @@ class ViewProductSegmentNodeTest : KoinTest {
             setOf("TestSystemNameProduct"),
             InAppStub.viewProductSegmentNode.getOperationsSet()
         )
-    }
-
-    private fun ViewProductSegmentNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductSegmentNode {
-        return spyk(this, recordPrivateCalls = true).also {
-            every { it getProperty "lastEvent" } returns event
-        }
     }
 }

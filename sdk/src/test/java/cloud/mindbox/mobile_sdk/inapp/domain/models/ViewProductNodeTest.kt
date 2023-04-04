@@ -5,17 +5,13 @@ import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.di.domainModule
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import io.mockk.every
+import io.mockk.*
 import io.mockk.junit4.MockKRule
-import io.mockk.mockkClass
-import io.mockk.mockkObject
-import io.mockk.spyk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -36,9 +32,6 @@ class ViewProductNodeTest: KoinTest {
     private lateinit var mobileConfigRepository: MobileConfigRepository
 
     private lateinit var productSegmentationResponseWrapper: ProductSegmentationResponseWrapper
-
-
-    private val inAppEventManager: InAppEventManager by inject()
 
     @get:Rule
     val koinTestRule = KoinTestRule.create {
@@ -86,31 +79,11 @@ class ViewProductNodeTest: KoinTest {
     }
 
     @Test
-    fun `filter appStartup event`() = runTest {
-        Assert.assertFalse(InAppStub.viewProductNode.filterEvent(InAppEventType.AppStartup))
-    }
-
-    @Test
-    fun `filter ordinal event`() = runTest {
-        Assert.assertTrue(
-            InAppStub.viewProductNode.filterEvent(
-                spyk(
-                    InAppEventType.OrdinalEvent(
-                        EventType.SyncOperation(
-                            ""
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     fun `checkTargeting after AppStartup`() = runTest {
         MindboxEventManager.eventFlow.resetReplayCache()
         MindboxEventManager.eventFlow.emit(InAppEventType.AppStartup)
         MindboxEventManager.eventFlow.test {
-            Assert.assertFalse(InAppStub.viewProductNode.checkTargeting())
+            Assert.assertFalse(InAppStub.viewProductNode.checkTargeting(mockk()))
             awaitItem()
         }
     }
@@ -122,7 +95,9 @@ class ViewProductNodeTest: KoinTest {
             InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), null)
         )
         MindboxEventManager.eventFlow.test {
-            Assert.assertFalse(InAppStub.viewProductNode.checkTargeting())
+            Assert.assertFalse(InAppStub.viewProductNode.checkTargeting(
+                TreeTargetingTest.TestTargetingData("viewProduct", null))
+            )
             awaitItem()
         }
     }
@@ -139,8 +114,7 @@ class ViewProductNodeTest: KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
-
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
         val stub = InAppStub.viewProductNode.copy(kind = KindSubstring.SUBSTRING)
 
         listOf(
@@ -149,17 +123,15 @@ class ViewProductNodeTest: KoinTest {
             stub.copy(value = "a"),
             stub.copy(value = "ProductRandomNameShop"),
             stub.copy(value = "Shop")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertTrue(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertTrue(it.toString(), it.checkTargeting(data))
             }
 
         listOf(
             stub.copy(value = "x"),
             stub.copy(value = "ProductRandomNameX")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertFalse(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertFalse(it.toString(), it.checkTargeting(data))
             }
     }
 
@@ -177,16 +149,8 @@ class ViewProductNodeTest: KoinTest {
               }
             }""".trimIndent()
 
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
         val stub = InAppStub.viewProductNode.copy(kind = KindSubstring.NOT_SUBSTRING)
-
-        val stub1 = stub.copy(value = "ProductRANDOMNAME1")
-        val mock = spyk(stub1, recordPrivateCalls = true)
-        every { mock getProperty "lastEvent" } returns InAppEventType.OrdinalEvent(
-            EventType.SyncOperation(
-                "viewProduct"
-            ), body
-        )
 
         listOf(
             stub.copy(value = "ProductRANDOMNAME1"),
@@ -194,9 +158,8 @@ class ViewProductNodeTest: KoinTest {
             stub.copy(value = "x"),
             stub.copy(value = "shop"),
             stub.copy(value = " ")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertTrue(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertTrue(it.toString(), it.checkTargeting(data))
             }
 
         listOf(
@@ -204,9 +167,8 @@ class ViewProductNodeTest: KoinTest {
             stub.copy(value = "random"),
             stub.copy(value = "a"),
             stub.copy(value = "ProductRandomnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach { targeting ->
-                Assert.assertFalse(targeting.toString(), targeting.checkTargeting())
+        ).onEach { targeting ->
+                Assert.assertFalse(targeting.toString(), targeting.checkTargeting(data))
             }
     }
 
@@ -225,16 +187,15 @@ class ViewProductNodeTest: KoinTest {
             }""".trimIndent()
 
         val stub = InAppStub.viewProductNode.copy(kind = KindSubstring.STARTS_WITH)
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
 
         listOf(
             stub.copy(value = "ProductRANDOM"),
             stub.copy(value = "ProductRANDOMNAM"),
             stub.copy(value = "p"),
             stub.copy(value = "pR"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertTrue(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertTrue(it.toString(), it.checkTargeting(data))
             }
 
         listOf(
@@ -242,9 +203,8 @@ class ViewProductNodeTest: KoinTest {
             stub.copy(value = "Categoryrandomname"),
             stub.copy(value = "a"),
             stub.copy(value = "ProductRandosnam")
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertFalse(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertFalse(it.toString(), it.checkTargeting(data))
             }
 
     }
@@ -264,7 +224,7 @@ class ViewProductNodeTest: KoinTest {
             }""".trimIndent()
 
         MindboxEventManager.eventFlow.resetReplayCache()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewProduct", body)
         val stub = InAppStub.viewProductNode.copy(kind = KindSubstring.ENDS_WITH)
 
         listOf(
@@ -274,25 +234,17 @@ class ViewProductNodeTest: KoinTest {
             stub.copy(value = "ProductRandomNameShop"),
             stub.copy(value = "e"),
             stub.copy(value = "p"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertTrue(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertTrue(it.toString(), it.checkTargeting(data))
             }
 
         listOf(
             stub.copy(value = "1"),
             stub.copy(value = "1ProductRandomName"),
             stub.copy(value = "x"),
-        ).map { it.spykLastEvent(event) }
-            .onEach {
-                Assert.assertFalse(it.toString(), it.checkTargeting())
+        ).onEach {
+                Assert.assertFalse(it.toString(), it.checkTargeting(data))
             }
-    }
-
-    private fun ViewProductNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductNode {
-        return spyk(this, recordPrivateCalls = true).also {
-            every { it getProperty "lastEvent" } returns event
-        }
     }
 
     @Test

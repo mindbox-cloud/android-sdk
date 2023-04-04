@@ -5,8 +5,6 @@ import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.di.domainModule
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.EventType
@@ -78,20 +76,6 @@ class ViewProductCategoryInNodeTest : KoinTest {
     }
 
     @Test
-    fun `filter appStartup event`() = runTest {
-        declare<InAppEventManager> { InAppEventManagerImpl() }
-        assertFalse(InAppStub.viewProductCategoryInNode.filterEvent(InAppEventType.AppStartup))
-    }
-
-    @Test
-    fun `filter ordinal event`() = runTest {
-        declare<InAppEventManager> { InAppEventManagerImpl() }
-        assertTrue(
-            InAppStub.viewProductCategoryInNode.filterEvent(InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct")))
-        )
-    }
-
-    @Test
     fun `getOperationsSet return viewCategory`() = runTest {
         assertEquals(
             setOf("TestSystemNameCategory"),
@@ -104,7 +88,9 @@ class ViewProductCategoryInNodeTest : KoinTest {
         MindboxEventManager.eventFlow.emit(InAppEventType.AppStartup)
         MindboxEventManager.eventFlow.test {
             awaitItem()
-            assertFalse(InAppStub.viewProductCategoryInNode.checkTargeting())
+            assertFalse(InAppStub.viewProductCategoryInNode.checkTargeting(
+                TreeTargetingTest.TestTargetingData("viewCategory", null)
+            ))
         }
     }
 
@@ -115,7 +101,9 @@ class ViewProductCategoryInNodeTest : KoinTest {
         )
         MindboxEventManager.eventFlow.test {
             awaitItem()
-            assertFalse(InAppStub.viewProductCategoryInNode.checkTargeting())
+            assertFalse(InAppStub.viewProductCategoryInNode.checkTargeting(
+                TreeTargetingTest.TestTargetingData("viewCategory", null)
+            ))
         }
     }
 
@@ -131,7 +119,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewCategory"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
         val stub = InAppStub.viewProductCategoryInNode.copy(kind = KindAny.ANY)
 
         listOf(
@@ -196,9 +184,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             )
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock ->
-                assertTrue(node.toString(), mock.checkTargeting())
-            }
+            assertTrue(node.toString(), node.checkTargeting(data))
         }
 
         listOf(
@@ -221,9 +207,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             ),
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock->
-                assertFalse(node.toString(), mock.checkTargeting())
-            }
+            assertFalse(node.toString(), node.checkTargeting(data))
         }
     }
 
@@ -240,7 +224,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 }
               }
             }""".trimIndent()
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewCategory"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
         val stub = InAppStub.viewProductCategoryInNode.copy(kind = KindAny.ANY)
 
         listOf(
@@ -291,9 +275,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             )
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock ->
-                assertTrue(node.toString(), mock.checkTargeting())
-            }
+            assertTrue(node.toString(), node.checkTargeting(data))
         }
 
         listOf(
@@ -316,9 +298,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             ),
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock->
-                assertFalse(node.toString(), mock.checkTargeting())
-            }
+            assertFalse(node.toString(), node.checkTargeting(data))
         }
     }
 
@@ -336,7 +316,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
               }
             }""".trimIndent()
 
-        val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewCategory"), body)
+        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
         val stub = InAppStub.viewProductCategoryInNode.copy(kind = KindAny.NONE)
 
         listOf(
@@ -359,9 +339,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             ),
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock ->
-                assertTrue(node.toString(), mock.checkTargeting())
-            }
+            assertTrue(node.toString(), node.checkTargeting(data))
         }
 
         listOf(
@@ -398,15 +376,7 @@ class ViewProductCategoryInNodeTest : KoinTest {
                 )
             ),
         ).onEach { node ->
-            node.spykLastEvent(event).also { mock->
-                assertFalse(node.toString(), mock.checkTargeting())
-            }
-        }
-    }
-
-    private fun ViewProductCategoryInNode.spykLastEvent(event: InAppEventType.OrdinalEvent): ViewProductCategoryInNode {
-        return spyk(this, recordPrivateCalls = true).also {
-            every { it getProperty "lastEvent" } returns event
+            assertFalse(node.toString(), node.checkTargeting(data))
         }
     }
 }

@@ -1,8 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
-import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import com.google.gson.Gson
 import org.koin.core.component.inject
@@ -17,15 +15,13 @@ internal data class ViewProductCategoryNode(
     private val mobileConfigRepository: MobileConfigRepository by inject()
     private val gson: Gson by inject()
 
-    override suspend fun filterEvent(event: InAppEventType): Boolean {
-        return inAppEventManager.isValidViewProductCategoryEvent(event)
-    }
+    override fun checkTargeting(data: TargetingData): Boolean {
+        if (data !is TargetingData.OperationBody) return false
+        val body = data.operationBody?.let { operationBody ->
+            gson.fromJson(operationBody, OperationBodyRequest::class.java)
+        } ?: return false
 
-    override fun checkTargeting(): Boolean {
-        val event = lastEvent as? InAppEventType.OrdinalEvent ?: return false
-        val body = gson.fromJson(event.body, OperationBodyRequest::class.java)
-
-        val externalIds = body?.viewProductCategory?.productCategory?.ids?.ids?.values
+        val externalIds = body.viewProductCategory?.productCategory?.ids?.ids?.values
             ?.filterNotNull() ?: return false
 
         return when (kind) {
