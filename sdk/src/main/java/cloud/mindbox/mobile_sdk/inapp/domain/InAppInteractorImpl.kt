@@ -48,7 +48,8 @@ internal class InAppInteractorImpl(
             )
             MindboxLoggerImpl.d(this, "Event: ${event.name} combined with $filteredInApps")
             inAppChoosingManager.chooseInAppToShow(
-               filteredInApps
+                filteredInApps,
+                event
             ).also { inAppType ->
                 inAppType ?: MindboxLoggerImpl.d(
                     this,

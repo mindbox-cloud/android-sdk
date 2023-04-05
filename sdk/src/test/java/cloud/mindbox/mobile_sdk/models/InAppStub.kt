@@ -71,8 +71,8 @@ internal class InAppStub {
             )
         }
 
-        fun getTargetingOperationNode(): TreeTargeting.OperationNode {
-            return TreeTargeting.OperationNode(
+        fun getTargetingOperationNode(): OperationNode {
+            return OperationNode(
                 type = "",
                 systemName = ""
             )
