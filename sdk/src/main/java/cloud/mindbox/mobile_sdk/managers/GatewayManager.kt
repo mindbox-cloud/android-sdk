@@ -43,7 +43,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     }
 
     private fun getProductSegmentationUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckProductSegments&transactionId=${UUID.randomUUID()}}"
+        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckProductSegments&transactionId=${UUID.randomUUID()}"
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
