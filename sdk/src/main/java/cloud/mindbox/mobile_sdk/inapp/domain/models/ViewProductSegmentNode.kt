@@ -40,7 +40,7 @@ internal data class ViewProductSegmentNode(
         val id = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
                 ?: return false
         val segmentationsResult =
-            inAppSegmentationRepository.getProductSegmentation(id)?.productSegmentations?.first()?.productList
+            inAppSegmentationRepository.getProductSegmentation(id)?.productSegmentations?.firstOrNull()?.productList
                 ?: return false
         return when (kind) {
             Kind.POSITIVE -> segmentationsResult.any { segmentationWrapper -> segmentationWrapper.segmentationExternalId == segmentationExternalId && segmentationWrapper.segmentExternalId == segmentExternalId }
