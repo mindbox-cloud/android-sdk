@@ -290,8 +290,7 @@ internal class InAppChoosingManagerTest : KoinTest {
         inAppFilteringManager = InAppFilteringManagerImpl(inAppRepository)
         inAppChoosingManager = InAppChoosingManagerImpl(
             inAppGeoRepository = inAppGeoRepository,
-            inAppSegmentationRepository = inAppSegmentationRepository,
-            inAppFilteringManager = inAppFilteringManager
+            inAppSegmentationRepository = inAppSegmentationRepository
         )
         every {
             inAppGeoRepository.getGeoFetchedStatus()

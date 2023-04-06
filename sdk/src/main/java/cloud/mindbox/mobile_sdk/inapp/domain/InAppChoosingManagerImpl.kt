@@ -11,8 +11,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
-    private val inAppSegmentationRepository: InAppSegmentationRepository,
-    private val inAppFilteringManager: InAppFilteringManager,
+    private val inAppSegmentationRepository: InAppSegmentationRepository
 ) :
     InAppChoosingManager {
 
