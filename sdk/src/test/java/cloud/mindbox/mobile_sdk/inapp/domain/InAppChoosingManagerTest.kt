@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRep
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
+import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import com.android.volley.VolleyError
@@ -61,6 +61,8 @@ internal class InAppChoosingManagerTest : KoinTest {
 
     @OverrideMockKs
     private lateinit var inAppChoosingManager: InAppChoosingManagerImpl
+
+    val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("testEvent"), null)
 
     @Before
     fun onTestStart() {
@@ -122,7 +124,8 @@ internal class InAppChoosingManagerTest : KoinTest {
                 InAppStub.getInApp()
                     .copy(id = validId, targeting = InAppStub.getTargetingTrueNode()),
 
-                )
+                ),
+            event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -149,7 +152,8 @@ internal class InAppChoosingManagerTest : KoinTest {
                             )
                         ),
 
-                    )
+                    ),
+                event
             )
         )
     }
@@ -180,7 +184,8 @@ internal class InAppChoosingManagerTest : KoinTest {
                                 )
                             ),
 
-                        )
+                        ),
+                    event
                 )
             }
         }
@@ -229,7 +234,8 @@ internal class InAppChoosingManagerTest : KoinTest {
         } just runs
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList
+            testInAppList,
+            event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -272,7 +278,8 @@ internal class InAppChoosingManagerTest : KoinTest {
         )
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList
+            testInAppList,
+            event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -347,7 +354,8 @@ internal class InAppChoosingManagerTest : KoinTest {
         } throws GeoError(VolleyError())
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList
+            testInAppList,
+            event
         )
         assertEquals(expectedResult, actualResult)
     }
