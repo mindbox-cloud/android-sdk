@@ -99,7 +99,7 @@ internal class InAppMapper {
         return nodesDto.map { treeTargetingDto ->
             when (treeTargetingDto) {
                 is TreeTargetingDto.OperationNodeDto -> {
-                    TreeTargeting.OperationNode(
+                    OperationNode(
                         TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME,
                         treeTargetingDto.systemName!!.lowercase()
                     )

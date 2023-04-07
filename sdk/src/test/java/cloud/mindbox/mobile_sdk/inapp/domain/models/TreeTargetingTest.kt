@@ -75,7 +75,7 @@ class TreeTargetingTest : KoinTest {
 
     @Test
     fun `true targeting always true`() {
-        assertTrue(InAppStub.getTargetingTrueNode().checkTargeting())
+        assertTrue(InAppStub.getTargetingTrueNode().checkTargeting(mockk()))
     }
 
     @Test
@@ -83,7 +83,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingCountryNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -92,7 +92,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingCountryNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
 
     }
@@ -102,7 +102,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingCountryNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -111,7 +111,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingCountryNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -120,7 +120,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingRegionNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("789", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -129,7 +129,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingRegionNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("788", "455"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -138,7 +138,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingRegionNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("789", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -147,7 +147,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingRegionNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("788", "455"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -156,7 +156,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("123", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -165,7 +165,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -174,7 +174,7 @@ class TreeTargetingTest : KoinTest {
         assertFalse(
             InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("123", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -183,7 +183,7 @@ class TreeTargetingTest : KoinTest {
         assertTrue(
             InAppStub.getTargetingCityNode()
                 .copy(kind = Kind.NEGATIVE, ids = listOf("788", "456"))
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -202,7 +202,7 @@ class TreeTargetingTest : KoinTest {
                     segmentationExternalId = "123",
                     segmentExternalId = "234"
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -218,7 +218,7 @@ class TreeTargetingTest : KoinTest {
                     segmentationExternalId = "123",
                     segmentExternalId = "234"
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -234,7 +234,7 @@ class TreeTargetingTest : KoinTest {
                     segmentationExternalId = "123",
                     segmentExternalId = "234"
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -252,7 +252,7 @@ class TreeTargetingTest : KoinTest {
                     segmentationExternalId = "123",
                     segmentExternalId = "234"
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -268,7 +268,7 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("456"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -284,7 +284,7 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("234"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -300,7 +300,7 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("234"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -317,7 +317,7 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("456"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -333,32 +333,19 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("234"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
     @Test
     fun `operation targeting check`() = runTest {
-        mockkObject(MindboxEventManager)
-        mockkObject(MindboxKoin)
-        every { MindboxKoin.koin } returns getKoin()
-        val operation = InAppEventType.OrdinalEvent(
-            EventType.AsyncOperation("testOperation")
-        )
-        MindboxEventManager.eventFlow.emit(
-            operation
+
+        val testTargeting = spyk(
+            OperationNode(systemName = "testOperation", type = "apiMethodCall"),
+            recordPrivateCalls = true
         )
 
-        val inAppEventManager: InAppEventManager = declareMock()
-        every {
-            inAppEventManager.isValidInAppEvent(any())
-        } returns true
-
-        val testTargeting = TreeTargeting.OperationNode(systemName = "testOperation", type = "apiMethodCall")
-        MindboxEventManager.eventFlow.test {
-            assertTrue(testTargeting.checkTargeting())
-            awaitItem()
-        }
+        assertTrue(testTargeting.checkTargeting(TestTargetingData("testOperation")))
 
     }
 
@@ -374,7 +361,7 @@ class TreeTargetingTest : KoinTest {
                             .copy(kind = Kind.POSITIVE, ids = listOf("234"))
                     )
                 )
-                .checkTargeting()
+                .checkTargeting(mockk())
         )
     }
 
@@ -435,7 +422,7 @@ class TreeTargetingTest : KoinTest {
                         )
                     )
                 )
-        ).targeting.fetchTargetingInfo()
+        ).targeting.fetchTargetingInfo(mockk())
         coVerify {
             inAppGeoRepository.fetchGeo()
         }
@@ -444,5 +431,10 @@ class TreeTargetingTest : KoinTest {
         }
 
     }
+
+    class TestTargetingData(
+        override val triggerEventName: String,
+        override val operationBody: String? = null
+    ): TargetingData.OperationBody, TargetingData.OperationName
 
 }

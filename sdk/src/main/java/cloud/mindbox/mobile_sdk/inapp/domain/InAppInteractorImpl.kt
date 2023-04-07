@@ -53,7 +53,8 @@ internal class InAppInteractorImpl(
                 mindboxLogD("Event: ${event.name} combined with $filteredInApps")
 
                 inAppChoosingManager.chooseInAppToShow(
-                    filteredInApps
+                    filteredInApps,
+                    event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
                     if (event == InAppEventType.AppStartup) {

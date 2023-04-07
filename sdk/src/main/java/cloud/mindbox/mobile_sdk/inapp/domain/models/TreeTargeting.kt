@@ -9,20 +9,24 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
 import org.koin.core.component.inject
 
 internal interface ITargeting {
-    fun checkTargeting(): Boolean
+    fun checkTargeting(data: TargetingData): Boolean
+}
+
+internal sealed interface TargetingData {
+    interface OperationName : TargetingData {
+        val triggerEventName: String
+    }
+
+    interface OperationBody : TargetingData {
+        val operationBody: String?
+    }
 }
 
 internal interface TargetingInfo {
-    suspend fun fetchTargetingInfo()
+    suspend fun fetchTargetingInfo(data: TargetingData)
 
     fun hasSegmentationNode(): Boolean
 
@@ -39,16 +43,16 @@ internal enum class Kind {
 }
 
 
-internal sealed class TreeTargeting(open val type: String) : ITargeting, TargetingInfo,
-    MindboxKoin.MindboxKoinComponent {
+internal sealed class TreeTargeting(open val type: String) :
+    ITargeting, TargetingInfo, MindboxKoin.MindboxKoinComponent {
 
     internal data class TrueNode(override val type: String) : TreeTargeting(type) {
 
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             return true
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             return
         }
 
@@ -67,51 +71,6 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         override fun getOperationsSet(): Set<String> {
             return emptySet()
         }
-    }
-
-    internal data class OperationNode(
-        override val type: String,
-        val systemName: String,
-    ) : TreeTargeting(type) {
-
-        private var lastEvent: InAppEventType? = null
-        private val operationNodeScope =
-            CoroutineScope(SupervisorJob() + Dispatchers.Default + Mindbox.coroutineExceptionHandler)
-        private val inAppEventManager: InAppEventManager by inject()
-
-        init {
-            operationNodeScope.launch {
-                MindboxEventManager.eventFlow.filter { inAppEventManager.isValidInAppEvent(it) }
-                    .collect { inAppEventType ->
-                        lastEvent = inAppEventType
-                    }
-            }
-        }
-
-        override fun checkTargeting(): Boolean {
-            return lastEvent?.name?.equals(systemName, true) ?: false
-        }
-
-        override suspend fun fetchTargetingInfo() {
-            return
-        }
-
-        override fun hasSegmentationNode(): Boolean {
-            return false
-        }
-
-        override fun hasGeoNode(): Boolean {
-            return false
-        }
-
-        override fun hasOperationNode(): Boolean {
-            return true
-        }
-
-        override fun getOperationsSet(): Set<String> {
-            return setOf(systemName)
-        }
-
     }
 
     internal data class CountryNode(
@@ -122,7 +81,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
 
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val countryId = inAppGeoRepositoryImpl.getGeo().countryId
             return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId)
@@ -133,7 +92,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return emptySet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             runCatching {
                 if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
                     inAppGeoRepositoryImpl.fetchGeo()
@@ -169,7 +128,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
 
 
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val cityId = inAppGeoRepositoryImpl.getGeo().cityId
             return if (kind == Kind.POSITIVE) ids.contains(cityId) else ids.contains(cityId)
@@ -180,7 +139,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return emptySet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
                 inAppGeoRepositoryImpl.fetchGeo()
             }
@@ -207,7 +166,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
 
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val regionId = inAppGeoRepositoryImpl.getGeo().regionId
             return if (kind == Kind.POSITIVE) ids.contains(regionId) else ids.contains(regionId)
@@ -218,7 +177,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return emptySet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
                 inAppGeoRepositoryImpl.fetchGeo()
             }
@@ -241,10 +200,10 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             var rez = true
             for (node in nodes) {
-                if (node.checkTargeting().not()) {
+                if (node.checkTargeting(data).not()) {
                     rez = false
                 }
             }
@@ -257,9 +216,9 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             }.toSet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             for (node in nodes) {
-                node.fetchTargetingInfo()
+                node.fetchTargetingInfo(data)
             }
         }
 
@@ -293,10 +252,11 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
         override val type: String,
         val nodes: List<TreeTargeting>,
     ) : TreeTargeting(type) {
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             var rez = false
             for (node in nodes) {
-                if (node.checkTargeting()) {
+                val check = node.checkTargeting(data)
+                if (check) {
                     rez = true
                 }
             }
@@ -309,9 +269,9 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             }.toSet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             for (node in nodes) {
-                node.fetchTargetingInfo()
+                node.fetchTargetingInfo(data)
             }
         }
 
@@ -349,7 +309,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
 
         private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
 
-        override fun checkTargeting(): Boolean {
+        override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppSegmentationRepository.getSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
             val segmentationsWrapperList = inAppSegmentationRepository.getSegmentations()
             return when (kind) {
@@ -365,7 +325,7 @@ internal sealed class TreeTargeting(open val type: String) : ITargeting, Targeti
             return emptySet()
         }
 
-        override suspend fun fetchTargetingInfo() {
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
                 inAppSegmentationRepository.fetchSegmentations()
             }
