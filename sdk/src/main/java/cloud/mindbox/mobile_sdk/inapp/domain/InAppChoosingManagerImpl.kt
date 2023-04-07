@@ -11,17 +11,16 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
-    private val inAppSegmentationRepository: InAppSegmentationRepository,
-    private val inAppFilteringManager: InAppFilteringManager
+    private val inAppSegmentationRepository: InAppSegmentationRepository
 ) :
     InAppChoosingManager {
 
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
-        triggerEvent: InAppEventType
+        triggerEvent: InAppEventType,
     ): InAppType? {
-        runCatching {
-            for (inApp in inApps) {
+        for (inApp in inApps) {
+            runCatching {
                 val data = getTargetingData(triggerEvent)
                 inApp.targeting.fetchTargetingInfo(getTargetingData(triggerEvent))
                 val check = inApp.targeting.checkTargeting(data)
@@ -29,28 +28,22 @@ internal class InAppChoosingManagerImpl(
                 if (check) {
                     return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
                 }
-            }
-        }.onFailure { throwable ->
-            return when (throwable) {
-                is GeoError -> {
-                    inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                    chooseInAppToShow(
-                        inAppFilteringManager.filterGeoFreeInApps(inApps),
-                        triggerEvent
-                    )
-                }
-                is SegmentationError -> {
-                    inAppSegmentationRepository.setCustomerSegmentationStatus(SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
-                    MindboxLoggerImpl.e(this, "Error fetching segmentations", throwable)
-                    chooseInAppToShow(
-                        inAppFilteringManager.filterSegmentationFreeInApps(inApps),
-                        triggerEvent
-                    )
-                }
-                else -> {
-                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
-                    throw throwable
+            }.onFailure { throwable ->
+                when (throwable) {
+                    is GeoError -> {
+                        inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
+                        MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                    }
+                    is SegmentationError -> {
+                        inAppSegmentationRepository.setCustomerSegmentationStatus(
+                            SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                        )
+                        MindboxLoggerImpl.e(this, "Error fetching segmentations", throwable)
+                    }
+                    else -> {
+                        MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                        throw throwable
+                    }
                 }
             }
         }
@@ -68,7 +61,7 @@ internal class InAppChoosingManagerImpl(
 
     private class TargetingDataWrapper(
         override val triggerEventName: String,
-        override val operationBody: String? = null
+        override val operationBody: String? = null,
     ) : TargetingData.OperationName, TargetingData.OperationBody
 
 }

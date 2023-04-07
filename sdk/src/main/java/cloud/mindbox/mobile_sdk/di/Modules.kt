@@ -129,8 +129,7 @@ internal val domainModule = module {
     single<InAppChoosingManager> {
         InAppChoosingManagerImpl(
             inAppGeoRepository = get(),
-            inAppSegmentationRepository = get(),
-            inAppFilteringManager = get()
+            inAppSegmentationRepository = get()
         )
     }
     factory<InAppEventManager> {

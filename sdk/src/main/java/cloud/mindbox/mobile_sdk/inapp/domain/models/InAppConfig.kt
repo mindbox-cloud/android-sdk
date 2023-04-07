@@ -44,7 +44,6 @@ internal sealed class Payload {
                 imageUrl = imageUrl,
                 redirectUrl = redirectUrl,
                 intentData = intentPayload
-
             )
         }
     }

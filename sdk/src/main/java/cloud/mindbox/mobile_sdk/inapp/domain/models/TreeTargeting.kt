@@ -3,9 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import com.android.volley.VolleyError
 import org.koin.core.component.inject
 
 internal interface ITargeting {
@@ -101,16 +99,8 @@ internal sealed class TreeTargeting(open val type: String) :
         }
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
-            runCatching {
-                if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
-                    inAppGeoRepositoryImpl.fetchGeo()
-                }
-            }.onFailure { throwable ->
-                if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                } else {
-                    throw throwable
-                }
+            if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
+                inAppGeoRepositoryImpl.fetchGeo()
             }
         }
 
