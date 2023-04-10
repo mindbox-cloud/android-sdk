@@ -22,7 +22,7 @@ internal class InAppChoosingManagerImpl(
         for (inApp in inApps) {
             val data = getTargetingData(triggerEvent)
             runCatching {
-                inApp.targeting.fetchTargetingInfo(getTargetingData(triggerEvent))
+                inApp.targeting.fetchTargetingInfo(data)
             }.onFailure { throwable ->
                 when (throwable) {
                     is GeoError -> {
