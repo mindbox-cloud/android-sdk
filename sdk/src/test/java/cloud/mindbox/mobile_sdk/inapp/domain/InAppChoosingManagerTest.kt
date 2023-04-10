@@ -3,15 +3,16 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.*
-import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.SegmentationCheckInAppStub
 import com.android.volley.VolleyError
+import com.android.volley.VolleyLog
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
@@ -51,9 +52,6 @@ internal class InAppChoosingManagerTest : KoinTest {
 
     @MockK
     private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
-
-    @MockK
-    private lateinit var inAppFilteringManager: InAppFilteringManager
 
     @MockK
     private lateinit var inAppRepository: InAppRepository
@@ -222,14 +220,6 @@ internal class InAppChoosingManagerTest : KoinTest {
             inAppSegmentationRepository.fetchCustomerSegmentations()
         } throws SegmentationError(VolleyError())
         every {
-            inAppFilteringManager.filterSegmentationFreeInApps(any())
-        } returns listOf(
-            InAppStub.getInApp()
-                .copy(
-                    id = validId, targeting = InAppStub.getTargetingTrueNode()
-                )
-        )
-        every {
             inAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
@@ -265,89 +255,6 @@ internal class InAppChoosingManagerTest : KoinTest {
                     id = validId, targeting = InAppStub.getTargetingTrueNode()
                 )
         )
-        coEvery {
-            inAppGeoRepository.fetchGeo()
-        } throws GeoError(VolleyError())
-        every {
-            inAppFilteringManager.filterGeoFreeInApps(any())
-        } returns listOf(
-            InAppStub.getInApp()
-                .copy(
-                    id = validId, targeting = InAppStub.getTargetingTrueNode()
-                )
-        )
-        val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
-        val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList,
-            event
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `choose inApp to show geo and segmentation error`() = runTest {
-        val validId = "validId"
-        inAppFilteringManager = InAppFilteringManagerImpl(inAppRepository)
-        inAppChoosingManager = InAppChoosingManagerImpl(
-            inAppGeoRepository = inAppGeoRepository,
-            inAppSegmentationRepository = inAppSegmentationRepository
-        )
-        every {
-            inAppGeoRepository.getGeoFetchedStatus()
-        } returns GeoFetchStatus.GEO_NOT_FETCHED
-
-        every {
-            inAppSegmentationRepository.getCustomerSegmentationFetched()
-        } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-        every {
-            inAppSegmentationRepository.setCustomerSegmentationStatus(any())
-        } just runs
-        every {
-            inAppGeoRepository.setGeoStatus(any())
-        } just runs
-        val testInAppList = listOf(
-            InAppStub.getInApp()
-                .copy(
-                    id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        ids = listOf("otherRegionId")
-                    )
-                ),
-            InAppStub.getInApp()
-                .copy(
-                    id = "124", targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        ids = listOf("otherRegionId2")
-                    )
-                ),
-            InAppStub.getInApp()
-                .copy(
-                    id = "125", targeting = InAppStub.getTargetingSegmentNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        segmentationExternalId = "segmentationExternalId1",
-                        segmentExternalId = "segmentExternalId1"
-                    )
-                ),
-            InAppStub.getInApp()
-                .copy(
-                    id = "126", targeting = InAppStub.getTargetingSegmentNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        segmentationExternalId = "segmentationExternalId2",
-                        segmentExternalId = "segmentExternalId2"
-                    )
-                ),
-            InAppStub.getInApp()
-                .copy(
-                    id = validId, targeting = InAppStub.getTargetingTrueNode()
-                )
-        )
-        coEvery {
-            inAppSegmentationRepository.fetchCustomerSegmentations()
-        } throws SegmentationError(VolleyError())
         coEvery {
             inAppGeoRepository.fetchGeo()
         } throws GeoError(VolleyError())
