@@ -20,31 +20,33 @@ internal class InAppChoosingManagerImpl(
         triggerEvent: InAppEventType,
     ): InAppType? {
         for (inApp in inApps) {
+            val data = getTargetingData(triggerEvent)
             runCatching {
-                val data = getTargetingData(triggerEvent)
                 inApp.targeting.fetchTargetingInfo(getTargetingData(triggerEvent))
-                val check = inApp.targeting.checkTargeting(data)
-                mindboxLogD("Check ${inApp.targeting.type}: $check")
-                if (check) {
-                    return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
-                }
             }.onFailure { throwable ->
                 when (throwable) {
                     is GeoError -> {
                         inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
                         MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                        inApp.targeting.fetchTargetingInfo(getTargetingData(triggerEvent))
                     }
                     is SegmentationError -> {
                         inAppSegmentationRepository.setCustomerSegmentationStatus(
                             SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                         )
                         MindboxLoggerImpl.e(this, "Error fetching segmentations", throwable)
+                        inApp.targeting.fetchTargetingInfo(getTargetingData(triggerEvent))
                     }
                     else -> {
                         MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
                         throw throwable
                     }
                 }
+            }
+            val check = inApp.targeting.checkTargeting(data)
+            mindboxLogD("Check ${inApp.targeting.type}: $check")
+            if (check) {
+                return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
             }
         }
         return null
