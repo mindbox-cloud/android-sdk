@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
-import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import com.google.gson.Gson
 import org.koin.core.component.inject
@@ -26,8 +25,7 @@ internal data class ViewProductSegmentNode(
             if (entry.value.isNullOrBlank()) return
             runCatching {
                 inAppSegmentationRepository.fetchProductSegmentation(
-                    entry.key to entry.value!!,
-                    segmentationExternalId
+                    entry.key to entry.value!!
                 )
             }
         } ?: return
@@ -38,10 +36,11 @@ internal data class ViewProductSegmentNode(
 
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
         val id = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
-                ?: return false
-        val segmentationsResult =
-            inAppSegmentationRepository.getProductSegmentation(id)?.productSegmentations?.firstOrNull()?.productList
-                ?: return false
+            ?: return false
+        val segmentationsResult = inAppSegmentationRepository.getProductSegmentations(id).flatMap {
+            it?.productSegmentations?.firstOrNull()?.productList ?: emptyList()
+        }
+        if (segmentationsResult.isEmpty()) return false
         return when (kind) {
             Kind.POSITIVE -> segmentationsResult.any { segmentationWrapper -> segmentationWrapper.segmentationExternalId == segmentationExternalId && segmentationWrapper.segmentExternalId == segmentExternalId }
             Kind.NEGATIVE -> segmentationsResult.find { it.segmentationExternalId == segmentationExternalId }

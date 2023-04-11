@@ -14,6 +14,6 @@ internal class SessionStorageManager {
     var segmentationFetchStatus: SegmentationFetchStatus =
         SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-    var inAppProductSegmentations: HashMap<String, ProductSegmentationResponseWrapper> = HashMap()
+    var inAppProductSegmentations: HashMap<String, Set<ProductSegmentationResponseWrapper>> = HashMap()
 
 }

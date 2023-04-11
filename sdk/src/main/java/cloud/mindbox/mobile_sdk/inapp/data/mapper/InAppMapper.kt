@@ -14,25 +14,6 @@ import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal class InAppMapper {
-
-    fun mapToProductSegmentationRequestDto(
-        product: Pair<String, String>,
-        segmentation: String,
-    ): ProductSegmentationRequestDto {
-        return ProductSegmentationRequestDto(
-            products = listOf(
-                ProductRequestDto(
-                    Ids(product)
-                )
-            ),
-            segmentations = listOf(
-                SegmentationRequestDto(
-                    SegmentationRequestIds(segmentation)
-                )
-            )
-        )
-    }
-
     fun mapToProductSegmentationResponse(productSegmentationResponseDto: ProductSegmentationResponseDto): ProductSegmentationResponseWrapper {
         return ProductSegmentationResponseWrapper(
             productSegmentationResponseDto.products?.map { productResponseDto ->
@@ -221,26 +202,62 @@ internal class InAppMapper {
         )
     }
 
-    fun mapToSegmentationCheckRequest(inApps: List<InApp>): SegmentationCheckRequest {
+    fun mapToCustomerSegmentationCheckRequest(inApps: List<InApp>): SegmentationCheckRequest {
         return SegmentationCheckRequest(
             inApps.flatMap { inAppDto ->
-                getTargetingSegmentList(inAppDto.targeting).map { segment ->
+                getTargetingCustomerSegmentationsList(inAppDto.targeting).map { segment ->
                     SegmentationDataRequest(IdsRequest(segment))
                 }
             })
     }
 
-    fun mapToOperationMap(settingsDto: SettingsDto): Map<String, OperationDto> {
-        return settingsDto.operations?.map { (key, value) ->
-            key!! to OperationDto(value!!.systemName!!)
-        }?.toMap() ?: mapOf()
+    fun mapToProductSegmentationCheckRequest(
+        product: Pair<String, String>,
+        inApps: List<InApp>,
+    ): ProductSegmentationRequestDto {
+        return ProductSegmentationRequestDto(
+            products = listOf(
+                ProductRequestDto(
+                    Ids(product)
+                )
+            ),
+            segmentations = inApps.flatMap { inApp ->
+                getTargetingProductSegmentationsList(inApp.targeting).map { segmentation ->
+                    SegmentationRequestDto(
+                        SegmentationRequestIds(segmentation)
+                    )
+                }
+            }
+        )
     }
 
-    private fun getTargetingSegmentList(targeting: TreeTargeting): List<String> {
+    private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
-                    getTargetingSegmentList(treeTargeting)
+                    getTargetingProductSegmentationsList(treeTargeting)
+                }
+            }
+            is ViewProductSegmentNode -> {
+                listOf(targeting.segmentationExternalId)
+            }
+
+            is TreeTargeting.UnionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingProductSegmentationsList(treeTargeting)
+                }
+            }
+            else -> {
+                emptyList()
+            }
+        }
+    }
+
+    private fun getTargetingCustomerSegmentationsList(targeting: TreeTargeting): List<String> {
+        return when (targeting) {
+            is TreeTargeting.IntersectionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
             is TreeTargeting.SegmentNode -> {
@@ -249,7 +266,7 @@ internal class InAppMapper {
 
             is TreeTargeting.UnionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
-                    getTargetingSegmentList(treeTargeting)
+                    getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
             else -> {
