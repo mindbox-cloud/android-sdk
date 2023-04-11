@@ -212,6 +212,7 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             .centerCrop()
                             .into(this, object : Callback {
                                 override fun onSuccess() {
+                                    this@with?.isVisible = true
                                     currentInAppId = inAppType.inAppId
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
                                         setOnClickListener {
