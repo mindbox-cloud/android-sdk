@@ -11,9 +11,9 @@ internal interface InAppSegmentationRepository {
 
     suspend fun fetchCustomerSegmentations()
 
-    suspend fun fetchProductSegmentation(product: Pair<String, String>, segmentation: String)
+    suspend fun fetchProductSegmentation(product: Pair<String, String>)
 
-    fun getProductSegmentation(productId: String): ProductSegmentationResponseWrapper?
+    fun getProductSegmentations(productId: String): Set<ProductSegmentationResponseWrapper?>
 
     fun setCustomerSegmentationStatus(status: SegmentationFetchStatus)
 

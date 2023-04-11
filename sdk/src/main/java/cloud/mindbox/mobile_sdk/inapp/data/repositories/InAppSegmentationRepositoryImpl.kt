@@ -40,7 +40,9 @@ internal class InAppSegmentationRepositoryImpl(
         val response = GatewayManager.checkCustomerSegmentations(
             context = context,
             configuration = configuration,
-            segmentationCheckRequest = inAppMapper.mapToSegmentationCheckRequest(unShownInApps)
+            segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
+                unShownInApps
+            )
         )
         sessionStorageManager.inAppCustomerSegmentations =
             inAppMapper.mapToSegmentationCheck(response)
@@ -50,24 +52,31 @@ internal class InAppSegmentationRepositoryImpl(
 
     override suspend fun fetchProductSegmentation(
         product: Pair<String, String>,
-        segmentation: String,
     ) {
         val configuration = DbManager.listenConfigurations().first()
         val result = GatewayManager.checkProductSegmentation(
             context,
             configuration,
-            inAppMapper.mapToProductSegmentationRequestDto(product, segmentation)
+            inAppMapper.mapToProductSegmentationCheckRequest(product, unShownInApps)
         )
         sessionStorageManager.inAppProductSegmentations[product.second] =
-            inAppMapper.mapToProductSegmentationResponse(
-                result
-            )
+            sessionStorageManager.inAppProductSegmentations.getOrElse(product.second) {
+                mutableSetOf<ProductSegmentationResponseWrapper>().apply {
+                    add(
+                        inAppMapper.mapToProductSegmentationResponse(
+                            result
+                        )
+                    )
+                }
+            }
     }
 
-    override fun getProductSegmentation(
+    override fun getProductSegmentations(
         productId: String,
-    ): ProductSegmentationResponseWrapper? {
-        return sessionStorageManager.inAppProductSegmentations[productId]
+    ): Set<ProductSegmentationResponseWrapper?> {
+        return LoggingExceptionHandler.runCatching(emptySet()) {
+            sessionStorageManager.inAppProductSegmentations[productId] ?: emptySet()
+        }
     }
 
     override fun setCustomerSegmentationStatus(status: SegmentationFetchStatus) {
