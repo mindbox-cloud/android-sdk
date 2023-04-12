@@ -231,46 +231,46 @@ internal class InAppMapper {
         )
     }
 
-    private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): Set<String> {
+    private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
                     getTargetingProductSegmentationsList(treeTargeting)
-                }.toSet()
+                }
             }
             is ViewProductSegmentNode -> {
-                setOf(targeting.segmentationExternalId)
+                listOf(targeting.segmentationExternalId)
             }
 
             is TreeTargeting.UnionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
                     getTargetingProductSegmentationsList(treeTargeting)
-                }.toSet()
+                }
             }
             else -> {
-                emptySet()
+                emptyList()
             }
         }
     }
 
-    private fun getTargetingCustomerSegmentationsList(targeting: TreeTargeting): Set<String> {
+    private fun getTargetingCustomerSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
                     getTargetingCustomerSegmentationsList(treeTargeting)
-                }.toSet()
+                }
             }
             is TreeTargeting.SegmentNode -> {
-                setOf(targeting.segmentationExternalId)
+                listOf(targeting.segmentationExternalId)
             }
 
             is TreeTargeting.UnionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
                     getTargetingCustomerSegmentationsList(treeTargeting)
-                }.toSet()
+                }
             }
             else -> {
-                emptySet()
+                emptyList()
             }
         }
     }

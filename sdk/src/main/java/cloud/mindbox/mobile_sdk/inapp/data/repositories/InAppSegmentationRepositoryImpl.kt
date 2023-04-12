@@ -51,10 +51,19 @@ internal class InAppSegmentationRepositoryImpl(
         product: Pair<String, String>,
     ) {
         val configuration = DbManager.listenConfigurations().first()
+        val segmentationCheckRequest =
+            inAppMapper.mapToProductSegmentationCheckRequest(
+                product,
+                unShownInApps
+            ).apply {
+                segmentations.distinctBy {
+                    it.ids.externalId
+                }
+            }
         val result = GatewayManager.checkProductSegmentation(
             context,
             configuration,
-            inAppMapper.mapToProductSegmentationCheckRequest(product, unShownInApps)
+            segmentationCheckRequest
         )
         sessionStorageManager.inAppProductSegmentations[product.second] =
             sessionStorageManager.inAppProductSegmentations.getOrElse(product.second) {
