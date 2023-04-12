@@ -208,6 +208,8 @@ internal class InAppMapper {
                 getTargetingCustomerSegmentationsList(inAppDto.targeting).map { segment ->
                     SegmentationDataRequest(IdsRequest(segment))
                 }
+            }.distinctBy {
+                it.ids?.externalId
             })
     }
 
@@ -227,6 +229,8 @@ internal class InAppMapper {
                         SegmentationRequestIds(segmentation)
                     )
                 }
+            }.distinctBy {
+                it.ids.externalId
             }
         )
     }
