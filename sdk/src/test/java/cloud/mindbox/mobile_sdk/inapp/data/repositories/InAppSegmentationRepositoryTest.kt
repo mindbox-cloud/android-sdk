@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -94,13 +94,13 @@ class InAppSegmentationRepositoryTest {
     fun `request customer segmentations no inApps`() = runTest {
         inAppSegmentationRepository.unShownInApps = mutableListOf()
         every {
-            sessionStorageManager.segmentationFetchStatus =
-                SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            sessionStorageManager.customerSegmentationFetchStatus =
+                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         } just runs
         inAppSegmentationRepository.fetchCustomerSegmentations()
         verify(exactly = 1) {
-            sessionStorageManager.segmentationFetchStatus =
-                SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            sessionStorageManager.customerSegmentationFetchStatus =
+                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         }
 
         coVerify(exactly = 0) {
@@ -205,6 +205,9 @@ class InAppSegmentationRepositoryTest {
         } answers {
             expectedResult
         }
+        every {
+            sessionStorageManager.productSegmentationFetchStatus = any()
+        } just runs
         coEvery {
             GatewayManager.checkProductSegmentation(
                 context = context,
@@ -259,10 +262,10 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get segmentation fetched success`() {
         every {
-            sessionStorageManager.segmentationFetchStatus
-        } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            sessionStorageManager.customerSegmentationFetchStatus
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         assertEquals(
-            SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
+            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
         )
     }
@@ -270,10 +273,10 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get segmentation not fetched`() {
         every {
-            sessionStorageManager.segmentationFetchStatus
-        } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+            sessionStorageManager.customerSegmentationFetchStatus
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         assertEquals(
-            SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED,
+            CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
         )
     }
@@ -281,10 +284,10 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get segmentation fetched error`() {
         every {
-            sessionStorageManager.segmentationFetchStatus
+            sessionStorageManager.customerSegmentationFetchStatus
         } throws Error()
         assertEquals(
-            SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR,
+            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
         )
     }
