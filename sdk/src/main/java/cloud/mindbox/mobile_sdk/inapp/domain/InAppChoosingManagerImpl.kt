@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmen
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal class InAppChoosingManagerImpl(
@@ -23,17 +24,17 @@ internal class InAppChoosingManagerImpl(
             runCatching {
                 inApp.targeting.fetchTargetingInfo(data)
             }.onFailure { throwable ->
-               return when (throwable) {
+                return when (throwable) {
                     is GeoError -> {
                         inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
                         MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
                         chooseInAppToShow(inApps, triggerEvent)
                     }
-                    is SegmentationError -> {
+                    is CustomerSegmentationError -> {
                         inAppSegmentationRepository.setCustomerSegmentationStatus(
-                            SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                         )
-                        MindboxLoggerImpl.e(this, "Error fetching segmentations", throwable)
+                        MindboxLoggerImpl.e(this, "Error fetching customer segmentations", throwable)
                         chooseInAppToShow(inApps, triggerEvent)
                     }
                     else -> {

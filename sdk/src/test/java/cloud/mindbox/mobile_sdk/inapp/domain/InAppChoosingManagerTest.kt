@@ -3,16 +3,12 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.*
 import com.android.volley.VolleyError
-import com.android.volley.VolleyLog
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
@@ -67,9 +63,9 @@ internal class InAppChoosingManagerTest : KoinTest {
         coEvery {
             inAppGeoRepository.fetchGeo()
         } just runs
-        mockkObject(SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED)
-        mockkObject(SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS)
-        mockkObject(SegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
+        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED)
+        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS)
+        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
         mockkObject(MindboxKoin)
         every {
             MindboxKoin.koin
@@ -80,7 +76,7 @@ internal class InAppChoosingManagerTest : KoinTest {
         every {
             inAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_FETCH_SUCCESS
-        every { inAppSegmentationRepository.getCustomerSegmentationFetched() } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        every { inAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         coEvery {
             inAppSegmentationRepository.fetchCustomerSegmentations()
         } just runs
@@ -218,7 +214,7 @@ internal class InAppChoosingManagerTest : KoinTest {
         )
         coEvery {
             inAppSegmentationRepository.fetchCustomerSegmentations()
-        } throws SegmentationError(VolleyError())
+        } throws CustomerSegmentationError(VolleyError())
         every {
             inAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs

@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmen
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -60,6 +61,9 @@ internal class InAppInteractorImpl(
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
+                    inAppSegmentationRepository.setProductSegmentationFetchStatus(
+                        ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+                    )
                 }
             }.filterNotNull()
     }

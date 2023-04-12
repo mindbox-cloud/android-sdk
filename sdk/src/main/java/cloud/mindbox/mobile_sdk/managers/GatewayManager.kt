@@ -4,10 +4,7 @@ import android.content.Context
 import android.util.Log
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationRequestDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -343,7 +340,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            continuation.resumeWithException(error)
+                            continuation.resumeWithException(ProductSegmentationError(error))
                         }
                     )
                 )
@@ -377,7 +374,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                             )
                         },
                         { error ->
-                            continuation.resumeWithException(SegmentationError(error))
+                            continuation.resumeWithException(CustomerSegmentationError(error))
                         }
                     )
                 )

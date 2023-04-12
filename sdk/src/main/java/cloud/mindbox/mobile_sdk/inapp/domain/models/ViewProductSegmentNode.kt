@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import androidx.work.workDataOf
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import com.google.gson.Gson
 import org.koin.core.component.inject
@@ -19,14 +21,20 @@ internal data class ViewProductSegmentNode(
 
     override suspend fun fetchTargetingInfo(data: TargetingData) {
         if (data !is TargetingData.OperationBody) return
-
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
         body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.also { entry ->
             if (entry.value.isNullOrBlank()) return
-            runCatching {
-                inAppSegmentationRepository.fetchProductSegmentation(
-                    entry.key to entry.value!!
-                )
+            if (inAppSegmentationRepository.getProductSegmentationFetched() == ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+                runCatching {
+                    inAppSegmentationRepository.fetchProductSegmentation(
+                        entry.key to entry.value!!
+                    )
+                }.onFailure { error ->
+                    if (error is ProductSegmentationError) {
+                        inAppSegmentationRepository.setProductSegmentationFetchStatus(ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
+                        mindboxLogE("Error fetching product segmentations")
+                    }
+                }
             }
         } ?: return
     }
