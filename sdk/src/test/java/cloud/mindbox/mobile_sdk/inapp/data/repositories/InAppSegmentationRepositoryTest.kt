@@ -3,9 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationRequestIds
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -205,6 +206,10 @@ class InAppSegmentationRepositoryTest {
         } answers {
             expectedResult
         }
+        val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
+        every {
+            inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+        } returns dtoResult
         every {
             sessionStorageManager.productSegmentationFetchStatus = any()
         } just runs
@@ -212,7 +217,7 @@ class InAppSegmentationRepositoryTest {
             GatewayManager.checkProductSegmentation(
                 context = context,
                 configuration = configuration,
-                inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+                dtoResult
             )
         } answers {
             result
@@ -235,7 +240,10 @@ class InAppSegmentationRepositoryTest {
             }
         }
         inAppSegmentationRepository.fetchProductSegmentation("test1" to "test2")
-        assertEquals(expectedResult, sessionStorageManager.inAppProductSegmentations["test2"]?.firstOrNull())
+        assertEquals(
+            expectedResult,
+            sessionStorageManager.inAppProductSegmentations["test2"]?.firstOrNull()
+        )
     }
 
     @Test
@@ -245,11 +253,15 @@ class InAppSegmentationRepositoryTest {
                 emit(configuration)
             }
         }
+        val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
+        every {
+            inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+        } returns dtoResult
         coEvery {
             GatewayManager.checkProductSegmentation(
                 context = context,
                 configuration = configuration,
-                inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+                dtoResult
             )
         } throws VolleyError("test message")
         assertThrows(VolleyError::class.java) {
@@ -258,7 +270,6 @@ class InAppSegmentationRepositoryTest {
             }
         }
     }
-
     @Test
     fun `get segmentation fetched success`() {
         every {
