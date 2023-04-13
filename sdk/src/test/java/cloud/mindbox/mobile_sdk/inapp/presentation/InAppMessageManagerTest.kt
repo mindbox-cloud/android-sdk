@@ -15,7 +15,11 @@ import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.internal.ChannelFlow
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Before
@@ -68,9 +72,11 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app config is being fetched`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
 
@@ -87,9 +93,11 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in-app config throws non network error`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         mockkObject(LoggingExceptionHandler)
         coEvery {
             MindboxLoggerImpl.e(any(), any())
@@ -108,8 +116,10 @@ internal class InAppMessageManagerTest {
     @Test
     fun `in app messages success message not shown`() = runTest {
         every { inAppMessageInteractor.isInAppShown() } returns false
+
+        val displayer = mockk<InAppMessageViewDisplayer>()
         inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
+            displayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
@@ -129,29 +139,34 @@ internal class InAppMessageManagerTest {
         inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
-
-            verify(exactly = 1)  {
-                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
-            }
+        }
+        verify(exactly = 1)  {
+            displayer.tryShowInAppMessage(any(), any(), any())
         }
     }
 
     @Test
     fun `in app messages success message shown`() = runTest {
         every { inAppMessageInteractor.isInAppShown() } returns true
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         every {
             runBlocking {
                 inAppMessageInteractor.processEventAndConfig()
             }
         }.answers {
             flow {
-                emit(InAppType.SimpleImage(inAppId = "123",
-                    imageUrl = "",
-                    redirectUrl = "",
-                    intentData = ""))
+                emit(
+                    InAppType.SimpleImage(
+                        inAppId = "123",
+                        imageUrl = "",
+                        redirectUrl = "",
+                        intentData = ""
+                    )
+                )
             }
         }
         inAppMessageManager.listenEventAndInApp()
@@ -163,16 +178,18 @@ internal class InAppMessageManagerTest {
         every {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         } just runs
-        verify(exactly = 0)  {
+        verify(exactly = 0) {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         }
     }
 
     @Test
     fun `in app messages error message`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         every {
             runBlocking {
                 inAppMessageInteractor.processEventAndConfig()
@@ -203,9 +220,11 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in-app config throws network error non 404`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
         NetworkResponse::class.java.declaredFields[0].apply {
@@ -214,8 +233,10 @@ internal class InAppMessageManagerTest {
             modifiersField.isAccessible = true
             modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
 
-        }.setInt(networkResponse,
-            403)
+        }.setInt(
+            networkResponse,
+            403
+        )
         every {
             MindboxPreferences getProperty MindboxPreferences::inAppConfig.name
         }.answers {
@@ -233,9 +254,11 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app config throws network error 404`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
         NetworkResponse::class.java.declaredFields[0].apply {
@@ -244,8 +267,10 @@ internal class InAppMessageManagerTest {
             modifiersField.isAccessible = true
             modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
 
-        }.setInt(networkResponse,
-            404)
+        }.setInt(
+            networkResponse,
+            404
+        )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
         }.throws(VolleyError(networkResponse))
