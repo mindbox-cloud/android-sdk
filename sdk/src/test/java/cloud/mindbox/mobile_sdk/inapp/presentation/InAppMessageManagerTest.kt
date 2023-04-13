@@ -115,28 +115,29 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app messages success message not shown`() = runTest {
-        every { inAppMessageInteractor.isInAppShown() } returns false
+        val interactor = mockk<InAppInteractor>() {
+            every { isInAppShown() } returns false
+            coEvery {
+                processEventAndConfig()
+            }.answers {
+                flow {
+                    emit(InAppType.SimpleImage(inAppId = "123",
+                        imageUrl = "",
+                        redirectUrl = "",
+                        intentData = ""))
+                }
+            }
+        }
 
         val displayer = mockk<InAppMessageViewDisplayer>()
         inAppMessageManager = InAppMessageManagerImpl(
             displayer,
-            inAppMessageInteractor,
+            interactor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
-        every {
-            runBlocking {
-                inAppMessageInteractor.processEventAndConfig()
-            }
-        }.answers {
-            flow {
-                emit(InAppType.SimpleImage(inAppId = "123",
-                    imageUrl = "",
-                    redirectUrl = "",
-                    intentData = ""))
-            }
-        }
+
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-        inAppMessageInteractor.processEventAndConfig().test {
+        interactor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
         }
