@@ -254,6 +254,7 @@ internal class InAppChoosingManagerTest : KoinTest {
         coEvery {
             inAppGeoRepository.fetchGeo()
         } throws GeoError(VolleyError())
+
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
             testInAppList,
