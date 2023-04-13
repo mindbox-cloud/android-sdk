@@ -55,11 +55,7 @@ internal class InAppSegmentationRepositoryImpl(
             inAppMapper.mapToProductSegmentationCheckRequest(
                 product,
                 unShownInApps
-            ).apply {
-                segmentations.distinctBy {
-                    it.ids.externalId
-                }
-            }
+            )
         val result = GatewayManager.checkProductSegmentation(
             context,
             configuration,

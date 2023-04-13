@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 
