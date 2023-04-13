@@ -108,7 +108,8 @@ internal class InAppMessageManagerTest {
     @Test
     fun `in app messages success message not shown`() = runTest {
         every { inAppMessageInteractor.isInAppShown() } returns false
-        inAppMessageManager = InAppMessageManagerImpl(inAppMessageViewDisplayer,
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository)
         every {
@@ -128,12 +129,10 @@ internal class InAppMessageManagerTest {
         inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
-        }
-        every {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
-        } just runs
-        verify(exactly = 1)  {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+
+            verify(exactly = 1)  {
+                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+            }
         }
     }
 
