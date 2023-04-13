@@ -60,7 +60,7 @@ class TreeTargetingTest : KoinTest {
         } returns GeoFetchStatus.GEO_FETCH_SUCCESS
         every {
             inAppSegmentationRepository.getCustomerSegmentationFetched()
-        } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
     @Test
@@ -390,7 +390,7 @@ class TreeTargetingTest : KoinTest {
         } just runs
         every {
             inAppSegmentationRepository.getCustomerSegmentationFetched()
-        } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every {
             inAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_NOT_FETCHED
