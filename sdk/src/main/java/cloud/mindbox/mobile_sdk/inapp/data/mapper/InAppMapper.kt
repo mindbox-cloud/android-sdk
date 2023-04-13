@@ -1,9 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
+import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
@@ -11,6 +14,23 @@ import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal class InAppMapper {
+    fun mapToProductSegmentationResponse(productSegmentationResponseDto: ProductSegmentationResponseDto): ProductSegmentationResponseWrapper {
+        return ProductSegmentationResponseWrapper(
+            productSegmentationResponseDto.products?.map { productResponseDto ->
+                ProductResponse(
+                    productList = productResponseDto?.segmentations?.map { productSegmentations ->
+                        ProductSegmentationResponse(
+                            segmentationExternalId = productSegmentations?.ids?.ids?.values?.first()
+                                ?: "",
+                            segmentExternalId = productSegmentations?.segment?.ids?.ids?.values?.first()
+                                ?: ""
+                        )
+                    } ?: emptyList()
+
+                )
+            } ?: emptyList()
+        )
+    }
 
     fun mapGeoTargetingDtoToGeoTargeting(geoTargetingDto: GeoTargetingDto): GeoTargeting {
         return GeoTargeting(
@@ -49,9 +69,9 @@ internal class InAppMapper {
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig? {
-        return inAppConfigResponse?.let { inAppConfigDto ->
+        return inAppConfigResponse?.let {
             InAppConfig(
-                inApps = inAppConfigDto.inApps?.map { inAppDto ->
+                inApps = inAppConfigResponse.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
@@ -83,7 +103,10 @@ internal class InAppMapper {
                         from = it.from.convertToZonedDateTime(),
                         to = it.to.convertToZonedDateTime()
                     )
-                } ?: emptyList()
+                } ?: emptyList(),
+                operations = inAppConfigResponse.settings?.map { (key, value) ->
+                    key.enumValue<OperationName>() to OperationSystemName(value.systemName)
+                }?.toMap() ?: emptyMap()
             )
         }
     }
@@ -134,6 +157,33 @@ internal class InAppMapper {
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     ids = treeTargetingDto.ids as List<String>
                 )
+                is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
+                    type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    value = treeTargetingDto.value!!
+                )
+                is TreeTargetingDto.ViewProductCategoryInNodeDto -> ViewProductCategoryInNode(
+                    type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    values = treeTargetingDto.values?.map { dto ->
+                        ViewProductCategoryInNode.Value(
+                            id = dto.id!!,
+                            externalId = dto.externalId!!,
+                            externalSystemName = dto.externalSystemName!!
+                        )
+                    } ?: listOf()
+                )
+                is TreeTargetingDto.ViewProductNodeDto -> ViewProductNode(
+                    type = TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    value = treeTargetingDto.value!!
+                )
+                is TreeTargetingDto.ViewProductSegmentNodeDto -> ViewProductSegmentNode(
+                    type = TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME,
+                    kind = treeTargetingDto.kind.enumValue(),
+                    segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
+                    segmentExternalId = treeTargetingDto.segmentExternalId!!
+                )
             }
         }
     }
@@ -152,20 +202,66 @@ internal class InAppMapper {
         )
     }
 
-    fun mapToSegmentationCheckRequest(inApps: List<InApp>): SegmentationCheckRequest {
+    fun mapToCustomerSegmentationCheckRequest(inApps: List<InApp>): SegmentationCheckRequest {
         return SegmentationCheckRequest(
             inApps.flatMap { inAppDto ->
-                getTargetingSegmentList(inAppDto.targeting).map { segment ->
+                getTargetingCustomerSegmentationsList(inAppDto.targeting).map { segment ->
                     SegmentationDataRequest(IdsRequest(segment))
                 }
+            }.distinctBy {
+                it.ids?.externalId
             })
     }
 
-    private fun getTargetingSegmentList(targeting: TreeTargeting): List<String> {
+    fun mapToProductSegmentationCheckRequest(
+        product: Pair<String, String>,
+        inApps: List<InApp>,
+    ): ProductSegmentationRequestDto {
+        return ProductSegmentationRequestDto(
+            products = listOf(
+                ProductRequestDto(
+                    Ids(product)
+                )
+            ),
+            segmentations = inApps.flatMap { inApp ->
+                getTargetingProductSegmentationsList(inApp.targeting).map { segmentation ->
+                    SegmentationRequestDto(
+                        SegmentationRequestIds(segmentation)
+                    )
+                }
+            }.distinctBy {
+                it.ids.externalId
+            }
+        )
+    }
+
+    private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
-                    getTargetingSegmentList(treeTargeting)
+                    getTargetingProductSegmentationsList(treeTargeting)
+                }
+            }
+            is ViewProductSegmentNode -> {
+                listOf(targeting.segmentationExternalId)
+            }
+
+            is TreeTargeting.UnionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingProductSegmentationsList(treeTargeting)
+                }
+            }
+            else -> {
+                emptyList()
+            }
+        }
+    }
+
+    private fun getTargetingCustomerSegmentationsList(targeting: TreeTargeting): List<String> {
+        return when (targeting) {
+            is TreeTargeting.IntersectionNode -> {
+                targeting.nodes.flatMap { treeTargeting ->
+                    getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
             is TreeTargeting.SegmentNode -> {
@@ -174,7 +270,7 @@ internal class InAppMapper {
 
             is TreeTargeting.UnionNode -> {
                 targeting.nodes.flatMap { treeTargeting ->
-                    getTargetingSegmentList(treeTargeting)
+                    getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
             else -> {

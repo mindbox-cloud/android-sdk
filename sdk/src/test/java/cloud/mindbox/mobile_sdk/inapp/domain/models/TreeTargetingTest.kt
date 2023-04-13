@@ -1,24 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import android.content.Context
-import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.*
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -69,8 +59,8 @@ class TreeTargetingTest : KoinTest {
             inAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_FETCH_SUCCESS
         every {
-            inAppSegmentationRepository.getSegmentationFetched()
-        } returns SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            inAppSegmentationRepository.getCustomerSegmentationFetched()
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
     @Test
@@ -191,7 +181,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting positive success check`() {
         every {
-            inAppSegmentationRepository.getSegmentations()
+            inAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(
             SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "234")
         )
@@ -209,7 +199,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting positive error check`() {
         every {
-            inAppSegmentationRepository.getSegmentations()
+            inAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
         assertFalse(
             InAppStub.getTargetingSegmentNode()
@@ -225,7 +215,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting negative error check`() {
         every {
-            inAppSegmentationRepository.getSegmentations()
+            inAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
         assertFalse(
             InAppStub.getTargetingSegmentNode()
@@ -241,7 +231,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting negative success check`() {
         every {
-            inAppSegmentationRepository.getSegmentations()
+            inAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(
             SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "235")
         )
@@ -366,7 +356,7 @@ class TreeTargetingTest : KoinTest {
     }
 
     @Test
-    fun `get operations list in nodes`() {
+    fun `get operations list in nodes`() = runTest {
         val expectedResult = setOf("testOperation")
         val actualResult = InAppStub.getInApp().copy(
             targeting = InAppStub.getTargetingUnionNode()
@@ -396,11 +386,11 @@ class TreeTargetingTest : KoinTest {
             inAppGeoRepository.fetchGeo()
         } just runs
         coEvery {
-            inAppSegmentationRepository.fetchSegmentations()
+            inAppSegmentationRepository.fetchCustomerSegmentations()
         } just runs
         every {
-            inAppSegmentationRepository.getSegmentationFetched()
-        } returns SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+            inAppSegmentationRepository.getCustomerSegmentationFetched()
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every {
             inAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_NOT_FETCHED
@@ -427,7 +417,7 @@ class TreeTargetingTest : KoinTest {
             inAppGeoRepository.fetchGeo()
         }
         coVerify {
-            inAppSegmentationRepository.fetchSegmentations()
+            inAppSegmentationRepository.fetchCustomerSegmentations()
         }
 
     }

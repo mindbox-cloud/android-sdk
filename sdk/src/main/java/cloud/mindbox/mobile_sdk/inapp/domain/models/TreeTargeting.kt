@@ -1,14 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.InAppEventType
-import com.android.volley.VolleyError
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import org.koin.core.component.inject
 
 internal interface ITargeting {
@@ -34,7 +29,7 @@ internal interface TargetingInfo {
 
     fun hasOperationNode(): Boolean
 
-    fun getOperationsSet(): Set<String>
+    suspend fun getOperationsSet(): Set<String>
 }
 
 internal enum class Kind {
@@ -42,6 +37,17 @@ internal enum class Kind {
     NEGATIVE
 }
 
+internal enum class KindAny {
+    ANY,
+    NONE,
+}
+
+internal enum class KindSubstring {
+    SUBSTRING,
+    NOT_SUBSTRING,
+    STARTS_WITH,
+    ENDS_WITH
+}
 
 internal sealed class TreeTargeting(open val type: String) :
     ITargeting, TargetingInfo, MindboxKoin.MindboxKoinComponent {
@@ -68,7 +74,7 @@ internal sealed class TreeTargeting(open val type: String) :
             return false
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
     }
@@ -88,21 +94,13 @@ internal sealed class TreeTargeting(open val type: String) :
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
-            runCatching {
-                if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
-                    inAppGeoRepositoryImpl.fetchGeo()
-                }
-            }.onFailure { throwable ->
-                if (throwable is VolleyError) {
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                } else {
-                    throw throwable
-                }
+            if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
+                inAppGeoRepositoryImpl.fetchGeo()
             }
         }
 
@@ -135,7 +133,7 @@ internal sealed class TreeTargeting(open val type: String) :
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -173,7 +171,7 @@ internal sealed class TreeTargeting(open val type: String) :
                 .not()
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
@@ -210,7 +208,7 @@ internal sealed class TreeTargeting(open val type: String) :
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -256,6 +254,7 @@ internal sealed class TreeTargeting(open val type: String) :
             var rez = false
             for (node in nodes) {
                 val check = node.checkTargeting(data)
+                mindboxLogD("Check UnionNode ${node.type}: $check")
                 if (check) {
                     rez = true
                 }
@@ -263,7 +262,7 @@ internal sealed class TreeTargeting(open val type: String) :
             return rez
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return nodes.flatMap { treeTargeting ->
                 treeTargeting.getOperationsSet()
             }.toSet()
@@ -310,8 +309,8 @@ internal sealed class TreeTargeting(open val type: String) :
         private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
 
         override fun checkTargeting(data: TargetingData): Boolean {
-            if (inAppSegmentationRepository.getSegmentationFetched() != SegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
-            val segmentationsWrapperList = inAppSegmentationRepository.getSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() != CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false
+            val segmentationsWrapperList = inAppSegmentationRepository.getCustomerSegmentations()
             return when (kind) {
                 Kind.POSITIVE -> segmentationsWrapperList.find { segmentationWrapper -> segmentationWrapper.segmentation == segmentationExternalId }?.segment == segmentExternalId
                 Kind.NEGATIVE -> segmentationsWrapperList.find { it.segmentation == segmentationExternalId }
@@ -321,13 +320,13 @@ internal sealed class TreeTargeting(open val type: String) :
 
         }
 
-        override fun getOperationsSet(): Set<String> {
+        override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
-            if (inAppSegmentationRepository.getSegmentationFetched() == SegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
-                inAppSegmentationRepository.fetchSegmentations()
+            if (inAppSegmentationRepository.getCustomerSegmentationFetched() == CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+                inAppSegmentationRepository.fetchCustomerSegmentations()
             }
         }
 

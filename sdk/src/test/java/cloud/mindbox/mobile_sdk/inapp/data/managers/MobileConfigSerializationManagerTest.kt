@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
@@ -222,6 +221,49 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
         assertEquals(expectedResult, actualResult)
     }
 
+    @Test
+    fun `deserialize to inapp view product category dto success`() {
+        val expectedResult = InAppStub.viewProductCategoryNodeDto.copy(
+            type = "viewProductCategoryId",
+            kind = "substring",
+            value = "test"
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductCategoryId")
+                addProperty("kind", "substring")
+                addProperty("value", "test")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to inapp view product category in dto success`() {
+        val expectedResult = InAppStub.viewProductCategoryInNodeDto.copy(
+            type = "viewProductCategoryIdIn",
+            kind = "any",
+            values = listOf(
+                InAppStub.viewProductCategoryInValueDto.copy(
+                    id = "id",
+                    externalId = "externalId",
+                    externalSystemName = "externalSystemName",
+                )
+            )
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductCategoryIdIn")
+                addProperty("kind", "any")
+                add("values", JsonArray().apply {
+                    add(JsonObject().apply {
+                        addProperty("id", "id")
+                        addProperty("externalId", "externalId")
+                        addProperty("externalSystemName", "externalSystemName")
+                    })
+                })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
 
     @Test
     fun `deserialize to in app intersection dto success`() {
@@ -255,6 +297,43 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
                         addProperty("${'$'}type", "true")
                     })
                 })
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to inapp view product dto success`() {
+        val expectedResult = InAppStub.getTargetingViewProductNodeDto().copy(
+            type = "viewProductId",
+            kind = "substring",
+            value = "test"
+        )
+
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductId")
+                addProperty("kind", "substring")
+                addProperty("value", "test")
+            })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `deserialize to inapp view product segment dto success`() {
+        val expectedResult = InAppStub.getTargetingViewProductSegmentNodeDto().copy(
+            type = "viewProductSegment",
+            kind = "positive",
+            segmentExternalId = "segmentExternalId",
+            segmentationInternalId = "segmentationInternalId",
+            segmentationExternalId = "segmentationExternalId"
+        )
+        val actualResult =
+            mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
+                addProperty("${'$'}type", "viewProductSegment")
+                addProperty("kind", "positive")
+                addProperty("segmentExternalId", "segmentExternalId")
+                addProperty("segmentationInternalId", "segmentationInternalId")
+                addProperty("segmentationExternalId", "segmentationExternalId")
             })
         assertEquals(expectedResult, actualResult)
     }
@@ -340,5 +419,6 @@ internal class MobileConfigSerializationManagerTest : KoinTest {
             })
         }))
     }
+
 
 }

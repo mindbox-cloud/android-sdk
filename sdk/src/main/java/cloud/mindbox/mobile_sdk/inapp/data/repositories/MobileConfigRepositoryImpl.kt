@@ -2,15 +2,20 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
+import cloud.mindbox.mobile_sdk.models.operation.response.OperationDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -26,11 +31,14 @@ internal class MobileConfigRepositoryImpl(
     private val context: Context,
     private val inAppValidator: InAppValidator,
     private val monitoringValidator: MonitoringValidator,
+    private val operationNameValidator: OperationNameValidator,
+    private val operationValidator: OperationValidator,
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
 
     private var inApps: List<InApp>? = null
+    private var operations: Map<OperationName, OperationSystemName>? = null
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
@@ -57,9 +65,11 @@ internal class MobileConfigRepositoryImpl(
                         inAppMapper.mapToInAppDto(
                             inAppDtoBlank = inAppDtoBlank,
                             formDto = mobileConfigSerializationManager.deserializeToInAppFormDto(
-                                inAppDtoBlank.form),
+                                inAppDtoBlank.form
+                            ),
                             targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
-                                inAppDtoBlank.targeting)
+                                inAppDtoBlank.targeting
+                            )
                         )
                     }?.filter { inAppDto ->
                         inAppValidator.validateInApp(inAppDto)
@@ -70,9 +80,20 @@ internal class MobileConfigRepositoryImpl(
                     }?.map { logRequestDtoBlank ->
                         inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
                     }
+
+                val filteredSettings = configBlank?.settings?.operations
+                    ?.filter { (name, operation) ->
+                        operationNameValidator.isValid(name)
+                                && operationValidator.isValid(operation)
+                    }?.map { (name, operation) ->
+                        name!! to OperationDto(operation!!.systemName!!)
+                    }?.toMap()
+                    ?: emptyMap()
+
                 val filteredConfig = InAppConfigResponse(
                     inApps = filteredInApps,
-                    monitoring = filteredMonitoring
+                    monitoring = filteredMonitoring,
+                    settings = filteredSettings,
                 )
 
                 return@map inAppMapper.mapToInAppConfig(filteredConfig)
@@ -89,6 +110,17 @@ internal class MobileConfigRepositoryImpl(
     override fun listenMonitoringSection(): Flow<List<LogRequest>?> {
         return listenInAppConfig().map { inAppConfig ->
             inAppConfig?.monitoring
+        }
+    }
+
+    override suspend fun getOperations(): Map<OperationName, OperationSystemName> {
+        return operations ?: run {
+            val operationsMap: Map<OperationName, OperationSystemName> =
+                listenInAppConfig().map { inAppConfig ->
+                    inAppConfig?.operations
+                }.first() ?: mapOf()
+            operations = operationsMap
+            operationsMap
         }
     }
 

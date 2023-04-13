@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
-import cloud.mindbox.mobile_sdk.inapp.data.InAppValidatorImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
@@ -11,6 +11,8 @@ import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
@@ -97,6 +99,9 @@ internal val monitoringModule = module {
             .build()
     }
     single { get<MonitoringDatabase>().monitoringDao() }
+
+    factory { OperationNameValidator() }
+    factory { OperationValidator() }
 }
 internal val presentationModule = module {
     single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
@@ -124,8 +129,7 @@ internal val domainModule = module {
     single<InAppChoosingManager> {
         InAppChoosingManagerImpl(
             inAppGeoRepository = get(),
-            inAppSegmentationRepository = get(),
-            inAppFilteringManager = get()
+            inAppSegmentationRepository = get()
         )
     }
     factory<InAppEventManager> {
@@ -145,7 +149,9 @@ internal val dataModule = module {
             mobileConfigSerializationManager = get(),
             context = androidContext(),
             inAppValidator = get(),
-            monitoringValidator = get()
+            monitoringValidator = get(),
+            operationNameValidator = get(),
+            operationValidator = get(),
         )
     }
     factory<MobileConfigSerializationManager> {
@@ -223,6 +229,18 @@ internal val dataModule = module {
             ).registerSubtype(
                 TreeTargetingDto.OperationNodeDto::class.java,
                 TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductCategoryNodeDto::class.java,
+                TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
+                TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
+                TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
+            ).registerSubtype(
+                TreeTargetingDto.ViewProductNodeDto::class.java,
+                TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
             )
         ).create()
     }

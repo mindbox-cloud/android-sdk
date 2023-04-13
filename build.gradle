@@ -12,7 +12,6 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:0.10.1"
         classpath 'com.google.gms:google-services:4.3.10'
-//        classpath "io.github.gradle-nexus.publish-plugin:1.0.0"
         classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
         classpath 'com.huawei.agconnect:agcp:1.6.0.300'
 
@@ -21,18 +20,12 @@ buildscript {
     }
 }
 
-
-plugins {
-    id "io.github.gradle-nexus.publish-plugin" version "1.0.0"
-}
-
-//apply plugin: "io.github.gradle-nexus.publish-plugin"
-
 allprojects {
     repositories {
         google()
         mavenCentral()
         maven { url 'https://developer.huawei.com/repo/' }
+        mavenLocal()
     }
 }
 

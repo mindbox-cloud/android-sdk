@@ -85,6 +85,41 @@ internal class InAppStub {
             )
         }
 
+        fun getTargetingViewProductNodeDto(): TreeTargetingDto.ViewProductNodeDto {
+            return TreeTargetingDto.ViewProductNodeDto(
+                type = "",
+                kind = "",
+                value = ""
+            )
+        }
+
+        fun getTargetingViewProductSegmentNodeDto(): TreeTargetingDto.ViewProductSegmentNodeDto {
+            return TreeTargetingDto.ViewProductSegmentNodeDto(
+                type = "",
+                kind = "",
+                segmentExternalId = "",
+                segmentationExternalId = "",
+                segmentationInternalId = ""
+            )
+        }
+
+        fun getTargetingViewProductSegmentNode(): ViewProductSegmentNode {
+            return ViewProductSegmentNode(
+                type = "",
+                kind = Kind.NEGATIVE,
+                segmentationExternalId = "",
+                segmentExternalId = "",
+            )
+        }
+
+        fun getTargetingViewProductNode(): ViewProductNode {
+            return ViewProductNode(
+                type = "",
+                kind = KindSubstring.SUBSTRING,
+                value = ""
+            )
+        }
+
         fun getTargetingUnionNode(): TreeTargeting.UnionNode {
             return TreeTargeting.UnionNode(type = "", nodes = emptyList())
         }
@@ -145,5 +180,49 @@ internal class InAppStub {
             redirectUrl = "",
             intentPayload = ""
         )
+
+        val viewProductNode: ViewProductNode = ViewProductNode(
+            type = "", kind = KindSubstring.SUBSTRING, value = ""
+        )
+
+        val viewProductSegmentNode: ViewProductSegmentNode = ViewProductSegmentNode(
+            type = "", kind = Kind.POSITIVE, segmentExternalId = "", segmentationExternalId = ""
+        )
+
+        val viewProductCategoryNode: ViewProductCategoryNode
+            get() = ViewProductCategoryNode(
+                type = "viewProductCategoryId",
+                kind = KindSubstring.SUBSTRING,
+                value = ""
+            )
+
+        val viewProductCategoryInNode: ViewProductCategoryInNode
+            get() = ViewProductCategoryInNode(
+                type = "viewProductCategoryIdIn",
+                kind = KindAny.ANY,
+                values = listOf()
+            )
+
+        val viewProductCategoryNodeDto: TreeTargetingDto.ViewProductCategoryNodeDto
+            get() = TreeTargetingDto.ViewProductCategoryNodeDto(
+                type = "",
+                kind = "",
+                value = ""
+            )
+
+        val viewProductCategoryInNodeDto: TreeTargetingDto.ViewProductCategoryInNodeDto
+            get() = TreeTargetingDto.ViewProductCategoryInNodeDto(
+                type = "",
+                kind = "",
+                values = listOf()
+            )
+
+        val viewProductCategoryInValueDto: TreeTargetingDto.ViewProductCategoryInNodeDto.ValueDto
+            get() = TreeTargetingDto.ViewProductCategoryInNodeDto.ValueDto(
+                id = "",
+                externalSystemName = "",
+                externalId = "",
+            )
+
     }
 }

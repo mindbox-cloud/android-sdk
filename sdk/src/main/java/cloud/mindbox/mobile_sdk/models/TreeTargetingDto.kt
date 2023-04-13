@@ -105,6 +105,71 @@ internal sealed class TreeTargetingDto {
         }
     }
 
+    internal data class ViewProductCategoryNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("value")
+        val value: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_CATEGORY_ID_JSON_NAME = "viewProductCategoryId"
+        }
+    }
+
+    internal data class ViewProductCategoryInNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("values")
+        val values: List<ValueDto>?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME = "viewProductCategoryIdIn"
+        }
+
+        internal data class ValueDto(
+            @SerializedName("id")
+            val id: String?,
+            @SerializedName("externalId")
+            val externalId: String?,
+            @SerializedName("externalSystemName")
+            val externalSystemName: String?,
+        )
+    }
+
+    internal data class ViewProductNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("value")
+        val value: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_ID_JSON_NAME = "viewProductId"
+        }
+    }
+
+    internal data class ViewProductSegmentNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("segmentationExternalId")
+        val segmentationExternalId: String?,
+        @SerializedName("segmentationInternalId")
+        val segmentationInternalId: String?,
+        @SerializedName("segmentExternalId")
+        val segmentExternalId: String?,
+    ) : TreeTargetingDto() {
+        companion object {
+            const val VIEW_PRODUCT_SEGMENT_JSON_NAME = "viewProductSegment"
+        }
+    }
+
     companion object {
         const val TYPE_JSON_NAME = "\$type"
     }

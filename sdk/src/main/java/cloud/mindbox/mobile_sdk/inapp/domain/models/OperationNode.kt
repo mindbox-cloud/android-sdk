@@ -1,5 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+
+import cloud.mindbox.mobile_sdk.models.InAppEventType
+
+
 internal data class OperationNode(
     override val type: String,
     val systemName: String,
@@ -14,7 +18,7 @@ internal data class OperationNode(
         return data.triggerEventName.equals(systemName, true)
     }
 
-    override fun getOperationsSet(): Set<String> {
+    override suspend fun getOperationsSet(): Set<String> {
         return setOf(systemName)
     }
 }
