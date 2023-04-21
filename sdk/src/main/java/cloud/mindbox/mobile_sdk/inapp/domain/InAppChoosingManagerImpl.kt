@@ -1,17 +1,19 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import kotlinx.coroutines.*
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
+    private val inAppContentFetcher: InAppContentFetcher,
 ) :
     InAppChoosingManager {
 
@@ -21,8 +23,17 @@ internal class InAppChoosingManagerImpl(
     ): InAppType? {
         for (inApp in inApps) {
             val data = getTargetingData(triggerEvent)
+            var isInAppContentFetched = false
             runCatching {
-                inApp.targeting.fetchTargetingInfo(data)
+                withContext(Job() + Dispatchers.IO) {
+                    listOf(launch {
+                        inApp.targeting.fetchTargetingInfo(data)
+                    }, launch {
+                        isInAppContentFetched =
+                            inAppContentFetcher.fetchContent(inApp.form.variants.first())
+                    }).joinAll()
+                }
+
             }.onFailure { throwable ->
                 return when (throwable) {
                     is GeoError -> {
@@ -34,7 +45,9 @@ internal class InAppChoosingManagerImpl(
                         inAppSegmentationRepository.setCustomerSegmentationStatus(
                             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                         )
-                        MindboxLoggerImpl.e(this, "Error fetching customer segmentations", throwable)
+                        MindboxLoggerImpl.e(this,
+                            "Error fetching customer segmentations",
+                            throwable)
                         chooseInAppToShow(inApps, triggerEvent)
                     }
                     else -> {
@@ -43,6 +56,7 @@ internal class InAppChoosingManagerImpl(
                     }
                 }
             }
+            if (!isInAppContentFetched) continue
             val check = inApp.targeting.checkTargeting(data)
             mindboxLogD("Check ${inApp.targeting.type}: $check")
             if (check) {

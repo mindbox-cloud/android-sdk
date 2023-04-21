@@ -22,7 +22,7 @@ internal class InAppInteractorImpl(
     private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
-    private val inAppChoosingManager: InAppChoosingManager,
+    private val inAppChoosingManager: InAppChoosingManager
 ) : InAppInteractor {
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
