@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.checkers
 
-import android.util.Log
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean

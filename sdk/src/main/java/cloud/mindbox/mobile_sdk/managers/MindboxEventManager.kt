@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -145,7 +146,6 @@ internal object MindboxEventManager {
     }
 
     fun <T, V : OperationResponseBaseInternal> syncOperation(
-        context: Context,
         name: String,
         body: T,
         classOfV: Class<V>,
@@ -159,8 +159,7 @@ internal object MindboxEventManager {
         val jsonBody = if (json.isNotBlank() && json != NULL_JSON) json else EMPTY_JSON_OBJECT
         val event = createSyncEvent(name, jsonBody)
         val deviceUuid = MindboxPreferences.deviceUuid
-        GatewayManager.sendEvent(
-            context = context,
+        MindboxDI.appModule.gatewayManager.sendEvent(
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = event,
@@ -172,7 +171,6 @@ internal object MindboxEventManager {
     }
 
     fun syncOperation(
-        context: Context,
         name: String,
         bodyJson: String,
         onSuccess: (String) -> Unit,
@@ -183,8 +181,7 @@ internal object MindboxEventManager {
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
 
-        GatewayManager.sendEvent(
-            context = context,
+        MindboxDI.appModule.gatewayManager.sendEvent(
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = event,

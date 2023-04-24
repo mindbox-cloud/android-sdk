@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
-import org.junit.Assert.*
-
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OperationValidatorTest {

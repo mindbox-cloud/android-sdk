@@ -1,10 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import org.koin.core.component.inject
 
 internal interface ITargeting {
     fun checkTargeting(data: TargetingData): Boolean
@@ -50,7 +47,7 @@ internal enum class KindSubstring {
 }
 
 internal sealed class TreeTargeting(open val type: String) :
-    ITargeting, TargetingInfo, MindboxKoin.MindboxKoinComponent {
+    ITargeting, TargetingInfo {
 
     internal data class TrueNode(override val type: String) : TreeTargeting(type) {
 
@@ -85,7 +82,7 @@ internal sealed class TreeTargeting(open val type: String) :
         val ids: List<String>,
     ) : TreeTargeting(type) {
 
-        private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
+        private val inAppGeoRepositoryImpl by mindboxInject { inAppGeoRepository }
 
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
@@ -123,8 +120,7 @@ internal sealed class TreeTargeting(open val type: String) :
         val ids: List<String>,
     ) : TreeTargeting(type) {
 
-        private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
-
+        private val inAppGeoRepositoryImpl by mindboxInject { inAppGeoRepository }
 
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
@@ -162,7 +158,7 @@ internal sealed class TreeTargeting(open val type: String) :
         val ids: List<String>,
     ) : TreeTargeting(type) {
 
-        private val inAppGeoRepositoryImpl: InAppGeoRepository by inject()
+        private val inAppGeoRepositoryImpl by mindboxInject { inAppGeoRepository }
 
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
@@ -306,7 +302,7 @@ internal sealed class TreeTargeting(open val type: String) :
         val segmentExternalId: String,
     ) : TreeTargeting(type) {
 
-        private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
+        private val inAppSegmentationRepository by mindboxInject { inAppSegmentationRepository }
 
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppSegmentationRepository.getCustomerSegmentationFetched() != CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) return false

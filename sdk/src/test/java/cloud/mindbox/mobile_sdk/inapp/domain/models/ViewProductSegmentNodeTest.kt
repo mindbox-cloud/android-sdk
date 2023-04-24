@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.di.domainModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository

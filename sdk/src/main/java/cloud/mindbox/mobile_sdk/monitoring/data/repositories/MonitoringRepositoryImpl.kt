@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.repositories
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -21,12 +20,12 @@ import kotlinx.coroutines.sync.withLock
 import java.time.ZonedDateTime
 
 internal class MonitoringRepositoryImpl(
-    private val context: Context,
     private val monitoringDao: MonitoringDao,
     private val monitoringMapper: MonitoringMapper,
     private val gson: Gson,
     private val logStoringDataChecker: LogStoringDataChecker,
     private val monitoringValidator: MonitoringValidator,
+    private val gatewayManager: GatewayManager
 ) : MonitoringRepository {
     override suspend fun deleteFirstLog() {
         monitoringDao.deleteFirstLog()
@@ -101,12 +100,13 @@ internal class MonitoringRepositoryImpl(
         logs: List<LogResponse>,
     ) {
         val configuration = DbManager.listenConfigurations().first()
-        GatewayManager.sendLogEvent(
+        gatewayManager.sendLogEvent(
             logs = monitoringMapper.mapMonitoringEntityToLogInfo(
                 monitoringStatus = monitoringStatus,
                 requestId = requestId,
                 monitoringEntityList = logs
-            ), context = context, configuration = configuration
+            ),
+            configuration = configuration
         )
     }
 

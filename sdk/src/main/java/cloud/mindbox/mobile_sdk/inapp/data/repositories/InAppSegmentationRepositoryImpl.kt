@@ -15,6 +15,7 @@ internal class InAppSegmentationRepositoryImpl(
     private val context: Context,
     private val inAppMapper: InAppMapper,
     private val sessionStorageManager: SessionStorageManager,
+    private val gatewayManager: GatewayManager,
 ) : InAppSegmentationRepository {
 
     override var unShownInApps: List<InApp> = mutableListOf()
@@ -34,8 +35,7 @@ internal class InAppSegmentationRepositoryImpl(
             "Request segmentations"
         )
         val configuration = DbManager.listenConfigurations().first()
-        val response = GatewayManager.checkCustomerSegmentations(
-            context = context,
+        val response = gatewayManager.checkCustomerSegmentations(
             configuration = configuration,
             segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
                 unShownInApps
@@ -56,8 +56,7 @@ internal class InAppSegmentationRepositoryImpl(
                 product,
                 unShownInApps
             )
-        val result = GatewayManager.checkProductSegmentation(
-            context,
+        val result = gatewayManager.checkProductSegmentation(
             configuration,
             segmentationCheckRequest
         )

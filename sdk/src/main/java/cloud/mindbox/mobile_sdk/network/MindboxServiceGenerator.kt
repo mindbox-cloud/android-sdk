@@ -1,43 +1,21 @@
 package cloud.mindbox.mobile_sdk.network
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
-import cloud.mindbox.mobile_sdk.utils.BuildConfiguration
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
-import com.android.volley.RequestQueue.RequestEvent.REQUEST_FINISHED
-import com.android.volley.RequestQueue.RequestEvent.REQUEST_QUEUED
-import com.android.volley.RequestQueue.RequestEventListener
 import com.android.volley.VolleyLog
 import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-// Service generator as emulated singleton.
-// Provides request queue and process requests
-internal class MindboxServiceGenerator constructor(context: Context) {
-
-    //Emulated singleton
-    companion object {
-        @Volatile
-        private var INSTANCE: MindboxServiceGenerator? = null
-        internal fun getInstance(
-            context: Context,
-        ): MindboxServiceGenerator? = LoggingExceptionHandler.runCatching(defaultValue = null) {
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: MindboxServiceGenerator(context).also {
-                    INSTANCE = it
-                }
-            }
-        }
-    }
+internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
 
     init {
         LoggingExceptionHandler.runCatching {
-            VolleyLog.DEBUG = BuildConfiguration.isDebug(context)
+            VolleyLog.DEBUG = MindboxDI.appModule.isDebug()
             Mindbox.mindboxScope.launch {
                 bindRequestQueueWithMindboxScope()
             }
@@ -47,23 +25,17 @@ internal class MindboxServiceGenerator constructor(context: Context) {
     private suspend fun bindRequestQueueWithMindboxScope() =
         suspendCancellableCoroutine<Unit> { continuation ->
             continuation.invokeOnCancellation {
-                requestQueue?.cancelAll() { true }
+                requestQueue.cancelAll { true }
             }
         }
 
-    private val requestQueue: RequestQueue? by lazy {
-        // applicationContext is key, it keeps you from leaking the
-        // Activity or BroadcastReceiver if someone passes one in.
-        Volley.newRequestQueue(context.applicationContext)
-    }
-
     internal fun addToRequestQueue(request: StringRequest) {
-        requestQueue?.add(request)
+        requestQueue.add(request)
         // TODO change StringRequest to MindboxRequest or log here
     }
 
     internal fun addToRequestQueue(request: MindboxRequest) = LoggingExceptionHandler.runCatching {
-        requestQueue?.let { requestQueue ->
+        requestQueue.let { requestQueue ->
             requestQueue.add(request)
             logMindboxRequest(request)
         }
