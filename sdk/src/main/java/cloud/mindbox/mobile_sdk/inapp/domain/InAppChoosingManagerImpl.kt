@@ -33,7 +33,6 @@ internal class InAppChoosingManagerImpl(
                             inAppContentFetcher.fetchContent(inApp.form.variants.first())
                     }).joinAll()
                 }
-
             }.onFailure { throwable ->
                 return when (throwable) {
                     is GeoError -> {

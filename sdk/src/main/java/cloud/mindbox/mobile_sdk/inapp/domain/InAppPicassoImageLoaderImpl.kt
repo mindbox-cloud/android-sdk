@@ -7,11 +7,10 @@ import com.squareup.picasso.Picasso
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-internal class InAppPicassoImageLoaderImpl : InAppImageLoader {
-
+internal class InAppPicassoImageLoaderImpl(private val picasso: Picasso) : InAppImageLoader {
     override suspend fun loadImage(url: String): Boolean {
         return suspendCoroutine { continuation ->
-            Picasso.get().load(url).fetch(
+            picasso.load(url).fetch(
                 object : Callback {
                     override fun onSuccess() {
                         continuation.resume(true)
