@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
@@ -128,7 +129,10 @@ internal val presentationModule = module {
     single<Picasso> {
         Picasso.Builder(get()).downloader(
             OkHttp3Downloader(
-                OkHttpClient.Builder().connectTimeout(3, TimeUnit.SECONDS).build()
+                OkHttpClient.Builder().connectTimeout(
+                    androidContext().getString(R.string.mindbox_inapp_fetching_timeout).toLong(),
+                    TimeUnit.SECONDS
+                ).build()
             )
         ).build()
     }
