@@ -13,13 +13,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
-import com.squareup.picasso.MemoryPolicy
-import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
-import java.util.*
+import java.util.LinkedList
 
 
-internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
+internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
+    InAppMessageViewDisplayer {
 
     private var currentRoot: ViewGroup? = null
     private var currentBlur: View? = null
@@ -204,10 +203,8 @@ internal class InAppMessageViewDisplayerImpl : InAppMessageViewDisplayer {
                             this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}"
                         )
-                        Picasso.get()
+                        picasso
                             .load(inAppType.imageUrl)
-                            .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-                            .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
                             .fit()
                             .centerCrop()
                             .into(this, object : Callback {

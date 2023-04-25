@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.di
 
 import androidx.room.Room
-import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
@@ -11,12 +11,17 @@ import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppContentFetcherImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppPicassoImageLoaderImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
@@ -41,15 +46,23 @@ import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManagerImpl
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.GsonBuilder
+import com.squareup.picasso.OkHttp3Downloader
+import com.squareup.picasso.Picasso
 import kotlinx.coroutines.Dispatchers
+import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 internal const val monitoringDatabaseName = "MonitoringDatabase"
 
@@ -104,7 +117,7 @@ internal val monitoringModule = module {
     factory { OperationValidator() }
 }
 internal val presentationModule = module {
-    single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl() }
+    single<InAppMessageViewDisplayer> { InAppMessageViewDisplayerImpl(get()) }
     single<InAppMessageManager> {
         InAppMessageManagerImpl(
             inAppMessageViewDisplayer = get(),
@@ -112,6 +125,16 @@ internal val presentationModule = module {
             defaultDispatcher = Dispatchers.IO,
             monitoringRepository = get()
         )
+    }
+    single<Picasso> {
+        Picasso.Builder(get()).downloader(
+            OkHttp3Downloader(
+                OkHttpClient.Builder().connectTimeout(
+                    androidContext().getString(R.string.mindbox_inapp_fetching_timeout).toLong(),
+                    TimeUnit.SECONDS
+                ).build()
+            )
+        ).build()
     }
 }
 
@@ -129,9 +152,14 @@ internal val domainModule = module {
     single<InAppChoosingManager> {
         InAppChoosingManagerImpl(
             inAppGeoRepository = get(),
-            inAppSegmentationRepository = get()
+            inAppSegmentationRepository = get(),
+            inAppContentFetcher = get()
         )
     }
+    factory<InAppContentFetcher> {
+        InAppContentFetcherImpl(inAppImageLoader = get())
+    }
+    factory<InAppImageLoader> { InAppPicassoImageLoaderImpl(get()) }
     factory<InAppEventManager> {
         InAppEventManagerImpl()
     }
