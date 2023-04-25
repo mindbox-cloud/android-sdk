@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+    import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -16,8 +16,6 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,12 +36,12 @@ internal class InAppChoosingManagerImpl(
             var isInAppContentFetched = false
             runCatching {
                 withContext(Job() + Dispatchers.IO) {
-                    listOf(async {
+                    joinAll(launch {
                         inApp.targeting.fetchTargetingInfo(data)
-                    }, async {
+                    }, launch {
                         isInAppContentFetched =
                             inAppContentFetcher.fetchContent(inApp.form.variants.first())
-                    }).awaitAll()
+                    })
                 }
             }.onFailure { throwable ->
                 return when (throwable) {
