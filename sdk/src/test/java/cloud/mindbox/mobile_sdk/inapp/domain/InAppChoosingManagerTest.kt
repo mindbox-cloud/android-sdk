@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -52,6 +53,9 @@ internal class InAppChoosingManagerTest : KoinTest {
     @MockK
     private lateinit var inAppRepository: InAppRepository
 
+    @MockK
+    private lateinit var inAppContentFetcher: InAppContentFetcher
+
 
     @OverrideMockKs
     private lateinit var inAppChoosingManager: InAppChoosingManagerImpl
@@ -63,6 +67,9 @@ internal class InAppChoosingManagerTest : KoinTest {
         coEvery {
             inAppGeoRepository.fetchGeo()
         } just runs
+        coEvery {
+            inAppContentFetcher.fetchContent(any())
+        } returns true
         mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED)
         mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS)
         mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
