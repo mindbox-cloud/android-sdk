@@ -227,16 +227,10 @@ internal class InAppMessageManagerTest {
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
-        NetworkResponse::class.java.declaredFields[0].apply {
+        NetworkResponse::class.java.getDeclaredField("statusCode").apply {
             isAccessible = true
-            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
-            modifiersField.isAccessible = true
-            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
-
-        }.setInt(
-            networkResponse,
-            403
-        )
+            setInt(networkResponse, 403)
+        }
         every {
             MindboxPreferences getProperty MindboxPreferences::inAppConfig.name
         }.answers {
@@ -261,16 +255,10 @@ internal class InAppMessageManagerTest {
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
-        NetworkResponse::class.java.declaredFields[0].apply {
+        NetworkResponse::class.java.getDeclaredField("statusCode").apply {
             isAccessible = true
-            val modifiersField: Field = Field::class.java.getDeclaredField("modifiers")
-            modifiersField.isAccessible = true
-            modifiersField.setInt(this, modifiers and Modifier.FINAL.inv())
-
-        }.setInt(
-            networkResponse,
-            404
-        )
+            setInt(networkResponse, 404)
+        }
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
         }.throws(VolleyError(networkResponse))
