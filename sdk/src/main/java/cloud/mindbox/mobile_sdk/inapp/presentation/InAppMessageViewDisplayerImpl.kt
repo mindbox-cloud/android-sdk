@@ -14,7 +14,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
 import com.squareup.picasso.Picasso
-import java.util.LinkedList
+import java.util.*
 
 
 internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :

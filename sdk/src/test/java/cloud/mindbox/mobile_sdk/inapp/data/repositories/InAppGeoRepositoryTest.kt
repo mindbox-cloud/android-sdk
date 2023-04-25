@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -48,12 +47,13 @@ internal class InAppGeoRepositoryTest {
     @MockK
     private lateinit var sessionStorageManager: SessionStorageManager
 
+    @MockK
+    private lateinit var gatewayManager: GatewayManager
+
     @Before
     fun onTestStart() {
         mockkObject(DbManager)
-        mockkObject(GatewayManager)
         mockkObject(MindboxPreferences)
-        mockkObject(MindboxLoggerImpl)
         every {
             inAppGeoRepository.setGeoStatus(any())
         } just runs
@@ -70,7 +70,7 @@ internal class InAppGeoRepositoryTest {
         val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
             .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
-            GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
+            gatewayManager.checkGeoTargeting(configuration = configuration)
         } returns geoTargetingDto
 
         val geoTargeting = GeoTargetingStub.getGeoTargeting()
@@ -100,7 +100,7 @@ internal class InAppGeoRepositoryTest {
         val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
             .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
-            GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
+            gatewayManager.checkGeoTargeting(configuration = configuration)
         } throws VolleyError()
 
         val geoTargeting = GeoTargetingStub.getGeoTargeting()
@@ -129,7 +129,7 @@ internal class InAppGeoRepositoryTest {
         val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
             .copy(cityId = "123", regionId = "456", countryId = "798")
         coEvery {
-            GatewayManager.checkGeoTargeting(context = context, configuration = configuration)
+            gatewayManager.checkGeoTargeting(configuration = configuration)
         } throws Error()
 
         val geoTargeting = GeoTargetingStub.getGeoTargeting()

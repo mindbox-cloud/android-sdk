@@ -2,9 +2,9 @@ package cloud.mindbox.mindbox_huawei
 
 import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
-import com.huawei.hms.push.RemoteMessage as HuaweiRemoteMessage
 import com.google.gson.Gson
 import cloud.mindbox.mobile_sdk.pushes.PushAction as MindboxPushAction
+import com.huawei.hms.push.RemoteMessage as HuaweiRemoteMessage
 
 internal class HuaweiRemoteMessageTransformer(private val exceptionHandler: ExceptionHandler) {
 

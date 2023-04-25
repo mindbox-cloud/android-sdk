@@ -13,13 +13,12 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkObject
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlin.test.assertEquals
 
 class InAppRepositoryTest {
-
 
     @get:Rule
     val mockkRule = MockKRule(this)
@@ -35,7 +34,6 @@ class InAppRepositoryTest {
 
     @OverrideMockKs
     private lateinit var inAppRepository: InAppRepositoryImpl
-
 
     @Before
     fun onTestStart() {

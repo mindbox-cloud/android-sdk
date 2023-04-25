@@ -78,7 +78,6 @@ internal fun DataModule(
 
     override val inAppSegmentationRepository: InAppSegmentationRepository by lazy {
         InAppSegmentationRepositoryImpl(
-            context = appContext,
             inAppMapper = inAppMapper,
             sessionStorageManager = sessionStorageManager,
             gatewayManager = gatewayManager,

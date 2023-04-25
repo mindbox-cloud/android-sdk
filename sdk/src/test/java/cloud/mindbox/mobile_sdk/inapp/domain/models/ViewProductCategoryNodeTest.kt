@@ -1,15 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import android.content.Context
 import app.cash.turbine.test
-import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.di.domainModule
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import com.google.gson.Gson
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,47 +18,36 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.android.ext.koin.androidContext
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
-import org.koin.test.mock.MockProviderRule
-import org.koin.test.mock.declareMock
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ViewProductCategoryNodeTest : KoinTest {
+class ViewProductCategoryNodeTest {
 
-    private lateinit var mobileConfigRepository: MobileConfigRepository
-
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule, domainModule)
-        androidContext(mockkClass(Context::class))
+    private val mockkMobileConfigRepository: MobileConfigRepository = mockk {
+        every {
+            runBlocking { getOperations() }
+        } returns mapOf(
+            OperationName.VIEW_PRODUCT to OperationSystemName("TestSystemNameProduct"),
+            OperationName.VIEW_CATEGORY to OperationSystemName("TestSystemNameCategory"),
+        )
     }
 
-    @get:Rule
-    val mockProvider = MockProviderRule.create { clazz ->
-        mockkClass(clazz)
-    }
-
-    private val inAppEventManager: InAppEventManager by inject()
+    private val mockkInAppSegmentationRepository: InAppSegmentationRepository = mockk()
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
     @Before
     fun onTestStart() = runTest {
-        mockkObject(MindboxKoin)
         mockkObject(MindboxEventManager)
-        every { MindboxKoin.koin } returns getKoin()
-        mobileConfigRepository = declareMock()
-        every {
-            runBlocking { mobileConfigRepository.getOperations() }
-        } returns mapOf(
-            OperationName.VIEW_PRODUCT to OperationSystemName("TestSystemNameProduct"),
-            OperationName.VIEW_CATEGORY to OperationSystemName("TestSystemNameCategory"),
-        )
         MindboxEventManager.eventFlow.resetReplayCache()
+
+        // mockk 'by mindboxInject { }'
+        mockkObject(MindboxDI)
+        every { MindboxDI.appModule } returns mockk {
+            every { mobileConfigRepository } returns mockkMobileConfigRepository
+            every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
+            every { gson } returns Gson()
+        }
     }
 
     @Test
@@ -92,7 +80,7 @@ class ViewProductCategoryNodeTest : KoinTest {
         MindboxEventManager.eventFlow.test {
             assertFalse(
                 InAppStub.viewProductCategoryNode.checkTargeting(
-                    TreeTargetingTest.TestTargetingData("viewCategory", null)
+                    TestTargetingData("viewCategory", null)
                 )
             )
             awaitItem()
@@ -108,7 +96,7 @@ class ViewProductCategoryNodeTest : KoinTest {
         MindboxEventManager.eventFlow.test {
             assertFalse(
                 InAppStub.viewProductCategoryNode.checkTargeting(
-                    TreeTargetingTest.TestTargetingData("viewCategory", null)
+                    TestTargetingData("viewCategory", null)
                 )
             )
             awaitItem()
@@ -128,7 +116,7 @@ class ViewProductCategoryNodeTest : KoinTest {
               }
             }""".trimIndent()
 
-        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
+        val data = TestTargetingData("viewCategory", body)
         val stub = InAppStub.viewProductCategoryNode.copy(kind = KindSubstring.SUBSTRING)
 
         listOf(
@@ -151,7 +139,6 @@ class ViewProductCategoryNodeTest : KoinTest {
 
     @Test
     fun `checkTargeting notSubstring`() = runTest {
-        every { MindboxKoin.koin } returns getKoin()
         val body = """{
               "viewProductCategory": {
                 "productCategory": {
@@ -163,7 +150,7 @@ class ViewProductCategoryNodeTest : KoinTest {
               }
             }""".trimIndent()
 
-        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
+        val data = TestTargetingData("viewCategory", body)
         val stub = InAppStub.viewProductCategoryNode.copy(kind = KindSubstring.NOT_SUBSTRING)
 
         listOf(
@@ -188,7 +175,6 @@ class ViewProductCategoryNodeTest : KoinTest {
 
     @Test
     fun `checkTargeting startWith`() = runTest {
-        every { MindboxKoin.koin } returns getKoin()
         val body = """{
               "viewProductCategory": {
                 "productCategory": {
@@ -201,7 +187,7 @@ class ViewProductCategoryNodeTest : KoinTest {
             }""".trimIndent()
 
         val stub = InAppStub.viewProductCategoryNode.copy(kind = KindSubstring.STARTS_WITH)
-        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
+        val data = TestTargetingData("viewCategory", body)
 
         listOf(
             stub.copy(value = "CATEGORYRANDOMNAME"),
@@ -225,7 +211,6 @@ class ViewProductCategoryNodeTest : KoinTest {
 
     @Test
     fun `checkTargeting endWith`() = runTest {
-        every { MindboxKoin.koin } returns getKoin()
         val body = """{
               "viewProductCategory": {
                 "productCategory": {
@@ -239,7 +224,7 @@ class ViewProductCategoryNodeTest : KoinTest {
 
         MindboxEventManager.eventFlow.resetReplayCache()
         val stub = InAppStub.viewProductCategoryNode.copy(kind = KindSubstring.ENDS_WITH)
-        val data = TreeTargetingTest.TestTargetingData("viewCategory", body)
+        val data = TestTargetingData("viewCategory", body)
 
         listOf(
             stub.copy(value = "NAme"),

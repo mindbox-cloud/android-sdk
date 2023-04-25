@@ -32,7 +32,8 @@ internal fun DomainModule(
         InAppChoosingManagerImpl(
             inAppGeoRepository = inAppGeoRepository,
             inAppSegmentationRepository = inAppSegmentationRepository,
-            inAppContentFetcher = inAppContentFetcher
+            inAppContentFetcher = inAppContentFetcher,
+            inAppRepository = inAppRepository,
         )
     }
 

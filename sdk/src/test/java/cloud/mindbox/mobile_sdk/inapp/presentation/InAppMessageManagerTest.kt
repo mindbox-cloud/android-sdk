@@ -21,8 +21,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppMessageManagerTest {

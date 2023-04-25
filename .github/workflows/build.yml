@@ -47,6 +47,10 @@ jobs:
           gradle-version: 6.8
           arguments: test testDebugUnitTest --stacktrace
 
+      - name: test report
+        uses: asadmansr/android-test-report-action@v1.2.0
+        if: ${{ always() }}
+
   build:
     runs-on: ubuntu-latest 
     steps:

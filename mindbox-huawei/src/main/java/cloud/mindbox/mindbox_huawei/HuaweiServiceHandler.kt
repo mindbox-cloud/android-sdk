@@ -6,12 +6,12 @@ import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import com.huawei.agconnect.AGConnectOptionsBuilder
 import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.ads.identifier.AdvertisingIdClient
 import com.huawei.hms.api.ConnectionResult
 import com.huawei.hms.api.HuaweiApiAvailability
 import com.huawei.hms.push.HmsMessaging
-import kotlinx.coroutines.delay
-import com.huawei.hms.ads.identifier.AdvertisingIdClient
 import com.huawei.hms.push.RemoteMessage
+import kotlinx.coroutines.delay
 
 internal class HuaweiServiceHandler(
     private val logger: MindboxLogger,

@@ -1,10 +1,6 @@
 package cloud.mindbox.mobile_sdk.monitoring
 
-import cloud.mindbox.mobile_sdk.di.dataModule
-import cloud.mindbox.mobile_sdk.di.monitoringModule
-import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.repositories.MonitoringRepositoryImpl
-import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import io.mockk.every
@@ -17,43 +13,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.android.ext.koin.androidContext
-import org.koin.dsl.module
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
 
-internal class MonitoringRepositoryImplTest : KoinTest {
-
+internal class MonitoringRepositoryImplTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule, monitoringModule, module { androidContext(mockk()) })
+    private val monitoringRepository by lazy {
+        MonitoringRepositoryImpl(
+            monitoringDao = mockk(),
+            monitoringMapper = mockk(),
+            gson = Gson(),
+            logStoringDataChecker = mockk(),
+            monitoringValidator = mockk(),
+            gatewayManager = mockk()
+        )
     }
-
-    private val gson: Gson by inject()
-
-    private val monitoringMapper: MonitoringMapper by inject()
-
-    private val monitoringDao: MonitoringDao by inject()
-
-    private lateinit var monitoringRepository: MonitoringRepositoryImpl
-
 
     @Before
     fun onTestStart() {
-        monitoringRepository =
-            MonitoringRepositoryImpl(
-                context = mockk(),
-                monitoringDao = monitoringDao,
-                monitoringMapper = monitoringMapper,
-                gson = gson,
-                logStoringDataChecker = mockk(),
-                monitoringValidator = mockk()
-            )
         mockkObject(MindboxPreferences)
     }
 

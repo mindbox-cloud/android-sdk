@@ -2,11 +2,7 @@ package cloud.mindbox.mobile_sdk.di
 
 import android.app.Application
 import android.content.Context
-import cloud.mindbox.mobile_sdk.di.modules.ApiModule
-import cloud.mindbox.mobile_sdk.di.modules.AppContextModule
-import cloud.mindbox.mobile_sdk.di.modules.AppModule
-import cloud.mindbox.mobile_sdk.di.modules.DataModule
-import cloud.mindbox.mobile_sdk.di.modules.DomainModule
+import cloud.mindbox.mobile_sdk.di.modules.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
 internal object MindboxDI {
