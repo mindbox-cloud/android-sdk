@@ -20,28 +20,39 @@ internal const val monitoringDatabaseName = "MonitoringDatabase"
 
 internal fun MonitoringModule(
     appContextModule: AppContextModule,
+    apiModule: ApiModule,
     dataModule: DataModule,
-    apiModule: ApiModule
-) = object : MonitoringModule {
+): MonitoringModule = object : MonitoringModule,
+    AppContextModule by appContextModule,
+    ApiModule by apiModule,
+    DataModule by dataModule {
+
     override val monitoringMapper: MonitoringMapper by lazy { MonitoringMapper() }
+
     override val monitoringRepository: MonitoringRepository by lazy {
         MonitoringRepositoryImpl(
             monitoringDao = monitoringDao,
             monitoringMapper = monitoringMapper,
-            gson = dataModule.gson,
+            gson = gson,
             logStoringDataChecker = logStoringDataChecker,
-            monitoringValidator = dataModule.monitoringValidator,
-            gatewayManager = apiModule.gatewayManager
+            monitoringValidator = monitoringValidator,
+            gatewayManager = gatewayManager
         )
     }
 
-    override val logResponseDataManager: LogResponseDataManager by lazy { LogResponseDataManagerImpl() }
-    override val logRequestDataManager: LogRequestDataManager by lazy { LogRequestDataManagerImpl() }
+    override val logResponseDataManager: LogResponseDataManager by lazy {
+        LogResponseDataManagerImpl()
+    }
+
+    override val logRequestDataManager: LogRequestDataManager by lazy {
+        LogRequestDataManagerImpl()
+    }
+
     override val logStoringDataChecker: LogStoringDataChecker by lazy {
         LogStoringDataCheckerImpl(
             File(
                 "${
-                    appContextModule.appContext.filesDir.absolutePath.replace(
+                    appContext.filesDir.absolutePath.replace(
                         "files",
                         "databases"
                     )
@@ -51,7 +62,7 @@ internal fun MonitoringModule(
     }
     override val monitoringInteractor: MonitoringInteractor by lazy {
         MonitoringInteractorImpl(
-            mobileConfigRepository = dataModule.mobileConfigRepository,
+            mobileConfigRepository = mobileConfigRepository,
             monitoringRepository = monitoringRepository,
             logResponseDataManager = logResponseDataManager,
             logRequestDataManager = logRequestDataManager
@@ -59,7 +70,7 @@ internal fun MonitoringModule(
     }
     override val monitoringDatabase: MonitoringDatabase by lazy {
         Room.databaseBuilder(
-            appContextModule.appContext,
+            appContext,
             MonitoringDatabase::class.java,
             monitoringDatabaseName
         )

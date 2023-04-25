@@ -1,8 +1,5 @@
-package cloud.mindbox.mobile_sdk.di
+package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.di.modules.ApiModule
-import cloud.mindbox.mobile_sdk.di.modules.AppContextModule
-import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
@@ -34,7 +31,9 @@ import com.google.gson.GsonBuilder
 internal fun DataModule(
     appContextModule: AppContextModule,
     apiModule: ApiModule
-): DataModule = object : DataModule {
+): DataModule = object : DataModule,
+    AppContextModule by appContextModule,
+    ApiModule by apiModule {
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
 
@@ -46,7 +45,7 @@ internal fun DataModule(
             monitoringValidator = monitoringValidator,
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
-            gatewayManager = apiModule.gatewayManager,
+            gatewayManager = gatewayManager,
         )
     }
 
@@ -55,17 +54,17 @@ internal fun DataModule(
 
     override val inAppGeoRepository: InAppGeoRepository by lazy {
         InAppGeoRepositoryImpl(
-            context = appContextModule.appContext,
+            context = appContext,
             inAppMapper = inAppMapper,
             geoSerializationManager = geoSerializationManager,
             sessionStorageManager = sessionStorageManager,
-            gatewayManager = apiModule.gatewayManager,
+            gatewayManager = gatewayManager,
         )
     }
 
     override val inAppRepository: InAppRepository by lazy {
         InAppRepositoryImpl(
-            context = appContextModule.appContext,
+            context = appContext,
             sessionStorageManager = sessionStorageManager,
             inAppSerializationManager = inAppSerializationManager,
         )
@@ -79,10 +78,10 @@ internal fun DataModule(
 
     override val inAppSegmentationRepository: InAppSegmentationRepository by lazy {
         InAppSegmentationRepositoryImpl(
-            context = appContextModule.appContext,
+            context = appContext,
             inAppMapper = inAppMapper,
             sessionStorageManager = sessionStorageManager,
-            gatewayManager = apiModule.gatewayManager,
+            gatewayManager = gatewayManager,
         )
     }
 

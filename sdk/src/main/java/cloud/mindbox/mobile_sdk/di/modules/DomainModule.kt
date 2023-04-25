@@ -10,32 +10,35 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManag
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 
 
-internal fun DomainModule(dataModule: DataModule) =
-    object : DomainModule {
+internal fun DomainModule(
+    dataModule: DataModule,
+    apiModule: ApiModule
+): DomainModule = object : DomainModule,
+    DataModule by dataModule,
+    ApiModule by apiModule {
 
-        override val inAppInteractor: InAppInteractor by lazy {
-            InAppInteractorImpl(
-                mobileConfigRepository = dataModule.mobileConfigRepository,
-                inAppRepository = dataModule.inAppRepository,
-                inAppSegmentationRepository = dataModule.inAppSegmentationRepository,
-                inAppFilteringManager = inAppFilteringManager,
-                inAppEventManager = inAppEventManager,
-                inAppChoosingManager = inAppChoosingManager
-            )
-        }
-
-        override val inAppChoosingManager: InAppChoosingManager by lazy {
-            InAppChoosingManagerImpl(
-                inAppGeoRepository = dataModule.inAppGeoRepository,
-                inAppSegmentationRepository = dataModule.inAppSegmentationRepository
-            )
-        }
-
-        override val inAppEventManager: InAppEventManager
-            get() = InAppEventManagerImpl()
-
-        override val inAppFilteringManager: InAppFilteringManager
-            get() = InAppFilteringManagerImpl(
-                inAppRepository = dataModule.inAppRepository
-            )
+    override val inAppInteractor: InAppInteractor by lazy {
+        InAppInteractorImpl(
+            mobileConfigRepository = mobileConfigRepository,
+            inAppRepository = inAppRepository,
+            inAppSegmentationRepository = inAppSegmentationRepository,
+            inAppFilteringManager = inAppFilteringManager,
+            inAppEventManager = inAppEventManager,
+            inAppChoosingManager = inAppChoosingManager
+        )
     }
+
+    override val inAppChoosingManager: InAppChoosingManager by lazy {
+        InAppChoosingManagerImpl(
+            inAppGeoRepository = inAppGeoRepository,
+            inAppSegmentationRepository = inAppSegmentationRepository,
+            inAppContentFetcher = inAppContentFetcher
+        )
+    }
+
+    override val inAppEventManager: InAppEventManager
+        get() = InAppEventManagerImpl()
+
+    override val inAppFilteringManager: InAppFilteringManager
+        get() = InAppFilteringManagerImpl(inAppRepository = inAppRepository)
+}

@@ -5,6 +5,8 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -23,6 +25,7 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
+import com.squareup.picasso.Picasso
 
 internal sealed interface MindboxModule
 
@@ -85,4 +88,7 @@ internal interface ApiModule : MindboxModule {
     val gatewayManager: GatewayManager
     val mindboxServiceGenerator: MindboxServiceGenerator
     val requestQueue: RequestQueue
+    val picasso: Picasso
+    val inAppContentFetcher: InAppContentFetcher
+    val inAppImageLoader: InAppImageLoader
 }

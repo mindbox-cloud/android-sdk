@@ -5,6 +5,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.di.modules.ApiModule
 import cloud.mindbox.mobile_sdk.di.modules.AppContextModule
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
+import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.di.modules.DomainModule
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
@@ -19,15 +20,33 @@ internal object MindboxDI {
 
         mindboxLogD("MindboxDI init in ${Thread.currentThread().name}")
 
-        val applicationContextModule = AppContextModule(appContext.applicationContext as Application)
-        val apiModule = ApiModule(applicationContextModule)
-        val dataModule = DataModule(applicationContextModule, apiModule)
-        val domainModule = DomainModule(dataModule)
-        val monitoringModule = MonitoringModule(applicationContextModule, dataModule, apiModule)
-        val presentationModule = PresentationModule(domainModule, monitoringModule)
+        val appContextModule = AppContextModule(
+            application = appContext.applicationContext as Application
+        )
+        val apiModule = ApiModule(
+            appContextModule = appContextModule
+        )
+        val dataModule = DataModule(
+            appContextModule = appContextModule,
+            apiModule = apiModule
+        )
+        val domainModule = DomainModule(
+            dataModule = dataModule,
+            apiModule = apiModule
+        )
+        val monitoringModule = MonitoringModule(
+            appContextModule = appContextModule,
+            dataModule = dataModule,
+            apiModule = apiModule,
+        )
+        val presentationModule = PresentationModule(
+            domainModule = domainModule,
+            monitoringModule = monitoringModule,
+            apiModule = apiModule
+        )
 
         appModule = AppModule(
-            applicationContextModule = applicationContextModule,
+            applicationContextModule = appContextModule,
             apiModule = apiModule,
             dataModule = dataModule,
             domainModule = domainModule,
