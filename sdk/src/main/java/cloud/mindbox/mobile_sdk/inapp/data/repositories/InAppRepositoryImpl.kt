@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
@@ -16,6 +17,9 @@ internal class InAppRepositoryImpl(
     private val inAppSerializationManager: InAppSerializationManager,
 ) :
     InAppRepository {
+    override fun getInAppContentTimeout(): Long {
+        return context.getString(R.string.mindbox_inapp_fetching_timeout).toLong()
+    }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
         sessionStorageManager.operationalInApps[operation] =

@@ -129,7 +129,11 @@ internal val presentationModule = module {
     single<Picasso> {
         Picasso.Builder(get()).downloader(
             OkHttp3Downloader(
-                OkHttpClient.Builder().connectTimeout(
+                OkHttpClient.Builder()
+                    .writeTimeout(0, TimeUnit.SECONDS)
+                    .readTimeout(0, TimeUnit.SECONDS)
+                    .connectTimeout(0, TimeUnit.SECONDS)
+                    .callTimeout(
                     androidContext().getString(R.string.mindbox_inapp_fetching_timeout).toLong(),
                     TimeUnit.SECONDS
                 ).build()
@@ -153,7 +157,8 @@ internal val domainModule = module {
         InAppChoosingManagerImpl(
             inAppGeoRepository = get(),
             inAppSegmentationRepository = get(),
-            inAppContentFetcher = get()
+            inAppContentFetcher = get(),
+            inAppRepository = get(),
         )
     }
     factory<InAppContentFetcher> {
