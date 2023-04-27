@@ -67,6 +67,9 @@ internal class InAppChoosingManagerTest : KoinTest {
         coEvery {
             inAppGeoRepository.fetchGeo()
         } just runs
+        every {
+            inAppRepository.getInAppContentTimeout()
+        } returns 3000
         coEvery {
             inAppContentFetcher.fetchContent(any())
         } returns true
