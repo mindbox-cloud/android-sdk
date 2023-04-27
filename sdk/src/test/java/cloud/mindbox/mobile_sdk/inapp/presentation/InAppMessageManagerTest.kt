@@ -115,26 +115,31 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             displayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository)
+            StandardTestDispatcher(testScheduler), monitoringRepository
+        )
         every {
-            runBlocking {
+            runBlocking(UnconfinedTestDispatcher()) {
                 inAppMessageInteractor.processEventAndConfig()
             }
         }.answers {
             flow {
-                emit(InAppType.SimpleImage(inAppId = "123",
-                    imageUrl = "",
-                    redirectUrl = "",
-                    intentData = ""))
+                emit(
+                    InAppType.SimpleImage(
+                        inAppId = "123",
+                        imageUrl = "",
+                        redirectUrl = "",
+                        intentData = ""
+                    )
+                )
+                delay(1000)
             }
         }
         inAppMessageManager.listenEventAndInApp()
-        advanceUntilIdle()
         inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
         }
-        verify(exactly = 1)  {
+        verify(exactly = 1) {
             displayer.tryShowInAppMessage(any(), any(), any())
         }
     }
