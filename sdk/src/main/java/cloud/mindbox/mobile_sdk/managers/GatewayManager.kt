@@ -419,8 +419,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         Request.Method.GET,
                         getConfigUrl(configuration),
                         { response ->
-                            val testJson = "{\"monitoring\":{\"logs\":[]},\"inapps\":[{\"id\":\"2fb843a3-cd22-4193-bc2c-911ff739a67d\",\"sdkVersion\":{\"min\":3,\"max\":null},\"targeting\":{\"nodes\":[{\"${"$"}type\":\"true\"}],\"${"$"}type\":\"and\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://mindbox-pushok.umbrellait.tech:444/?image=mindbox.png&broken=true&error=wait&speed=7\",\"redirectUrl\":\"\",\"intentPayload\":\"\",\"${"$"}type\":\"simpleImage\"}]}}],\"settings\":{\"operations\":{\"viewProduct\":{\"systemName\":\"ProsmotrProduktaMobilki\"},\"viewCategory\":{\"systemName\":\"TestProsmotraProdukta\"}}}}"
-                            continuation.resume(testJson)
+                            continuation.resume(response)
                         },
                         { error ->
                             continuation.resumeWithException(error)
