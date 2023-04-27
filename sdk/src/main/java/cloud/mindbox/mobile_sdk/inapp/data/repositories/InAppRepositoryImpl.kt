@@ -18,7 +18,7 @@ internal class InAppRepositoryImpl(
 ) :
     InAppRepository {
     override fun getInAppContentTimeout(): Long {
-        return context.getString(R.string.mindbox_inapp_fetching_timeout).toLong() * 1000
+        return context.getString(R.string.mindbox_inapp_fetching_timeout).toLong()
     }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
