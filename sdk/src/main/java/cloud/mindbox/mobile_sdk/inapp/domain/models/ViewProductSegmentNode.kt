@@ -1,12 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import androidx.work.workDataOf
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
-import com.google.gson.Gson
-import org.koin.core.component.inject
 
 internal data class ViewProductSegmentNode(
     override val type: String,
@@ -15,9 +11,9 @@ internal data class ViewProductSegmentNode(
     val segmentExternalId: String,
 ) : OperationNodeBase(type) {
 
-    private val mobileConfigRepository: MobileConfigRepository by inject()
-    private val inAppSegmentationRepository: InAppSegmentationRepository by inject()
-    private val gson: Gson by inject()
+    private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
+    private val inAppSegmentationRepository by mindboxInject { inAppSegmentationRepository }
+    private val gson by mindboxInject { gson }
 
     override suspend fun fetchTargetingInfo(data: TargetingData) {
         if (data !is TargetingData.OperationBody) return
@@ -31,7 +27,9 @@ internal data class ViewProductSegmentNode(
                     )
                 }.onFailure { error ->
                     if (error is ProductSegmentationError) {
-                        inAppSegmentationRepository.setProductSegmentationFetchStatus(ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
+                        inAppSegmentationRepository.setProductSegmentationFetchStatus(
+                            ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                        )
                         mindboxLogE("Error fetching product segmentations")
                     }
                 }

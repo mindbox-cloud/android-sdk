@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -13,31 +13,23 @@ import com.google.gson.JsonObject
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
-import kotlin.test.assertNull
 
-internal class MobileConfigSerializationManagerTest : KoinTest {
-
-    private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
-
-    private val gson: Gson by inject()
+internal class MobileConfigSerializationManagerTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
+    private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
+    private val gson = DataModule(mockk(relaxed = true), mockk(relaxed = true)).gson
+
     @MockK
     private lateinit var fakeGson: Gson
-
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
-    }
 
     @Before
     fun onTestStart() {

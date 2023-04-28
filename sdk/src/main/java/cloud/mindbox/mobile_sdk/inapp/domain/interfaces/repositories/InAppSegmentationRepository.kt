@@ -1,9 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 
 internal interface InAppSegmentationRepository {
 

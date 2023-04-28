@@ -8,7 +8,8 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
+import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
@@ -83,9 +84,7 @@ object Mindbox {
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
-    private val inAppMessageManager: InAppMessageManager by lazy {
-        MindboxKoin.koin.get(InAppMessageManager::class)
-    }
+    private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val mutex = Mutex()
 
@@ -458,11 +457,11 @@ object Mindbox {
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
                         isAppInBackground = !isApplicationResumed,
-                        onActivityStarted = { activity ->
-                            UuidCopyManager.onAppMovedToForeground(activity)
+                        onActivityStarted = { startedActivity ->
+                            UuidCopyManager.onAppMovedToForeground(startedActivity)
                             mindboxScope.launch {
                                 if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(activity.applicationContext)
+                                    updateAppInfo(startedActivity.applicationContext)
                                 }
                             }
                         },
@@ -479,7 +478,7 @@ object Mindbox {
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
                                 sendTrackVisitEvent(
-                                    MindboxKoin.koin.get(Context::class),
+                                    MindboxDI.appModule.appContext,
                                     source,
                                     requestUrl
                                 )
@@ -732,7 +731,6 @@ object Mindbox {
                 InitializeLock.await(InitializeLock.State.APP_STARTED)
 
                 MindboxEventManager.syncOperation(
-                    context = context,
                     name = operationSystemName,
                     body = operationBody,
                     classOfV = classOfV,
@@ -768,7 +766,6 @@ object Mindbox {
             mindboxScope.launch {
                 InitializeLock.await(InitializeLock.State.APP_STARTED)
                 MindboxEventManager.syncOperation(
-                    context = context,
                     name = operationSystemName,
                     bodyJson = operationBodyJson,
                     onSuccess = onSuccess,
@@ -878,7 +875,7 @@ object Mindbox {
     }
 
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
-        MindboxKoin.init(context.applicationContext)
+        MindboxDI.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
                 pushServices?.joinToString(", ") { it.javaClass.simpleName })
         SharedPreferencesManager.with(context)

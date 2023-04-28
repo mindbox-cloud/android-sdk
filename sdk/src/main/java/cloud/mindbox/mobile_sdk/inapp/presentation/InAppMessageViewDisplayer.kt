@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 
 internal interface InAppMessageViewDisplayer {
 

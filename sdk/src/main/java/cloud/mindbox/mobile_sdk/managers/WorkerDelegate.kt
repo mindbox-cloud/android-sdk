@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
@@ -103,8 +104,7 @@ internal class WorkerDelegate {
     ) {
         val countDownLatch = CountDownLatch(1)
 
-        GatewayManager.sendAsyncEvent(
-            context = context,
+        MindboxDI.appModule.gatewayManager.sendAsyncEvent(
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = event,

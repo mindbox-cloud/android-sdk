@@ -4,7 +4,6 @@ import androidx.room.TypeConverter
 import cloud.mindbox.mobile_sdk.models.EventType
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.util.*
 
 internal object MindboxRoomConverter {
 

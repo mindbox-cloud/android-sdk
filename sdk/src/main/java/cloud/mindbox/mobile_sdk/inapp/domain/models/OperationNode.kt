@@ -1,9 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 
-import cloud.mindbox.mobile_sdk.models.InAppEventType
-
-
 internal data class OperationNode(
     override val type: String,
     val systemName: String,

@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.models
 
 import android.os.Build
-import cloud.mindbox.mobile_sdk.*
+import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.NetworkResponse
