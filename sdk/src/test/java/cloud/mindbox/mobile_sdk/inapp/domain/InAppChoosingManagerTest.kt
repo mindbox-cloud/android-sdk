@@ -28,7 +28,7 @@ internal class InAppChoosingManagerTest {
     private val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("testEvent"), null)
 
     private val mockkInAppContentFetcher = mockk<InAppContentFetcher> {
-        coEvery { fetchContent(any()) } returns true
+        coEvery { fetchContent(any(), any()) } returns true
     }
 
     private val inAppRepository = mockk<InAppRepository>()
@@ -43,9 +43,6 @@ internal class InAppChoosingManagerTest {
     }
 
     private val mockkInAppSegmentationRepository = mockk<InAppSegmentationRepository> {
-        every {
-            inAppRepository.getInAppContentTimeout()
-        } returns 3000
         every {
             getCustomerSegmentationFetched()
         } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
