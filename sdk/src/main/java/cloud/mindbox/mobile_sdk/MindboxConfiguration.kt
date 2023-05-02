@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import android.os.Build
+import androidx.core.content.pm.PackageInfoCompat
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -160,6 +161,7 @@ class MindboxConfiguration private constructor(
         private fun generateAppInfo(context: Context) {
             try {
                 val packageManager = context.packageManager
+                //noinspection deprecation
                 val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
                 packageName = packageInfo.packageName.trim()
                 this.versionName = packageInfo.versionName?.trim()
@@ -168,7 +170,7 @@ class MindboxConfiguration private constructor(
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toString().trim()
                     } else {
-                        packageInfo.versionCode.toString().trim()
+                        PackageInfoCompat.getLongVersionCode(packageInfo).toString().trim()
                     }
 
                 //need for scheduling and stopping one-time background service

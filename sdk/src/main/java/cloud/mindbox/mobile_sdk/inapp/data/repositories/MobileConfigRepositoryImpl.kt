@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
@@ -28,11 +27,11 @@ import kotlinx.coroutines.sync.withLock
 internal class MobileConfigRepositoryImpl(
     private val inAppMapper: InAppMapper,
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
-    private val context: Context,
     private val inAppValidator: InAppValidator,
     private val monitoringValidator: MonitoringValidator,
     private val operationNameValidator: OperationNameValidator,
     private val operationValidator: OperationValidator,
+    private val gatewayManager: GatewayManager,
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -42,8 +41,7 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
-        MindboxPreferences.inAppConfig = GatewayManager.fetchMobileConfig(
-            context = context,
+        MindboxPreferences.inAppConfig = gatewayManager.fetchMobileConfig(
             configuration = configuration
         )
     }

@@ -5,13 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingMa
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType

@@ -15,7 +15,6 @@ import org.junit.Test
 
 internal class InAppFilteringManagerTest {
 
-
     @get:Rule
     val mockkRule = MockKRule(this)
 

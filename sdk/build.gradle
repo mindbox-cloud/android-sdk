@@ -35,14 +35,8 @@ dependencies {
     testImplementation testDependencies.mockk_android
     testImplementation testDependencies.mockk_agent
 
-
-
     // ConstraintLayout
     implementation sdkDependencies.constraint_layout
-    // Koin for Android
-    implementation sdkDependencies.koin
-    implementation sdkDependencies.koin_test
-    implementation sdkDependencies.koin_junit4
 
     // coroutines
     implementation sdkDependencies.kotlinx_coroutines_core
@@ -63,9 +57,12 @@ dependencies {
     // Handle app lifecycle
     implementation sdkDependencies.androidx_lifecycle
 
-    testImplementation 'junit:junit:4.13.1'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     implementation 'com.squareup.picasso:picasso:2.8'
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
+
+    implementation 'com.github.bumptech.glide:glide:4.15.1'
+    kapt 'com.github.bumptech.glide:compiler:4.15.1'
 
 }

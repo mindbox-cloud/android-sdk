@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
+import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,10 +13,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import com.squareup.picasso.Callback
-import com.squareup.picasso.NetworkPolicy
-import com.squareup.picasso.Picasso
-import java.util.LinkedList
+import com.bumptech.glide.Glide
+import com.bumptech.glide.RequestBuilder
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import java.util.*
 
 
 internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
@@ -122,11 +125,9 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
         }
     }
 
-
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         this.inAppCallback = inAppCallback
     }
-
 
     override fun onPauseCurrentActivity(activity: Activity) {
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
@@ -204,13 +205,38 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
                             this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}"
                         )
-                        picasso
-                            .load(inAppType.imageUrl)
-                            .fit()
-                            .networkPolicy(NetworkPolicy.OFFLINE)
-                            .centerCrop()
-                            .into(this, object : Callback {
-                                override fun onSuccess() {
+
+                        Glide
+                            .with(currentActivity!!.applicationContext)
+                            .load("https://mindbox-pushok.umbrellait.tech:444/?image=mindbox.png&broken=true&error=wait&speed=2")
+                            .timeout(3000)
+                            .listener(object : RequestListener<Drawable> {
+                                override fun onLoadFailed(
+                                    e: GlideException?,
+                                    model: Any?,
+                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
+                                    MindboxLoggerImpl.e(
+                                        parent = this@InAppMessageViewDisplayerImpl,
+                                        message = "Failed to load inapp image",
+                                        exception = e
+                                            ?: RuntimeException("Failed to load inapp image")
+                                    )
+                                    currentRoot?.removeView(currentDialog)
+                                    currentRoot?.removeView(currentBlur)
+                                    isInAppMessageActive = false
+                                    this@with?.isVisible = false
+                                    return false
+                                }
+
+                                override fun onResourceReady(
+                                    resource: Drawable?,
+                                    model: Any?,
+                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
+                                    dataSource: DataSource?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
                                     this@with?.isVisible = true
                                     currentInAppId = inAppType.inAppId
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
@@ -257,21 +283,79 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
                                         "inapp shown"
                                     )
                                     onInAppShown()
-                                }
-
-                                override fun onError(e: Exception?) {
-                                    MindboxLoggerImpl.e(
-                                        parent = this@InAppMessageViewDisplayerImpl,
-                                        message = "Failed to load inapp image",
-                                        exception = e
-                                            ?: RuntimeException("Failed to load inapp image")
-                                    )
-                                    currentRoot?.removeView(currentDialog)
-                                    currentRoot?.removeView(currentBlur)
-                                    isInAppMessageActive = false
-                                    this@with?.isVisible = false
+                                    return false
                                 }
                             })
+                            .centerCrop()
+                            .into(this!!)
+//
+//                        picasso
+//                            .load(inAppType.imageUrl)
+//                            .fit()
+//                            .centerCrop()
+//                            .into(this, object : Callback {
+//                                override fun onSuccess() {
+//                                    this@with?.isVisible = true
+//                                    currentInAppId = inAppType.inAppId
+//                                    currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
+//                                        setOnClickListener {
+//                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
+//                                            MindboxLoggerImpl.d(this, "In-app dismissed")
+//                                            currentRoot?.removeView(currentDialog)
+//                                            currentRoot?.removeView(currentBlur)
+//                                            isInAppMessageActive = false
+//                                        }
+//                                        isVisible = true
+//                                    }
+//                                    currentDialog?.setOnClickListener {
+//                                        currentDialog?.isEnabled = false
+//                                        onInAppClick()
+//                                        inAppCallback?.onInAppClick(
+//                                            inAppType.inAppId,
+//                                            inAppType.redirectUrl,
+//                                            inAppType.intentData
+//                                        )
+//                                        if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
+//                                            currentRoot?.removeView(currentDialog)
+//                                            currentRoot?.removeView(currentBlur)
+//                                            isInAppMessageActive = false
+//                                        }
+//                                    }
+//                                    currentDialog?.setDismissListener {
+//                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+//                                        MindboxLoggerImpl.d(this, "In-app dismissed")
+//                                        currentRoot?.removeView(currentDialog)
+//                                        currentRoot?.removeView(currentBlur)
+//                                        isInAppMessageActive = false
+//                                    }
+//                                    currentBlur?.setOnClickListener {
+//                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
+//                                        MindboxLoggerImpl.d(this, "In-app dismissed")
+//                                        currentRoot?.removeView(currentDialog)
+//                                        currentRoot?.removeView(currentBlur)
+//                                        isInAppMessageActive = false
+//                                    }
+//                                    currentBlur?.isVisible = true
+//                                    MindboxLoggerImpl.d(
+//                                        this@InAppMessageViewDisplayerImpl,
+//                                        "inapp shown"
+//                                    )
+//                                    onInAppShown()
+//                                }
+//
+//                                override fun onError(e: Exception?) {
+//                                    MindboxLoggerImpl.e(
+//                                        parent = this@InAppMessageViewDisplayerImpl,
+//                                        message = "Failed to load inapp image",
+//                                        exception = e
+//                                            ?: RuntimeException("Failed to load inapp image")
+//                                    )
+//                                    currentRoot?.removeView(currentDialog)
+//                                    currentRoot?.removeView(currentBlur)
+//                                    isInAppMessageActive = false
+//                                    this@with?.isVisible = false
+//                                }
+//                            })
                     }
                 } else {
                     MindboxLoggerImpl.d(this, "in-app image url is blank")

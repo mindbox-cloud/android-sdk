@@ -2,7 +2,10 @@ package cloud.mindbox.mobile_sdk
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.*
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 internal class ExtensionsTest {
