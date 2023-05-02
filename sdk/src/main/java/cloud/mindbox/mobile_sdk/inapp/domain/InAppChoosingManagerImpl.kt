@@ -5,7 +5,13 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingMa
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -14,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
@@ -35,14 +40,9 @@ internal class InAppChoosingManagerImpl(
             var targetingCheck = false
             withContext(Dispatchers.IO) {
                 val imageJob =
-                    launch(Dispatchers.Main, start = CoroutineStart.LAZY) {
+                    launch(start = CoroutineStart.LAZY) {
                         isInAppContentFetched =
-                            withTimeoutOrNull(inAppRepository.getInAppContentTimeout()) {
-                                inAppContentFetcher.fetchContent(
-                                    inApp.id,
-                                    inApp.form.variants.first()
-                                )
-                            } ?: false
+                            inAppContentFetcher.fetchContent(inApp.id, inApp.form.variants.first())
                     }
                 val targetingJob = launch(start = CoroutineStart.LAZY) {
                     runCatching {
@@ -75,7 +75,7 @@ internal class InAppChoosingManagerImpl(
                         }
                     }
                 }
-                listOf(imageJob.apply {
+                joinAll(imageJob.apply {
                     invokeOnCompletion {
                         if (targetingJob.isActive && !isInAppContentFetched) {
                             targetingJob.cancel()
@@ -90,11 +90,7 @@ internal class InAppChoosingManagerImpl(
                             mindboxLogD("Cancelling content loading since targeting is $targetingCheck")
                         }
                     }
-                }).forEach {
-                    it.start()
-                }
-                joinAll(imageJob, targetingJob)
-
+                })
             }
             mindboxLogD("loading and targeting fetching finished")
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)

@@ -2,9 +2,20 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationRequestDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.EventParameters
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.MindboxError
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.models.MindboxResponse
+import cloud.mindbox.mobile_sdk.models.UrlQuery
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
@@ -18,10 +29,15 @@ import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -72,6 +88,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.PushDelivered -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
@@ -80,11 +97,13 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.SyncOperation -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
@@ -171,6 +190,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
+
         is EventType.PushDelivered -> Request.Method.GET
     }
 
@@ -224,6 +244,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 -> {
                     onSuccess.invoke(String(errorData))
                 }
+
                 MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
                     MindboxError.Validation(
                         statusCode = code,
@@ -231,6 +252,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         validationMessages = errorBody.validationMessages ?: emptyList(),
                     )
                 )
+
                 MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
                     MindboxError.Protocol(
                         statusCode = code,
@@ -240,6 +262,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
                     MindboxError.InternalServer(
                         statusCode = code,
@@ -249,6 +272,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 else -> onError.invoke(
                     MindboxError.UnknownServer(
                         statusCode = code,
@@ -409,8 +433,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
-                        val testJson = "{\"monitoring\":{\"logs\":[]},\"settings\":{\"operations\":{\"viewProduct\":{\"systemName\":\"ProsmotrProduktaMobilki\"},\"viewCategory\":{\"systemName\":\"TestProsmotraProdukta\"}}},\"inapps\":[{\"id\":\"3de3f8d5-aa9b-4799-a3ae-d7230b0b0c6d\",\"sdkVersion\":{\"min\":4,\"max\":null},\"targeting\":{\"nodes\":[{\"internalId\":\"8c999074-df8e-4a27-a2d6-3b981a36c8a8\",\"systemName\":\"Demo1\",\"${"$"}type\":\"apiMethodCall\"}],\"${"$"}type\":\"and\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://mobpush-images.mindbox.ru/Mpush-test/287/3fbeb2b7-f422-4bb6-99f3-d30acce812d4.png\",\"redirectUrl\":\"https://tokyo-city.ru/dl/q85dcMnSvAQ\",\"intentPayload\":\"https://tokyo-city.ru/dl\",\"${"$"}type\":\"simpleImage\"}]}},{\"id\":\"f3476b47-ce9f-4b65-8cb7-441262b7c138\",\"sdkVersion\":{\"min\":3,\"max\":null},\"targeting\":{\"nodes\":[{\"${"$"}type\":\"true\"}],\"${"$"}type\":\"and\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://mobpush-images-staging.mindbox.ru/Test-staging/1611/89b84a52-7e5f-48cd-890e-e26d5ceb34f9.jpg\",\"redirectUrl\":\"https://tokyo-city.ru/dl/vFASpWWp\",\"intentPayload\":\"https://tokyo-city.ru/dl/\",\"${"$"}type\":\"simpleImage\"}]}}]}"
-                        continuation.resume(testJson)
+                        continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)

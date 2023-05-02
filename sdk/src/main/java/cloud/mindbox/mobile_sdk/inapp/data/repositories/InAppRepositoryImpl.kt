@@ -17,9 +17,6 @@ internal class InAppRepositoryImpl(
     private val inAppSerializationManager: InAppSerializationManager,
 ) :
     InAppRepository {
-    override fun getInAppContentTimeout(): Long {
-        return context.getString(R.string.mindbox_inapp_fetching_timeout).toLong()
-    }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
         sessionStorageManager.operationalInApps[operation] =

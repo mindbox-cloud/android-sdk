@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.di
+package cloud.mindbox.mobile_sdk.di.modules
 
 import cloud.mindbox.mobile_sdk.di.modules.ApiModule
 import cloud.mindbox.mobile_sdk.di.modules.DomainModule
@@ -19,7 +19,7 @@ internal fun PresentationModule(
     MonitoringModule by monitoringModule {
 
     override val inAppMessageViewDisplayer by lazy {
-        InAppMessageViewDisplayerImpl(picasso)
+        InAppMessageViewDisplayerImpl()
     }
 
     override val inAppMessageManager by lazy {
