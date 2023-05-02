@@ -8,11 +8,15 @@ internal class InAppContentFetcherImpl(
     private val inAppImageLoader: InAppImageLoader,
 ) : InAppContentFetcher {
 
-    override suspend fun fetchContent(formVariant: Payload): Boolean {
+    override suspend fun fetchContent(inAppId: String, formVariant: Payload): Boolean {
         when (formVariant) {
             is Payload.SimpleImage -> {
-                return inAppImageLoader.loadImage(formVariant.imageUrl)
+                return inAppImageLoader.loadImage(inAppId, formVariant.imageUrl)
             }
         }
+    }
+
+    override fun cancelFetching(inAppId: String) {
+        inAppImageLoader.cancelLoading(inAppId)
     }
 }

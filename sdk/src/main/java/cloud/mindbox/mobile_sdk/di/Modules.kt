@@ -58,6 +58,7 @@ import com.google.gson.GsonBuilder
 import com.squareup.picasso.OkHttp3Downloader
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.Dispatchers
+import okhttp3.Cache
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -134,11 +135,14 @@ internal val presentationModule = module {
                     .readTimeout(0, TimeUnit.SECONDS)
                     .connectTimeout(0, TimeUnit.SECONDS)
                     .callTimeout(
-                    androidContext().getString(R.string.mindbox_inapp_fetching_timeout).toLong(),
-                    TimeUnit.SECONDS
-                ).build()
+                        androidContext().getString(R.string.mindbox_inapp_fetching_timeout)
+                            .toLong(),
+                        TimeUnit.SECONDS
+                    ).cache(Cache(androidContext().cacheDir, 30000)).build()
             )
-        ).build()
+        )
+            .indicatorsEnabled(true)
+            .loggingEnabled(true).build()
     }
 }
 

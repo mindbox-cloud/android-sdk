@@ -419,7 +419,8 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         Request.Method.GET,
                         getConfigUrl(configuration),
                         { response ->
-                            continuation.resume(response)
+                            val testJson = "{\"monitoring\":{\"logs\":[]},\"settings\":{\"operations\":{\"viewProduct\":{\"systemName\":\"ProsmotrProduktaMobilki\"},\"viewCategory\":{\"systemName\":\"TestProsmotraProdukta\"}}},\"inapps\":[{\"id\":\"3de3f8d5-aa9b-4799-a3ae-d7230b0b0c6d\",\"sdkVersion\":{\"min\":4,\"max\":null},\"targeting\":{\"nodes\":[{\"internalId\":\"8c999074-df8e-4a27-a2d6-3b981a36c8a8\",\"systemName\":\"Demo1\",\"${"$"}type\":\"apiMethodCall\"}],\"${"$"}type\":\"and\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://mobpush-images.mindbox.ru/Mpush-test/287/3fbeb2b7-f422-4bb6-99f3-d30acce812d4.png\",\"redirectUrl\":\"https://tokyo-city.ru/dl/q85dcMnSvAQ\",\"intentPayload\":\"https://tokyo-city.ru/dl\",\"${"$"}type\":\"simpleImage\"}]}},{\"id\":\"f3476b47-ce9f-4b65-8cb7-441262b7c138\",\"sdkVersion\":{\"min\":3,\"max\":null},\"targeting\":{\"nodes\":[{\"${"$"}type\":\"true\"}],\"${"$"}type\":\"and\"},\"form\":{\"variants\":[{\"imageUrl\":\"https://mobpush-images-staging.mindbox.ru/Test-staging/1611/89b84a52-7e5f-48cd-890e-e26d5ceb34f9.jpg\",\"redirectUrl\":\"https://tokyo-city.ru/dl/vFASpWWp\",\"intentPayload\":\"https://tokyo-city.ru/dl/\",\"${"$"}type\":\"simpleImage\"}]}}]}"
+                            continuation.resume(testJson)
                         },
                         { error ->
                             continuation.resumeWithException(error)

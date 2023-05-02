@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.squareup.picasso.Callback
+import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
 import java.util.LinkedList
 
@@ -206,6 +207,7 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
                         picasso
                             .load(inAppType.imageUrl)
                             .fit()
+                            .networkPolicy(NetworkPolicy.OFFLINE)
                             .centerCrop()
                             .into(this, object : Callback {
                                 override fun onSuccess() {

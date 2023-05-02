@@ -15,9 +15,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal class InAppChoosingManagerImpl(
@@ -36,44 +38,69 @@ internal class InAppChoosingManagerImpl(
             val data = getTargetingData(triggerEvent)
             var isTargetingErrorOccurred = false
             var isInAppContentFetched = false
-            coroutineScope {
-                joinAll(
-                    launch {
+            var targetingCheck = false
+            withContext(Dispatchers.IO) {
+                val imageJob =
+                    launch(Dispatchers.Main, start = CoroutineStart.LAZY) {
                         isInAppContentFetched =
                             withTimeoutOrNull(inAppRepository.getInAppContentTimeout()) {
-                                inAppContentFetcher.fetchContent(inApp.form.variants.first())
+                                inAppContentFetcher.fetchContent(
+                                    inApp.id,
+                                    inApp.form.variants.first()
+                                )
                             } ?: false
-                    },
-                    launch {
-                        runCatching {
-                            inApp.targeting.fetchTargetingInfo(data)
-                        }.onFailure { throwable ->
-                            when (throwable) {
-                                is GeoError -> {
-                                    isTargetingErrorOccurred = true
-                                    inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
-                                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
-                                }
+                    }
+                val targetingJob = launch(start = CoroutineStart.LAZY) {
+                    runCatching {
+                        inApp.targeting.fetchTargetingInfo(data)
+                        targetingCheck = inApp.targeting.checkTargeting(data)
+                    }.onFailure { throwable ->
+                        when (throwable) {
+                            is GeoError -> {
+                                isTargetingErrorOccurred = true
+                                inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
+                                MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                            }
 
-                                is CustomerSegmentationError -> {
-                                    isTargetingErrorOccurred = true
-                                    inAppSegmentationRepository.setCustomerSegmentationStatus(
-                                        CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-                                    )
-                                    MindboxLoggerImpl.e(
-                                        this,
-                                        "Error fetching customer segmentations",
-                                        throwable
-                                    )
-                                }
+                            is CustomerSegmentationError -> {
+                                isTargetingErrorOccurred = true
+                                inAppSegmentationRepository.setCustomerSegmentationStatus(
+                                    CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                                )
+                                MindboxLoggerImpl.e(
+                                    this,
+                                    "Error fetching customer segmentations",
+                                    throwable
+                                )
+                            }
 
-                                else -> {
-                                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
-                                    throw throwable
-                                }
+                            else -> {
+                                MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                                throw throwable
                             }
                         }
-                    })
+                    }
+                }
+                listOf(imageJob.apply {
+                    invokeOnCompletion {
+                        if (targetingJob.isActive && !isInAppContentFetched) {
+                            targetingJob.cancel()
+                            mindboxLogD("Cancelling targeting checking since content loading is $isInAppContentFetched")
+                        }
+                    }
+                }, targetingJob.apply {
+                    invokeOnCompletion {
+                        if (imageJob.isActive && !targetingCheck) {
+                            inAppContentFetcher.cancelFetching(inApp.id)
+                            imageJob.cancel()
+                            mindboxLogD("Cancelling content loading since targeting is $targetingCheck")
+                        }
+                    }
+                }).forEach {
+                    it.start()
+                }
+                joinAll(imageJob, targetingJob)
+
             }
             mindboxLogD("loading and targeting fetching finished")
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
@@ -81,9 +108,8 @@ internal class InAppChoosingManagerImpl(
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to content fetching error.")
                 continue
             }
-            val check = inApp.targeting.checkTargeting(data)
-            mindboxLogD("Check ${inApp.targeting.type}: $check")
-            if (check) {
+            mindboxLogD("Check ${inApp.targeting.type}: $targetingCheck")
+            if (targetingCheck) {
                 return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
             }
         }
