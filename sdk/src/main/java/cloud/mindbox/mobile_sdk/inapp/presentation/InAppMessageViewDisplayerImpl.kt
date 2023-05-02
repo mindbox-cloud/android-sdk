@@ -14,14 +14,13 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.bumptech.glide.Glide
-import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
-import java.util.*
+import java.util.LinkedList
 
 
-internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
+internal class InAppMessageViewDisplayerImpl() :
     InAppMessageViewDisplayer {
 
     private var currentRoot: ViewGroup? = null
