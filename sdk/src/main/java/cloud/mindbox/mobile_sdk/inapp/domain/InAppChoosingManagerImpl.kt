@@ -75,7 +75,7 @@ internal class InAppChoosingManagerImpl(
                         }
                     }
                 }
-                joinAll(imageJob.apply {
+                listOf(imageJob.apply {
                     invokeOnCompletion {
                         if (targetingJob.isActive && !isInAppContentFetched) {
                             targetingJob.cancel()
@@ -90,7 +90,9 @@ internal class InAppChoosingManagerImpl(
                             mindboxLogD("Cancelling content loading since targeting is $targetingCheck")
                         }
                     }
-                })
+                }).onEach {
+                    it.start()
+                }.joinAll()
             }
             mindboxLogD("loading and targeting fetching finished")
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
