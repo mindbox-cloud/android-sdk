@@ -71,8 +71,7 @@ internal class InAppChoosingManagerTest {
     private val inAppChoosingManager = InAppChoosingManagerImpl(
         inAppGeoRepository = mockkInAppGeoRepository,
         inAppSegmentationRepository = mockkInAppSegmentationRepository,
-        inAppContentFetcher = mockkInAppContentFetcher,
-        inAppRepository = inAppRepository
+        inAppContentFetcher = mockkInAppContentFetcher
     )
 
     @Test
@@ -199,8 +198,7 @@ internal class InAppChoosingManagerTest {
                 coEvery { fetchGeo() } throws GeoError(VolleyError())
             },
             inAppSegmentationRepository = mockkInAppSegmentationRepository,
-            inAppContentFetcher = mockkInAppContentFetcher,
-            inAppRepository = inAppRepository
+            inAppContentFetcher = mockkInAppContentFetcher
         )
 
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)

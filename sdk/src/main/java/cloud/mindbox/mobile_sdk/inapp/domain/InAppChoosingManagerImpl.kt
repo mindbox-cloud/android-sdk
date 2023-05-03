@@ -3,18 +3,19 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppContentFetchingError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
@@ -24,8 +25,7 @@ import kotlinx.coroutines.withContext
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
-    private val inAppContentFetcher: InAppContentFetcher,
-    private val inAppRepository: InAppRepository
+    private val inAppContentFetcher: InAppContentFetcher
 ) :
     InAppChoosingManager {
 
@@ -36,13 +36,30 @@ internal class InAppChoosingManagerImpl(
         for (inApp in inApps) {
             val data = getTargetingData(triggerEvent)
             var isTargetingErrorOccurred = false
-            var isInAppContentFetched = false
+            var isInAppContentFetched: Boolean? = null
             var targetingCheck = false
             withContext(Dispatchers.IO) {
                 val imageJob =
                     launch(start = CoroutineStart.LAZY) {
-                        isInAppContentFetched =
-                            inAppContentFetcher.fetchContent(inApp.id, inApp.form.variants.first())
+                        runCatching {
+                            isInAppContentFetched =
+                                inAppContentFetcher.fetchContent(
+                                    inApp.id,
+                                    inApp.form.variants.first()
+                                )
+                        }.onFailure { throwable ->
+                            when (throwable) {
+                                is CancellationException -> {
+                                    inAppContentFetcher.cancelFetching(inApp.id)
+                                    isInAppContentFetched = null
+                                }
+
+                                is InAppContentFetchingError -> {
+                                    isInAppContentFetched = false
+                                }
+                            }
+                        }
+
                     }
                 val targetingJob = launch(start = CoroutineStart.LAZY) {
                     runCatching {
@@ -77,7 +94,7 @@ internal class InAppChoosingManagerImpl(
                 }
                 listOf(imageJob.apply {
                     invokeOnCompletion {
-                        if (targetingJob.isActive && !isInAppContentFetched) {
+                        if (targetingJob.isActive && isInAppContentFetched == false) {
                             targetingJob.cancel()
                             mindboxLogD("Cancelling targeting checking since content loading is $isInAppContentFetched")
                         }
@@ -85,7 +102,6 @@ internal class InAppChoosingManagerImpl(
                 }, targetingJob.apply {
                     invokeOnCompletion {
                         if (imageJob.isActive && !targetingCheck) {
-                            inAppContentFetcher.cancelFetching(inApp.id)
                             imageJob.cancel()
                             mindboxLogD("Cancelling content loading since targeting is $targetingCheck")
                         }
@@ -96,11 +112,14 @@ internal class InAppChoosingManagerImpl(
             }
             mindboxLogD("loading and targeting fetching finished")
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
-            if (!isInAppContentFetched) {
+            if (isInAppContentFetched == false) {
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to content fetching error.")
                 continue
             }
             mindboxLogD("Check ${inApp.targeting.type}: $targetingCheck")
+            if (!targetingCheck) {
+                mindboxLogD("Skipping inApp with id = ${inApp.id} due to targeting is false")
+            }
             if (targetingCheck) {
                 return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
             }
