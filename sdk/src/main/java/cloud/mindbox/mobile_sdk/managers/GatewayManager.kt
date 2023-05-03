@@ -2,9 +2,20 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationError
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationRequestDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.EventParameters
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.MindboxError
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.models.MindboxResponse
+import cloud.mindbox.mobile_sdk.models.UrlQuery
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
@@ -18,10 +29,15 @@ import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -72,6 +88,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.PushDelivered -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
@@ -80,11 +97,13 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.SyncOperation -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
@@ -171,6 +190,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
+
         is EventType.PushDelivered -> Request.Method.GET
     }
 
@@ -224,6 +244,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 -> {
                     onSuccess.invoke(String(errorData))
                 }
+
                 MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
                     MindboxError.Validation(
                         statusCode = code,
@@ -231,6 +252,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         validationMessages = errorBody.validationMessages ?: emptyList(),
                     )
                 )
+
                 MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
                     MindboxError.Protocol(
                         statusCode = code,
@@ -240,6 +262,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
                     MindboxError.InternalServer(
                         statusCode = code,
@@ -249,6 +272,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 else -> onError.invoke(
                     MindboxError.UnknownServer(
                         statusCode = code,

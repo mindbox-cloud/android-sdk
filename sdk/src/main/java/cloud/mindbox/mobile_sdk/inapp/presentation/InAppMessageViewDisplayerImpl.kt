@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
+import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,12 +13,14 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import com.squareup.picasso.Callback
-import com.squareup.picasso.Picasso
-import java.util.*
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import java.util.LinkedList
 
 
-internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
+internal class InAppMessageViewDisplayerImpl :
     InAppMessageViewDisplayer {
 
     private var currentRoot: ViewGroup? = null
@@ -121,11 +124,9 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
         }
     }
 
-
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         this.inAppCallback = inAppCallback
     }
-
 
     override fun onPauseCurrentActivity(activity: Activity) {
         MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
@@ -203,12 +204,38 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
                             this@InAppMessageViewDisplayerImpl,
                             "try to show inapp with id ${inAppType.inAppId}"
                         )
-                        picasso
+
+                        Glide
+                            .with(currentActivity!!.applicationContext)
                             .load(inAppType.imageUrl)
-                            .fit()
-                            .centerCrop()
-                            .into(this, object : Callback {
-                                override fun onSuccess() {
+                            .onlyRetrieveFromCache(true)
+                            .listener(object : RequestListener<Drawable> {
+                                override fun onLoadFailed(
+                                    e: GlideException?,
+                                    model: Any?,
+                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
+                                    MindboxLoggerImpl.e(
+                                        parent = this@InAppMessageViewDisplayerImpl,
+                                        message = "Failed to load inapp image",
+                                        exception = e
+                                            ?: RuntimeException("Failed to load inapp image")
+                                    )
+                                    currentRoot?.removeView(currentDialog)
+                                    currentRoot?.removeView(currentBlur)
+                                    isInAppMessageActive = false
+                                    this@with?.isVisible = false
+                                    return false
+                                }
+
+                                override fun onResourceReady(
+                                    resource: Drawable?,
+                                    model: Any?,
+                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
+                                    dataSource: DataSource?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
                                     this@with?.isVisible = true
                                     currentInAppId = inAppType.inAppId
                                     currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
@@ -255,21 +282,11 @@ internal class InAppMessageViewDisplayerImpl(private val picasso: Picasso) :
                                         "inapp shown"
                                     )
                                     onInAppShown()
-                                }
-
-                                override fun onError(e: Exception?) {
-                                    MindboxLoggerImpl.e(
-                                        parent = this@InAppMessageViewDisplayerImpl,
-                                        message = "Failed to load inapp image",
-                                        exception = e
-                                            ?: RuntimeException("Failed to load inapp image")
-                                    )
-                                    currentRoot?.removeView(currentDialog)
-                                    currentRoot?.removeView(currentBlur)
-                                    isInAppMessageActive = false
-                                    this@with?.isVisible = false
+                                    return false
                                 }
                             })
+                            .centerCrop()
+                            .into(this!!)
                     }
                 } else {
                     MindboxLoggerImpl.d(this, "in-app image url is blank")

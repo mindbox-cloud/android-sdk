@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
 
-    fun getInAppContentTimeout(): Long
     fun saveOperationalInApp(operation: String, inApp: InApp)
 
     fun getOperationalInAppsByOperation(operation: String): List<InApp>

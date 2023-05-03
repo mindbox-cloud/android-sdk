@@ -25,7 +25,6 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
-import com.squareup.picasso.Picasso
 
 internal sealed interface MindboxModule
 
@@ -88,7 +87,6 @@ internal interface ApiModule : MindboxModule {
     val gatewayManager: GatewayManager
     val mindboxServiceGenerator: MindboxServiceGenerator
     val requestQueue: RequestQueue
-    val picasso: Picasso
     val inAppContentFetcher: InAppContentFetcher
     val inAppImageLoader: InAppImageLoader
 }
