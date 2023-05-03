@@ -1,9 +1,5 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.di.modules.ApiModule
-import cloud.mindbox.mobile_sdk.di.modules.DomainModule
-import cloud.mindbox.mobile_sdk.di.modules.MonitoringModule
-import cloud.mindbox.mobile_sdk.di.modules.PresentationModule
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import kotlinx.coroutines.Dispatchers

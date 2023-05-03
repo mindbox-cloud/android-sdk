@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation
 
-import java.util.*
+import java.util.Date
 
 class DateTime : Date {
 

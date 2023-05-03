@@ -4,23 +4,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppContentFetchingError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,

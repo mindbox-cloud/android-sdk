@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package cloud.mindbox.mobile_sdk.models.operation
 
 import cloud.mindbox.mobile_sdk.models.OperationBodyInternal

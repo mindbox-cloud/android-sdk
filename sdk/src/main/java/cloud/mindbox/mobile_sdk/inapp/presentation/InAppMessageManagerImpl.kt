@@ -33,9 +33,8 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.processEventAndConfig()
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main) {
-                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive) {
+                        if (inAppMessageViewDisplayer.isInAppActive()) {
                             this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
-                            // TODO fix skipping second inApp
                             return@withContext
                         }
 
@@ -113,6 +112,12 @@ internal class InAppMessageManagerImpl(
     override fun onPauseCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
+        }
+    }
+
+    override fun onStopCurrentActivity(activity: Activity) {
+        LoggingExceptionHandler.runCatching {
+            inAppMessageViewDisplayer.onStopCurrentActivity(activity)
         }
     }
 

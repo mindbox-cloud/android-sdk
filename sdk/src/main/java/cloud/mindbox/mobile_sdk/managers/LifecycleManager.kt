@@ -23,6 +23,7 @@ internal class LifecycleManager(
     private var onActivityResumed: (resumedActivity: Activity) -> Unit,
     private var onActivityPaused: (pausedActivity: Activity) -> Unit,
     private var onActivityStarted: (activity: Activity) -> Unit,
+    private var onActivityStopped: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
 
@@ -92,6 +93,7 @@ internal class LifecycleManager(
         if (currentIntent == null || currentActivityName == null) {
             updateActivityParameters(activity)
         }
+        onActivityStopped.invoke(activity)
     }
 
     override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {

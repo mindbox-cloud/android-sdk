@@ -7,7 +7,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 class DateOnlyAdapter : TypeAdapter<DateOnly>() {
 
