@@ -34,7 +34,7 @@ internal class InAppMessageViewDisplayerImpl :
                 mindboxLogD("trying to restore in-app with id $pausedHolder")
                 pausedHolder?.hide()
                 showInAppMessage(wrapper.copy(
-                    onInAppShown = { mindboxLogD("Skip Inapp.Show for restored inApp") }
+                    onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") }
                 ))
                 pausedHolder = null
             }
@@ -101,14 +101,12 @@ internal class InAppMessageViewDisplayerImpl :
     }
 
     private fun showInAppMessage(wrapper: InAppTypeWrapper<out InAppType>) {
-        when (wrapper.inAppType) {
+        when(wrapper.inAppType) {
             is InAppType.SimpleImage -> {
-                @Suppress("UNCHECKED_CAST")
-                wrapper as InAppTypeWrapper<InAppType.SimpleImage>
-
                 currentActivity?.root?.let { root ->
+                    @Suppress("UNCHECKED_CAST")
                     currentHolder = SimpleImageInAppViewHolder(
-                        wrapper,
+                        wrapper as InAppTypeWrapper<InAppType.SimpleImage>,
                         inAppCallback
                     ).apply {
                         show(root)

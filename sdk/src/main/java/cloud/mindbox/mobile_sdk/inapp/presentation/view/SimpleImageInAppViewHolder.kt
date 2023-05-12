@@ -17,6 +17,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 
 
 internal class SimpleImageInAppViewHolder(
@@ -124,7 +125,7 @@ internal class SimpleImageInAppViewHolder(
                     override fun onLoadFailed(
                         e: GlideException?,
                         model: Any?,
-                        target: com.bumptech.glide.request.target.Target<Drawable>?,
+                        target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
                         MindboxLoggerImpl.e(
@@ -141,7 +142,7 @@ internal class SimpleImageInAppViewHolder(
                     override fun onResourceReady(
                         resource: Drawable?,
                         model: Any?,
-                        target: com.bumptech.glide.request.target.Target<Drawable>?,
+                        target: Target<Drawable>?,
                         dataSource: DataSource?,
                         isFirstResource: Boolean
                     ): Boolean {
