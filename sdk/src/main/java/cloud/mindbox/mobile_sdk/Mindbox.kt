@@ -475,6 +475,9 @@ object Mindbox {
                                 true
                             )
                         },
+                        onActivityStopped = { resumedActivity ->
+                            inAppMessageManager.onStopCurrentActivity(resumedActivity)
+                        },
                         onTrackVisitReady = { source, requestUrl ->
                             runBlocking(Dispatchers.IO) {
                                 sendTrackVisitEvent(

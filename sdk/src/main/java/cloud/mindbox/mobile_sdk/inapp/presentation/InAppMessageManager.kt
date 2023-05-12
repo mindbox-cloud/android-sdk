@@ -8,6 +8,7 @@ internal interface InAppMessageManager {
     fun requestConfig(): Job
     fun registerCurrentActivity(activity: Activity)
     fun onPauseCurrentActivity(activity: Activity)
+    fun onStopCurrentActivity(activity: Activity)
     fun registerInAppCallback(inAppCallback: InAppCallback)
     fun initInAppMessages()
     fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)

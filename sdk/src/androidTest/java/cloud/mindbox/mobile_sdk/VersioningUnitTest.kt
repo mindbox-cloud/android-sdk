@@ -10,7 +10,8 @@ import kotlinx.coroutines.launch
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Test
-import java.util.*
+import java.util.Collections
+import java.util.UUID
 
 class VersioningUnitTest {
     private val eventList = Collections.synchronizedList(ArrayList<UpdateData>())

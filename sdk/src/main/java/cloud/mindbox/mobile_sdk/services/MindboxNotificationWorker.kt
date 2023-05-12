@@ -103,6 +103,7 @@ internal class MindboxNotificationWorker(
             ?.deserialize<Map<String, String>>()
             ?.mapNotNull { (key, value) ->
                 LoggingExceptionHandler.runCatching(defaultValue = null) {
+                    @Suppress("UNCHECKED_CAST")
                     key to Class.forName(value) as Class<out Activity>
                 }
             }
@@ -110,6 +111,7 @@ internal class MindboxNotificationWorker(
 
         val defaultActivity = inputData.getString(KEY_ACTIVITY_DEFAULT)?.let {
             LoggingExceptionHandler.runCatching(defaultValue = null) {
+                @Suppress("UNCHECKED_CAST")
                 Class.forName(it) as Class<out Activity>
             }
         }

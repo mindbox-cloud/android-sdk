@@ -2,20 +2,9 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationRequestDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.models.Configuration
-import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.EventParameters
-import cloud.mindbox.mobile_sdk.models.EventType
-import cloud.mindbox.mobile_sdk.models.MindboxError
-import cloud.mindbox.mobile_sdk.models.MindboxRequest
-import cloud.mindbox.mobile_sdk.models.MindboxResponse
-import cloud.mindbox.mobile_sdk.models.UrlQuery
+import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
@@ -29,12 +18,7 @@ import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.UUID

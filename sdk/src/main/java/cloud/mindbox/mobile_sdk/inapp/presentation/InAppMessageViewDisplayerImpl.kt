@@ -1,125 +1,60 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
-import android.graphics.drawable.Drawable
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
-import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.request.RequestListener
-import java.util.LinkedList
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.SimpleImageInAppViewHolder
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import java.util.*
 
 
 internal class InAppMessageViewDisplayerImpl :
     InAppMessageViewDisplayer {
 
-    private var currentRoot: ViewGroup? = null
-    private var currentBlur: View? = null
-    private var currentDialog: InAppConstraintLayout? = null
     private var currentActivity: Activity? = null
-    private var inAppCallback: InAppCallback? = null
-    private var currentInAppId: String? = null
-    private val inAppQueue = LinkedList<InAppTypeWrapper>()
+    private var inAppCallback: InAppCallback = EmptyInAppCallback()
+    private val inAppQueue = LinkedList<InAppTypeWrapper<InAppType>>()
 
+    private var currentHolder: InAppViewHolder<*>? = null
+    private var pausedHolder: InAppViewHolder<*>? = null
 
-    private fun isUiPresent(): Boolean =
-        (currentRoot != null) && (currentDialog != null) && (currentBlur != null)
-
+    private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
-        MindboxLoggerImpl.d(this, "onResumeCurrentActivity: ${activity.hashCode()}")
-        currentRoot = activity.window.decorView.rootView as ViewGroup
-        currentBlur = if (shouldUseBlur) {
-            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
-            LayoutInflater.from(activity).inflate(
-                R.layout.blur_layout,
-                currentRoot, false
-            )
-        } else {
-            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
-            LayoutInflater.from(activity).inflate(
-                R.layout.blur_layout,
-                currentRoot, false
-            ).apply {
-                setBackgroundColor(
-                    ContextCompat.getColor(
-                        activity,
-                        android.R.color.transparent
-                    )
-                )
-            }
-        }
+        mindboxLogD("onResumeCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
-        currentDialog = LayoutInflater.from(activity).inflate(
-            R.layout.default_inapp_layout,
-            currentRoot, false
-        ) as InAppConstraintLayout
 
-        if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
-            with(inAppQueue.pop()) {
-                MindboxLoggerImpl.d(
-                    this,
-                    "trying to show in-app with id ${inAppType.inAppId} from queue"
-                )
-                showInAppMessage(
-                    inAppType = inAppType,
-                    onInAppClick = onInAppClick,
-                    onInAppShown = onInAppShown
-                )
+        if (pausedHolder?.isActive == true) {
+            pausedHolder?.wrapper?.let { wrapper ->
+                mindboxLogD("trying to restore in-app with id $pausedHolder")
+                pausedHolder?.hide()
+                showInAppMessage(wrapper.copy(
+                    onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") }
+                ))
+                pausedHolder = null
             }
+        } else {
+            tryShowInAppFromQueue()
         }
     }
 
     override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
-        MindboxLoggerImpl.d(this, "registerCurrentActivity: ${activity.hashCode()}")
-        currentRoot = activity.window.decorView.rootView as ViewGroup
-        currentBlur = if (shouldUseBlur) {
-            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Enable blur")
-            LayoutInflater.from(activity).inflate(
-                R.layout.blur_layout,
-                currentRoot, false
-            )
-        } else {
-            MindboxLoggerImpl.i(InAppMessageViewDisplayerImpl, "Disable blur")
-            LayoutInflater.from(activity).inflate(
-                R.layout.blur_layout,
-                currentRoot, false
-            ).apply {
-                setBackgroundColor(
-                    ContextCompat.getColor(
-                        activity,
-                        android.R.color.transparent
-                    )
-                )
-            }
-        }
+        mindboxLogD("registerCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
-        currentDialog = LayoutInflater.from(activity).inflate(
-            R.layout.default_inapp_layout,
-            currentRoot, false
-        ) as InAppConstraintLayout
 
-        if (inAppQueue.isNotEmpty() && !isInAppMessageActive) {
+        tryShowInAppFromQueue()
+    }
+
+    private fun tryShowInAppFromQueue() {
+        if (inAppQueue.isNotEmpty() && !isInAppActive()) {
             with(inAppQueue.pop()) {
-                MindboxLoggerImpl.d(
-                    this,
-                    "trying to show in-app with id ${inAppType.inAppId} from queue"
-                )
-                showInAppMessage(
-                    inAppType = inAppType,
-                    onInAppClick = onInAppClick,
-                    onInAppShown = onInAppShown
-                )
+                mindboxLogD("trying to show in-app with id ${inAppType.inAppId} from queue")
+                showInAppMessage(this)
             }
         }
     }
@@ -128,175 +63,62 @@ internal class InAppMessageViewDisplayerImpl :
         this.inAppCallback = inAppCallback
     }
 
+    override fun isInAppActive(): Boolean = currentHolder?.isActive ?: false
+
+    override fun onStopCurrentActivity(activity: Activity) {
+        mindboxLogD("onStopCurrentActivity: ${activity.hashCode()}")
+        pausedHolder?.hide()
+    }
+
     override fun onPauseCurrentActivity(activity: Activity) {
-        MindboxLoggerImpl.d(this, "onPauseCurrentActivity: ${activity.hashCode()}")
+        mindboxLogD("onPauseCurrentActivity: ${activity.hashCode()}")
         if (currentActivity == activity) {
             currentActivity = null
         }
-        clearUI()
+        pausedHolder = currentHolder
+        currentHolder = null
     }
 
     override fun tryShowInAppMessage(
         inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
+        onInAppClick: OnInAppClick,
+        onInAppShown: OnInAppShown,
     ) {
+        val wrapper = InAppTypeWrapper(
+            inAppType,
+            onInAppClick,
+            onInAppShown
+        )
         if (isUiPresent()) {
-            MindboxLoggerImpl.d(
-                this,
-                "In-app with id ${inAppType.inAppId} is going to be shown immediately"
-            )
-            showInAppMessage(inAppType, onInAppClick, onInAppShown)
-
+            mindboxLogD("In-app with id ${inAppType.inAppId} is going to be shown immediately")
+            showInAppMessage(wrapper)
         } else {
-            addToInAppQueue(inAppType, onInAppClick, onInAppShown)
-            MindboxLoggerImpl.d(
-                this,
+            inAppQueue.add(wrapper)
+            mindboxLogD(
                 "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later"
             )
         }
     }
 
-    private fun clearUI() {
-        if (isInAppMessageActive) {
-            currentInAppId?.let { id ->
-                inAppCallback?.onInAppDismissed(id)
-                MindboxLoggerImpl.d(this, "In-app dismissed")
-            }
-        }
-        isInAppMessageActive = false
-        currentRoot?.removeView(currentBlur)
-        currentRoot?.removeView(currentDialog)
-        currentRoot = null
-        currentDialog = null
-        currentBlur = null
-    }
-
-    private fun addToInAppQueue(
-        inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
-    ) {
-        inAppQueue.add(InAppTypeWrapper(inAppType, onInAppClick, onInAppShown))
-    }
-
-
-    private fun showInAppMessage(
-        inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
-    ) {
-        when (inAppType) {
+    private fun showInAppMessage(wrapper: InAppTypeWrapper<out InAppType>) {
+        when(wrapper.inAppType) {
             is InAppType.SimpleImage -> {
-                if (inAppType.imageUrl.isNotBlank()) {
-                    isInAppMessageActive = true
-
-                    if (currentRoot == null) {
-                        MindboxLoggerImpl.e(this, "failed to show inapp: currentRoot is null")
-                        isInAppMessageActive = false
+                currentActivity?.root?.let { root ->
+                    @Suppress("UNCHECKED_CAST")
+                    currentHolder = SimpleImageInAppViewHolder(
+                        wrapper as InAppTypeWrapper<InAppType.SimpleImage>,
+                        inAppCallback
+                    ).apply {
+                        show(root)
                     }
-                    currentRoot?.addView(currentBlur)
-                    currentRoot?.addView(currentDialog)
-                    currentDialog?.requestFocus()
-
-                    with(currentRoot?.findViewById<ImageView>(R.id.iv_content)) {
-                        MindboxLoggerImpl.d(
-                            this@InAppMessageViewDisplayerImpl,
-                            "try to show inapp with id ${inAppType.inAppId}"
-                        )
-
-                        Glide
-                            .with(currentActivity!!.applicationContext)
-                            .load(inAppType.imageUrl)
-                            .onlyRetrieveFromCache(true)
-                            .listener(object : RequestListener<Drawable> {
-                                override fun onLoadFailed(
-                                    e: GlideException?,
-                                    model: Any?,
-                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    MindboxLoggerImpl.e(
-                                        parent = this@InAppMessageViewDisplayerImpl,
-                                        message = "Failed to load inapp image",
-                                        exception = e
-                                            ?: RuntimeException("Failed to load inapp image")
-                                    )
-                                    currentRoot?.removeView(currentDialog)
-                                    currentRoot?.removeView(currentBlur)
-                                    isInAppMessageActive = false
-                                    this@with?.isVisible = false
-                                    return false
-                                }
-
-                                override fun onResourceReady(
-                                    resource: Drawable?,
-                                    model: Any?,
-                                    target: com.bumptech.glide.request.target.Target<Drawable>?,
-                                    dataSource: DataSource?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    this@with?.isVisible = true
-                                    currentInAppId = inAppType.inAppId
-                                    currentRoot?.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                        setOnClickListener {
-                                            inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                            MindboxLoggerImpl.d(this, "In-app dismissed")
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                            isInAppMessageActive = false
-                                        }
-                                        isVisible = true
-                                    }
-                                    currentDialog?.setOnClickListener {
-                                        currentDialog?.isEnabled = false
-                                        onInAppClick()
-                                        inAppCallback?.onInAppClick(
-                                            inAppType.inAppId,
-                                            inAppType.redirectUrl,
-                                            inAppType.intentData
-                                        )
-                                        if (inAppType.redirectUrl.isNotBlank() || inAppType.intentData.isNotBlank()) {
-                                            currentRoot?.removeView(currentDialog)
-                                            currentRoot?.removeView(currentBlur)
-                                            isInAppMessageActive = false
-                                        }
-                                    }
-                                    currentDialog?.setDismissListener {
-                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                        MindboxLoggerImpl.d(this, "In-app dismissed")
-                                        currentRoot?.removeView(currentDialog)
-                                        currentRoot?.removeView(currentBlur)
-                                        isInAppMessageActive = false
-                                    }
-                                    currentBlur?.setOnClickListener {
-                                        inAppCallback?.onInAppDismissed(inAppType.inAppId)
-                                        MindboxLoggerImpl.d(this, "In-app dismissed")
-                                        currentRoot?.removeView(currentDialog)
-                                        currentRoot?.removeView(currentBlur)
-                                        isInAppMessageActive = false
-                                    }
-                                    currentBlur?.isVisible = true
-                                    MindboxLoggerImpl.d(
-                                        this@InAppMessageViewDisplayerImpl,
-                                        "inapp shown"
-                                    )
-                                    onInAppShown()
-                                    return false
-                                }
-                            })
-                            .centerCrop()
-                            .into(this!!)
-                    }
-                } else {
-                    MindboxLoggerImpl.d(this, "in-app image url is blank")
+                } ?: run {
+                    mindboxLogE("failed to show inApp: currentRoot is null")
                 }
             }
         }
     }
 
-    companion object {
-        var isInAppMessageActive = false
-    }
+    private val Activity?.root: ViewGroup?
+        get() = this?.window?.decorView?.rootView as ViewGroup?
 }
 

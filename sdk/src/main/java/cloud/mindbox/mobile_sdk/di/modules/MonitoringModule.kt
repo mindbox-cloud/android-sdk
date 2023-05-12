@@ -1,10 +1,6 @@
-package cloud.mindbox.mobile_sdk.di
+package cloud.mindbox.mobile_sdk.di.modules
 
 import androidx.room.Room
-import cloud.mindbox.mobile_sdk.di.modules.ApiModule
-import cloud.mindbox.mobile_sdk.di.modules.AppContextModule
-import cloud.mindbox.mobile_sdk.di.modules.DataModule
-import cloud.mindbox.mobile_sdk.di.modules.MonitoringModule
 import cloud.mindbox.mobile_sdk.monitoring.MonitoringInteractorImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
