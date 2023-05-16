@@ -1,5 +1,11 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
+import android.content.Context
+import android.graphics.Rect
+import android.util.TypedValue
+import android.view.View
+import android.view.inputmethod.InputMethodManager
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
@@ -7,6 +13,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""
@@ -63,4 +70,36 @@ internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null):
                     ignoreCase = true)
         }
     } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
+}
+
+internal fun View.hideKeyboard(): View? {
+    val imm = this.context.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+    if (isKeyboardOpen()) {
+        imm.hideSoftInputFromWindow(this.windowToken, 0)
+        return this
+    }
+    return null
+}
+
+internal fun View.showKeyboard(): View {
+    val imm = this.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    this.requestFocus()
+    imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+    return this
+}
+
+internal fun Context.convertDpToPx(dp: Float): Float {
+    return TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        dp,
+        this.resources.displayMetrics
+    )
+}
+
+internal fun View.isKeyboardOpen(): Boolean {
+    val visibleBounds = Rect()
+    this.rootView.getWindowVisibleDisplayFrame(visibleBounds)
+    val heightDiff = rootView.height - visibleBounds.height()
+    val marginOfError = this.context.convertDpToPx(100F).roundToInt()
+    return heightDiff > marginOfError
 }
