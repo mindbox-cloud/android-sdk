@@ -417,17 +417,15 @@ object Mindbox {
                             val activity = context as? Activity
                             if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                                 inAppMessageManager.registerCurrentActivity(activity)
+                                mindboxScope.launch {
+                                    inAppMessageManager.listenEventAndInApp()
+                                    inAppMessageManager.initInAppMessages()
+                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                    inAppMessageManager.requestConfig().join()
+                                    firstInitCall = false
+                                }
                             }
-
-                            mindboxScope.launch {
-                                inAppMessageManager.listenEventAndInApp()
-                                inAppMessageManager.initInAppMessages()
-                                MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                                inAppMessageManager.requestConfig().join()
-                            }
-
                         }
-                        firstInitCall = false
                     }
                 }
             // Handle back app in foreground
@@ -474,6 +472,17 @@ object Mindbox {
                                 resumedActivity,
                                 true
                             )
+                            if (firstInitCall) {
+                                inAppMessageManager.registerCurrentActivity(resumedActivity)
+                                mindboxScope.launch {
+                                    inAppMessageManager.listenEventAndInApp()
+                                    inAppMessageManager.initInAppMessages()
+                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                    inAppMessageManager.requestConfig().join()
+                                }
+
+                            }
+                            firstInitCall = false
                         },
                         onActivityStopped = { resumedActivity ->
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
@@ -1054,6 +1063,7 @@ object Mindbox {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
