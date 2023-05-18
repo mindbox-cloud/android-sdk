@@ -473,7 +473,6 @@ object Mindbox {
                                 true
                             )
                             if (firstInitCall) {
-                                inAppMessageManager.registerCurrentActivity(resumedActivity)
                                 mindboxScope.launch {
                                     inAppMessageManager.listenEventAndInApp()
                                     inAppMessageManager.initInAppMessages()
@@ -1063,7 +1062,6 @@ object Mindbox {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
-
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
