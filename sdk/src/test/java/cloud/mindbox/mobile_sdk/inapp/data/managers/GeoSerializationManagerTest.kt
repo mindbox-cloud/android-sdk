@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.di.dataModule
+import android.app.Application
+import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoTargeting
 import cloud.mindbox.mobile_sdk.models.GeoTargetingStub
@@ -9,20 +11,11 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
 
-internal class GeoSerializationManagerTest : KoinTest {
+internal class GeoSerializationManagerTest {
 
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
-    }
-
-    private val gson: Gson by inject()
+    private val gson: Gson by mindboxInject { gson }
 
     private val validCityId = "123"
 
@@ -30,11 +23,17 @@ internal class GeoSerializationManagerTest : KoinTest {
 
     private val validCountryId = "789"
 
-    private lateinit var geoSerializationManager: GeoSerializationManager
+    private val geoSerializationManager: GeoSerializationManager by lazy {
+        GeoSerializationManagerImpl(gson)
+    }
+
+    val context = mockk<Application>(relaxed = true) {
+        every { applicationContext } returns this
+    }
 
     @Before
     fun onTestStart() {
-        geoSerializationManager = GeoSerializationManagerImpl(gson)
+        MindboxDI.init(context)
     }
 
     @Test
@@ -80,7 +79,6 @@ internal class GeoSerializationManagerTest : KoinTest {
         every {
             gson.fromJson(testJson, GeoTargeting::class.java)
         } throws Error("errorMessage")
-        geoSerializationManager = GeoSerializationManagerImpl(gson)
         val actualResult = geoSerializationManager.deserializeToGeoTargeting(testJson)
         assertEquals(expectedResult, actualResult)
     }
@@ -107,7 +105,7 @@ internal class GeoSerializationManagerTest : KoinTest {
             gson.toJson(any())
         } throws Error("errorMessage")
         val expectedResult = ""
-        geoSerializationManager = GeoSerializationManagerImpl(gson)
+        val geoSerializationManager = GeoSerializationManagerImpl(gson)
         val actualResult = geoSerializationManager.serializeToGeoString(testGeoTargeting)
         assertEquals(expectedResult, actualResult)
     }

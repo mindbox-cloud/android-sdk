@@ -1,9 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
-import com.google.gson.Gson
-import org.koin.core.component.inject
 
 
 internal data class ViewProductCategoryInNode(
@@ -12,8 +10,8 @@ internal data class ViewProductCategoryInNode(
     val values: List<Value>,
 ) : OperationNodeBase(type) {
 
-    private val mobileConfigRepository: MobileConfigRepository by inject()
-    private val gson: Gson by inject()
+    private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
+    private val gson by mindboxInject { gson }
 
     override fun checkTargeting(data: TargetingData): Boolean {
         if (data !is TargetingData.OperationBody) return false

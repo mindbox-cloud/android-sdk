@@ -14,9 +14,9 @@ import kotlinx.coroutines.flow.collect
 
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
-    private val inAppInteractorImpl: InAppInteractor,
+    private val inAppInteractor: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher,
-    private val monitoringRepository: MonitoringInteractor,
+    private val monitoringInteractor: MonitoringInteractor,
 ) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
@@ -30,16 +30,15 @@ internal class InAppMessageManagerImpl(
 
     override fun listenEventAndInApp() {
         inAppScope.launch {
-            inAppInteractorImpl.processEventAndConfig()
+            inAppInteractor.processEventAndConfig()
                 .collect { inAppMessage ->
                     withContext(Dispatchers.Main) {
-                        if (InAppMessageViewDisplayerImpl.isInAppMessageActive) {
+                        if (inAppMessageViewDisplayer.isInAppActive()) {
                             this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
-                            // TODO fix skipping second inApp
                             return@withContext
                         }
 
-                        if (inAppInteractorImpl.isInAppShown()) {
+                        if (inAppInteractor.isInAppShown()) {
                             this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
                             return@withContext
                         }
@@ -48,7 +47,7 @@ internal class InAppMessageManagerImpl(
                             inAppType = inAppMessage,
                             onInAppClick = { sendInAppClicked(inAppMessage.inAppId) },
                             onInAppShown = {
-                                inAppInteractorImpl.saveShownInApp(inAppMessage.inAppId)
+                                inAppInteractor.saveShownInApp(inAppMessage.inAppId)
                                 sendInAppShown(inAppMessage.inAppId)
                                 setInAppShown()
                             })
@@ -84,12 +83,12 @@ internal class InAppMessageManagerImpl(
                 )
             }
         }) {
-            inAppInteractorImpl.fetchMobileConfig()
+            inAppInteractor.fetchMobileConfig()
         }
     }
 
     override fun initInAppMessages() {
-        monitoringRepository.processLogs()
+        monitoringInteractor.processLogs()
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -99,20 +98,26 @@ internal class InAppMessageManagerImpl(
     }
 
     private fun sendInAppShown(inAppId: String) {
-        inAppInteractorImpl.sendInAppShown(inAppId)
+        inAppInteractor.sendInAppShown(inAppId)
     }
 
     private fun setInAppShown() {
-        inAppInteractorImpl.setInAppShown()
+        inAppInteractor.setInAppShown()
     }
 
     private fun sendInAppClicked(inAppId: String) {
-        inAppInteractorImpl.sendInAppClicked(inAppId)
+        inAppInteractor.sendInAppClicked(inAppId)
     }
 
     override fun onPauseCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
+        }
+    }
+
+    override fun onStopCurrentActivity(activity: Activity) {
+        LoggingExceptionHandler.runCatching {
+            inAppMessageViewDisplayer.onStopCurrentActivity(activity)
         }
     }
 

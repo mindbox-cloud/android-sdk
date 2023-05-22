@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.util.*
+import java.util.UUID
 
 abstract class PushServiceHandler {
 

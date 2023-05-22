@@ -1,8 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
-import android.content.Context
 import android.util.Log
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -23,16 +21,19 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
+internal class GatewayManager(private val mindboxServiceGenerator: MindboxServiceGenerator) {
 
-    private const val TIMEOUT_DELAY = 60000
-    private const val MAX_RETRIES = 0
-    private const val MONITORING_DELAY = 5000
+    companion object {
+        private const val TIMEOUT_DELAY = 60000
+        private const val MAX_RETRIES = 0
+        private const val MONITORING_DELAY = 5000
+    }
+
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
     private fun getCustomerSegmentationsUrl(configuration: Configuration): String {
@@ -71,6 +72,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.PushDelivered -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.UNIQ_KEY.value] =
@@ -79,11 +81,13 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
+
             is EventType.SyncOperation -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
@@ -94,14 +98,12 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     }
 
     fun sendAsyncEvent(
-        context: Context,
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
         shouldCountOffset: Boolean,
         isSentListener: (Boolean) -> Unit,
     ) = sendEvent(
-        context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
@@ -111,7 +113,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     )
 
     fun <T : OperationResponseBaseInternal> sendEvent(
-        context: Context,
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
@@ -120,7 +121,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
         onSuccess: (T) -> Unit,
         onError: (MindboxError) -> Unit,
     ) = sendEvent(
-        context = context,
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
@@ -130,7 +130,6 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
     )
 
     fun sendEvent(
-        context: Context,
         configuration: Configuration,
         deviceUuid: String,
         event: Event,
@@ -159,7 +158,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
-            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
+            mindboxServiceGenerator.addToRequestQueue(request)
         } catch (e: Exception) {
             MindboxLoggerImpl.e(this, "Sending event was failure with exception", e)
             onError.invoke(MindboxError.Unknown(e))
@@ -175,6 +174,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
+
         is EventType.PushDelivered -> Request.Method.GET
     }
 
@@ -228,6 +228,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 -> {
                     onSuccess.invoke(String(errorData))
                 }
+
                 MindboxResponse.STATUS_VALIDATION_ERROR -> onError.invoke(
                     MindboxError.Validation(
                         statusCode = code,
@@ -235,6 +236,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         validationMessages = errorBody.validationMessages ?: emptyList(),
                     )
                 )
+
                 MindboxResponse.STATUS_PROTOCOL_ERROR -> onError.invoke(
                     MindboxError.Protocol(
                         statusCode = code,
@@ -244,6 +246,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 MindboxResponse.STATUS_INTERNAL_SERVER_ERROR -> onError.invoke(
                     MindboxError.InternalServer(
                         statusCode = code,
@@ -253,6 +256,7 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                         httpStatusCode = errorBody.httpStatusCode,
                     )
                 )
+
                 else -> onError.invoke(
                     MindboxError.UnknownServer(
                         statusCode = code,
@@ -288,100 +292,95 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
         code < 300 || code in 400..499
     } ?: false
 
-    suspend fun checkGeoTargeting(context: Context, configuration: Configuration): GeoTargetingDto {
+    suspend fun checkGeoTargeting(configuration: Configuration): GeoTargetingDto {
         return suspendCoroutine { continuation ->
-            MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(
-                    MindboxRequest(
-                        Request.Method.GET,
-                        "https://${configuration.domain}/geo",
-                        configuration,
-                        null,
-                        { jsonObject ->
-                            continuation.resume(
-                                gson.fromJson(
-                                    jsonObject.toString(),
-                                    GeoTargetingDto::class.java
-                                )
+            mindboxServiceGenerator.addToRequestQueue(
+                MindboxRequest(
+                    Request.Method.GET,
+                    "https://${configuration.domain}/geo",
+                    configuration,
+                    null,
+                    { jsonObject ->
+                        continuation.resume(
+                            gson.fromJson(
+                                jsonObject.toString(),
+                                GeoTargetingDto::class.java
                             )
-                        },
-                        { error ->
-                            continuation.resumeWithException(GeoError(error))
-                        }
-                    )
+                        )
+                    },
+                    { error ->
+                        continuation.resumeWithException(GeoError(error))
+                    }
                 )
+            )
         }
     }
 
     suspend fun checkProductSegmentation(
-        context: Context,
         configuration: Configuration,
         segmentation: ProductSegmentationRequestDto,
     ): ProductSegmentationResponseDto {
         return suspendCoroutine { continuation ->
-            MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(
-                    MindboxRequest(
-                        Request.Method.POST,
-                        getProductSegmentationUrl(configuration),
-                        configuration,
-                        convertBodyToJson(
-                            gson.toJson(
-                                segmentation,
-                                ProductSegmentationRequestDto::class.java
+            mindboxServiceGenerator.addToRequestQueue(
+                MindboxRequest(
+                    Request.Method.POST,
+                    getProductSegmentationUrl(configuration),
+                    configuration,
+                    convertBodyToJson(
+                        gson.toJson(
+                            segmentation,
+                            ProductSegmentationRequestDto::class.java
+                        )
+                    )!!,
+                    { response ->
+                        continuation.resume(
+                            gson.fromJson(
+                                response.toString(),
+                                ProductSegmentationResponseDto::class.java
                             )
-                        )!!,
-                        { response ->
-                            continuation.resume(
-                                gson.fromJson(
-                                    response.toString(),
-                                    ProductSegmentationResponseDto::class.java
-                                )
-                            )
-                        },
-                        { error ->
-                            continuation.resumeWithException(ProductSegmentationError(error))
-                        }
-                    )
+                        )
+                    },
+                    { error ->
+                        continuation.resumeWithException(ProductSegmentationError(error))
+                    }
                 )
+            )
         }
     }
 
     suspend fun checkCustomerSegmentations(
-        context: Context,
         configuration: Configuration,
         segmentationCheckRequest: SegmentationCheckRequest,
     ): SegmentationCheckResponse {
         return suspendCoroutine { continuation ->
-            MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(
-                    MindboxRequest(
-                        Request.Method.POST,
-                        getCustomerSegmentationsUrl(configuration),
-                        configuration,
-                        convertBodyToJson(
-                            gson.toJson(
-                                segmentationCheckRequest,
-                                SegmentationCheckRequest::class.java
+            mindboxServiceGenerator.addToRequestQueue(
+                MindboxRequest(
+                    Request.Method.POST,
+                    getCustomerSegmentationsUrl(configuration),
+                    configuration,
+                    convertBodyToJson(
+                        gson.toJson(
+                            segmentationCheckRequest,
+                            SegmentationCheckRequest::class.java
+                        )
+                    )!!,
+                    { response ->
+                        continuation.resume(
+                            gson.fromJson(
+                                response.toString(),
+                                SegmentationCheckResponse::class.java
                             )
-                        )!!,
-                        { response ->
-                            continuation.resume(
-                                gson.fromJson(
-                                    response.toString(),
-                                    SegmentationCheckResponse::class.java
-                                )
-                            )
-                        },
-                        { error ->
-                            continuation.resumeWithException(CustomerSegmentationError(error))
-                        }
-                    )
+                        )
+                    },
+                    { error ->
+                        continuation.resumeWithException(CustomerSegmentationError(error))
+                    }
                 )
+            )
         }
     }
 
-    fun sendLogEvent(logs: LogResponseDto, context: Context, configuration: Configuration) {
+    fun sendLogEvent(logs: LogResponseDto, configuration: Configuration) {
         try {
             val url =
                 "https://${configuration.domain}/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
@@ -404,28 +403,27 @@ internal object GatewayManager : MindboxKoin.MindboxKoinComponent {
                 retryPolicy =
                     DefaultRetryPolicy(MONITORING_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
-            MindboxServiceGenerator.getInstance(context)?.addToRequestQueue(request)
+            mindboxServiceGenerator.addToRequestQueue(request)
         } catch (e: Exception) {
             Log.e("Error", "Sending event was failure with exception", e)
         }
     }
 
 
-    suspend fun fetchMobileConfig(context: Context, configuration: Configuration): String {
+    suspend fun fetchMobileConfig(configuration: Configuration): String {
         return suspendCoroutine { continuation ->
-            MindboxServiceGenerator.getInstance(context)
-                ?.addToRequestQueue(
-                    StringRequest(
-                        Request.Method.GET,
-                        getConfigUrl(configuration),
-                        { response ->
-                            continuation.resume(response)
-                        },
-                        { error ->
-                            continuation.resumeWithException(error)
-                        },
-                    )
+            mindboxServiceGenerator.addToRequestQueue(
+                StringRequest(
+                    Request.Method.GET,
+                    getConfigUrl(configuration),
+                    { response ->
+                        continuation.resume(response)
+                    },
+                    { error ->
+                        continuation.resumeWithException(error)
+                    },
                 )
+            )
         }
     }
 }

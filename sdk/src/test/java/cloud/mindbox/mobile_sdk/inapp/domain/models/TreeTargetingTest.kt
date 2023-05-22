@@ -1,66 +1,67 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-import android.content.Context
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.*
+import com.google.gson.Gson
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.android.ext.koin.androidContext
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.mock.MockProviderRule
-import org.koin.test.mock.declareMock
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TreeTargetingTest : KoinTest {
-
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
-        androidContext(mockkClass(Context::class))
-    }
-
-    @get:Rule
-    val mockProvider = MockProviderRule.create { clazz ->
-        mockkClass(clazz)
-    }
+class TreeTargetingTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    private lateinit var inAppGeoRepository: InAppGeoRepository
+    private val mockkMobileConfigRepository: MobileConfigRepository = mockk {
+        every {
+            runBlocking { getOperations() }
+        } returns mapOf(
+            OperationName.VIEW_PRODUCT to OperationSystemName("TestSystemNameProduct"),
+            OperationName.VIEW_CATEGORY to OperationSystemName("TestSystemNameCategory"),
+        )
+    }
 
-    private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
+    private val mockkInAppSegmentationRepository: InAppSegmentationRepository = mockk {
+        every {
+            getCustomerSegmentationFetched()
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+    }
 
-    @Before
-    fun onTestStart() {
-        mockkObject(MindboxKoin)
-        every { MindboxKoin.koin } returns getKoin()
-        inAppGeoRepository = declareMock()
-        inAppSegmentationRepository = declareMock()
-        every { inAppGeoRepository.getGeo() } returns GeoTargetingStub.getGeoTargeting()
+    private val mockkInAppGeoRepository: InAppGeoRepository = mockk {
+        every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_SUCCESS
+        every { getGeo() } returns GeoTargetingStub.getGeoTargeting()
             .copy(
                 cityId = "123",
                 regionId = "456",
                 countryId = "789"
             )
-        every {
-            inAppGeoRepository.getGeoFetchedStatus()
-        } returns GeoFetchStatus.GEO_FETCH_SUCCESS
-        every {
-            inAppSegmentationRepository.getCustomerSegmentationFetched()
-        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+    }
+
+    @Before
+    fun onTestStart() {
+        mockkObject(MindboxEventManager)
+        MindboxEventManager.eventFlow.resetReplayCache()
+
+        // mockk 'by mindboxInject { }'
+        mockkObject(MindboxDI)
+        every { MindboxDI.appModule } returns mockk {
+            every { mobileConfigRepository } returns mockkMobileConfigRepository
+            every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
+            every { inAppGeoRepository } returns mockkInAppGeoRepository
+            every { gson } returns Gson()
+        }
     }
 
     @Test
@@ -181,7 +182,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting positive success check`() {
         every {
-            inAppSegmentationRepository.getCustomerSegmentations()
+            mockkInAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(
             SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "234")
         )
@@ -199,7 +200,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting positive error check`() {
         every {
-            inAppSegmentationRepository.getCustomerSegmentations()
+            mockkInAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
         assertFalse(
             InAppStub.getTargetingSegmentNode()
@@ -215,7 +216,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting negative error check`() {
         every {
-            inAppSegmentationRepository.getCustomerSegmentations()
+            mockkInAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy())
         assertFalse(
             InAppStub.getTargetingSegmentNode()
@@ -231,7 +232,7 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `segment targeting negative success check`() {
         every {
-            inAppSegmentationRepository.getCustomerSegmentations()
+            mockkInAppSegmentationRepository.getCustomerSegmentations()
         } returns listOf(
             SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "123", "235")
         )
@@ -383,16 +384,16 @@ class TreeTargetingTest : KoinTest {
     @Test
     fun `fetch targetings`() = runTest {
         coEvery {
-            inAppGeoRepository.fetchGeo()
+            mockkInAppGeoRepository.fetchGeo()
         } just runs
         coEvery {
-            inAppSegmentationRepository.fetchCustomerSegmentations()
+            mockkInAppSegmentationRepository.fetchCustomerSegmentations()
         } just runs
         every {
-            inAppSegmentationRepository.getCustomerSegmentationFetched()
+            mockkInAppSegmentationRepository.getCustomerSegmentationFetched()
         } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every {
-            inAppGeoRepository.getGeoFetchedStatus()
+            mockkInAppGeoRepository.getGeoFetchedStatus()
         } returns GeoFetchStatus.GEO_NOT_FETCHED
         InAppStub.getInApp().copy(
             targeting = InAppStub.getTargetingUnionNode()
@@ -414,10 +415,10 @@ class TreeTargetingTest : KoinTest {
                 )
         ).targeting.fetchTargetingInfo(mockk())
         coVerify {
-            inAppGeoRepository.fetchGeo()
+            mockkInAppGeoRepository.fetchGeo()
         }
         coVerify {
-            inAppSegmentationRepository.fetchCustomerSegmentations()
+            mockkInAppSegmentationRepository.fetchCustomerSegmentations()
         }
 
     }
@@ -425,6 +426,6 @@ class TreeTargetingTest : KoinTest {
     class TestTargetingData(
         override val triggerEventName: String,
         override val operationBody: String? = null
-    ): TargetingData.OperationBody, TargetingData.OperationName
+    ) : TargetingData.OperationBody, TargetingData.OperationName
 
 }

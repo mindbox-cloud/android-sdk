@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -12,9 +11,9 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.flow.first
 
 internal class InAppSegmentationRepositoryImpl(
-    private val context: Context,
     private val inAppMapper: InAppMapper,
     private val sessionStorageManager: SessionStorageManager,
+    private val gatewayManager: GatewayManager,
 ) : InAppSegmentationRepository {
 
     override var unShownInApps: List<InApp> = mutableListOf()
@@ -34,8 +33,7 @@ internal class InAppSegmentationRepositoryImpl(
             "Request segmentations"
         )
         val configuration = DbManager.listenConfigurations().first()
-        val response = GatewayManager.checkCustomerSegmentations(
-            context = context,
+        val response = gatewayManager.checkCustomerSegmentations(
             configuration = configuration,
             segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
                 unShownInApps
@@ -56,8 +54,7 @@ internal class InAppSegmentationRepositoryImpl(
                 product,
                 unShownInApps
             )
-        val result = GatewayManager.checkProductSegmentation(
-            context,
+        val result = gatewayManager.checkProductSegmentation(
             configuration,
             segmentationCheckRequest
         )

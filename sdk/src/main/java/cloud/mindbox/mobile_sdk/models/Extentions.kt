@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
-import java.util.*
+import java.util.UUID
 
 internal fun String.isUuid() = if (this.isNotBlank()) {
     try {

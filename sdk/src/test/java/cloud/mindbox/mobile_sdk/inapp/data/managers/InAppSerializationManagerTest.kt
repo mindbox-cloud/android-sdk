@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.di.dataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -8,23 +7,14 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.inject
 
-internal class InAppSerializationManagerTest : KoinTest {
+internal class InAppSerializationManagerTest {
 
-    private val gson: Gson by inject()
+    private val gson: Gson  = Gson()
     private lateinit var inAppSerializationManager: InAppSerializationManager
     private val inAppId = "validInAppId"
     private val otherInAppId = "otherInAppId"
-
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
-    }
 
     @Before
     fun onTestStart() {
@@ -60,8 +50,8 @@ internal class InAppSerializationManagerTest : KoinTest {
 
     @Test
     fun `serialize to shown inApps string error`() {
-        val testHashset = hashSetOf(inAppId, otherInAppId)
         val gson: Gson = mockk()
+        val testHashset = hashSetOf(inAppId, otherInAppId)
         every {
             gson.toJson(any())
         } throws Error("errorMessage")

@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import cloud.mindbox.mobile_sdk.managers.DbManager.EVENTS_TABLE_NAME
 import com.google.gson.reflect.TypeToken
-import java.util.*
+import java.util.UUID
 
 @Entity(tableName = EVENTS_TABLE_NAME)
 internal data class Event(

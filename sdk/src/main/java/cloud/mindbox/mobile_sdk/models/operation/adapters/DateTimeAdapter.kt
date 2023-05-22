@@ -9,7 +9,7 @@ import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 class DateTimeAdapter : TypeAdapter<DateTime>() {
 

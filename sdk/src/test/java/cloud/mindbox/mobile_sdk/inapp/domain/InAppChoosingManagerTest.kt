@@ -1,8 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import android.content.Context
-import cloud.mindbox.mobile_sdk.di.MindboxKoin
-import cloud.mindbox.mobile_sdk.di.dataModule
+import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -10,8 +9,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.*
 import com.android.volley.VolleyError
 import io.mockk.*
-import io.mockk.impl.annotations.MockK
-import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -20,106 +17,79 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.koin.android.ext.koin.androidContext
-import org.koin.test.KoinTest
-import org.koin.test.KoinTestRule
-import org.koin.test.mock.MockProviderRule
-import org.koin.test.mock.declareMock
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class InAppChoosingManagerTest : KoinTest {
+internal class InAppChoosingManagerTest {
 
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    @get:Rule
-    val koinTestRule = KoinTestRule.create {
-        modules(dataModule)
-        androidContext(mockkClass(Context::class))
+    private val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("testEvent"), null)
+
+    private val mockkInAppContentFetcher = mockk<InAppContentFetcher> {
+        coEvery { fetchContent(any(), any()) } returns true
     }
 
-    @get:Rule
-    val mockProvider = MockProviderRule.create { clazz ->
-        mockkClass(clazz)
+    private val inAppRepository = mockk<InAppRepository>()
+
+    private val mockkInAppGeoRepository = mockk<InAppGeoRepository> {
+        every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_SUCCESS
+        coEvery { fetchGeo() } just runs
+        every { setGeoStatus(any()) } just runs
+        every { getGeo() } returns GeoTargetingStub.getGeoTargeting().copy(
+            cityId = "", regionId = "regionId", countryId = ""
+        )
     }
 
-    @MockK
-    private lateinit var inAppGeoRepository: InAppGeoRepository
+    private val mockkInAppSegmentationRepository = mockk<InAppSegmentationRepository> {
+        every {
+            getCustomerSegmentationFetched()
+        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
 
-    @MockK
-    private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
+        coEvery { fetchCustomerSegmentations() } just runs
 
-    @MockK
-    private lateinit var inAppRepository: InAppRepository
-
-
-    @OverrideMockKs
-    private lateinit var inAppChoosingManager: InAppChoosingManagerImpl
-
-    val event = InAppEventType.OrdinalEvent(EventType.SyncOperation("testEvent"), null)
+        every {
+            getCustomerSegmentations()
+        } returns listOf(
+            SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                segmentation = "segmentationEI", segment = "segmentEI"
+            )
+        )
+    }
 
     @Before
     fun onTestStart() {
-        coEvery {
-            inAppGeoRepository.fetchGeo()
-        } just runs
-        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED)
-        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS)
-        mockkObject(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR)
-        mockkObject(MindboxKoin)
-        every {
-            MindboxKoin.koin
-        } returns getKoin()
-        inAppRepository = declareMock()
-        inAppGeoRepository = declareMock()
-        inAppSegmentationRepository = declareMock()
-        every {
-            inAppGeoRepository.getGeoFetchedStatus()
-        } returns GeoFetchStatus.GEO_FETCH_SUCCESS
-        every { inAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        coEvery {
-            inAppSegmentationRepository.fetchCustomerSegmentations()
-        } just runs
-        every {
-            inAppGeoRepository.setGeoStatus(any())
-        } just runs
-        every {
-            inAppGeoRepository.getGeo()
-        } returns GeoTargetingStub.getGeoTargeting().copy(
-            cityId = "",
-            regionId = "regionId",
-            countryId = ""
-        )
-        every {
-            inAppSegmentationRepository.getCustomerSegmentations()
-        } returns listOf(
-            SegmentationCheckInAppStub.getCustomerSegmentation().copy(
-                segmentation = "segmentationEI",
-                segment = "segmentEI"
-            )
-        )
-
+        // mockk 'by mindboxInject { }'
+        mockkObject(MindboxDI)
+        every { MindboxDI.appModule } returns mockk {
+            every { inAppGeoRepository } returns mockkInAppGeoRepository
+            every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
+        }
     }
+
+    private val inAppChoosingManager = InAppChoosingManagerImpl(
+        inAppGeoRepository = mockkInAppGeoRepository,
+        inAppSegmentationRepository = mockkInAppSegmentationRepository,
+        inAppContentFetcher = mockkInAppContentFetcher
+    )
 
     @Test
     fun `choose inApp to show chooses first correct inApp`() = runTest {
+
         val validId = "validId"
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
+
         val actualResult = inAppChoosingManager.chooseInAppToShow(
             listOf(
-                InAppStub.getInApp()
-                    .copy(
+                InAppStub.getInApp().copy(
                         id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                            type = "",
-                            kind = Kind.POSITIVE,
-                            ids = listOf("otherRegionId")
+                            type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                         )
                     ),
                 InAppStub.getInApp()
                     .copy(id = validId, targeting = InAppStub.getTargetingTrueNode()),
 
-                ),
-            event
+                ), event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -129,57 +99,42 @@ internal class InAppChoosingManagerTest : KoinTest {
         assertNull(
             inAppChoosingManager.chooseInAppToShow(
                 listOf(
-                    InAppStub.getInApp()
-                        .copy(
+                    InAppStub.getInApp().copy(
                             id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                                type = "",
-                                kind = Kind.POSITIVE,
-                                ids = listOf("otherRegionId")
+                                type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                             )
                         ),
-                    InAppStub.getInApp()
-                        .copy(
+                    InAppStub.getInApp().copy(
                             id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                                type = "",
-                                kind = Kind.POSITIVE,
-                                ids = listOf("otherRegionId2")
+                                type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                             )
                         ),
 
-                    ),
-                event
+                    ), event
             )
         )
     }
 
     @Test
     fun `choose inApp to show general error`() {
-        every {
-            inAppGeoRepository.getGeo()
-        } throws Error()
+        every { mockkInAppGeoRepository.getGeo() } throws Error()
+
         assertThrows(Throwable::class.java) {
             runBlocking {
-                inAppChoosingManager.chooseInAppToShow(
+                MindboxDI.appModule.inAppChoosingManager.chooseInAppToShow(
                     listOf(
-                        InAppStub.getInApp()
-                            .copy(
+                        InAppStub.getInApp().copy(
                                 id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                                    type = "",
-                                    kind = Kind.POSITIVE,
-                                    ids = listOf("otherRegionId")
+                                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                                 )
                             ),
-                        InAppStub.getInApp()
-                            .copy(
+                        InAppStub.getInApp().copy(
                                 id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                                    type = "",
-                                    kind = Kind.POSITIVE,
-                                    ids = listOf("otherRegionId2")
+                                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                                 )
                             ),
 
-                        ),
-                    event
+                        ), event
                 )
             }
         }
@@ -189,39 +144,33 @@ internal class InAppChoosingManagerTest : KoinTest {
     fun `choose inApp to show segmentation error`() = runTest {
         val validId = "validId"
         val testInAppList = listOf(
-            InAppStub.getInApp()
-                .copy(
+            InAppStub.getInApp().copy(
                     id = "123", targeting = InAppStub.getTargetingSegmentNode().copy(
                         type = "",
                         kind = Kind.POSITIVE,
                         segmentationExternalId = "segmentationExternalId1",
                         segmentExternalId = "segmentExternalId1"
                     )
-                ),
-            InAppStub.getInApp()
-                .copy(
+                ), InAppStub.getInApp().copy(
                     id = "124", targeting = InAppStub.getTargetingSegmentNode().copy(
                         type = "",
                         kind = Kind.POSITIVE,
                         segmentationExternalId = "segmentationExternalId2",
                         segmentExternalId = "segmentExternalId2"
                     )
-                ),
-            InAppStub.getInApp()
-                .copy(
+                ), InAppStub.getInApp().copy(
                     id = validId, targeting = InAppStub.getTargetingTrueNode()
                 )
         )
         coEvery {
-            inAppSegmentationRepository.fetchCustomerSegmentations()
+            mockkInAppSegmentationRepository.fetchCustomerSegmentations()
         } throws CustomerSegmentationError(VolleyError())
         every {
-            inAppSegmentationRepository.setCustomerSegmentationStatus(any())
+            mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList,
-            event
+            testInAppList, event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -230,35 +179,30 @@ internal class InAppChoosingManagerTest : KoinTest {
     fun `choose inApp to show geo error`() = runTest {
         val validId = "validId"
         val testInAppList = listOf(
-            InAppStub.getInApp()
-                .copy(
+            InAppStub.getInApp().copy(
                     id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        ids = listOf("otherRegionId")
+                        type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                     )
-                ),
-            InAppStub.getInApp()
-                .copy(
+                ), InAppStub.getInApp().copy(
                     id = "124", targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "",
-                        kind = Kind.POSITIVE,
-                        ids = listOf("otherRegionId2")
+                        type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                     )
-                ),
-            InAppStub.getInApp()
-                .copy(
+                ), InAppStub.getInApp().copy(
                     id = validId, targeting = InAppStub.getTargetingTrueNode()
                 )
         )
-        coEvery {
-            inAppGeoRepository.fetchGeo()
-        } throws GeoError(VolleyError())
+
+        val inAppChoosingManager = InAppChoosingManagerImpl(
+            inAppGeoRepository = mockk {
+                coEvery { fetchGeo() } throws GeoError(VolleyError())
+            },
+            inAppSegmentationRepository = mockkInAppSegmentationRepository,
+            inAppContentFetcher = mockkInAppContentFetcher
+        )
 
         val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
-            testInAppList,
-            event
+            testInAppList, event
         )
         assertEquals(expectedResult, actualResult)
     }

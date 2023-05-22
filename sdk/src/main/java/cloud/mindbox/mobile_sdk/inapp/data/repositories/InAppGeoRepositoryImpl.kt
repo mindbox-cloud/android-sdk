@@ -18,13 +18,13 @@ internal class InAppGeoRepositoryImpl(
     private val inAppMapper: InAppMapper,
     private val geoSerializationManager: GeoSerializationManager,
     private val sessionStorageManager: SessionStorageManager,
+    private val gatewayManager: GatewayManager
 ) : InAppGeoRepository {
 
     override suspend fun fetchGeo() {
         val configuration = DbManager.listenConfigurations().first()
         val geoTargeting = inAppMapper.mapGeoTargetingDtoToGeoTargeting(
-            geoTargetingDto = GatewayManager.checkGeoTargeting(
-                context = context,
+            geoTargetingDto = gatewayManager.checkGeoTargeting(
                 configuration = configuration
             )
         )

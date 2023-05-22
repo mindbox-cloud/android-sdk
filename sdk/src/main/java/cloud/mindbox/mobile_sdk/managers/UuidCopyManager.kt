@@ -6,7 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import java.util.*
+import java.util.Date
 
 internal object UuidCopyManager {
     private const val COPY_UUID_APP_OPEN_TIMES = 5

@@ -2,7 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 
 internal interface InAppMessageViewDisplayer {
 
@@ -10,13 +11,17 @@ internal interface InAppMessageViewDisplayer {
 
     fun onPauseCurrentActivity(activity: Activity)
 
+    fun onStopCurrentActivity(activity: Activity)
+
     fun tryShowInAppMessage(
         inAppType: InAppType,
-        onInAppClick: () -> Unit,
-        onInAppShown: () -> Unit,
+        onInAppClick: OnInAppClick,
+        onInAppShown: OnInAppShown,
     )
 
     fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 
     fun registerInAppCallback(inAppCallback: InAppCallback)
+
+    fun isInAppActive(): Boolean
 }
