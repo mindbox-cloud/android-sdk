@@ -70,7 +70,7 @@ class ViewProductNodeTest {
         MindboxEventManager.eventFlow.resetReplayCache()
         MindboxEventManager.eventFlow.emit(InAppEventType.AppStartup)
         MindboxEventManager.eventFlow.test {
-            assertFalse(InAppStub.viewProductNode.checkTargeting( TestTargetingData("viewProduct", null)))
+            assertFalse(InAppStub.viewProductNode.checkTargeting(mockk()))
             awaitItem()
         }
     }
