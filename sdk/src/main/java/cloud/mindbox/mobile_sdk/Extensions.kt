@@ -1,5 +1,10 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.ActivityManager
+import android.app.Application
+import android.content.Context
+import android.os.Build
+import android.os.Process
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
@@ -7,6 +12,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""
@@ -60,7 +66,29 @@ internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null):
                 .replace("_", "")
                 .equals(
                     this.replace("_", "").trim(),
-                    ignoreCase = true)
+                    ignoreCase = true
+                )
         }
     } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
+}
+
+internal fun Context.isMainProcess(processName: String?): Boolean {
+    val mainProcessName = getString(R.string.mindbox_android_process).ifBlank { packageName }
+    return processName?.equalsAny(
+        mainProcessName,
+        "$packageName:$mainProcessName",
+        "$packageName$mainProcessName",
+    ) ?: false
+}
+
+internal fun Context.getCurrentProcessName(): String? {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        return Application.getProcessName()
+    }
+
+    val mypid = Process.myPid()
+    val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    val processes = manager.runningAppProcesses
+
+    return processes.firstOrNull { info -> info.pid == mypid }?.processName
 }

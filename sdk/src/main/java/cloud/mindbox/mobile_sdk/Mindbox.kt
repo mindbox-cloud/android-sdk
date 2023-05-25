@@ -14,6 +14,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.Level
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationBody
@@ -382,8 +384,15 @@ object Mindbox {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
+
+            val currentProcessName = context.getCurrentProcessName()
+            if (!context.isMainProcess(currentProcessName)) {
+                this@Mindbox.mindboxLogW("Skip Mindbox init not in main process! Current process $currentProcessName")
+                return@runCatching
+            }
+
             initComponents(context.applicationContext, pushServices)
-            MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
+            this@Mindbox.mindboxLogD("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
             initScope.launch {
