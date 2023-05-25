@@ -117,15 +117,15 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
 }
 
-fun Any.mindboxLogD(message: String) = MindboxLoggerImpl.d(this, message)
+internal fun Any.mindboxLogD(message: String) = MindboxLoggerImpl.d(this, message)
 
-fun Any.mindboxLogI(message: String) = MindboxLoggerImpl.i(this, message)
+internal fun Any.mindboxLogI(message: String) = MindboxLoggerImpl.i(this, message)
 
-fun Any.mindboxLogW(message: String, exception: Throwable? = null) = exception?.let {
+internal fun Any.mindboxLogW(message: String, exception: Throwable? = null) = exception?.let {
     MindboxLoggerImpl.w(this, message, exception)
 } ?: MindboxLoggerImpl.w(this, message)
 
-fun Any.mindboxLogE(message: String, exception: Throwable? = null) = exception?.let {
+internal fun Any.mindboxLogE(message: String, exception: Throwable? = null) = exception?.let {
     MindboxLoggerImpl.e(this, message, exception)
 } ?: MindboxLoggerImpl.e(this, message)
 
