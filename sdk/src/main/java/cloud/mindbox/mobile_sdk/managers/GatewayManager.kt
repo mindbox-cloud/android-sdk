@@ -4,6 +4,7 @@ import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
@@ -21,7 +22,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.UUID
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -141,18 +142,20 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             val requestType: Int = getRequestType(event.eventType)
             val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
             val jsonRequest: JSONObject? = convertBodyToJson(event.body)
-            val request = MindboxRequest(
+            val requestData = RequestData(
                 methodType = requestType,
                 fullUrl = url,
                 configuration = configuration,
                 jsonRequest = jsonRequest,
                 listener = {
-                    MindboxLoggerImpl.d(this, "Event from background successful sent")
+                    mindboxLogD("Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError ->
-                    handleError(volleyError, onSuccess, onError)
-                },
+                errorsListener = { volleyError -> handleError(volleyError, onSuccess, onError) }
+            )
+            val request = createRequest(
+                eventType = event.eventType,
+                requestData = requestData
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -164,6 +167,12 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             onError.invoke(MindboxError.Unknown(e))
         }
     }
+
+    private fun createRequest(eventType: EventType, requestData: RequestData): MindboxRequest =
+        when (eventType) {
+            is EventType.TrackVisit -> MindboxTrackVisitRequest(requestData)
+            else -> MindboxRequest(requestData)
+        }
 
     private fun getRequestType(eventType: EventType): Int = when (eventType) {
         is EventType.AppInstalled,
@@ -408,7 +417,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             Log.e("Error", "Sending event was failure with exception", e)
         }
     }
-
 
     suspend fun fetchMobileConfig(configuration: Configuration): String {
         return suspendCoroutine { continuation ->
