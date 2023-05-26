@@ -2,12 +2,12 @@ package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.equalsAny
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.utils.Constants
 
 internal class InAppValidatorImpl : InAppValidator {
 
@@ -157,10 +157,10 @@ internal class InAppValidatorImpl : InAppValidator {
     override fun validateInAppVersion(inAppDto: InAppConfigResponseBlank.InAppDtoBlank): Boolean {
         val sdkVersion = inAppDto.sdkVersion ?: return false
         val minVersionValid = sdkVersion.minVersion?.let { min ->
-            min <= Constants.SDK_VERSION_NUMERIC
+            min <= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION
         } ?: true
         val maxVersionValid = sdkVersion.maxVersion?.let { max ->
-            max >= Constants.SDK_VERSION_NUMERIC
+            max >= InAppMessageManagerImpl.CURRENT_IN_APP_VERSION
         } ?: true
         return minVersionValid && maxVersionValid
     }

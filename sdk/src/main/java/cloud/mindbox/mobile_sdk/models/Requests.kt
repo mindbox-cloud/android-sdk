@@ -3,9 +3,11 @@ package cloud.mindbox.mobile_sdk.models
 import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import com.android.volley.*
+import com.android.volley.NetworkResponse
+import com.android.volley.ParseError
+import com.android.volley.Response
+import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
 import com.android.volley.toolbox.JsonObjectRequest
 import com.google.gson.JsonSyntaxException
@@ -13,16 +15,7 @@ import org.json.JSONObject
 import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
 
-internal data class RequestData(
-    val methodType: Int = Request.Method.POST,
-    val fullUrl: String = "",
-    val configuration: Configuration,
-    val jsonRequest: JSONObject? = null,
-    val listener: Response.Listener<JSONObject>? = null,
-    val errorsListener: Response.ErrorListener? = null
-)
-
-internal open class MindboxRequest(
+internal data class MindboxRequest(
     val methodType: Int = Method.POST,
     val fullUrl: String = "",
     val configuration: Configuration,
@@ -31,22 +24,12 @@ internal open class MindboxRequest(
     val errorsListener: Response.ErrorListener? = null,
 ) : JsonObjectRequest(methodType, fullUrl, jsonRequest, listener, errorsListener) {
 
-    constructor(data: RequestData) : this(
-        data.methodType,
-        data.fullUrl,
-        data.configuration,
-        data.jsonRequest,
-        data.listener,
-        data.errorsListener,
-    )
-
     companion object {
         private const val HEADER_CONTENT_TYPE = "Content-Type"
         private const val HEADER_USER_AGENT = "User-Agent"
         private const val HEADER_INTEGRATION = "Mindbox-Integration"
         private const val HEADER_INTEGRATION_VERSION = "Mindbox-Integration-Version"
         private const val HEADER_ACCEPT = "Accept"
-        internal const val HEADER_SDK_VERSION_NUMERIC = "sdkVersionNumeric"
 
         private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
         private const val VALUE_USER_AGENT =
@@ -130,7 +113,7 @@ internal open class MindboxRequest(
                 "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
             )
             try {
-                volleyError.networkResponse?.allHeaders?.joinToString(
+                volleyError.networkResponse?.allHeaders?.joinToString (
                     separator = System.getProperty("line.separator") ?: "\n"
                 ) { header ->
                     "${header.name}: ${header.value}"
@@ -161,7 +144,7 @@ internal open class MindboxRequest(
         LoggingExceptionHandler.runCatching {
             MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
 
-            response?.allHeaders?.joinToString(
+            response?.allHeaders?.joinToString (
                 separator = System.getProperty("line.separator") ?: "\n"
             ) { header ->
                 "${header.name}: ${header.value}"
@@ -188,12 +171,4 @@ internal open class MindboxRequest(
         }
     }
 
-}
-
-internal class MindboxTrackVisitRequest(data: RequestData) : MindboxRequest(data) {
-    override fun getHeaders(): MutableMap<String, String> {
-        return super.getHeaders().apply {
-            put(HEADER_SDK_VERSION_NUMERIC, Constants.SDK_VERSION_NUMERIC.toString())
-        }
-    }
 }
