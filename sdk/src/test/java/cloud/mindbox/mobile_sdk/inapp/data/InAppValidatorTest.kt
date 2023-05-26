@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.utils.Constants
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,7 +10,6 @@ import org.junit.Test
 class InAppValidatorTest {
 
     private val inAppValidator = InAppValidatorImpl()
-
 
     @Test
     fun `validate form dto variants null`() {
@@ -1590,7 +1589,7 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version is lower than required`() {
-        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
         assertFalse(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(
@@ -1603,7 +1602,7 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version is higher than required`() {
-        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        val highInAppVersion = Constants.SDK_VERSION_NUMERIC + 1
         assertFalse(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(
@@ -1616,8 +1615,8 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version is out of range`() {
-        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
-        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
+        val highInAppVersion = Constants.SDK_VERSION_NUMERIC + 1
         assertFalse(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(
@@ -1630,7 +1629,7 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version no min version`() {
-        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        val highInAppVersion = Constants.SDK_VERSION_NUMERIC + 1
         assertTrue(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(
@@ -1643,7 +1642,7 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version no max version`() {
-        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
+        val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
         assertTrue(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(
@@ -1668,8 +1667,8 @@ class InAppValidatorTest {
 
     @Test
     fun `in-app version is in range`() {
-        val lowInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION - 1
-        val highInAppVersion = InAppMessageManagerImpl.CURRENT_IN_APP_VERSION + 1
+        val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
+        val highInAppVersion = Constants.SDK_VERSION_NUMERIC + 1
         assertTrue(
             inAppValidator.validateInAppVersion(
                 InAppStub.getInAppDtoBlank().copy(

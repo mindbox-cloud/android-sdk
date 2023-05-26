@@ -28,6 +28,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -1099,6 +1100,7 @@ object Mindbox {
                 endpointId = endpointId,
                 source = source,
                 requestUrl = requestUrl,
+                sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC
             )
 
             MindboxEventManager.appStarted(applicationContext, trackVisitData)
