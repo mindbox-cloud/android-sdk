@@ -10,7 +10,6 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
 
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
@@ -129,7 +128,6 @@ internal class InAppMessageManagerImpl(
 
 
     companion object {
-        const val CURRENT_IN_APP_VERSION = 6
         const val CONFIG_NOT_FOUND = 404
     }
 
