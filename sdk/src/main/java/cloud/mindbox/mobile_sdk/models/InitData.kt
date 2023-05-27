@@ -41,6 +41,7 @@ internal data class TrackVisitData(
     @SerializedName("endpointId") val endpointId: String,
     @SerializedName("source") @TrackVisitSource val source: String? = null,
     @SerializedName("requestUrl") val requestUrl: String? = null,
+    @SerializedName("sdkVersionNumeric") val sdkVersionNumeric: Int,
 )
 
 @StringDef(DIRECT, LINK, PUSH)
