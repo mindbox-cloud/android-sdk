@@ -1,9 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.content.Context
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -22,7 +24,7 @@ import com.bumptech.glide.request.target.Target
 
 internal class SimpleImageInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.SimpleImage>,
-    private val inAppCallback: InAppCallback
+    private val inAppCallback: InAppCallback,
 ) : InAppViewHolder<InAppType.SimpleImage> {
 
     private lateinit var currentBlur: View
@@ -32,12 +34,22 @@ internal class SimpleImageInAppViewHolder(
 
     private var isInAppMessageActive = false
 
+    private var typingView: View? = null
+
     override val isActive: Boolean
         get() = isInAppMessageActive
 
     private fun initView(currentRoot: ViewGroup) {
         val context = currentRoot.context
         val inflater = LayoutInflater.from(context)
+        val imm = (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+        if (imm?.isAcceptingText == true) {
+            typingView = currentRoot.findFocus()
+            imm.hideSoftInputFromWindow(
+                currentRoot.windowToken,
+                0
+            )
+        }
 
         currentBlur = inflater.inflate(
             R.layout.blur_layout,
@@ -58,10 +70,21 @@ internal class SimpleImageInAppViewHolder(
         ) as InAppConstraintLayout
     }
 
+    private fun restoreKeyboard() {
+        typingView?.requestFocus()
+        val imm =
+            (typingView?.context?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+        imm?.showSoftInput(
+            typingView,
+            InputMethodManager.SHOW_IMPLICIT
+        )
+    }
+
     private fun bind(currentRoot: ViewGroup) {
         currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
             isVisible = true
             setOnClickListener {
+                restoreKeyboard()
                 mindboxLogD("In-app dismissed")
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 hide()
@@ -86,7 +109,7 @@ internal class SimpleImageInAppViewHolder(
         currentDialog.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogD("In-app dismissed")
-
+            restoreKeyboard()
             isInAppMessageActive = false
             hide()
         }
@@ -94,6 +117,7 @@ internal class SimpleImageInAppViewHolder(
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogD("In-app dismissed")
             isInAppMessageActive = false
+            restoreKeyboard()
             hide()
         }
         currentBlur.isVisible = true
@@ -107,7 +131,6 @@ internal class SimpleImageInAppViewHolder(
             mindboxLogD("in-app image url is blank")
             return
         }
-
         initView(currentRoot)
         isInAppMessageActive = true
 
