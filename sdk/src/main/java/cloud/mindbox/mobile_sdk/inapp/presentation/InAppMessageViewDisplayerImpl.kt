@@ -23,6 +23,7 @@ internal class InAppMessageViewDisplayerImpl :
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
 
+
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -101,7 +102,7 @@ internal class InAppMessageViewDisplayerImpl :
     }
 
     private fun showInAppMessage(wrapper: InAppTypeWrapper<out InAppType>) {
-        when(wrapper.inAppType) {
+        when (wrapper.inAppType) {
             is InAppType.SimpleImage -> {
                 currentActivity?.root?.let { root ->
                     @Suppress("UNCHECKED_CAST")
