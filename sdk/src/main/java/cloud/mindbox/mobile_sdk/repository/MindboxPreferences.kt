@@ -6,7 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import java.util.Date
+import java.util.*
 
 internal object MindboxPreferences {
 
@@ -26,6 +26,7 @@ internal object MindboxPreferences {
     private const val SHOWN_IDS = "SHOWN_IDS"
     private const val IN_APP_GEO = "IN_APP_GEO"
     private const val LOGS_REQUEST_IDS = "LOGS_REQUEST_IDS"
+    private const val MIXER_FIXED_HASH = "MIXER_FIXED_HASH"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -177,4 +178,6 @@ internal object MindboxPreferences {
                 SharedPreferencesManager.put(KEY_UUID_DEBUG_ENABLED, value)
             }
         }
+
+    val mixerFixedHash: Int = SharedPreferencesManager.getInt(MIXER_FIXED_HASH)
 }
