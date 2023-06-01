@@ -32,7 +32,6 @@ internal class VariantValidator : Validator<ABTestDto.VariantDto?> {
             return false
         }
 
-
         if (item.objects.size != 1) {
             mindboxLogW("The 'objects' field must be only one")
             return false
