@@ -1,20 +1,19 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
-import cloud.mindbox.mobile_sdk.models.operation.response.OperationDto
+import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -29,6 +28,7 @@ internal class MobileConfigRepositoryImpl(
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
     private val inAppValidator: InAppValidator,
     private val monitoringValidator: MonitoringValidator,
+    private val abTestValidator: ABTestValidator,
     private val operationNameValidator: OperationNameValidator,
     private val operationValidator: OperationValidator,
     private val gatewayManager: GatewayManager,
@@ -38,6 +38,7 @@ internal class MobileConfigRepositoryImpl(
 
     private var inApps: List<InApp>? = null
     private var operations: Map<OperationName, OperationSystemName>? = null
+    private var abtests: List<ABTest>? = null
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
@@ -49,49 +50,17 @@ internal class MobileConfigRepositoryImpl(
     private fun listenInAppConfig(): Flow<InAppConfig?> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfigString ->
             mutex.withLock {
-                MindboxLoggerImpl.d(
-                    parent = this@MobileConfigRepositoryImpl,
+                this@MobileConfigRepositoryImpl.mindboxLogD(
                     message = "CachedConfig : $inAppConfigString"
                 )
                 val configBlank =
                     mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
-                val filteredInApps = configBlank?.inApps
-                    ?.filter { inAppDtoBlank ->
-                        inAppValidator.validateInAppVersion(inAppDtoBlank)
-                    }
-                    ?.map { inAppDtoBlank ->
-                        inAppMapper.mapToInAppDto(
-                            inAppDtoBlank = inAppDtoBlank,
-                            formDto = mobileConfigSerializationManager.deserializeToInAppFormDto(
-                                inAppDtoBlank.form
-                            ),
-                            targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
-                                inAppDtoBlank.targeting
-                            )
-                        )
-                    }?.filter { inAppDto ->
-                        inAppValidator.validateInApp(inAppDto)
-                    }
-                val filteredMonitoring =
-                    configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
-                        monitoringValidator.validateLogRequestDtoBlank(logRequestDtoBlank)
-                    }?.map { logRequestDtoBlank ->
-                        inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
-                    }
-
-                val filteredSettings = configBlank?.settings?.operations
-                    ?.filter { (name, operation) ->
-                        operationNameValidator.isValid(name)
-                                && operationValidator.isValid(operation)
-                    }?.map { (name, operation) ->
-                        name!! to OperationDto(operation!!.systemName!!)
-                    }?.toMap()
-                    ?: emptyMap()
 
                 val filteredConfig = InAppConfigResponse(
-                    inApps = filteredInApps,
-                    monitoring = filteredMonitoring,
-                    settings = filteredSettings,
+                    inApps = getInApps(configBlank),
+                    monitoring = getMonitoring(configBlank),
+                    settings = getSettings(configBlank),
+                    abtests = getABTests(configBlank),
                 )
 
                 return@map inAppMapper.mapToInAppConfig(filteredConfig)
@@ -102,6 +71,56 @@ internal class MobileConfigRepositoryImpl(
                         )
                     }
             }
+        }
+    }
+
+    private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? =
+        configBlank?.inApps
+            ?.filter { inAppDtoBlank ->
+                inAppValidator.validateInAppVersion(inAppDtoBlank)
+            }
+            ?.map { inAppDtoBlank ->
+                inAppMapper.mapToInAppDto(
+                    inAppDtoBlank = inAppDtoBlank,
+                    formDto = mobileConfigSerializationManager.deserializeToInAppFormDto(
+                        inAppDtoBlank.form
+                    ),
+                    targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
+                        inAppDtoBlank.targeting
+                    )
+                )
+            }?.filter { inAppDto ->
+                inAppValidator.validateInApp(inAppDto)
+            }
+
+    private fun getMonitoring(configBlank: InAppConfigResponseBlank?): List<LogRequestDto>? =
+        configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
+            monitoringValidator.validateLogRequestDtoBlank(logRequestDtoBlank)
+        }?.map { logRequestDtoBlank ->
+            inAppMapper.mapToLogRequestDto(logRequestDtoBlank)
+        }
+
+    private fun getSettings(configBlank: InAppConfigResponseBlank?): Map<String, OperationDto> =
+        configBlank?.settings?.operations
+            ?.filter { (name, operation) ->
+                operationNameValidator.isValid(name)
+                        && operationValidator.isValid(operation)
+            }?.map { (name, operation) ->
+                name!! to OperationDto(operation!!.systemName!!)
+            }?.toMap()
+            ?: emptyMap()
+
+
+    private fun getABTests(configBlank: InAppConfigResponseBlank?): List<ABTestDto> {
+        return try {
+            if (configBlank?.abtests == null) return listOf()
+
+            return configBlank.abtests.takeIf { abtests ->
+                abtests.all { abTestValidator.isValid(it) }
+            } ?: listOf()
+        } catch (e: Exception) {
+            mindboxLogE("Error parse abtests", e)
+            listOf()
         }
     }
 
@@ -129,6 +148,16 @@ internal class MobileConfigRepositoryImpl(
             }.first() ?: listOf()
             inApps = inAppList
             inAppList
+        }
+    }
+
+    override suspend fun getABTests(): List<ABTest> {
+        return abtests ?: run {
+            val list: List<ABTest> = listenInAppConfig().map { inAppConfig ->
+                inAppConfig?.abtests
+            }.first() ?: listOf()
+            abtests = list
+            list
         }
     }
 }

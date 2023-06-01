@@ -1,10 +1,13 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
 import android.app.Application
+import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -63,6 +66,8 @@ internal interface DataModule : MindboxModule {
     val monitoringValidator: MonitoringValidator
     val operationNameValidator: OperationNameValidator
     val operationValidator: OperationValidator
+    val abTestValidator: ABTestValidator
+    val sdkVersionValidator: SdkVersionValidator
 }
 
 internal interface MonitoringModule : MindboxModule {
@@ -81,6 +86,7 @@ internal interface DomainModule : MindboxModule {
     val inAppChoosingManager: InAppChoosingManager
     val inAppEventManager: InAppEventManager
     val inAppFilteringManager: InAppFilteringManager
+    val customerAbMixer: CustomerAbMixer
 }
 
 internal interface ApiModule : MindboxModule {

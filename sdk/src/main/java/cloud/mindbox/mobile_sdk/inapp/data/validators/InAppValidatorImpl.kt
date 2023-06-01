@@ -7,9 +7,8 @@ import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.utils.Constants
 
-internal class InAppValidatorImpl : InAppValidator {
+internal class InAppValidatorImpl(private val sdkVersionValidator: SdkVersionValidator) : InAppValidator {
 
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
         return when (targeting) {
@@ -155,14 +154,7 @@ internal class InAppValidatorImpl : InAppValidator {
     }
 
     override fun validateInAppVersion(inAppDto: InAppConfigResponseBlank.InAppDtoBlank): Boolean {
-        val sdkVersion = inAppDto.sdkVersion ?: return false
-        val minVersionValid = sdkVersion.minVersion?.let { min ->
-            min <= Constants.SDK_VERSION_NUMERIC
-        } ?: true
-        val maxVersionValid = sdkVersion.maxVersion?.let { max ->
-            max >= Constants.SDK_VERSION_NUMERIC
-        } ?: true
-        return minVersionValid && maxVersionValid
+        return sdkVersionValidator.isValid(inAppDto.sdkVersion)
     }
 
     override fun validateInApp(inApp: InAppDto): Boolean {
