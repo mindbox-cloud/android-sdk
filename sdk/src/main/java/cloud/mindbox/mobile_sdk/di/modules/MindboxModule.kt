@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.di.modules
 
 import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
+import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
@@ -87,6 +88,7 @@ internal interface DomainModule : MindboxModule {
     val inAppEventManager: InAppEventManager
     val inAppFilteringManager: InAppFilteringManager
     val customerAbMixer: CustomerAbMixer
+    val inAppABTestLogic: InAppABTestLogic
 }
 
 internal interface ApiModule : MindboxModule {
