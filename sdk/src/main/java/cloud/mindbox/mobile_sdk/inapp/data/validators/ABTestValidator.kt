@@ -10,34 +10,34 @@ internal class ABTestValidator(private val sdkVersionValidator: SdkVersionValida
 
     override fun isValid(item: ABTestDto?): Boolean {
         if (item == null) {
-            mindboxLogW("abtest can not be null")
+            mindboxLogW("The element in abtests block cannot be null. All abtests will not be used.")
             return false
         }
 
         if (item.id.isBlank()) {
-            mindboxLogW("id can not be empty")
+            mindboxLogW("The field 'id' in abtests block cannot be null. All abtests will not be used.")
             return false
         }
 
         if (item.sdkVersion == null || !sdkVersionValidator.isValid(item.sdkVersion)) {
-            mindboxLogW("sdkVersion is invalid")
+            mindboxLogW("In abtest ${item.id} 'sdkVersion' field is invalid. All abtests will not be used.")
             return false
         }
 
         if (item.salt.isNullOrBlank()) {
-            mindboxLogW("salt can not be empty")
+            mindboxLogW("In abtest ${item.id} 'salt' field is invalid. All abtests will not be used.")
             return false
         }
 
         if (item.variants == null ||
             item.variants.size < 2
         ) {
-            mindboxLogW("variants can not be empty")
+            mindboxLogW("In abtest ${item.id} 'variants' field must have at least two items. All abtests will not be used.")
             return false
         }
 
         if (item.variants.any { !variantsValidator.isValid(it) }) {
-            mindboxLogW("Variant is invalid")
+            mindboxLogW("In abtest ${item.id} 'variants' field is invalid. All abtests will not be used.")
             return false
         }
 
@@ -47,13 +47,13 @@ internal class ABTestValidator(private val sdkVersionValidator: SdkVersionValida
                 if (abtest.modulus?.lower == start) {
                     start = abtest.modulus.upper!!
                 } else {
-                    mindboxLogW("Variants not have full cover")
+                    mindboxLogW("In abtest ${item.id} 'variants' field not have full cover. All abtests will not be used.")
                     return false
                 }
             }
 
         if (start !in 99..100) {
-            mindboxLogW("Variants not have full cover")
+            mindboxLogW("In abtest ${item.id} 'variants' field not have full cover. All abtests will not be used.")
             return false
         }
 

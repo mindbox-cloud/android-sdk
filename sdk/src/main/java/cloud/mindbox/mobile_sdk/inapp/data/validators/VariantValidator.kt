@@ -8,12 +8,12 @@ internal class VariantValidator : Validator<ABTestDto.VariantDto?> {
 
     override fun isValid(item: ABTestDto.VariantDto?): Boolean {
         if (item == null) {
-            mindboxLogW("variant can not be null")
+            mindboxLogW("Variant item can not be null")
             return false
         }
 
         if (item.modulus == null) {
-            mindboxLogW("modulus can not be null")
+            mindboxLogW("The 'modulus' field can not be null")
             return false
         }
 
@@ -23,28 +23,28 @@ internal class VariantValidator : Validator<ABTestDto.VariantDto?> {
             item.modulus.upper > 100 ||
             item.modulus.lower >= item.modulus.upper
         ) {
-            mindboxLogW("lower and upper is invalid")
+            mindboxLogW("The 'lower' and 'upper' field is invalid")
             return false
         }
 
-        if (item.objects == null || item.objects.isEmpty()) {
-            mindboxLogW("objects can not be null")
+        if (item.objects == null) {
+            mindboxLogW("The 'objects' field can not be null")
             return false
         }
 
 
-        if (item.objects.size > 1) {
-            mindboxLogW("objects more than one")
+        if (item.objects.size != 1) {
+            mindboxLogW("The 'objects' field must be only one")
             return false
         }
 
         if (!item.objects.first().type.equals(TYPE_IN_APPS)) {
-            mindboxLogW("type can be $TYPE_IN_APPS")
+            mindboxLogW("The 'objects' field type can be $TYPE_IN_APPS")
             return false
         }
 
         if (!item.objects.first().kind.equalsAny(ALL, CONCRETE)) {
-            mindboxLogW("kind can be $ALL or $CONCRETE")
+            mindboxLogW("The 'kind' field must be $ALL or $CONCRETE")
             return false
         }
 
