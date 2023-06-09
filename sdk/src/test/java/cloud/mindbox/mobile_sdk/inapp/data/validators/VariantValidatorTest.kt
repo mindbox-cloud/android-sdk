@@ -24,6 +24,7 @@ internal class VariantValidatorTest(
                 inapps = listOf()
             )
             val variant = ABTestDto.VariantDto(
+                id = "dsa",
                 modulus = ABTestDto.VariantDto.ModulusDto(
                     lower = 0,
                     upper = 100
@@ -42,6 +43,8 @@ internal class VariantValidatorTest(
                 variant.copy(objects = listOf(objectDto.copy(inapps = listOf("123")))) to true,
 
                 null to false,
+                variant.copy(id = "") to false,
+                variant.copy(id = "   ") to false,
                 variant.copy(modulus = null) to false,
                 variant.copy(objects = null) to false,
                 variant.copy(modulus = variant.modulus.copy(lower = -100)) to false,

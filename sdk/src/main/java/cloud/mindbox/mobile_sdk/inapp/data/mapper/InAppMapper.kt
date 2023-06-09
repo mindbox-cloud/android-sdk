@@ -115,6 +115,7 @@ internal class InAppMapper {
                         salt = dto.salt!!,
                         variants = dto.variants?.map { variantDto ->
                             ABTest.Variant(
+                                id = variantDto.id,
                                 type = variantDto.objects!!.first().type!!,
                                 kind = variantDto.objects.first().kind.enumValue(),
                                 inapps = variantDto.objects.first().inapps ?: listOf(),

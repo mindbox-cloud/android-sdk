@@ -9,6 +9,7 @@
       "salt": "c0e2682c-3d0f-4291-9308-9e48a16eb3c8",
       "variants": [
         {
+          "id": "3162b011-b30f-4300-a72b-bd5cac0d6607",
           "modulus": {
             "lower": 0,
             "upper": 50
@@ -22,6 +23,7 @@
           ]
         },
         {
+          "id": "dbc39dce-db4f-4dc9-9133-378df018233b",
           "modulus": {
             "lower": 50,
             "upper": 100

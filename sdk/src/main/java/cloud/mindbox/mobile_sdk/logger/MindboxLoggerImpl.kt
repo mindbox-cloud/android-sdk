@@ -129,3 +129,9 @@ internal fun Any.mindboxLogE(message: String, exception: Throwable? = null) = ex
     MindboxLoggerImpl.e(this, message, exception)
 } ?: MindboxLoggerImpl.e(this, message)
 
+internal interface MindboxLog {
+    fun logD(message: String) = this.mindboxLogD(message)
+    fun logI(message: String) = this.mindboxLogI(message)
+    fun logW(message: String, exception: Throwable? = null) = this.mindboxLogW(message, exception)
+    fun logE(message: String, exception: Throwable? = null) = this.mindboxLogE(message, exception)
+}

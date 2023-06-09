@@ -13,12 +13,12 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppABTestLogicTest {
 
-    private val inapps1 = listOf(
+    private val threeInapps = listOf(
         "655f5ffa-de86-4224-a0bf-229fe208ed0d",
         "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
         "b33ca779-3c99-481f-ad46-91282b0caf04",
     )
-    private val inapps2 = listOf(
+    private val fourInapps = listOf(
         "655f5ffa-de86-4224-a0bf-229fe208ed0d",
         "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
         "b33ca779-3c99-481f-ad46-91282b0caf04",
@@ -26,15 +26,15 @@ internal class InAppABTestLogicTest {
     )
 
     private val abtest = ABTest("", null, null, "", listOf())
-    private val variant = ABTest.Variant("inapps", ABTest.Variant.VariantKind.ALL, 0, 100, listOf())
+    private val variant = ABTest.Variant("", "inapps", ABTest.Variant.VariantKind.ALL, 0, 100, listOf())
 
     @Test
     fun `abtest logic is empty variants`() = runTest {
-        assertEquals(inapps1.toSet(), calculateInApps(25, listOf(), inapps1))
+        assertEquals(threeInapps.toSet(), calculateInApps(25, listOf(), threeInapps))
     }
 
     @Test
-    fun `abtest logic two variants with inapps1`() = runTest {
+    fun `abtest logic two variants with config of three inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -54,16 +54,16 @@ internal class InAppABTestLogicTest {
             )
         )
 
-        assertEquals(setOf<String>(), calculateInApps(25, abtests, inapps1))
-        assertEquals(inapps1.toSet(), calculateInApps(75, abtests, inapps1))
+        assertEquals(setOf<String>(), calculateInApps(25, abtests, threeInapps))
+        assertEquals(threeInapps.toSet(), calculateInApps(75, abtests, threeInapps))
 
-        val inapps1withExtra = inapps1 + "test"
+        val inapps1withExtra = threeInapps + "test"
         assertEquals(setOf<String>(), calculateInApps(25, abtests, inapps1withExtra))
-        assertEquals(inapps1.toSet() + "test", calculateInApps(75, abtests, inapps1withExtra))
+        assertEquals(threeInapps.toSet() + "test", calculateInApps(75, abtests, inapps1withExtra))
     }
 
     @Test
-    fun `abtest logic two variants with inapps2`() = runTest {
+    fun `abtest logic two variants with config of four inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -88,27 +88,26 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b"),
-            calculateInApps(0, abtests, inapps2)
+            calculateInApps(0, abtests, fourInapps)
         )
         assertEquals(
-            inapps2.toSet(),
-            calculateInApps(99, abtests, inapps2)
+            fourInapps.toSet(),
+            calculateInApps(99, abtests, fourInapps)
         )
 
-        val inapps2withExtra = inapps2 + "test"
+        val inapps2withExtra = fourInapps + "test"
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "test"),
             calculateInApps(0, abtests, inapps2withExtra)
         )
         assertEquals(
-            inapps2.toSet() + "test",
+            fourInapps.toSet() + "test",
             calculateInApps(99, abtests, inapps2withExtra)
         )
     }
 
-
     @Test
-    fun `abtest logic three variants with inapps1`() = runTest {
+    fun `abtest logic three variants config of three inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -139,20 +138,20 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             emptySet<String>(),
-            calculateInApps(1, abtests, inapps1)
+            calculateInApps(1, abtests, threeInapps)
         )
         assertEquals(
             setOf("655f5ffa-de86-4224-a0bf-229fe208ed0d", "b33ca779-3c99-481f-ad46-91282b0caf04"),
-            calculateInApps(30, abtests, inapps1)
+            calculateInApps(30, abtests, threeInapps)
         )
         assertEquals(
-            inapps1.toSet(),
-            calculateInApps(65, abtests, inapps1)
+            threeInapps.toSet(),
+            calculateInApps(65, abtests, threeInapps)
         )
     }
 
     @Test
-    fun `abtest logic three variants with inapps2`() = runTest {
+    fun `abtest logic three variants with config of four inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -180,18 +179,18 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b"),
-            calculateInApps(10, abtests, inapps2)
+            calculateInApps(10, abtests, fourInapps)
         )
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "655f5ffa-de86-4224-a0bf-229fe208ed0d"),
-            calculateInApps(64, abtests, inapps2)
+            calculateInApps(64, abtests, fourInapps)
         )
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "b33ca779-3c99-481f-ad46-91282b0caf04"),
-            calculateInApps(65, abtests, inapps2)
+            calculateInApps(65, abtests, fourInapps)
         )
 
-        val inapps2withExtra = inapps2 + "!"
+        val inapps2withExtra = fourInapps + "!"
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "!"),
             calculateInApps(10, abtests, inapps2withExtra)
@@ -207,7 +206,7 @@ internal class InAppABTestLogicTest {
     }
 
     @Test
-    fun `abtest logic two concrete variants with inapps1`() = runTest {
+    fun `abtest logic two concrete with config of three inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -232,14 +231,14 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             setOf("655f5ffa-de86-4224-a0bf-229fe208ed0d", "b33ca779-3c99-481f-ad46-91282b0caf04"),
-            calculateInApps(98, abtests, inapps1)
+            calculateInApps(98, abtests, threeInapps)
         )
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83"),
-            calculateInApps(99, abtests, inapps1)
+            calculateInApps(99, abtests, threeInapps)
         )
 
-        val inapps1withExtra = inapps1 + "??"
+        val inapps1withExtra = threeInapps + "??"
         assertEquals(
             setOf("655f5ffa-de86-4224-a0bf-229fe208ed0d", "b33ca779-3c99-481f-ad46-91282b0caf04", "??"),
             calculateInApps(98, abtests, inapps1withExtra)
@@ -285,7 +284,7 @@ internal class InAppABTestLogicTest {
     }
 
     @Test
-    fun `abtest logic five variants with inapps2`() = runTest {
+    fun `abtest logic five variants with config of four inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 variants = listOf(
@@ -325,29 +324,28 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             setOf("655f5ffa-de86-4224-a0bf-229fe208ed0d"),
-            calculateInApps(5, abtests, inapps2)
+            calculateInApps(5, abtests, fourInapps)
         )
         assertEquals(
             setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83"),
-            calculateInApps(15, abtests, inapps2)
+            calculateInApps(15, abtests, fourInapps)
         )
         assertEquals(
             setOf("b33ca779-3c99-481f-ad46-91282b0caf04"),
-            calculateInApps(25, abtests, inapps2)
+            calculateInApps(25, abtests, fourInapps)
         )
         assertEquals(
             setOf("d1b312bd-aa5c-414c-a0d8-8126376a2a9b"),
-            calculateInApps(35, abtests, inapps2)
+            calculateInApps(35, abtests, fourInapps)
         )
         assertEquals(
-            inapps2.toSet(),
-            calculateInApps(75, abtests, inapps2)
+            fourInapps.toSet(),
+            calculateInApps(75, abtests, fourInapps)
         )
     }
 
-
     @Test
-    fun `two abtests logic with inapps1`() = runTest {
+    fun `two abtests logic with config of three inapps`() = runTest {
         val abtests = listOf(
             abtest.copy(
                 salt = "saLt1",
@@ -392,7 +390,7 @@ internal class InAppABTestLogicTest {
 
         assertEquals(
             setOf<String>(),
-            calculateInApps(mixer24and74, abtests, inapps1)
+            calculateInApps(mixer24and74, abtests, threeInapps)
         )
 
         val mixer24and99 = mockk<CustomerAbMixer> {
@@ -401,7 +399,7 @@ internal class InAppABTestLogicTest {
         }
         assertEquals(
             setOf<String>(),
-            calculateInApps(mixer24and99, abtests, inapps1)
+            calculateInApps(mixer24and99, abtests, threeInapps)
         )
 
         val mixer99and74 = mockk<CustomerAbMixer> {
@@ -410,7 +408,7 @@ internal class InAppABTestLogicTest {
         }
         assertEquals(
             setOf("b33ca779-3c99-481f-ad46-91282b0caf04"),
-            calculateInApps(mixer99and74, abtests, inapps1)
+            calculateInApps(mixer99and74, abtests, threeInapps)
         )
 
         val mixer99and99 = mockk<CustomerAbMixer> {
@@ -418,8 +416,8 @@ internal class InAppABTestLogicTest {
             every { stringModulusHash(any(), "SALT2") } returns (99)
         }
         assertEquals(
-            inapps1.toSet(),
-            calculateInApps(mixer99and99, abtests, inapps1)
+            threeInapps.toSet(),
+            calculateInApps(mixer99and99, abtests, threeInapps)
         )
     }
 

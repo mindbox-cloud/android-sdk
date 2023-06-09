@@ -2,26 +2,24 @@ package cloud.mindbox.mobile_sdk.abtests
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 internal class InAppABTestLogic(
     private val mixer: CustomerAbMixer,
     private val repository: MobileConfigRepository,
-) {
+): MindboxLog {
 
     suspend fun getInAppsPool(allInApps: List<String>): Set<String> {
         val abtests = repository.getABTests()
         val uuid = MindboxPreferences.deviceUuid
 
         if (abtests.isEmpty()) {
-            this@InAppABTestLogic.mindboxLogW("Abtests is empty. Skip logic.")
+            logI("Abtests is empty. Use all inApps.")
             return allInApps.toSet()
         }
         if (allInApps.isEmpty()) {
-            this@InAppABTestLogic.mindboxLogW("Config inApps is empty. Skip logic.")
-            return allInApps.toSet()
+            return emptySet()
         }
 
         val inAppsForAbtest: List<Set<String>> = abtests.map { abtest ->
@@ -31,10 +29,10 @@ internal class InAppABTestLogic(
                 salt = abtest.salt.uppercase(),
             )
 
-            this@InAppABTestLogic.mindboxLogD("mixer calculate $hash for salt ${abtest.salt}")
+            logI("Mixer calculate hash $hash for abtest ${abtest.id} with salt ${abtest.salt} and deviceUuid $uuid")
 
-            val targetBranchInApps: MutableSet<String> = mutableSetOf()
-            val otherBranchInApps: MutableSet<String> = mutableSetOf()
+            val targetVariantInApps: MutableSet<String> = mutableSetOf()
+            val otherVariantInApps: MutableSet<String> = mutableSetOf()
 
             abtest.variants.onEach { variant ->
                 val inApps: List<String> = when (variant.kind) {
@@ -42,21 +40,31 @@ internal class InAppABTestLogic(
                     ABTest.Variant.VariantKind.CONCRETE -> variant.inapps
                 }
                 if ((variant.lower until variant.upper).contains(hash)) {
-                    targetBranchInApps.addAll(inApps)
-                    this@InAppABTestLogic.mindboxLogD("Selected variant $variant for ${abtest.id}")
+                    targetVariantInApps.addAll(inApps)
+                    logI("Selected variant $variant for ${abtest.id}")
                 } else {
-                    otherBranchInApps.addAll(inApps)
+                    otherVariantInApps.addAll(inApps)
                 }
             }
 
-            (targetBranchInApps + (allInApps - otherBranchInApps)).also {
-                this@InAppABTestLogic.mindboxLogD("Selected inapps $it for ${abtest.id}")
+            (targetVariantInApps + (allInApps - otherVariantInApps)).also { inappsSet ->
+                logI("For abtest ${abtest.id} determined $inappsSet")
             }
         }
 
-        return inAppsForAbtest.takeIf { it.isNotEmpty() }?.reduce { acc, list ->
-            acc.intersect(list)
-        } ?: setOf()
+        if (inAppsForAbtest.isEmpty()) {
+            logW("No inApps after calculation abtests logic. InApp will not be shown.")
+            return setOf()
+        }
+
+        return if (inAppsForAbtest.size == 1) {
+            inAppsForAbtest.first()
+        } else {
+            getIntersectionForAllABTests(inAppsForAbtest)
+        }
     }
+
+    private fun getIntersectionForAllABTests(inAppsForAbtest: List<Set<String>>): Set<String> =
+        inAppsForAbtest.reduce { acc, list -> acc.intersect(list) }
 
 }

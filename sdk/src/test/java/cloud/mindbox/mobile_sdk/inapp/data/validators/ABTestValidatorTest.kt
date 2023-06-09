@@ -27,10 +27,12 @@ internal class ABTestValidatorTest(
                 inapps = listOf()
             )
             val variant1 = ABTestDto.VariantDto(
+                id = "1",
                 modulus = modulus.copy(upper = 50),
                 objects = listOf(abObject)
             )
             val variant2 = ABTestDto.VariantDto(
+                id = "2",
                 modulus = modulus.copy(lower = 50),
                 objects = listOf(abObject.copy(kind = "concrete"))
             )
