@@ -58,6 +58,7 @@ internal data class ABTest(
     val variants: List<Variant>,
 ) {
     internal data class Variant(
+        val id: String,
         val type: String,
         val kind: VariantKind,
         val lower: Int,

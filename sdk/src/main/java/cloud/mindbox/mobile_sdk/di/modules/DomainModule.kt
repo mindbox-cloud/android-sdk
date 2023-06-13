@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
+import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
@@ -26,7 +28,8 @@ internal fun DomainModule(
             inAppSegmentationRepository = inAppSegmentationRepository,
             inAppFilteringManager = inAppFilteringManager,
             inAppEventManager = inAppEventManager,
-            inAppChoosingManager = inAppChoosingManager
+            inAppChoosingManager = inAppChoosingManager,
+            inAppABTestLogic = inAppABTestLogic,
         )
     }
 
@@ -43,6 +46,12 @@ internal fun DomainModule(
 
     override val inAppFilteringManager: InAppFilteringManager
         get() = InAppFilteringManagerImpl(inAppRepository = inAppRepository)
+
+    override val inAppABTestLogic: InAppABTestLogic
+        get() = InAppABTestLogic(
+            mixer = customerAbMixer,
+            repository = mobileConfigRepository
+        )
 
     override val customerAbMixer: CustomerAbMixer
          get() = CustomerAbMixerImpl()

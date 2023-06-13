@@ -37,6 +37,8 @@ internal data class ABTestDto(
     val variants: List<VariantDto>?,
 ) {
     internal data class VariantDto(
+        @SerializedName("id")
+        val id: String,
         @SerializedName("modulus")
         val modulus: ModulusDto?,
         @SerializedName("objects")

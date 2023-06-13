@@ -12,6 +12,11 @@ internal class VariantValidator : Validator<ABTestDto.VariantDto?> {
             return false
         }
 
+        if (item.id.isBlank()) {
+            mindboxLogW("The 'id' field can not be null or empty")
+            return false
+        }
+
         if (item.modulus == null) {
             mindboxLogW("The 'modulus' field can not be null")
             return false
@@ -31,7 +36,6 @@ internal class VariantValidator : Validator<ABTestDto.VariantDto?> {
             mindboxLogW("The 'objects' field can not be null")
             return false
         }
-
 
         if (item.objects.size != 1) {
             mindboxLogW("The 'objects' field must be only one")

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
+import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -11,7 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.flow.*
@@ -22,26 +23,31 @@ internal class InAppInteractorImpl(
     private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
-    private val inAppChoosingManager: InAppChoosingManager
-) : InAppInteractor {
+    private val inAppChoosingManager: InAppChoosingManager,
+    private val inAppABTestLogic: InAppABTestLogic,
+) : InAppInteractor, MindboxLog {
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
-        val inApps: List<InApp> = mobileConfigRepository.getInAppsSection().let { inApps ->
-            inAppFilteringManager.filterNotShownInApps(
-                inAppRepository.getShownInApps(),
-                inApps
-            )
-        }.also { unShownInApps ->
-            MindboxLoggerImpl.d(
-                this, "Filtered config has ${unShownInApps.size} inapps"
-            )
-            inAppSegmentationRepository.unShownInApps = unShownInApps
-            for (inApp in unShownInApps) {
-                for (operation in inApp.targeting.getOperationsSet()) {
-                    inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
+        val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
+            .let { inApps ->
+                val inAppIds = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
+                inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
+                    logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
+                }
+            }.let { inApps ->
+                inAppFilteringManager.filterNotShownInApps(
+                    inAppRepository.getShownInApps(),
+                    inApps
+                )
+            }.also { unShownInApps ->
+                logI("Filtered config has ${unShownInApps.size} inapps")
+                inAppSegmentationRepository.unShownInApps = unShownInApps
+                for (inApp in unShownInApps) {
+                    for (operation in inApp.targeting.getOperationsSet()) {
+                        inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
+                    }
                 }
             }
-        }
 
         return inAppRepository.listenInAppEvents()
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }

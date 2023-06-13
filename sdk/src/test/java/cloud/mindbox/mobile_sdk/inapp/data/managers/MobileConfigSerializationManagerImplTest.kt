@@ -27,6 +27,7 @@ class MobileConfigSerializationManagerImplTest {
                 ),
                 variants = listOf(
                     ABTestDto.VariantDto(
+                        id = "3162b011-b30f-4300-a72b-bd5cac0d6607",
                         modulus = ABTestDto.VariantDto.ModulusDto(
                             lower = 0,
                             upper = 50,
@@ -43,6 +44,7 @@ class MobileConfigSerializationManagerImplTest {
                         ),
                     ),
                     ABTestDto.VariantDto(
+                        id = "dbc39dce-db4f-4dc9-9133-378df018233b",
                         modulus = ABTestDto.VariantDto.ModulusDto(
                             lower = 50,
                             upper = 100,
