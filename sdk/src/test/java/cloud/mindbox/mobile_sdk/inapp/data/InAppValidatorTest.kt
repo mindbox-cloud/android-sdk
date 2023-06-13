@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.Constants
 import org.junit.Assert.assertFalse
@@ -9,7 +10,7 @@ import org.junit.Test
 
 class InAppValidatorTest {
 
-    private val inAppValidator = InAppValidatorImpl()
+    private val inAppValidator = InAppValidatorImpl(SdkVersionValidator())
 
     @Test
     fun `validate form dto variants null`() {

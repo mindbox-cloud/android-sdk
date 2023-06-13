@@ -12,6 +12,8 @@ internal data class InAppConfigResponse(
     val monitoring: List<LogRequestDto>?,
     @SerializedName("settings")
     val settings: Map<String, OperationDto>?,
+    @SerializedName("abtests")
+    val abtests: List<ABTestDto>?,
 )
 
 internal data class SettingsDto(
@@ -22,6 +24,39 @@ internal data class SettingsDto(
         @SerializedName("systemName")
         val systemName: String?
     )
+}
+
+internal data class ABTestDto(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("sdkVersion")
+    val sdkVersion: SdkVersion?,
+    @SerializedName("salt")
+    val salt: String?,
+    @SerializedName("variants")
+    val variants: List<VariantDto>?,
+) {
+    internal data class VariantDto(
+        @SerializedName("modulus")
+        val modulus: ModulusDto?,
+        @SerializedName("objects")
+        val objects: List<ObjectsDto>?,
+    ) {
+        internal data class ModulusDto(
+            @SerializedName("lower")
+            val lower: Int?,
+            @SerializedName("upper")
+            val upper: Int?,
+        )
+        internal data class ObjectsDto(
+            @SerializedName("${"$"}type")
+            val type: String?,
+            @SerializedName("kind")
+            val kind: String?,
+            @SerializedName("inapps")
+            val inapps: List<String>?,
+        )
+    }
 }
 
 internal data class OperationDto(
@@ -106,6 +141,8 @@ internal data class InAppConfigResponseBlank(
     val monitoring: MonitoringDto?,
     @SerializedName("settings")
     val settings: SettingsDto?,
+    @SerializedName("abtests")
+    val abtests: List<ABTestDto>?,
 ) {
 
     internal data class InAppDtoBlank(

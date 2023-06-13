@@ -1,7 +1,5 @@
 package cloud.mindbox.mobile_sdk.abtests
 
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import java.security.MessageDigest
 
 internal class CustomerAbMixerImpl: CustomerAbMixer {
@@ -12,13 +10,6 @@ internal class CustomerAbMixerImpl: CustomerAbMixer {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     override fun stringModulusHash(identifier: String, salt: String): Int {
-        MindboxPreferences.mixerFixedHash
-            .takeIf { it in 0..99 }
-            ?.let {
-                this@CustomerAbMixerImpl.mindboxLogW("Mixer use fixed hash $it!")
-                return it
-            }
-
         val saltedId = identifier.uppercase() + salt.uppercase()
 
         val bytes = saltedId.toByteArray(Charsets.UTF_8)

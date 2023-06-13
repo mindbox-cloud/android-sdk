@@ -30,9 +30,15 @@ internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepos
     }
 
     override fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp> =
-        if (event == InAppEventType.AppStartup)  {
+        if (event == InAppEventType.AppStartup) {
             inApps
         } else {
             inAppRepository.getOperationalInAppsByOperation(event.name)
         }
+
+    override fun filterABTestsInApps(
+        inApps: List<InApp>,
+        abtestsInAppsPool: Collection<String>
+    ): List<InApp> = inApps.filter { inApp: InApp -> abtestsInAppsPool.contains(inApp.id) }
+
 }

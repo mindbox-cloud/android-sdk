@@ -1,0 +1,40 @@
+{
+  "abtests": [
+    {
+      "id": "0ec6be6b-421f-464b-9ee4-348a5292a5fd",
+      "sdkVersion": {
+        "min": 6,
+        "max": null
+      },
+      "salt": "c0e2682c-3d0f-4291-9308-9e48a16eb3c8",
+      "variants": [
+        {
+          "modulus": {
+            "lower": 0,
+            "upper": 50
+          },
+          "objects": [
+            {
+              "$type": "inapps",
+              "kind": "concrete",
+              "inapps": ["655f5ffa-de86-4224-a0bf-229fe208ed0d","b33ca779-3c99-481f-ad46-91282b0caf04"]
+            }
+          ]
+        },
+        {
+          "modulus": {
+            "lower": 50,
+            "upper": 100
+          },
+          "objects": [
+            {
+              "$type": "inapps",
+              "kind": "all",
+              "inapps": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
