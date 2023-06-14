@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
@@ -7,7 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
@@ -15,8 +16,8 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.suspendLazy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -36,9 +37,9 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private var inApps: List<InApp>? = null
-    private var operations: Map<OperationName, OperationSystemName>? = null
-    private var abtests: List<ABTest>? = null
+    private val inAppConfig = Mindbox.mindboxScope.suspendLazy {
+        listenInAppConfig().first()
+    }
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
@@ -47,7 +48,7 @@ internal class MobileConfigRepositoryImpl(
         )
     }
 
-    private fun listenInAppConfig(): Flow<InAppConfig?> {
+    private fun listenInAppConfig(): Flow<InAppConfig> {
         return MindboxPreferences.inAppConfigFlow.map { inAppConfigString ->
             mutex.withLock {
                 this@MobileConfigRepositoryImpl.mindboxLogD(
@@ -73,6 +74,14 @@ internal class MobileConfigRepositoryImpl(
             }
         }
     }
+
+    override suspend fun getMonitoringSection() = getConfig().monitoring
+
+    override suspend fun getOperations() = getConfig().operations
+
+    override suspend fun getInAppsSection() = getConfig().inApps
+
+    override suspend fun getABTests() = getConfig().abtests
 
     private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? =
         configBlank?.inApps
@@ -124,40 +133,5 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    override fun listenMonitoringSection(): Flow<List<LogRequest>?> {
-        return listenInAppConfig().map { inAppConfig ->
-            inAppConfig?.monitoring
-        }
-    }
-
-    override suspend fun getOperations(): Map<OperationName, OperationSystemName> {
-        return operations ?: run {
-            val operationsMap: Map<OperationName, OperationSystemName> =
-                listenInAppConfig().map { inAppConfig ->
-                    inAppConfig?.operations
-                }.first() ?: mapOf()
-            operations = operationsMap
-            operationsMap
-        }
-    }
-
-    override suspend fun getInAppsSection(): List<InApp> {
-        return inApps ?: run {
-            val inAppList: List<InApp> = listenInAppConfig().map { inAppConfig ->
-                inAppConfig?.inApps
-            }.first() ?: listOf()
-            inApps = inAppList
-            inAppList
-        }
-    }
-
-    override suspend fun getABTests(): List<ABTest> {
-        return abtests ?: run {
-            val list: List<ABTest> = listenInAppConfig().map { inAppConfig ->
-                inAppConfig?.abtests
-            }.first() ?: listOf()
-            abtests = list
-            list
-        }
-    }
+    private suspend fun getConfig(): InAppConfig = inAppConfig.invoke()
 }
