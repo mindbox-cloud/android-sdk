@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteracto
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 internal class MonitoringInteractorImpl(
@@ -24,33 +23,37 @@ internal class MonitoringInteractorImpl(
         MindboxLoggerImpl.monitoringScope.launch {
             val firstLog = monitoringRepository.getFirstLog()
             val lastLog = monitoringRepository.getLastLog()
-            mobileConfigRepository.listenMonitoringSection().collect { monitoring ->
-                logRequestDataManager.filterCurrentDeviceUuidLogs(monitoring)
-                    .filterNot { logRequest ->
-                        logRequestDataManager.checkRequestIdProcessed(
-                            monitoringRepository.getRequestIds(),
-                            logRequest.requestId
-                        )
-                    }.onEach { logRequest ->
-                        monitoringRepository.saveRequestId(logRequest.requestId)
-                    }.map { logRequest ->
-                        val logs = monitoringRepository.getLogs(logRequest.from, logRequest.to)
-                        async {
-                            monitoringRepository.sendLogs(
-                                monitoringStatus = logResponseDataManager.getStatus(
-                                    filteredLogs = logs, firstLog = firstLog, lastLog = lastLog,
-                                    from = logRequest.from,
-                                    to = logRequest.to
-                                ), logRequest.requestId, logResponseDataManager.getFilteredLogs(
-                                    filteredLogs = logs,
-                                    firstLog = firstLog,
-                                    lastLog = lastLog,
-                                    from = logRequest.from, to = logRequest.to
-                                )
+            val monitoring = mobileConfigRepository.getMonitoringSection()
+            logRequestDataManager.filterCurrentDeviceUuidLogs(monitoring)
+                .filterNot { logRequest ->
+                    logRequestDataManager.checkRequestIdProcessed(
+                        monitoringRepository.getRequestIds(),
+                        logRequest.requestId
+                    )
+                }.onEach { logRequest ->
+                    monitoringRepository.saveRequestId(logRequest.requestId)
+                }.map { logRequest ->
+                    val logs = monitoringRepository.getLogs(logRequest.from, logRequest.to)
+                    async {
+                        monitoringRepository.sendLogs(
+                            monitoringStatus = logResponseDataManager.getStatus(
+                                filteredLogs = logs,
+                                firstLog = firstLog,
+                                lastLog = lastLog,
+                                from = logRequest.from,
+                                to = logRequest.to
+                            ),
+                            requestId = logRequest.requestId,
+                            logs = logResponseDataManager.getFilteredLogs(
+                                filteredLogs = logs,
+                                firstLog = firstLog,
+                                lastLog = lastLog,
+                                from = logRequest.from,
+                                to = logRequest.to
                             )
-                        }
-                    }.awaitAll()
-            }
+                        )
+                    }
+                }.awaitAll()
         }
     }
 }

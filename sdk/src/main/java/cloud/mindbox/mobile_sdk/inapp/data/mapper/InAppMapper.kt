@@ -68,7 +68,7 @@ internal class InAppMapper {
 
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
-    ): InAppConfig? {
+    ): InAppConfig {
         return inAppConfigResponse?.let {
             InAppConfig(
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
@@ -87,7 +87,7 @@ internal class InAppMapper {
                                         )
                                     }
                                     null -> {
-                                        return null // should never trigger because of validator
+                                        return InAppConfig(listOf(), listOf(), mapOf(), listOf()) // should never trigger because of validator
                                     }
                                 }
                             } ?: emptyList()
@@ -126,7 +126,7 @@ internal class InAppMapper {
                     )
                 } ?: listOf()
             )
-        }
+        } ?: InAppConfig(listOf(), listOf(), mapOf(), listOf())
     }
 
     /**
