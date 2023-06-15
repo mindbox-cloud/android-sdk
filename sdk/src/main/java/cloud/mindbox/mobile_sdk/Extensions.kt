@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.os.Process
+import android.view.View
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.time.Instant
@@ -91,4 +92,11 @@ internal fun Context.getCurrentProcessName(): String? {
     val processes = manager.runningAppProcesses
 
     return processes.firstOrNull { info -> info.pid == mypid }?.processName
+}
+
+internal fun View.setSingleClickListener(listener: View.OnClickListener) {
+    setOnClickListener {
+        setOnClickListener(null)
+        listener.onClick(it)
+    }
 }
