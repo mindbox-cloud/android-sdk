@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -93,8 +94,7 @@ internal class SimpleImageInAppViewHolder(
             }
         }
 
-        currentDialog.setOnClickListener {
-            currentDialog.isEnabled = false
+        currentDialog.setSingleClickListener {
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
