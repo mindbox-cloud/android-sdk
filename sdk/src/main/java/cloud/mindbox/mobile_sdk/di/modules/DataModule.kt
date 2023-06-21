@@ -9,9 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
@@ -42,6 +40,7 @@ internal fun DataModule(
             inAppMapper = inAppMapper,
             mobileConfigSerializationManager = mobileConfigSerializationManager,
             inAppValidator = inAppValidator,
+            abTestValidator = abTestValidator,
             monitoringValidator = monitoringValidator,
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
@@ -86,7 +85,11 @@ internal fun DataModule(
 
     override val monitoringValidator: MonitoringValidator by lazy { MonitoringValidator() }
 
-    override val inAppValidator: InAppValidator by lazy { InAppValidatorImpl() }
+    override val inAppValidator: InAppValidator by lazy { InAppValidatorImpl(sdkVersionValidator) }
+
+    override val abTestValidator: ABTestValidator by lazy { ABTestValidator(sdkVersionValidator) }
+
+    override val sdkVersionValidator: SdkVersionValidator by lazy { SdkVersionValidator() }
 
     override val operationNameValidator: OperationNameValidator
         get() = OperationNameValidator()

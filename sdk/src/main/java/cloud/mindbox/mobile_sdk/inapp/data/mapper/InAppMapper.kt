@@ -68,7 +68,7 @@ internal class InAppMapper {
 
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
-    ): InAppConfig? {
+    ): InAppConfig {
         return inAppConfigResponse?.let {
             InAppConfig(
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
@@ -87,7 +87,7 @@ internal class InAppMapper {
                                         )
                                     }
                                     null -> {
-                                        return null // should never trigger because of validator
+                                        return InAppConfig(listOf(), listOf(), mapOf(), listOf()) // should never trigger because of validator
                                     }
                                 }
                             } ?: emptyList()
@@ -106,9 +106,27 @@ internal class InAppMapper {
                 } ?: emptyList(),
                 operations = inAppConfigResponse.settings?.map { (key, value) ->
                     key.enumValue<OperationName>() to OperationSystemName(value.systemName)
-                }?.toMap() ?: emptyMap()
+                }?.toMap() ?: emptyMap(),
+                abtests = inAppConfigResponse.abtests?.map { dto ->
+                    ABTest(
+                        id = dto.id,
+                        minVersion = dto.sdkVersion?.minVersion,
+                        maxVersion = dto.sdkVersion?.maxVersion,
+                        salt = dto.salt!!,
+                        variants = dto.variants?.map { variantDto ->
+                            ABTest.Variant(
+                                id = variantDto.id,
+                                type = variantDto.objects!!.first().type!!,
+                                kind = variantDto.objects.first().kind.enumValue(),
+                                inapps = variantDto.objects.first().inapps ?: listOf(),
+                                lower = variantDto.modulus!!.lower!!,
+                                upper = variantDto.modulus.upper!!,
+                            )
+                        } ?: listOf()
+                    )
+                } ?: listOf()
             )
-        }
+        } ?: InAppConfig(listOf(), listOf(), mapOf(), listOf())
     }
 
     /**

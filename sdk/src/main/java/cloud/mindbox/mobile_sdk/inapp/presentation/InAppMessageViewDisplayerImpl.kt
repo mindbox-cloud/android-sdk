@@ -23,6 +23,7 @@ internal class InAppMessageViewDisplayerImpl :
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
 
+
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -32,11 +33,9 @@ internal class InAppMessageViewDisplayerImpl :
         if (pausedHolder?.isActive == true) {
             pausedHolder?.wrapper?.let { wrapper ->
                 mindboxLogD("trying to restore in-app with id $pausedHolder")
-                pausedHolder?.hide()
                 showInAppMessage(wrapper.copy(
-                    onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") }
+                    onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") },
                 ))
-                pausedHolder = null
             }
         } else {
             tryShowInAppFromQueue()
@@ -101,13 +100,17 @@ internal class InAppMessageViewDisplayerImpl :
     }
 
     private fun showInAppMessage(wrapper: InAppTypeWrapper<out InAppType>) {
-        when(wrapper.inAppType) {
+        when (wrapper.inAppType) {
             is InAppType.SimpleImage -> {
                 currentActivity?.root?.let { root ->
                     @Suppress("UNCHECKED_CAST")
                     currentHolder = SimpleImageInAppViewHolder(
                         wrapper as InAppTypeWrapper<InAppType.SimpleImage>,
-                        inAppCallback
+                        inAppCallback = InAppCallbackWrapper(inAppCallback) {
+                            pausedHolder?.hide()
+                            pausedHolder = null
+                            currentHolder = null
+                        }
                     ).apply {
                         show(root)
                     }
