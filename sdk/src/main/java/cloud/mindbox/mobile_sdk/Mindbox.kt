@@ -386,6 +386,11 @@ object Mindbox {
             MindboxLoggerImpl.d(this, "init. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
+
+            if (!firstInitCall) {
+                InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            }
+
             initScope.launch {
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
