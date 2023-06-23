@@ -1,13 +1,13 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.annotation.WorkerThread
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import kotlinx.coroutines.Job
 import java.util.concurrent.CountDownLatch
 
 internal object InitializeLock {
 
-    private val map: Map<State, CountDownLatch> = mapOf(
+    private val map: MutableMap<State, CountDownLatch> = mutableMapOf(
         State.SAVE_MINDBOX_CONFIG to CountDownLatch(1),
         State.APP_STARTED to CountDownLatch(1)
     )
@@ -24,7 +24,13 @@ internal object InitializeLock {
 
     internal fun complete(state: State) {
         map[state]?.countDown()
-        mindboxLogD("State $state completed")
+        mindboxLogI("State $state completed")
+    }
+    
+    internal fun reset(state: State) {
+        map[state]?.countDown()
+        map[state] = CountDownLatch(1)
+        mindboxLogI("State $state is reset")
     }
 
     internal enum class State {
