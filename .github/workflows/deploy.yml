@@ -12,8 +12,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
+          ref: develop
           repository: mindbox-cloud/android-app
           token: ${{ secrets.GITHUBACCESSTOKEN }}
           submodules: true
