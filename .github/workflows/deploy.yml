@@ -1,4 +1,4 @@
-name: SDK CI
+name: SDK Distribute
 
 on:
   push:
