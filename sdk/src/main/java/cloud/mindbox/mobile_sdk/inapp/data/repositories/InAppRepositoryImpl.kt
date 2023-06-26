@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 internal class InAppRepositoryImpl(
     private val context: Context,
     private val sessionStorageManager: SessionStorageManager,
-    private val inAppSerializationManager: InAppSerializationManager,
+    private val inAppSerializationManager: InAppSerializationManager
 ) :
     InAppRepository {
 
