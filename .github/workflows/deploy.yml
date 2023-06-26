@@ -10,6 +10,6 @@ on:
 
 jobs:
   deploy:
-    uses: mindbox-moscow/android-app/.github/workflows/publish.yml@master
+    uses: mindbox-moscow/android-app/.github/workflows/distribute.yml@master
     with:
       commit: $GITHUB_HASH
