@@ -32,6 +32,6 @@ jobs:
           git commit -m "Update submodules" || echo "No changes to commit"
           git push
   deploy:
-    uses: mindbox-moscow/android-app/.github/workflows/distribute.yml@a00343ebdeff7267fd2aba0f79af75f10ad1ea50
+    uses: mindbox-cloud/android-app/.github/workflows/distribute.yml@a00343ebdeff7267fd2aba0f79af75f10ad1ea50
     with:
       commit: $GITHUB_HASH
