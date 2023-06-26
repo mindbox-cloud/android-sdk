@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: feature/MBX-2475
+          ref: feature/MBX-2475-test_commit
           repository: mindbox-cloud/android-app
           token: ${{ secrets.GITHUBACCESSTOKEN }}
           submodules: true
