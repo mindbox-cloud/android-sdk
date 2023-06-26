@@ -10,17 +10,20 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.hideKeyboard
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.showKeyboard
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
+import java.lang.ref.WeakReference
 
 
 internal class SimpleImageInAppViewHolder(
@@ -30,6 +33,7 @@ internal class SimpleImageInAppViewHolder(
 
     private lateinit var currentBlur: View
     private lateinit var currentDialog: InAppConstraintLayout
+    private var focus: WeakReference<View>? = null
 
     private val shouldUseBlur = true
 
@@ -125,6 +129,8 @@ internal class SimpleImageInAppViewHolder(
     }
 
     override fun show(currentRoot: ViewGroup) {
+        focus = WeakReference(currentRoot.findFocus()?.hideKeyboard())
+
         mindboxLogD("show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         if (wrapper.inAppType.imageUrl.isBlank()) {
             mindboxLogD("in-app image url is blank")
@@ -178,6 +184,7 @@ internal class SimpleImageInAppViewHolder(
     }
 
     override fun hide() {
+        focus?.get()?.showKeyboard()
         mindboxLogD("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
         (currentDialog.parent as? ViewGroup?)?.apply {

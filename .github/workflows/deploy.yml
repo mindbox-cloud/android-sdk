@@ -1,0 +1,15 @@
+name: SDK CI
+
+on:
+  push:
+    branches:
+      - '**'
+      - '!master'
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  deploy:
+    uses: mindbox-moscow/android-app/.github/workflows/publish.yml@master
+    with:
+      commit: $GITHUB_HASH
