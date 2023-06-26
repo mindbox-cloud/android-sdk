@@ -23,6 +23,7 @@ internal object DbManager {
     private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
     private const val DELAY_FOR_SEND_IN_BACKGROUND = 120_000
 
+    @Volatile
     private lateinit var mindboxDb: MindboxDatabase
 
     fun init(context: Context) = LoggingExceptionHandler.runCatching {
