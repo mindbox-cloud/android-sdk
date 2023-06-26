@@ -29,31 +29,4 @@ jobs:
           git config user.name "GitHub Actions - update submodules"
           git add --all
           git commit -m "Update submodules" || echo "No changes to commit"
-          git push
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: Generate signing file
-        run: |
-          echo 'ext {' > keys/keys.gradle
-          echo "DEBUG_KEY_STORE_PASSWORD = \"${{secrets.DEBUG_KEY_STORE_PASSWORD}}\";" >> keys/keys.gradle
-          echo "DEBUG_KEY_ALIAS = \"${{secrets.DEBUG_KEY_ALIAS}}\";" >> keys/keys.gradle
-          echo "DEBUG_KEY_PASSWORD = \"${{secrets.DEBUG_KEY_PASSWORD}}\";" >> keys/keys.gradle
-          echo "RELEASE_KEY_STORE_PASSWORD = \"${{secrets.RELEASE_KEY_STORE_PASSWORD}}\";" >> keys/keys.gradle
-          echo "RELEASE_KEY_ALIAS = \"${{secrets.RELEASE_KEY_ALIAS}}\";" >> keys/keys.gradle
-          echo "RELEASE_KEY_PASSWORD = \"${{secrets.RELEASE_KEY_PASSWORD}}\"" >> keys/keys.gradle
-          echo '}' >> keys/keys.gradle
-      - name: build release
-        run: ./gradlew assembleLocal
-      - name: upload artifact to Firebase App Distribution
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: ${{secrets.ANDROID_FIREBASE_APP_ID}}
-          serviceCredentialsFileContent: ${{ secrets.ANDROID_FIREBASE_APP_DISTRIBUTION_CREDENTIAL_FILE_CONTENT }}
-          groups: web-mobile-testers
-          debug: true
-          file: app/build/outputs/apk/local/debug/app-local-debug.apk
+          git push origin develop
