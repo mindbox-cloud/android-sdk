@@ -74,19 +74,6 @@ internal class SimpleImageInAppViewHolder(
             currentRoot, false
         ) as InAppConstraintLayout
     }
-
-    private fun restoreKeyboard() {
-        typingView?.let { view ->
-            view.requestFocus()
-            val imm =
-                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
-            imm?.showSoftInput(
-                view,
-                InputMethodManager.SHOW_IMPLICIT
-            )
-        }
-    }
-
     private fun bind(currentRoot: ViewGroup) {
         currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
             isVisible = true
@@ -186,7 +173,6 @@ internal class SimpleImageInAppViewHolder(
     override fun hide() {
         focus?.get()?.showKeyboard()
         mindboxLogD("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
-        restoreKeyboard()
         (currentDialog.parent as? ViewGroup?)?.apply {
             removeView(currentDialog)
             removeView(currentBlur)
