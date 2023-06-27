@@ -388,7 +388,6 @@ object Mindbox: MindboxLog {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
                 return@runCatching
             }
-            logI("text to check1")
             initComponents(context.applicationContext, pushServices)
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
