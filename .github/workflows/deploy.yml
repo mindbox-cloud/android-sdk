@@ -12,13 +12,6 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: feature/MBX-2475
-          repository: mindbox-cloud/android-app
-          token: ${{ secrets.GITHUBACCESSTOKEN }}
-          submodules: true
-
       - name: Trigger Workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
