@@ -25,11 +25,8 @@ jobs:
           git submodule update --recursive --remote
 
       - name: Trigger Workflow
-        env:
-          CI_TOKEN: ${{ secrets.GITHUBACCESSTOKEN }}
-          PARENT_REPO: mindbox-cloud/android-app
-          PARENT_BRANCH: feature/MBX-2475
-          WORKFLOW: 61033697
-        run: |
-          curl -fL --retry 3 -X POST -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${{ env.CI_TOKEN }}" https://api.github.com/repos/${{ env.PARENT_REPO }}/actions/workflows/${{ env.WORKFLOW }}/dispatches -d '{"ref":"${{ env.PARENT_BRANCH }}"}'
-
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUBACCESSTOKEN}
+          repository: mindbox-cloud/android-app
+          event-type: child-repo-push
