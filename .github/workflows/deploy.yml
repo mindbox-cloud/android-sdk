@@ -25,8 +25,8 @@ jobs:
           git submodule update --recursive --remote
 
       - name: Trigger Workflow
-        uses: peter-evans/repository-dispatch@v2
+        uses: benc-uk/workflow-dispatch@v1
         with:
-          token: ${{ secrets.GITHUBACCESSTOKEN}}
-          repository: mindbox-cloud/android-app
-          event-type: child-repo-push
+          workflow: distribute.yml
+          repo: mindbox-cloud/android-app
+
