@@ -29,4 +29,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUBACCESSTOKEN}}
           repository: mindbox-cloud/android-app
-          event-type: child-repo-push
+          event-type: -child-repo-push
