@@ -27,6 +27,6 @@ jobs:
       - name: Trigger Workflow
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.GITHUBACCESSTOKEN}
+          token: ${{ secrets.GITHUBACCESSTOKEN}}
           repository: mindbox-cloud/android-app
           event-type: child-repo-push
