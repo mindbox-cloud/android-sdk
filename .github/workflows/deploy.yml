@@ -24,11 +24,19 @@ jobs:
           git submodule update --init --recursive
           git submodule update --recursive --remote
 
+      - name: Commit
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions - update submodules"
+          git add --all
+          git commit -m "Update submodules" || echo "No changes to commit"
+          git push origin/feature/MBX-2475
+
       - name: Trigger Workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: 61033697
           repo: mindbox-cloud/android-app
           ref: feature/MBX-2475
-          token:  ${{ secrets.GITHUBACCESSTOKEN }}
+          token: ${{ secrets.GITHUBACCESSTOKEN }}
 
