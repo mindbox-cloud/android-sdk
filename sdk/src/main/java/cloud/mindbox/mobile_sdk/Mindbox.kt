@@ -390,7 +390,7 @@ object Mindbox: MindboxLog {
             }
 
             initComponents(context.applicationContext, pushServices)
-            logI("init in $currentProcessName. first3InitCall: $firstInitCall, " +
+            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
 
