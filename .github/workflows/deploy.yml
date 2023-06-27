@@ -27,6 +27,7 @@ jobs:
       - name: Trigger Workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
-          workflow: distribute.yml
+          workflow: 61033697
           repo: mindbox-cloud/android-app
+          token:  ${{ secrets.GITHUBACCESSTOKEN }}
 
