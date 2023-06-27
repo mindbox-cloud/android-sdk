@@ -13,9 +13,9 @@ ext {
         kotlinx_coroutines_android: 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.0',
         volley: 'com.android.volley:volley:1.2.1',
         gson: 'com.google.code.gson:gson:2.8.7',
-        room: 'androidx.room:room-runtime:2.4.1',
-        room_ktx: 'androidx.room:room-ktx:2.4.1',
-        room_compiler: 'androidx.room:room-compiler:2.4.1',
+        room: 'androidx.room:room-runtime:2.5.1',
+        room_ktx: 'androidx.room:room-ktx:2.5.1',
+        room_compiler: 'androidx.room:room-compiler:2.5.1',
         work_manager: 'androidx.work:work-runtime-ktx:2.7.1',
         androidx_lifecycle: 'androidx.lifecycle:lifecycle-process:2.3.1',
         hms_push: 'com.huawei.hms:push:6.5.0.300',
@@ -24,7 +24,7 @@ ext {
         koin_test: 'io.insert-koin:koin-test:3.2.2',
         koin_junit4: 'io.insert-koin:koin-test-junit4:3.2.2',
         constraint_layout: 'androidx.constraintlayout:constraintlayout:2.1.4',
-        jdk_libs: 'com.android.tools:desugar_jdk_libs:1.2.2'
+        threetenapb: 'com.jakewharton.threetenabp:threetenabp:1.4.6'
     ]
 
     testDependencies = [
@@ -35,7 +35,9 @@ ext {
         turbine: 'app.cash.turbine:turbine:0.12.1',
         mockk: 'io.mockk:mockk:1.13.3',
         mockk_android: 'io.mockk:mockk-android:1.13.3',
-        mockk_agent: 'io.mockk:mockk-agent:1.13.3'
+        mockk_agent: 'io.mockk:mockk-agent:1.13.3',
+        robolectric: 'org.robolectric:robolectric:4.9',
+        test_core: 'androidx.test:core:1.5.0'
     ]
 
 }

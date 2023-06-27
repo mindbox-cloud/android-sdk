@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.monitoring.domain.managers
 
+import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.monitoring.LogRequestStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit4.MockKRule
@@ -11,7 +13,10 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 internal class LogRequestDataManagerImplTest {
 
     @get:Rule
@@ -26,6 +31,7 @@ internal class LogRequestDataManagerImplTest {
         every {
             MindboxPreferences.deviceUuid
         } returns "456"
+        AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
     }
 
     @Test
