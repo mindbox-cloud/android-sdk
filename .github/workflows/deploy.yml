@@ -29,5 +29,6 @@ jobs:
         with:
           workflow: 61033697
           repo: mindbox-cloud/android-app
+          ref: feature/MBX-2475
           token:  ${{ secrets.GITHUBACCESSTOKEN }}
 
