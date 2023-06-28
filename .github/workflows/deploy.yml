@@ -1,18 +1,17 @@
 name: SDK Distribute
 
 on:
-  push:
+  pull_request:
+    types: [ closed ]
     branches:
-      - '**'
-      - '!master'
-    paths-ignore:
-      - '**.md'
+      - develop
 
 jobs:
   update:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Workflow
+      - name: trigger build & send to FAD
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: 61033697
