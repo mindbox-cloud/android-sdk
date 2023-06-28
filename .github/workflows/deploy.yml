@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [ closed ]
     branches:
-      - feature/MBX-2475_test
+      - develop
 
 jobs:
   update:
@@ -16,6 +16,6 @@ jobs:
         with:
           workflow: 61033697
           repo: mindbox-cloud/android-app
-          ref: feature/MBX-2475_test
+          ref: develop
           token: ${{ secrets.GITHUBACCESSTOKEN }}
 
