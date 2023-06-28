@@ -112,6 +112,14 @@ afterEvaluate {
     }
 
     signing {
-        sign publishing.publications.release
+        def signingKeyId = findProperty("signing.keyId")
+        def signingKey = findProperty("signing.secretKeyRingFile")
+        def signingPassword = findProperty("signing.password")
+        if (signingKeyId && signingKey && signingPassword) {
+            println("Signing applied")
+            sign publishing.publications.release
+        } else {
+            println("Signing not applied")
+        }
     }
 }
