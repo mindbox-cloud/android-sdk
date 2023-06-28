@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package cloud.mindbox.mobile_sdk
 
 import android.app.Activity
