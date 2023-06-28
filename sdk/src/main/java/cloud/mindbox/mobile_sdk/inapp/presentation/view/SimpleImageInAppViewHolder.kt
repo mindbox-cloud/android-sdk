@@ -10,20 +10,17 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.hideKeyboard
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.showKeyboard
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
-import java.lang.ref.WeakReference
 
 
 internal class SimpleImageInAppViewHolder(
@@ -33,7 +30,6 @@ internal class SimpleImageInAppViewHolder(
 
     private lateinit var currentBlur: View
     private lateinit var currentDialog: InAppConstraintLayout
-    private var focus: WeakReference<View>? = null
 
     private val shouldUseBlur = true
 
@@ -63,7 +59,7 @@ internal class SimpleImageInAppViewHolder(
         )
 
         if (!shouldUseBlur) {
-            mindboxLogD("Disable blur")
+            mindboxLogI("Disable blur")
             currentBlur.setBackgroundColor(
                 ContextCompat.getColor(context, android.R.color.transparent)
             )
@@ -74,11 +70,24 @@ internal class SimpleImageInAppViewHolder(
             currentRoot, false
         ) as InAppConstraintLayout
     }
+
+    private fun restoreKeyboard() {
+        typingView?.let { view ->
+            view.requestFocus()
+            val imm =
+                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+            imm?.showSoftInput(
+                view,
+                InputMethodManager.SHOW_IMPLICIT
+            )
+        }
+    }
+
     private fun bind(currentRoot: ViewGroup) {
         currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
             isVisible = true
             setOnClickListener {
-                mindboxLogD("In-app dismissed")
+                mindboxLogI("In-app dismissed by close click")
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 hide()
                 isInAppMessageActive = false
@@ -93,34 +102,33 @@ internal class SimpleImageInAppViewHolder(
                 wrapper.inAppType.intentData
             )
             if (wrapper.inAppType.redirectUrl.isNotBlank() || wrapper.inAppType.intentData.isNotBlank()) {
-                currentRoot.removeView(currentDialog)
-                currentRoot.removeView(currentBlur)
+                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                mindboxLogI("In-app dismissed by click")
                 isInAppMessageActive = false
+                hide()
             }
         }
         currentDialog.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogD("In-app dismissed")
+            mindboxLogI("In-app dismissed by dialog click")
             isInAppMessageActive = false
             hide()
         }
         currentBlur.setOnClickListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogD("In-app dismissed")
+            mindboxLogI("In-app dismissed by background click")
             isInAppMessageActive = false
             hide()
         }
         currentBlur.isVisible = true
-        mindboxLogD("inapp shown")
+        mindboxLogI("In-app shown")
         wrapper.onInAppShown.onShown()
     }
 
     override fun show(currentRoot: ViewGroup) {
-        focus = WeakReference(currentRoot.findFocus()?.hideKeyboard())
-
-        mindboxLogD("show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+        mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         if (wrapper.inAppType.imageUrl.isBlank()) {
-            mindboxLogD("in-app image url is blank")
+            mindboxLogI("In-app image url is blank")
             return
         }
         initView(currentRoot)
@@ -131,7 +139,7 @@ internal class SimpleImageInAppViewHolder(
         currentDialog.requestFocus()
 
         with(currentRoot.findViewById<ImageView>(R.id.iv_content)) {
-            mindboxLogD("try to show inapp with id ${wrapper.inAppType.inAppId}")
+            mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
             Glide
                 .with(currentRoot.context.applicationContext)
                 .load(wrapper.inAppType.imageUrl)
@@ -143,11 +151,9 @@ internal class SimpleImageInAppViewHolder(
                         target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        MindboxLoggerImpl.e(
-                            parent = this@SimpleImageInAppViewHolder,
+                        this@SimpleImageInAppViewHolder.mindboxLogE(
                             message = "Failed to load inapp image",
-                            exception = e
-                                ?: RuntimeException("Failed to load inapp image")
+                            exception = e ?: RuntimeException("Failed to load inapp image")
                         )
                         hide()
                         isInAppMessageActive = false
@@ -171,8 +177,8 @@ internal class SimpleImageInAppViewHolder(
     }
 
     override fun hide() {
-        focus?.get()?.showKeyboard()
-        mindboxLogD("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+        mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+        restoreKeyboard()
         (currentDialog.parent as? ViewGroup?)?.apply {
             removeView(currentDialog)
             removeView(currentBlur)
