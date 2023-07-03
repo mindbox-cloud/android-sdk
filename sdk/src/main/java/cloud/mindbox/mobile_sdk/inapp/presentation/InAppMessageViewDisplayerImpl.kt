@@ -6,6 +6,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.ComposableInAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.CopyPayloadInAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.DeepLinkInAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.UrlInAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SimpleImageInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
@@ -17,7 +22,9 @@ internal class InAppMessageViewDisplayerImpl :
     InAppMessageViewDisplayer {
 
     private var currentActivity: Activity? = null
-    private var inAppCallback: InAppCallback = EmptyInAppCallback()
+    private var inAppCallback: InAppCallback = ComposableInAppCallback(
+        UrlInAppCallback() + DeepLinkInAppCallback() + CopyPayloadInAppCallback()
+    )
     private val inAppQueue = LinkedList<InAppTypeWrapper<InAppType>>()
 
     private var currentHolder: InAppViewHolder<*>? = null
@@ -33,9 +40,11 @@ internal class InAppMessageViewDisplayerImpl :
         if (pausedHolder?.isActive == true) {
             pausedHolder?.wrapper?.let { wrapper ->
                 mindboxLogD("trying to restore in-app with id $pausedHolder")
-                showInAppMessage(wrapper.copy(
-                    onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") },
-                ))
+                showInAppMessage(
+                    wrapper.copy(
+                        onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") },
+                    )
+                )
             }
         } else {
             tryShowInAppFromQueue()

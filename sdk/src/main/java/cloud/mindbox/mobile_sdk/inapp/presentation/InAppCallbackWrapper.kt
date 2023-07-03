@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
+
 
 internal class InAppCallbackWrapper(
     private val callback: InAppCallback,

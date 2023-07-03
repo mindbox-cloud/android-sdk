@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.presentation
+package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
 /***
  * Default InAppCallback for remove nullable in InAppMessageViewDisplayerImpl
