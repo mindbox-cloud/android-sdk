@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.presentation
+package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
 /**
  * Interface for InApp message callbacks
@@ -24,4 +24,9 @@ interface InAppCallback {
      *
      **/
     fun onInAppDismissed(id: String)
+
+
+    operator fun plus(term: InAppCallback): InAppCallback {
+        return ComposableInAppCallback(mutableListOf(this, term))
+    }
 }

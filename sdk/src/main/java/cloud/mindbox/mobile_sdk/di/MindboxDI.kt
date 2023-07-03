@@ -38,7 +38,8 @@ internal object MindboxDI {
         val presentationModule = PresentationModule(
             domainModule = domainModule,
             monitoringModule = monitoringModule,
-            apiModule = apiModule
+            apiModule = apiModule,
+            appContextModule = appContextModule
         )
 
         appModule = AppModule(

@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor

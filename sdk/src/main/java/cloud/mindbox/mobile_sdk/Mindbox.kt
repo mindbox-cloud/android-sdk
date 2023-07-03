@@ -12,7 +12,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
 import cloud.mindbox.mobile_sdk.managers.*

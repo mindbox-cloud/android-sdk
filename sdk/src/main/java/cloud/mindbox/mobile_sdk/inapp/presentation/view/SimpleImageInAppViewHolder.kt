@@ -12,7 +12,7 @@ import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.setSingleClickListener

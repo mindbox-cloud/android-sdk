@@ -4,10 +4,12 @@ package cloud.mindbox.mobile_sdk.di.modules
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.domain.CallbackInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -32,6 +34,9 @@ internal fun DomainModule(
             inAppABTestLogic = inAppABTestLogic,
         )
     }
+    override val callbackInteractor: CallbackInteractor by lazy {
+        CallbackInteractorImpl(callbackRepository)
+    }
 
     override val inAppChoosingManager: InAppChoosingManager by lazy {
         InAppChoosingManagerImpl(
@@ -54,5 +59,5 @@ internal fun DomainModule(
         )
 
     override val customerAbMixer: CustomerAbMixer
-         get() = CustomerAbMixerImpl()
+        get() = CustomerAbMixerImpl()
 }

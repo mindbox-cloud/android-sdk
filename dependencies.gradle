@@ -35,7 +35,9 @@ ext {
         turbine: 'app.cash.turbine:turbine:0.12.1',
         mockk: 'io.mockk:mockk:1.13.3',
         mockk_android: 'io.mockk:mockk-android:1.13.3',
-        mockk_agent: 'io.mockk:mockk-agent:1.13.3'
+        mockk_agent: 'io.mockk:mockk-agent:1.13.3',
+        robolectric: 'org.robolectric:robolectric:4.9',
+        test_core: 'androidx.test:core:1.5.0'
     ]
 
 }

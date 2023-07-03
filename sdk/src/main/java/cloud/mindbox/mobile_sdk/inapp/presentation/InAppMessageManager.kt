@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import kotlinx.coroutines.Job
 
 internal interface InAppMessageManager {

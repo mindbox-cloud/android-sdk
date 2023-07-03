@@ -7,6 +7,7 @@ android {
                 "${rootProject.projectDir}/proguard/proguard-firebase.pro",
                 "${rootProject.projectDir}/proguard/proguard-kotlin.pro"
     }
+
 }
 
 dependencies {

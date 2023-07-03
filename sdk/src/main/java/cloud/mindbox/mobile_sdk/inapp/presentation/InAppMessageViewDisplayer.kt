@@ -4,6 +4,7 @@ import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 
 internal interface InAppMessageViewDisplayer {
 
