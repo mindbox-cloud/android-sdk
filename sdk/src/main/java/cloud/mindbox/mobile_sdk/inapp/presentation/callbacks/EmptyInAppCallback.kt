@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 /***
  * Default InAppCallback for remove nullable in InAppMessageViewDisplayerImpl
  */
-internal class EmptyInAppCallback: InAppCallback {
+open class EmptyInAppCallback: InAppCallback {
 
     override fun onInAppClick(id: String, redirectUrl: String, payload: String) {
         return
