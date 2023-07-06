@@ -7,7 +7,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 open class ComposableInAppCallback :
     InAppCallback {
 
-    protected val callbacks: MutableList<InAppCallback> = mutableListOf()
+    val callbacks: MutableList<InAppCallback> = mutableListOf()
 
     constructor(callbacks: MutableList<InAppCallback> = mutableListOf()) {
         this.callbacks.addAll(callbacks)
@@ -32,7 +32,7 @@ open class ComposableInAppCallback :
     override fun plus(term: InAppCallback): InAppCallback {
         return ComposableInAppCallback(mutableListOf<InAppCallback>().apply {
             addAll(callbacks)
-            add(term)
+            if (term !is ComposableInAppCallback) add(term) else addAll(term.callbacks)
         })
     }
 }
