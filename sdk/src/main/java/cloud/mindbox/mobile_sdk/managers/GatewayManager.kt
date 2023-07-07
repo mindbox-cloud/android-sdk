@@ -21,7 +21,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.UUID
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -417,7 +417,95 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
-                        continuation.resume(response)
+                        continuation.resume(
+                            """
+                                {
+  "monitoring": {
+    "logs": [
+      {
+        "requestId": "6576702a-e7e7-4fe1-bc90-4aa6607c2187",
+        "deviceUUID": "5f676660-7a1a-4ca7-a631-8ab24f1530bb",
+        "from": "2023-06-25T15:27:00",
+        "to": "2023-06-27T11:30:00"
+      },
+      {
+        "requestId": "b4910549-e455-4692-87da-2753e2ed9e7a",
+        "deviceUUID": "d69176c9-efa9-489f-92e0-294c149a60f0",
+        "from": "2023-06-29T10:10:30",
+        "to": "2023-06-29T15:15:00"
+      }
+    ]
+  },
+  "inapps": [
+    {
+      "id": "64c5d34e-c755-43fc-9a5a-5e38680bf59f",
+      "sdkVersion": {
+        "min": 4,
+        "max": null
+      },
+      "targeting": {
+        "nodes": [
+          {
+            "internalId": "93",
+            "systemName": "addAction",
+            "${Typography.dollar}type": "apiMethodCall"
+          }
+        ],
+        "${Typography.dollar}type": "and"
+      },
+      "form": {
+        "variants": [
+          {
+            "imageUrl": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "redirectUrl": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "intentPayload": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "${Typography.dollar}type": "simpleImage"
+          }
+        ]
+      }
+    },
+    {
+      "id": "64c5d34e-c755-43fc-9a5a-5e38680bf59f",
+      "sdkVersion": {
+        "min": 4,
+        "max": null
+      },
+      "targeting": {
+        "nodes": [
+          {
+            "internalId": "93",
+            "systemName": "addAction",
+            "${Typography.dollar}type": "apiMethodCall"
+          }
+        ],
+        "${Typography.dollar}type": "and"
+      },
+      "form": {
+        "variants": [
+          {
+            "imageUrl": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "redirectUrl": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "intentPayload": "https://marketplace.canva.com/EAE-_XWwyU0/1/0/900w/canva-%D0%BE%D0%B1%D0%BE%D0%B8-%D1%84%D0%B8%D0%BE%D0%BB%D0%B5%D1%82%D0%BE%D0%B2%D1%8B%D0%B9-%D1%86%D0%B2%D0%B5%D1%82%2C-%D1%8F%D1%80%D0%BA%D0%B8%D0%B9%2C-%D0%BA%D1%80%D0%B0%D1%81%D0%BE%D1%87%D0%BD%D1%8B%D0%B9%2C-%D0%BC%D0%BE%D1%82%D0%B8%D0%B2%D0%B0%D1%86%D0%B8%D1%8F%2C-%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD-%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8%2C-%D1%84%D0%BE%D1%82%D0%BE-bXUSClbeQg0.jpg",
+            "${Typography.dollar}type": "snackbar"
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {
+    "operations": {
+      "viewProduct": {
+        "systemName": "ProsmotrProduktaPolzovatelem"
+      },
+      "viewCategory": {
+        "systemName": "viewCategory"
+      }
+    }
+  }
+}
+                            
+""".trimIndent()
+                        )
                     },
                     { error ->
                         continuation.resumeWithException(error)

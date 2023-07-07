@@ -12,7 +12,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.DeepLinkInAppCallba
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.UrlInAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.SimpleImageInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackBarInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.TopSnackBarInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import java.util.*
@@ -113,20 +114,48 @@ internal class InAppMessageViewDisplayerImpl :
             is InAppType.SimpleImage -> {
                 currentActivity?.root?.let { root ->
                     @Suppress("UNCHECKED_CAST")
-                    currentHolder = SimpleImageInAppViewHolder(
-                        wrapper as InAppTypeWrapper<InAppType.SimpleImage>,
-                        inAppCallback = InAppCallbackWrapper(inAppCallback) {
-                            pausedHolder?.hide()
-                            pausedHolder = null
-                            currentHolder = null
+
+                    val newWrapper = InAppTypeWrapper(
+                        InAppType.SnackBar(
+                            wrapper.inAppType.inAppId,
+                            wrapper.inAppType.imageUrl,
+                            wrapper.inAppType.redirectUrl,
+                            wrapper.inAppType.intentData,
+                        ),
+                        wrapper.onInAppClick,
+                        wrapper.onInAppShown
+                    )
+
+                   // if (Random().nextBoolean()) {
+                    if (true) {
+                        currentHolder = SnackBarInAppViewHolder(
+                            newWrapper,
+                            inAppCallback = InAppCallbackWrapper(inAppCallback) {
+                                pausedHolder?.hide()
+                                pausedHolder = null
+                                currentHolder = null
+                            }
+                        ).apply {
+                            show(root)
                         }
-                    ).apply {
-                        show(root)
+                    } else {
+                        currentHolder = TopSnackBarInAppViewHolder(
+                            newWrapper,
+                            inAppCallback = InAppCallbackWrapper(inAppCallback) {
+                                pausedHolder?.hide()
+                                pausedHolder = null
+                                currentHolder = null
+                            }
+                        ).apply {
+                            show(root)
+                        }
                     }
+
                 } ?: run {
                     mindboxLogE("failed to show inApp: currentRoot is null")
                 }
             }
+            else -> {}
         }
     }
 
