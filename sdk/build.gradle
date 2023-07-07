@@ -3,11 +3,11 @@ apply from: "../modulesCommon.gradle"
 android {
     defaultConfig {
         consumerProguardFiles "consumer-rules.pro",
-                "${rootProject.projectDir}/proguard/proguard-gson.pro",
-                "${rootProject.projectDir}/proguard/proguard-kotlin.pro",
-                "${rootProject.projectDir}/proguard/proguard-room.pro",
-                "${rootProject.projectDir}/proguard/proguard-volley.pro",
-                "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
+                    "${rootProject.projectDir}/proguard/proguard-gson.pro",
+                    "${rootProject.projectDir}/proguard/proguard-kotlin.pro",
+                    "${rootProject.projectDir}/proguard/proguard-room.pro",
+                    "${rootProject.projectDir}/proguard/proguard-volley.pro",
+                    "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
     }
     testOptions {
         unitTests.includeAndroidResources = true
@@ -30,6 +30,7 @@ dependencies {
     androidTestImplementation testDependencies.espresso
     testImplementation testDependencies.kotlinx_coroutines_test
     testImplementation testDependencies.turbine
+
     testImplementation testDependencies.robolectric
     testImplementation testDependencies.mockk
     testImplementation testDependencies.mockk_android
@@ -63,6 +64,5 @@ dependencies {
 
     implementation 'com.github.bumptech.glide:glide:4.15.1'
     kapt 'com.github.bumptech.glide:compiler:4.15.1'
-
 
 }

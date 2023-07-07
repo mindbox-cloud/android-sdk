@@ -59,5 +59,5 @@ internal fun DomainModule(
         )
 
     override val customerAbMixer: CustomerAbMixer
-        get() = CustomerAbMixerImpl()
+         get() = CustomerAbMixerImpl()
 }
