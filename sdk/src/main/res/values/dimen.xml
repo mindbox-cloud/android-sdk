@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="mindbox_debug_snackbar_close_size">32dp</dimen>
+    <dimen name="mindbox_debug_snackbar_close_width">2dp</dimen>
+    <dimen name="mindbox_debug_snackbar_close_margin_right">0.025</dimen>
+    <dimen name="mindbox_debug_snackbar_close_margin_top">0.025</dimen>
+</resources>

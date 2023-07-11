@@ -8,11 +8,6 @@ android {
                 "${rootProject.projectDir}/proguard/proguard-room.pro",
                 "${rootProject.projectDir}/proguard/proguard-volley.pro",
                 "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
-        sourceSets {
-            test {
-                minSdkVersion 21
-            }
-        }
     }
     testOptions {
         unitTests.includeAndroidResources = true

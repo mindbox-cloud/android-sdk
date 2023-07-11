@@ -2,15 +2,12 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
-import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.ComposableInAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.CopyPayloadInAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.DeepLinkInAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.UrlInAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackBarInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.TopSnackBarInAppViewHolder
@@ -127,8 +124,10 @@ internal class InAppMessageViewDisplayerImpl :
                     )
 
                    // if (Random().nextBoolean()) {
-                    if (true) {
-                        currentHolder = SnackBarInAppViewHolder(
+                    val type = currentActivity?.root?.context?.getString(R.string.mindbox_debug_snackbar_position)
+
+                    if (type == "top") {
+                        currentHolder = TopSnackBarInAppViewHolder(
                             newWrapper,
                             inAppCallback = InAppCallbackWrapper(inAppCallback) {
                                 pausedHolder?.hide()
@@ -139,7 +138,7 @@ internal class InAppMessageViewDisplayerImpl :
                             show(root)
                         }
                     } else {
-                        currentHolder = TopSnackBarInAppViewHolder(
+                        currentHolder = SnackBarInAppViewHolder(
                             newWrapper,
                             inAppCallback = InAppCallbackWrapper(inAppCallback) {
                                 pausedHolder?.hide()

@@ -17,7 +17,7 @@ import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.setSingleClickListener
@@ -69,21 +69,7 @@ internal class SnackBarInAppViewHolder(
         }
     }
 
-    private fun restoreKeyboard() {
-        typingView?.let { view ->
-            view.requestFocus()
-            val imm =
-                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
-            imm?.showSoftInput(
-                view,
-                InputMethodManager.SHOW_IMPLICIT
-            )
-        }
-    }
-
     private fun bind(currentRoot: ViewGroup) {
-
-
         currentDialog.setSingleClickListener {
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(
@@ -191,15 +177,6 @@ internal class SnackBarInAppViewHolder(
                     ): Boolean {
                         bind(currentRoot)
                         slideUp(this@with) {
-                            currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
-                                isVisible = true
-                                setOnClickListener {
-                                    mindboxLogI("In-app dismissed by close click")
-                                    inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                                    hide()
-                                    isInAppMessageActive = false
-                                }
-                            }
                         }
                         return false
                     }
@@ -220,6 +197,10 @@ internal class SnackBarInAppViewHolder(
             }
         }
     }
+
+}
+
+fun drawClose() {
 
 }
 
@@ -249,7 +230,7 @@ private fun slideUp(view: View, onCompleted: () -> Unit) {
     view.startAnimation(animate)
 }
 
-val duration = 1000L
+val duration = 300L
 // slide the view from its current position to below itself
 private fun slideDown(view: View, onCompleted: () -> Unit) {
     val animate = TranslateAnimation(

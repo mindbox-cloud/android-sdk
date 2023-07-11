@@ -2,4 +2,7 @@
 <resources>
     <string name="mindbox_inapp_fetching_timeout">3000</string>
     <string name="mindbox_android_process" />
+
+    <string name="mindbox_debug_snackbar_position">top</string>
+    <bool name="mindbox_debug_snackbar_margin">false</bool>
 </resources>
