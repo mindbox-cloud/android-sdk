@@ -19,12 +19,10 @@ internal class InAppMessageViewDisplayerImpl :
 
     private var currentActivity: Activity? = null
     private var inAppCallback: InAppCallback = ComposableInAppCallback(
-        listOf(
-            UrlInAppCallback(),
-            DeepLinkInAppCallback(),
-            CopyPayloadInAppCallback(),
-            LoggingInAppCallback()
-        )
+        UrlInAppCallback(),
+        DeepLinkInAppCallback(),
+        CopyPayloadInAppCallback(),
+        LoggingInAppCallback()
     )
     private val inAppQueue = LinkedList<InAppTypeWrapper<InAppType>>()
 

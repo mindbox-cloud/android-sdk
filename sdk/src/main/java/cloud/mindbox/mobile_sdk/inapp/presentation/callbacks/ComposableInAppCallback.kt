@@ -15,6 +15,10 @@ open class ComposableInAppCallback :
         this.callbacks = callbacks
     }
 
+    constructor(vararg callbacks: InAppCallback) {
+        this.callbacks = callbacks.toList()
+    }
+
     constructor(inAppCallback: InAppCallback) {
         callbacks = listOf(inAppCallback)
     }
