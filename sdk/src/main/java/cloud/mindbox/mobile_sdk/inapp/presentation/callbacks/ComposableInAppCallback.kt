@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+
 /**
  * Ready-to-use implementation of InAppCallback designed with composite pattern that handles
  * multiple different implementations at once
@@ -7,14 +9,14 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 open class ComposableInAppCallback :
     InAppCallback {
 
-    val callbacks: MutableList<InAppCallback> = mutableListOf()
+    protected val callbacks: List<InAppCallback>
 
-    constructor(callbacks: MutableList<InAppCallback> = mutableListOf()) {
-        this.callbacks.addAll(callbacks)
+    constructor(callbacks: List<InAppCallback> = listOf()) {
+        this.callbacks = callbacks
     }
 
     constructor(inAppCallback: InAppCallback) {
-        callbacks.add(inAppCallback)
+        callbacks = listOf(inAppCallback)
     }
 
     override fun onInAppClick(id: String, redirectUrl: String, payload: String) {
@@ -27,12 +29,5 @@ open class ComposableInAppCallback :
         callbacks.forEach { callback ->
             callback.onInAppDismissed(id)
         }
-    }
-
-    override fun plus(term: InAppCallback): InAppCallback {
-        return ComposableInAppCallback(mutableListOf<InAppCallback>().apply {
-            addAll(callbacks)
-            if (term !is ComposableInAppCallback) add(term) else addAll(term.callbacks)
-        })
     }
 }

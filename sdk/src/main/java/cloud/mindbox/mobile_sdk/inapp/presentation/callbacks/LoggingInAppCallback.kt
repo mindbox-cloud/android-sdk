@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 /**
  * Ready-to-use implementation of InAppCallback that handles logging

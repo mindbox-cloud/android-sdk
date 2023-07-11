@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.presentation.ClipboardManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+
 /**
  * Ready-to-use implementation of InAppCallback that handles copying non json/xml/url string
  * to clipboard

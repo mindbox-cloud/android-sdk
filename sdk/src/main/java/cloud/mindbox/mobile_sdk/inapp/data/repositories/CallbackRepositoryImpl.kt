@@ -12,7 +12,7 @@ internal class CallbackRepositoryImpl(
 ) : CallbackRepository {
 
     override fun validateUserString(userString: String): Boolean {
-        return !(xmlValidator.isValid(userString) or jsonValidator.isValid(userString) or urlValidator.isValid(
+        return !(xmlValidator.isValid(userString) || jsonValidator.isValid(userString) || urlValidator.isValid(
             userString
         ))
     }

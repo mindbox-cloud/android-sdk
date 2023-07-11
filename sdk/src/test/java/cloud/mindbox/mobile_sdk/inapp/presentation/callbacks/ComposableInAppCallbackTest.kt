@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.mockk.spyk
@@ -55,19 +56,4 @@ class ComposableInAppCallbackTest {
         verify(exactly = 1) { mockCallback2.onInAppDismissed(id) }
     }
 
-    @Test
-    fun `plus should return a new ComposableInAppCallback with added callback`() {
-        // Arrange
-        val newCallback = mockk<InAppCallback>(relaxed = true)
-        val result = callback.plus(newCallback)
-        val id = "testId"
-        val redirectUrl = "testRedirectUrl"
-        val payload = "testPayload"
-        result.onInAppClick(id, redirectUrl, payload)
-        // Assert
-        verify(exactly = 1) { mockCallback1.onInAppClick(id, redirectUrl, payload) }
-        verify(exactly = 1) { mockCallback2.onInAppClick(id, redirectUrl, payload) }
-        verify(exactly = 1) { newCallback.onInAppClick(id, redirectUrl, payload) }
-
-    }
 }

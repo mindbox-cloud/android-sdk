@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.presentation.ActivityManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+
 /**
  * Ready-to-use implementation of InAppCallback that handles opening url in browser
  **/
