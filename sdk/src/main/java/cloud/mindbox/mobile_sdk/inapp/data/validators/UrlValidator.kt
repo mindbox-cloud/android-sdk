@@ -5,6 +5,6 @@ import android.webkit.URLUtil
 internal class UrlValidator : Validator<String?> {
 
     override fun isValid(item: String?): Boolean {
-        return URLUtil.isValidUrl(item)
+        return URLUtil.isHttpUrl(item) || URLUtil.isHttpsUrl(item)
     }
 }

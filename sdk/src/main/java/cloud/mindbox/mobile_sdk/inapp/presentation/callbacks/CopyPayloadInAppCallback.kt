@@ -21,7 +21,7 @@ open class CopyPayloadInAppCallback : InAppCallback {
 
     override fun onInAppClick(id: String, redirectUrl: String, payload: String) {
         if (callbackInteractor.shouldCopyString(payload)) {
-            clipboardManager.copyToClipboard(redirectUrl)
+            clipboardManager.copyToClipboard(payload)
         }
     }
 

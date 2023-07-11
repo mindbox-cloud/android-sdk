@@ -38,7 +38,7 @@ class CopyPayloadInAppCallbackTest {
         every {
             mockClipboardManager.copyToClipboard(stringToCopy)
         } just runs
-        copyPayloadInAppCallback.onInAppClick("", stringToCopy, "")
+        copyPayloadInAppCallback.onInAppClick("", "", stringToCopy)
         verify(exactly = 1) {
             mockClipboardManager.copyToClipboard(stringToCopy)
         }
