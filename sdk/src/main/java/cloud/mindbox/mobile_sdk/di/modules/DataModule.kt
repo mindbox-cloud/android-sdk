@@ -5,14 +5,23 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImp
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.CallbackRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.validators.*
+import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.JsonValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.UrlValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.XmlValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.CallbackRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -68,6 +77,13 @@ internal fun DataModule(
             inAppSerializationManager = inAppSerializationManager,
         )
     }
+    override val callbackRepository: CallbackRepository by lazy {
+        CallbackRepositoryImpl(
+            xmlValidator = xmlValidator,
+            jsonValidator = jsonValidator,
+            urlValidator = urlValidator
+        )
+    }
 
     override val geoSerializationManager: GeoSerializationManager
         get() = GeoSerializationManagerImpl(gson = gson)
@@ -90,6 +106,9 @@ internal fun DataModule(
     override val abTestValidator: ABTestValidator by lazy { ABTestValidator(sdkVersionValidator) }
 
     override val sdkVersionValidator: SdkVersionValidator by lazy { SdkVersionValidator() }
+    override val jsonValidator: JsonValidator by lazy { JsonValidator() }
+    override val xmlValidator: XmlValidator by lazy { XmlValidator() }
+    override val urlValidator: UrlValidator by lazy { UrlValidator() }
 
     override val operationNameValidator: OperationNameValidator
         get() = OperationNameValidator()
