@@ -16,7 +16,7 @@ internal class ActivityManagerImpl(
         try {
             Intent(Intent.ACTION_VIEW, Uri.parse(url)).also { intent ->
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                return if (callbackInteractor.isValidUrl(url)) {
+                return if (callbackInteractor.isValidUrl(url) && intent.resolveActivity(context.packageManager) == null) {
                     context.startActivity(intent)
                     true
                 } else false

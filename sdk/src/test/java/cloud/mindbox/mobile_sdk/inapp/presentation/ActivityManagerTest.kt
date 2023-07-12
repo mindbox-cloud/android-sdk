@@ -31,23 +31,16 @@ internal class ActivityManagerTest {
 
     @Test
     fun `tryOpenUrl should open valid URL and return true`() {
-        context = mockk(relaxed = true)
+        context = ApplicationProvider.getApplicationContext()
         activityManager = ActivityManagerImpl(
             callbackInteractor = callbackInteractor,
             context = context
         )
-        // Arrange
-        val url = "https://example.com"
-        every { callbackInteractor.isValidUrl(url) } returns true
-        val intentSlot = slot<Intent>()
-        every { context.startActivity(capture(intentSlot)) } just runs
-
-        // Act
-        val result = activityManager.tryOpenUrl(url)
-
-        // Assert
-        assert(result)
-        verify(exactly = 1) { context.startActivity(any()) }
+        val url = "https://mindbox.ru"
+        every {
+            callbackInteractor.isValidUrl(url)
+        } returns true
+        assertTrue(activityManager.tryOpenUrl(url))
     }
 
     @Test
@@ -86,6 +79,30 @@ internal class ActivityManagerTest {
         // Assert
         assert(!result)
     }
+    @Test
+    fun `try open url doesn't open deeplink`() {
+        context = ApplicationProvider.getApplicationContext()
+        activityManager = ActivityManagerImpl(callbackInteractor, context)
+        val url = "https://pushok-mindbox.onelink.me/13Z2/a97bb56f"
+        val componentName = "testComponentName"
+        val packageName = "com.example"
+        val packageManager = shadowOf(RuntimeEnvironment.getApplication().packageManager)
+        packageManager.addActivityIfNotPresent(ComponentName(packageName, componentName))
+        packageManager.addIntentFilterForActivity(
+            ComponentName(
+                packageName,
+                componentName
+            ), IntentFilter(Intent.ACTION_VIEW).apply {
+                addCategory(Intent.CATEGORY_DEFAULT)
+                addDataScheme("https")
+            }
+        )
+        every {
+            callbackInteractor.isValidUrl(url)
+        } returns true
+        assertFalse(activityManager.tryOpenUrl(url))
+    }
+
 
 
     @Test
