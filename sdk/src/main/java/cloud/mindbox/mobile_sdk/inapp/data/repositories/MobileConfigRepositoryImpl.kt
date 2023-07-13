@@ -58,10 +58,10 @@ internal class MobileConfigRepositoryImpl(
                     mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
 
                 val filteredConfig = InAppConfigResponse(
-                    inApps = getInApps(configBlank),
-                    monitoring = getMonitoring(configBlank),
-                    settings = getSettings(configBlank),
-                    abtests = getABTests(configBlank),
+                    inApps = runCatching { getInApps(configBlank) }.getOrNull(),
+                    monitoring = runCatching { getMonitoring(configBlank) }.getOrNull(),
+                    settings = runCatching { getSettings(configBlank) }.getOrNull(),
+                    abtests = runCatching { getABTests(configBlank) }.getOrNull(),
                 )
 
                 return@map inAppMapper.mapToInAppConfig(filteredConfig)

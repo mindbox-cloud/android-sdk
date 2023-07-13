@@ -24,7 +24,8 @@ ext {
         koin_test: 'io.insert-koin:koin-test:3.2.2',
         koin_junit4: 'io.insert-koin:koin-test-junit4:3.2.2',
         constraint_layout: 'androidx.constraintlayout:constraintlayout:2.1.4',
-        jdk_libs: 'com.android.tools:desugar_jdk_libs:1.2.2'
+        jdk_libs: 'com.android.tools:desugar_jdk_libs:1.2.2',
+        threetenapb: 'com.jakewharton.threetenabp:threetenabp:1.4.6'
     ]
 
     testDependencies = [

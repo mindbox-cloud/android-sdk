@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
-import java.time.Instant
+import org.threeten.bp.Instant
 
 interface MindboxLogger {
 
