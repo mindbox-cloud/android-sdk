@@ -25,7 +25,6 @@ dependencies {
 
     implementation sdkDependencies.kotlin_stdlib
     implementation sdkDependencies.androidx_core_ktx
-    coreLibraryDesugaring sdkDependencies.jdk_libs
     testImplementation testDependencies.junit
     androidTestImplementation testDependencies.androidx_junit
     androidTestImplementation testDependencies.espresso
