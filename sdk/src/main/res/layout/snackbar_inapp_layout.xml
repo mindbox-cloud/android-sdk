@@ -8,6 +8,7 @@
     android:layout_gravity="bottom"
     android:layout_width="match_parent"
     android:fitsSystemWindows="true"
+    android:clipChildren="false"
     android:layout_height="wrap_content">
 
     <ImageView
@@ -23,8 +24,11 @@
 
     <cloud.mindbox.mobile_sdk.inapp.presentation.view.CrossView
         android:id="@+id/iv_close"
+        android:layout_margin="20dp"
+        android:clipChildren="false"
+        app:layout_constraintEnd_toEndOf="@id/iv_content"
+        app:layout_constraintTop_toTopOf="@id/iv_content"
         android:layout_width="32dp"
         android:layout_height="32dp" />
-
 
 </cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout>

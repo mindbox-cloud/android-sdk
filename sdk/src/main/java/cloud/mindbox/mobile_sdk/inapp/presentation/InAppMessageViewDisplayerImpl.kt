@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
+import androidx.core.view.WindowInsetsCompat
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -10,7 +11,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackBarInAppViewHolder
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.TopSnackBarInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import java.util.*
@@ -123,37 +123,29 @@ internal class InAppMessageViewDisplayerImpl :
                         wrapper.onInAppShown
                     )
 
-                   // if (Random().nextBoolean()) {
-                    val type = currentActivity?.root?.context?.getString(R.string.mindbox_debug_snackbar_position)
+                    // if (Random().nextBoolean()) {
+                    val type =
+                        currentActivity?.root?.context?.getString(R.string.mindbox_debug_snackbar_position)
 
-                    if (type == "top") {
-                        currentHolder = TopSnackBarInAppViewHolder(
-                            newWrapper,
-                            inAppCallback = InAppCallbackWrapper(inAppCallback) {
-                                pausedHolder?.hide()
-                                pausedHolder = null
-                                currentHolder = null
-                            }
-                        ).apply {
-                            show(root)
-                        }
-                    } else {
-                        currentHolder = SnackBarInAppViewHolder(
-                            newWrapper,
-                            inAppCallback = InAppCallbackWrapper(inAppCallback) {
-                                pausedHolder?.hide()
-                                pausedHolder = null
-                                currentHolder = null
-                            }
-                        ).apply {
-                            show(root)
-                        }
+
+                    currentHolder = SnackBarInAppViewHolder(
+                        newWrapper,
+                        inAppCallback = InAppCallbackWrapper(inAppCallback) {
+                            pausedHolder?.hide()
+                            pausedHolder = null
+                            currentHolder = null
+                        },
+                        type == "top"
+                    ).apply {
+                        val insets = WindowInsetsCompat.Builder().build()
+                        show(root, insets.getInsets(0).top)
                     }
 
                 } ?: run {
                     mindboxLogE("failed to show inApp: currentRoot is null")
                 }
             }
+
             else -> {}
         }
     }

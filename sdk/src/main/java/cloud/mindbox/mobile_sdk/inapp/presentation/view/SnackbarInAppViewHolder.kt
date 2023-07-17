@@ -5,13 +5,13 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.view.*
 import android.view.GestureDetector.SimpleOnGestureListener
-import android.view.ViewGroup.MarginLayoutParams
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import android.view.animation.TranslateAnimation
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import androidx.core.view.isVisible
+import androidx.core.view.updateMargins
 import androidx.interpolator.view.animation.FastOutLinearInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.R
@@ -29,9 +29,10 @@ import com.bumptech.glide.request.target.Target
 import kotlin.math.abs
 
 
-internal class SnackBarInAppViewHolder(
+internal open class SnackBarInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.SnackBar>,
     private val inAppCallback: InAppCallback,
+    private val isTop: Boolean = false
 ) : InAppViewHolder<InAppType.SnackBar> {
 
     private lateinit var currentDialog: InAppConstraintLayout
@@ -54,22 +55,25 @@ internal class SnackBarInAppViewHolder(
             )
         }
 
+
         currentDialog = inflater.inflate(
-            R.layout.snackbar_inapp_layout,
+            if (isTop) R.layout.snackbar_top_inapp_layout else R.layout.snackbar_inapp_layout,
             currentRoot, false
         ) as InAppConstraintLayout
-        currentDialog.setMargins(0,0,0,0)
-    }
 
-    fun View.setMargins(l: Int, t: Int, r: Int, b: Int) {
-        if (layoutParams is MarginLayoutParams) {
-            val p = layoutParams as MarginLayoutParams
-            p.setMargins(l, t, r, b)
-            requestLayout()
-        }
+        currentDialog.findViewById<CrossView>(R.id.iv_close).update()
     }
 
     private fun bind(currentRoot: ViewGroup) {
+        currentRoot.findViewById<CrossView>(R.id.iv_close)?.apply {
+            isVisible = true
+            setOnClickListener {
+                mindboxLogI("In-app dismissed by close click")
+                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                hide()
+                isInAppMessageActive = false
+            }
+        }
         currentDialog.setSingleClickListener {
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(
@@ -96,7 +100,7 @@ internal class SnackBarInAppViewHolder(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: ViewGroup, inset: Int) {
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         if (wrapper.inAppType.imageUrl.isBlank()) {
             mindboxLogI("In-app image url is blank")
@@ -106,6 +110,9 @@ internal class SnackBarInAppViewHolder(
         isInAppMessageActive = true
 
         currentRoot.addView(currentDialog)
+
+        (currentDialog.layoutParams as ViewGroup.MarginLayoutParams).updateMargins(0, 150, 0, 0)
+
         currentDialog.requestFocus()
 
         with(currentRoot.findViewById<ImageView>(R.id.iv_content)) {
@@ -126,11 +133,12 @@ internal class SnackBarInAppViewHolder(
 
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        val displacement = maxOf(0f,event.rawY + rightDY)
+                        val displacement = if (isTop) minOf(0f,event.rawY + rightDY) else maxOf(0f,event.rawY + rightDY)
 
                         view!!.animate()
                             //.x(displacement)
                             .y(displacement)
+                            .alpha(view.height / displacement)
                             .setDuration(0)
                             .start()
 
@@ -191,6 +199,7 @@ internal class SnackBarInAppViewHolder(
 
         currentDialog.findViewById<View>(R.id.iv_close).isVisible = false
 
+
         slideDown(currentDialog.findViewById(R.id.iv_content)) {
             (currentDialog.parent as? ViewGroup?)?.apply {
                 removeView(currentDialog)
@@ -198,64 +207,65 @@ internal class SnackBarInAppViewHolder(
         }
     }
 
+
+    private fun slideUp(view: View, onCompleted: () -> Unit) {
+        view.visibility = View.VISIBLE
+        val animate = TranslateAnimation(
+            0f,  // fromXDelta
+            0f,  // toXDelta
+            if (isTop) -view.height.toFloat() else 0f,  // fromYDelta
+            if (isTop) 0f else view.height.toFloat()
+        ) // toYDelta
+        animate.duration = duration
+        animate.fillAfter = true
+        animate.interpolator = LinearOutSlowInInterpolator()
+        animate.setAnimationListener(object: AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {
+            }
+
+            override fun onAnimationEnd(animation: Animation?) {
+                onCompleted()
+            }
+
+            override fun onAnimationRepeat(animation: Animation?) {
+            }
+
+        })
+        view.startAnimation(animate)
+    }
+
+    val duration = 300L
+    // slide the view from its current position to below itself
+    private fun slideDown(view: View, onCompleted: () -> Unit) {
+        val animate = TranslateAnimation(
+            0f,  // fromXDelta
+            0f,  // toXDelta
+            if (isTop) 0f else view.height.toFloat(),
+            if (isTop) -view.height.toFloat() else 0f
+        ) // toYDelta
+        animate.duration = duration
+        animate.fillAfter = true
+        animate.interpolator = FastOutLinearInInterpolator()
+        animate.setAnimationListener(object: AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {
+            }
+
+            override fun onAnimationEnd(animation: Animation?) {
+                onCompleted()
+            }
+
+            override fun onAnimationRepeat(animation: Animation?) {
+            }
+
+        })
+        view.startAnimation(animate)
+    }
 }
 
 fun drawClose() {
 
 }
 
-private fun slideUp(view: View, onCompleted: () -> Unit) {
-    view.visibility = View.VISIBLE
-    val animate = TranslateAnimation(
-        0f,  // fromXDelta
-        0f,  // toXDelta
-        view.height.toFloat(),  // fromYDelta
-        0f
-    ) // toYDelta
-    animate.duration = duration
-    animate.fillAfter = true
-    animate.interpolator = LinearOutSlowInInterpolator()
-    animate.setAnimationListener(object: AnimationListener {
-        override fun onAnimationStart(animation: Animation?) {
-        }
-
-        override fun onAnimationEnd(animation: Animation?) {
-            onCompleted()
-        }
-
-        override fun onAnimationRepeat(animation: Animation?) {
-        }
-
-    })
-    view.startAnimation(animate)
-}
-
-val duration = 300L
-// slide the view from its current position to below itself
-private fun slideDown(view: View, onCompleted: () -> Unit) {
-    val animate = TranslateAnimation(
-        0f,  // fromXDelta
-        0f,  // toXDelta
-        0f,  // fromYDelta
-        view.height.toFloat()
-    ) // toYDelta
-    animate.duration = duration
-    animate.fillAfter = true
-    animate.interpolator = FastOutLinearInInterpolator()
-    animate.setAnimationListener(object: AnimationListener {
-        override fun onAnimationStart(animation: Animation?) {
-        }
-
-        override fun onAnimationEnd(animation: Animation?) {
-            onCompleted()
-        }
-
-        override fun onAnimationRepeat(animation: Animation?) {
-        }
-
-    })
-    view.startAnimation(animate)
-}
 
 class GestureListener(
     val onSwipeUp: () -> Unit,
@@ -287,4 +297,57 @@ class GestureListener(
         private const val SWIPE_DISTANCE_THRESHOLD = 100
         private const val SWIPE_VELOCITY_THRESHOLD = 100
     }
+}
+
+
+private fun slideUpTop(view: View, onCompleted: () -> Unit) {
+    view.visibility = View.VISIBLE
+    val animate = TranslateAnimation(
+        0f,  // fromXDelta
+        0f,  // toXDelta
+        0f,  // fromYDelta
+        -view.height.toFloat()
+    ) // toYDelta
+    animate.duration = 300
+    animate.fillAfter = true
+    animate.interpolator = LinearOutSlowInInterpolator()
+    animate.setAnimationListener(object: Animation.AnimationListener {
+        override fun onAnimationStart(animation: Animation?) {
+        }
+
+        override fun onAnimationEnd(animation: Animation?) {
+            onCompleted()
+        }
+
+        override fun onAnimationRepeat(animation: Animation?) {
+        }
+
+    })
+    view.startAnimation(animate)
+}
+
+// slide the view from its current position to below itself
+private fun slideDownTop(view: View, onCompleted: () -> Unit) {
+    val animate = TranslateAnimation(
+        0f,  // fromXDelta
+        0f,  // toXDelta
+        -view.height.toFloat(),  // fromYDelta
+        0f
+    ) // toYDelta
+    animate.duration = 300
+    animate.fillAfter = true
+    animate.interpolator = FastOutLinearInInterpolator()
+    animate.setAnimationListener(object: Animation.AnimationListener {
+        override fun onAnimationStart(animation: Animation?) {
+        }
+
+        override fun onAnimationEnd(animation: Animation?) {
+            onCompleted()
+        }
+
+        override fun onAnimationRepeat(animation: Animation?) {
+        }
+
+    })
+    view.startAnimation(animate)
 }

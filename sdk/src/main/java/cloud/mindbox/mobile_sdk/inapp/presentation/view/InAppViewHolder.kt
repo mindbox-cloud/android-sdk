@@ -10,7 +10,7 @@ internal interface InAppViewHolder<T : InAppType> {
 
     val isActive: Boolean
 
-    fun show(currentRoot: ViewGroup)
+    fun show(currentRoot: ViewGroup, inset: Int = 0)
 
     fun hide()
 

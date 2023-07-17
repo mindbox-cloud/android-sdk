@@ -14,5 +14,6 @@ sealed class InAppType(open val inAppId: String) {
         val imageUrl: String,
         val redirectUrl: String,
         val intentData: String,
+        val isTop: Boolean = false,
     ) : InAppType(inAppId)
 }

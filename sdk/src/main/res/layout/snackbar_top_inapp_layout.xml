@@ -1,26 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/iafl_root"
     android:background="@android:color/transparent"
-    android:layout_gravity="bottom"
+    android:layout_gravity="top"
     android:layout_width="match_parent"
     android:fitsSystemWindows="true"
+    android:clipChildren="false"
     android:layout_height="wrap_content">
 
     <ImageView
         android:id="@+id/iv_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scaleType="centerInside"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="H,1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         tools:src="@tools:sample/avatars" />
 
+    <cloud.mindbox.mobile_sdk.inapp.presentation.view.CrossView
+        android:id="@+id/iv_close"
+        android:layout_margin="20dp"
+        android:clipChildren="false"
+        app:layout_constraintEnd_toEndOf="@id/iv_content"
+        app:layout_constraintTop_toTopOf="@id/iv_content"
+        android:layout_width="32dp"
+        android:layout_height="32dp" />
 
-
-</FrameLayout>
+</cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout>

@@ -7,7 +7,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.updateMargins
 import cloud.mindbox.mobile_sdk.R
 
@@ -17,18 +17,23 @@ class CrossView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : View(context, attrs, defStyle) {
 
-    lateinit var ivClose: View
-
-    init {
+    fun update() {
         layoutParams.height = context.resources.getDimension(R.dimen.mindbox_debug_snackbar_close_size).toInt()
         layoutParams.width = context.resources.getDimension(R.dimen.mindbox_debug_snackbar_close_size).toInt()
 
-        val size = context.resources.getDimension(R.dimen.mindbox_debug_snackbar_close_size).toInt()
-        val image = parent as ImageView
-        val marginTop: Int = ((image.width / 100) * 0.025f).toInt()
-        val marginRight: Int = ((image.width / 100) * 0.025f).toInt()
+        val percentTop = ResourcesCompat.getFloat(context.resources, R.dimen.mindbox_debug_snackbar_close_margin_top)
+        val percentRight = ResourcesCompat.getFloat(context.resources, R.dimen.mindbox_debug_snackbar_close_margin_right)
+
+        val image = parent as InAppConstraintLayout
+        val marginTop: Int = ((image.width / 100f) * percentTop).toInt()
+        val marginRight: Int = ((image.width / 100f) * percentRight).toInt()
 
         (layoutParams as ViewGroup.MarginLayoutParams).updateMargins(0, marginTop, marginRight, 0)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        update()
     }
 
     private val paint: Paint = Paint().apply {

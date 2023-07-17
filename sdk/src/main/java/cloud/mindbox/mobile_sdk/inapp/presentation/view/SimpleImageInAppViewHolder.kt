@@ -125,7 +125,7 @@ internal class SimpleImageInAppViewHolder(
         wrapper.onInAppShown.onShown()
     }
 
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: ViewGroup, i: Int) {
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         if (wrapper.inAppType.imageUrl.isBlank()) {
             mindboxLogI("In-app image url is blank")
