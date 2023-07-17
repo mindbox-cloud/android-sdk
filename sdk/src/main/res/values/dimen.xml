@@ -5,6 +5,6 @@
     <item name="mindbox_debug_snackbar_close_margin_right" format="float" type="dimen">2.5</item>
     <item name="mindbox_debug_snackbar_close_margin_top" format="float" type="dimen">2.5</item>
 
-    <string name="mindbox_debug_snackbar_position">bottom</string>
+    <string name="mindbox_debug_snackbar_position">top</string>
     <bool name="mindbox_debug_snackbar_margin">false</bool>
 </resources>
