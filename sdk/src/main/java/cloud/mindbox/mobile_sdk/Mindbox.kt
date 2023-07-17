@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import com.jakewharton.threetenabp.AndroidThreeTen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
@@ -898,6 +899,7 @@ object Mindbox: MindboxLog {
         MindboxDI.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
                 pushServices?.joinToString(", ") { it.javaClass.simpleName })
+        AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         setPushServiceHandler(context, pushServices)

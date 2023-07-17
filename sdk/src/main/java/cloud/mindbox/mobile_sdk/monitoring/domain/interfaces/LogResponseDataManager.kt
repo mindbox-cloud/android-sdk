@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.monitoring.domain.interfaces
 
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
-import java.time.ZonedDateTime
+import org.threeten.bp.ZonedDateTime
 
 internal interface LogResponseDataManager {
 
