@@ -127,7 +127,6 @@ internal class InAppMessageViewDisplayerImpl :
                     val type =
                         currentActivity?.root?.context?.getString(R.string.mindbox_debug_snackbar_position)
 
-
                     currentHolder = SnackBarInAppViewHolder(
                         newWrapper,
                         inAppCallback = InAppCallbackWrapper(inAppCallback) {

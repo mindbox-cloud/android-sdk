@@ -133,7 +133,10 @@ internal open class SnackBarInAppViewHolder(
 
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        val displacement = if (isTop) minOf(0f,event.rawY + rightDY) else maxOf(0f,event.rawY + rightDY)
+                        val displacement = if (isTop)
+                            minOf(0f,event.rawY + rightDY)
+                        else
+                            maxOf(0f,event.rawY + rightDY)
 
                         view!!.animate()
                             //.x(displacement)
@@ -184,8 +187,8 @@ internal open class SnackBarInAppViewHolder(
                         isFirstResource: Boolean
                     ): Boolean {
                         bind(currentRoot)
-                        slideUp(this@with) {
-                        }
+//                        slideUp(this@with) {
+//                        }
                         return false
                     }
                 })
@@ -237,11 +240,13 @@ internal open class SnackBarInAppViewHolder(
     val duration = 300L
     // slide the view from its current position to below itself
     private fun slideDown(view: View, onCompleted: () -> Unit) {
+        val height = view.height.toFloat()
+
         val animate = TranslateAnimation(
             0f,  // fromXDelta
             0f,  // toXDelta
-            if (isTop) 0f else view.height.toFloat(),
-            if (isTop) -view.height.toFloat() else 0f
+            if (isTop) 0f else height,
+            if (isTop) -height else 0f
         ) // toYDelta
         animate.duration = duration
         animate.fillAfter = true
