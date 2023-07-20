@@ -14,7 +14,7 @@ internal class CallbackRepositoryImpl(
     override fun validateUserString(userString: String): Boolean {
         return !(xmlValidator.isValid(userString) || jsonValidator.isValid(userString) || urlValidator.isValid(
             userString
-        ))
+        ) || userString.isBlank())
     }
 
     override fun isValidUrl(url: String): Boolean {
