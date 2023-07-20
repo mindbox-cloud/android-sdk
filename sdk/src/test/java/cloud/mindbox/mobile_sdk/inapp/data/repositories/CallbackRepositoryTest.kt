@@ -91,4 +91,18 @@ class CallbackRepositoryTest {
         val result = callbackRepository.isValidUrl(url)
         assertFalse(result)
     }
+
+    @Test
+    fun `test empty string`() {
+        every {
+            urlValidator.isValid(any())
+        } returns false
+        every {
+            xmlValidator.isValid(any())
+        } returns false
+        every {
+            jsonValidator.isValid(any())
+        } returns false
+        assertFalse(callbackRepository.validateUserString(""))
+    }
 }
