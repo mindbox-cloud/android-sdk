@@ -1,9 +1,11 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.inapp.domain.CallbackInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -26,6 +28,9 @@ internal fun DomainModule(
             inAppEventManager = inAppEventManager,
             inAppChoosingManager = inAppChoosingManager
         )
+    }
+    override val callbackInteractor: CallbackInteractor by lazy {
+        CallbackInteractorImpl(callbackRepository)
     }
 
     override val inAppChoosingManager: InAppChoosingManager by lazy {

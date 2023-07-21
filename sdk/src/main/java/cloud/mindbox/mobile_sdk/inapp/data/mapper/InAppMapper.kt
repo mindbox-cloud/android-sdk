@@ -68,7 +68,7 @@ internal class InAppMapper {
 
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
-    ): InAppConfig? {
+    ): InAppConfig {
         return inAppConfigResponse?.let {
             InAppConfig(
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
@@ -87,7 +87,7 @@ internal class InAppMapper {
                                         )
                                     }
                                     null -> {
-                                        return null // should never trigger because of validator
+                                        return InAppConfig(listOf(), listOf(), mapOf()) // should never trigger because of validator
                                     }
                                 }
                             } ?: emptyList()
@@ -108,7 +108,7 @@ internal class InAppMapper {
                     key.enumValue<OperationName>() to OperationSystemName(value.systemName)
                 }?.toMap() ?: emptyMap()
             )
-        }
+        } ?: InAppConfig(listOf(), listOf(), mapOf())
     }
 
     /**

@@ -37,7 +37,7 @@ prepare-release-data() {
 }
 
 set-local-tag() {
-  echo "Setting local tag"
+  echo "Setting local tag $version"
   git tag -f "$version"
 }
 set-remote-tag() {

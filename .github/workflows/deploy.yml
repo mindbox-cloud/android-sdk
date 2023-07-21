@@ -1,0 +1,21 @@
+name: SDK Distribute
+
+on:
+  pull_request:
+    types: [ closed ]
+    branches:
+      - develop
+
+jobs:
+  update:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: trigger build & send to FAD
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 61033697
+          repo: mindbox-cloud/android-app
+          ref: develop
+          token: ${{ secrets.GITHUBACCESSTOKEN }}
+

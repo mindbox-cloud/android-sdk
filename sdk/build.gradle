@@ -10,11 +10,12 @@ android {
                     "${rootProject.projectDir}/proguard/proguard-workmanager.pro"
     }
     testOptions {
+        unitTests.includeAndroidResources = true
         unitTests.returnDefaultValues = true
     }
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
-            freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+            freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
         }
     }
 
@@ -24,16 +25,17 @@ dependencies {
 
     implementation sdkDependencies.kotlin_stdlib
     implementation sdkDependencies.androidx_core_ktx
-    coreLibraryDesugaring sdkDependencies.jdk_libs
     testImplementation testDependencies.junit
     androidTestImplementation testDependencies.androidx_junit
     androidTestImplementation testDependencies.espresso
     testImplementation testDependencies.kotlinx_coroutines_test
     testImplementation testDependencies.turbine
 
+    testImplementation testDependencies.robolectric
     testImplementation testDependencies.mockk
     testImplementation testDependencies.mockk_android
     testImplementation testDependencies.mockk_agent
+    testImplementation testDependencies.test_core
 
     // ConstraintLayout
     implementation sdkDependencies.constraint_layout
@@ -56,6 +58,7 @@ dependencies {
 
     // Handle app lifecycle
     implementation sdkDependencies.androidx_lifecycle
+    implementation sdkDependencies.threetenapb
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
