@@ -107,7 +107,7 @@ internal class InAppMessageViewDisplayerImpl :
         }
     }
 
-    private fun showInAppMessage(wrapper: InAppTypeWrapper<out InAppType>) {
+    private fun showInAppMessage(wrapper: InAppTypeWrapper<InAppType>) {
         when (wrapper.inAppType) {
             is InAppType.SimpleImage -> {
                 currentActivity?.root?.let { root ->
@@ -126,6 +126,8 @@ internal class InAppMessageViewDisplayerImpl :
                     mindboxLogE("failed to show inApp: currentRoot is null")
                 }
             }
+
+            is InAppType.ModalWindow -> TODO()
         }
     }
 

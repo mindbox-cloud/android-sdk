@@ -1,33 +1,28 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.graphics.drawable.Drawable
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.setSingleClickListener
-import cloud.mindbox.mobile_sdk.utils.Constants
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 
-
-internal class SimpleImageInAppViewHolder(
-    override val wrapper: InAppTypeWrapper<InAppType.SimpleImage>,
+internal class ModalWindowInAppViewHolder(
+    override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
     private val inAppCallback: InAppCallback,
-) : AbstractInAppViewHolder<InAppType.SimpleImage>() {
+) :
+    AbstractInAppViewHolder<InAppType.ModalWindow>() {
 
     private lateinit var currentBlur: View
     private lateinit var currentDialog: InAppConstraintLayout
@@ -39,53 +34,26 @@ internal class SimpleImageInAppViewHolder(
     override val isActive: Boolean
         get() = isInAppMessageActive
 
-    private fun initView(currentRoot: ViewGroup) {
-        val context = currentRoot.context
-        val inflater = LayoutInflater.from(context)
-        currentBlur = inflater.inflate(
-            R.layout.blur_layout,
-            currentRoot,
-            false
-        )
-        if (!shouldUseBlur) {
-            mindboxLogI("Disable blur")
-            currentBlur.setBackgroundColor(
-                ContextCompat.getColor(context, android.R.color.transparent)
-            )
-        }
-        currentDialog = inflater.inflate(
-            R.layout.default_inapp_layout,
-            currentRoot, false
-        ) as InAppConstraintLayout
-    }
-
 
     private fun bind(currentRoot: ViewGroup) {
-        if (Constants.SDK_VERSION_NUMERIC < 8) {
-            currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
-                isVisible = true
-                setOnClickListener {
-                    mindboxLogI("In-app dismissed by close click")
-                    inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                    hide()
-                    isInAppMessageActive = false
-                }
+        /* currentRoot.findViewById<ImageView>(R.id.iv_close)?.apply {
+             isVisible = true
+             setOnClickListener {
+                 mindboxLogI("In-app dismissed by close click")
+                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                 hide()
+                 isInAppMessageActive = false
+             }
+         }*/
+
+        currentRoot.addView(CrossView(currentRoot.context).apply {
+            setOnClickListener {
+                mindboxLogI("In-app dismissed by close click")
+                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                hide()
+                isInAppMessageActive = false
             }
-        } else {
-            val crossView = CrossView(currentRoot.context).apply {
-                setOnClickListener {
-                    mindboxLogI("In-app dismissed by close click")
-                    inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                    hide()
-                    isInAppMessageActive = false
-                }
-            }
-            currentDialog.addView(crossView)
-            crossView.updateView(currentDialog)
-        }
-
-
-
+        })
 
         currentDialog.setSingleClickListener {
             wrapper.onInAppClick.onClick()
@@ -125,7 +93,6 @@ internal class SimpleImageInAppViewHolder(
             mindboxLogI("In-app image url is blank")
             return
         }
-        initView(currentRoot)
         isInAppMessageActive = true
 
         currentRoot.addView(currentBlur)
@@ -145,7 +112,7 @@ internal class SimpleImageInAppViewHolder(
                         target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        this@SimpleImageInAppViewHolder.mindboxLogE(
+                        this@ModalWindowInAppViewHolder.mindboxLogE(
                             message = "Failed to load inapp image",
                             exception = e ?: RuntimeException("Failed to load inapp image")
                         )
@@ -177,5 +144,4 @@ internal class SimpleImageInAppViewHolder(
             removeView(currentBlur)
         }
     }
-
 }

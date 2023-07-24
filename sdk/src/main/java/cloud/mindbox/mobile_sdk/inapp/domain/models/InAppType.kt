@@ -8,4 +8,11 @@ sealed class InAppType(open val inAppId: String) {
         val redirectUrl: String,
         val intentData: String,
     ) : InAppType(inAppId)
+
+    data class ModalWindow(
+        override val inAppId: String,
+        val imageUrl: String,
+        val redirectUrl: String,
+        val intentData: String
+    ): InAppType(inAppId)
 }
