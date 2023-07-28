@@ -9,6 +9,6 @@ object CrossParams {
     var width: Int = 24
     var height: Int = 24
     var lineWidth: Float = 4f
-    var marginTop: Int = 8
-    var marginEnd: Int = 8
+    var marginTop: Float = 0.02f
+    var marginEnd: Float = 0.02f
 }
