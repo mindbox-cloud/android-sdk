@@ -484,14 +484,15 @@ object Mindbox: MindboxLog {
                             )
                             if (firstInitCall) {
                                 mindboxScope.launch {
+                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                    if (!firstInitCall) return@launch
                                     inAppMessageManager.listenEventAndInApp()
                                     inAppMessageManager.initInAppMessages()
                                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                                     inAppMessageManager.requestConfig().join()
+                                    firstInitCall = false
                                 }
-
                             }
-                            firstInitCall = false
                         },
                         onActivityStopped = { resumedActivity ->
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
