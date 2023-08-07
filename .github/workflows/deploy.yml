@@ -5,10 +5,13 @@ on:
     types: [ closed ]
     branches:
       - develop
+  push:
+    branches:
+      - 'release/*'
 
 jobs:
-  update:
-    if: github.event.pull_request.merged == true
+  update_on_merge:
+    if: github.event.pull_request.merged == true || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-latest
     steps:
       - name: trigger build & send to FAD
