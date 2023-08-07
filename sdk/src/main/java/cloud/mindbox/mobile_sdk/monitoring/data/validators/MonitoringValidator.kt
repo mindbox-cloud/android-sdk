@@ -4,9 +4,9 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeWithZ
 import cloud.mindbox.mobile_sdk.models.operation.response.LogRequestDtoBlank
 import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
+import org.threeten.bp.LocalDateTime
+import org.threeten.bp.ZoneOffset
+import org.threeten.bp.format.DateTimeFormatter
 
 internal class MonitoringValidator {
 

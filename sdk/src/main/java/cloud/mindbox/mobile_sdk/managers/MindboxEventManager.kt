@@ -5,6 +5,8 @@ import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -125,9 +127,9 @@ internal object MindboxEventManager {
                         || event.eventType is EventType.AppInstalledWithoutCustomer
                 val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
                 if (!isInitialized || configuration == null) {
-                    MindboxLoggerImpl.e(this, "Configuration was not initialized")
-                    MindboxLoggerImpl.d(this,
-                        "isFirstInitialize: $MindboxPreferences.isFirstInitialize, " +
+                    this@MindboxEventManager.mindboxLogW("Event ${event.eventType.operation} will be sent later, " +
+                            "because configuration was not initialized")
+                    this@MindboxEventManager.mindboxLogI("isFirstInitialize: ${MindboxPreferences.isFirstInitialize}, " +
                                 "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
                 } else {
                     WorkerDelegate().sendEvent(

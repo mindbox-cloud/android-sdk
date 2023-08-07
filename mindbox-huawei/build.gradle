@@ -17,5 +17,4 @@ dependencies {
     implementation sdkDependencies.hms_ads_identifier
     implementation sdkDependencies.gson
     implementation sdkDependencies.androidx_annotations
-    coreLibraryDesugaring sdkDependencies.jdk_libs
 }

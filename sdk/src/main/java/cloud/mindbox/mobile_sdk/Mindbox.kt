@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package cloud.mindbox.mobile_sdk
 
 import android.app.Activity
@@ -12,10 +14,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
-import cloud.mindbox.mobile_sdk.logger.Level
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.logger.*
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationBody
@@ -30,6 +29,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import com.jakewharton.threetenabp.AndroidThreeTen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
@@ -40,7 +40,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @SuppressWarnings("deprecated")
-object Mindbox {
+object Mindbox: MindboxLog {
 
     /**
      * Used for determination app open from push
@@ -388,21 +388,26 @@ object Mindbox {
 
             val currentProcessName = context.getCurrentProcessName()
             if (!context.isMainProcess(currentProcessName)) {
-                this@Mindbox.mindboxLogW("Skip Mindbox init not in main process! Current process $currentProcessName")
+                logW("Skip Mindbox init not in main process! Current process $currentProcessName")
                 return@runCatching
             }
 
             initComponents(context.applicationContext, pushServices)
-            this@Mindbox.mindboxLogD("init in $currentProcessName. firstInitCall: $firstInitCall, " +
+            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
+
+            if (!firstInitCall) {
+                InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            }
+
             initScope.launch {
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 DbManager.saveConfigurations(Configuration(configuration))
-                MindboxLoggerImpl.d(this, "init. checkResult: $checkResult")
+                logI("init. checkResult: $checkResult")
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
-                    MindboxLoggerImpl.d(this, "init. softReinitialization")
+                    logI("init. softReinitialization")
                     softReinitialization(context.applicationContext)
                 }
 
@@ -446,21 +451,16 @@ object Mindbox {
                     val activity = context as? Activity
                     val isApplicationResumed = applicationLifecycle.currentState == RESUMED
                     if (isApplicationResumed && activity == null) {
-                        MindboxLoggerImpl.e(
-                            this@Mindbox,
-                            "Incorrect context type for calling init in this place",
-                        )
+                        logE("Incorrect context type for calling init in this place")
                     }
                     if (isApplicationResumed || context !is Application) {
-                        MindboxLoggerImpl.w(
-                            this,
-                            "We recommend to call Mindbox.init() synchronously from " +
+                        logW("We recommend to call Mindbox.init() synchronously from " +
                                     "Application.onCreate. If you can't do so, don't forget to " +
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
 
-                    MindboxLoggerImpl.d(this, "init. init lifecycleManager")
+                    logI("init. init lifecycleManager")
                     lifecycleManager = LifecycleManager(
                         currentActivityName = activity?.javaClass?.name,
                         currentIntent = activity?.intent,
@@ -484,14 +484,15 @@ object Mindbox {
                             )
                             if (firstInitCall) {
                                 mindboxScope.launch {
+                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                    if (!firstInitCall) return@launch
                                     inAppMessageManager.listenEventAndInApp()
                                     inAppMessageManager.initInAppMessages()
                                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                                     inAppMessageManager.requestConfig().join()
+                                    firstInitCall = false
                                 }
-
                             }
-                            firstInitCall = false
                         },
                         onActivityStopped = { resumedActivity ->
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
@@ -899,6 +900,7 @@ object Mindbox {
         MindboxDI.init(context.applicationContext)
         MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
                 pushServices?.joinToString(", ") { it.javaClass.simpleName })
+        AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         setPushServiceHandler(context, pushServices)
