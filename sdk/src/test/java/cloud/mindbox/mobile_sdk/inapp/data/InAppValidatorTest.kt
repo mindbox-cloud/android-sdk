@@ -6,17 +6,28 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.Constants
 import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.junit4.MockKRule
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 internal class InAppValidatorTest {
 
+    @get:Rule
+    val mockkRule = MockKRule(this)
+
+    @MockK
     private var modalWindowFormValidator: ModalWindowFormValidator = mockk()
 
-    private var inAppValidator = InAppValidatorImpl(SdkVersionValidator(), modalWindowFormValidator)
+    private val sdkVersionValidator = SdkVersionValidator()
+
+    @OverrideMockKs
+    private lateinit var inAppValidator: InAppValidatorImpl
     @Before
     fun onTestStart() {
         every { modalWindowFormValidator.isValid(any()) } returns true
@@ -84,7 +95,7 @@ internal class InAppValidatorTest {
 
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
-        inAppValidator = InAppValidatorImpl(SdkVersionValidator(), ModalWindowFormValidator())
+        inAppValidator = InAppValidatorImpl(SdkVersionValidator())
 
         assertFalse(
             inAppValidator.validateInApp(
@@ -111,7 +122,7 @@ internal class InAppValidatorTest {
 
     @Test
     fun `validate form dto variants variant is not null but type is imageUrl is null`() {
-        inAppValidator = InAppValidatorImpl(SdkVersionValidator(), ModalWindowFormValidator())
+        inAppValidator = InAppValidatorImpl(SdkVersionValidator())
         assertFalse(
             inAppValidator.validateInApp(
                 inApp = InAppStub.getInAppDto()
