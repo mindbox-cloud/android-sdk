@@ -631,7 +631,7 @@ object Mindbox: MindboxLog {
      * Specifies log level for Mindbox
      *
      * @param level - is used for showing Mindbox logs starts from [Level]. Default
-     * is [Level.INFO]. [Level.NONE] turns off all logs.
+     * is [Level.WARN]. [Level.NONE] turns off all logs.
      */
     fun setLogLevel(level: Level) {
         MindboxLoggerImpl.level = level
