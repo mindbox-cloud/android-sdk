@@ -1,16 +1,26 @@
 package cloud.mindbox.mobile_sdk.inapp.data
 
 import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
+import cloud.mindbox.mobile_sdk.inapp.data.validators.ModalWindowFormValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.Constants
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 internal class InAppValidatorTest {
 
-    private val inAppValidator = InAppValidatorImpl(SdkVersionValidator())
+    private var modalWindowFormValidator: ModalWindowFormValidator = mockk()
+
+    private var inAppValidator = InAppValidatorImpl(SdkVersionValidator(), modalWindowFormValidator)
+    @Before
+    fun onTestStart() {
+        every { modalWindowFormValidator.isValid(any()) } returns true
+    }
 
     @Test
     fun `validate form dto variants null`() {
@@ -74,6 +84,8 @@ internal class InAppValidatorTest {
 
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
+        inAppValidator = InAppValidatorImpl(SdkVersionValidator(), ModalWindowFormValidator())
+
         assertFalse(
             inAppValidator.validateInApp(
                 inApp = InAppStub.getInAppDto()
@@ -88,7 +100,7 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
+                                InAppStub.getModalWindowDto()
                                     .copy(type = null)
                             )
                         )
@@ -99,6 +111,7 @@ internal class InAppValidatorTest {
 
     @Test
     fun `validate form dto variants variant is not null but type is imageUrl is null`() {
+        inAppValidator = InAppValidatorImpl(SdkVersionValidator(), ModalWindowFormValidator())
         assertFalse(
             inAppValidator.validateInApp(
                 inApp = InAppStub.getInAppDto()
@@ -113,8 +126,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "", imageUrl = null)
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "")
                             )
                         )
                     )
@@ -138,8 +151,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -155,8 +168,8 @@ internal class InAppValidatorTest {
                     targeting = null,
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -174,8 +187,8 @@ internal class InAppValidatorTest {
                             .copy(type = "apiMethodCall", systemName = "notEmpty"),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -195,8 +208,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -216,8 +229,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -237,8 +250,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -258,8 +271,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -279,8 +292,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -300,8 +313,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -321,8 +334,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -342,8 +355,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -363,8 +376,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -385,8 +398,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -406,8 +419,8 @@ internal class InAppValidatorTest {
                     ),
                     form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
-                            InAppStub.getSimpleImageDto()
-                                .copy(type = "def", imageUrl = "abc")
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
                         )
                     )
                 )
@@ -428,8 +441,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -449,8 +462,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -470,8 +483,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -491,8 +504,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -512,8 +525,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -533,8 +546,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -554,8 +567,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -575,8 +588,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -596,8 +609,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -617,8 +630,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -638,8 +651,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -659,8 +672,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -680,8 +693,8 @@ internal class InAppValidatorTest {
                 ),
                 form = InAppStub.getInAppDto().form?.copy(
                     variants = listOf(
-                        InAppStub.getSimpleImageDto()
-                            .copy(type = "def", imageUrl = "abc")
+                        InAppStub.getModalWindowDto()
+                            .copy(type = "def")
                     )
                 )
             )
@@ -699,8 +712,8 @@ internal class InAppValidatorTest {
                             .copy(type = "apiMethodCall", systemName = ""),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -718,8 +731,8 @@ internal class InAppValidatorTest {
                             .copy(type = "apiMethodCall", systemName = null),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -736,8 +749,8 @@ internal class InAppValidatorTest {
                         targeting = InAppStub.getTargetingTrueNodeDto().copy(type = "true"),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -754,8 +767,8 @@ internal class InAppValidatorTest {
                         targeting = InAppStub.getTargetingTrueNodeDto().copy(type = null),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -773,8 +786,8 @@ internal class InAppValidatorTest {
                             .copy(type = "or", nodes = emptyList()),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -798,8 +811,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -828,8 +841,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -858,8 +871,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -888,8 +901,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -918,8 +931,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -948,8 +961,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -978,8 +991,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1008,8 +1021,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1027,8 +1040,8 @@ internal class InAppValidatorTest {
                             .copy(type = "or", nodes = emptyList()),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1057,8 +1070,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1087,8 +1100,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1117,8 +1130,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1147,8 +1160,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1177,8 +1190,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1207,8 +1220,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1237,8 +1250,8 @@ internal class InAppValidatorTest {
                             ),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1256,8 +1269,8 @@ internal class InAppValidatorTest {
                             .copy(type = null, kind = "positive", ids = listOf("123", "456")),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1275,8 +1288,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = null, ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1294,8 +1307,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = null)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1313,8 +1326,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = emptyList())),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1332,8 +1345,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1351,8 +1364,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1370,8 +1383,8 @@ internal class InAppValidatorTest {
                             .copy(type = null, kind = "positive", ids = listOf("123", "456")),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1389,8 +1402,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = null, ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1408,8 +1421,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = null)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1427,8 +1440,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = emptyList())),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1446,8 +1459,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1465,8 +1478,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1484,8 +1497,8 @@ internal class InAppValidatorTest {
                             .copy(type = null, kind = "positive", ids = listOf("123", "456")),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1503,8 +1516,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = null, ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1522,8 +1535,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = null)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1541,8 +1554,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = emptyList())),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1560,8 +1573,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )
@@ -1579,8 +1592,8 @@ internal class InAppValidatorTest {
                             .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
-                                InAppStub.getSimpleImageDto()
-                                    .copy(type = "def", imageUrl = "abc")
+                                InAppStub.getModalWindowDto()
+                                    .copy(type = "def")
                             )
                         )
                     )

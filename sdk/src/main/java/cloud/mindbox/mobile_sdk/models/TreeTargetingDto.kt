@@ -170,7 +170,5 @@ internal sealed class TreeTargetingDto {
         }
     }
 
-    companion object {
-        const val TYPE_JSON_NAME = "\$type"
-    }
+
 }

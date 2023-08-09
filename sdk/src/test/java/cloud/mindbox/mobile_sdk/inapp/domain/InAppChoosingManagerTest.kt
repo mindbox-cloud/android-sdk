@@ -30,8 +30,6 @@ internal class InAppChoosingManagerTest {
         coEvery { fetchContent(any(), any()) } returns true
     }
 
-    private val inAppRepository = mockk<InAppRepository>()
-
     private val mockkInAppGeoRepository = mockk<InAppGeoRepository> {
         every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_SUCCESS
         coEvery { fetchGeo() } just runs
@@ -77,7 +75,7 @@ internal class InAppChoosingManagerTest {
     fun `choose inApp to show chooses first correct inApp`() = runTest {
 
         val validId = "validId"
-        val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
+        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
 
         val actualResult = inAppChoosingManager.chooseInAppToShow(
             listOf(
@@ -87,7 +85,11 @@ internal class InAppChoosingManagerTest {
                         )
                     ),
                 InAppStub.getInApp()
-                    .copy(id = validId, targeting = InAppStub.getTargetingTrueNode()),
+                    .copy(id = validId, targeting = InAppStub.getTargetingTrueNode(), form = InAppStub.getInApp().form.copy(
+                        listOf(InAppStub.getModalWindow().copy(
+                            inAppId = validId
+                        ))
+                    )),
 
                 ), event
         )
@@ -159,7 +161,11 @@ internal class InAppChoosingManagerTest {
                         segmentExternalId = "segmentExternalId2"
                     )
                 ), InAppStub.getInApp().copy(
-                    id = validId, targeting = InAppStub.getTargetingTrueNode()
+                    id = validId, targeting = InAppStub.getTargetingTrueNode(), form = InAppStub.getInApp().form.copy(
+                    listOf(InAppStub.getModalWindow().copy(
+                        inAppId = validId
+                    ))
+                )
                 )
         )
         coEvery {
@@ -168,7 +174,7 @@ internal class InAppChoosingManagerTest {
         every {
             mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
-        val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
+        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
             testInAppList, event
         )
@@ -188,7 +194,11 @@ internal class InAppChoosingManagerTest {
                         type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                     )
                 ), InAppStub.getInApp().copy(
-                    id = validId, targeting = InAppStub.getTargetingTrueNode()
+                    id = validId, targeting = InAppStub.getTargetingTrueNode(), form = InAppStub.getInApp().form.copy(
+                    listOf(InAppStub.getModalWindow().copy(
+                        inAppId = validId
+                    ))
+                )
                 )
         )
 
@@ -200,7 +210,7 @@ internal class InAppChoosingManagerTest {
             inAppContentFetcher = mockkInAppContentFetcher
         )
 
-        val expectedResult = InAppTypeStub.get().copy(inAppId = validId)
+        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
         val actualResult = inAppChoosingManager.chooseInAppToShow(
             testInAppList, event
         )

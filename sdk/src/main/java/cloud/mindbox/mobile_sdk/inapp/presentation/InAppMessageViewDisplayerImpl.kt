@@ -2,13 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.SimpleImageInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import java.util.*
@@ -39,11 +36,7 @@ internal class InAppMessageViewDisplayerImpl :
         if (pausedHolder?.isActive == true) {
             pausedHolder?.wrapper?.let { wrapper ->
                 mindboxLogD("trying to restore in-app with id $pausedHolder")
-                showInAppMessage(
-                    wrapper.copy(
-                        onInAppShown = { mindboxLogD("Skip InApp.Show for restored inApp") },
-                    )
-                )
+                showInAppMessage(wrapper)
             }
         } else {
             tryShowInAppFromQueue()
@@ -91,11 +84,11 @@ internal class InAppMessageViewDisplayerImpl :
         onInAppClick: OnInAppClick,
         onInAppShown: OnInAppShown,
     ) {
-        val wrapper = InAppTypeWrapper(
-            inAppType,
-            onInAppClick,
-            onInAppShown
-        )
+        val wrapper = when (inAppType) {
+            is InAppType.ModalWindow -> {
+                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+            }
+        }
         if (isUiPresent()) {
             mindboxLogD("In-app with id ${inAppType.inAppId} is going to be shown immediately")
             showInAppMessage(wrapper)
@@ -109,11 +102,10 @@ internal class InAppMessageViewDisplayerImpl :
 
     private fun showInAppMessage(wrapper: InAppTypeWrapper<InAppType>) {
         when (wrapper.inAppType) {
-            is InAppType.SimpleImage -> {
+            is InAppType.ModalWindow -> {
                 currentActivity?.root?.let { root ->
                     @Suppress("UNCHECKED_CAST")
-                    currentHolder = SimpleImageInAppViewHolder(
-                        wrapper as InAppTypeWrapper<InAppType.SimpleImage>,
+                    currentHolder = ModalWindowInAppViewHolder(wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
                         inAppCallback = InAppCallbackWrapper(inAppCallback) {
                             pausedHolder?.hide()
                             pausedHolder = null
@@ -127,7 +119,6 @@ internal class InAppMessageViewDisplayerImpl :
                 }
             }
 
-            is InAppType.ModalWindow -> TODO()
         }
     }
 

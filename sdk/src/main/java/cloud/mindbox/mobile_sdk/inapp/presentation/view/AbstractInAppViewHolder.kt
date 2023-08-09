@@ -1,14 +1,24 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder<InAppType> {
 
+
+    private var _currentBackground: View? = null
+    protected val currentBackground: View
+        get() = _currentBackground!!
+
+    private var _currentDialog: InAppConstraintLayout? = null
+    protected val currentDialog: InAppConstraintLayout
+        get() = _currentDialog!!
 
     private var typingView: View? = null
 
@@ -24,6 +34,13 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
         }
     }
 
+    protected fun initView(currentRoot: ViewGroup) {
+        _currentBackground = LayoutInflater.from(currentRoot.context).inflate(R.layout.mindbox_blur_layout, currentRoot, false)
+        _currentDialog = LayoutInflater.from(currentRoot.context).inflate(R.layout.mindbox_default_inapp_layout, currentRoot, false) as InAppConstraintLayout
+        currentRoot.addView(currentBackground)
+        currentRoot.addView(currentDialog)
+    }
+
     private fun restoreKeyboard() {
         typingView?.let { view ->
             view.requestFocus()
@@ -37,6 +54,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     }
 
     override fun show(currentRoot: ViewGroup) {
+        initView(currentRoot)
         hideKeyboard(currentRoot)
     }
 

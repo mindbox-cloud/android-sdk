@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.JsonValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
@@ -88,6 +89,7 @@ internal interface DataModule : MindboxModule {
     val operationValidator: OperationValidator
     val abTestValidator: ABTestValidator
     val sdkVersionValidator: SdkVersionValidator
+    val modalWindowFormValidator: ModalWindowFormValidator
     val jsonValidator: JsonValidator
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
