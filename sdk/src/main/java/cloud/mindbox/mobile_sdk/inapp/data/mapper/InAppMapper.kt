@@ -4,6 +4,9 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Element
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -11,6 +14,8 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.*
+import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal class InAppMapper {
@@ -66,6 +71,89 @@ internal class InAppMapper {
         )
     }
 
+    private fun mapModalWindowLayers(layers: List<ContentDto.BackgroundDto.LayerDto?>?): List<Layer> {
+        return layers?.map { layerDto ->
+            when (layerDto) {
+                is ContentDto.BackgroundDto.LayerDto.ImageLayerDto -> {
+                    Layer.ImageLayer(
+                        action = when (layerDto.action) {
+                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
+                                Layer.ImageLayer.Action.RedirectUrlAction(
+                                    url = layerDto.action.value!!,
+                                    payload = layerDto.action.intentPayload!!
+                                )
+                            }
+
+                            else -> {
+                                error("Unknown action cannot be mapped. Should never happen because of validators")
+                            }
+                        },
+                        source = when (layerDto.source) {
+                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
+                                Layer.ImageLayer.Source.UrlSource(
+                                    url = layerDto.source.value!!
+                                )
+                            }
+
+                            else -> {
+                                error("Unknown source cannot be mapped. Should never happen because of validators")
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    error("Unknown layer cannot be mapped. Should never happen because of validators")
+                }
+            }
+        }!!
+    }
+
+    private fun mapModalWindowElements(elements: List<ContentDto.ElementDto?>?): List<Element> {
+        return elements?.map { elementDto ->
+            when (elementDto) {
+                is ContentDto.ElementDto.CloseButtonElementDto -> {
+                    Element.CloseButton(
+                        color = elementDto.color!!,
+                        lineWidth = elementDto.lineWidth.toString()
+                            .toDouble(),
+                        size = Element.CloseButton.Size(
+                            width = elementDto.size?.width!!,
+                            height = elementDto.size.height!!,
+                            kind = when (elementDto.size.kind) {
+                                "dp" -> {
+                                    Element.CloseButton.Size.Kind.DP
+                                }
+
+                                else -> {
+                                    error("Unknown size cannot be mapped. Should never happen because of validators")
+                                }
+                            }
+                        ),
+                        position = Element.CloseButton.Position(
+                            top = elementDto.position?.margin?.top!!,
+                            right = elementDto.position.margin.right!!,
+                            left = elementDto.position.margin.left!!,
+                            bottom = elementDto.position.margin.bottom!!,
+                            kind = when (elementDto.position.margin.kind) {
+                                "proportion" -> {
+                                    Element.CloseButton.Position.Kind.PROPORTION
+                                }
+
+                                else -> {
+                                    error("Unknown size cannot be mapped. Should never happen because of validators")
+                                }
+                            }
+                        )
+                    )
+                }
+
+                else -> {
+                    error("Unknown element cannot be mapped. Should never happen because of validators")
+                }
+            }
+        } ?: emptyList()
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig {
@@ -81,88 +169,11 @@ internal class InAppMapper {
                                     is PayloadDto.ModalWindowDto -> {
                                         InAppType.ModalWindow(
                                             type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
-                                            layers = payloadDto.content?.background?.layers?.map { layerDto ->
-                                                when (layerDto) {
-                                                    is PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto -> {
-                                                        InAppType.ModalWindow.Layer.ImageLayer(
-                                                            action = when (layerDto.action) {
-                                                                is PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
-                                                                    InAppType.ModalWindow.Layer.ImageLayer.Action.RedirectUrlAction(
-                                                                        url = layerDto.action.value!!,
-                                                                        payload = layerDto.action.intentPayload!!
-                                                                    )
-                                                                }
-
-                                                                else -> {
-                                                                    error("Unknown action cannot be mapped. Should never happen because of validators")
-                                                                }
-                                                            },
-                                                            source = when (layerDto.source) {
-                                                                is PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
-                                                                    InAppType.ModalWindow.Layer.ImageLayer.Source.UrlSource(
-                                                                        url = layerDto.source.value!!
-                                                                    )
-                                                                }
-
-                                                                else -> {
-                                                                    error("Unknown source cannot be mapped. Should never happen because of validators")
-                                                                }
-                                                            }
-                                                        )
-                                                    }
-
-                                                    else -> {
-                                                        error("Unknown layer cannot be mapped. Should never happen because of validators")
-                                                    }
-                                                }
-                                            }!!,
+                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             inAppId = inAppDto.id,
-                                            elements = payloadDto.content.elements?.map { elementDto ->
-                                                when (elementDto) {
-                                                    is PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto -> {
-                                                        InAppType.ModalWindow.Element.CloseButton(
-                                                            color = elementDto.color!!,
-                                                            lineWidth = elementDto.lineWidth.toString()
-                                                                .toDouble(),
-                                                            size = InAppType.ModalWindow.Element.CloseButton.Size(
-                                                                width = elementDto.size?.width!!,
-                                                                height = elementDto.size.height!!,
-                                                                kind = when (elementDto.size.kind) {
-                                                                    "dp" -> {
-                                                                        InAppType.ModalWindow.Element.CloseButton.Size.Kind.DP
-                                                                    }
-
-                                                                    else -> {
-                                                                        error("Unknown size cannot be mapped. Should never happen because of validators")
-                                                                    }
-                                                                }
-                                                            ),
-                                                            position = InAppType.ModalWindow.Element.CloseButton.Position(
-                                                                top = elementDto.position?.margin?.top!!,
-                                                                right = elementDto.position.margin.right!!,
-                                                                left = elementDto.position.margin.left!!,
-                                                                bottom = elementDto.position.margin.bottom!!,
-                                                                kind = when (elementDto.position.margin.kind) {
-                                                                    "proportion" -> {
-                                                                        InAppType.ModalWindow.Element.CloseButton.Position.Kind.PROPORTION
-                                                                    }
-
-                                                                    else -> {
-                                                                        error("Unknown size cannot be mapped. Should never happen because of validators")
-                                                                    }
-                                                                }
-                                                            )
-                                                        )
-                                                    }
-
-                                                    else -> {
-                                                        error("Unknown element cannot be mapped. Should never happen because of validators")
-                                                    }
-                                                }
-                                            } ?: emptyList()
+                                            elements = mapModalWindowElements(payloadDto.content?.elements)
                                         )
                                     }
-
                                     null -> {
                                         return InAppConfig(
                                             listOf(),
@@ -227,7 +238,6 @@ internal class InAppMapper {
                         treeTargetingDto.systemName!!.lowercase()
                     )
                 }
-
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,

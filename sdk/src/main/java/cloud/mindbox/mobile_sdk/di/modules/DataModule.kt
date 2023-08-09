@@ -91,14 +91,12 @@ internal fun DataModule(
     override val inAppValidator: InAppValidator by lazy {
         InAppValidatorImpl(
             sdkVersionValidator,
-            modalWindowFormValidator
         )
     }
 
     override val abTestValidator: ABTestValidator by lazy { ABTestValidator(sdkVersionValidator) }
 
     override val sdkVersionValidator: SdkVersionValidator by lazy { SdkVersionValidator() }
-    override val modalWindowFormValidator: ModalWindowFormValidator by lazy { ModalWindowFormValidator() }
     override val jsonValidator: JsonValidator by lazy { JsonValidator() }
     override val xmlValidator: XmlValidator by lazy { XmlValidator() }
     override val urlValidator: UrlValidator by lazy { UrlValidator() }

@@ -89,7 +89,6 @@ internal interface DataModule : MindboxModule {
     val operationValidator: OperationValidator
     val abTestValidator: ABTestValidator
     val sdkVersionValidator: SdkVersionValidator
-    val modalWindowFormValidator: ModalWindowFormValidator
     val jsonValidator: JsonValidator
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator

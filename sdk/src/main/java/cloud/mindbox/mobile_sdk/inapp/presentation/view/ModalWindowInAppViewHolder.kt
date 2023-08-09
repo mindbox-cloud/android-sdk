@@ -67,81 +67,84 @@ internal class ModalWindowInAppViewHolder(
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is InAppType.ModalWindow.Layer.ImageLayer -> {
-                    with(InAppImageView(currentRoot.context).apply {
-                        currentDialog.setSingleClickListener {
-                            var redirectUrl = ""
-                            var payload = ""
-                            when (layer.action) {
-                                is InAppType.ModalWindow.Layer.ImageLayer.Action.RedirectUrlAction -> {
-                                    redirectUrl = layer.action.url
-                                    payload = layer.action.payload
-                                }
-                            }
-                            wrapper.onInAppClick.onClick()
-                            inAppCallback.onInAppClick(
-                                wrapper.inAppType.inAppId,
-                                redirectUrl,
-                                payload
-                            )
-                            if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
-                                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                                mindboxLogI("In-app dismissed by click")
-                                isInAppMessageActive = false
-                                hide()
-                            }
-                        }
-                        when (layer.source) {
-                            is InAppType.ModalWindow.Layer.ImageLayer.Source.UrlSource -> {
-                                with(this) {
-                                    mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
-                                    Glide
-                                        .with(currentRoot.context.applicationContext)
-                                        .load(layer.source.url)
-                                        .onlyRetrieveFromCache(true)
-                                        .listener(object : RequestListener<Drawable> {
-                                            override fun onLoadFailed(
-                                                e: GlideException?,
-                                                model: Any?,
-                                                target: Target<Drawable>?,
-                                                isFirstResource: Boolean
-                                            ): Boolean {
-                                                this@ModalWindowInAppViewHolder.mindboxLogE(
-                                                    message = "Failed to load inapp image",
-                                                    exception = e
-                                                        ?: RuntimeException("Failed to load inapp image")
-                                                )
-                                                hide()
-                                                isInAppMessageActive = false
-                                                return false
-                                            }
-
-                                            override fun onResourceReady(
-                                                resource: Drawable?,
-                                                model: Any?,
-                                                target: Target<Drawable>?,
-                                                dataSource: DataSource?,
-                                                isFirstResource: Boolean
-                                            ): Boolean {
-                                                bind(currentRoot)
-                                                return false
-                                            }
-                                        })
-                                        .centerCrop()
-                                        .into(this)
-                                }
-                            }
-                        }
-                    }) {
-                        currentDialog.addView(this)
-                        updateView(currentDialog)
-                    }
-
+                    addUrlSource(currentRoot, layer)
                 }
             }
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         isInAppMessageActive = true
         currentDialog.requestFocus()
+    }
+
+    private fun addUrlSource(currentRoot: ViewGroup, layer: InAppType.ModalWindow.Layer.ImageLayer) {
+        with(InAppImageView(currentRoot.context).apply {
+            currentDialog.setSingleClickListener {
+                var redirectUrl = ""
+                var payload = ""
+                when (layer.action) {
+                    is InAppType.ModalWindow.Layer.ImageLayer.Action.RedirectUrlAction -> {
+                        redirectUrl = layer.action.url
+                        payload = layer.action.payload
+                    }
+                }
+                wrapper.onInAppClick.onClick()
+                inAppCallback.onInAppClick(
+                    wrapper.inAppType.inAppId,
+                    redirectUrl,
+                    payload
+                )
+                if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
+                    inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                    mindboxLogI("In-app dismissed by click")
+                    isInAppMessageActive = false
+                    hide()
+                }
+            }
+            when (layer.source) {
+                is InAppType.ModalWindow.Layer.ImageLayer.Source.UrlSource -> {
+                    with(this) {
+                        mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+                        Glide
+                            .with(currentRoot.context.applicationContext)
+                            .load(layer.source.url)
+                            .onlyRetrieveFromCache(true)
+                            .listener(object : RequestListener<Drawable> {
+                                override fun onLoadFailed(
+                                    e: GlideException?,
+                                    model: Any?,
+                                    target: Target<Drawable>?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
+                                    this@ModalWindowInAppViewHolder.mindboxLogE(
+                                        message = "Failed to load inapp image",
+                                        exception = e
+                                            ?: RuntimeException("Failed to load inapp image")
+                                    )
+                                    hide()
+                                    isInAppMessageActive = false
+                                    return false
+                                }
+
+                                override fun onResourceReady(
+                                    resource: Drawable?,
+                                    model: Any?,
+                                    target: Target<Drawable>?,
+                                    dataSource: DataSource?,
+                                    isFirstResource: Boolean
+                                ): Boolean {
+                                    bind(currentRoot)
+                                    return false
+                                }
+                            })
+                            .centerCrop()
+                            .into(this)
+                    }
+                }
+            }
+        }) {
+            currentDialog.addView(this)
+            updateView(currentDialog)
+        }
     }
 
     override fun hide() {

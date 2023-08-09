@@ -19,6 +19,9 @@ internal class InAppCrossView : View, InAppView {
 
     private val closeButtonElement: InAppType.ModalWindow.Element.CloseButton
 
+    private val paint: Paint
+
+
     constructor(
         context: Context,
         closeButtonElement: InAppType.ModalWindow.Element.CloseButton
@@ -52,10 +55,6 @@ internal class InAppCrossView : View, InAppView {
             strokeWidth = closeButtonElement.lineWidth.toFloat()
         }
     }
-
-
-    private val paint: Paint
-
     override fun updateView(currentDialog: InAppConstraintLayout) {
         val crossWidth = when (closeButtonElement.size.kind) {
             DP -> {

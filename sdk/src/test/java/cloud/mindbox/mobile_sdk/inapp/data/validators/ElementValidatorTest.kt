@@ -34,21 +34,18 @@ internal class ElementValidatorTest {
     @Test
     fun `test isValid returns false for invalid type`() {
         val elementDto = InAppStub.getCloseButtonElementDto().copy(type = "invalid_type")
-
         assertFalse(elementValidator.isValid(elementDto))
     }
 
     @Test
     fun `test isValid returns false for missing color`() {
         val elementDto = InAppStub.getCloseButtonElementDto().copy(color = null)
-
         assertFalse(elementValidator.isValid(elementDto))
     }
 
     @Test
     fun `test isValid returns false for missing lineWidth`() {
         val elementDto = InAppStub.getCloseButtonElementDto().copy(lineWidth = null)
-
         assertFalse(elementValidator.isValid(elementDto))
     }
 
@@ -59,7 +56,6 @@ internal class ElementValidatorTest {
                 margin = InAppStub.getElementMarginDto().copy(kind = "invalid_kind")
             )
         )
-
         assertFalse(elementValidator.isValid(elementDto))
     }
 
@@ -68,31 +64,23 @@ internal class ElementValidatorTest {
         val elementDto = InAppStub.getCloseButtonElementDto().copy(
             size = InAppStub.getElementSizeDto().copy(kind = "invalid_kind")
         )
-
         assertFalse(elementValidator.isValid(elementDto))
     }
-
-
-
-
     @Test
     fun `test isValid returns false when closeButtonElementDto type is invalid`() {
         val closeButtonElementDto = InAppStub.getCloseButtonElementDto().copy(type = "invalid_type")
-
         assertFalse(elementValidator.isValid(closeButtonElementDto))
     }
 
     @Test
     fun `test isValid returns false when closeButtonElementDto has missing color`() {
         val closeButtonElementDto = InAppStub.getCloseButtonElementDto().copy(color = null)
-
         assertFalse(elementValidator.isValid(closeButtonElementDto))
     }
 
     @Test
     fun `test isValid returns false when closeButtonElementDto has missing lineWidth`() {
         val closeButtonElementDto = InAppStub.getCloseButtonElementDto().copy(lineWidth = null)
-
         assertFalse(elementValidator.isValid(closeButtonElementDto))
     }
 
@@ -103,7 +91,6 @@ internal class ElementValidatorTest {
                 margin = InAppStub.getElementMarginDto().copy(kind = "invalid_kind")
             )
         )
-
         assertFalse(elementValidator.isValid(closeButtonElementDto))
     }
 
@@ -112,7 +99,6 @@ internal class ElementValidatorTest {
         val closeButtonElementDto = InAppStub.getCloseButtonElementDto().copy(
             size = InAppStub.getElementSizeDto().copy(kind = "invalid_kind")
         )
-
         assertFalse(elementValidator.isValid(closeButtonElementDto))
     }
 

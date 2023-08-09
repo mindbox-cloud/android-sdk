@@ -10,9 +10,10 @@ import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 
 internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
-    private val modalWindowFormValidator: ModalWindowFormValidator
-) :
-    InAppValidator {
+) : InAppValidator {
+
+    private val modalWindowFormValidator: ModalWindowFormValidator = ModalWindowFormValidator()
+
 
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
         return when (targeting) {
