@@ -26,41 +26,6 @@ internal data class SettingsDto(
     )
 }
 
-internal data class ABTestDto(
-    @SerializedName("id")
-    val id: String,
-    @SerializedName("sdkVersion")
-    val sdkVersion: SdkVersion?,
-    @SerializedName("salt")
-    val salt: String?,
-    @SerializedName("variants")
-    val variants: List<VariantDto>?,
-) {
-    internal data class VariantDto(
-        @SerializedName("id")
-        val id: String,
-        @SerializedName("modulus")
-        val modulus: ModulusDto?,
-        @SerializedName("objects")
-        val objects: List<ObjectsDto>?,
-    ) {
-        internal data class ModulusDto(
-            @SerializedName("lower")
-            val lower: Int?,
-            @SerializedName("upper")
-            val upper: Int?,
-        )
-        internal data class ObjectsDto(
-            @SerializedName("${"$"}type")
-            val type: String?,
-            @SerializedName("kind")
-            val kind: String?,
-            @SerializedName("inapps")
-            val inapps: List<String>?,
-        )
-    }
-}
-
 internal data class OperationDto(
     @SerializedName("systemName")
     val systemName: String
@@ -99,26 +64,6 @@ internal data class FormDto(
     @SerializedName("variants")
     val variants: List<PayloadDto?>?,
 )
-
-/**
- * In-app types
- **/
-internal sealed class PayloadDto {
-    data class SimpleImage(
-        @SerializedName("${"$"}type")
-        val type: String?,
-        @SerializedName("imageUrl")
-        val imageUrl: String?,
-        @SerializedName("redirectUrl")
-        val redirectUrl: String?,
-        @SerializedName("intentPayload")
-        val intentPayload: String?,
-    ) : PayloadDto() {
-        companion object {
-            const val SIMPLE_IMAGE_JSON_NAME = "simpleImage"
-        }
-    }
-}
 
 internal data class MonitoringDto(
     @SerializedName("logs")

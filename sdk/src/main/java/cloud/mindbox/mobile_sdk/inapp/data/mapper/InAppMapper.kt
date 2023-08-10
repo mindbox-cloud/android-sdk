@@ -4,6 +4,9 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Element
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -11,6 +14,8 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.*
+import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal class InAppMapper {
@@ -66,6 +71,89 @@ internal class InAppMapper {
         )
     }
 
+    private fun mapModalWindowLayers(layers: List<ContentDto.BackgroundDto.LayerDto?>?): List<Layer> {
+        return layers?.map { layerDto ->
+            when (layerDto) {
+                is ContentDto.BackgroundDto.LayerDto.ImageLayerDto -> {
+                    Layer.ImageLayer(
+                        action = when (layerDto.action) {
+                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
+                                Layer.ImageLayer.Action.RedirectUrlAction(
+                                    url = layerDto.action.value!!,
+                                    payload = layerDto.action.intentPayload!!
+                                )
+                            }
+
+                            else -> {
+                                error("Unknown action cannot be mapped. Should never happen because of validators")
+                            }
+                        },
+                        source = when (layerDto.source) {
+                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
+                                Layer.ImageLayer.Source.UrlSource(
+                                    url = layerDto.source.value!!
+                                )
+                            }
+
+                            else -> {
+                                error("Unknown source cannot be mapped. Should never happen because of validators")
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    error("Unknown layer cannot be mapped. Should never happen because of validators")
+                }
+            }
+        }!!
+    }
+
+    private fun mapModalWindowElements(elements: List<ContentDto.ElementDto?>?): List<Element> {
+        return elements?.map { elementDto ->
+            when (elementDto) {
+                is ContentDto.ElementDto.CloseButtonElementDto -> {
+                    Element.CloseButton(
+                        color = elementDto.color!!,
+                        lineWidth = elementDto.lineWidth.toString()
+                            .toDouble(),
+                        size = Element.CloseButton.Size(
+                            width = elementDto.size?.width!!,
+                            height = elementDto.size.height!!,
+                            kind = when (elementDto.size.kind) {
+                                "dp" -> {
+                                    Element.CloseButton.Size.Kind.DP
+                                }
+
+                                else -> {
+                                    error("Unknown size cannot be mapped. Should never happen because of validators")
+                                }
+                            }
+                        ),
+                        position = Element.CloseButton.Position(
+                            top = elementDto.position?.margin?.top!!,
+                            right = elementDto.position.margin.right!!,
+                            left = elementDto.position.margin.left!!,
+                            bottom = elementDto.position.margin.bottom!!,
+                            kind = when (elementDto.position.margin.kind) {
+                                "proportion" -> {
+                                    Element.CloseButton.Position.Kind.PROPORTION
+                                }
+
+                                else -> {
+                                    error("Unknown size cannot be mapped. Should never happen because of validators")
+                                }
+                            }
+                        )
+                    )
+                }
+
+                else -> {
+                    error("Unknown element cannot be mapped. Should never happen because of validators")
+                }
+            }
+        } ?: emptyList()
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig {
@@ -78,16 +166,21 @@ internal class InAppMapper {
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
-                                    is PayloadDto.SimpleImage -> {
-                                        Payload.SimpleImage(
-                                            type = PayloadDto.SimpleImage.SIMPLE_IMAGE_JSON_NAME,
-                                            imageUrl = payloadDto.imageUrl ?: "",
-                                            redirectUrl = payloadDto.redirectUrl ?: "",
-                                            intentPayload = payloadDto.intentPayload ?: ""
+                                    is PayloadDto.ModalWindowDto -> {
+                                        InAppType.ModalWindow(
+                                            type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
+                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
+                                            inAppId = inAppDto.id,
+                                            elements = mapModalWindowElements(payloadDto.content?.elements)
                                         )
                                     }
                                     null -> {
-                                        return InAppConfig(listOf(), listOf(), mapOf(), listOf()) // should never trigger because of validator
+                                        return InAppConfig(
+                                            listOf(),
+                                            listOf(),
+                                            mapOf(),
+                                            listOf()
+                                        ) // should never trigger because of validator
                                     }
                                 }
                             } ?: emptyList()
@@ -150,36 +243,43 @@ internal class InAppMapper {
                     type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,
                     nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
+
                 is TreeTargetingDto.SegmentNodeDto -> TreeTargeting.SegmentNode(
                     type = TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
                     segmentExternalId = treeTargetingDto.segmentExternalId!!
                 )
+
                 is TreeTargetingDto.UnionNodeDto -> TreeTargeting.UnionNode(
                     type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
                     nodes = mapNodesDtoToNodes(treeTargetingDto.nodes as List<TreeTargetingDto>)
                 )
+
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
                     type = TreeTargetingDto.CityNodeDto.CITY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     ids = treeTargetingDto.ids as List<String>
                 )
+
                 is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
                     type = TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     ids = treeTargetingDto.ids as List<String>
                 )
+
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
                     type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
                     ids = treeTargetingDto.ids as List<String>
                 )
+
                 is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
                     type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
                     kind = treeTargetingDto.kind.enumValue(),
                     value = treeTargetingDto.value!!
                 )
+
                 is TreeTargetingDto.ViewProductCategoryInNodeDto -> ViewProductCategoryInNode(
                     type = TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME,
                     kind = treeTargetingDto.kind.enumValue(),
@@ -191,11 +291,13 @@ internal class InAppMapper {
                         )
                     } ?: listOf()
                 )
+
                 is TreeTargetingDto.ViewProductNodeDto -> ViewProductNode(
                     type = TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME,
                     kind = treeTargetingDto.kind.enumValue(),
                     value = treeTargetingDto.value!!
                 )
+
                 is TreeTargetingDto.ViewProductSegmentNodeDto -> ViewProductSegmentNode(
                     type = TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME,
                     kind = treeTargetingDto.kind.enumValue(),
@@ -260,6 +362,7 @@ internal class InAppMapper {
                     getTargetingProductSegmentationsList(treeTargeting)
                 }
             }
+
             is ViewProductSegmentNode -> {
                 listOf(targeting.segmentationExternalId)
             }
@@ -269,6 +372,7 @@ internal class InAppMapper {
                     getTargetingProductSegmentationsList(treeTargeting)
                 }
             }
+
             else -> {
                 emptyList()
             }
@@ -282,6 +386,7 @@ internal class InAppMapper {
                     getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
+
             is TreeTargeting.SegmentNode -> {
                 listOf(targeting.segmentationExternalId)
             }
@@ -291,6 +396,7 @@ internal class InAppMapper {
                     getTargetingCustomerSegmentationsList(treeTargeting)
                 }
             }
+
             else -> {
                 emptyList()
             }

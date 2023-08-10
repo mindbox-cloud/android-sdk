@@ -4,8 +4,8 @@ import android.util.Log
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -124,12 +124,7 @@ internal class InAppMessageManagerTest {
         }.answers {
             flow {
                 emit(
-                    InAppType.SimpleImage(
-                        inAppId = "123",
-                        imageUrl = "",
-                        redirectUrl = "",
-                        intentData = ""
-                    )
+                    InAppStub.getModalWindow()
                 )
             }
         }
@@ -163,12 +158,7 @@ internal class InAppMessageManagerTest {
         }.answers {
             flow {
                 emit(
-                    InAppType.SimpleImage(
-                        inAppId = "123",
-                        imageUrl = "",
-                        redirectUrl = "",
-                        intentData = ""
-                    )
+                    InAppStub.getModalWindow()
                 )
             }
         }
