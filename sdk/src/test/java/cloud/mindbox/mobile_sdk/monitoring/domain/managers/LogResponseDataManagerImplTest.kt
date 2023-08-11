@@ -1,14 +1,20 @@
 package cloud.mindbox.mobile_sdk.monitoring.domain.managers
 
+import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.monitoring.LogResponseStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogResponse
+import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit4.MockKRule
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class LogResponseDataManagerImplTest {
 
     @get:Rule
@@ -17,6 +23,10 @@ class LogResponseDataManagerImplTest {
     @InjectMockKs
     private lateinit var logResponseDataManagerImpl: LogResponseDataManagerImpl
 
+    @Before
+    fun onTestStart() {
+        AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
 
     @Test
     fun `test get status returns status ok`() {

@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
@@ -58,10 +59,22 @@ internal class MobileConfigRepositoryImpl(
                     mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
 
                 val filteredConfig = InAppConfigResponse(
-                    inApps = getInApps(configBlank),
-                    monitoring = getMonitoring(configBlank),
-                    settings = getSettings(configBlank),
-                    abtests = getABTests(configBlank),
+                    inApps = runCatching { getInApps(configBlank) }.getOrElse {
+                        mindboxLogW("Unable to get inApps")
+                        null
+                    },
+                    monitoring = runCatching { getMonitoring(configBlank) }.getOrElse {
+                        mindboxLogW("Unable to get logs")
+                        null
+                    },
+                    settings = runCatching { getSettings(configBlank) }.getOrElse {
+                        mindboxLogW("Unable to get settings")
+                        null
+                    },
+                    abtests = runCatching { getABTests(configBlank) }.getOrElse {
+                        mindboxLogW("Unable to get abtests")
+                        null
+                    },
                 )
 
                 return@map inAppMapper.mapToInAppConfig(filteredConfig)

@@ -1,19 +1,30 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.threeten.bp.LocalDateTime
+import org.threeten.bp.ZoneId
+import org.threeten.bp.ZoneOffset
+import org.threeten.bp.ZonedDateTime
+import org.threeten.bp.format.DateTimeFormatter
 
+@RunWith(RobolectricTestRunner::class)
 internal class ExtensionsTest {
+
+    @Before
+    fun onTestStart() {
+        AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
 
     @Test
     fun `converting zoned date time to string`() {

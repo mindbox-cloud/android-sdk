@@ -21,6 +21,7 @@ class OperationNameValidatorTest {
         assertFalse(validator.isValid(null))
         assertFalse(validator.isValid("\n\t"))
         assertFalse(validator.isValid("viewCategory "))
+        assertFalse(validator.isValid(" viewCategory "))
         assertFalse(validator.isValid("viewcategory"))
     }
 }

@@ -9,8 +9,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.BlockJUnit4ClassRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(BlockJUnit4ClassRunner::class)
 internal class InAppABTestLogicTest {
 
     private val threeInapps = listOf(
@@ -26,7 +29,8 @@ internal class InAppABTestLogicTest {
     )
 
     private val abtest = ABTest("", null, null, "", listOf())
-    private val variant = ABTest.Variant("", "inapps", ABTest.Variant.VariantKind.ALL, 0, 100, listOf())
+    private val variant =
+        ABTest.Variant("", "inapps", ABTest.Variant.VariantKind.ALL, 0, 100, listOf())
 
     @Test
     fun `abtest logic is empty variants`() = runTest {
@@ -97,7 +101,11 @@ internal class InAppABTestLogicTest {
 
         val inapps2withExtra = fourInapps + "test"
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "test"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "test"
+            ),
             calculateInApps(0, abtests, inapps2withExtra)
         )
         assertEquals(
@@ -182,25 +190,47 @@ internal class InAppABTestLogicTest {
             calculateInApps(10, abtests, fourInapps)
         )
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "655f5ffa-de86-4224-a0bf-229fe208ed0d"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "655f5ffa-de86-4224-a0bf-229fe208ed0d"
+            ),
             calculateInApps(64, abtests, fourInapps)
         )
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "b33ca779-3c99-481f-ad46-91282b0caf04"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "b33ca779-3c99-481f-ad46-91282b0caf04"
+            ),
             calculateInApps(65, abtests, fourInapps)
         )
 
         val inapps2withExtra = fourInapps + "!"
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "!"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "!"
+            ),
             calculateInApps(10, abtests, inapps2withExtra)
         )
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "655f5ffa-de86-4224-a0bf-229fe208ed0d", "!"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "655f5ffa-de86-4224-a0bf-229fe208ed0d",
+                "!"
+            ),
             calculateInApps(64, abtests, inapps2withExtra)
         )
         assertEquals(
-            setOf("6f93e2ef-0615-4e63-9c80-24bcb9e83b83", "d1b312bd-aa5c-414c-a0d8-8126376a2a9b", "b33ca779-3c99-481f-ad46-91282b0caf04", "!"),
+            setOf(
+                "6f93e2ef-0615-4e63-9c80-24bcb9e83b83",
+                "d1b312bd-aa5c-414c-a0d8-8126376a2a9b",
+                "b33ca779-3c99-481f-ad46-91282b0caf04",
+                "!"
+            ),
             calculateInApps(65, abtests, inapps2withExtra)
         )
     }
@@ -240,7 +270,11 @@ internal class InAppABTestLogicTest {
 
         val inapps1withExtra = threeInapps + "??"
         assertEquals(
-            setOf("655f5ffa-de86-4224-a0bf-229fe208ed0d", "b33ca779-3c99-481f-ad46-91282b0caf04", "??"),
+            setOf(
+                "655f5ffa-de86-4224-a0bf-229fe208ed0d",
+                "b33ca779-3c99-481f-ad46-91282b0caf04",
+                "??"
+            ),
             calculateInApps(98, abtests, inapps1withExtra)
         )
         assertEquals(
@@ -377,7 +411,10 @@ internal class InAppABTestLogicTest {
                         lower = 75,
                         upper = 100,
                         kind = ABTest.Variant.VariantKind.CONCRETE,
-                        inapps = listOf("655f5ffa-de86-4224-a0bf-229fe208ed0d", "6f93e2ef-0615-4e63-9c80-24bcb9e83b83")
+                        inapps = listOf(
+                            "655f5ffa-de86-4224-a0bf-229fe208ed0d",
+                            "6f93e2ef-0615-4e63-9c80-24bcb9e83b83"
+                        )
                     )
                 )
             )
