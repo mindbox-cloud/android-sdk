@@ -30,7 +30,9 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
                 elementDto?.default()
             }
         }
-        return true
+        return item.content?.elements?.filter { elementDto ->
+            elementDto?.validateValues() == true
+        }.isNullOrEmpty()
     }
 
     internal class ElementValidator : Validator<ElementDto?> {
@@ -45,8 +47,8 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
                             && item.color != null && runCatching { Color.parseColor(item.color) }.getOrNull() != null
                             && item.lineWidth != null && item.lineWidth.toString()
                         .toDoubleOrNull() != null
-                            && isValidPosition(item.position)
-                            && isValidSize(item.size)
+                            && marginNames.contains(item.position?.margin?.kind)
+                            && sizeNames.contains(item.size?.kind)
                 }
 
                 else -> {
@@ -54,18 +56,6 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
                 }
             }
         }
-
-        private fun isValidSize(item: ElementDto.CloseButtonElementDto.SizeDto?): Boolean {
-            if (item?.kind == null) return false
-            return sizeNames.contains(item.kind) && item.width != null && item.height != null
-        }
-
-        private fun isValidPosition(item: ElementDto.CloseButtonElementDto.PositionDto?): Boolean {
-            if (item?.margin?.kind == null) return false
-            return marginNames.contains(item.margin.kind)
-        }
-
-
     }
 
     internal class SourceValidator : Validator<ImageLayerDto.SourceDto?> {

@@ -74,6 +74,11 @@ internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null):
     } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
 }
 
+internal fun Double?.isInRange(start: Double, end: Double): Boolean {
+    if (this == null) return false
+    return (this > start) && (this < end)
+}
+
 internal fun Context.isMainProcess(processName: String?): Boolean {
     val mainProcessName = getString(R.string.mindbox_android_process).ifBlank { packageName }
     return processName?.equalsAny(
