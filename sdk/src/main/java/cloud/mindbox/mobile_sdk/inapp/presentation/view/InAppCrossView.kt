@@ -52,7 +52,7 @@ internal class InAppCrossView : View, InAppView {
         )
         paint = Paint().apply {
             strokeCap = Paint.Cap.ROUND
-            strokeWidth = closeButtonElement.lineWidth.toInt().px.toFloat()
+            strokeWidth = closeButtonElement.lineWidth.px.toFloat()
         }
     }
     override fun updateView(currentDialog: InAppConstraintLayout) {
