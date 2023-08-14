@@ -14,6 +14,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -107,7 +108,11 @@ internal fun View.setSingleClickListener(listener: View.OnClickListener) {
     }
 }
 
+val Double.px: Double
+    get() = (this * Resources.getSystem().displayMetrics.density)
+
 val Int.dp: Int
     get() = (this / Resources.getSystem().displayMetrics.density).toInt()
 val Int.px: Int
-    get() = (this * Resources.getSystem().displayMetrics.density).toInt()
+    get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
+
