@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
+import cloud.mindbox.mobile_sdk.isInRange
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -76,6 +77,8 @@ internal sealed class PayloadDto {
 
                 internal abstract fun default(): ElementDto
 
+                internal abstract fun validateValues(): Boolean
+
                 internal data class CloseButtonElementDto(
                     @SerializedName("color")
                     val color: String?,
@@ -99,6 +102,23 @@ internal sealed class PayloadDto {
                             type = "closeButton"
 
                         )
+                    }
+
+                    override fun validateValues(): Boolean {
+                        return isValidSize(size) && isValidPosition(position)
+                    }
+
+                    private fun isValidSize(item: SizeDto?): Boolean {
+                        return item?.kind != null && item.height != null && item.width != null && item.height.isInRange(0.0, Double.MAX_VALUE)
+                            .not() && item.width.isInRange(0.0, Double.MAX_VALUE)
+                    }
+
+                    private fun isValidPosition(item: PositionDto?): Boolean {
+                        return item?.margin?.kind != null
+                                && item.margin.bottom != null && item.margin.bottom.isInRange(0.0, 1.0)
+                                && item.margin.top != null && item.margin.top.isInRange(0.0, 1.0)
+                                && item.margin.left != null && item.margin.left.isInRange(0.0, 1.0)
+                                && item.margin.right != null && item.margin.right.isInRange(0.0, 1.0)
                     }
 
                     internal companion object {
