@@ -96,7 +96,7 @@ internal sealed class PayloadDto {
                     override fun default(): ElementDto {
                         return CloseButtonElementDto(
                             color = "#000000",
-                            lineWidth = 4.0,
+                            lineWidth = 1.0,
                             position = PositionDto.default(),
                             size = SizeDto.default(),
                             type = "closeButton"
