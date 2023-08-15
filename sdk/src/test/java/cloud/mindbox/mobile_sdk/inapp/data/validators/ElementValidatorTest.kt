@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

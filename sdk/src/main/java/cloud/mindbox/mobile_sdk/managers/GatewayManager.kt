@@ -417,7 +417,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     Request.Method.GET,
                     getConfigUrl(configuration),
                     { response ->
-                       continuation.resume(response)
+                        continuation.resume(response)
                     },
                     { error ->
                         continuation.resumeWithException(error)
