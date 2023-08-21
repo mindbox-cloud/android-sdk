@@ -13,8 +13,9 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(
-        context, attrs, defStyleAttr) {
-    }
+        context, attrs, defStyleAttr
+    )
+
 
     @RequiresApi(21)
     constructor(
@@ -23,7 +24,8 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         defStyleAttr: Int,
         defStyleRes: Int,
     ) : super(
-        context, attrs, defStyleAttr, defStyleRes)
+        context, attrs, defStyleAttr, defStyleRes
+    )
 
     override fun setDismissListener(listener: OnClickListener) {
         backButtonHandler = BackButtonHandler(this, listener)

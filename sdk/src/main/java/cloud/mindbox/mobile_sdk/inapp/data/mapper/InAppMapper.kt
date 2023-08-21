@@ -2,11 +2,12 @@ package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Element
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Layer
+import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto.ModalWindowDto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -14,9 +15,8 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.*
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import kotlin.math.roundToInt
 
 internal class InAppMapper {
     fun mapToProductSegmentationResponse(productSegmentationResponseDto: ProductSegmentationResponseDto): ProductSegmentationResponseWrapper {
@@ -71,13 +71,13 @@ internal class InAppMapper {
         )
     }
 
-    private fun mapModalWindowLayers(layers: List<ContentDto.BackgroundDto.LayerDto?>?): List<Layer> {
+    private fun mapModalWindowLayers(layers: List<BackgroundDto.LayerDto?>?): List<Layer> {
         return layers?.map { layerDto ->
             when (layerDto) {
-                is ContentDto.BackgroundDto.LayerDto.ImageLayerDto -> {
+                is BackgroundDto.LayerDto.ImageLayerDto -> {
                     Layer.ImageLayer(
                         action = when (layerDto.action) {
-                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
+                            is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
                                 Layer.ImageLayer.Action.RedirectUrlAction(
                                     url = layerDto.action.value!!,
                                     payload = layerDto.action.intentPayload!!
@@ -89,7 +89,7 @@ internal class InAppMapper {
                             }
                         },
                         source = when (layerDto.source) {
-                            is ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
+                            is BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
                                 Layer.ImageLayer.Source.UrlSource(
                                     url = layerDto.source.value!!
                                 )
@@ -101,6 +101,7 @@ internal class InAppMapper {
                         }
                     )
                 }
+
                 else -> {
                     error("Unknown layer cannot be mapped. Should never happen because of validators")
                 }
@@ -108,10 +109,10 @@ internal class InAppMapper {
         }!!
     }
 
-    private fun mapModalWindowElements(elements: List<ContentDto.ElementDto?>?): List<Element> {
+    private fun mapElements(elements: List<ElementDto?>?): List<Element> {
         return elements?.map { elementDto ->
             when (elementDto) {
-                is ContentDto.ElementDto.CloseButtonElementDto -> {
+                is ElementDto.CloseButtonElementDto -> {
                     Element.CloseButton(
                         color = elementDto.color!!,
                         lineWidth = elementDto.lineWidth.toString()
@@ -140,7 +141,7 @@ internal class InAppMapper {
                                 }
 
                                 else -> {
-                                    error("Unknown size cannot be mapped. Should never happen because of validators")
+                                    error("Unknown margin cannot be mapped. Should never happen because of validators")
                                 }
                             }
                         )
@@ -171,9 +172,42 @@ internal class InAppMapper {
                                             type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
                                             layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             inAppId = inAppDto.id,
-                                            elements = mapModalWindowElements(payloadDto.content?.elements)
+                                            elements = mapElements(payloadDto.content?.elements)
                                         )
                                     }
+
+                                    is PayloadDto.SnackbarDto -> {
+                                        InAppType.Snackbar(
+                                            inAppId = inAppDto.id,
+                                            type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME,
+                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
+                                            elements = mapElements(payloadDto.content?.elements),
+                                            position = InAppType.Snackbar.Position(
+                                                gravity = InAppType.Snackbar.Position.Gravity(
+                                                    horizontal = InAppType.Snackbar.Position.Gravity.HorizontalGravity.CENTER,
+                                                    vertical = if (payloadDto.content?.position?.gravity?.vertical!! == "top") InAppType.Snackbar.Position.Gravity.VerticalGravity.TOP else InAppType.Snackbar.Position.Gravity.VerticalGravity.BOTTOM
+                                                ),
+                                                margin = InAppType.Snackbar.Position.Margin(
+                                                    kind = when (payloadDto.content.position.margin.kind) {
+                                                        "dp" -> {
+                                                            InAppType.Snackbar.Position.Margin.MarginKind.DP
+                                                        }
+
+                                                        else -> {
+                                                            error("Unknown margin cannot be mapped. Should never happen because of validators")
+                                                        }
+                                                    },
+                                                    top = payloadDto.content.position.margin.top!!.roundToInt(),
+                                                    left = payloadDto.content.position.margin.left!!.roundToInt(),
+                                                    right = payloadDto.content.position.margin.right!!.roundToInt(),
+                                                    bottom = payloadDto.content.position.margin.bottom!!.roundToInt()
+                                            ),
+
+
+                                            )
+                                        )
+                                    }
+
                                     null -> {
                                         return InAppConfig(
                                             listOf(),
@@ -182,6 +216,8 @@ internal class InAppMapper {
                                             listOf()
                                         ) // should never trigger because of validator
                                     }
+
+
                                 }
                             } ?: emptyList()
                         ),
@@ -238,6 +274,7 @@ internal class InAppMapper {
                         treeTargetingDto.systemName!!.lowercase()
                     )
                 }
+
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,
