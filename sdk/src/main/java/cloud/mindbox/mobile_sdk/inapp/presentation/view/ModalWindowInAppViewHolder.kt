@@ -1,10 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.graphics.drawable.Drawable
-import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.isVisible
-import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -23,42 +21,36 @@ internal class ModalWindowInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
     private val inAppCallback: InAppCallback,
 ) :
-    AbstractInAppViewHolder<InAppType.ModalWindow, InAppConstraintLayout>() {
-
-
-    private var isInAppMessageActive = false
+    AbstractInAppViewHolder<InAppType.ModalWindow>() {
 
     override val isActive: Boolean
         get() = isInAppMessageActive
 
 
-    private fun bind(currentRoot: ViewGroup) {
+    override fun bind() {
         currentDialog.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed by dialog click")
-            isInAppMessageActive = false
             hide()
         }
         wrapper.inAppType.elements.forEach { element ->
             when (element) {
                 is Element.CloseButton -> {
-                    val inAppCrossView = InAppCrossView(currentRoot.context, element).apply {
+                    val inAppCrossView = InAppCrossView(currentDialog.context, element).apply {
                         setOnClickListener {
                             mindboxLogI("In-app dismissed by close click")
                             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                             hide()
-                            isInAppMessageActive = false
                         }
                     }
                     currentDialog.addView(inAppCrossView)
-                    inAppCrossView.updateView(currentDialog)
+                    inAppCrossView.updateView(wrapper.inAppType, currentDialog)
                 }
             }
         }
         currentBackground.setOnClickListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed by background click")
-            isInAppMessageActive = false
             hide()
         }
         currentBackground.isVisible = true
@@ -68,9 +60,9 @@ internal class ModalWindowInAppViewHolder(
 
     override fun initView(currentRoot: ViewGroup) {
         super.initView(currentRoot)
-        initDialog(currentRoot, InAppType.ModalWindow::class.java)
         currentRoot.addView(currentBackground)
         currentRoot.addView(currentDialog)
+        currentDialog.updateView(wrapper.inAppType)
     }
 
     override fun show(currentRoot: ViewGroup) {
@@ -83,12 +75,11 @@ internal class ModalWindowInAppViewHolder(
             }
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
-        isInAppMessageActive = true
         currentDialog.requestFocus()
     }
 
     private fun addUrlSource(currentRoot: ViewGroup, layer: Layer.ImageLayer) {
-        with(InAppImageView(currentRoot.context).apply {
+        InAppImageView(currentRoot.context).apply {
             currentDialog.setSingleClickListener {
                 var redirectUrl = ""
                 var payload = ""
@@ -107,54 +98,49 @@ internal class ModalWindowInAppViewHolder(
                 if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
                     inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                     mindboxLogI("In-app dismissed by click")
-                    isInAppMessageActive = false
                     hide()
                 }
             }
             when (layer.source) {
                 is Layer.ImageLayer.Source.UrlSource -> {
-                    with(this) {
-                        mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
-                        Glide
-                            .with(currentRoot.context.applicationContext)
-                            .load(layer.source.url)
-                            .onlyRetrieveFromCache(true)
-                            .listener(object : RequestListener<Drawable> {
-                                override fun onLoadFailed(
-                                    e: GlideException?,
-                                    model: Any?,
-                                    target: Target<Drawable>?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    this@ModalWindowInAppViewHolder.mindboxLogE(
-                                        message = "Failed to load inapp image",
-                                        exception = e
-                                            ?: RuntimeException("Failed to load inapp image")
-                                    )
-                                    hide()
-                                    isInAppMessageActive = false
-                                    return false
-                                }
+                    mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+                    Glide
+                        .with(currentRoot.context.applicationContext)
+                        .load(layer.source.url)
+                        .onlyRetrieveFromCache(true)
+                        .listener(object : RequestListener<Drawable> {
+                            override fun onLoadFailed(
+                                e: GlideException?,
+                                model: Any?,
+                                target: Target<Drawable>?,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                this@ModalWindowInAppViewHolder.mindboxLogE(
+                                    message = "Failed to load inapp image",
+                                    exception = e
+                                        ?: RuntimeException("Failed to load inapp image")
+                                )
+                                hide()
+                                return false
+                            }
 
-                                override fun onResourceReady(
-                                    resource: Drawable?,
-                                    model: Any?,
-                                    target: Target<Drawable>?,
-                                    dataSource: DataSource?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    bind(currentRoot)
-                                    return false
-                                }
-                            })
-                            .centerCrop()
-                            .into(this)
-                    }
+                            override fun onResourceReady(
+                                resource: Drawable?,
+                                model: Any?,
+                                target: Target<Drawable>?,
+                                dataSource: DataSource?,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                bind()
+                                return false
+                            }
+                        })
+                        .centerCrop()
+                        .into(this)
                 }
             }
-        }) {
             currentDialog.addView(this)
-            updateView(currentDialog)
+            updateView(wrapper.inAppType, currentDialog)
         }
     }
 

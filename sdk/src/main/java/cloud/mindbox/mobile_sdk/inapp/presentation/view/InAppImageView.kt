@@ -1,25 +1,21 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
-import android.view.ViewGroup
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.view.ViewGroup.MarginLayoutParams
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.updateLayoutParams
 import cloud.mindbox.mobile_sdk.dp
-import cloud.mindbox.mobile_sdk.px
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 
 
 internal class InAppImageView(context: Context) : ImageView(context), InAppView {
 
-
     companion object {
         private const val MODAL_WINDOW_ASPECT_RATIO = "H,3:4"
+        private const val SNACKBAR_ASPECT_RATIO = "H,3:1"
     }
 
-    override fun updateView(currentDialog: InAppConstraintLayout) {
+    override fun updateView(inApp: InAppType, currentDialog: InAppConstraintLayout) {
         updateLayoutParams {
             width = 0.dp
             height = 0.dp
@@ -29,7 +25,15 @@ internal class InAppImageView(context: Context) : ImageView(context), InAppView 
         id = imageViewId
         val constraintSet = ConstraintSet()
         constraintSet.clone(currentDialog)
-        constraintSet.setDimensionRatio(imageViewId, MODAL_WINDOW_ASPECT_RATIO)
+        when (inApp) {
+            is InAppType.ModalWindow -> {
+                constraintSet.setDimensionRatio(imageViewId, MODAL_WINDOW_ASPECT_RATIO)
+
+            }
+            is InAppType.Snackbar -> {
+                constraintSet.setDimensionRatio(imageViewId, SNACKBAR_ASPECT_RATIO)
+            }
+        }
         constraintSet.connect(
             imageViewId,
             ConstraintSet.TOP,
@@ -60,19 +64,4 @@ internal class InAppImageView(context: Context) : ImageView(context), InAppView 
         )
         constraintSet.applyTo(currentDialog)
     }
-
-    override fun updateView(currentDialog: InAppFrameLayout) {
-        val imageViewId = generateViewId()
-        scaleType = ScaleType.CENTER_INSIDE
-        id = imageViewId
-        adjustViewBounds = true
-        updateLayoutParams<MarginLayoutParams> {
-            setMargins(0, 0, 0, 0)
-            width = MATCH_PARENT
-            height = WRAP_CONTENT
-            maxHeight = resources.displayMetrics.heightPixels / 3
-        }
-
-    }
-
 }
