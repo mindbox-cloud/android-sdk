@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.graphics.drawable.Drawable
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
@@ -7,7 +8,13 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 
 internal class ModalWindowInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
@@ -39,7 +46,7 @@ internal class ModalWindowInAppViewHolder(
                         }
                     }
                     currentDialog.addView(inAppCrossView)
-                    inAppCrossView.setInAppParams(wrapper.inAppType, currentDialog)
+                    inAppCrossView.prepareViewForModalWindow(currentDialog)
                 }
             }
         }
@@ -48,10 +55,23 @@ internal class ModalWindowInAppViewHolder(
             mindboxLogI("In-app dismissed by background click")
             hide()
         }
-        currentDialog.isVisible = true
         currentBackground.isVisible = true
         mindboxLogI("In-app shown")
         wrapper.onInAppShown.onShown()
+    }
+
+    override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
+        super.addUrlSource(layer, inAppCallback)
+        when (layer.source) {
+            is Layer.ImageLayer.Source.UrlSource -> {
+                InAppImageView(currentDialog.context).also { inAppImageView ->
+                    mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+                    currentDialog.addView(inAppImageView)
+                    inAppImageView.prepareViewForModalWindow(currentDialog)
+                    getImageFromCache(layer.source.url, inAppImageView)
+                }
+            }
+        }
     }
 
     override fun show(currentRoot: ViewGroup) {

@@ -7,6 +7,7 @@ import android.content.res.Resources
 import android.os.Build
 import android.os.Process
 import android.view.View
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import org.threeten.bp.Instant
@@ -106,6 +107,10 @@ internal fun View.setSingleClickListener(listener: View.OnClickListener) {
         setOnClickListener(null)
         listener.onClick(it)
     }
+}
+internal typealias SnackbarPosition = InAppType.Snackbar.Position.Gravity.VerticalGravity
+internal fun InAppType.Snackbar.isTop(): Boolean {
+    return position.gravity.vertical == SnackbarPosition.TOP
 }
 
 val Double.px: Double

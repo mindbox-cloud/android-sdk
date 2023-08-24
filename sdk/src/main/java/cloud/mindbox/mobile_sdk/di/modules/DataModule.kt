@@ -1,9 +1,5 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
@@ -14,6 +10,14 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.*
+import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
@@ -30,7 +34,16 @@ internal fun DataModule(
     AppContextModule by appContextModule,
     ApiModule by apiModule {
 
+
+    override val inAppImageLoader: InAppImageLoader
+        get() = InAppGlideImageLoaderImpl(appContext,
+            inAppImageSizeStorage)
+
+    override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
+
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
+
+    override val inAppContentFetcher: InAppContentFetcher by lazy { InAppContentFetcherImpl(inAppImageLoader) }
 
     override val mobileConfigRepository: MobileConfigRepository by lazy {
         MobileConfigRepositoryImpl(

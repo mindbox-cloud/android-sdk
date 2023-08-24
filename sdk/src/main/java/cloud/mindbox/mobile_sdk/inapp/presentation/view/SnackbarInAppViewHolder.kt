@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.view.ViewGroup
+import cloud.mindbox.mobile_sdk.SnackbarPosition
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -11,7 +13,8 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class SnackbarInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.Snackbar>,
-    private val inAppCallback: InAppCallback
+    private val inAppCallback: InAppCallback,
+    private val inAppImageSizeStorage: InAppImageSizeStorage
 ) :
     AbstractInAppViewHolder<InAppType.Snackbar>() {
 
@@ -38,6 +41,26 @@ internal class SnackbarInAppViewHolder(
         }
     }
 
+    override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
+        super.addUrlSource(layer, inAppCallback)
+        when (layer.source) {
+            is Layer.ImageLayer.Source.UrlSource -> {
+                InAppImageView(currentDialog.context).also { inAppImageView ->
+                    mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+                    getImageFromCache(layer.source.url, inAppImageView)
+                    currentDialog.addView(inAppImageView)
+                    inAppImageView.prepareViewForSnackBar(
+                        inAppImageSizeStorage.getSizeByIdAndUrl(
+                            wrapper.inAppType.inAppId,
+                            layer.source.url
+                        )
+                    )
+                }
+            }
+        }
+
+    }
+
     override fun bind() {
         wrapper.inAppType.elements.forEach { element ->
             when (element) {
@@ -50,7 +73,7 @@ internal class SnackbarInAppViewHolder(
                         }
                     }
                     currentDialog.addView(inAppCrossView)
-                    inAppCrossView.setInAppParams(wrapper.inAppType, currentDialog)
+                    inAppCrossView.prepareViewForSnackbar(currentDialog)
                 }
             }
         }

@@ -16,7 +16,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.roundToInt
 
-internal class InAppCrossView : View, InAppView {
+internal class InAppCrossView : View {
 
     private val closeButtonElement: Element.CloseButton
 
@@ -64,7 +64,7 @@ internal class InAppCrossView : View, InAppView {
         canvas.drawLine(width.toFloat(), 0f, 0f, height.toFloat(), paint)
     }
 
-    override fun setInAppParams(inApp: InAppType, currentDialog: InAppConstraintLayout) {
+    private fun setUpCrossParams(currentDialog: InAppConstraintLayout) {
         val crossWidth = when (closeButtonElement.size.kind) {
             DP -> {
                 closeButtonElement.size.width.toInt().px
@@ -102,5 +102,13 @@ internal class InAppCrossView : View, InAppView {
         constraintSet.applyTo(currentDialog)
         mindboxLogD("InApp cross is shown with params:color = ${closeButtonElement.color}, lineWidth = ${closeButtonElement.lineWidth}, width = ${closeButtonElement.size.width}, height = ${closeButtonElement.size.height} with kind ${closeButtonElement.size.kind.name}. Margins: top = ${closeButtonElement.position.top}, bottom = ${closeButtonElement.position.bottom}, left = ${closeButtonElement.position.left}, right = ${closeButtonElement.position.right} and kind ${closeButtonElement.position.kind.name}")
         if (paint.strokeWidth == 0f || crossWidth == 0 || crossHeight == 0) isVisible = false
+    }
+
+    fun prepareViewForModalWindow(currentDialog: InAppConstraintLayout) {
+        setUpCrossParams(currentDialog)
+    }
+
+    fun prepareViewForSnackbar(currentDialog: InAppConstraintLayout) {
+        setUpCrossParams(currentDialog)
     }
 }

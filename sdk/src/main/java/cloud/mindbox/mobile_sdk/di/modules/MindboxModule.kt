@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.UrlValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.XmlValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
@@ -72,6 +73,8 @@ internal interface PresentationModule : MindboxModule {
 }
 
 internal interface DataModule : MindboxModule {
+    val inAppContentFetcher: InAppContentFetcher
+    val inAppImageSizeStorage: InAppImageSizeStorage
     val sessionStorageManager: SessionStorageManager
     val mobileConfigRepository: MobileConfigRepository
     val mobileConfigSerializationManager: MobileConfigSerializationManager
@@ -92,6 +95,7 @@ internal interface DataModule : MindboxModule {
     val jsonValidator: JsonValidator
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
+    val inAppImageLoader: InAppImageLoader
 }
 
 internal interface MonitoringModule : MindboxModule {
@@ -119,6 +123,4 @@ internal interface ApiModule : MindboxModule {
     val gatewayManager: GatewayManager
     val mindboxServiceGenerator: MindboxServiceGenerator
     val requestQueue: RequestQueue
-    val inAppContentFetcher: InAppContentFetcher
-    val inAppImageLoader: InAppImageLoader
 }

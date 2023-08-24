@@ -8,16 +8,13 @@ import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
+import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.isTop
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.abs
-
-
-internal typealias SnackbarPosition = InAppType.Snackbar.Position.Gravity.VerticalGravity
 
 
 internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
@@ -38,47 +35,48 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     companion object {
         private const val ANIM_DURATION = 500L
+        private const val MODAL_WINDOW_MARGIN = 40
     }
-
-    init {
-        visibility = View.INVISIBLE
-    }
-
 
     @SuppressLint("ClickableViewAccessibility")
     private fun prepareLayoutForSnackbar(snackBarInAppType: InAppType.Snackbar) {
-        maxHeight = resources.displayMetrics.heightPixels / 3
-        ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            when (snackBarInAppType.position.gravity.vertical) {
-                SnackbarPosition.TOP -> {
-                    updateLayoutParams<FrameLayout.LayoutParams> {
-                        gravity = Gravity.TOP
-                        setMargins(
-                            snackBarInAppType.position.margin.left,
-                            snackBarInAppType.position.margin.top + insets.top,
-                            snackBarInAppType.position.margin.right,
-                            0
-                        )
-                    }
-                }
-
-                SnackbarPosition.BOTTOM -> {
-                    updateLayoutParams<FrameLayout.LayoutParams> {
-                        gravity = Gravity.BOTTOM
-                        setMargins(
-                            snackBarInAppType.position.margin.left,
-                            0,
-                            snackBarInAppType.position.margin.right,
-                            snackBarInAppType.position.margin.bottom + insets.bottom
-                        )
-                    }
+        var statusBarHeight = 0
+        val statusBarResourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (statusBarResourceId > 0) {
+            statusBarHeight = resources.getDimensionPixelSize(statusBarResourceId)
+        }
+        var navigationBarHeight = 0
+        val navBarResourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        if (navBarResourceId > 0) {
+            navigationBarHeight = resources.getDimensionPixelSize(navBarResourceId)
+        }
+        when (snackBarInAppType.position.gravity.vertical) {
+            SnackbarPosition.TOP -> {
+                updateLayoutParams<FrameLayout.LayoutParams> {
+                    gravity = Gravity.TOP
+                    setMargins(
+                        snackBarInAppType.position.margin.left,
+                        snackBarInAppType.position.margin.top + statusBarHeight,
+                        snackBarInAppType.position.margin.right,
+                        0
+                    )
                 }
             }
-            WindowInsetsCompat.CONSUMED
+            SnackbarPosition.BOTTOM -> {
+                updateLayoutParams<FrameLayout.LayoutParams> {
+                    gravity = Gravity.BOTTOM
+                    setMargins(
+                        snackBarInAppType.position.margin.left,
+                        0,
+                        snackBarInAppType.position.margin.right,
+                        snackBarInAppType.position.margin.bottom + navigationBarHeight
+                    )
+                }
+            }
         }
         var rightDY = 0f
         var startingY = 0f
+        var lastY = if (snackBarInAppType.isTop()) Float.MAX_VALUE else 0f
         setOnTouchListener { view, event ->
             when (event?.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -87,11 +85,21 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val displacement = event.rawY + rightDY
-                    view!!.animate()
-                        .y(displacement)
-                        .setDuration(0)
-                        .start()
+                    if (snackBarInAppType.isTop() && lastY > event.rawY) {
+                        val displacement = event.rawY + rightDY
+                        view!!.animate()
+                            .y(displacement)
+                            .setDuration(0)
+                            .start()
+                    }
+                    else if (!snackBarInAppType.isTop() && lastY < event.rawY) {
+                        val displacement = event.rawY + rightDY
+                        view!!.animate()
+                            .y(displacement)
+                            .setDuration(0)
+                            .start()
+                    }
+                    lastY = event.rawY
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -139,7 +147,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     private fun prepareLayoutForModalWindow() {
         updateLayoutParams<MarginLayoutParams> {
             setMargins(
-                40.px, 40.px, 40.px, 40.px
+                MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px
             )
         }
         updateLayoutParams<FrameLayout.LayoutParams> {

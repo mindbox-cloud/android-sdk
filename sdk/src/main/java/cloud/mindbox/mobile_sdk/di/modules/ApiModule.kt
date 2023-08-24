@@ -11,9 +11,10 @@ import com.android.volley.toolbox.Volley
 
 
 internal fun ApiModule(
-    appContextModule: AppContextModule,
+    appContextModule: AppContextModule
 ): ApiModule = object : ApiModule,
-    AppContextModule by appContextModule {
+    AppContextModule by appContextModule
+{
 
     override val gatewayManager by lazy {
         GatewayManager(mindboxServiceGenerator)
@@ -26,11 +27,5 @@ internal fun ApiModule(
     override val requestQueue: RequestQueue by lazy {
         Volley.newRequestQueue(appContext)
     }
-
-    override val inAppContentFetcher: InAppContentFetcher
-        get() = InAppContentFetcherImpl(inAppImageLoader)
-
-    override val inAppImageLoader: InAppImageLoader
-        get() = InAppGlideImageLoaderImpl(appContext)
 
 }
