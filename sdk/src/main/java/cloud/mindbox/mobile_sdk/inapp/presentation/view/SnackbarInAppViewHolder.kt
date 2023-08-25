@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.px
 
 
 internal class SnackbarInAppViewHolder(
@@ -49,12 +50,20 @@ internal class SnackbarInAppViewHolder(
                     mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
                     getImageFromCache(layer.source.url, inAppImageView)
                     currentDialog.addView(inAppImageView)
-                    inAppImageView.prepareViewForSnackBar(
-                        inAppImageSizeStorage.getSizeByIdAndUrl(
-                            wrapper.inAppType.inAppId,
-                            layer.source.url
-                        )
-                    )
+                    when (wrapper.inAppType.position.margin.kind)
+                    {
+                        InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
+                            inAppImageView.prepareViewForSnackBar(
+                                inAppImageSizeStorage.getSizeByIdAndUrl(
+                                    wrapper.inAppType.inAppId,
+                                    layer.source.url
+                                ),
+                                wrapper.inAppType.position.margin.left.px,
+                                wrapper.inAppType.position.margin.right.px
+                            )
+                        }
+                    }
+
                 }
             }
         }

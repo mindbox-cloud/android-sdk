@@ -106,7 +106,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     return false
                 }
             })
-            .centerCrop()
             .into(imageView)
     }
 

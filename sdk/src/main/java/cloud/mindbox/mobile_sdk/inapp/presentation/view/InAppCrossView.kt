@@ -5,13 +5,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element.CloseButton.Position.Kind.PROPORTION
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element.CloseButton.Size.Kind.DP
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.roundToInt
@@ -75,7 +74,9 @@ internal class InAppCrossView : View {
                 closeButtonElement.size.height.toInt().px
             }
         }
-        layoutParams = ConstraintLayout.LayoutParams(crossWidth, crossHeight).apply {
+        updateLayoutParams {
+            width = crossWidth
+            height = crossHeight
             paint.color = Color.parseColor(closeButtonElement.color)
         }
         val constraintSet = ConstraintSet()

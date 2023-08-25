@@ -50,28 +50,32 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         if (navBarResourceId > 0) {
             navigationBarHeight = resources.getDimensionPixelSize(navBarResourceId)
         }
-        when (snackBarInAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> {
-                updateLayoutParams<FrameLayout.LayoutParams> {
-                    gravity = Gravity.TOP
-                    setMargins(
-                        snackBarInAppType.position.margin.left,
-                        snackBarInAppType.position.margin.top + statusBarHeight,
-                        snackBarInAppType.position.margin.right,
-                        0
-                    )
+        updateLayoutParams<FrameLayout.LayoutParams> {
+            when (snackBarInAppType.position.margin.kind) {
+                InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
+                    when (snackBarInAppType.position.gravity.vertical) {
+                        SnackbarPosition.TOP -> {
+                            gravity = Gravity.TOP
+                            setMargins(
+                                snackBarInAppType.position.margin.left.px,
+                                snackBarInAppType.position.margin.top.px + statusBarHeight,
+                                snackBarInAppType.position.margin.right.px,
+                                0
+                            )
+                        }
+                        SnackbarPosition.BOTTOM -> {
+                            gravity = Gravity.BOTTOM
+                            setMargins(
+                                snackBarInAppType.position.margin.left.px,
+                                0,
+                                snackBarInAppType.position.margin.right.px,
+                                snackBarInAppType.position.margin.bottom.px + navigationBarHeight
+                            )
+
+                        }
+                    }
                 }
-            }
-            SnackbarPosition.BOTTOM -> {
-                updateLayoutParams<FrameLayout.LayoutParams> {
-                    gravity = Gravity.BOTTOM
-                    setMargins(
-                        snackBarInAppType.position.margin.left,
-                        0,
-                        snackBarInAppType.position.margin.right,
-                        snackBarInAppType.position.margin.bottom + navigationBarHeight
-                    )
-                }
+
             }
         }
         var rightDY = 0f
@@ -91,8 +95,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                             .y(displacement)
                             .setDuration(0)
                             .start()
-                    }
-                    else if (!snackBarInAppType.isTop() && lastY < event.rawY) {
+                    } else if (!snackBarInAppType.isTop() && lastY < event.rawY) {
                         val displacement = event.rawY + rightDY
                         view!!.animate()
                             .y(displacement)
@@ -147,7 +150,10 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     private fun prepareLayoutForModalWindow() {
         updateLayoutParams<MarginLayoutParams> {
             setMargins(
-                MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px
+                MODAL_WINDOW_MARGIN.px,
+                MODAL_WINDOW_MARGIN.px,
+                MODAL_WINDOW_MARGIN.px,
+                MODAL_WINDOW_MARGIN.px
             )
         }
         updateLayoutParams<FrameLayout.LayoutParams> {

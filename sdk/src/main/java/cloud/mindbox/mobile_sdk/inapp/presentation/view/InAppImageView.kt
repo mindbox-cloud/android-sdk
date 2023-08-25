@@ -1,14 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
-import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.updateLayoutParams
-import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.dp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Size
+import kotlin.math.roundToInt
 
 
 internal class InAppImageView(context: Context) : ImageView(context) {
@@ -21,24 +20,25 @@ internal class InAppImageView(context: Context) : ImageView(context) {
         id = generateViewId()
     }
 
-    fun prepareViewForSnackBar(size: Size) {
-        adjustViewBounds = true
+    fun prepareViewForSnackBar(size: Size, marginStart: Int, marginEnd: Int) {
+        val oneThirdScreenHeight = resources.displayMetrics.heightPixels / 3
+        val desiredHeight =
+            (((resources.displayMetrics.widthPixels.toDouble() - marginStart.toDouble() - marginEnd.toDouble())/ (size.width.toDouble())) * size.height).roundToInt()
         layoutParams = ConstraintLayout.LayoutParams(
             ConstraintLayout.LayoutParams.MATCH_PARENT,
-            (resources.displayMetrics.widthPixels / size.width) * size.height
+            if (desiredHeight > oneThirdScreenHeight) oneThirdScreenHeight else desiredHeight
         )
         scaleType = ScaleType.CENTER_CROP
-        maxHeight = resources.displayMetrics.heightPixels / 3
     }
 
     fun prepareViewForModalWindow(currentDialog: InAppConstraintLayout) {
+        updateLayoutParams {
+            width = 0.dp
+            height = 0.dp
+        }
         val constraintSet = ConstraintSet()
         constraintSet.clone(currentDialog)
         constraintSet.setDimensionRatio(id, MODAL_WINDOW_ASPECT_RATIO)
-       updateLayoutParams {
-           width = 100.dp
-           height = 100.dp
-       }
         scaleType = ScaleType.CENTER_CROP
         constraintSet.connect(
             id,
