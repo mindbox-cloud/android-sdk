@@ -145,4 +145,3 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         restoreKeyboard()
     }
 }
-
