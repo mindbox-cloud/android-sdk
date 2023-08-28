@@ -39,25 +39,17 @@ internal sealed class ElementDto {
         }
 
         private fun isValidSize(item: SizeDto?): Boolean {
-            return item?.kind != null && item.height != null && item.width != null && item.height.isInRange(
-                0.0,
-                Double.MAX_VALUE
-            )
-                .not() && item.width.isInRange(0.0, Double.MAX_VALUE)
+            return item?.kind != null
+                    && item.height.isInRange(0.0, Double.MAX_VALUE).not()
+                    && item.width.isInRange(0.0, Double.MAX_VALUE)
         }
 
         private fun isValidPosition(item: PositionDto?): Boolean {
             return item?.margin?.kind != null
-                    && item.margin.bottom != null && item.margin.bottom.isInRange(
-                0.0,
-                1.0
-            )
-                    && item.margin.top != null && item.margin.top.isInRange(0.0, 1.0)
-                    && item.margin.left != null && item.margin.left.isInRange(0.0, 1.0)
-                    && item.margin.right != null && item.margin.right.isInRange(
-                0.0,
-                1.0
-            )
+                    && item.margin.bottom.isInRange(0.0, 1.0)
+                    && item.margin.top.isInRange(0.0, 1.0)
+                    && item.margin.left.isInRange(0.0, 1.0)
+                    && item.margin.right.isInRange(0.0, 1.0)
         }
 
         internal companion object {

@@ -1,23 +1,19 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
-import cloud.mindbox.mobile_sdk.inapp.data.managers.*
-import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
@@ -36,14 +32,20 @@ internal fun DataModule(
 
 
     override val inAppImageLoader: InAppImageLoader
-        get() = InAppGlideImageLoaderImpl(appContext,
-            inAppImageSizeStorage)
+        get() = InAppGlideImageLoaderImpl(
+            appContext,
+            inAppImageSizeStorage
+        )
 
     override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
 
-    override val inAppContentFetcher: InAppContentFetcher by lazy { InAppContentFetcherImpl(inAppImageLoader) }
+    override val inAppContentFetcher: InAppContentFetcher by lazy {
+        InAppContentFetcherImpl(
+            inAppImageLoader
+        )
+    }
 
     override val mobileConfigRepository: MobileConfigRepository by lazy {
         MobileConfigRepositoryImpl(
@@ -130,7 +132,7 @@ internal fun DataModule(
                 Constants.TYPE_JSON_NAME, true
             ).registerSubtype(
                 ElementDto.CloseButtonElementDto::class.java,
-               ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
+                ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
             )
         ).registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
@@ -138,9 +140,9 @@ internal fun DataModule(
                 Constants.TYPE_JSON_NAME,
                 true
             ).registerSubtype(
-                    BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
-                    BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
-                )
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
+            )
         )
             .registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(

@@ -87,13 +87,8 @@ internal class SnackbarInAppViewHolder(
             }
         }
         when (wrapper.inAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> {
-                currentDialog.slideDown()
-            }
-
-            SnackbarPosition.BOTTOM -> {
-                currentDialog.slideUp()
-            }
+            SnackbarPosition.TOP -> currentDialog.slideDown()
+            SnackbarPosition.BOTTOM -> currentDialog.slideUp()
         }
 
         mindboxLogI("In-app shown")
@@ -102,9 +97,16 @@ internal class SnackbarInAppViewHolder(
 
     override fun hide() {
         super.hide()
-        (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentDialog)
-            removeView(currentBackground)
+        val removeAction: () -> Unit = {
+            (currentDialog.parent as? ViewGroup?)?.apply {
+                removeView(currentDialog)
+                removeView(currentBackground)
+            }
+        }
+
+        when (wrapper.inAppType.position.gravity.vertical) {
+            SnackbarPosition.TOP -> currentDialog.slideDown(true, removeAction)
+            SnackbarPosition.BOTTOM -> currentDialog.slideUp(true, removeAction)
         }
     }
 }

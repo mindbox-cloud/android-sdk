@@ -7,6 +7,8 @@ import android.content.res.Resources
 import android.os.Build
 import android.os.Process
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.Animation.AnimationListener
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -113,11 +115,25 @@ internal fun InAppType.Snackbar.isTop(): Boolean {
     return position.gravity.vertical == SnackbarPosition.TOP
 }
 
-val Double.px: Double
+internal val Double.px: Double
     get() = (this * Resources.getSystem().displayMetrics.density)
 
-val Int.dp: Int
+internal val Int.dp: Int
     get() = (this / Resources.getSystem().displayMetrics.density).toInt()
-val Int.px: Int
+internal val Int.px: Int
     get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 
+internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
+    setAnimationListener(object : AnimationListener {
+        override fun onAnimationStart(animation: Animation?) {
+        }
+
+        override fun onAnimationEnd(animation: Animation?) {
+            runnable.run()
+        }
+
+        override fun onAnimationRepeat(animation: Animation?) {
+        }
+
+    })
+}

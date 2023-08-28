@@ -8,12 +8,16 @@ import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.doOnLayout
+import androidx.core.view.marginBottom
+import androidx.core.view.marginTop
 import androidx.core.view.updateLayoutParams
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.isTop
 import cloud.mindbox.mobile_sdk.px
+import cloud.mindbox.mobile_sdk.setOnAnimationEnd
 import kotlin.math.abs
 
 
@@ -38,7 +42,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         private const val MODAL_WINDOW_MARGIN = 40
     }
 
-    @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility", "InternalInsetResource", "DiscouragedApi")
     private fun prepareLayoutForSnackbar(snackBarInAppType: InAppType.Snackbar) {
         var statusBarHeight = 0
         val statusBarResourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
@@ -78,38 +82,40 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
             }
         }
+
         var rightDY = 0f
         var startingY = 0f
-        var lastY = if (snackBarInAppType.isTop()) Float.MAX_VALUE else 0f
+        doOnLayout {  startingY = this.y }
         setOnTouchListener { view, event ->
             when (event?.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     rightDY = view.y - event.rawY
-                    startingY = view.y
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    if (snackBarInAppType.isTop() && lastY > event.rawY) {
-                        val displacement = event.rawY + rightDY
+                    if (snackBarInAppType.isTop()) {
+                        val displacement = minOf(event.rawY + rightDY, this.y)
                         view!!.animate()
                             .y(displacement)
                             .setDuration(0)
                             .start()
-                    } else if (!snackBarInAppType.isTop() && lastY < event.rawY) {
-                        val displacement = event.rawY + rightDY
+                    } else if (!snackBarInAppType.isTop()) {
+                        val displacement = maxOf(event.rawY + rightDY, this.y)
                         view!!.animate()
                             .y(displacement)
                             .setDuration(0)
                             .start()
                     }
-                    lastY = event.rawY
                 }
 
                 MotionEvent.ACTION_UP -> {
                     if (abs(view.translationY) > (height / 2)) {
                         swipeToDismissCallback?.invoke()
                     } else {
-                        view.y = startingY
+                        view!!.animate()
+                            .y(startingY)
+                            .setDuration(100)
+                            .start()
                     }
                 }
 
@@ -121,29 +127,31 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
-    fun slideUp() {
+    fun slideUp(isReverse: Boolean = false, onAnimationEnd: () -> Unit = {}) {
         val animate = TranslateAnimation(
             0f,  // fromXDelta
             0f,  // toXDelta
-            height.toFloat(),  // fromYDelta
-            0f
-        ) // toYDelta
+            if (!isReverse) height.toFloat() else 0f,  // fromYDelta
+            if (!isReverse) 0f else height.toFloat() + marginBottom// toYDelta
+        )
         animate.duration = ANIM_DURATION
         animate.fillAfter = true
         animate.interpolator = LinearOutSlowInInterpolator()
+        animate.setOnAnimationEnd(onAnimationEnd)
         startAnimation(animate)
     }
 
-    fun slideDown() {
+    fun slideDown(isReverse: Boolean = false, onAnimationEnd: () -> Unit = {}) {
         val animate = TranslateAnimation(
             0f,  // fromXDelta
             0f,  // toXDelta
-            -height.toFloat(),  // fromYDelta
-            0f
-        ) // toYDelta
+            if (!isReverse) -height.toFloat() else 0f,  // fromYDelta
+            if (!isReverse) 0f else -height.toFloat() - marginTop // toYDelta
+        )
         animate.duration = ANIM_DURATION
         animate.fillAfter = true
         animate.interpolator = LinearOutSlowInInterpolator()
+        animate.setOnAnimationEnd(onAnimationEnd)
         startAnimation(animate)
     }
 
