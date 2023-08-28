@@ -1,20 +1,21 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
@@ -29,7 +30,22 @@ internal fun DataModule(
     AppContextModule by appContextModule,
     ApiModule by apiModule {
 
+
+    override val inAppImageLoader: InAppImageLoader
+        get() = InAppGlideImageLoaderImpl(
+            appContext,
+            inAppImageSizeStorage
+        )
+
+    override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
+
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
+
+    override val inAppContentFetcher: InAppContentFetcher by lazy {
+        InAppContentFetcherImpl(
+            inAppImageLoader
+        )
+    }
 
     override val mobileConfigRepository: MobileConfigRepository by lazy {
         MobileConfigRepositoryImpl(
@@ -112,40 +128,39 @@ internal fun DataModule(
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
-                PayloadDto.ModalWindowDto.ContentDto.ElementDto::class.java,
+                ElementDto::class.java,
                 Constants.TYPE_JSON_NAME, true
             ).registerSubtype(
-                PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto::class.java,
-                PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
+                ElementDto.CloseButtonElementDto::class.java,
+                ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
             )
         ).registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
-                ImageLayerDto.SourceDto::class.java,
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto::class.java,
                 Constants.TYPE_JSON_NAME,
                 true
+            ).registerSubtype(
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
             )
-                .registerSubtype(
-                    ImageLayerDto.SourceDto.UrlSourceDto::class.java,
-                    ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
-                )
         )
             .registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(
-                    ImageLayerDto.ActionDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto::class.java,
                     Constants.TYPE_JSON_NAME,
                     true
                 ).registerSubtype(
-                    ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
-                    ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(
-                    PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto::class.java,
+                    BackgroundDto.LayerDto::class.java,
                     Constants.TYPE_JSON_NAME,
                     true
                 ).registerSubtype(
-                    ImageLayerDto::class.java,
-                    ImageLayerDto.IMAGE_TYPE_JSON_NAME
+                    BackgroundDto.LayerDto.ImageLayerDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(
@@ -154,6 +169,9 @@ internal fun DataModule(
                 ).registerSubtype(
                     PayloadDto.ModalWindowDto::class.java,
                     PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+                ).registerSubtype(
+                    PayloadDto.SnackbarDto::class.java,
+                    PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(

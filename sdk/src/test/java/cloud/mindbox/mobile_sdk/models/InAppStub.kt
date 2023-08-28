@@ -1,7 +1,12 @@
 package cloud.mindbox.mobile_sdk.models
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 
 internal class InAppStub {
 
@@ -31,33 +36,33 @@ internal class InAppStub {
                 elements = listOf(getCloseButtonElementDto())
             )
 
-        fun getBackgroundDto(): PayloadDto.ModalWindowDto.ContentDto.BackgroundDto =
-            PayloadDto.ModalWindowDto.ContentDto.BackgroundDto(
+        fun getBackgroundDto(): BackgroundDto =
+            BackgroundDto(
                 layers = listOf(getImageLayerDto())
             )
 
-        fun getImageLayerDto(): PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto =
-            PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto(
+        fun getImageLayerDto(): BackgroundDto.LayerDto.ImageLayerDto =
+            BackgroundDto.LayerDto.ImageLayerDto(
                 action = getRedirectUrlActionDto(),
                 source = getUrlSourceDto(),
                 type = "image"
             )
 
-        fun getRedirectUrlActionDto(): PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto =
-            PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto(
+        fun getRedirectUrlActionDto(): BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto(
                 intentPayload = "",
                 type = "redirectUrl",
                 value = ""
             )
 
-        fun getUrlSourceDto(): PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
-            PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
+        fun getUrlSourceDto(): BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
+            BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
                 type = "url",
                 value = ""
             )
 
-        fun getCloseButtonElementDto(): PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto =
-            PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto(
+        fun getCloseButtonElementDto(): ElementDto.CloseButtonElementDto =
+            ElementDto.CloseButtonElementDto(
                 color = "null",
                 lineWidth = 0.0,
                 position = getElementPositionDto(),
@@ -65,20 +70,20 @@ internal class InAppStub {
                 type = "closeButton"
             )
 
-        fun getElementSizeDto(): PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.SizeDto =
-            PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.SizeDto(
+        fun getElementSizeDto(): ElementDto.CloseButtonElementDto.SizeDto =
+            ElementDto.CloseButtonElementDto.SizeDto(
                 height = 0.0,
                 kind = "",
                 width = 0.0
             )
 
-        fun getElementPositionDto(): PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.PositionDto =
-            PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.PositionDto(
+        fun getElementPositionDto(): ElementDto.CloseButtonElementDto.PositionDto =
+            ElementDto.CloseButtonElementDto.PositionDto(
                 margin = getElementMarginDto()
             )
 
-        fun getElementMarginDto(): PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.PositionDto.MarginDto =
-            PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.PositionDto.MarginDto(
+        fun getElementMarginDto(): ElementDto.CloseButtonElementDto.PositionDto.MarginDto =
+            ElementDto.CloseButtonElementDto.PositionDto.MarginDto(
                 bottom = null,
                 kind = null,
                 left = null,

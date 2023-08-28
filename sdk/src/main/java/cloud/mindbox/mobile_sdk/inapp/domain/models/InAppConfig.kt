@@ -31,60 +31,49 @@ internal data class Form(
 )
 
 internal sealed class InAppType(open val inAppId: String) {
+
+    internal data class Snackbar(
+        override val inAppId: String,
+        val type: String,
+        val layers: List<Layer>,
+        val elements: List<Element>,
+        val position: Position
+    ) : InAppType(inAppId) {
+        internal data class Position(val gravity: Gravity,  val margin: Margin) {
+
+            internal data class Margin(
+                val kind: MarginKind,
+                val top: Int,
+                val left: Int,
+                val right: Int,
+                val bottom: Int
+            ) {
+                internal enum class MarginKind {
+                    DP
+                }
+            }
+            internal data class Gravity(
+                val horizontal: HorizontalGravity,
+                val vertical: VerticalGravity
+            ) {
+                internal enum class HorizontalGravity {
+                    CENTER
+                }
+                internal enum class VerticalGravity{
+                    TOP,
+                    BOTTOM
+                }
+            }
+        }
+    }
+
     internal data class ModalWindow(
         override val inAppId: String,
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>
-    ) : InAppType(inAppId) {
-        internal sealed class Layer {
-            internal data class ImageLayer(
-                val action: Action,
-                val source: Source
-            ) : Layer() {
-                internal sealed class Action {
-                    internal data class RedirectUrlAction(
-                        val url: String,
-                        val payload: String
-                    ) : Action()
-                }
+    ) : InAppType(inAppId)
 
-                internal sealed class Source {
-                    internal data class UrlSource(
-                        val url: String
-                    ) : Source()
-                }
-            }
-        }
-
-        internal sealed class Element {
-            internal data class CloseButton(
-                val color: String,
-                val lineWidth: Double,
-                val size: Size,
-                val position: Position
-            ) : Element() {
-
-                internal data class Position(
-                    val top: Double,
-                    val right: Double,
-                    val left: Double,
-                    val bottom: Double,
-                    val kind: Kind
-                ) {
-                    internal enum class Kind {
-                        PROPORTION
-                    }
-                }
-
-                internal data class Size(val width: Double, val height: Double, val kind: Kind) {
-                    internal enum class Kind {
-                        DP
-                    }
-                }
-            }
-        }
-    }
 }
 
 internal data class ABTest(

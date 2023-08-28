@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -17,10 +18,27 @@ internal class InAppContentFetcherImpl(
     override suspend fun fetchContent(inAppId: String, formVariant: InAppType): Boolean {
         when (formVariant) {
             is InAppType.ModalWindow -> {
-                formVariant.layers.filterIsInstance<InAppType.ModalWindow.Layer.ImageLayer>()
+                formVariant.layers.filterIsInstance<Layer.ImageLayer>()
                     .forEach { layer ->
                         when (layer.source) {
-                            is InAppType.ModalWindow.Layer.ImageLayer.Source.UrlSource -> {
+                            is Layer.ImageLayer.Source.UrlSource -> {
+                                withContext(Dispatchers.IO) {
+                                    inAppImageStorage.add(async {
+                                        inAppImageLoader.loadImage(inAppId, layer.source.url)
+                                    })
+                                }
+                            }
+                        }
+                    }
+                if (inAppImageStorage.map { deferredResult -> deferredResult.await() }
+                        .contains(false)) return false
+            }
+
+            is InAppType.Snackbar -> {
+                formVariant.layers.filterIsInstance<Layer.ImageLayer>()
+                    .forEach { layer ->
+                        when (layer.source) {
+                            is Layer.ImageLayer.Source.UrlSource -> {
                                 withContext(Dispatchers.IO) {
                                     inAppImageStorage.add(async {
                                         inAppImageLoader.loadImage(inAppId, layer.source.url)

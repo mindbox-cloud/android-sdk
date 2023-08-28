@@ -8,41 +8,43 @@ import android.view.View
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Element.CloseButton.Position.Kind.PROPORTION
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.Element.CloseButton.Size.Kind.DP
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Element.CloseButton.Position.Kind.PROPORTION
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Element.CloseButton.Size.Kind.DP
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.roundToInt
 
-internal class InAppCrossView : View, InAppView {
+internal class InAppCrossView : View {
 
-    private val closeButtonElement: InAppType.ModalWindow.Element.CloseButton
+    private val closeButtonElement: Element.CloseButton
 
     private val paint: Paint
 
 
     constructor(
         context: Context,
-        closeButtonElement: InAppType.ModalWindow.Element.CloseButton
+        closeButtonElement: Element.CloseButton
     ) : super(context) {
         this.closeButtonElement = closeButtonElement
         paint = Paint().apply {
             strokeCap = Paint.Cap.ROUND
             strokeWidth = closeButtonElement.lineWidth.px.toFloat()
         }
+        val crossViewId = generateViewId()
+        id = crossViewId
     }
 
     constructor(context: Context) : super(context) {
-        closeButtonElement = InAppType.ModalWindow.Element.CloseButton(
+        closeButtonElement = Element.CloseButton(
             color = "#000000",
             lineWidth = 1.0,
-            size = InAppType.ModalWindow.Element.CloseButton.Size(
+            size = Element.CloseButton.Size(
                 width = 24.0,
                 height = 24.0,
                 kind = DP
             ),
-            position = InAppType.ModalWindow.Element.CloseButton.Position(
+            position = Element.CloseButton.Position(
                 top = 0.03,
                 right = 0.03,
                 left = 0.03,
@@ -55,7 +57,13 @@ internal class InAppCrossView : View, InAppView {
             strokeWidth = closeButtonElement.lineWidth.px.toFloat()
         }
     }
-    override fun updateView(currentDialog: InAppConstraintLayout) {
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawLine(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        canvas.drawLine(width.toFloat(), 0f, 0f, height.toFloat(), paint)
+    }
+
+    private fun setUpCrossParams(currentDialog: InAppConstraintLayout) {
         val crossWidth = when (closeButtonElement.size.kind) {
             DP -> {
                 closeButtonElement.size.width.toInt().px
@@ -71,8 +79,6 @@ internal class InAppCrossView : View, InAppView {
             height = crossHeight
             paint.color = Color.parseColor(closeButtonElement.color)
         }
-        val crossViewId = generateViewId()
-        id = crossViewId
         val constraintSet = ConstraintSet()
         val marginTop =
             ((currentDialog.height - crossHeight) * closeButtonElement.position.top).roundToInt()
@@ -81,14 +87,14 @@ internal class InAppCrossView : View, InAppView {
 
         constraintSet.clone(currentDialog)
         constraintSet.connect(
-            crossViewId,
+            id,
             ConstraintSet.TOP,
             currentDialog.id,
             ConstraintSet.TOP,
             marginTop
         )
         constraintSet.connect(
-            crossViewId,
+            id,
             ConstraintSet.END,
             currentDialog.id,
             ConstraintSet.END,
@@ -99,8 +105,11 @@ internal class InAppCrossView : View, InAppView {
         if (paint.strokeWidth == 0f || crossWidth == 0 || crossHeight == 0) isVisible = false
     }
 
-    override fun onDraw(canvas: Canvas) {
-        canvas.drawLine(0f, 0f, width.toFloat(), height.toFloat(), paint)
-        canvas.drawLine(width.toFloat(), 0f, 0f, height.toFloat(), paint)
+    fun prepareViewForModalWindow(currentDialog: InAppConstraintLayout) {
+        setUpCrossParams(currentDialog)
+    }
+
+    fun prepareViewForSnackbar(currentDialog: InAppConstraintLayout) {
+        setUpCrossParams(currentDialog)
     }
 }

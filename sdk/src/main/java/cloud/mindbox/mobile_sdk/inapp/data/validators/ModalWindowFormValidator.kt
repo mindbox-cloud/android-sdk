@@ -1,9 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import android.graphics.Color
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto.BackgroundDto.LayerDto.ImageLayerDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto.ModalWindowDto.ContentDto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 
 internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
 
@@ -15,9 +15,9 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
         if (item.type != PayloadDto.ModalWindowDto.MODAL_JSON_NAME) return false
         item.content?.background?.layers = item.content?.background?.layers?.filter { layerDto ->
             val imageLayerDto =
-                layerDto as? ImageLayerDto
+                layerDto as? BackgroundDto.LayerDto.ImageLayerDto
                     ?: return@filter false
-            imageLayerDto.type == ImageLayerDto.IMAGE_TYPE_JSON_NAME &&
+            imageLayerDto.type == BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME &&
                     actionValidator.isValid(imageLayerDto.action) &&
                     sourceValidator.isValid(imageLayerDto.source)
 
@@ -58,11 +58,11 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
         }
     }
 
-    internal class SourceValidator : Validator<ImageLayerDto.SourceDto?> {
-        override fun isValid(item: ImageLayerDto.SourceDto?): Boolean {
+    internal class SourceValidator : Validator<BackgroundDto.LayerDto.ImageLayerDto.SourceDto?> {
+        override fun isValid(item: BackgroundDto.LayerDto.ImageLayerDto.SourceDto?): Boolean {
             return when (item) {
-                is ImageLayerDto.SourceDto.UrlSourceDto -> {
-                    item.type == ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
+                is BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto -> {
+                    item.type == BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
                             && item.value != null
                 }
 
@@ -74,11 +74,11 @@ internal class ModalWindowFormValidator : Validator<PayloadDto.ModalWindowDto> {
     }
 
     internal class ActionValidator :
-        Validator<ImageLayerDto.ActionDto?> {
-        override fun isValid(item: ImageLayerDto.ActionDto?): Boolean {
+        Validator<BackgroundDto.LayerDto.ImageLayerDto.ActionDto?> {
+        override fun isValid(item: BackgroundDto.LayerDto.ImageLayerDto.ActionDto?): Boolean {
             return when {
-                (item is ImageLayerDto.ActionDto.RedirectUrlActionDto) -> {
-                    item.type == ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                (item is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto) -> {
+                    item.type == BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
                             && item.value != null && item.intentPayload != null
                 }
 

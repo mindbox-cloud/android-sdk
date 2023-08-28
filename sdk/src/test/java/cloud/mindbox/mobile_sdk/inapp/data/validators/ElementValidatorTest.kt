@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,7 +25,7 @@ internal class ElementValidatorTest {
                 height = 1.0, kind = "dp", width = 1.0
 
             ),
-            type = PayloadDto.ModalWindowDto.ContentDto.ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
+            type = ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
         )
 
         assertTrue(elementValidator.isValid(closeButtonElementDto))

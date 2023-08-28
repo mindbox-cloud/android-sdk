@@ -13,15 +13,17 @@ internal fun PresentationModule(
     domainModule: DomainModule,
     monitoringModule: MonitoringModule,
     apiModule: ApiModule,
+    dataModule: DataModule,
     appContextModule: AppContextModule
 ): PresentationModule = object : PresentationModule,
     ApiModule by apiModule,
+    DataModule by dataModule,
     DomainModule by domainModule,
     MonitoringModule by monitoringModule,
     AppContextModule by appContextModule {
 
     override val inAppMessageViewDisplayer by lazy {
-        InAppMessageViewDisplayerImpl()
+        InAppMessageViewDisplayerImpl(inAppImageSizeStorage)
     }
 
     override val inAppMessageManager by lazy {

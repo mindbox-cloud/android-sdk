@@ -2,16 +2,20 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import java.util.*
 
 
-internal class InAppMessageViewDisplayerImpl :
+internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: InAppImageSizeStorage) :
     InAppMessageViewDisplayer {
 
     private var currentActivity: Activity? = null
@@ -88,6 +92,10 @@ internal class InAppMessageViewDisplayerImpl :
             is InAppType.ModalWindow -> {
                 InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
             }
+
+            is InAppType.Snackbar ->  {
+                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+            }
         }
         if (isUiPresent()) {
             mindboxLogD("In-app with id ${inAppType.inAppId} is going to be shown immediately")
@@ -105,7 +113,7 @@ internal class InAppMessageViewDisplayerImpl :
             is InAppType.ModalWindow -> {
                 currentActivity?.root?.let { root ->
                     @Suppress("UNCHECKED_CAST")
-                    currentHolder = ModalWindowInAppViewHolder(wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
+                    currentHolder = ModalWindowInAppViewHolder(wrapper = wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
                         inAppCallback = InAppCallbackWrapper(inAppCallback) {
                             pausedHolder?.hide()
                             pausedHolder = null
@@ -118,7 +126,23 @@ internal class InAppMessageViewDisplayerImpl :
                     mindboxLogE("failed to show inApp: currentRoot is null")
                 }
             }
-
+            is InAppType.Snackbar ->  {
+                currentActivity?.root?.let { root ->
+                    @Suppress("UNCHECKED_CAST")
+                    currentHolder = SnackbarInAppViewHolder(wrapper = wrapper as InAppTypeWrapper<InAppType.Snackbar>,
+                        inAppCallback = InAppCallbackWrapper(inAppCallback) {
+                            pausedHolder?.hide()
+                            pausedHolder = null
+                            currentHolder = null
+                        },
+                        inAppImageSizeStorage = inAppImageSizeStorage
+                    ).apply {
+                        show(root)
+                    }
+                } ?: run {
+                    mindboxLogE("failed to show inApp: currentRoot is null")
+                }
+            }
         }
     }
 
