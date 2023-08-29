@@ -39,7 +39,9 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     companion object {
         private const val ANIM_DURATION = 500L
+        private const val ANIM_SWIPE_DURATION = 100L
         private const val MODAL_WINDOW_MARGIN = 40
+        private const val CLICK_THRESHOLD = 100
     }
 
     @SuppressLint("ClickableViewAccessibility", "InternalInsetResource", "DiscouragedApi")
@@ -94,13 +96,13 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
                 MotionEvent.ACTION_MOVE -> {
                     if (snackBarInAppType.isTop()) {
-                        val displacement = minOf(event.rawY + rightDY, this.y)
+                        val displacement = minOf(event.rawY + rightDY, startingY)
                         view!!.animate()
                             .y(displacement)
                             .setDuration(0)
                             .start()
                     } else if (!snackBarInAppType.isTop()) {
-                        val displacement = maxOf(event.rawY + rightDY, this.y)
+                        val displacement = maxOf(event.rawY + rightDY, startingY)
                         view!!.animate()
                             .y(displacement)
                             .setDuration(0)
@@ -109,12 +111,16 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                 }
 
                 MotionEvent.ACTION_UP -> {
+                    if (event.eventTime - event.downTime < CLICK_THRESHOLD) {
+                        return@setOnTouchListener this.performClick() // click
+                    }
+
                     if (abs(view.translationY) > (height / 2)) {
                         swipeToDismissCallback?.invoke()
                     } else {
                         view!!.animate()
                             .y(startingY)
-                            .setDuration(100)
+                            .setDuration(ANIM_SWIPE_DURATION)
                             .start()
                     }
                 }

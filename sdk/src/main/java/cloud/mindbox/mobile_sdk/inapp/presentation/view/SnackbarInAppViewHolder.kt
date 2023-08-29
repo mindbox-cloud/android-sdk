@@ -38,7 +38,7 @@ internal class SnackbarInAppViewHolder(
     override fun initView(currentRoot: ViewGroup) {
         super.initView(currentRoot)
         currentDialog.setSwipeToDismissCallback {
-            hide()
+            hideWithAnimation()
         }
     }
 
@@ -50,8 +50,7 @@ internal class SnackbarInAppViewHolder(
                     mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
                     getImageFromCache(layer.source.url, inAppImageView)
                     currentDialog.addView(inAppImageView)
-                    when (wrapper.inAppType.position.margin.kind)
-                    {
+                    when (wrapper.inAppType.position.margin.kind) {
                         InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
                             inAppImageView.prepareViewForSnackBar(
                                 inAppImageSizeStorage.getSizeByIdAndUrl(
@@ -78,7 +77,7 @@ internal class SnackbarInAppViewHolder(
                         setOnClickListener {
                             mindboxLogI("In-app dismissed by close click")
                             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                            hide()
+                            hideWithAnimation()
                         }
                     }
                     currentDialog.addView(inAppCrossView)
@@ -95,18 +94,18 @@ internal class SnackbarInAppViewHolder(
         wrapper.onInAppShown.onShown()
     }
 
+    private fun hideWithAnimation() {
+        when (wrapper.inAppType.position.gravity.vertical) {
+            SnackbarPosition.TOP -> currentDialog.slideDown(true, ::hide)
+            SnackbarPosition.BOTTOM -> currentDialog.slideUp(true, ::hide)
+        }
+    }
+
     override fun hide() {
         super.hide()
-        val removeAction: () -> Unit = {
-            (currentDialog.parent as? ViewGroup?)?.apply {
-                removeView(currentDialog)
-                removeView(currentBackground)
-            }
-        }
-
-        when (wrapper.inAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> currentDialog.slideDown(true, removeAction)
-            SnackbarPosition.BOTTOM -> currentDialog.slideUp(true, removeAction)
+        (currentDialog.parent as? ViewGroup?)?.apply {
+            removeView(currentDialog)
+            removeView(currentBackground)
         }
     }
 }

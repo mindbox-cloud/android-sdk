@@ -185,7 +185,7 @@ internal class InAppMapper {
                                             position = InAppType.Snackbar.Position(
                                                 gravity = InAppType.Snackbar.Position.Gravity(
                                                     horizontal = InAppType.Snackbar.Position.Gravity.HorizontalGravity.CENTER,
-                                                    vertical = if (payloadDto.content?.position?.gravity?.vertical!! != "top") InAppType.Snackbar.Position.Gravity.VerticalGravity.TOP else InAppType.Snackbar.Position.Gravity.VerticalGravity.BOTTOM
+                                                    vertical = if (payloadDto.content?.position?.gravity?.vertical!! == "top") InAppType.Snackbar.Position.Gravity.VerticalGravity.TOP else InAppType.Snackbar.Position.Gravity.VerticalGravity.BOTTOM
                                                 ),
                                                 margin = InAppType.Snackbar.Position.Margin(
                                                     kind = when (payloadDto.content.position.margin.kind) {
