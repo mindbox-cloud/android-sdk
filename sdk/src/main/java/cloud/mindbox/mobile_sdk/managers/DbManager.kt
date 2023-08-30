@@ -69,7 +69,7 @@ internal object DbManager {
             synchronized(this) { mindboxDb.eventsDao().delete(event.transactionId) }
             MindboxLoggerImpl.d(
                 this,
-                "Event ${event.eventType};${event.transactionId} was deleted from queue",
+                "Event ${event.eventType.operation};${event.transactionId} was deleted from queue",
             )
         } catch (exception: RuntimeException) {
             MindboxLoggerImpl.e(this, "Error deleting item from database", exception)
