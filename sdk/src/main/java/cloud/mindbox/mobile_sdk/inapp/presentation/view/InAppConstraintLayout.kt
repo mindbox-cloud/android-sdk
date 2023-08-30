@@ -193,12 +193,12 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         context, attrs, defStyleAttr, defStyleRes
     )
 
-    override fun setDismissListener(listener: OnClickListener) {
+    override fun setDismissListener(listener: OnClickListener?) {
         backButtonHandler = BackButtonHandler(this, listener)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        return if (keyCode == KeyEvent.KEYCODE_BACK)
+        return if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null)
             true else super.onKeyDown(keyCode, event)
     }
 

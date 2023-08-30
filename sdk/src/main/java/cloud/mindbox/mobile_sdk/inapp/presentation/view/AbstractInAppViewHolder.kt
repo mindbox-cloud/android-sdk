@@ -141,7 +141,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     override fun hide() {
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
-        isInAppMessageActive = false
         restoreKeyboard()
     }
 }

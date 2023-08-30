@@ -13,9 +13,9 @@ internal class InAppContentFetcherImpl(
     private val inAppImageLoader: InAppImageLoader,
 ) : InAppContentFetcher {
 
-    private val inAppImageStorage: MutableList<Deferred<Boolean>> = mutableListOf()
 
     override suspend fun fetchContent(inAppId: String, formVariant: InAppType): Boolean {
+        val inAppImageStorage: MutableList<Deferred<Boolean>> = mutableListOf()
         when (formVariant) {
             is InAppType.ModalWindow -> {
                 formVariant.layers.filterIsInstance<Layer.ImageLayer>()
