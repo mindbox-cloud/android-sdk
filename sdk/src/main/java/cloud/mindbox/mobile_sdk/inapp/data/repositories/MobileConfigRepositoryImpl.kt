@@ -60,19 +60,19 @@ internal class MobileConfigRepositoryImpl(
 
                 val filteredConfig = InAppConfigResponse(
                     inApps = runCatching { getInApps(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get inApps")
+                        mindboxLogW("Unable to get inApps $it")
                         null
                     },
                     monitoring = runCatching { getMonitoring(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get logs")
+                        mindboxLogW("Unable to get logs $it")
                         null
                     },
                     settings = runCatching { getSettings(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get settings")
+                        mindboxLogW("Unable to get settings $it")
                         null
                     },
                     abtests = runCatching { getABTests(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get abtests")
+                        mindboxLogW("Unable to get abtests $it")
                         null
                     },
                 )
