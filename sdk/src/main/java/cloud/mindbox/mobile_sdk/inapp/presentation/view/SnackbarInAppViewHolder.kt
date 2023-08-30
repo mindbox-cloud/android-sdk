@@ -73,7 +73,7 @@ internal class SnackbarInAppViewHolder(
         currentDialog.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed on back button")
-            hide()
+            hideWithAnimation()
         }
         wrapper.inAppType.elements.forEach { element ->
             when (element) {
