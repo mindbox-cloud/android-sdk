@@ -109,7 +109,7 @@ internal class InAppChoosingManagerImpl(
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to targeting is false")
             }
             if (targetingCheck) {
-                return inApp.form.variants.firstOrNull()?.mapToInAppType(inApp.id)
+                return inApp.form.variants.firstOrNull()
             }
         }
         return null

@@ -1,35 +1,23 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.inapp.data.managers.GeoSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.CallbackRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.repositories.MobileConfigRepositoryImpl
-import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.InAppValidatorImpl
-import cloud.mindbox.mobile_sdk.inapp.data.validators.JsonValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.UrlValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.XmlValidator
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
+import cloud.mindbox.mobile_sdk.inapp.data.validators.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.CallbackRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
-import cloud.mindbox.mobile_sdk.models.operation.response.PayloadDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -42,7 +30,22 @@ internal fun DataModule(
     AppContextModule by appContextModule,
     ApiModule by apiModule {
 
+
+    override val inAppImageLoader: InAppImageLoader
+        get() = InAppGlideImageLoaderImpl(
+            appContext,
+            inAppImageSizeStorage
+        )
+
+    override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
+
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
+
+    override val inAppContentFetcher: InAppContentFetcher by lazy {
+        InAppContentFetcherImpl(
+            inAppImageLoader
+        )
+    }
 
     override val mobileConfigRepository: MobileConfigRepository by lazy {
         MobileConfigRepositoryImpl(
@@ -101,7 +104,11 @@ internal fun DataModule(
 
     override val monitoringValidator: MonitoringValidator by lazy { MonitoringValidator() }
 
-    override val inAppValidator: InAppValidator by lazy { InAppValidatorImpl(sdkVersionValidator) }
+    override val inAppValidator: InAppValidator by lazy {
+        InAppValidatorImpl(
+            sdkVersionValidator,
+        )
+    }
 
     override val abTestValidator: ABTestValidator by lazy { ABTestValidator(sdkVersionValidator) }
 
@@ -121,55 +128,94 @@ internal fun DataModule(
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
-                PayloadDto::class.java,
-                TreeTargetingDto.TYPE_JSON_NAME, true
+                ElementDto::class.java,
+                Constants.TYPE_JSON_NAME, true
             ).registerSubtype(
-                PayloadDto.SimpleImage::class.java,
-                PayloadDto.SimpleImage.SIMPLE_IMAGE_JSON_NAME
+                ElementDto.CloseButtonElementDto::class.java,
+                ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
             )
         ).registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
-                TreeTargetingDto::class.java,
-                TreeTargetingDto.TYPE_JSON_NAME,
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto::class.java,
+                Constants.TYPE_JSON_NAME,
                 true
             ).registerSubtype(
-                TreeTargetingDto.TrueNodeDto::class.java,
-                TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.IntersectionNodeDto::class.java,
-                TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.UnionNodeDto::class.java,
-                TreeTargetingDto.UnionNodeDto.OR_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.SegmentNodeDto::class.java,
-                TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.CountryNodeDto::class.java,
-                TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.CityNodeDto::class.java,
-                TreeTargetingDto.CityNodeDto.CITY_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.RegionNodeDto::class.java,
-                TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.OperationNodeDto::class.java,
-                TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.ViewProductCategoryNodeDto::class.java,
-                TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
-                TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
-                TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
-            ).registerSubtype(
-                TreeTargetingDto.ViewProductNodeDto::class.java,
-                TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
+                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
             )
-        ).create()
+        )
+            .registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory.of(
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto::class.java,
+                    Constants.TYPE_JSON_NAME,
+                    true
+                ).registerSubtype(
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory.of(
+                    BackgroundDto.LayerDto::class.java,
+                    Constants.TYPE_JSON_NAME,
+                    true
+                ).registerSubtype(
+                    BackgroundDto.LayerDto.ImageLayerDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME
+                )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory.of(
+                    PayloadDto::class.java,
+                    Constants.TYPE_JSON_NAME, true
+                ).registerSubtype(
+                    PayloadDto.ModalWindowDto::class.java,
+                    PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+                ).registerSubtype(
+                    PayloadDto.SnackbarDto::class.java,
+                    PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory.of(
+                    TreeTargetingDto::class.java,
+                    Constants.TYPE_JSON_NAME,
+                    true
+                ).registerSubtype(
+                    TreeTargetingDto.TrueNodeDto::class.java,
+                    TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.IntersectionNodeDto::class.java,
+                    TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.UnionNodeDto::class.java,
+                    TreeTargetingDto.UnionNodeDto.OR_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.SegmentNodeDto::class.java,
+                    TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.CountryNodeDto::class.java,
+                    TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.CityNodeDto::class.java,
+                    TreeTargetingDto.CityNodeDto.CITY_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.RegionNodeDto::class.java,
+                    TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.OperationNodeDto::class.java,
+                    TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.ViewProductCategoryNodeDto::class.java,
+                    TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
+                    TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
+                    TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.ViewProductNodeDto::class.java,
+                    TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
+                )
+            ).create()
     }
 
 }

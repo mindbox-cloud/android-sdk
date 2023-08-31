@@ -20,7 +20,7 @@ internal object MindboxDI {
             application = appContext.applicationContext as Application
         )
         val apiModule = ApiModule(
-            appContextModule = appContextModule
+            appContextModule = appContextModule,
         )
         val dataModule = DataModule(
             appContextModule = appContextModule,
@@ -39,7 +39,8 @@ internal object MindboxDI {
             domainModule = domainModule,
             monitoringModule = monitoringModule,
             apiModule = apiModule,
-            appContextModule = appContextModule
+            appContextModule = appContextModule,
+            dataModule = dataModule
         )
 
         appModule = AppModule(

@@ -2,8 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import androidx.core.graphics.drawable.toBitmap
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppContentFetchingError
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import com.bumptech.glide.Glide
@@ -16,7 +18,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal class InAppGlideImageLoaderImpl(
-    private val context: Context
+    private val context: Context,
+    private val inAppImageSizeStorage: InAppImageSizeStorage
 ) : InAppImageLoader {
 
     private val requests = HashMap<String, Target<Drawable>>()
@@ -42,13 +45,14 @@ internal class InAppGlideImageLoaderImpl(
                     }
 
                     override fun onResourceReady(
-                        resource: Drawable?,
+                        resource: Drawable,
                         model: Any?,
                         target: Target<Drawable>?,
                         dataSource: DataSource?,
                         isFirstResource: Boolean
                     ): Boolean {
                         mindboxLogD("loading image for inapp with id $inAppId succeeded")
+                        inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
                         cancellableContinuation.resume(true)
                         return true
                     }

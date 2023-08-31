@@ -29,7 +29,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     private const val TAG = "Mindbox"
 
-    private val DEFAULT_LOG_LEVEL = Level.ERROR
+    private val DEFAULT_LOG_LEVEL = Level.WARN
 
     private val monitoringRepository: MonitoringRepository by mindboxInject { monitoringRepository }
 

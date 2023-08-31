@@ -3,9 +3,13 @@ package cloud.mindbox.mobile_sdk
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
+import android.content.res.Resources
 import android.os.Build
 import android.os.Process
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.Animation.AnimationListener
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import org.threeten.bp.Instant
@@ -13,6 +17,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -73,6 +78,11 @@ internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null):
     } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
 }
 
+internal fun Double?.isInRange(start: Double, end: Double): Boolean {
+    if (this == null) return false
+    return (this > start) && (this < end)
+}
+
 internal fun Context.isMainProcess(processName: String?): Boolean {
     val mainProcessName = getString(R.string.mindbox_android_process).ifBlank { packageName }
     return processName?.equalsAny(
@@ -99,4 +109,31 @@ internal fun View.setSingleClickListener(listener: View.OnClickListener) {
         setOnClickListener(null)
         listener.onClick(it)
     }
+}
+internal typealias SnackbarPosition = InAppType.Snackbar.Position.Gravity.VerticalGravity
+internal fun InAppType.Snackbar.isTop(): Boolean {
+    return position.gravity.vertical == SnackbarPosition.TOP
+}
+
+internal val Double.px: Double
+    get() = (this * Resources.getSystem().displayMetrics.density)
+
+internal val Int.dp: Int
+    get() = (this / Resources.getSystem().displayMetrics.density).toInt()
+internal val Int.px: Int
+    get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
+
+internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
+    setAnimationListener(object : AnimationListener {
+        override fun onAnimationStart(animation: Animation?) {
+        }
+
+        override fun onAnimationEnd(animation: Animation?) {
+            runnable.run()
+        }
+
+        override fun onAnimationRepeat(animation: Animation?) {
+        }
+
+    })
 }

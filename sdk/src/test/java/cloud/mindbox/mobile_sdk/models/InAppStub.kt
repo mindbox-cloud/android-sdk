@@ -1,7 +1,12 @@
 package cloud.mindbox.mobile_sdk.models
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 
 internal class InAppStub {
 
@@ -15,15 +20,76 @@ internal class InAppStub {
                     getTargetingTrueNode(), getTargetingSegmentNode()
                 )
             ),
-            form = Form(variants = listOf(getSimpleImage()))
+            form = Form(variants = listOf(getModalWindow()))
         )
 
         fun getInAppDto(): InAppDto = InAppDto(
             id = "",
             sdkVersion = SdkVersion(minVersion = null, maxVersion = null),
             targeting = (TreeTargetingDto.TrueNodeDto("")),
-            form = FormDto(variants = listOf(getSimpleImageDto()))
+            form = FormDto(variants = listOf(getModalWindowDto()))
         )
+
+        fun getContentDto(): PayloadDto.ModalWindowDto.ContentDto =
+            PayloadDto.ModalWindowDto.ContentDto(
+                background = getBackgroundDto(),
+                elements = listOf(getCloseButtonElementDto())
+            )
+
+        fun getBackgroundDto(): BackgroundDto =
+            BackgroundDto(
+                layers = listOf(getImageLayerDto())
+            )
+
+        fun getImageLayerDto(): BackgroundDto.LayerDto.ImageLayerDto =
+            BackgroundDto.LayerDto.ImageLayerDto(
+                action = getRedirectUrlActionDto(),
+                source = getUrlSourceDto(),
+                type = "image"
+            )
+
+        fun getRedirectUrlActionDto(): BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto(
+                intentPayload = "",
+                type = "redirectUrl",
+                value = ""
+            )
+
+        fun getUrlSourceDto(): BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
+            BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
+                type = "url",
+                value = ""
+            )
+
+        fun getCloseButtonElementDto(): ElementDto.CloseButtonElementDto =
+            ElementDto.CloseButtonElementDto(
+                color = "null",
+                lineWidth = 0.0,
+                position = getElementPositionDto(),
+                size = getElementSizeDto(),
+                type = "closeButton"
+            )
+
+        fun getElementSizeDto(): ElementDto.CloseButtonElementDto.SizeDto =
+            ElementDto.CloseButtonElementDto.SizeDto(
+                height = 0.0,
+                kind = "",
+                width = 0.0
+            )
+
+        fun getElementPositionDto(): ElementDto.CloseButtonElementDto.PositionDto =
+            ElementDto.CloseButtonElementDto.PositionDto(
+                margin = getElementMarginDto()
+            )
+
+        fun getElementMarginDto(): ElementDto.CloseButtonElementDto.PositionDto.MarginDto =
+            ElementDto.CloseButtonElementDto.PositionDto.MarginDto(
+                bottom = null,
+                kind = null,
+                left = null,
+                right = null,
+                top = null
+            )
 
         fun getInAppDtoBlank(): InAppConfigResponseBlank.InAppDtoBlank {
             return InAppConfigResponseBlank.InAppDtoBlank(
@@ -38,25 +104,12 @@ internal class InAppStub {
             return FormDto(emptyList())
         }
 
-        fun getPayloadSimpleImage(): PayloadDto.SimpleImage {
-            return PayloadDto.SimpleImage(
-                type = null,
-                imageUrl = null,
-                redirectUrl = null,
-                intentPayload = null
-            )
-        }
-
         fun getSdkVersion(): SdkVersion {
             return SdkVersion(minVersion = null, maxVersion = null)
         }
 
-        fun getSimpleImageDto() = PayloadDto.SimpleImage(
-            type = null,
-            imageUrl = null,
-            redirectUrl = null,
-            intentPayload = null
-        )
+        fun getModalWindowDto() =
+            PayloadDto.ModalWindowDto(content = getContentDto(), type = "modal")
 
         fun getTargetingTrueNode(): TreeTargeting.TrueNode {
             return TreeTargeting.TrueNode(type = "")
@@ -174,11 +227,8 @@ internal class InAppStub {
             return TreeTargeting.RegionNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
-        fun getSimpleImage() = Payload.SimpleImage(
-            type = "",
-            imageUrl = "",
-            redirectUrl = "",
-            intentPayload = ""
+        fun getModalWindow() = InAppType.ModalWindow(
+            type = "", inAppId = "", layers = listOf(), elements = listOf(),
         )
 
         val viewProductNode: ViewProductNode = ViewProductNode(

@@ -27,27 +27,53 @@ internal data class InApp(
 )
 
 internal data class Form(
-    val variants: List<Payload>,
+    val variants: List<InAppType>,
 )
 
-internal sealed class Payload {
+internal sealed class InAppType(open val inAppId: String) {
 
-    abstract fun mapToInAppType(id: String): InAppType
-    data class SimpleImage(
+    internal data class Snackbar(
+        override val inAppId: String,
         val type: String,
-        val imageUrl: String,
-        val redirectUrl: String,
-        val intentPayload: String,
-    ) : Payload() {
-        override fun mapToInAppType(id: String): InAppType {
-            return InAppType.SimpleImage(
-                inAppId = id,
-                imageUrl = imageUrl,
-                redirectUrl = redirectUrl,
-                intentData = intentPayload
-            )
+        val layers: List<Layer>,
+        val elements: List<Element>,
+        val position: Position
+    ) : InAppType(inAppId) {
+        internal data class Position(val gravity: Gravity,  val margin: Margin) {
+
+            internal data class Margin(
+                val kind: MarginKind,
+                val top: Int,
+                val left: Int,
+                val right: Int,
+                val bottom: Int
+            ) {
+                internal enum class MarginKind {
+                    DP
+                }
+            }
+            internal data class Gravity(
+                val horizontal: HorizontalGravity,
+                val vertical: VerticalGravity
+            ) {
+                internal enum class HorizontalGravity {
+                    CENTER
+                }
+                internal enum class VerticalGravity{
+                    TOP,
+                    BOTTOM
+                }
+            }
         }
     }
+
+    internal data class ModalWindow(
+        override val inAppId: String,
+        val type: String,
+        val layers: List<Layer>,
+        val elements: List<Element>
+    ) : InAppType(inAppId)
+
 }
 
 internal data class ABTest(
