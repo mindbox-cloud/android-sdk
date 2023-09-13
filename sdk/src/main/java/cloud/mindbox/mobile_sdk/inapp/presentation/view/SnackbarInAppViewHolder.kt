@@ -38,6 +38,7 @@ internal class SnackbarInAppViewHolder(
     override fun initView(currentRoot: ViewGroup) {
         super.initView(currentRoot)
         currentDialog.setSwipeToDismissCallback {
+            mindboxLogI("In-app dismissed by swipe")
             hideWithAnimation()
         }
     }
@@ -76,7 +77,6 @@ internal class SnackbarInAppViewHolder(
                     val inAppCrossView = InAppCrossView(currentDialog.context, element).apply {
                         setOnClickListener {
                             mindboxLogI("In-app dismissed by close click")
-                            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                             hideWithAnimation()
                         }
                     }
@@ -95,6 +95,7 @@ internal class SnackbarInAppViewHolder(
     }
 
     private fun hideWithAnimation() {
+        inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         when (wrapper.inAppType.position.gravity.vertical) {
             SnackbarPosition.TOP -> currentDialog.slideDown(true, ::hide)
             SnackbarPosition.BOTTOM -> currentDialog.slideUp(true, ::hide)
