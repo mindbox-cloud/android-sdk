@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
@@ -7,8 +8,10 @@ import android.content.res.Resources
 import android.os.Build
 import android.os.Process
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
+import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -111,6 +114,7 @@ internal fun View.setSingleClickListener(listener: View.OnClickListener) {
     }
 }
 internal typealias SnackbarPosition = InAppType.Snackbar.Position.Gravity.VerticalGravity
+
 internal fun InAppType.Snackbar.isTop(): Boolean {
     return position.gravity.vertical == SnackbarPosition.TOP
 }
@@ -136,4 +140,25 @@ internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
         }
 
     })
+}
+
+internal fun ViewGroup.removeChildById(@IdRes viewId: Int) {
+    return removeView(findViewById(viewId))
+}
+
+internal val Activity?.root: ViewGroup?
+    get() = this?.window?.decorView?.rootView as ViewGroup?
+
+internal fun Activity.postDelayedAnimation(action: Runnable) {
+    val durationAnimationDefault = 400L
+    val duration = try {
+        resources.getInteger(android.R.integer.config_mediumAnimTime).toLong()
+    } catch (_: Exception) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.transitionBackgroundFadeDuration
+        } else {
+            durationAnimationDefault
+        }
+    }
+    this.root?.postDelayed(action, duration)
 }

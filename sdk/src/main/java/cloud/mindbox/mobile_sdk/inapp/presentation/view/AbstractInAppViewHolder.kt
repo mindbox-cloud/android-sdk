@@ -6,13 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -25,10 +25,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     InAppViewHolder<InAppType> {
 
     protected open var isInAppMessageActive = false
-
-    private var _currentBackground: ViewGroup? = null
-    protected val currentBackground: ViewGroup
-        get() = _currentBackground!!
 
     private var _currentDialog: InAppConstraintLayout? = null
     protected val currentDialog: InAppConstraintLayout
@@ -110,13 +106,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     protected open fun initView(currentRoot: ViewGroup) {
-        _currentBackground = LayoutInflater.from(currentRoot.context)
-            .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
+        currentRoot.removeChildById(R.id.inapp_layout)
         _currentDialog = LayoutInflater.from(currentRoot.context)
             .inflate(R.layout.mindbox_inapp_layout, currentRoot, false) as InAppConstraintLayout
-        if (wrapper.inAppType is InAppType.ModalWindow) {
-            currentRoot.addView(currentBackground)
-        }
         currentRoot.addView(currentDialog)
         currentDialog.prepareLayoutForInApp(wrapper.inAppType)
     }
@@ -140,6 +132,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     override fun hide() {
+        (currentDialog.parent as? ViewGroup?)?.apply {
+            removeView(currentDialog)
+        }
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
     }
