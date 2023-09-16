@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
-import android.view.ViewGroup
+import androidx.core.view.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
@@ -10,6 +10,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHold
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.postDelayedAnimation
+import cloud.mindbox.mobile_sdk.root
 import java.util.*
 
 
@@ -40,8 +42,14 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                 mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
                 showInAppMessage(
                     wrapper.copy(
-                        onInAppShown = { mindboxLogI("Skip InApp.Show for restored inApp") },
-                    )
+                        onInAppShown = {
+                            mindboxLogI("Skip InApp.Show for restored inApp")
+                            currentActivity?.postDelayedAnimation {
+                                pausedHolder?.hide()
+                            }
+                        },
+                    ),
+                    isRestored = true
                 )
             }
         } else {
@@ -110,7 +118,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         }
     }
 
-    private fun showInAppMessage(wrapper: InAppTypeWrapper<InAppType>) {
+    private fun showInAppMessage(wrapper: InAppTypeWrapper<InAppType>, isRestored: Boolean = false) {
         when (wrapper.inAppType) {
             is InAppType.ModalWindow -> {
                 currentActivity?.root?.let { root ->
@@ -140,7 +148,8 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                             pausedHolder = null
                             currentHolder = null
                         },
-                        inAppImageSizeStorage = inAppImageSizeStorage
+                        inAppImageSizeStorage = inAppImageSizeStorage,
+                        isFirstShow = !isRestored
                     ).apply {
                         show(root)
                     }
@@ -150,8 +159,5 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             }
         }
     }
-
-    private val Activity?.root: ViewGroup?
-        get() = this?.window?.decorView?.rootView as ViewGroup?
 }
 
