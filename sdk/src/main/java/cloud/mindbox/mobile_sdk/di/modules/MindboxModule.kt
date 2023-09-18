@@ -3,6 +3,9 @@ package cloud.mindbox.mobile_sdk.di.modules
 import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.*
+import cloud.mindbox.mobile_sdk.inapp.data.managers.DefaultDataManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.ModalWindowDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
@@ -96,6 +99,14 @@ internal interface DataModule : MindboxModule {
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
     val inAppImageLoader: InAppImageLoader
+    val defaultDataManager: DefaultDataManager
+    val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
+    val snackBarDtoDataFiller: SnackBarDtoDataFiller
+    val elementDtoDataFiller: ElementDtoDataFiller
+    val modalWindowValidator: ModalWindowFormValidator
+    val imageLayerValidator: ImageLayerValidator
+    val elementValidator: ElementValidator
+    val snackbarValidator: SnackbarValidator
 }
 
 internal interface MonitoringModule : MindboxModule {

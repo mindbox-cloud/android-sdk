@@ -80,7 +80,7 @@ internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null):
 
 internal fun Double?.isInRange(start: Double, end: Double): Boolean {
     if (this == null) return false
-    return (this > start) && (this < end)
+    return (this >= start) && (this <= end)
 }
 
 internal fun Context.isMainProcess(processName: String?): Boolean {

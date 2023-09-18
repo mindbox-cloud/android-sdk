@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 internal data class BackgroundDto(
     @SerializedName("layers")
-    var layers: List<LayerDto?>?
+    val layers: List<LayerDto?>?
 ) {
     internal sealed class LayerDto {
         internal data class ImageLayerDto(
