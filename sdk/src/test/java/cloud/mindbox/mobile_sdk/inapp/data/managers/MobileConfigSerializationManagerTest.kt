@@ -356,7 +356,7 @@ internal class MobileConfigSerializationManagerTest {
         val expectedResult = InAppStub.getFormDto().copy(
             variants = listOf(
                 InAppStub.getModalWindowDto().copy(
-                    type = "modal", content = InAppStub.getContentDto().copy(
+                    type = "modal", content = InAppStub.getModalWindowContentDto().copy(
                         background = InAppStub.getBackgroundDto().copy(layers = listOf(InAppStub.getImageLayerDto().copy(
                             action = InAppStub.getRedirectUrlActionDto().copy(
                                 intentPayload = "123", type = "redirectUrl",

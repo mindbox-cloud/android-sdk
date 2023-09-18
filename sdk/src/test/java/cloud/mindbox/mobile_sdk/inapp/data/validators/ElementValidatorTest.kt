@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 internal class ElementValidatorTest {
-    private val elementValidator = ModalWindowFormValidator.ElementValidator()
+    private val elementValidator = ElementValidator()
 
     @Test
     fun `test isValid returns true for valid CloseButtonElementDto`() {

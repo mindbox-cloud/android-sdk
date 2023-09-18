@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 
-import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName

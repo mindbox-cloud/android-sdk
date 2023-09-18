@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.di.modules
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
@@ -14,7 +16,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializat
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -36,6 +37,37 @@ internal fun DataModule(
             appContext,
             inAppImageSizeStorage
         )
+    override val elementDtoDataFiller: ElementDtoDataFiller
+        get() = ElementDtoDataFiller()
+    override val modalWindowValidator: ModalWindowFormValidator by lazy {
+        ModalWindowFormValidator(
+            imageLayerValidator = imageLayerValidator,
+            elementValidator = elementValidator
+        )
+    }
+    override val imageLayerValidator: ImageLayerValidator
+        get() = ImageLayerValidator()
+    override val elementValidator: ElementValidator
+        get() = ElementValidator()
+    override val snackbarValidator: SnackbarValidator by lazy {
+        SnackbarValidator(
+            imageLayerValidator,
+            elementValidator
+        )
+    }
+
+    override val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
+            by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = elementDtoDataFiller) }
+
+    override val snackBarDtoDataFiller: SnackBarDtoDataFiller
+            by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = elementDtoDataFiller) }
+
+    override val defaultDataManager: DefaultDataManager by lazy {
+        DefaultDataManager(
+            modalWindowDtoDataFiller = modalWindowDtoDataFiller,
+            snackBarDtoDataFiller = snackBarDtoDataFiller
+        )
+    }
 
     override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
 
@@ -57,6 +89,7 @@ internal fun DataModule(
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
             gatewayManager = gatewayManager,
+            defaultDataManager = defaultDataManager
         )
     }
 
@@ -106,7 +139,9 @@ internal fun DataModule(
 
     override val inAppValidator: InAppValidator by lazy {
         InAppValidatorImpl(
-            sdkVersionValidator,
+            sdkVersionValidator = sdkVersionValidator,
+            modalWindowFormValidator = modalWindowValidator,
+            snackbarValidator = snackbarValidator
         )
     }
 
@@ -127,6 +162,18 @@ internal fun DataModule(
 
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
+                PayloadBlankDto::class.java,
+                Constants.TYPE_JSON_NAME,
+                true
+            ).registerSubtype(
+                PayloadBlankDto.ModalWindowBlankDto::class.java,
+                PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+            ).registerSubtype(
+                PayloadBlankDto.SnackBarBlankDto::class.java,
+                PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+            )
+        ).registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
                 ElementDto::class.java,
                 Constants.TYPE_JSON_NAME, true
