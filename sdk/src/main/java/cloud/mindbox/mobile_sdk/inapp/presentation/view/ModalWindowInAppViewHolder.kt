@@ -1,19 +1,25 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.core.view.isVisible
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.removeChildById
 
 internal class ModalWindowInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
     private val inAppCallback: InAppCallback,
 ) :
     AbstractInAppViewHolder<InAppType.ModalWindow>() {
+
+    private var currentBackground: ViewGroup? = null
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -43,12 +49,12 @@ internal class ModalWindowInAppViewHolder(
                 }
             }
         }
-        currentBackground.setOnClickListener {
+        currentBackground?.setOnClickListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed by background click")
             hide()
         }
-        currentBackground.isVisible = true
+        currentBackground?.isVisible = true
         mindboxLogI("In-app shown")
         wrapper.onInAppShown.onShown()
     }
@@ -81,10 +87,17 @@ internal class ModalWindowInAppViewHolder(
     }
 
     override fun hide() {
-        super.hide()
         (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentDialog)
             removeView(currentBackground)
         }
+        super.hide()
+    }
+
+    override fun initView(currentRoot: ViewGroup) {
+        currentRoot.removeChildById(R.id.inapp_background_layout)
+        currentBackground = LayoutInflater.from(currentRoot.context)
+            .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
+        currentRoot.addView(currentBackground)
+        super.initView(currentRoot)
     }
 }

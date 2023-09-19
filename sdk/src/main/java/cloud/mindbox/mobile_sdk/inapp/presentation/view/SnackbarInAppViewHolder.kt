@@ -15,7 +15,8 @@ import cloud.mindbox.mobile_sdk.px
 internal class SnackbarInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.Snackbar>,
     private val inAppCallback: InAppCallback,
-    private val inAppImageSizeStorage: InAppImageSizeStorage
+    private val inAppImageSizeStorage: InAppImageSizeStorage,
+    private val isFirstShow: Boolean = true,
 ) :
     AbstractInAppViewHolder<InAppType.Snackbar>() {
 
@@ -38,6 +39,7 @@ internal class SnackbarInAppViewHolder(
     override fun initView(currentRoot: ViewGroup) {
         super.initView(currentRoot)
         currentDialog.setSwipeToDismissCallback {
+            mindboxLogI("In-app dismissed by swipe")
             hideWithAnimation()
         }
     }
@@ -76,7 +78,6 @@ internal class SnackbarInAppViewHolder(
                     val inAppCrossView = InAppCrossView(currentDialog.context, element).apply {
                         setOnClickListener {
                             mindboxLogI("In-app dismissed by close click")
-                            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                             hideWithAnimation()
                         }
                     }
@@ -85,9 +86,11 @@ internal class SnackbarInAppViewHolder(
                 }
             }
         }
-        when (wrapper.inAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> currentDialog.slideDown()
-            SnackbarPosition.BOTTOM -> currentDialog.slideUp()
+        if (isFirstShow) {
+            when (wrapper.inAppType.position.gravity.vertical) {
+                SnackbarPosition.TOP -> currentDialog.slideDown()
+                SnackbarPosition.BOTTOM -> currentDialog.slideUp()
+            }
         }
 
         mindboxLogI("In-app shown")
@@ -95,17 +98,10 @@ internal class SnackbarInAppViewHolder(
     }
 
     private fun hideWithAnimation() {
+        inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         when (wrapper.inAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> currentDialog.slideDown(true, ::hide)
-            SnackbarPosition.BOTTOM -> currentDialog.slideUp(true, ::hide)
-        }
-    }
-
-    override fun hide() {
-        super.hide()
-        (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentDialog)
-            removeView(currentBackground)
+            SnackbarPosition.TOP -> currentDialog.slideDown(isReverse = true, onAnimationEnd = ::hide)
+            SnackbarPosition.BOTTOM -> currentDialog.slideUp(isReverse = true, onAnimationEnd = ::hide)
         }
     }
 }
