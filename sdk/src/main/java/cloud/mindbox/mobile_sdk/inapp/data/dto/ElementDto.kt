@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.dto
 
 import android.graphics.Color
 import cloud.mindbox.mobile_sdk.isInRange
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import com.google.gson.annotations.SerializedName
 
 internal sealed class ElementDto {
@@ -30,28 +30,25 @@ internal sealed class ElementDto {
         override fun updateWithDefaults(type: InAppType): ElementDto {
             val newColor =
                 if (color != null && runCatching { Color.parseColor(color) }.getOrNull() != null) {
-                    mindboxLogD("Color is valid. Not applying default")
                     color
                 } else {
-                    mindboxLogD("Color is not valid. Applying default")
+                    mindboxLogI("Color is not valid. Applying default")
                     defaultColor
                 }
             val newLineWidth = if (lineWidth != null && lineWidth.toString()
                     .toDoubleOrNull() != null
             ) {
-                mindboxLogD("Line width is valid. Not applying default")
                 lineWidth
             } else {
-                mindboxLogD("Line width is not valid. Applying default")
+                mindboxLogI("Line width is not valid. Applying default")
                 defaultLineWidth
             }
 
             val newPosition =
                 if (position?.margin != null && marginNames.contains(position.margin.kind)) {
-                    mindboxLogD("Position is valid. Not applying default")
                     position
                 } else {
-                    mindboxLogD("Unknown position ${position?.margin?.kind}. Applying default")
+                    mindboxLogI("Unknown position ${position?.margin?.kind}. Applying default")
                     PositionDto(
                         PositionDto.MarginDto(
                             bottom = defaultBottomPosition,
@@ -63,10 +60,9 @@ internal sealed class ElementDto {
                     )
                 }
             val newSize = if (size != null && sizeNames.contains(size.kind)) {
-                mindboxLogD("Size is valid. Not applying default")
                 size
             } else {
-                mindboxLogD("Unknown size ${size?.kind}. Applying default")
+                mindboxLogI("Unknown size ${size?.kind}. Applying default")
                 when (type) {
                     InAppType.MODAL_WINDOW -> {
                         SizeDto(
@@ -103,7 +99,7 @@ internal sealed class ElementDto {
                     && item.height.isInRange(0.0, Double.MAX_VALUE)
                     && item.width.isInRange(0.0, Double.MAX_VALUE)
             if (!rez) {
-                mindboxLogD(
+                mindboxLogI(
                     "Close button size is not valid. Expected kind != null and width/height in range [0, inf]. " +
                             "Actual params : kind =  ${item?.kind}, height = ${item?.height}, width = ${item?.width}"
                 )
@@ -118,7 +114,7 @@ internal sealed class ElementDto {
                     && item.margin.left.isInRange(0.0, 1.0)
                     && item.margin.right.isInRange(0.0, 1.0)
             if (!rez) {
-                mindboxLogD(
+                mindboxLogI(
                     "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
                             "Actual params : kind =  ${item?.margin?.kind}, top = ${item?.margin?.top}, bottom = ${item?.margin?.bottom}, left = ${item?.margin?.left}, right = ${item?.margin?.right}"
                 )

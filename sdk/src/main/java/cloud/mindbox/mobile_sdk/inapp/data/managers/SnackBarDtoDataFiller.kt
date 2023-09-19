@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto.GravityDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: ElementDtoDataFiller) :
     DefaultDataFiller<PayloadDto.SnackbarDto?> {
@@ -27,11 +27,12 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: ElementDt
                 item.content.position.gravity.vertical
             )
         ) {
-            mindboxLogD("Gravity is valid. Not applying default")
             item.content.position.gravity
         } else {
-            mindboxLogD("Unknown gravity: horizontal = ${item?.content?.position?.gravity?.horizontal} " +
-                    "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default")
+            mindboxLogI(
+                "Unknown gravity: horizontal = ${item?.content?.position?.gravity?.horizontal} " +
+                        "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default"
+            )
             GravityDto(
                 horizontal = if (horizontalPositionNames.contains(item?.content?.position?.gravity?.horizontal)) item?.content?.position?.gravity?.horizontal else defaultHorizontalGravity,
                 vertical = if (verticalPositionNames.contains(item?.content?.position?.gravity?.vertical)) item?.content?.position?.gravity?.vertical else defaultVerticalGravity
@@ -39,10 +40,9 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: ElementDt
         }
         val newMarginDto =
             if (item?.content?.position?.margin != null && marginNames.contains(item.content.position.margin.kind)) {
-                mindboxLogD("Margin is valid. Not applying default")
                 item.content.position.margin
             } else {
-                mindboxLogD("Unknown margin ${item?.content?.position?.margin?.kind}. Applying default")
+                mindboxLogI("Unknown margin ${item?.content?.position?.margin?.kind}. Applying default")
                 MarginDto(
                     bottom = defaultBottomMargin,
                     kind = defaultMarginKind,

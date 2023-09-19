@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto.LayerDto.ImageLayerDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
 internal class ImageLayerValidator : Validator<ImageLayerDto?> {
@@ -16,8 +17,10 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
         val rez = item?.type == ImageLayerDto.IMAGE_TYPE_JSON_NAME &&
                 actionRez && sourceRez
         if (!rez) {
-            mindboxLogD("InApp is invalid. Image layer is expected to have valid action, valid source and type = ${ImageLayerDto.IMAGE_TYPE_JSON_NAME}. " +
-                    "Actual image layer is ${item?.type} with action validity = $actionRez and souceValidity $sourceRez")
+            mindboxLogD(
+                "InApp is invalid. Image layer is expected to have valid action, valid source and type = ${ImageLayerDto.IMAGE_TYPE_JSON_NAME}. " +
+                        "Actual image layer is ${item?.type} with action validity = $actionRez and souceValidity $sourceRez"
+            )
         }
         return rez
     }
@@ -37,6 +40,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
                     }
                     rez
                 }
+
                 else -> {
                     mindboxLogD("Unknown action. Should never trigger. Otherwise the deserialization is broken")
                     false
@@ -46,16 +50,16 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
     }
 
     internal class ActionValidator :
-        Validator<ImageLayerDto.ActionDto?> {
-        override fun isValid(item: ImageLayerDto.ActionDto?): Boolean {
+        Validator<ActionDto?> {
+        override fun isValid(item: ActionDto?): Boolean {
             return when {
-                (item is ImageLayerDto.ActionDto.RedirectUrlActionDto) -> {
+                (item is ActionDto.RedirectUrlActionDto) -> {
                     val rez =
-                        item.type == ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                        item.type == ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
                                 && item.value != null && item.value.toDoubleOrNull() == null && item.intentPayload != null
                     if (!rez) {
                         mindboxLogD(
-                            "InApp is not valid. Image layer action is expected to have type = ${ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME}," +
+                            "InApp is not valid. Image layer action is expected to have type = ${ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME}," +
                                     " non-null value and non-null intentPayload. Actual imageLayer action type = ${item.type}, value = ${item.value}, intentPayload = ${item.intentPayload}"
                         )
                     }
