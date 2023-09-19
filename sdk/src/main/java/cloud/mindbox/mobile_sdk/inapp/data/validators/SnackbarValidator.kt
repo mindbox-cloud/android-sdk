@@ -8,7 +8,7 @@ internal class SnackbarValidator(
     private val elementValidator: ElementValidator
 ) : Validator<PayloadDto.SnackbarDto?> {
     override fun isValid(item: PayloadDto.SnackbarDto?): Boolean {
-        if (item?.type != PayloadDto.ModalWindowDto.MODAL_JSON_NAME) return false
+        if (item?.type != PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME) return false
         val layers = item.content?.background?.layers?.filterNotNull()
         if (layers.isNullOrEmpty()) return false
         val invalidLayer = layers.find { layerDto ->
