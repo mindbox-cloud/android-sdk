@@ -52,7 +52,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
                 (item is ImageLayerDto.ActionDto.RedirectUrlActionDto) -> {
                     val rez =
                         item.type == ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
-                                && item.value != null && item.intentPayload != null
+                                && item.value != null && item.value.toDoubleOrNull() == null && item.intentPayload != null
                     if (!rez) {
                         mindboxLogD(
                             "InApp is not valid. Image layer action is expected to have type = ${ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME}," +
