@@ -24,12 +24,14 @@ internal class CloseButtonElementDtoTest {
         mockkStatic(Color::class)
         every { Color.parseColor(any()) } returns 123 // A sample color int
 
-        val updatedElement = closeButtonElement.updateWithDefaults() as CloseButtonElementDto
+        val updatedElement =
+            closeButtonElement.updateWithDefaults(ElementDto.InAppType.SNACKBAR) as CloseButtonElementDto
 
         // Assert that the updated values are as expected
         // You'll need to adjust the expected values based on your logic
-        assertTrue(updatedElement.color == "#000000")
-        assertTrue(updatedElement.lineWidth == 1)
+        assertTrue(updatedElement.color == "#FFFFFF")
+        assertTrue(updatedElement.lineWidth == 2)
+        assertTrue(updatedElement.position?.margin != null && updatedElement.size != null && updatedElement.type != null)
         // Check other properties as well
     }
 

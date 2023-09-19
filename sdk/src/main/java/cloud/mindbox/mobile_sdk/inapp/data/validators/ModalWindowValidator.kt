@@ -4,13 +4,14 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
-internal class SnackbarValidator(
+internal class ModalWindowValidator(
     private val imageLayerValidator: ImageLayerValidator,
     private val elementValidator: ElementValidator
-) : Validator<PayloadDto.SnackbarDto?> {
-    override fun isValid(item: PayloadDto.SnackbarDto?): Boolean {
-        if (item?.type != PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME) {
-            mindboxLogD("InApp is not valid. Expected type is ${PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME}. Actual type = ${item?.type}")
+) : Validator<PayloadDto.ModalWindowDto?> {
+
+    override fun isValid(item: PayloadDto.ModalWindowDto?): Boolean {
+        if (item?.type != PayloadDto.ModalWindowDto.MODAL_JSON_NAME) {
+            mindboxLogD("InApp is not valid. Expected type = ${PayloadDto.ModalWindowDto.MODAL_JSON_NAME}, actual type = ${item?.type}")
             return false
         }
         val layers = item.content?.background?.layers?.filterNotNull()
@@ -30,11 +31,6 @@ internal class SnackbarValidator(
         }
         if (invalidLayer != null) {
             mindboxLogD("InApp is not valid. At least one layer is invalid")
-            return false
-        }
-        val isValidMargin = item.content.position.margin.isValidPosition()
-        if (!isValidMargin) {
-            mindboxLogD("InApp has invalid margin")
             return false
         }
         item.content.elements?.forEach { elementDto ->

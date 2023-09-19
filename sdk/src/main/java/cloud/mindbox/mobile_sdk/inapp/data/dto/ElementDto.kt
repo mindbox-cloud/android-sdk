@@ -2,11 +2,17 @@ package cloud.mindbox.mobile_sdk.inapp.data.dto
 
 import android.graphics.Color
 import cloud.mindbox.mobile_sdk.isInRange
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import com.google.gson.annotations.SerializedName
 
 internal sealed class ElementDto {
-    internal abstract fun updateWithDefaults(): ElementDto
+    internal abstract fun updateWithDefaults(type: InAppType): ElementDto
     internal abstract fun validateValues(): Boolean
+
+    internal enum class InAppType {
+        MODAL_WINDOW,
+        SNACKBAR
+    }
 
     internal data class CloseButtonElementDto(
         @SerializedName("color")
@@ -21,28 +27,64 @@ internal sealed class ElementDto {
         val type: String?
     ) : ElementDto() {
 
-        override fun updateWithDefaults(): ElementDto {
+        override fun updateWithDefaults(type: InAppType): ElementDto {
             val newColor =
-                if (color != null && runCatching { Color.parseColor(color) }.getOrNull() != null) color else defaultColor
+                if (color != null && runCatching { Color.parseColor(color) }.getOrNull() != null) {
+                    mindboxLogD("Color is valid. Not applying default")
+                    color
+                } else {
+                    mindboxLogD("Color is not valid. Applying default")
+                    defaultColor
+                }
             val newLineWidth = if (lineWidth != null && lineWidth.toString()
                     .toDoubleOrNull() != null
-            ) lineWidth else defaultLineWidth
+            ) {
+                mindboxLogD("Line width is valid. Not applying default")
+                lineWidth
+            } else {
+                mindboxLogD("Line width is not valid. Applying default")
+                defaultLineWidth
+            }
 
             val newPosition =
-                if (position?.margin != null && marginNames.contains(position.margin.kind)) position else PositionDto(
-                    PositionDto.MarginDto(
-                        bottom = defaultBottomPosition,
-                        kind = defaultPositionKind,
-                        left = defaultLeftPosition,
-                        right = defaultRightPosition,
-                        top = defaultTopPosition
+                if (position?.margin != null && marginNames.contains(position.margin.kind)) {
+                    mindboxLogD("Position is valid. Not applying default")
+                    position
+                } else {
+                    mindboxLogD("Unknown position ${position?.margin?.kind}. Applying default")
+                    PositionDto(
+                        PositionDto.MarginDto(
+                            bottom = defaultBottomPosition,
+                            kind = defaultPositionKind,
+                            left = defaultLeftPosition,
+                            right = defaultRightPosition,
+                            top = defaultTopPosition
+                        )
                     )
-                )
-            val newSize = if (size != null && sizeNames.contains(size.kind)) size else SizeDto(
-                height = defaultHeightSize,
-                kind = defaultSizeKind,
-                width = defaultWidthSize
-            )
+                }
+            val newSize = if (size != null && sizeNames.contains(size.kind)) {
+                mindboxLogD("Size is valid. Not applying default")
+                size
+            } else {
+                mindboxLogD("Unknown size ${size?.kind}. Applying default")
+                when (type) {
+                    InAppType.MODAL_WINDOW -> {
+                        SizeDto(
+                            height = defaultModalHeightSize,
+                            kind = defaultSizeKind,
+                            width = defaultModalWidthSize
+                        )
+                    }
+
+                    InAppType.SNACKBAR -> {
+                        SizeDto(
+                            height = defaultSnackbarHeightSize,
+                            kind = defaultSizeKind,
+                            width = defaultSnackbarWidthSize
+                        )
+                    }
+                }
+            }
             return copy(
                 color = newColor,
                 lineWidth = newLineWidth,
@@ -57,30 +99,46 @@ internal sealed class ElementDto {
         }
 
         private fun isValidSize(item: SizeDto?): Boolean {
-            return item?.kind != null
+            val rez = item?.kind != null
                     && item.height.isInRange(0.0, Double.MAX_VALUE)
                     && item.width.isInRange(0.0, Double.MAX_VALUE)
+            if (!rez) {
+                mindboxLogD(
+                    "Close button size is not valid. Expected kind != null and width/height in range [0, inf]. " +
+                            "Actual params : kind =  ${item?.kind}, height = ${item?.height}, width = ${item?.width}"
+                )
+            }
+            return rez
         }
 
         private fun isValidPosition(item: PositionDto?): Boolean {
-            return item?.margin?.kind != null
+            val rez = item?.margin?.kind != null
                     && item.margin.bottom.isInRange(0.0, 1.0)
                     && item.margin.top.isInRange(0.0, 1.0)
                     && item.margin.left.isInRange(0.0, 1.0)
                     && item.margin.right.isInRange(0.0, 1.0)
+            if (!rez) {
+                mindboxLogD(
+                    "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
+                            "Actual params : kind =  ${item?.margin?.kind}, top = ${item?.margin?.top}, bottom = ${item?.margin?.bottom}, left = ${item?.margin?.left}, right = ${item?.margin?.right}"
+                )
+            }
+            return rez
         }
 
         internal companion object {
             const val CLOSE_BUTTON_ELEMENT_JSON_NAME = "closeButton"
-            private const val defaultColor = "#000000"
-            private const val defaultLineWidth = 1
-            private const val defaultWidthSize = 32.0
-            private const val defaultHeightSize = 32.0
+            private const val defaultColor = "#FFFFFF"
+            private const val defaultLineWidth = 2
+            private const val defaultModalWidthSize = 24.0
+            private const val defaultModalHeightSize = 24.0
+            private const val defaultSnackbarWidthSize = 16.0
+            private const val defaultSnackbarHeightSize = 16.0
             private const val defaultSizeKind = "dp"
-            private const val defaultBottomPosition = 0.0
-            private const val defaultTopPosition = 0.03
-            private const val defaultLeftPosition = 0.0
-            private const val defaultRightPosition = 0.03
+            private const val defaultBottomPosition = 0.02
+            private const val defaultTopPosition = 0.02
+            private const val defaultLeftPosition = 0.02
+            private const val defaultRightPosition = 0.02
             private const val defaultPositionKind = "proportion"
             private val sizeNames = setOf("dp")
             private val marginNames = setOf("proportion")

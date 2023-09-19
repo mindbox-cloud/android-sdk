@@ -103,7 +103,7 @@ internal interface DataModule : MindboxModule {
     val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
     val snackBarDtoDataFiller: SnackBarDtoDataFiller
     val elementDtoDataFiller: ElementDtoDataFiller
-    val modalWindowValidator: ModalWindowFormValidator
+    val modalWindowValidator: ModalWindowValidator
     val imageLayerValidator: ImageLayerValidator
     val elementValidator: ElementValidator
     val snackbarValidator: SnackbarValidator

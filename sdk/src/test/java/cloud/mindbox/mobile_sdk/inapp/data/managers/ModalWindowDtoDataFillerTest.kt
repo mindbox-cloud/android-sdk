@@ -29,7 +29,7 @@ internal class ModalWindowDtoDataFillerTest {
             type = ""
         )
 
-        every { elementDtoDataFiller.fillData(any()) } returns emptyList()
+        every { elementDtoDataFiller.fillData(any(), ElementDto.InAppType.MODAL_WINDOW) } returns emptyList()
 
         // When
         val result = modalWindowDtoDataFiller.fillData(item)

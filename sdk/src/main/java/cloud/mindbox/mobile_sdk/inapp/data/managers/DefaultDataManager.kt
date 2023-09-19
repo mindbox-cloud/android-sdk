@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 
 internal class DefaultDataManager(
@@ -11,10 +12,16 @@ internal class DefaultDataManager(
         return item?.copy(variants = item.variants?.filterNotNull()?.map { payloadDto ->
             when (payloadDto) {
                 is PayloadDto.ModalWindowDto -> {
-                    modalWindowDtoDataFiller.fillData(payloadDto)
+                    mindboxLogD("Start optionality check for $payloadDto")
+                    val rez = modalWindowDtoDataFiller.fillData(payloadDto)
+                    mindboxLogD("Finish optionality check for $payloadDto")
+                    rez
                 }
                 is PayloadDto.SnackbarDto -> {
-                    snackBarDtoDataFiller.fillData(payloadDto)
+                    mindboxLogD("Start optionality check for $payloadDto")
+                    val rez = snackBarDtoDataFiller.fillData(payloadDto)
+                    mindboxLogD("Finish optionality check for $payloadDto")
+                    rez
                 }
             }
         })

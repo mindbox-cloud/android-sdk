@@ -19,7 +19,7 @@ internal class InAppValidatorTest {
     val mockkRule = MockKRule(this)
 
     @MockK
-    private lateinit var modalWindowFormValidator: ModalWindowFormValidator
+    private lateinit var modalWindowValidator: ModalWindowValidator
 
     private val sdkVersionValidator = SdkVersionValidator()
 
@@ -37,7 +37,7 @@ internal class InAppValidatorTest {
 
     @Before
     fun onTestStart() {
-        every { modalWindowFormValidator.isValid(any()) } returns true
+        every { modalWindowValidator.isValid(any()) } returns true
     }
 
     @Test
@@ -103,10 +103,10 @@ internal class InAppValidatorTest {
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
         inAppValidator =
-            InAppValidatorImpl(sdkVersionValidator, modalWindowFormValidator, snackbarValidator)
+            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator)
 
         every {
-            modalWindowFormValidator.isValid(any())
+            modalWindowValidator.isValid(any())
         } returns false
 
         assertFalse(
@@ -136,11 +136,11 @@ internal class InAppValidatorTest {
     fun `validate form dto variants variant is not null but type is imageUrl is null`() {
         inAppValidator = InAppValidatorImpl(
             sdkVersionValidator = sdkVersionValidator,
-            modalWindowFormValidator = modalWindowFormValidator,
+            modalWindowValidator = modalWindowValidator,
             snackbarValidator = snackbarValidator
         )
         every {
-            modalWindowFormValidator.isValid(any())
+            modalWindowValidator.isValid(any())
         } returns false
         assertFalse(
             inAppValidator.validateInApp(

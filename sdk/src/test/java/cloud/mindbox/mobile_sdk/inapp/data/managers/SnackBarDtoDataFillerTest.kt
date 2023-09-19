@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PayloadDtoStub
@@ -38,7 +39,7 @@ internal class SnackBarDtoDataFillerTest {
     fun `fillData with valid item should return modified item`() {
         // Arrange
         every {
-            elementDtoDataFiller.fillData(any())
+            elementDtoDataFiller.fillData(any(), ElementDto.InAppType.SNACKBAR)
         } answers
                 {
                     callOriginal()
@@ -65,7 +66,7 @@ internal class SnackBarDtoDataFillerTest {
         assert(result?.content?.position?.gravity != null)
 
         // Assert
-        verify(exactly = 1) { elementDtoDataFiller.fillData(item.content?.elements) }
+        verify(exactly = 1) { elementDtoDataFiller.fillData(item.content?.elements, ElementDto.InAppType.SNACKBAR) }
     }
 
 }

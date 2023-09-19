@@ -39,8 +39,8 @@ internal fun DataModule(
         )
     override val elementDtoDataFiller: ElementDtoDataFiller
         get() = ElementDtoDataFiller()
-    override val modalWindowValidator: ModalWindowFormValidator by lazy {
-        ModalWindowFormValidator(
+    override val modalWindowValidator: ModalWindowValidator by lazy {
+        ModalWindowValidator(
             imageLayerValidator = imageLayerValidator,
             elementValidator = elementValidator
         )
@@ -140,7 +140,7 @@ internal fun DataModule(
     override val inAppValidator: InAppValidator by lazy {
         InAppValidatorImpl(
             sdkVersionValidator = sdkVersionValidator,
-            modalWindowFormValidator = modalWindowValidator,
+            modalWindowValidator = modalWindowValidator,
             snackbarValidator = snackbarValidator
         )
     }
