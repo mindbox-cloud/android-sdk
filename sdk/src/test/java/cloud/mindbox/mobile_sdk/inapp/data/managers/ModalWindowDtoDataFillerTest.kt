@@ -16,7 +16,7 @@ internal class ModalWindowDtoDataFillerTest {
     @get:Rule
     val rule = MockKRule(this)
     @MockK
-    private lateinit var elementDtoDataFiller: ElementDtoDataFiller
+    private lateinit var elementDtoDataFiller: ModalElementDtoDataFiller
 
     @OverrideMockKs
     private lateinit var modalWindowDtoDataFiller: ModalWindowDtoDataFiller
@@ -29,7 +29,7 @@ internal class ModalWindowDtoDataFillerTest {
             type = ""
         )
 
-        every { elementDtoDataFiller.fillData(any(), ElementDto.InAppType.MODAL_WINDOW) } returns emptyList()
+        every { elementDtoDataFiller.fillData(any()) } returns emptyList()
 
         // When
         val result = modalWindowDtoDataFiller.fillData(item)

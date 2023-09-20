@@ -6,7 +6,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
 internal class SnackbarValidator(
     private val imageLayerValidator: ImageLayerValidator,
-    private val elementValidator: ElementValidator
+    private val elementValidator: SnackBarElementValidator
 ) : Validator<PayloadDto.SnackbarDto?> {
     override fun isValid(item: PayloadDto.SnackbarDto?): Boolean {
         if (item?.type != PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME) {

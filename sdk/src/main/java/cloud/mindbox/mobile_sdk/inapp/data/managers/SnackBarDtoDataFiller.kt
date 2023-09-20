@@ -1,14 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto.GravityDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
-internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: ElementDtoDataFiller) :
-    DefaultDataFiller<PayloadDto.SnackbarDto?> {
+internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarElementDtoDataFiller) :
+    DataFiller<PayloadDto.SnackbarDto?> {
 
     private val horizontalPositionNames = setOf("center", "left", "right")
     private val verticalPositionNames = setOf("center", "top", "bottom")
@@ -54,8 +53,7 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: ElementDt
         return item?.copy(
             content = item.content?.copy(
                 elements = elementDtoDataFiller.fillData(
-                    item.content.elements,
-                    ElementDto.InAppType.SNACKBAR
+                    item.content.elements
                 ),
                 position = PositionDto(
                     gravity = newGravityDto,

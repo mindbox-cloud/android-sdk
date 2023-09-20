@@ -6,7 +6,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class ModalWindowValidator(
     private val imageLayerValidator: ImageLayerValidator,
-    private val elementValidator: ElementValidator
+    private val elementValidator: ModalElementValidator
 ) : Validator<PayloadDto.ModalWindowDto?> {
 
     override fun isValid(item: PayloadDto.ModalWindowDto?): Boolean {

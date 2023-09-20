@@ -37,33 +37,75 @@ internal fun DataModule(
             appContext,
             inAppImageSizeStorage
         )
-    override val elementDtoDataFiller: ElementDtoDataFiller
-        get() = ElementDtoDataFiller()
+
+    override val modalElementDtoDataFiller: ModalElementDtoDataFiller
+        get() = ModalElementDtoDataFiller(closeButtonModalElementDtoDataFiller = closeButtonModalElementDtoDataFiller)
+
     override val modalWindowValidator: ModalWindowValidator by lazy {
         ModalWindowValidator(
             imageLayerValidator = imageLayerValidator,
-            elementValidator = elementValidator
+            elementValidator = modalElementValidator
         )
     }
     override val imageLayerValidator: ImageLayerValidator
         get() = ImageLayerValidator()
-    override val elementValidator: ElementValidator
-        get() = ElementValidator()
-    override val snackbarValidator: SnackbarValidator by lazy {
-        SnackbarValidator(
-            imageLayerValidator,
-            elementValidator
+
+    override val modalElementValidator: ModalElementValidator by lazy {
+        ModalElementValidator(
+            closeButtonElementValidator = closeButtonModalElementValidator
         )
     }
 
+    override val snackbarValidator: SnackbarValidator by lazy {
+        SnackbarValidator(
+            imageLayerValidator,
+            snackbarElementValidator
+        )
+    }
+    override val closeButtonModalElementValidator: CloseButtonModalElementValidator
+        get() = CloseButtonModalElementValidator(
+            sizeValidator = CloseButtonModalSizeValidator(),
+            positionValidator = CloseButtonModalPositionValidator()
+        )
+    override val closeButtonModalPositionValidator: CloseButtonModalPositionValidator
+        get() = CloseButtonModalPositionValidator()
+    override val closeButtonSnackbarElementValidator: CloseButtonSnackbarElementValidator
+        get() = CloseButtonSnackbarElementValidator(
+            positionValidator = closeButtonSnackbarPositionValidator,
+            sizeValidator = closeButtonSnackbarSizeValidator
+        )
+    override val closeButtonSnackbarPositionValidator: CloseButtonSnackbarPositionValidator
+        get() = CloseButtonSnackbarPositionValidator()
+    override val closeButtonSnackbarSizeValidator: CloseButtonSnackbarSizeValidator
+        get() = CloseButtonSnackbarSizeValidator()
+    override val closeButtonModalElementDtoDataFiller: CloseButtonModalElementDtoDataFiller
+        get() = CloseButtonModalElementDtoDataFiller()
+    override val closeButtonPositionValidator: CloseButtonModalPositionValidator
+        get() = CloseButtonModalPositionValidator()
+    override val closeButtonModalSizeValidator: CloseButtonModalSizeValidator
+        get() = CloseButtonModalSizeValidator()
+
+    override val snackbarElementValidator: SnackBarElementValidator by lazy {
+        SnackBarElementValidator(
+            closeButtonElementValidator = CloseButtonSnackbarElementValidator(
+                positionValidator = CloseButtonSnackbarPositionValidator(),
+                sizeValidator = CloseButtonSnackbarSizeValidator()
+            )
+        )
+    }
+    override val snackBarElementDtoDataFiller: SnackbarElementDtoDataFiller
+        get() = SnackbarElementDtoDataFiller(closeButtonSnackbarElementDtoDataFiller = closeButtonSnackbarElementDtoDataFiller)
+    override val closeButtonSnackbarElementDtoDataFiller: CloseButtonSnackbarElementDtoDataFiller
+        get() = CloseButtonSnackbarElementDtoDataFiller()
+
     override val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
-            by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = elementDtoDataFiller) }
+            by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = modalElementDtoDataFiller) }
 
     override val snackBarDtoDataFiller: SnackBarDtoDataFiller
-            by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = elementDtoDataFiller) }
+            by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = snackBarElementDtoDataFiller) }
 
-    override val defaultDataManager: DefaultDataManager by lazy {
-        DefaultDataManager(
+    override val defaultDataManager: DataManager by lazy {
+        DataManager(
             modalWindowDtoDataFiller = modalWindowDtoDataFiller,
             snackBarDtoDataFiller = snackBarDtoDataFiller
         )

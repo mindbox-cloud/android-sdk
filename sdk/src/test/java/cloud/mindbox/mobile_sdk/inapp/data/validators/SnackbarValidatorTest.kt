@@ -24,7 +24,7 @@ internal class SnackbarValidatorTest {
     private lateinit var imageLayerValidator: ImageLayerValidator
 
     @MockK
-    private lateinit var elementValidator: ElementValidator
+    private lateinit var elementValidator: SnackBarElementValidator
 
     @Test
     fun `validate snackbar invalid type`() {

@@ -4,7 +4,7 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
-import cloud.mindbox.mobile_sdk.inapp.data.managers.DefaultDataManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.ModalWindowDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -99,14 +99,25 @@ internal interface DataModule : MindboxModule {
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
     val inAppImageLoader: InAppImageLoader
-    val defaultDataManager: DefaultDataManager
+    val defaultDataManager: DataManager
     val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
     val snackBarDtoDataFiller: SnackBarDtoDataFiller
-    val elementDtoDataFiller: ElementDtoDataFiller
+    val modalElementDtoDataFiller: ModalElementDtoDataFiller
     val modalWindowValidator: ModalWindowValidator
     val imageLayerValidator: ImageLayerValidator
-    val elementValidator: ElementValidator
+    val modalElementValidator: ModalElementValidator
     val snackbarValidator: SnackbarValidator
+    val closeButtonModalElementValidator: CloseButtonModalElementValidator
+    val closeButtonModalElementDtoDataFiller: CloseButtonModalElementDtoDataFiller
+    val closeButtonPositionValidator: CloseButtonModalPositionValidator
+    val closeButtonModalSizeValidator: CloseButtonModalSizeValidator
+    val closeButtonModalPositionValidator: CloseButtonModalPositionValidator
+    val closeButtonSnackbarElementValidator: CloseButtonSnackbarElementValidator
+    val closeButtonSnackbarPositionValidator: CloseButtonSnackbarPositionValidator
+    val closeButtonSnackbarSizeValidator: CloseButtonSnackbarSizeValidator
+    val snackbarElementValidator: SnackBarElementValidator
+    val snackBarElementDtoDataFiller: SnackbarElementDtoDataFiller
+    val closeButtonSnackbarElementDtoDataFiller: CloseButtonSnackbarElementDtoDataFiller
 }
 
 internal interface MonitoringModule : MindboxModule {

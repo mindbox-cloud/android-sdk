@@ -20,7 +20,7 @@ internal class ModalWindowValidatorTest {
     private lateinit var imageLayerValidator: ImageLayerValidator
 
     @MockK
-    private lateinit var elementValidator: ElementValidator
+    private lateinit var elementValidator: ModalElementValidator
 
     @InjectMockKs
     private lateinit var modalWindowValidator: ModalWindowValidator

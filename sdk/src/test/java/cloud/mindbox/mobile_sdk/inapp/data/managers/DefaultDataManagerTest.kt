@@ -21,7 +21,7 @@ internal class DefaultDataManagerTest {
     private lateinit var modalWindowDtoDataFiller: ModalWindowDtoDataFiller
 
     @OverrideMockKs
-    private lateinit var defaultDataManager: DefaultDataManager
+    private lateinit var defaultDataManager: DataManager
 
     @Test
     fun `test fill data modal window and snackbar`() {

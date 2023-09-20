@@ -26,12 +26,6 @@ internal class InAppValidatorTest {
     @MockK
     private lateinit var snackbarValidator: SnackbarValidator
 
-    @MockK
-    private lateinit var elementValidator: ElementValidator
-
-    @MockK
-    private lateinit var imageValidator: ImageLayerValidator
-
     @OverrideMockKs
     private lateinit var inAppValidator: InAppValidatorImpl
 
