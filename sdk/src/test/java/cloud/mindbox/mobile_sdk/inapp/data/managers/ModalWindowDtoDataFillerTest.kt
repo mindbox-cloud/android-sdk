@@ -16,7 +16,7 @@ internal class ModalWindowDtoDataFillerTest {
     @get:Rule
     val rule = MockKRule(this)
     @MockK
-    private lateinit var elementDtoDataFiller: ElementDtoDataFiller
+    private lateinit var elementDtoDataFiller: ModalElementDtoDataFiller
 
     @OverrideMockKs
     private lateinit var modalWindowDtoDataFiller: ModalWindowDtoDataFiller

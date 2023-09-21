@@ -17,7 +17,7 @@ internal class SnackBarDtoDataFillerTest {
     val rule = MockKRule(this)
 
     @MockK
-    private lateinit var elementDtoDataFiller: ElementDtoDataFiller
+    private lateinit var elementDtoDataFiller: SnackbarElementDtoDataFiller
 
     @OverrideMockKs
     private lateinit var snackBarDtoDataFiller: SnackBarDtoDataFiller

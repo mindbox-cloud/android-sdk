@@ -2,8 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 
-internal class ModalWindowDtoDataFiller(private val elementDtoDataFiller: ElementDtoDataFiller) :
-    DefaultDataFiller<PayloadDto.ModalWindowDto?> {
+internal class ModalWindowDtoDataFiller(private val elementDtoDataFiller: ModalElementDtoDataFiller) :
+    DataFiller<PayloadDto.ModalWindowDto?> {
 
     override fun fillData(item: PayloadDto.ModalWindowDto?): PayloadDto.ModalWindowDto? {
         return item?.copy(

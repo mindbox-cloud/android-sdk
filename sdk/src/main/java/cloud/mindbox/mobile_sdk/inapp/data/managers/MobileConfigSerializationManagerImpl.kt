@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.*
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.FormBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
@@ -64,20 +65,24 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                 PayloadDto.ModalWindowDto(
                                     content = PayloadDto.ModalWindowDto.ContentDto(
                                         background = BackgroundDto(
-                                            layers = payloadBlankDto.content?.background?.layers?.map {
+                                            layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
                                                 deserializeToBackgroundLayersDto(it as JsonObject)
-                                            }?.filterNotNull()),
-                                        elements = payloadBlankDto.content?.elements
+                                            }),
+                                        elements = payloadBlankDto.content?.elements?.mapNotNull {
+                                            deserializeToElementDto(it)
+                                        }
                                     ), type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
                                 )
                             }
                             is PayloadBlankDto.SnackBarBlankDto -> {
                                 PayloadDto.SnackbarDto(
                                     content = PayloadDto.SnackbarDto.ContentDto(
-                                        background = BackgroundDto(layers = payloadBlankDto.content?.background?.layers?.map {
+                                        background = BackgroundDto(layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
                                             deserializeToBackgroundLayersDto(it as JsonObject)
-                                        }?.filterNotNull()),
-                                        elements = payloadBlankDto.content?.elements,
+                                        }),
+                                        elements = payloadBlankDto.content?.elements?.mapNotNull {
+                                            deserializeToElementDto(it)
+                                        },
                                         position = PayloadDto.SnackbarDto.ContentDto.PositionDto(
                                             gravity = PayloadDto.SnackbarDto.ContentDto.PositionDto.GravityDto(
                                                 horizontal = payloadBlankDto.content?.position?.gravity?.horizontal,
@@ -98,6 +103,21 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                     })
         if (result.variants.isNullOrEmpty()) return null
         return result
+    }
+
+    private fun deserializeToElementDto(element: JsonObject?): ElementDto? {
+        if (element == null) return null
+        val result = runCatching {
+            gson.fromJson(element, ElementDto::class.java)
+        }
+        result.exceptionOrNull()?.let { error ->
+            MindboxLoggerImpl.e(
+                parent = this@MobileConfigSerializationManagerImpl,
+                message = "Failed to parse JsonObject: $element",
+                exception = error
+            )
+        }
+        return result.getOrNull()
     }
 
     private fun deserializeToBackgroundLayersDto(layer: JsonObject?): BackgroundDto.LayerDto? {

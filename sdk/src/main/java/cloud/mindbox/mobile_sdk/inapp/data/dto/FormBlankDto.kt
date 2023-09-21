@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto
 
 import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 
 internal data class FormBlankDto(
@@ -18,9 +19,9 @@ internal sealed class PayloadBlankDto {
 
         internal data class ContentBlankDto(
             @SerializedName("background")
-            val background: BackGroundBlankDto?,
+            val background: BackgroundBlankDto?,
             @SerializedName("elements")
-            var elements: List<ElementDto?>?,
+            var elements: List<JsonObject?>?,
             @SerializedName("position")
             val position: PositionBlankDto
         ) {
@@ -60,11 +61,11 @@ internal sealed class PayloadBlankDto {
     ) : PayloadBlankDto() {
         internal data class ContentBlankDto(
             @SerializedName("background")
-            val background: BackGroundBlankDto?,
+            val background: BackgroundBlankDto?,
             @SerializedName("elements")
-            val elements: List<ElementDto?>?
+            val elements: List<JsonObject?>?
         )
     }
 }
 
-internal data class BackGroundBlankDto(@SerializedName("layers") val layers: JsonArray?)
+internal data class BackgroundBlankDto(@SerializedName("layers") val layers: JsonArray?)
