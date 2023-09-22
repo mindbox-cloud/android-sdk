@@ -28,27 +28,30 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarE
         ) {
             item.content.position.gravity
         } else {
-            mindboxLogI(
-                "Unknown gravity: horizontal = ${item?.content?.position?.gravity?.horizontal} " +
-                        "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default"
-            )
-            GravityDto(
+            val gravityDto = GravityDto(
                 horizontal = if (horizontalPositionNames.contains(item?.content?.position?.gravity?.horizontal)) item?.content?.position?.gravity?.horizontal else defaultHorizontalGravity,
                 vertical = if (verticalPositionNames.contains(item?.content?.position?.gravity?.vertical)) item?.content?.position?.gravity?.vertical else defaultVerticalGravity
             )
+            mindboxLogI(
+                "Unknown gravity: horizontal = ${item?.content?.position?.gravity?.horizontal} " +
+                        "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default $gravityDto"
+            )
+            gravityDto
+
         }
         val newMarginDto =
             if (item?.content?.position?.margin != null && marginNames.contains(item.content.position.margin.kind)) {
                 item.content.position.margin
             } else {
-                mindboxLogI("Unknown margin ${item?.content?.position?.margin?.kind}. Applying default")
-                MarginDto(
+                val marginDto = MarginDto(
                     bottom = defaultBottomMargin,
                     kind = defaultMarginKind,
                     left = defaultLeftMargin,
                     right = defaultRightMargin,
                     top = defaultTopMargin
                 )
+                mindboxLogI("Unknown margin ${item?.content?.position?.margin?.kind}. Applying default $marginDto")
+                marginDto
             }
         return item?.copy(
             content = item.content?.copy(
