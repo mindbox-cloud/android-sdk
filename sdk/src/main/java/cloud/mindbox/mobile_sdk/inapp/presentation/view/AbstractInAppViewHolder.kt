@@ -6,12 +6,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.ImageView
+import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.putWithCallback
 import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
@@ -31,6 +34,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         get() = _currentDialog!!
 
     private var typingView: View? = null
+
+    protected val preparedImages : MutableMap<ImageView, Boolean> = mutableMapOf()
+
 
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
@@ -71,7 +77,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     protected fun getImageFromCache(url: String, imageView: InAppImageView) {
-        Glide
+       Glide
             .with(currentDialog.context)
             .load(url)
             .onlyRetrieveFromCache(true)
@@ -83,9 +89,8 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     isFirstResource: Boolean
                 ): Boolean {
                     this.mindboxLogE(
-                        message = "Failed to load inapp image",
-                        exception = e
-                            ?: RuntimeException("Failed to load inapp image")
+                        message = "Failed to load inapp image with url = $url",
+                        exception = e ?: RuntimeException("Failed to load inapp image with url = $url")
                     )
                     hide()
                     return false
@@ -99,6 +104,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     isFirstResource: Boolean
                 ): Boolean {
                     bind()
+                    preparedImages.putWithCallback(imageView, true) {
+                        if (it.values.contains(false).not()) {
+                            mindboxLogI("In-app shown")
+                            wrapper.onInAppShown.onShown()
+                            for (image in it.keys) {
+                                image.isVisible = true
+                            }
+                        }
+                    }
                     return false
                 }
             })

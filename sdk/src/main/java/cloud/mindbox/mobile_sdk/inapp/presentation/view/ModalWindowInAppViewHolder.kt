@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.view.isVisible
@@ -23,7 +24,6 @@ internal class ModalWindowInAppViewHolder(
 
     override val isActive: Boolean
         get() = isInAppMessageActive
-
 
     override fun bind() {
         currentDialog.setDismissListener {
@@ -55,8 +55,6 @@ internal class ModalWindowInAppViewHolder(
             hide()
         }
         currentBackground?.isVisible = true
-        mindboxLogI("In-app shown")
-        wrapper.onInAppShown.onShown()
     }
 
     override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
@@ -64,9 +62,10 @@ internal class ModalWindowInAppViewHolder(
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
                 InAppImageView(currentDialog.context).also { inAppImageView ->
-                    mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+                    inAppImageView.visibility = View.INVISIBLE
                     currentDialog.addView(inAppImageView)
                     inAppImageView.prepareViewForModalWindow(currentDialog)
+                    preparedImages[inAppImageView] = false
                     getImageFromCache(layer.source.url, inAppImageView)
                 }
             }
@@ -75,6 +74,7 @@ internal class ModalWindowInAppViewHolder(
 
     override fun show(currentRoot: ViewGroup) {
         super.show(currentRoot)
+        mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is Layer.ImageLayer -> {

@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
+import android.widget.ImageView
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -140,6 +141,15 @@ internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
         }
 
     })
+}
+
+internal fun MutableMap<ImageView, Boolean>.putWithCallback(
+    imageView: ImageView,
+    boolean: Boolean,
+    callback: (Map<ImageView, Boolean>) -> Unit
+) {
+    this[imageView] = boolean
+    callback(this)
 }
 
 internal fun ViewGroup.removeChildById(@IdRes viewId: Int) {
