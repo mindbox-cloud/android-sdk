@@ -38,7 +38,7 @@ internal class InAppGlideImageLoaderImpl(
                         target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image for inapp with id $inAppId failed")
+                        mindboxLogD("loading image with url = $url for inapp with id $inAppId failed")
                         cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
                         return true
 
@@ -51,7 +51,7 @@ internal class InAppGlideImageLoaderImpl(
                         dataSource: DataSource?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image for inapp with id $inAppId succeeded")
+                        mindboxLogD("loading image with url = $url for inapp with id $inAppId succeeded")
                         inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
                         cancellableContinuation.resume(true)
                         return true
