@@ -143,15 +143,6 @@ internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
     })
 }
 
-internal fun MutableMap<ImageView, Boolean>.putWithCallback(
-    imageView: ImageView,
-    boolean: Boolean,
-    callback: (Map<ImageView, Boolean>) -> Unit
-) {
-    this[imageView] = boolean
-    callback(this)
-}
-
 internal fun ViewGroup.removeChildById(@IdRes viewId: Int) {
     return removeView(findViewById(viewId))
 }

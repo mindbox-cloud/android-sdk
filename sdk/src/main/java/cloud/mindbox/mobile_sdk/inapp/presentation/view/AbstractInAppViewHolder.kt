@@ -14,7 +14,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.putWithCallback
 import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
@@ -35,7 +34,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     private var typingView: View? = null
 
-    protected val preparedImages : MutableMap<ImageView, Boolean> = mutableMapOf()
+    protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
 
     private fun hideKeyboard(currentRoot: ViewGroup) {
@@ -77,7 +76,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     protected fun getImageFromCache(url: String, imageView: InAppImageView) {
-       Glide
+        Glide
             .with(currentDialog.context)
             .load(url)
             .onlyRetrieveFromCache(true)
@@ -90,7 +89,8 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 ): Boolean {
                     this.mindboxLogE(
                         message = "Failed to load inapp image with url = $url",
-                        exception = e ?: RuntimeException("Failed to load inapp image with url = $url")
+                        exception = e
+                            ?: RuntimeException("Failed to load inapp image with url = $url")
                     )
                     hide()
                     return false
@@ -104,13 +104,12 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     isFirstResource: Boolean
                 ): Boolean {
                     bind()
-                    preparedImages.putWithCallback(imageView, true) {
-                        if (it.values.contains(false).not()) {
-                            mindboxLogI("In-app shown")
-                            wrapper.onInAppShown.onShown()
-                            for (image in it.keys) {
-                                image.isVisible = true
-                            }
+                    preparedImages[imageView] = true
+                    if (!preparedImages.values.contains(false)) {
+                        mindboxLogI("In-app shown")
+                        wrapper.onInAppShown.onShown()
+                        for (image in preparedImages.keys) {
+                            image.visibility = View.VISIBLE
                         }
                     }
                     return false
