@@ -23,9 +23,9 @@ internal class ModalWindowValidator(
             when (layerDto) {
                 is BackgroundDto.LayerDto.ImageLayerDto -> {
                     mindboxLogI("Start checking image layer")
-                    val rez = !imageLayerValidator.isValid(layerDto)
+                    val rez = imageLayerValidator.isValid(layerDto)
                     mindboxLogI("Finish checking image layer and it's validity = $rez")
-                    rez
+                    !rez
                 }
             }
         }
