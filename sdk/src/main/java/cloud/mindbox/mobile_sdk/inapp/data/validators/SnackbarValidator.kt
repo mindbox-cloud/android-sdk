@@ -22,9 +22,9 @@ internal class SnackbarValidator(
             when (layerDto) {
                 is BackgroundDto.LayerDto.ImageLayerDto -> {
                     mindboxLogD("Start checking image layer")
-                    val rez = !imageLayerValidator.isValid(layerDto)
+                    val rez = imageLayerValidator.isValid(layerDto)
                     mindboxLogD("Finish checking image layer and it's validity = $rez")
-                    rez
+                    !rez
                 }
             }
         }
