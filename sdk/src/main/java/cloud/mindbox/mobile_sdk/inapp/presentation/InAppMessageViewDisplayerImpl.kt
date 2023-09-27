@@ -41,10 +41,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             pausedHolder?.wrapper?.let { wrapper ->
                 mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
                 showInAppMessage(
-                    wrapper.copy( onInAppClick = {
-                        mindboxLogI("Skip InApp.Click for restored inApp")
-                    }
-                        ,
+                    wrapper.copy(
                         onInAppShown = {
                             mindboxLogI("Skip InApp.Show for restored inApp")
                             currentActivity?.postDelayedAnimation {
