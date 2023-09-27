@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
-import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -36,6 +35,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
+    private var isActionExecuted: Boolean = false
 
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
@@ -61,12 +61,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     payload = layer.action.payload
                 }
             }
-            wrapper.onInAppClick.onClick()
-            inAppCallback.onInAppClick(
-                wrapper.inAppType.inAppId,
-                redirectUrl,
-                payload
-            )
+            if (!isActionExecuted) {
+                wrapper.onInAppClick.onClick()
+                inAppCallback.onInAppClick(
+                    wrapper.inAppType.inAppId,
+                    redirectUrl,
+                    payload
+                )
+                isActionExecuted = true
+            }
             if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
