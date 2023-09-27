@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
@@ -52,6 +53,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     abstract fun bind()
 
     protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
+        if (InAppMessageViewDisplayerImpl.isActionExecuted) return
         currentDialog.setSingleClickListener {
             var redirectUrl = ""
             var payload = ""
@@ -61,20 +63,18 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     payload = layer.action.payload
                 }
             }
-            if (!isActionExecuted) {
-                wrapper.onInAppClick.onClick()
-                inAppCallback.onInAppClick(
-                    wrapper.inAppType.inAppId,
-                    redirectUrl,
-                    payload
-                )
-                isActionExecuted = true
-            }
+            wrapper.onInAppClick.onClick()
+            inAppCallback.onInAppClick(
+                wrapper.inAppType.inAppId,
+                redirectUrl,
+                payload
+            )
             if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
                 hide()
             }
+            InAppMessageViewDisplayerImpl.isActionExecuted = true
         }
     }
 

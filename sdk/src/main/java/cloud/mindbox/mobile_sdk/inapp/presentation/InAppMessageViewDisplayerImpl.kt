@@ -18,6 +18,10 @@ import java.util.*
 internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: InAppImageSizeStorage) :
     InAppMessageViewDisplayer {
 
+    companion object {
+        internal var isActionExecuted: Boolean = false
+    }
+
     private var currentActivity: Activity? = null
     private var inAppCallback: InAppCallback = ComposableInAppCallback(
         UrlInAppCallback(),
