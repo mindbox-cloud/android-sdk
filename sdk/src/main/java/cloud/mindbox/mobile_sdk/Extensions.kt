@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
-import android.widget.ImageView
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -21,6 +20,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.util.Queue
 import kotlin.math.roundToInt
 
 
@@ -162,4 +162,10 @@ internal fun Activity.postDelayedAnimation(action: Runnable) {
         }
     }
     this.root?.postDelayed(action, duration)
+}
+
+internal inline fun <T> Queue<T>.addUnique(item: T, predicate: (T) -> Boolean = { it == item }): Boolean {
+    if (any(predicate)) return false
+    add(item)
+    return true
 }

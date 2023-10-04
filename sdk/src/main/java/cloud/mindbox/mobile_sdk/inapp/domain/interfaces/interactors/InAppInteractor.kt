@@ -11,8 +11,6 @@ internal interface InAppInteractor {
 
     fun saveShownInApp(id: String)
 
-    fun sendInAppShown(inAppId: String)
-
     fun sendInAppClicked(inAppId: String)
 
     suspend fun fetchMobileConfig()

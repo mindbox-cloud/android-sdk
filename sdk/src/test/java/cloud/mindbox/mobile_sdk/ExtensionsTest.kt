@@ -6,8 +6,7 @@ import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,6 +16,8 @@ import org.threeten.bp.ZoneId
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.util.LinkedList
+import java.util.Queue
 
 @RunWith(RobolectricTestRunner::class)
 internal class ExtensionsTest {
@@ -98,5 +99,30 @@ internal class ExtensionsTest {
         mockkObject(Context::getCurrentProcessName)
         every { context.getString(any()) } returns "test.myprocess"
         assertTrue(context.isMainProcess("test.myprocess"))
+    }
+
+    @Test
+    fun `add unique`() {
+        val linkedList: Queue<String> = LinkedList()
+
+        assertTrue(linkedList.addUnique("test1") { it == "test1" })
+        assertTrue(linkedList.contains("test1"))
+        assertEquals(1, linkedList.size)
+
+        assertFalse(linkedList.addUnique("test1"))
+        assertTrue(linkedList.contains("test1"))
+        assertEquals(1, linkedList.size)
+
+        assertTrue(linkedList.addUnique("test2"))
+        assertTrue(linkedList.contains("test2"))
+        assertEquals(2, linkedList.size)
+
+        assertFalse(linkedList.addUnique("test3") { it.startsWith("test") })
+        assertFalse(linkedList.contains("test3"))
+        assertEquals(2, linkedList.size)
+
+        assertTrue(linkedList.addUnique("tE5t4") { it.contains("tE5t4") })
+        assertTrue(linkedList.contains("tE5t4"))
+        assertEquals(3, linkedList.size)
     }
 }
