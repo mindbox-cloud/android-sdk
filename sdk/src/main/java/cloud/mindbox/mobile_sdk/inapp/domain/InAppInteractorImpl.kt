@@ -75,11 +75,14 @@ internal class InAppInteractorImpl(
     }
 
     override fun saveShownInApp(id: String) {
-        inAppRepository.saveShownInApp(id)
-    }
+        val shownInApps = inAppRepository.getShownInApps()
+        val isAlreadySaved = shownInApps.contains(id)
 
-    override fun sendInAppShown(inAppId: String) {
-        inAppRepository.sendInAppShown(inAppId)
+        if (!isAlreadySaved) {
+            inAppRepository.setInAppShown()
+            inAppRepository.sendInAppShown(id)
+            inAppRepository.saveShownInApp(id)
+        }
     }
 
     override fun sendInAppClicked(inAppId: String) {

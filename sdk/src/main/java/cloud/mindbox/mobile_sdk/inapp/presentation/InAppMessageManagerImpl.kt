@@ -44,12 +44,13 @@ internal class InAppMessageManagerImpl(
 
                         inAppMessageViewDisplayer.tryShowInAppMessage(
                             inAppType = inAppMessage,
-                            onInAppClick = { sendInAppClicked(inAppMessage.inAppId) },
+                            onInAppClick = {
+                                inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
+                            },
                             onInAppShown = {
                                 inAppInteractor.saveShownInApp(inAppMessage.inAppId)
-                                sendInAppShown(inAppMessage.inAppId)
-                                setInAppShown()
-                            })
+                            }
+                        )
                     }
                 }
         }
@@ -96,18 +97,6 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    private fun sendInAppShown(inAppId: String) {
-        inAppInteractor.sendInAppShown(inAppId)
-    }
-
-    private fun setInAppShown() {
-        inAppInteractor.setInAppShown()
-    }
-
-    private fun sendInAppClicked(inAppId: String) {
-        inAppInteractor.sendInAppClicked(inAppId)
-    }
-
     override fun onPauseCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
@@ -126,9 +115,7 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-
     companion object {
         const val CONFIG_NOT_FOUND = 404
     }
-
 }
