@@ -87,7 +87,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
         var rightDY = 0f
         var startingY = 0f
-        doOnLayout {  startingY = this.y }
+        doOnLayout { startingY = this.y }
         setOnTouchListener { view, event ->
             when (event?.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -133,32 +133,41 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
-    fun slideUp(isReverse: Boolean = false, onAnimationEnd: () -> Unit = {}) {
-        val animate = TranslateAnimation(
-            0f,  // fromXDelta
-            0f,  // toXDelta
-            if (!isReverse) height.toFloat() else 0f,  // fromYDelta
-            if (!isReverse) 0f else height.toFloat() + marginBottom// toYDelta
+    fun slideUp(
+        isReverse: Boolean = false,
+        onAnimationEnd: Runnable = Runnable { }
+    ) {
+        animateY(
+            if (!isReverse) height.toFloat() else 0f,
+            if (!isReverse) 0f else height.toFloat() + marginBottom,
+            onAnimationEnd
         )
-        animate.duration = ANIM_DURATION
-        animate.fillAfter = true
-        animate.interpolator = LinearOutSlowInInterpolator()
-        animate.setOnAnimationEnd(onAnimationEnd)
-        startAnimation(animate)
     }
 
-    fun slideDown(isReverse: Boolean = false, onAnimationEnd: () -> Unit = {}) {
-        val animate = TranslateAnimation(
-            0f,  // fromXDelta
-            0f,  // toXDelta
-            if (!isReverse) -height.toFloat() else 0f,  // fromYDelta
-            if (!isReverse) 0f else -height.toFloat() - marginTop // toYDelta
+    fun slideDown(
+        isReverse: Boolean = false,
+        onAnimationEnd: Runnable = Runnable { }
+    ) {
+        animateY(
+            if (!isReverse) -height.toFloat() else 0f,
+            if (!isReverse) 0f else -height.toFloat() - marginTop,
+            onAnimationEnd
         )
-        animate.duration = ANIM_DURATION
-        animate.fillAfter = true
-        animate.interpolator = LinearOutSlowInInterpolator()
-        animate.setOnAnimationEnd(onAnimationEnd)
-        startAnimation(animate)
+    }
+
+    private fun animateY(
+        from: Float,
+        to: Float,
+        onAnimationEnd: Runnable
+    ) {
+        TranslateAnimation(0f, 0f, from, to).apply {
+            duration = ANIM_DURATION
+            fillAfter = true
+            interpolator = LinearOutSlowInInterpolator()
+            setOnAnimationEnd(onAnimationEnd)
+        }.also {
+            startAnimation(it)
+        }
     }
 
     private fun prepareLayoutForModalWindow() {

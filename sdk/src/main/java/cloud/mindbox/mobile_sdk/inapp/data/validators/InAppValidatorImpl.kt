@@ -6,15 +6,14 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 
 internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
+    private val modalWindowValidator: ModalWindowValidator,
+    private val snackbarValidator: SnackbarValidator
 ) : InAppValidator {
-
-    private val modalWindowFormValidator: ModalWindowFormValidator = ModalWindowFormValidator()
-
-    private val snackBarValidator: SnackbarValidator = SnackbarValidator()
 
 
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
@@ -147,10 +146,14 @@ internal class InAppValidatorImpl(
                 }
 
                 (payloadDto is PayloadDto.ModalWindowDto) -> {
-                    isValid = modalWindowFormValidator.isValid(payloadDto)
+                    mindboxLogD("Start checking modal window payload of inApp with id = ${inApp.id}")
+                    isValid = modalWindowValidator.isValid(payloadDto)
+                    mindboxLogD("Finish checking modal window inApp with id = ${inApp.id}. InApp is valid = $isValid")
                 }
                 (payloadDto is PayloadDto.SnackbarDto) -> {
-                    isValid = snackBarValidator.isValid(payloadDto)
+                    mindboxLogD("Start checking snackbar payload of inApp with id = ${inApp.id}")
+                    isValid = snackbarValidator.isValid(payloadDto)
+                    mindboxLogD("Finish checking snackbar inApp with id = ${inApp.id}. InApp is valid = $isValid")
                 }
             }
         }

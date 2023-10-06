@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.di.modules
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
@@ -14,7 +16,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializat
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -37,6 +38,79 @@ internal fun DataModule(
             inAppImageSizeStorage
         )
 
+    override val modalElementDtoDataFiller: ModalElementDtoDataFiller
+        get() = ModalElementDtoDataFiller(closeButtonModalElementDtoDataFiller = closeButtonModalElementDtoDataFiller)
+
+    override val modalWindowValidator: ModalWindowValidator by lazy {
+        ModalWindowValidator(
+            imageLayerValidator = imageLayerValidator,
+            elementValidator = modalElementValidator
+        )
+    }
+    override val imageLayerValidator: ImageLayerValidator
+        get() = ImageLayerValidator()
+
+    override val modalElementValidator: ModalElementValidator by lazy {
+        ModalElementValidator(
+            closeButtonElementValidator = closeButtonModalElementValidator
+        )
+    }
+
+    override val snackbarValidator: SnackbarValidator by lazy {
+        SnackbarValidator(
+            imageLayerValidator,
+            snackbarElementValidator
+        )
+    }
+    override val closeButtonModalElementValidator: CloseButtonModalElementValidator
+        get() = CloseButtonModalElementValidator(
+            sizeValidator = CloseButtonModalSizeValidator(),
+            positionValidator = CloseButtonModalPositionValidator()
+        )
+    override val closeButtonModalPositionValidator: CloseButtonModalPositionValidator
+        get() = CloseButtonModalPositionValidator()
+    override val closeButtonSnackbarElementValidator: CloseButtonSnackbarElementValidator
+        get() = CloseButtonSnackbarElementValidator(
+            positionValidator = closeButtonSnackbarPositionValidator,
+            sizeValidator = closeButtonSnackbarSizeValidator
+        )
+    override val closeButtonSnackbarPositionValidator: CloseButtonSnackbarPositionValidator
+        get() = CloseButtonSnackbarPositionValidator()
+    override val closeButtonSnackbarSizeValidator: CloseButtonSnackbarSizeValidator
+        get() = CloseButtonSnackbarSizeValidator()
+    override val closeButtonModalElementDtoDataFiller: CloseButtonModalElementDtoDataFiller
+        get() = CloseButtonModalElementDtoDataFiller()
+    override val closeButtonPositionValidator: CloseButtonModalPositionValidator
+        get() = CloseButtonModalPositionValidator()
+    override val closeButtonModalSizeValidator: CloseButtonModalSizeValidator
+        get() = CloseButtonModalSizeValidator()
+
+    override val snackbarElementValidator: SnackBarElementValidator by lazy {
+        SnackBarElementValidator(
+            closeButtonElementValidator = CloseButtonSnackbarElementValidator(
+                positionValidator = CloseButtonSnackbarPositionValidator(),
+                sizeValidator = CloseButtonSnackbarSizeValidator()
+            )
+        )
+    }
+    override val snackBarElementDtoDataFiller: SnackbarElementDtoDataFiller
+        get() = SnackbarElementDtoDataFiller(closeButtonSnackbarElementDtoDataFiller = closeButtonSnackbarElementDtoDataFiller)
+    override val closeButtonSnackbarElementDtoDataFiller: CloseButtonSnackbarElementDtoDataFiller
+        get() = CloseButtonSnackbarElementDtoDataFiller()
+
+    override val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
+            by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = modalElementDtoDataFiller) }
+
+    override val snackBarDtoDataFiller: SnackBarDtoDataFiller
+            by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = snackBarElementDtoDataFiller) }
+
+    override val defaultDataManager: DataManager by lazy {
+        DataManager(
+            modalWindowDtoDataFiller = modalWindowDtoDataFiller,
+            snackBarDtoDataFiller = snackBarDtoDataFiller
+        )
+    }
+
     override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
@@ -57,6 +131,7 @@ internal fun DataModule(
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
             gatewayManager = gatewayManager,
+            defaultDataManager = defaultDataManager
         )
     }
 
@@ -106,7 +181,9 @@ internal fun DataModule(
 
     override val inAppValidator: InAppValidator by lazy {
         InAppValidatorImpl(
-            sdkVersionValidator,
+            sdkVersionValidator = sdkVersionValidator,
+            modalWindowValidator = modalWindowValidator,
+            snackbarValidator = snackbarValidator
         )
     }
 
@@ -127,6 +204,18 @@ internal fun DataModule(
 
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
+                PayloadBlankDto::class.java,
+                Constants.TYPE_JSON_NAME,
+                true
+            ).registerSubtype(
+                PayloadBlankDto.ModalWindowBlankDto::class.java,
+                PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+            ).registerSubtype(
+                PayloadBlankDto.SnackBarBlankDto::class.java,
+                PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+            )
+        ).registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
                 ElementDto::class.java,
                 Constants.TYPE_JSON_NAME, true

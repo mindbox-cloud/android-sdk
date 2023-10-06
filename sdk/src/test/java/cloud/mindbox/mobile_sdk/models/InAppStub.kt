@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.models
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
@@ -30,7 +31,30 @@ internal class InAppStub {
             form = FormDto(variants = listOf(getModalWindowDto()))
         )
 
-        fun getContentDto(): PayloadDto.ModalWindowDto.ContentDto =
+        fun getSnackbarContentDto(): PayloadDto.SnackbarDto.ContentDto =
+            PayloadDto.SnackbarDto.ContentDto(
+                background = getBackgroundDto(),
+                elements = listOf(getCloseButtonElementDto()),
+                position = PayloadDto.SnackbarDto.ContentDto.PositionDto(
+                    gravity = getGravityDto(),
+                    margin = getMarginDto()
+                )
+            )
+
+        fun getGravityDto() = PayloadDto.SnackbarDto.ContentDto.PositionDto.GravityDto(
+            horizontal = "",
+            vertical = ""
+        )
+
+        fun getMarginDto() = PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto(
+            bottom = 0.0,
+            kind = "",
+            left = 0.0,
+            right = 0.0,
+            top = 0.0
+        )
+
+        fun getModalWindowContentDto(): PayloadDto.ModalWindowDto.ContentDto =
             PayloadDto.ModalWindowDto.ContentDto(
                 background = getBackgroundDto(),
                 elements = listOf(getCloseButtonElementDto())
@@ -109,7 +133,10 @@ internal class InAppStub {
         }
 
         fun getModalWindowDto() =
-            PayloadDto.ModalWindowDto(content = getContentDto(), type = "modal")
+            PayloadDto.ModalWindowDto(content = getModalWindowContentDto(), type = "modal")
+
+        fun getSnackbarDto() =
+            PayloadDto.SnackbarDto(content = getSnackbarContentDto(), type = "snackbar")
 
         fun getTargetingTrueNode(): TreeTargeting.TrueNode {
             return TreeTargeting.TrueNode(type = "")

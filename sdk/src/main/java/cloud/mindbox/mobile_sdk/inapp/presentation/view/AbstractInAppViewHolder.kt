@@ -6,13 +6,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
+import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -26,15 +28,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     protected open var isInAppMessageActive = false
 
-    private var _currentBackground: ViewGroup? = null
-    protected val currentBackground: ViewGroup
-        get() = _currentBackground!!
-
     private var _currentDialog: InAppConstraintLayout? = null
     protected val currentDialog: InAppConstraintLayout
         get() = _currentDialog!!
 
     private var typingView: View? = null
+
+    protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
+
+    private var isActionExecuted: Boolean = false
 
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
@@ -51,6 +53,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     abstract fun bind()
 
     protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
+        if (InAppMessageViewDisplayerImpl.isActionExecuted) return
         currentDialog.setSingleClickListener {
             var redirectUrl = ""
             var payload = ""
@@ -71,6 +74,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 mindboxLogI("In-app dismissed by click")
                 hide()
             }
+            InAppMessageViewDisplayerImpl.isActionExecuted = true
         }
     }
 
@@ -87,9 +91,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     isFirstResource: Boolean
                 ): Boolean {
                     this.mindboxLogE(
-                        message = "Failed to load inapp image",
+                        message = "Failed to load inapp image with url = $url",
                         exception = e
-                            ?: RuntimeException("Failed to load inapp image")
+                            ?: RuntimeException("Failed to load inapp image with url = $url")
                     )
                     hide()
                     return false
@@ -103,6 +107,14 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     isFirstResource: Boolean
                 ): Boolean {
                     bind()
+                    preparedImages[imageView] = true
+                    if (!preparedImages.values.contains(false)) {
+                        mindboxLogI("In-app shown")
+                        wrapper.onInAppShown.onShown()
+                        for (image in preparedImages.keys) {
+                            image.visibility = View.VISIBLE
+                        }
+                    }
                     return false
                 }
             })
@@ -110,13 +122,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     protected open fun initView(currentRoot: ViewGroup) {
-        _currentBackground = LayoutInflater.from(currentRoot.context)
-            .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
+        currentRoot.removeChildById(R.id.inapp_layout)
         _currentDialog = LayoutInflater.from(currentRoot.context)
             .inflate(R.layout.mindbox_inapp_layout, currentRoot, false) as InAppConstraintLayout
-        if (wrapper.inAppType is InAppType.ModalWindow) {
-            currentRoot.addView(currentBackground)
-        }
         currentRoot.addView(currentDialog)
         currentDialog.prepareLayoutForInApp(wrapper.inAppType)
     }
@@ -140,6 +148,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
     }
 
     override fun hide() {
+        (currentDialog.parent as? ViewGroup?)?.apply {
+            removeView(currentDialog)
+        }
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
     }

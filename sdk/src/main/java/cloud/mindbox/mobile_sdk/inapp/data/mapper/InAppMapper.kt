@@ -5,9 +5,10 @@ import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.PayloadDto.ModalWindowDto.*
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.ModalWindowDto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids

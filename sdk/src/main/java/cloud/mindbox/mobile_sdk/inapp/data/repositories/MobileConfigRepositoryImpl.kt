@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
@@ -34,6 +35,7 @@ internal class MobileConfigRepositoryImpl(
     private val operationNameValidator: OperationNameValidator,
     private val operationValidator: OperationValidator,
     private val gatewayManager: GatewayManager,
+    private val defaultDataManager: DataManager
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -102,10 +104,12 @@ internal class MobileConfigRepositoryImpl(
                 inAppValidator.validateInAppVersion(inAppDtoBlank)
             }
             ?.map { inAppDtoBlank ->
-                inAppMapper.mapToInAppDto(
+               inAppMapper.mapToInAppDto(
                     inAppDtoBlank = inAppDtoBlank,
-                    formDto = mobileConfigSerializationManager.deserializeToInAppFormDto(
-                        inAppDtoBlank.form
+                    formDto = defaultDataManager.fillData(
+                        mobileConfigSerializationManager.deserializeToInAppFormDto(
+                            inAppDtoBlank.form
+                        )
                     ),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting
