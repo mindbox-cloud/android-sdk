@@ -40,7 +40,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @SuppressWarnings("deprecated")
-object Mindbox : MindboxLog {
+object Mindbox: MindboxLog {
 
     /**
      * Used for determination app open from push
@@ -305,7 +305,6 @@ object Mindbox : MindboxLog {
         }
     }
 
-
     /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
      * background thread.
@@ -465,8 +464,7 @@ object Mindbox : MindboxLog {
                         logE("Incorrect context type for calling init in this place")
                     }
                     if (isApplicationResumed || context !is Application) {
-                        logW(
-                            "We recommend to call Mindbox.init() synchronously from " +
+                        logW("We recommend to call Mindbox.init() synchronously from " +
                                     "Application.onCreate. If you can't do so, don't forget to " +
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
@@ -1086,7 +1084,6 @@ object Mindbox : MindboxLog {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
-
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
