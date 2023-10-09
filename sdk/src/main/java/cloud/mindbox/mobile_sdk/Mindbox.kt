@@ -296,6 +296,17 @@ object Mindbox : MindboxLog {
     }
 
     /**
+     * Use this method to send the notification permission status when it changes to allow
+     * @param context used to initialize the main tools
+     **/
+    fun updateNotificationPermissionStatus(context: Context) {
+        mindboxScope.launch {
+            updateAppInfo(context)
+        }
+    }
+
+
+    /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
      * background thread.
      *
@@ -335,16 +346,6 @@ object Mindbox : MindboxLog {
             mindboxScope.launch {
                 updateAppInfo(context)
             }
-        }
-    }
-
-    /**
-     * Use this method to send the notification permission status when it changes
-     * @param context used to initialize the main tools
-     **/
-    fun updateNotificationPermissionStatus(context: Context) {
-        mindboxScope.launch {
-            updateAppInfo(context)
         }
     }
 
