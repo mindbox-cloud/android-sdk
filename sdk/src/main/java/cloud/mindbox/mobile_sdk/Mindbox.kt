@@ -299,9 +299,12 @@ object Mindbox: MindboxLog {
      * Use this method to send the notification permission status when it changes to allow
      * @param context used to initialize the main tools
      **/
-    fun updateNotificationPermissionStatus(context: Context) {
-        mindboxScope.launch {
-            updateAppInfo(context)
+    fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
+        {
+            MindboxLoggerImpl.d(this, "updateNotificationPermissionStatus was called")
+            mindboxScope.launch {
+                updateAppInfo(context)
+            }
         }
     }
 
