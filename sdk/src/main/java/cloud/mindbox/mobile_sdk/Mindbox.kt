@@ -40,7 +40,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @SuppressWarnings("deprecated")
-object Mindbox: MindboxLog {
+object Mindbox : MindboxLog {
 
     /**
      * Used for determination app open from push
@@ -339,6 +339,16 @@ object Mindbox: MindboxLog {
     }
 
     /**
+     * Use this method to send the notification permission status when it changes
+     * @param context used to initialize the main tools
+     **/
+    fun updateNotificationPermissionStatus(context: Context) {
+        mindboxScope.launch {
+            updateAppInfo(context)
+        }
+    }
+
+    /**
      * Creates and deliveries event of "Push clicked".
      * Recommended to be used with Mindbox SDK pushes with [handleRemoteMessage] method.
      * Intent should contain "uniq_push_key" and "uniq_push_button_key" (optionally) in order to work correctly
@@ -454,7 +464,8 @@ object Mindbox: MindboxLog {
                         logE("Incorrect context type for calling init in this place")
                     }
                     if (isApplicationResumed || context !is Application) {
-                        logW("We recommend to call Mindbox.init() synchronously from " +
+                        logW(
+                            "We recommend to call Mindbox.init() synchronously from " +
                                     "Application.onCreate. If you can't do so, don't forget to " +
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
@@ -1074,6 +1085,7 @@ object Mindbox: MindboxLog {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
