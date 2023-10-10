@@ -4,10 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
@@ -23,6 +20,8 @@ internal class SnackbarInAppViewHolder(
 
     override val isActive: Boolean
         get() = isInAppMessageActive
+
+    private var requiredSizes: HashMap<String, Size> = HashMap()
 
     override fun show(currentRoot: ViewGroup) {
         super.show(currentRoot)
@@ -55,11 +54,14 @@ internal class SnackbarInAppViewHolder(
                     currentDialog.addView(inAppImageView)
                     when (wrapper.inAppType.position.margin.kind) {
                         InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
-                            inAppImageView.prepareViewForSnackBar(
-                                inAppImageSizeStorage.getSizeByIdAndUrl(
+                            if (!requiredSizes.containsKey(wrapper.inAppType.inAppId)) {
+                                requiredSizes[wrapper.inAppType.inAppId] = inAppImageSizeStorage.getSizeByIdAndUrl(
                                     wrapper.inAppType.inAppId,
                                     layer.source.url
-                                ),
+                                )
+                            }
+                            inAppImageView.prepareViewForSnackBar(
+                                requiredSizes[wrapper.inAppType.inAppId]!!,
                                 wrapper.inAppType.position.margin.left.px,
                                 wrapper.inAppType.position.margin.right.px
                             )
