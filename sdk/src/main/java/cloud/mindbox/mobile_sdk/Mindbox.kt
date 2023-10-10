@@ -300,12 +300,10 @@ object Mindbox: MindboxLog {
      * @param context current context is used
      **/
     fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
-        {
             mindboxLogI("updateNotificationPermissionStatus was called")
             mindboxScope.launch {
                 updateAppInfo(context)
             }
-        }
     }
 
     /**
