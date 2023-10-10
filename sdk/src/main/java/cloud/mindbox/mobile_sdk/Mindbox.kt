@@ -301,7 +301,7 @@ object Mindbox: MindboxLog {
      **/
     fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
         {
-            MindboxLoggerImpl.d(this, "updateNotificationPermissionStatus was called")
+            mindboxLogI("updateNotificationPermissionStatus was called")
             mindboxScope.launch {
                 updateAppInfo(context)
             }
