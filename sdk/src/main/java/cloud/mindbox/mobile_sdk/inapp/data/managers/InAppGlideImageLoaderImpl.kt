@@ -38,10 +38,13 @@ internal class InAppGlideImageLoaderImpl(
                         target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image with url = $url for inapp with id $inAppId failed")
-                        cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
-                        return true
-
+                        return runCatching {
+                            mindboxLogD("loading image with url = $url for inapp with id $inAppId failed")
+                            cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
+                            true
+                        }.getOrElse {
+                            false
+                        }
                     }
 
                     override fun onResourceReady(
@@ -51,16 +54,19 @@ internal class InAppGlideImageLoaderImpl(
                         dataSource: DataSource?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image with url = $url for inapp with id $inAppId succeeded")
-                        inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
-                        cancellableContinuation.resume(true)
-                        return true
+                        return runCatching {
+                            mindboxLogD("loading image with url = $url for inapp with id $inAppId succeeded")
+                            inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
+                            cancellableContinuation.resume(true)
+                            true
+                        }.getOrElse {
+                            false
+                        }
                     }
                 }).preload()
             requests[inAppId] = target
 
         }
-
     }
 
     override fun cancelLoading(inAppId: String) {
