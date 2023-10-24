@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppContentFetchingError
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -43,6 +44,10 @@ internal class InAppGlideImageLoaderImpl(
                             cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
                             true
                         }.getOrElse {
+                            mindboxLogE(
+                                "Unknown error when loading image from network failed",
+                                exception = it
+                            )
                             true
                         }
                     }
@@ -60,6 +65,10 @@ internal class InAppGlideImageLoaderImpl(
                             cancellableContinuation.resume(true)
                             true
                         }.getOrElse {
+                            mindboxLogE(
+                                "Unknown error when loading image from network failed",
+                                exception = it
+                            )
                             true
                         }
                     }

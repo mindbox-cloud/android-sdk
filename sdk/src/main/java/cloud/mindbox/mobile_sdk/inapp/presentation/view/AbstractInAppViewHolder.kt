@@ -99,6 +99,10 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                         hide()
                         false
                     }.getOrElse {
+                        mindboxLogE(
+                            "Unknown error when loading image from cache succeeded",
+                            exception = it
+                        )
                         false
                     }
                 }
@@ -122,6 +126,10 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                         }
                         false
                     }.getOrElse {
+                        mindboxLogE(
+                            "Unknown error when loading image from cache failed",
+                            exception = it
+                        )
                         false
                     }
                 }
