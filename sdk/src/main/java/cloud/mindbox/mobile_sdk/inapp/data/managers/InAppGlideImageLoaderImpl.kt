@@ -43,7 +43,7 @@ internal class InAppGlideImageLoaderImpl(
                             cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
                             true
                         }.getOrElse {
-                            false
+                            true
                         }
                     }
 
@@ -60,7 +60,7 @@ internal class InAppGlideImageLoaderImpl(
                             cancellableContinuation.resume(true)
                             true
                         }.getOrElse {
-                            false
+                            true
                         }
                     }
                 }).preload()
