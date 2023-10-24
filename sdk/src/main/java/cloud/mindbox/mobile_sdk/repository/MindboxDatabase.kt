@@ -11,7 +11,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 
-@Database(entities = [Configuration::class, Event::class], version = 2)
+@Database(entities = [Configuration::class, Event::class], exportSchema = false, version = 2)
 @TypeConverters(MindboxRoomConverter::class)
 internal abstract class MindboxDatabase : RoomDatabase() {
 

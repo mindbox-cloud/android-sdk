@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 
-@Database(entities = [MonitoringEntity::class], version = 2)
+@Database(entities = [MonitoringEntity::class], exportSchema = false, version = 2)
 internal abstract class MonitoringDatabase : RoomDatabase() {
 
     companion object {

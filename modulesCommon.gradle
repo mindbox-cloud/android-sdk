@@ -20,6 +20,13 @@ android {
 
         buildConfigField 'String', 'VERSION_NAME', '"' + SDK_VERSION_NAME + '"'
 
+
+       /* kapt {
+            arguments {
+                arg("room.schemaLocation", "$projectDir/schemas")
+            }
+        }*/
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
