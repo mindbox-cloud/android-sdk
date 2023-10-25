@@ -4,6 +4,9 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PackageInfoFlags
 import android.content.res.Resources
 import android.os.Build
 import android.os.Process
@@ -164,8 +167,19 @@ internal fun Activity.postDelayedAnimation(action: Runnable) {
     this.root?.postDelayed(action, duration)
 }
 
-internal inline fun <T> Queue<T>.addUnique(item: T, predicate: (T) -> Boolean = { it == item }): Boolean {
+internal inline fun <T> Queue<T>.addUnique(
+    item: T,
+    predicate: (T) -> Boolean = { it == item }
+): Boolean {
     if (any(predicate)) return false
     add(item)
     return true
+}
+
+internal fun PackageManager.getPackageInfoCompat(context: Context, flags: Int): PackageInfo {
+    return if (Build.VERSION_CODES.TIRAMISU <= Build.VERSION.SDK_INT) {
+        getPackageInfo(context.packageName, PackageInfoFlags.of(flags.toLong()))
+    } else {
+        getPackageInfo(context.packageName, flags)
+    }
 }

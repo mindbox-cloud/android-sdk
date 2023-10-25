@@ -162,7 +162,7 @@ class MindboxConfiguration private constructor(
             try {
                 val packageManager = context.packageManager
                 //noinspection deprecation
-                val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
+                val packageInfo = packageManager.getPackageInfoCompat(context, 0)
                 packageName = packageInfo.packageName.trim()
                 this.versionName = packageInfo.versionName?.trim()
                     ?: PLACEHOLDER_APP_PACKAGE_NAME
