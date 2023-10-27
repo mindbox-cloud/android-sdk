@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppContentFetchingError
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -38,10 +39,17 @@ internal class InAppGlideImageLoaderImpl(
                         target: Target<Drawable>?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image with url = $url for inapp with id $inAppId failed")
-                        cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
-                        return true
-
+                        return runCatching {
+                            mindboxLogD("loading image with url = $url for inapp with id $inAppId failed")
+                            cancellableContinuation.resumeWithException(InAppContentFetchingError(e))
+                            true
+                        }.getOrElse {
+                            mindboxLogE(
+                                "Unknown error when loading image from network failed",
+                                exception = it
+                            )
+                            true
+                        }
                     }
 
                     override fun onResourceReady(
@@ -51,16 +59,23 @@ internal class InAppGlideImageLoaderImpl(
                         dataSource: DataSource?,
                         isFirstResource: Boolean
                     ): Boolean {
-                        mindboxLogD("loading image with url = $url for inapp with id $inAppId succeeded")
-                        inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
-                        cancellableContinuation.resume(true)
-                        return true
+                        return runCatching {
+                            mindboxLogD("loading image with url = $url for inapp with id $inAppId succeeded")
+                            inAppImageSizeStorage.addSize(inAppId, url, resource.toBitmap().width, resource.toBitmap().height)
+                            cancellableContinuation.resume(true)
+                            true
+                        }.getOrElse {
+                            mindboxLogE(
+                                "Unknown error when loading image from network failed",
+                                exception = it
+                            )
+                            true
+                        }
                     }
                 }).preload()
             requests[inAppId] = target
 
         }
-
     }
 
     override fun cancelLoading(inAppId: String) {

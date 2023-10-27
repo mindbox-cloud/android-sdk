@@ -118,7 +118,7 @@ internal class LifecycleManager(
     }
 
     fun onNewIntent(newIntent: Intent?) = newIntent?.let { intent ->
-        if (intent.data != null || intent.extras?.get(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true) {
+        if (intent.data != null || intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true) {
             isIntentChanged = updateHashesList(intent.hashCode())
             sendTrackVisit(intent)
             skipSendingTrackVisit = isAppInBackground

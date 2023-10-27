@@ -90,13 +90,21 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     target: Target<Drawable>?,
                     isFirstResource: Boolean
                 ): Boolean {
-                    this.mindboxLogE(
-                        message = "Failed to load inapp image with url = $url",
-                        exception = e
-                            ?: RuntimeException("Failed to load inapp image with url = $url")
-                    )
-                    hide()
-                    return false
+                    return runCatching {
+                        this.mindboxLogE(
+                            message = "Failed to load inapp image with url = $url",
+                            exception = e
+                                ?: RuntimeException("Failed to load inapp image with url = $url")
+                        )
+                        hide()
+                        false
+                    }.getOrElse {
+                        mindboxLogE(
+                            "Unknown error when loading image from cache succeeded",
+                            exception = it
+                        )
+                        false
+                    }
                 }
 
                 override fun onResourceReady(
@@ -106,16 +114,24 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     dataSource: DataSource?,
                     isFirstResource: Boolean
                 ): Boolean {
-                    bind()
-                    preparedImages[imageView] = true
-                    if (!preparedImages.values.contains(false)) {
-                        mindboxLogI("In-app shown")
-                        wrapper.onInAppShown.onShown()
-                        for (image in preparedImages.keys) {
-                            image.visibility = View.VISIBLE
+                    return runCatching {
+                        bind()
+                        preparedImages[imageView] = true
+                        if (!preparedImages.values.contains(false)) {
+                            mindboxLogI("In-app shown")
+                            wrapper.onInAppShown.onShown()
+                            for (image in preparedImages.keys) {
+                                image.visibility = View.VISIBLE
+                            }
                         }
+                        false
+                    }.getOrElse {
+                        mindboxLogE(
+                            "Unknown error when loading image from cache failed",
+                            exception = it
+                        )
+                        false
                     }
-                    return false
                 }
             })
             .into(imageView)

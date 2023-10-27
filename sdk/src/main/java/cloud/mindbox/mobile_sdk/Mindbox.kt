@@ -296,6 +296,17 @@ object Mindbox: MindboxLog {
     }
 
     /**
+     * This method is used to inform when the notification permission status changed to "allowed"
+     * @param context current context is used
+     **/
+    fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
+            mindboxLogI("updateNotificationPermissionStatus was called")
+            mindboxScope.launch {
+                updateAppInfo(context)
+            }
+    }
+
+    /**
      * Creates and deliveries event of "Push delivered". Recommended call this method from
      * background thread.
      *
