@@ -94,15 +94,3 @@ jobs:
       # To create release in Jitpack we need to create Github release
         run: ./git-release.sh "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
 
-      - name: Publish to Sonatype
-        run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
-
-      - name: Job status notification
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_MESSAGE: 'SDK is available for public release https://oss.sonatype.org/#stagingRepositories'
-          SLACK_USERNAME: MindBox-bot
-          SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
-          SLACK_COLOR: ${{job.status}}

@@ -12,7 +12,7 @@ generate_post_data() {
   "target_commitish": "$branch",
   "name": "$name",
   "body": "$body",
-  "draft": false,
+  "draft": true,
   "prerelease": $prerelease
 }
 EOF
@@ -43,16 +43,25 @@ set-local-tag() {
 set-remote-tag() {
   if [ $(git ls-remote --tags https://$user:$token@github.com/$repo_full_name.git | cut -f3 -d"/" | grep $version) ]; then
     echo "Remote tag cleanup"
-    git push --delete https://$user:$token@github.com/$repo_full_name.git $version
-    git push https://$user:$token@github.com/$repo_full_name.git $version
+    git push --delete https://$user:$token@github.com/$repo_full_name.git $version || exit 1
+    git push https://$user:$token@github.com/$repo_full_name.git $version || exit 1
   else
-    git push https://$user:$token@github.com/$repo_full_name.git $version
+    git push https://$user:$token@github.com/$repo_full_name.git $version || exit 1
   fi
 }
 echo "Create release $version for repo: $repo_full_name branch: $branch"
 echo "Release settings: $(generate_post_data)"
 post-request() {
-  curl -s --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases"
+   response=$(curl -s -f --show-error --user "$user:$token" --data "$(generate_post_data)" "https://api.github.com/repos/$repo_full_name/releases")
+
+    status=$?
+
+    if [ $status -ne 0 ]; then
+        echo "Error: Unable to get successful HTTP response from https://api.github.com/repos/$repo_full_name/releases"
+        exit 1
+    fi
+
+    echo $response
 }
 set-tag
 prepare-release-data
