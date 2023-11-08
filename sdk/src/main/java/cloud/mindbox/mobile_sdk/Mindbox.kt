@@ -40,7 +40,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @SuppressWarnings("deprecated")
-object Mindbox: MindboxLog {
+object Mindbox : MindboxLog {
 
     /**
      * Used for determination app open from push
@@ -300,10 +300,10 @@ object Mindbox: MindboxLog {
      * @param context current context is used
      **/
     fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
-            mindboxLogI("updateNotificationPermissionStatus was called")
-            mindboxScope.launch {
-                updateAppInfo(context)
-            }
+        mindboxLogI("updateNotificationPermissionStatus was called")
+        mindboxScope.launch {
+            updateAppInfo(context)
+        }
     }
 
     /**
@@ -379,6 +379,205 @@ object Mindbox: MindboxLog {
     /**
      * Initializes the SDK for further work.
      *
+     * This method must be called synchronously in onCreate on an application class
+     *
+     * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     *
+     * @param application used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     */
+    fun init(
+        application: Application,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        initialize(application, configuration, pushServices)
+    }
+
+    fun Application.init(
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        initialize(this, configuration, pushServices)
+    }
+
+    /**
+     * Initializes the SDK for further work.
+     *
+     * This method should be called in [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in onCreate on an application class
+     *
+     * If you use this method, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     *
+     * @param activity used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     */
+    fun init(
+        activity: Activity,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        initialize(activity, configuration, pushServices)
+    }
+
+    fun Activity.init(
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        initialize(this, configuration, pushServices)
+    }
+
+    private fun initialize(
+        context: Context,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        LoggingExceptionHandler.runCatching {
+
+            val currentProcessName = context.getCurrentProcessName()
+            if (!context.isMainProcess(currentProcessName)) {
+                logW("Skip Mindbox init not in main process! Current process $currentProcessName")
+                return@runCatching
+            }
+
+            initComponents(context.applicationContext, pushServices)
+            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
+                    "configuration: $configuration, pushServices: " +
+                    pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
+
+            if (!firstInitCall) {
+                InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            }
+
+            initScope.launch {
+                val checkResult = checkConfig(configuration)
+                val validatedConfiguration = validateConfiguration(configuration)
+                DbManager.saveConfigurations(Configuration(configuration))
+                logI("init. checkResult: $checkResult")
+                if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
+                    logI("init. softReinitialization")
+                    softReinitialization(context.applicationContext)
+                }
+
+                if (checkResult == ConfigUpdate.UPDATED) {
+                    firstInitialization(context.applicationContext, validatedConfiguration)
+
+                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
+                            && !lifecycleManager.isTrackVisitSent()
+                    if (isTrackVisitNotSent) {
+                        MindboxLoggerImpl.d(this, "Track visit event with source $DIRECT")
+                        sendTrackVisitEvent(context.applicationContext, DIRECT)
+                    }
+                } else {
+                    updateAppInfo(context.applicationContext)
+                    MindboxEventManager.sendEventsIfExist(context.applicationContext)
+                }
+                MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
+            }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                .invokeOnCompletion { throwable ->
+                    if (throwable == null) {
+                        if (firstInitCall) {
+                            val activity = context as? Activity
+                            if (activity != null && lifecycleManager.isCurrentActivityResumed) {
+                                inAppMessageManager.registerCurrentActivity(activity)
+                                mindboxScope.launch {
+                                    inAppMessageManager.listenEventAndInApp()
+                                    inAppMessageManager.initInAppMessages()
+                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                    inAppMessageManager.requestConfig().join()
+                                    firstInitCall = false
+                                }
+                            }
+                        }
+                    }
+                }
+            // Handle back app in foreground
+            (context.applicationContext as? Application)?.apply {
+                val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
+
+                if (!Mindbox::lifecycleManager.isInitialized) {
+                    val activity = context as? Activity
+                    val isApplicationResumed = applicationLifecycle.currentState == RESUMED
+                    if (isApplicationResumed && activity == null) {
+                        logE("Incorrect context type for calling init in this place")
+                    }
+                    if (isApplicationResumed || context !is Application) {
+                        logW(
+                            "We recommend to call Mindbox.init() synchronously from " +
+                                    "Application.onCreate. If you can't do so, don't forget to " +
+                                    "call Mindbox.initPushServices from Application.onCreate",
+                        )
+                    }
+
+                    logI("init. init lifecycleManager")
+                    lifecycleManager = LifecycleManager(
+                        currentActivityName = activity?.javaClass?.name,
+                        currentIntent = activity?.intent,
+                        isAppInBackground = !isApplicationResumed,
+                        onActivityStarted = { startedActivity ->
+                            UuidCopyManager.onAppMovedToForeground(startedActivity)
+                            mindboxScope.launch {
+                                if (!MindboxPreferences.isFirstInitialize) {
+                                    updateAppInfo(startedActivity.applicationContext)
+                                }
+                            }
+                        },
+                        onActivityPaused = { pausedActivity ->
+                            inAppMessageManager.onPauseCurrentActivity(pausedActivity)
+                        },
+                        onActivityResumed = { resumedActivity ->
+                            //TODO implement control for blur
+                            inAppMessageManager.onResumeCurrentActivity(
+                                resumedActivity,
+                                true
+                            )
+                            if (firstInitCall) {
+                                mindboxScope.launch {
+                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                    if (!firstInitCall) return@launch
+                                    inAppMessageManager.listenEventAndInApp()
+                                    inAppMessageManager.initInAppMessages()
+                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                    inAppMessageManager.requestConfig().join()
+                                    firstInitCall = false
+                                }
+                            }
+                        },
+                        onActivityStopped = { resumedActivity ->
+                            inAppMessageManager.onStopCurrentActivity(resumedActivity)
+                        },
+                        onTrackVisitReady = { source, requestUrl ->
+                            runBlocking(Dispatchers.IO) {
+                                sendTrackVisitEvent(
+                                    MindboxDI.appModule.appContext,
+                                    source,
+                                    requestUrl
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    unregisterActivityLifecycleCallbacks(lifecycleManager)
+                    applicationLifecycle.removeObserver(lifecycleManager)
+                    lifecycleManager.wasReinitialized()
+                }
+
+                registerActivityLifecycleCallbacks(lifecycleManager)
+                applicationLifecycle.addObserver(lifecycleManager)
+            }
+        }
+    }
+
+    /**
+     * Initializes the SDK for further work.
+     *
      * We recommend calling it synchronously in onCreate on an application class
      *
      * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
@@ -389,7 +588,13 @@ object Mindbox: MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
+     * @Deprecated Use either [Mindbox.init] with application or [Mindbox.init] with activity
      */
+    @Deprecated(
+        "Use one of new init methods instead",
+        replaceWith = ReplaceWith("Mindbox.init(application, mindboxConfiguration, listOf())"),
+        level = DeprecationLevel.WARNING
+    )
     fun init(
         context: Context,
         configuration: MindboxConfiguration,
@@ -465,7 +670,8 @@ object Mindbox: MindboxLog {
                         logE("Incorrect context type for calling init in this place")
                     }
                     if (isApplicationResumed || context !is Application) {
-                        logW("We recommend to call Mindbox.init() synchronously from " +
+                        logW(
+                            "We recommend to call Mindbox.init() synchronously from " +
                                     "Application.onCreate. If you can't do so, don't forget to " +
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
@@ -1085,6 +1291,7 @@ object Mindbox: MindboxLog {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
