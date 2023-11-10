@@ -28,7 +28,7 @@ internal class HuaweiServiceHandler(
 
     private val messageTransformer = HuaweiRemoteMessageTransformer(exceptionHandler)
 
-    override val notificationProvider: String = "HCM"
+    override val notificationProvider: String = MindboxHuawei.tag
 
     override fun initService(context: Context) {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
