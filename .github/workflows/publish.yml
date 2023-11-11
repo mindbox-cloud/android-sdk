@@ -92,7 +92,7 @@ jobs:
 
       - name: Publish to Jitpack
       # To create release in Jitpack we need to create Github release
-        run: ./git-release.sh "${{secrets.GITHUBUSER}}" "${{secrets.GITHUBUSER}}"
+        run: ./git-release.sh "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
 
       - name: Publish to Sonatype
         run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}

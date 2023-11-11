@@ -12,7 +12,7 @@ generate_post_data() {
   "target_commitish": "$branch",
   "name": "$name",
   "body": "$body",
-  "draft": true,
+  "draft": false,
   "prerelease": $prerelease
 }
 EOF
