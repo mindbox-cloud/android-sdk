@@ -167,7 +167,10 @@ internal fun Activity.postDelayedAnimation(action: Runnable) {
     this.root?.postDelayed(action, duration)
 }
 
-internal inline fun <T> Queue<T>.addUnique(item: T, predicate: (T) -> Boolean = { it == item }): Boolean {
+internal inline fun <T> Queue<T>.addUnique(
+    item: T,
+    predicate: (T) -> Boolean = { it == item }
+): Boolean {
     if (any(predicate)) return false
     add(item)
     return true
