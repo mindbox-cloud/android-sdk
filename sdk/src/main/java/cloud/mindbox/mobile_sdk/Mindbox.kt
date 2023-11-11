@@ -398,17 +398,11 @@ object Mindbox : MindboxLog {
         initialize(application, configuration, pushServices)
     }
 
-    fun Application.init(
-        configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
-    ) {
-        initialize(this, configuration, pushServices)
-    }
-
     /**
      * Initializes the SDK for further work.
      *
-     * This method should be called in [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in onCreate on an application class
+     * This method should be called in
+     * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
      *
      * If you use this method, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
      *
@@ -425,13 +419,6 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         initialize(activity, configuration, pushServices)
-    }
-
-    fun Activity.init(
-        configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
-    ) {
-        initialize(this, configuration, pushServices)
     }
 
     private fun initialize(
@@ -588,12 +575,10 @@ object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
-     * @Deprecated Use either [Mindbox.init] with application or [Mindbox.init] with activity
+     * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
     @Deprecated(
-        "Use one of new init methods instead",
-        replaceWith = ReplaceWith("Mindbox.init(application, mindboxConfiguration, listOf())"),
-        level = DeprecationLevel.WARNING
+        "Use either Mindbox.init with application parameter or Mindbox.init with activity parameter"
     )
     fun init(
         context: Context,
