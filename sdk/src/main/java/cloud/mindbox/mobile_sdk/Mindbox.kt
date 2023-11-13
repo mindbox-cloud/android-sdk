@@ -398,13 +398,6 @@ object Mindbox : MindboxLog {
         initialize(application, configuration, pushServices)
     }
 
-    fun Application.init(
-        configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
-    ) {
-        initialize(this, configuration, pushServices)
-    }
-
     /**
      * Initializes the SDK for further work.
      *
@@ -426,14 +419,6 @@ object Mindbox : MindboxLog {
     ) {
         initialize(activity, configuration, pushServices)
     }
-
-    fun Activity.init(
-        configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
-    ) {
-        initialize(this, configuration, pushServices)
-    }
-
     private fun initialize(
         context: Context,
         configuration: MindboxConfiguration,
@@ -600,140 +585,7 @@ object Mindbox : MindboxLog {
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
-        LoggingExceptionHandler.runCatching {
-
-            val currentProcessName = context.getCurrentProcessName()
-            if (!context.isMainProcess(currentProcessName)) {
-                logW("Skip Mindbox init not in main process! Current process $currentProcessName")
-                return@runCatching
-            }
-
-            initComponents(context.applicationContext, pushServices)
-            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
-                    "configuration: $configuration, pushServices: " +
-                    pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
-
-            if (!firstInitCall) {
-                InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-            }
-
-            initScope.launch {
-                val checkResult = checkConfig(configuration)
-                val validatedConfiguration = validateConfiguration(configuration)
-                DbManager.saveConfigurations(Configuration(configuration))
-                logI("init. checkResult: $checkResult")
-                if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
-                    logI("init. softReinitialization")
-                    softReinitialization(context.applicationContext)
-                }
-
-                if (checkResult == ConfigUpdate.UPDATED) {
-                    firstInitialization(context.applicationContext, validatedConfiguration)
-
-                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
-                            && !lifecycleManager.isTrackVisitSent()
-                    if (isTrackVisitNotSent) {
-                        MindboxLoggerImpl.d(this, "Track visit event with source $DIRECT")
-                        sendTrackVisitEvent(context.applicationContext, DIRECT)
-                    }
-                } else {
-                    updateAppInfo(context.applicationContext)
-                    MindboxEventManager.sendEventsIfExist(context.applicationContext)
-                }
-                MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
-            }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-                .invokeOnCompletion { throwable ->
-                    if (throwable == null) {
-                        if (firstInitCall) {
-                            val activity = context as? Activity
-                            if (activity != null && lifecycleManager.isCurrentActivityResumed) {
-                                inAppMessageManager.registerCurrentActivity(activity)
-                                mindboxScope.launch {
-                                    inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
-                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                                    inAppMessageManager.requestConfig().join()
-                                    firstInitCall = false
-                                }
-                            }
-                        }
-                    }
-                }
-            // Handle back app in foreground
-            (context.applicationContext as? Application)?.apply {
-                val applicationLifecycle = ProcessLifecycleOwner.get().lifecycle
-
-                if (!Mindbox::lifecycleManager.isInitialized) {
-                    val activity = context as? Activity
-                    val isApplicationResumed = applicationLifecycle.currentState == RESUMED
-                    if (isApplicationResumed && activity == null) {
-                        logE("Incorrect context type for calling init in this place")
-                    }
-                    if (isApplicationResumed || context !is Application) {
-                        logW(
-                            "We recommend to call Mindbox.init() synchronously from " +
-                                    "Application.onCreate. If you can't do so, don't forget to " +
-                                    "call Mindbox.initPushServices from Application.onCreate",
-                        )
-                    }
-
-                    logI("init. init lifecycleManager")
-                    lifecycleManager = LifecycleManager(
-                        currentActivityName = activity?.javaClass?.name,
-                        currentIntent = activity?.intent,
-                        isAppInBackground = !isApplicationResumed,
-                        onActivityStarted = { startedActivity ->
-                            UuidCopyManager.onAppMovedToForeground(startedActivity)
-                            mindboxScope.launch {
-                                if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(startedActivity.applicationContext)
-                                }
-                            }
-                        },
-                        onActivityPaused = { pausedActivity ->
-                            inAppMessageManager.onPauseCurrentActivity(pausedActivity)
-                        },
-                        onActivityResumed = { resumedActivity ->
-                            //TODO implement control for blur
-                            inAppMessageManager.onResumeCurrentActivity(
-                                resumedActivity,
-                                true
-                            )
-                            if (firstInitCall) {
-                                mindboxScope.launch {
-                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-                                    if (!firstInitCall) return@launch
-                                    inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
-                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                                    inAppMessageManager.requestConfig().join()
-                                    firstInitCall = false
-                                }
-                            }
-                        },
-                        onActivityStopped = { resumedActivity ->
-                            inAppMessageManager.onStopCurrentActivity(resumedActivity)
-                        },
-                        onTrackVisitReady = { source, requestUrl ->
-                            runBlocking(Dispatchers.IO) {
-                                sendTrackVisitEvent(
-                                    MindboxDI.appModule.appContext,
-                                    source,
-                                    requestUrl
-                                )
-                            }
-                        }
-                    )
-                } else {
-                    unregisterActivityLifecycleCallbacks(lifecycleManager)
-                    applicationLifecycle.removeObserver(lifecycleManager)
-                    lifecycleManager.wasReinitialized()
-                }
-
-                registerActivityLifecycleCallbacks(lifecycleManager)
-                applicationLifecycle.addObserver(lifecycleManager)
-            }
-        }
+        initialize(context = context, configuration = configuration, pushServices = pushServices)
     }
 
     /**
