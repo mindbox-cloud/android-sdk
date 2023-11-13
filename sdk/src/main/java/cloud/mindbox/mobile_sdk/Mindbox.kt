@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.MigrationManager
 import com.jakewharton.threetenabp.AndroidThreeTen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -278,22 +279,57 @@ object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param token - token of push service
      */
+    @Deprecated(
+        message = "Use updatePushToken(context: Context, token: String, services: MindboxPushService)",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("this.updatePushToken(context, token, pushService)")
+    )
     fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
         initComponents(context)
-        MindboxLoggerImpl.d(this, "updatePushToken. token: $token")
+        mindboxLogW("Used deprecated updatePushToken. token: $token")
         if (token.trim().isNotEmpty()) {
             if (!MindboxPreferences.isFirstInitialize) {
                 mindboxScope.launch {
                     updateAppInfo(context, token)
                 }
             } else {
-                MindboxLoggerImpl.d(
-                    this, "updatePushToken. " +
-                            "MindboxPreferences.isFirstInitialize == true. Skipping update."
-                )
+                mindboxLogI("updatePushToken. MindboxPreferences.isFirstInitialize == true. Skipping update.")
             }
         }
     }
+
+    /**
+     * Updates push token for SDK
+     * Call it from onNewToken in messaging service
+     *
+     * @param context used to initialize the main tools
+     * @param token - token of push service
+     * @param pushService - the instance of [MindboxPushService], which handles push notifications.
+     */
+    fun updatePushToken(context: Context, token: String, pushService: MindboxPushService) =
+        MindboxLoggerImpl.runCatching {
+            initComponents(context)
+            mindboxLogI("updatePushToken token: $token with provider $pushService")
+
+            if (token.trim().isEmpty()) {
+                mindboxLogW("Token is empty! Skipping update token.")
+                return@runCatching
+            }
+
+            if (MindboxPreferences.isFirstInitialize) {
+                mindboxLogW("Mindbox init was never called. Skipping update token.")
+                return@runCatching
+            }
+
+            if (pushService.tag != pushServiceHandler?.notificationProvider) {
+                mindboxLogW("Token provider ${pushService.tag} not matching with selected provider ${pushServiceHandler?.notificationProvider}. Skipping update token.")
+                return@runCatching
+            }
+
+            mindboxScope.launch {
+                updateAppInfo(context, token)
+            }
+        }
 
     /**
      * This method is used to inform when the notification permission status changed to "allowed"
@@ -401,7 +437,8 @@ object Mindbox : MindboxLog {
     /**
      * Initializes the SDK for further work.
      *
-     * This method should be called in [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in onCreate on an application class
+     * This method should be called in
+     * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
      *
      * If you use this method, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
      *
@@ -419,6 +456,7 @@ object Mindbox : MindboxLog {
     ) {
         initialize(activity, configuration, pushServices)
     }
+
     private fun initialize(
         context: Context,
         configuration: MindboxConfiguration,
@@ -573,12 +611,10 @@ object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
-     * @Deprecated Use either [Mindbox.init] with application or [Mindbox.init] with activity
+     * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
     @Deprecated(
-        "Use one of new init methods instead",
-        replaceWith = ReplaceWith("Mindbox.init(application, mindboxConfiguration, listOf())"),
-        level = DeprecationLevel.WARNING
+        "Use either Mindbox.init with application parameter or Mindbox.init with activity parameter"
     )
     fun init(
         context: Context,
@@ -618,8 +654,6 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         initComponents(context, pushServices)
-        MindboxLoggerImpl.d(this, "init. pushServices: " +
-                pushServices.joinToString(", ") { it.javaClass.simpleName })
     }
 
     private fun setPushServiceHandler(
@@ -627,6 +661,7 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>? = null,
     ) = LoggingExceptionHandler.runCatching {
         if (pushServiceHandler == null && pushServices != null) {
+            mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
             val savedProvider = MindboxPreferences.notificationProvider
             selectPushServiceHandler(context, pushServices, savedProvider)
                 ?.let { pushServiceHandler ->
@@ -967,12 +1002,11 @@ object Mindbox : MindboxLog {
 
     internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
         MindboxDI.init(context.applicationContext)
-        MindboxLoggerImpl.d(this, "initComponents. pushServices: " +
-                pushServices?.joinToString(", ") { it.javaClass.simpleName })
         AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         setPushServiceHandler(context, pushServices)
+        MigrationManager(context).migrateAll()
     }
 
     private fun <T> asyncOperation(
@@ -1074,7 +1108,7 @@ object Mindbox : MindboxLog {
         deliverToken(pushToken)
     }
 
-    private suspend fun updateAppInfo(
+    internal suspend fun updateAppInfo(
         context: Context,
         token: String? = null,
     ) = withContext(infoUpdatedThreadDispatcher) {
@@ -1086,8 +1120,7 @@ object Mindbox : MindboxLog {
             val isTokenAvailable = !pushToken.isNullOrEmpty()
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-            MindboxLoggerImpl.d(
-                this, "updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
+            this@Mindbox.mindboxLogI("updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
                         "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
                         "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
             )
@@ -1143,7 +1176,6 @@ object Mindbox : MindboxLog {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
-
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
