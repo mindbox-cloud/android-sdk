@@ -415,11 +415,11 @@ object Mindbox : MindboxLog {
     /**
      * Initializes the SDK for further work.
      *
-     * We recommend calling it synchronously in onCreate on an application class
+     * This method must be called synchronously in onCreate on an application class
      *
      * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
      *
-     * @param context used to initialize the main tools
+     * @param application used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
@@ -427,6 +427,39 @@ object Mindbox : MindboxLog {
      * ```
      */
     fun init(
+        application: Application,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        logI("Initialization with application started")
+        initialize(application, configuration, pushServices)
+    }
+
+    /**
+     * Initializes the SDK for further work.
+     *
+     * This method should be called in
+     * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
+     *
+     * If you use this method, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     *
+     * @param activity used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     */
+    fun init(
+        activity: Activity,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        logI("Initialization with activity started")
+        initialize(activity, configuration, pushServices)
+    }
+
+    private fun initialize(
         context: Context,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
@@ -501,7 +534,8 @@ object Mindbox : MindboxLog {
                         logE("Incorrect context type for calling init in this place")
                     }
                     if (isApplicationResumed || context !is Application) {
-                        logW("We recommend to call Mindbox.init() synchronously from " +
+                        logW(
+                            "We recommend to call Mindbox.init() synchronously from " +
                                     "Application.onCreate. If you can't do so, don't forget to " +
                                     "call Mindbox.initPushServices from Application.onCreate",
                         )
@@ -564,6 +598,33 @@ object Mindbox : MindboxLog {
                 applicationLifecycle.addObserver(lifecycleManager)
             }
         }
+    }
+
+    /**
+     * Initializes the SDK for further work.
+     *
+     * We recommend calling it synchronously in onCreate on an application class
+     *
+     * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     *
+     * @param context used to initialize the main tools
+     * @param configuration contains the data that is needed to connect to the Mindbox
+     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * ```
+     *     listOf(MindboxFirebase, MindboxHuawei)
+     * ```
+     * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
+     */
+    @Deprecated(
+        "Use either Mindbox.init with application parameter or Mindbox.init with activity parameter"
+    )
+    fun init(
+        context: Context,
+        configuration: MindboxConfiguration,
+        pushServices: List<MindboxPushService>,
+    ) {
+        logW("Use either Mindbox.init with application parameter or Mindbox.init with activity parameter")
+        initialize(context = context, configuration = configuration, pushServices = pushServices)
     }
 
     /**
