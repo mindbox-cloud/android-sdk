@@ -431,6 +431,7 @@ object Mindbox : MindboxLog {
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
+        logI("Initialization with application started")
         initialize(application, configuration, pushServices)
     }
 
@@ -454,6 +455,7 @@ object Mindbox : MindboxLog {
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
+        logI("Initialization with activity started")
         initialize(activity, configuration, pushServices)
     }
 
@@ -621,6 +623,7 @@ object Mindbox : MindboxLog {
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
     ) {
+        logW("Use either Mindbox.init with application parameter or Mindbox.init with activity parameter")
         initialize(context = context, configuration = configuration, pushServices = pushServices)
     }
 
