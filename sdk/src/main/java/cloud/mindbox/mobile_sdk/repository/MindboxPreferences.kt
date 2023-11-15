@@ -6,7 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import java.util.*
+import java.util.Date
 
 internal object MindboxPreferences {
 
@@ -21,6 +21,7 @@ internal object MindboxPreferences {
     private const val KEY_INSTANCE_ID = "key_instance_id"
     private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
     private const val KEY_UUID_DEBUG_ENABLED = "key_uuid_debug_enabled"
+    private const val KEY_NEED_PUSH_TOKEN_UPDATE = "key_need_push_token_update"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
     private const val IN_APP_CONFIG = "IN_APP_CONFIG"
     private const val SHOWN_IDS = "SHOWN_IDS"
@@ -175,6 +176,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_UUID_DEBUG_ENABLED, value)
+            }
+        }
+
+    var isPushTokenNeedUpdated: Boolean
+        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
+            SharedPreferencesManager.getBoolean(KEY_NEED_PUSH_TOKEN_UPDATE, true)
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_NEED_PUSH_TOKEN_UPDATE, value)
             }
         }
 }

@@ -25,7 +25,7 @@ internal class FirebaseServiceHandler(
 
     private val messageTransformer = FirebaseRemoteMessageTransformer(exceptionHandler)
 
-    override val notificationProvider: String = "FCM"
+    override val notificationProvider: String = MindboxFirebase.tag
 
     override fun initService(context: Context) {
         FirebaseApp.initializeApp(context)
