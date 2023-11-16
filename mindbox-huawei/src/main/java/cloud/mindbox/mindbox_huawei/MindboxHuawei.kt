@@ -7,9 +7,12 @@ import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 
 object MindboxHuawei : MindboxPushService {
 
+    override val tag: String = "HCM"
+
     override fun getServiceHandler(
         logger: MindboxLogger,
         exceptionHandler: ExceptionHandler,
     ): PushServiceHandler = HuaweiServiceHandler(logger, exceptionHandler)
 
+    override fun toString(): String = tag
 }
