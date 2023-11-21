@@ -2,7 +2,10 @@ package cloud.mindbox.mobile_sdk.models
 
 import com.google.gson.Gson
 import com.google.gson.annotations.JsonAdapter
-
+/**
+ * A class for representing Mindbox error.
+ * Used in operations.
+ * */
 sealed class MindboxError(open val statusCode: Int?) {
 
     companion object {
