@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.pushes
 /**
- * A class for internal sdk work only. Do not extend or use it
+ * A class representing mindbox remote message
+ * You can use it as a model to store data from mindbox
+ * with your custom push notification implementation.
  * */
 data class RemoteMessage(
     val uniqueKey: String,
