@@ -9,7 +9,7 @@ import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
 import org.threeten.bp.Instant
 /**
- * An interface for internal sdk work only. Do not implement or use it
+ * An interface for internal sdk work only. Do not implement or use it.
  * */
 interface MindboxLogger {
 
