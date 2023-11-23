@@ -8,7 +8,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
-class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
+internal class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
 
     private val gson by lazy { Gson() }
 
