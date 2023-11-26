@@ -4,7 +4,9 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.util.UUID
-
+/**
+* A class for internal sdk work only. Do not extend or use it
+* */
 abstract class PushServiceHandler {
 
     companion object {
