@@ -1,6 +1,10 @@
 package cloud.mindbox.mobile_sdk
 
+import android.content.Context
+import io.mockk.impl.annotations.MockK
+import io.mockk.junit4.MockKRule
 import org.junit.Assert.*
+import org.junit.Rule
 import org.junit.Test
 
 class ExtensionsKtTest {
@@ -12,6 +16,12 @@ class ExtensionsKtTest {
         fourth,
         UNKNOWN
     }
+
+    @get:Rule
+    val mockkRule = MockKRule(this)
+
+    @MockK
+    private lateinit var context: Context
 
     @Test
     fun `test enumValue`() {

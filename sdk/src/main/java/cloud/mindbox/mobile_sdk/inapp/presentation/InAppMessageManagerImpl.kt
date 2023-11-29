@@ -10,7 +10,9 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 
+@OptIn(InternalCoroutinesApi::class)
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractor: InAppInteractor,

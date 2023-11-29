@@ -14,6 +14,7 @@ dependencies {
 
     implementation sdkDependencies.androidx_core_ktx
     implementation sdkDependencies.kotlinx_coroutines_core
+    implementation sdkDependencies.kotlin_stdlib
 
     implementation sdkDependencies.gson
 

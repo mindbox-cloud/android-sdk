@@ -13,6 +13,7 @@ dependencies {
     implementation project(path: ':sdk')
 
     implementation sdkDependencies.kotlinx_coroutines_core
+    implementation sdkDependencies.kotlin_stdlib
     implementation sdkDependencies.hms_push
     implementation sdkDependencies.hms_ads_identifier
     implementation sdkDependencies.gson

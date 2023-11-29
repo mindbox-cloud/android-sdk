@@ -16,7 +16,6 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resumeWithException
 
 internal class FirebaseServiceHandler(
     private val logger: MindboxLogger,
@@ -36,12 +35,14 @@ internal class FirebaseServiceHandler(
     ): String? = suspendCancellableCoroutine { continuation ->
         FirebaseMessaging.getInstance().token
             .addOnCanceledListener {
-                continuation.resumeWithException(CancellationException())
+                continuation.resumeWith(Result.failure(CancellationException()))
             }
             .addOnSuccessListener { token ->
                 continuation.resumeWith(Result.success(token))
             }
-            .addOnFailureListener(continuation::resumeWithException)
+            .addOnFailureListener {
+                continuation.resumeWith(Result.failure(it))
+            }
     }
 
     override fun getAdsId(context: Context): Pair<String?, Boolean> {
