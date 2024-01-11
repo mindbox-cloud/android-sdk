@@ -18,11 +18,14 @@ import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import com.android.volley.VolleyError
+import com.android.volley.toolbox.HttpHeaderParser
 import org.threeten.bp.Instant
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.nio.charset.Charset
 import java.util.Queue
 import kotlin.math.roundToInt
 
@@ -182,4 +185,17 @@ internal fun PackageManager.getPackageInfoCompat(context: Context, flags: Int): 
     } else {
         getPackageInfo(context.packageName, flags)
     }
+}
+
+internal fun VolleyError.getErrorResponseBodyData(): String {
+    return this.networkResponse?.data
+        ?.takeIf { it.isNotEmpty() }
+        ?.toString(
+            Charset.forName(
+                HttpHeaderParser.parseCharset(
+                    this.networkResponse?.headers ?: emptyMap()
+                )
+            )
+        )
+        ?: ""
 }
