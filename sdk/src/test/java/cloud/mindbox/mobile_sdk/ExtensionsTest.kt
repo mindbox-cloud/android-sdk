@@ -140,7 +140,7 @@ internal class ExtensionsTest {
             400,
             responseBodyData.toByteArray(),
             true,
-            200, // Set the HTTP status code here
+            1,
             emptyList()
         )
         val error = VolleyError(networkResponse)
