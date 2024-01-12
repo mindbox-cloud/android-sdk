@@ -21,10 +21,9 @@ internal class InAppChoosingManagerImpl(
 ) : InAppChoosingManager {
 
     companion object {
-        private const val CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER =
+        private const val RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER =
             "CheckCustomerSegments requires customer"
     }
-
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
@@ -35,25 +34,28 @@ internal class InAppChoosingManagerImpl(
             var isInAppContentFetched: Boolean? = null
             var targetingCheck = false
             withContext(Dispatchers.IO) {
-                val imageJob = launch(start = CoroutineStart.LAZY) {
-                    runCatching {
-                        isInAppContentFetched = inAppContentFetcher.fetchContent(
-                            inApp.id, inApp.form.variants.first()
-                        )
-                    }.onFailure { throwable ->
-                        when (throwable) {
-                            is CancellationException -> {
-                                inAppContentFetcher.cancelFetching(inApp.id)
-                                isInAppContentFetched = null
-                            }
+                val imageJob =
+                    launch(start = CoroutineStart.LAZY) {
+                        runCatching {
+                            isInAppContentFetched =
+                                inAppContentFetcher.fetchContent(
+                                    inApp.id,
+                                    inApp.form.variants.first()
+                                )
+                        }.onFailure { throwable ->
+                            when (throwable) {
+                                is CancellationException -> {
+                                    inAppContentFetcher.cancelFetching(inApp.id)
+                                    isInAppContentFetched = null
+                                }
 
-                            is InAppContentFetchingError -> {
-                                isInAppContentFetched = false
+                                is InAppContentFetchingError -> {
+                                    isInAppContentFetched = false
+                                }
                             }
                         }
-                    }
 
-                }
+                    }
                 val targetingJob = launch(start = CoroutineStart.LAZY) {
                     runCatching {
                         inApp.targeting.fetchTargetingInfo(data)
@@ -120,7 +122,8 @@ internal class InAppChoosingManagerImpl(
         val ordinalEvent = triggerEvent as? InAppEventType.OrdinalEvent
 
         return TargetingDataWrapper(
-            triggerEvent.name, ordinalEvent?.body
+            triggerEvent.name,
+            ordinalEvent?.body
         )
     }
 
@@ -128,7 +131,7 @@ internal class InAppChoosingManagerImpl(
         val volleyError = error.cause as? VolleyError
         volleyError?.let { error ->
             if ((error.networkResponse?.statusCode == 400) && (error.getErrorResponseBodyData()
-                    .contains(CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER))
+                    .contains(RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER))
             ) {
                 mindboxLogI("Cannot check customer segment. It's a new customer")
                 return
