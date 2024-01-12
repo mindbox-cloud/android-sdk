@@ -160,7 +160,7 @@ internal data class MindboxRequest(
 
     private fun logEndResponse() {
         LoggingExceptionHandler.runCatching {
-            mindboxLogW("<--- End of response")
+            mindboxLogI("<--- End of response")
         }
     }
 
