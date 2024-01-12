@@ -2,10 +2,10 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.android.volley.NetworkResponse
+import com.android.volley.VolleyError
 import com.jakewharton.threetenabp.AndroidThreeTen
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
+import io.mockk.*
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -30,7 +30,8 @@ internal class ExtensionsTest {
     @Test
     fun `converting zoned date time to string`() {
         val time: ZonedDateTime = ZonedDateTime.now()
-        val expectedResult = time.withZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
+        val expectedResult = time.withZoneSameInstant(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
         val actualResult = time.convertToString()
         assertEquals(expectedResult, actualResult)
     }
@@ -124,5 +125,25 @@ internal class ExtensionsTest {
         assertTrue(linkedList.addUnique("tE5t4") { it.contains("tE5t4") })
         assertTrue(linkedList.contains("tE5t4"))
         assertEquals(3, linkedList.size)
+    }
+
+    @Test
+    fun `should return empty string if error has no network response data`() {
+        val error = VolleyError()
+        assertEquals("", error.getErrorResponseBodyData())
+    }
+
+    @Test
+    fun `should return response body data`() {
+        val responseBodyData = "test string"
+        val networkResponse = NetworkResponse(
+            400,
+            responseBodyData.toByteArray(),
+            true,
+            200,
+            emptyList()
+        )
+        val error = VolleyError(networkResponse)
+        assertEquals(responseBodyData, error.getErrorResponseBodyData())
     }
 }
