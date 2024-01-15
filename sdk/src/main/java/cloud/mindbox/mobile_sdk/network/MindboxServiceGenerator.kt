@@ -7,7 +7,6 @@ import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
-import com.android.volley.toolbox.StringRequest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -28,11 +27,6 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
                 requestQueue.cancelAll { true }
             }
         }
-
-    internal fun addToRequestQueue(request: StringRequest) {
-        requestQueue.add(request)
-        // TODO change StringRequest to MindboxRequest or log here
-    }
 
     internal fun addToRequestQueue(request: MindboxRequest) = LoggingExceptionHandler.runCatching {
         requestQueue.let { requestQueue ->
