@@ -12,5 +12,3 @@ internal class ProductSegmentationError(volleyError: VolleyError) :
     Exception(volleyError)
 
 internal class InAppContentFetchingError(error: GlideException?) : Exception(error)
-
-internal class InAppMobileConfigFetchingError(volleyError: VolleyError) : Exception(volleyError)

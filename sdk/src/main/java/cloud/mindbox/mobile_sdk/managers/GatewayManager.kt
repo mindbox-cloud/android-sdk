@@ -420,7 +420,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         continuation.resume(response.toString())
                     },
                     errorsListener = { error ->
-                        continuation.resumeWithException(InAppMobileConfigFetchingError(error))
+                        continuation.resumeWithException(error)
                     },
                 )
             )
