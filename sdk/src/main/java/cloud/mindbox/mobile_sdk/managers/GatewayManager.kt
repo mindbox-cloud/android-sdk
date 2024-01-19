@@ -16,7 +16,6 @@ import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.Request
 import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
@@ -409,17 +408,18 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         }
     }
 
-
     suspend fun fetchMobileConfig(configuration: Configuration): String {
         return suspendCoroutine { continuation ->
             mindboxServiceGenerator.addToRequestQueue(
-                StringRequest(
-                    Request.Method.GET,
-                    getConfigUrl(configuration),
-                    { response ->
-                        continuation.resume(response)
+                MindboxRequest(
+                    methodType = Request.Method.GET,
+                    fullUrl = getConfigUrl(configuration),
+                    configuration = configuration,
+                    jsonRequest = null,
+                    listener = { response ->
+                        continuation.resume(response.toString())
                     },
-                    { error ->
+                    errorsListener = { error ->
                         continuation.resumeWithException(error)
                     },
                 )

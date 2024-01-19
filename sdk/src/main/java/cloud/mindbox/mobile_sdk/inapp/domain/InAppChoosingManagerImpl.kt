@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -7,16 +8,22 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmen
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import com.android.volley.VolleyError
 import kotlinx.coroutines.*
 
 internal class InAppChoosingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppContentFetcher: InAppContentFetcher
-) :
-    InAppChoosingManager {
+) : InAppChoosingManager {
 
+    companion object {
+        private const val RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER =
+            "CheckCustomerSegments requires customer"
+    }
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
@@ -66,11 +73,7 @@ internal class InAppChoosingManagerImpl(
                                 inAppSegmentationRepository.setCustomerSegmentationStatus(
                                     CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                                 )
-                                MindboxLoggerImpl.e(
-                                    this,
-                                    "Error fetching customer segmentations",
-                                    throwable
-                                )
+                                handleCustomerSegmentationErrorLog(throwable)
                             }
 
                             else -> {
@@ -122,6 +125,19 @@ internal class InAppChoosingManagerImpl(
             triggerEvent.name,
             ordinalEvent?.body
         )
+    }
+
+    private fun handleCustomerSegmentationErrorLog(error: CustomerSegmentationError) {
+        val volleyError = error.cause as? VolleyError
+        volleyError?.let { error ->
+            if ((error.networkResponse?.statusCode == 400) && (error.getErrorResponseBodyData()
+                    .contains(RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER))
+            ) {
+                mindboxLogI("Cannot check customer segment. It's a new customer")
+                return
+            }
+        }
+        mindboxLogW("Error fetching customer segmentations", error)
     }
 
     private class TargetingDataWrapper(

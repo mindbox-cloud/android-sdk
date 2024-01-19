@@ -346,6 +346,9 @@ object Mindbox : MindboxLog {
      * Creates and deliveries event of "Push delivered". Recommended call this method from
      * background thread.
      *
+     * Use this method only if you have custom push handling you don't use [Mindbox.handleRemoteMessage].
+     * You must not call it otherwise.
+     *
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
      */

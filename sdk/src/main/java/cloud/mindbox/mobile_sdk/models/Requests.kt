@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.models
 
 import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.NetworkResponse
 import com.android.volley.ParseError
@@ -108,25 +110,16 @@ internal data class MindboxRequest(
     //Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         LoggingExceptionHandler.runCatching {
-            MindboxLoggerImpl.e(
-                this,
-                "<--- Error ${volleyError.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError.networkTimeMs}; ",
-            )
             try {
-                volleyError.networkResponse?.allHeaders?.joinToString (
+                val json = volleyError.getErrorResponseBodyData()
+
+                logResponseResult(volleyError, json)
+
+                volleyError.networkResponse?.allHeaders?.joinToString(
                     separator = System.getProperty("line.separator") ?: "\n"
                 ) { header ->
                     "${header.name}: ${header.value}"
-                }?.let { MindboxLoggerImpl.d(this, it) }
-
-                val json = String(
-                    volleyError.networkResponse?.data ?: ByteArray(0),
-                    Charset.forName(
-                        HttpHeaderParser.parseCharset(
-                            volleyError.networkResponse?.headers ?: emptyMap()
-                        )
-                    )
-                )
+                }?.let { mindboxLogI(it) }
 
                 logBodyResponse(json)
             } catch (e: Exception) {
@@ -142,32 +135,47 @@ internal data class MindboxRequest(
 
     private fun logResponse(response: NetworkResponse?) {
         LoggingExceptionHandler.runCatching {
-            MindboxLoggerImpl.d(this, "<--- ${response?.statusCode} $fullUrl")
+            mindboxLogI("<--- ${response?.statusCode} $fullUrl")
 
-            response?.allHeaders?.joinToString (
+            response?.allHeaders?.joinToString(
                 separator = System.getProperty("line.separator") ?: "\n"
             ) { header ->
                 "${header.name}: ${header.value}"
-            }?.let { MindboxLoggerImpl.d(this, it) }
+            }?.let { mindboxLogI(it) }
         }
     }
 
     private fun logBodyResponse(json: String?) {
         LoggingExceptionHandler.runCatching {
-            MindboxLoggerImpl.d(this, "$json")
+            mindboxLogI("$json")
         }
     }
 
     private fun logError(e: Exception) {
         LoggingExceptionHandler.runCatching {
-            MindboxLoggerImpl.d(this, e.message ?: "Empty message")
-            MindboxLoggerImpl.d(this, e.stackTraceToString())
+            mindboxLogW(e.message ?: "Empty message")
+            mindboxLogW(e.stackTraceToString())
         }
     }
 
     private fun logEndResponse() {
         LoggingExceptionHandler.runCatching {
-            MindboxLoggerImpl.d(this, "<--- End of response")
+            mindboxLogI("<--- End of response")
+        }
+    }
+
+    private fun logResponseResult(volleyError: VolleyError?, json: String?) {
+        LoggingExceptionHandler.runCatching {
+            val logMessage = buildString {
+                append("<--- ")
+                append(if (json?.contains("\"status\": \"Success\"") == true) "Success" else "Error")
+                append(" ${volleyError?.networkResponse?.statusCode} $fullUrl TimeMls:${volleyError?.networkTimeMs}; ")
+            }
+            if (json?.contains("{\"status\": \"Success\"}") == true) {
+                mindboxLogI(logMessage)
+            } else {
+                mindboxLogW(logMessage)
+            }
         }
     }
 

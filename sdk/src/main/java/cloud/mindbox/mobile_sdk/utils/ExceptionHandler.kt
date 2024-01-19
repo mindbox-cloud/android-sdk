@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.utils
-
+/**
+ * A class for internal sdk work only. Do not extend or use it
+ * */
 abstract class ExceptionHandler {
 
     fun <T> runCatching(block: () -> T) {
