@@ -6,6 +6,9 @@ import android.util.Log
 import android.webkit.URLUtil
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 
+/**
+ *@see cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+ */
 object CustomInAppCallback : InAppCallback {
     override fun onInAppClick(id: String, redirectUrl: String, payload: String) {
         Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl)).also { intent ->

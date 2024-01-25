@@ -8,10 +8,13 @@ import com.mindbox.example.databinding.ActivityTrasitionByPushBinding
 
 
 class ActivityTransitionByPush : AppCompatActivity() {
-    private lateinit var binding: ActivityTrasitionByPushBinding
+    private var _binding: ActivityTrasitionByPushBinding? = null
+    private val binding: ActivityTrasitionByPushBinding
+        get() = _binding!!
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityTrasitionByPushBinding.inflate(layoutInflater)
+        _binding = ActivityTrasitionByPushBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         //Get data from push after click on push or button in push
@@ -31,5 +34,10 @@ class ActivityTransitionByPush : AppCompatActivity() {
         }
         //https://developers.mindbox.ru/docs/android-app-start-tracking
         Mindbox.onNewIntent(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        _binding = null
     }
 }

@@ -40,49 +40,6 @@ fun showToast(context: Context, message: String) {
     ).show()
 }
 
-fun chooseInappCallback(selectedInappCallback: RegisterInappCallback) {
-    when (selectedInappCallback) {
-        //by default apply ComposableInAppCallback
-        RegisterInappCallback.DEFAULT -> {}
-        RegisterInappCallback.CUSTOM ->
-            Mindbox.registerInAppCallback(CustomInAppCallback)
-
-        RegisterInappCallback.CHOOSE_MINDBOX_CALLBACK -> Mindbox.registerInAppCallback(
-            EmptyInAppCallback()
-        )
-    }
-}
-
-fun chooseNotificationImageHandler(selectedImageHandler: NotificationImageHandler) {
-    when (selectedImageHandler) {
-        //By default apply "applyDefaultStrategy" and default loader
-        NotificationImageHandler.DEFAULT -> {}
-        NotificationImageHandler.CUSTOM_LOADER -> {
-            Mindbox.setMessageHandling(
-                imageLoader = CustomImageLoader()
-            )
-        }
-
-        NotificationImageHandler.CUSTOM_STRATEGY -> {
-            Mindbox.setMessageHandling(
-                imageFailureHandler = CustomImageFailureStrategy(
-                    maxAttempts = 3, delay = 5
-                )
-            )
-        }
-
-        NotificationImageHandler.CHOOSE_MINDBOX_STRATEGY -> {
-            Mindbox.setMessageHandling(
-                imageFailureHandler = MindboxImageFailureHandler.retryOrDefaultStrategy(
-                    maxAttempts = 3,
-                    delay = 5,
-                    defaultImage = Utils.defaultImage
-                )
-            )
-        }
-    }
-}
-
 enum class NotificationImageHandler() {
     DEFAULT,
     CUSTOM_LOADER,

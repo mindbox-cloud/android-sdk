@@ -9,7 +9,8 @@ import com.huawei.hms.push.HmsMessageService
 class MindboxHuaweiMessagingService : HmsMessageService() {
 
     override fun onNewToken(token: String) {
-        // Передача токена в Mindbox SDK
+        // Token transfer to Mindbox SDK
+        // https://developers.mindbox.ru/docs/android-sdk-methods#updatepushtoken
         Mindbox.updatePushToken(
             context = applicationContext,
             token = token,

@@ -35,12 +35,14 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         if (!messageWasHandled) {
+            // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
             Log.d(Utils.TAG, "This push not from Mindbox")
         }
     }
 
     override fun onNewToken(token: String) {
         // Token transfer to Mindbox SDK
+        //https://developers.mindbox.ru/docs/android-sdk-methods#updatepushtoken
         Mindbox.updatePushToken(
             context = applicationContext,
             token = token,
