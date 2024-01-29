@@ -1,5 +1,5 @@
 
-To run the example application, follow these steps:
+To run the example application with functioning mobile push notifications, follow these steps:
 
 1) Change the package identifier in the **app/build.gradle** file
 
