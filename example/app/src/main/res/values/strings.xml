@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Mindbox Android Sdk Example</string>
+    <string name="device_uuid">Device UUID:</string>
+    <string name="transit_push">The second activity</string>
+    <string name="transit_push_fragment">This Fragment was opening after click on push</string>
+    <string name="push_url">Url from push:</string>
+    <string name="token">Token:</string>
+    <string name="push_payload">Payload:</string>
+    <string name="async_operation">Send async operation</string>
+    <string name="sync_operation">Send sync operation</string>
+    <string name="sdk_version">SDK version</string>
+    <string name="open_activity">Open second activity</string>
+    <string name="token_date">Token date:</string>
+
+</resources>
