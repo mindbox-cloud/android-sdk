@@ -15,7 +15,7 @@ To integrate Mindbox SDK into your Android app, follow the installation process 
     repositories {
         maven()
     }
-
+```
 2. Now, add the Mindbox SDK to your app-level build.gradle file:
 ```markdown
     dependencies {
@@ -55,4 +55,3 @@ The library is available as open source under the terms of the [MIT License](htt
 
 
 For a better understanding of this content, please familiarize yourself with the Mindbox [Android SDK](https://developers.mindbox.ru/docs/androidhuawei-native-sdk) documentation.
-```
