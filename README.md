@@ -1,3 +1,5 @@
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cloud.mindbox/mobile-sdk/badge.svg)](https://search.maven.org/artifact/cloud.mindbox/mobile-sdk/2.8.3/aar)
+
 # Mindbox SDK for Android
 
 The Mindbox SDK allows you to integrate mobile push-notifications, in-app messages and client events into your Android projects.
@@ -19,7 +21,7 @@ To integrate Mindbox SDK into your Android app, follow the installation process 
 2. Now, add the Mindbox SDK to your app-level build.gradle file:
 ```markdown
     dependencies {
-        implementation 'ru.cloud.mindbox:mobile_sdk:2.8.2'
+        implementation 'ru.cloud.mindbox:mobile_sdk:2.8.3'
     }
 ```
 
@@ -52,6 +54,4 @@ Reach out to us for further help and we'll be glad to assist.
 
 The library is available as open source under the terms of the [License](https://github.com/mindbox-cloud/android-sdk/blob/develop/LICENSE.md).
 
-
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cloud.mindbox/mobile-sdk/badge.svg)](https://search.maven.org/artifact/cloud.mindbox/mobile-sdk/2.8.3/aar)
 For a better understanding of this content, please familiarize yourself with the Mindbox [Android SDK](https://developers.mindbox.ru/docs/androidhuawei-native-sdk) documentation.
