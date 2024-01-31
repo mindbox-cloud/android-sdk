@@ -1,0 +1,59 @@
+```markdown
+# Mindbox SDK for Android
+
+The Mindbox SDK allows you to integrate mobile push-notifications and work with the client database into your Android projects.
+
+## Getting Started
+
+These instructions will help you integrate the Mindbox SDK into your Android app.
+
+### Installation
+
+To integrate Mindbox SDK into your Android app, follow the installation process detailed [here](https://developers.mindbox.ru/docs/androidhuawei-native-sdk). Here is an overview:
+
+1. Add Mindbox's Maven repository to your project build.gradle file:
+```markdown
+    repositories {
+        maven()
+    }
+```
+
+2. Now, add the Mindbox SDK to your app-level build.gradle file:
+```markdown
+    dependencies {
+        implementation 'ru.cloud.mindbox:mobile_sdk:2.8.2'
+    }
+```
+
+### Initialization
+
+Initialize the Mindbox SDK in your Activity or Application class. Check documentation [here](https://developers.mindbox.ru/docs/android-sdk-initialization) for more details.
+
+
+### Operations
+
+Learn how to send events to Mindbox. Create a new Operation class object and set the respective parameters. Check the [documentation](https://developers.mindbox.ru/docs/android-integration-of-actions) for more details.
+
+### Push Notifications
+
+Mindbox SDK helps handle push notifications. Configuration and usage instructions can be found in the SDK documentation [here](https://developers.mindbox.ru/docs/huawei-send-push-notifications) and [here](https://developers.mindbox.ru/docs/firebase-send-push-notifications).
+
+### Migration
+
+If migrating from an older version, follow the instructions [here](https://developers.mindbox.ru/docs/v1-v2-android-sdk) to upgrade to the new version.
+
+## Troubleshooting
+
+Refer to the [troubleshooting guide](https://github.com/mindbox-cloud/android-sdk/tree/develop/example) in case of any issues.
+
+## Further Help
+
+Reach out to us for further help and we'll be glad to assist.
+
+## License
+
+The library is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+```
+
+For a better understanding of this content, please familiarize yourself with the Mindbox [Android SDK](https://developers.mindbox.ru/docs/androidhuawei-native-sdk) documentation.
