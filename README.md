@@ -53,5 +53,5 @@ Reach out to us for further help and we'll be glad to assist.
 The library is available as open source under the terms of the [License](https://github.com/mindbox-cloud/android-sdk/blob/develop/LICENSE.md).
 
 
-
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cz.jirutka.rsql/rsql-parser/badge.svg)](https://maven-badges.herokuapp.com/maven-central/cz.jirutka.rsql/rsql-parser)
 For a better understanding of this content, please familiarize yourself with the Mindbox [Android SDK](https://developers.mindbox.ru/docs/androidhuawei-native-sdk) documentation.
