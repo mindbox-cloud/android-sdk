@@ -97,10 +97,6 @@ jobs:
       - name: Publish to Sonatype
         run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
 
-        #To update version in Github README.md
-      - name: Version Upgrade
-        run: ./maven-version-update.sh
-
       - name: Job status notification
         uses: rtCamp/action-slack-notify@v2
         env:
