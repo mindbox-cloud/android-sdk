@@ -6,5 +6,4 @@ function getProperty {
     echo $PROP_VALUE
 }
 SDK_VERSION_NAME=$(getProperty "SDK_VERSION_NAME")
-sed -i -e "s|https://search.maven.org/artifact/cloud.mindbox/mobile-sdk/[0-9].[0-9].[0-9]/aar|https://search.maven.org/artifact/cloud.mindbox/mobile-sdk/${SDK_VERSION_NAME}/aar|" README.md
-sed -i -e "s|implementation 'ru.cloud.mindbox:mobile_sdk:[0-9].[0-9].[0-9]'|implementation 'ru.cloud.mindbox:mobile_sdk:${SDK_VERSION_NAME}'|" README.md
+sed -i -e "s|implementation 'cloud.mindbox:mobile_sdk:[0-9].[0-9].[0-9]'|implementation 'cloud.mindbox:mobile_sdk:${SDK_VERSION_NAME}'|" README.md
