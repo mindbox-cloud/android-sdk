@@ -6,4 +6,4 @@ function getProperty {
     echo $PROP_VALUE
 }
 SDK_VERSION_NAME=$(getProperty "SDK_VERSION_NAME")
-sed -i -e "s|implementation 'cloud.mindbox:mobile_sdk:[0-9].[0-9].[0-9]'|implementation 'cloud.mindbox:mobile_sdk:${SDK_VERSION_NAME}'|" README.md
+sed -i -e "s|implementation 'cloud.mindbox:mobile-sdk:[0-9].[0-9].[0-9]'|implementation 'cloud.mindbox:mobile-sdk:${SDK_VERSION_NAME}'|" README.md

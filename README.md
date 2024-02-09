@@ -21,7 +21,7 @@ To integrate Mindbox SDK into your Android app, follow the installation process 
 2. Now, add the Mindbox SDK to your app-level build.gradle file:
 ```markdown
     dependencies {
-        implementation 'cloud.mindbox:mobile_sdk:2.8.3'
+        implementation 'cloud.mindbox:mobile-sdk:2.8.3'
     }
 ```
 
