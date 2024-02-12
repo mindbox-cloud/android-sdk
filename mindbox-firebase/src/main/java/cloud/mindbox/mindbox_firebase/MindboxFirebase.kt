@@ -16,13 +16,6 @@ import com.google.gson.reflect.TypeToken
  * */
 object MindboxFirebase : MindboxPushService {
 
-    private const val DATA_UNIQUE_KEY = "uniqueKey"
-    private const val DATA_TITLE = "title"
-    private const val DATA_MESSAGE = "message"
-    private const val DATA_IMAGE_URL = "imageUrl"
-    private const val DATA_BUTTONS = "buttons"
-    private const val DATA_PUSH_CLICK_URL = "clickUrl"
-    private const val DATA_PAYLOAD = "payload"
     override val tag: String = "FCM"
 
     private val gson by lazy { Gson() }
@@ -49,23 +42,23 @@ object MindboxFirebase : MindboxPushService {
      **/
     fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
         val data = remoteMessage?.data ?: return null
-        val uniqueKey = data[DATA_UNIQUE_KEY] ?: return null
+        val uniqueKey = data[FirebaseMessage.DATA_UNIQUE_KEY] ?: return null
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
         return MindboxRemoteMessage(
             uniqueKey = uniqueKey,
-            title = data[DATA_TITLE] ?: "",
-            description = data[DATA_MESSAGE] ?: "",
+            title = data[FirebaseMessage.DATA_TITLE] ?: "",
+            description = data[FirebaseMessage.DATA_MESSAGE] ?: "",
             pushActions = runCatching {
                 gson.fromJson<List<PushAction>?>(
-                    data[DATA_BUTTONS],
+                    data[FirebaseMessage.DATA_BUTTONS],
                     pushActionsType
                 )
             }.getOrDefault(
                 emptyList()
             ),
-            pushLink = data[DATA_PUSH_CLICK_URL],
-            imageUrl = data[DATA_IMAGE_URL],
-            payload = data[DATA_PAYLOAD],
+            pushLink = data[FirebaseMessage.DATA_PUSH_CLICK_URL],
+            imageUrl = data[FirebaseMessage.DATA_IMAGE_URL],
+            payload = data[FirebaseMessage.DATA_PAYLOAD],
         )
     }
 }
