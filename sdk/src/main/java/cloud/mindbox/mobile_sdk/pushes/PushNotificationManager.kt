@@ -59,7 +59,7 @@ internal object PushNotificationManager {
 
     internal suspend fun handleRemoteMessage(
         context: Context,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -70,13 +70,13 @@ internal object PushNotificationManager {
 
         Mindbox.onPushReceived(
             context = context.applicationContext,
-            uniqKey = mindboxRemoteMessage.uniqueKey,
+            uniqKey = remoteMessage.uniqueKey,
         )
 
         tryNotifyRemoteMessage(
             notificationId = Generator.generateUniqueInt(),
             context = context,
-            mindboxRemoteMessage = mindboxRemoteMessage,
+            remoteMessage = remoteMessage,
             channelId = channelId,
             channelName = channelName,
             pushSmallIcon = pushSmallIcon,
@@ -95,7 +95,7 @@ internal object PushNotificationManager {
     internal suspend fun tryNotifyRemoteMessage(
         notificationId: Int,
         context: Context,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -107,7 +107,7 @@ internal object PushNotificationManager {
         MindboxLoggerImpl.d(
             parent = this,
             message = buildLogMessage(
-                message = mindboxRemoteMessage,
+                message = remoteMessage,
                 log = "Started with state - $state",
             ),
         )
@@ -120,7 +120,7 @@ internal object PushNotificationManager {
             MindboxLoggerImpl.d(
                 parent = this,
                 message = buildLogMessage(
-                    message = mindboxRemoteMessage,
+                    message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
                             "because the notification was deleted",
                 ),
@@ -134,19 +134,19 @@ internal object PushNotificationManager {
                 MindboxLoggerImpl.d(
                     parent = PushNotificationManager,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Image loading started, imageLoader=$imageLoader",
                     ),
                 )
                 val bitmap = imageLoader.onLoadImage(
                     context = context,
-                    message = mindboxRemoteMessage,
+                    message = remoteMessage,
                     state = state,
                 )
                 MindboxLoggerImpl.d(
                     parent = PushNotificationManager,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Image loading complete, bitmap=$bitmap",
                     ),
                 )
@@ -158,7 +158,7 @@ internal object PushNotificationManager {
             MindboxLoggerImpl.d(
                 parent = this,
                 message = buildLogMessage(
-                    message = mindboxRemoteMessage,
+                    message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
                             "because the notification was deleted",
                 ),
@@ -171,7 +171,7 @@ internal object PushNotificationManager {
                 MindboxLoggerImpl.e(
                     parent = this,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Image loading failed:\n${error.stackTraceToString()}",
                     ),
                 )
@@ -179,7 +179,7 @@ internal object PushNotificationManager {
                 MindboxLoggerImpl.e(
                     parent = this,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Image loading failed:",
                     ),
                     exception = error,
@@ -189,20 +189,20 @@ internal object PushNotificationManager {
             MindboxLoggerImpl.d(
                 parent = this,
                 message = buildLogMessage(
-                    message = mindboxRemoteMessage,
+                    message = remoteMessage,
                     log = "Image loading error will be handled in $imageFailureHandler",
                 ),
             )
             imageFailureHandler.onImageLoadingFailed(
                 context = context,
-                message = mindboxRemoteMessage,
+                message = remoteMessage,
                 state = state,
                 error = error,
             ).also {
                 MindboxLoggerImpl.d(
                     parent = this,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Solution for failed image loading - $it",
                     ),
                 )
@@ -213,7 +213,7 @@ internal object PushNotificationManager {
             MindboxLoggerImpl.e(
                 parent = this,
                 message = buildLogMessage(
-                    message = mindboxRemoteMessage,
+                    message = remoteMessage,
                     log = "ApplyDefaultAndRetry works correctly only on SDK >= 23",
                 ),
             )
@@ -223,7 +223,7 @@ internal object PushNotificationManager {
             is ImageRetryStrategy.Retry -> retryNotifyRemoteMessage(
                 context = context,
                 notificationId = notificationId,
-                mindboxRemoteMessage = mindboxRemoteMessage,
+                remoteMessage = remoteMessage,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,
@@ -237,7 +237,7 @@ internal object PushNotificationManager {
             is ImageRetryStrategy.ApplyDefaultAndRetry -> applyDefaultAndRetryNotifyRemoteMessage(
                 context = applicationContext,
                 notificationManager = notificationManager,
-                mindboxRemoteMessage = mindboxRemoteMessage,
+                remoteMessage = remoteMessage,
                 channelId = channelId,
                 channelName = channelName,
                 channelDescription = channelDescription,
@@ -252,7 +252,7 @@ internal object PushNotificationManager {
             is ImageRetryStrategy.ApplyDefault -> applyDefaultNotifyRemoteMessage(
                 context = applicationContext,
                 notificationManager = notificationManager,
-                remoteMessage = mindboxRemoteMessage,
+                remoteMessage = remoteMessage,
                 channelId = channelId,
                 channelName = channelName,
                 channelDescription = channelDescription,
@@ -266,7 +266,7 @@ internal object PushNotificationManager {
                 notifyRemoteMessage(
                     context = applicationContext,
                     notificationManager = notificationManager,
-                    mindboxRemoteMessage = mindboxRemoteMessage,
+                    remoteMessage = remoteMessage,
                     channelId = channelId,
                     channelName = channelName,
                     channelDescription = channelDescription,
@@ -279,7 +279,7 @@ internal object PushNotificationManager {
                 MindboxLoggerImpl.d(
                     parent = this,
                     message = buildLogMessage(
-                        message = mindboxRemoteMessage,
+                        message = remoteMessage,
                         log = "Successfully notified!",
                     ),
                 )
@@ -299,7 +299,7 @@ internal object PushNotificationManager {
     private fun retryNotifyRemoteMessage(
         context: Context,
         notificationId: Int,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         pushSmallIcon: Int,
@@ -311,7 +311,7 @@ internal object PushNotificationManager {
     ) = BackgroundWorkManager.startNotificationWork(
         context = context,
         notificationId = notificationId,
-        mindboxRemoteMessage = mindboxRemoteMessage,
+        remoteMessage = remoteMessage,
         channelId = channelId,
         channelName = channelName,
         pushSmallIcon = pushSmallIcon,
@@ -325,7 +325,7 @@ internal object PushNotificationManager {
     private fun applyDefaultAndRetryNotifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         channelDescription: String?,
@@ -346,12 +346,12 @@ internal object PushNotificationManager {
         val notification = buildNotification(
             context = context,
             notificationId = notificationId,
-            uniqueKey = mindboxRemoteMessage.uniqueKey,
-            title = mindboxRemoteMessage.title,
-            text = mindboxRemoteMessage.description,
-            pushActions = mindboxRemoteMessage.pushActions,
-            pushLink = mindboxRemoteMessage.pushLink,
-            payload = mindboxRemoteMessage.payload,
+            uniqueKey = remoteMessage.uniqueKey,
+            title = remoteMessage.title,
+            text = remoteMessage.description,
+            pushActions = remoteMessage.pushActions,
+            pushLink = remoteMessage.pushLink,
+            payload = remoteMessage.payload,
             image = imagePlaceholder,
             channelId = channelId,
             pushSmallIcon = pushSmallIcon,
@@ -362,7 +362,7 @@ internal object PushNotificationManager {
         BackgroundWorkManager.startNotificationWork(
             context = context,
             notificationId = notificationId,
-            mindboxRemoteMessage = mindboxRemoteMessage,
+            remoteMessage = remoteMessage,
             channelId = channelId,
             channelName = channelName,
             pushSmallIcon = pushSmallIcon,
@@ -414,7 +414,7 @@ internal object PushNotificationManager {
     private fun notifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         channelDescription: String?,
@@ -433,12 +433,12 @@ internal object PushNotificationManager {
         val notification = buildNotification(
             context = context,
             notificationId = notificationId,
-            uniqueKey = mindboxRemoteMessage.uniqueKey,
-            title = mindboxRemoteMessage.title,
-            text = mindboxRemoteMessage.description,
-            pushActions = mindboxRemoteMessage.pushActions,
-            pushLink = mindboxRemoteMessage.pushLink,
-            payload = mindboxRemoteMessage.payload,
+            uniqueKey = remoteMessage.uniqueKey,
+            title = remoteMessage.title,
+            text = remoteMessage.description,
+            pushActions = remoteMessage.pushActions,
+            pushLink = remoteMessage.pushLink,
+            payload = remoteMessage.payload,
             image = image,
             channelId = channelId,
             pushSmallIcon = pushSmallIcon,

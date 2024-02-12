@@ -44,11 +44,12 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
             channelDescription = channelDescription
         )
 
-        val isMindboxPush = MindboxHuawei.isMindboxPush(
-            message
-        )
-        //Method for getting info from Mindbox push
-        val mindboxMessage = MindboxHuawei.convertToMindboxRemoteMessage(message)
+        // Method for checking if push is from Mindbox
+        val isMindboxPush = MindboxHuawei.isMindboxPush(remoteMessage = message)
+
+        // Method for getting info from Mindbox push
+        val mindboxMessage = MindboxHuawei.convertToMindboxRemoteMessage(remoteMessage = message)
+        Log.d(Utils.TAG, mindboxMessage)
 
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.

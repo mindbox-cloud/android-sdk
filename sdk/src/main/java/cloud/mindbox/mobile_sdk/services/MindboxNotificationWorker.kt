@@ -50,7 +50,7 @@ internal class MindboxNotificationWorker(
 
         fun inputData(
             notificationId: Int,
-            mindboxRemoteMessage: MindboxRemoteMessage,
+            remoteMessage: MindboxRemoteMessage,
             channelId: String,
             channelName: String,
             pushSmallIcon: Int,
@@ -59,7 +59,7 @@ internal class MindboxNotificationWorker(
             defaultActivity: Class<out Activity>,
             state: MessageHandlingState,
         ): Data {
-            val messageString: String? = mindboxRemoteMessage.serialize()
+            val messageString: String? = remoteMessage.serialize()
             val activitiesString: String? = activities?.mapValues { it.value.canonicalName }?.serialize()
             val defaultActivityString: String? = defaultActivity.canonicalName
             val stateString: String? = state.serialize()
@@ -125,7 +125,7 @@ internal class MindboxNotificationWorker(
             //but still, if something goes wrong, it's worth trying to start again
             PushNotificationManager.tryNotifyRemoteMessage(
                 context = this.applicationContext,
-                mindboxRemoteMessage = message,
+                remoteMessage = message,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,

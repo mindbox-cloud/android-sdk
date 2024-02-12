@@ -960,7 +960,7 @@ object Mindbox : MindboxLog {
         runBlocking(mindboxScope.coroutineContext) {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
-                mindboxRemoteMessage = convertedMessage,
+                remoteMessage = convertedMessage,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,

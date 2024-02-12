@@ -42,7 +42,7 @@ internal object BackgroundWorkManager {
     fun startNotificationWork(
         context: Context,
         notificationId: Int,
-        mindboxRemoteMessage: MindboxRemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         pushSmallIcon: Int,
@@ -56,7 +56,7 @@ internal object BackgroundWorkManager {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
         val data = MindboxNotificationWorker.inputData(
-            mindboxRemoteMessage = mindboxRemoteMessage,
+            remoteMessage = remoteMessage,
             channelId = channelId,
             channelName = channelName,
             pushSmallIcon = pushSmallIcon,

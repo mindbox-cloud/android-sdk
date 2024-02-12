@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mindbox_firebase.MindboxFirebase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import jdk.internal.net.http.common.Log
 
 class MindboxFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
@@ -33,12 +34,13 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
             defaultActivity = defaultActivity,
             channelDescription = channelDescription
         )
-        //Method for checking if push is from Mindbox
-        val isMindboxPush = MindboxFirebase.isMindboxPush(
-            message
-        )
-            //Method for getting info from Mindbox push
-        val mindboxMessage = MindboxFirebase.convertToMindboxRemoteMessage(message)
+
+        // Method for checking if push is from Mindbox
+        val isMindboxPush = MindboxFirebase.isMindboxPush(remoteMessage = message)
+
+        // Method for getting info from Mindbox push
+        val mindboxMessage = MindboxFirebase.convertToMindboxRemoteMessage(remoteMessage = message)
+        Log.d(Utils.TAG, mindboxMessage)
 
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
