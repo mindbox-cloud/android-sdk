@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.work.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
@@ -50,7 +50,7 @@ internal class MindboxNotificationWorker(
 
         fun inputData(
             notificationId: Int,
-            remoteMessage: RemoteMessage,
+            mindboxRemoteMessage: MindboxRemoteMessage,
             channelId: String,
             channelName: String,
             pushSmallIcon: Int,
@@ -59,7 +59,7 @@ internal class MindboxNotificationWorker(
             defaultActivity: Class<out Activity>,
             state: MessageHandlingState,
         ): Data {
-            val messageString: String? = remoteMessage.serialize()
+            val messageString: String? = mindboxRemoteMessage.serialize()
             val activitiesString: String? = activities?.mapValues { it.value.canonicalName }?.serialize()
             val defaultActivityString: String? = defaultActivity.canonicalName
             val stateString: String? = state.serialize()
@@ -85,7 +85,7 @@ internal class MindboxNotificationWorker(
         val notificationId = inputData.getInt(KEY_NOTIFICATION_ID, EMPTY_INT)
         require(notificationId != EMPTY_INT) { "Empty notification Id" }
 
-        val message = inputData.getString(KEY_REMOTE_MESSAGE)?.deserialize<RemoteMessage>()
+        val message = inputData.getString(KEY_REMOTE_MESSAGE)?.deserialize<MindboxRemoteMessage>()
         requireNotNull(message) { "RemoteMessage is null" }
 
         val channelId = inputData.getString(KEY_CHANNEL_ID)
@@ -125,7 +125,7 @@ internal class MindboxNotificationWorker(
             //but still, if something goes wrong, it's worth trying to start again
             PushNotificationManager.tryNotifyRemoteMessage(
                 context = this.applicationContext,
-                remoteMessage = message,
+                mindboxRemoteMessage = message,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,

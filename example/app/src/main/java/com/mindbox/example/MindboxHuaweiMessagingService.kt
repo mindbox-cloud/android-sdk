@@ -1,6 +1,7 @@
 package com.mindbox.example
 
 import android.util.Log
+import cloud.mindbox.mindbox_firebase.MindboxFirebase
 import cloud.mindbox.mindbox_huawei.MindboxHuawei
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.huawei.hms.push.RemoteMessage
@@ -42,6 +43,12 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
             defaultActivity = defaultActivity,
             channelDescription = channelDescription
         )
+
+        val isMindboxPush = MindboxHuawei.isMindboxPush(
+            message
+        )
+        //Method for getting info from Mindbox push
+        val mindboxMessage = MindboxHuawei.convertToMindboxRemoteMessage(message)
 
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.

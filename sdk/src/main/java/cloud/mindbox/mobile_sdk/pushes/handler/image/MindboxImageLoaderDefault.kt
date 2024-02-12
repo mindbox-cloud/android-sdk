@@ -4,7 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import java.net.URL
 
@@ -25,7 +25,7 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
 
     override fun onLoadImage(
         context: Context,
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         state: MessageHandlingState,
     ): Bitmap? {
         val imageUrl = message.imageUrl

@@ -25,4 +25,10 @@ dependencies {
 
     // Ads
     implementation sdkDependencies.gms_play_services_ads_identifier
+    testImplementation testDependencies.junit
+    testImplementation testDependencies.mockk
+    testImplementation testDependencies.mockk_android
+    testImplementation testDependencies.mockk_agent
+    testImplementation testDependencies.test_core
+
 }

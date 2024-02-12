@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
 import android.graphics.Bitmap
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 
 /**
@@ -28,7 +28,7 @@ interface MindboxImageLoader {
      */
     fun onLoadImage(
         context: Context,
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         state: MessageHandlingState,
     ): Bitmap?
 

@@ -33,6 +33,12 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
             defaultActivity = defaultActivity,
             channelDescription = channelDescription
         )
+        //Method for checking if push is from Mindbox
+        val isMindboxPush = MindboxFirebase.isMindboxPush(
+            message
+        )
+            //Method for getting info from Mindbox push
+        val mindboxMessage = MindboxFirebase.convertToMindboxRemoteMessage(message)
 
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.

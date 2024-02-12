@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
 import android.graphics.Bitmap
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 
 /**
@@ -32,7 +32,7 @@ internal class RetryOrDefaultStrategyImpl(
 
     override fun onImageLoadingFailed(
         context: Context,
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy = if (state.attemptNumber >= maxAttempts) {
