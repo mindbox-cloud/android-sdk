@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mindbox_firebase.MindboxFirebase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import jdk.internal.net.http.common.Log
 
 class MindboxFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {

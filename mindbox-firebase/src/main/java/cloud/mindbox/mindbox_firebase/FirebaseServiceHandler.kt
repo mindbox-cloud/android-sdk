@@ -20,10 +20,8 @@ import kotlin.coroutines.resumeWithException
 
 internal class FirebaseServiceHandler(
     private val logger: MindboxLogger,
-    exceptionHandler: ExceptionHandler,
+    private val exceptionHandler: ExceptionHandler,
 ) : PushServiceHandler() {
-
-    private val messageTransformer = FirebaseRemoteMessageTransformer(exceptionHandler)
 
     override val notificationProvider: String = MindboxFirebase.tag
 
@@ -76,7 +74,9 @@ internal class FirebaseServiceHandler(
         .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
     override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {
-        messageTransformer.transform(message)
+        exceptionHandler.runCatching(null) {
+            MindboxFirebase.convertToMindboxRemoteMessage(message)
+        }
     } else {
         null
     }

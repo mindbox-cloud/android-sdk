@@ -15,7 +15,7 @@ import kotlinx.coroutines.delay
 
 internal class HuaweiServiceHandler(
     private val logger: MindboxLogger,
-    exceptionHandler: ExceptionHandler,
+    private val exceptionHandler: ExceptionHandler,
 ) : PushServiceHandler() {
 
     companion object {
@@ -25,8 +25,6 @@ internal class HuaweiServiceHandler(
         private const val TOKEN_ACQUISITION_DELAY = 2000L
 
     }
-
-    private val messageTransformer = HuaweiRemoteMessageTransformer(exceptionHandler)
 
     override val notificationProvider: String = MindboxHuawei.tag
 
@@ -69,7 +67,9 @@ internal class HuaweiServiceHandler(
         .isHuaweiMobileServicesAvailable(context) == ConnectionResult.SUCCESS
 
     override fun convertToRemoteMessage(message: Any) = if (message is RemoteMessage) {
-        messageTransformer.transform(message)
+        exceptionHandler.runCatching(null) {
+            MindboxHuawei.convertToMindboxRemoteMessage(message)
+        }
     } else {
         null
     }
