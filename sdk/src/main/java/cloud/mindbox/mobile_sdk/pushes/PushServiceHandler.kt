@@ -19,7 +19,7 @@ abstract class PushServiceHandler {
 
     abstract fun initService(context: Context)
 
-    abstract fun convertToRemoteMessage(message: Any): RemoteMessage?
+    abstract fun convertToRemoteMessage(message: Any): MindboxRemoteMessage?
 
     fun getAdsIdentification(context: Context): String = LoggingExceptionHandler.runCatching(
         block = {

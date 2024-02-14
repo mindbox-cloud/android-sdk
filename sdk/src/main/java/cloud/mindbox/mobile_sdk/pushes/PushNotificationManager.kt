@@ -37,7 +37,7 @@ internal object PushNotificationManager {
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
     internal fun buildLogMessage(
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         log: String,
     ): String = "Notify message ${message.uniqueKey}: $log"
 
@@ -59,7 +59,7 @@ internal object PushNotificationManager {
 
     internal suspend fun handleRemoteMessage(
         context: Context,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -95,7 +95,7 @@ internal object PushNotificationManager {
     internal suspend fun tryNotifyRemoteMessage(
         notificationId: Int,
         context: Context,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -299,7 +299,7 @@ internal object PushNotificationManager {
     private fun retryNotifyRemoteMessage(
         context: Context,
         notificationId: Int,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         pushSmallIcon: Int,
@@ -325,7 +325,7 @@ internal object PushNotificationManager {
     private fun applyDefaultAndRetryNotifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         channelDescription: String?,
@@ -377,7 +377,7 @@ internal object PushNotificationManager {
     private fun applyDefaultNotifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         channelDescription: String?,
@@ -414,7 +414,7 @@ internal object PushNotificationManager {
     private fun notifyRemoteMessage(
         context: Context,
         notificationManager: NotificationManager,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         channelDescription: String?,
