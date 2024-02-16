@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.services
 import android.app.Activity
 import android.content.Context
 import androidx.work.*
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -42,7 +42,7 @@ internal object BackgroundWorkManager {
     fun startNotificationWork(
         context: Context,
         notificationId: Int,
-        remoteMessage: RemoteMessage,
+        remoteMessage: MindboxRemoteMessage,
         channelId: String,
         channelName: String,
         pushSmallIcon: Int,

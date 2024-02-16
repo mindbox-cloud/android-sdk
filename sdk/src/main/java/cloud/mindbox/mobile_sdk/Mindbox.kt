@@ -911,7 +911,7 @@ object Mindbox : MindboxLog {
      * Handles only Mindbox notification message from [HmsMessageService] or [FirebaseMessageServise].
      *
      * @param context context used for Mindbox initializing and push notification showing
-     * @param message the [RemoteMessage] received from Firebase or HMS
+     * @param message the [MindboxRemoteMessage] received from Firebase or HMS
      * @param channelId the id of channel for Mindbox pushes
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
@@ -1126,7 +1126,8 @@ object Mindbox : MindboxLog {
             val isTokenAvailable = !pushToken.isNullOrEmpty()
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-            this@Mindbox.mindboxLogI("updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
+            this@Mindbox.mindboxLogI(
+                "updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
                         "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
                         "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
             )
@@ -1182,6 +1183,7 @@ object Mindbox : MindboxLog {
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
                             !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+
                     else -> ConfigUpdate.UPDATED
                 }
             } ?: ConfigUpdate.UPDATED
