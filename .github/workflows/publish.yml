@@ -99,7 +99,7 @@ jobs:
 
         #To update version in Github README.md
       - name: Version Upgrade
-        run: ./maven-version-update.sh
+        run: git update-index --chmod=+x ./maven-version-update.sh
 
       - name: Job status notification
         uses: rtCamp/action-slack-notify@v2
