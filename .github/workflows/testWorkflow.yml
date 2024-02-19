@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Version Upgrade
         run: |
-          -chmod=+x ./maven-version-update.sh
+          chmod=+x ./maven-version-update.sh
           ./maven-version-update.sh
       - name: Commit and push if it changed
         run: |
