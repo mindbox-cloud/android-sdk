@@ -1,4 +1,4 @@
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cloud.mindbox/mobile-sdk/badge.svg)](https://search.maven.org/artifact/cloud.mindbox/mobile-sdk/2.8.3/aar)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cloud.mindbox/mobile-sdk/badge.svg)]
 
 # Mindbox SDK for Android
 
@@ -21,7 +21,7 @@ To integrate Mindbox SDK into your Android app, follow the installation process 
 2. Now, add the Mindbox SDK to your app-level build.gradle file:
 ```markdown
     dependencies {
-        implementation 'cloud.mindbox:mobile-sdk:2.8.3'
+        implementation 'cloud.mindbox:mobile-sdk:1.0.0'
     }
 ```
 

@@ -1,0 +1,13 @@
+name: Test version update
+
+on:
+  push:
+    - 'test_version-update'
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Version Upgrade
+        run: ./maven-version-update.sh
