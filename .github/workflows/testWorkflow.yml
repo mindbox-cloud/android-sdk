@@ -12,6 +12,7 @@ jobs:
     steps:
       - name: test
         run:  |
+          cd ./
           ls
       - name: Version Upgrade
         run: ./maven-version-update.sh
