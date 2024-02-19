@@ -11,8 +11,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: | 
-            cd ../
-            ls
       - name: Version Upgrade
-        run: ./maven-version-update.sh
+        run: git update-index --chmod=+x ./maven-version-update.sh
