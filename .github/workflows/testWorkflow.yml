@@ -3,7 +3,7 @@ name: Test version update
 on:
   push:
     branches:
-    - 'test_version_update'
+      - 'test_version_update'
 
 
 jobs:
@@ -12,8 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Version Upgrade
-        run: | 
-          git update-index --chmod=+x ./maven-version-update.sh
+        run: |
+          --chmod=+x ./maven-version-update.sh
           ./maven-version-update.sh
       - name: Commit and push if it changed
         run: |
