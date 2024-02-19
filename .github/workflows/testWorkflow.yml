@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Version Upgrade
-        run: git update-index --chmod=+x ./maven-version-update.sh
+        run: | 
+          git update-index --chmod=+x ./maven-version-update.sh
+          ./maven-version-update.sh
       - name: Commit and push if it changed
         run: |
           git diff
