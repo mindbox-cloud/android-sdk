@@ -10,6 +10,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: ls
+      - run: | 
+            cd ../
+            ls
       - name: Version Upgrade
         run: ./maven-version-update.sh
