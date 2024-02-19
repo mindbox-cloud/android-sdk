@@ -2,6 +2,7 @@ name: Test version update
 
 on:
   push:
+    branches:
     - 'test_version-update'
 
 
