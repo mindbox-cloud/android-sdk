@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.CloseButtonModalElementDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalElementDtoDataFiller
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.impl.annotations.MockK

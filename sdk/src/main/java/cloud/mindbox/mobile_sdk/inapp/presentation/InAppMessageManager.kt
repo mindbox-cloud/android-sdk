@@ -10,6 +10,6 @@ internal interface InAppMessageManager {
     fun onPauseCurrentActivity(activity: Activity)
     fun onStopCurrentActivity(activity: Activity)
     fun registerInAppCallback(inAppCallback: InAppCallback)
-    fun initInAppMessages()
+    fun initLogs()
     fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
 }

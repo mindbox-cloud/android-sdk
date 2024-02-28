@@ -5,6 +5,12 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.CloseButtonModalElementDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalElementDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalWindowDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackBarDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackbarElementDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*

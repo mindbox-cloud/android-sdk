@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalWindowDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackBarDtoDataFiller
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.impl.annotations.MockK

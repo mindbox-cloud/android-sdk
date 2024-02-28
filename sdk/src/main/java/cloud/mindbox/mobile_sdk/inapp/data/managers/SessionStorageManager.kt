@@ -14,5 +14,7 @@ internal class SessionStorageManager {
         ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var inAppProductSegmentations: HashMap<String, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
+    var inApps: List<InApp>  = mutableListOf()
+    var currentShownInAppId = ""
 
 }

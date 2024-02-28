@@ -3,10 +3,14 @@ package cloud.mindbox.mobile_sdk.di.modules
 import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
-import cloud.mindbox.mobile_sdk.inapp.data.managers.ModalWindowDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.CloseButtonModalElementDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalElementDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalWindowDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackBarDtoDataFiller
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackbarElementDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
@@ -22,7 +26,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
@@ -134,7 +138,7 @@ internal interface MonitoringModule : MindboxModule {
 internal interface DomainModule : MindboxModule {
     val inAppInteractor: InAppInteractor
     val callbackInteractor: CallbackInteractor
-    val inAppChoosingManager: InAppChoosingManager
+    val inAppProcessingManager: InAppProcessingManager
     val inAppEventManager: InAppEventManager
     val inAppFilteringManager: InAppFilteringManager
     val customerAbMixer: CustomerAbMixer

@@ -517,7 +517,7 @@ object Mindbox : MindboxLog {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
                                     inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
+                                    inAppMessageManager.initLogs()
                                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                                     inAppMessageManager.requestConfig().join()
                                     firstInitCall = false
@@ -571,7 +571,7 @@ object Mindbox : MindboxLog {
                                     InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                     if (!firstInitCall) return@launch
                                     inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
+                                    inAppMessageManager.initLogs()
                                     MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
                                     inAppMessageManager.requestConfig().join()
                                     firstInitCall = false

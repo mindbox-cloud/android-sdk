@@ -1,9 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -14,11 +16,13 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
 
-internal class InAppChoosingManagerImpl(
+internal class InAppProcessingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
-    private val inAppContentFetcher: InAppContentFetcher
-) : InAppChoosingManager {
+    private val inAppContentFetcher: InAppContentFetcher,
+    private val inAppRepository: InAppRepository,
+    private val sessionStorageManager: SessionStorageManager
+) : InAppProcessingManager {
 
     companion object {
         private const val RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER =
@@ -112,10 +116,22 @@ internal class InAppChoosingManagerImpl(
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to targeting is false")
             }
             if (targetingCheck) {
+                sendTargetedInApps(listOf(inApp), triggerEvent)
+                sessionStorageManager.currentShownInAppId = inApp.id
                 return inApp.form.variants.firstOrNull()
             }
         }
         return null
+    }
+
+    override suspend fun sendTargetedInApps(inApps: List<InApp>, triggerEvent: InAppEventType) {
+        val data = getTargetingData(triggerEvent)
+        inApps.filter { inApp ->
+            inApp.targeting.fetchTargetingInfo(data)
+            inApp.targeting.checkTargeting(data)
+        }.map { inApp ->
+            inAppRepository.sendUserTargeted(inAppId = inApp.id)
+        }
     }
 
     private fun getTargetingData(triggerEvent: InAppEventType): TargetingData {

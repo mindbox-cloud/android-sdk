@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.CloseButtonSnackbarElementDtoDataFiller
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import org.junit.Assert.assertEquals
 import org.junit.Test

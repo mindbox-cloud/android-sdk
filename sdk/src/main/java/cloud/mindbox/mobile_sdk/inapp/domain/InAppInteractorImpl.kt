@@ -2,8 +2,9 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
@@ -15,7 +16,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStat
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -23,13 +27,15 @@ internal class InAppInteractorImpl(
     private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
-    private val inAppChoosingManager: InAppChoosingManager,
+    private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
+    private val sessionStorageManager: SessionStorageManager
 ) : InAppInteractor, MindboxLog {
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
+                sessionStorageManager.inApps = inApps
                 val inAppIds = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
                 inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
@@ -41,7 +47,6 @@ internal class InAppInteractorImpl(
                 )
             }.also { unShownInApps ->
                 logI("Filtered config has ${unShownInApps.size} inapps")
-                inAppSegmentationRepository.unShownInApps = unShownInApps
                 for (inApp in unShownInApps) {
                     for (operation in inApp.targeting.getOperationsSet()) {
                         inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
@@ -59,11 +64,16 @@ internal class InAppInteractorImpl(
                 val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
                 mindboxLogD("Event: ${event.name} combined with $filteredInApps")
 
-                inAppChoosingManager.chooseInAppToShow(
+                inAppProcessingManager.chooseInAppToShow(
                     filteredInApps,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
+                    withContext(Dispatchers.IO) {
+                        launch {
+                            sendTargetedInApps()
+                        }
+                    }
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
@@ -87,6 +97,18 @@ internal class InAppInteractorImpl(
 
     override fun sendInAppClicked(inAppId: String) {
         inAppRepository.sendInAppClicked(inAppId)
+    }
+
+    private suspend fun sendTargetedInApps() {
+        val inApps = mobileConfigRepository.getInAppsSection().filterNot { inApp ->
+            inApp.id == sessionStorageManager.currentShownInAppId
+        }
+        inAppRepository.listenInAppEvents()
+            .filter { inAppEventManager.isValidInAppEvent(it) }
+            .collect {event ->
+                inAppProcessingManager.sendTargetedInApps(inApps, event)
+            }
+
     }
 
     override fun isInAppShown(): Boolean {

@@ -5,13 +5,13 @@ import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.domain.CallbackInteractorImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppChoosingManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppProcessingManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 
@@ -30,19 +30,22 @@ internal fun DomainModule(
             inAppSegmentationRepository = inAppSegmentationRepository,
             inAppFilteringManager = inAppFilteringManager,
             inAppEventManager = inAppEventManager,
-            inAppChoosingManager = inAppChoosingManager,
+            inAppProcessingManager = inAppProcessingManager,
             inAppABTestLogic = inAppABTestLogic,
+            sessionStorageManager = sessionStorageManager
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {
         CallbackInteractorImpl(callbackRepository)
     }
 
-    override val inAppChoosingManager: InAppChoosingManager by lazy {
-        InAppChoosingManagerImpl(
+    override val inAppProcessingManager: InAppProcessingManager by lazy {
+        InAppProcessingManagerImpl(
             inAppGeoRepository = inAppGeoRepository,
             inAppSegmentationRepository = inAppSegmentationRepository,
             inAppContentFetcher = inAppContentFetcher,
+            inAppRepository = inAppRepository,
+            sessionStorageManager = sessionStorageManager
         )
     }
 

@@ -87,7 +87,7 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    override fun initInAppMessages() {
+    override fun initLogs() {
         monitoringInteractor.processLogs()
     }
 
