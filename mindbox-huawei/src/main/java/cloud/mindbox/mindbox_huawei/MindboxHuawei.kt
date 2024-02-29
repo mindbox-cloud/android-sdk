@@ -44,7 +44,7 @@ object MindboxHuawei : MindboxPushService {
         val parsedMessage = gson.fromJson(data, HuaweiMessage::class.java) ?: return null
         return MindboxRemoteMessage(
             uniqueKey = parsedMessage.uniqueKey,
-            title = parsedMessage.title,
+            title = parsedMessage.title ?: "",
             description = parsedMessage.message,
             pushActions = parsedMessage.buttons.map { pushAction ->
                 MindboxPushAction(
