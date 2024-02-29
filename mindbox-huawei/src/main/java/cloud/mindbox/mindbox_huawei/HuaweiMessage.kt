@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 internal data class HuaweiMessage(
     @SerializedName("uniqueKey") val uniqueKey: String,
-    @SerializedName("title") val title: String,
+    @SerializedName("title") val title: String?,
     @SerializedName("message") val message: String,
     @SerializedName("buttons") val buttons: List<PushAction>,
     @SerializedName("clickUrl") val clickUrl: String?,
