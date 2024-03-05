@@ -55,7 +55,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
 
         override fun isValid(item: ActionDto?): Boolean {
             return when {
-                (item is ActionDto.RedirectUrlActionDto) -> {
+                item is ActionDto.RedirectUrlActionDto -> {
                     val rez =
                         item.type == ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
                                 && item.value != null && item.value.toDoubleOrNull() == null && item.intentPayload != null
@@ -68,7 +68,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
                     rez
                 }
 
-                (item is ActionDto.PushPermissionActionDto) -> {
+                item is ActionDto.PushPermissionActionDto -> {
                     val rez =
                         item.type == ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
                                 && item.intentPayload != null
