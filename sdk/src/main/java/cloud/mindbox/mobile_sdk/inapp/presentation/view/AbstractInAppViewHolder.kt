@@ -62,6 +62,13 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                     redirectUrl = layer.action.url
                     payload = layer.action.payload
                 }
+
+                is Layer.ImageLayer.Action.PushPermissionAction -> {
+                    redirectUrl = ""
+                    payload = layer.action.payload
+                    mindboxLogI("In-app for push activation was clicked")
+                    // TODO: change logic for open request/settings
+                }
             }
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(

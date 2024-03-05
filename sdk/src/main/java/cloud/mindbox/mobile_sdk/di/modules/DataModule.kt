@@ -241,6 +241,9 @@ internal fun DataModule(
                 ).registerSubtype(
                     BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
                     BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                ).registerSubtype(
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto::class.java,
+                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(

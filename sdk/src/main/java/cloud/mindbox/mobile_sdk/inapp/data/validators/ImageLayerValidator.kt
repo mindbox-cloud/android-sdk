@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.validators
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto.LayerDto.ImageLayerDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto.LayerDto.ImageLayerDto.ActionDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 
 internal class ImageLayerValidator : Validator<ImageLayerDto?> {
 
@@ -51,6 +52,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
 
     internal class ActionValidator :
         Validator<ActionDto?> {
+
         override fun isValid(item: ActionDto?): Boolean {
             return when {
                 (item is ActionDto.RedirectUrlActionDto) -> {
@@ -58,7 +60,7 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
                         item.type == ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
                                 && item.value != null && item.value.toDoubleOrNull() == null && item.intentPayload != null
                     if (!rez) {
-                        mindboxLogD(
+                        mindboxLogW(
                             "InApp is not valid. Image layer action is expected to have type = ${ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME}," +
                                     " non-null value and non-null intentPayload. Actual imageLayer action type = ${item.type}, value = ${item.value}, intentPayload = ${item.intentPayload}"
                         )
@@ -66,8 +68,21 @@ internal class ImageLayerValidator : Validator<ImageLayerDto?> {
                     rez
                 }
 
+                (item is ActionDto.PushPermissionActionDto) -> {
+                    val rez =
+                        item.type == ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
+                                && item.intentPayload != null
+                    if (!rez) {
+                        mindboxLogW(
+                            "InApp is not valid. Image layer action is expected to have type = ${ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME}," +
+                                    " non-null intentPayload. Actual imageLayer action type = ${item.type}, intentPayload = ${item.intentPayload}"
+                        )
+                    }
+                    rez
+                }
+
                 else -> {
-                    mindboxLogD("Unknown action. Should never trigger. Otherwise the deserialization is broken")
+                    mindboxLogW("Unknown action. Should never trigger. Otherwise the deserialization is broken")
                     false
                 }
             }
