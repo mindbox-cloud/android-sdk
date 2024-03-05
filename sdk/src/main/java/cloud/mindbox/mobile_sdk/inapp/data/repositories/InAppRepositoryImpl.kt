@@ -16,6 +16,39 @@ internal class InAppRepositoryImpl(
     private val inAppSerializationManager: InAppSerializationManager,
 ) :
     InAppRepository {
+    override fun saveCurrentSessionInApps(inApps: List<InApp>) {
+        sessionStorageManager.currentSessionInApps = inApps
+    }
+
+    override fun getCurrentSessionInApps(): List<InApp> {
+        return sessionStorageManager.currentSessionInApps
+    }
+
+    override fun getTargetedInApps(): Map<String, MutableSet<Int>> {
+        return sessionStorageManager.shownInAppIdsWithEvents
+    }
+
+    override fun saveTargetedInAppWithEvent(inAppId: String, eventHashcode: Int) {
+        sessionStorageManager.shownInAppIdsWithEvents[inAppId] =
+            sessionStorageManager.shownInAppIdsWithEvents.getOrElse(inAppId) {
+                mutableSetOf()
+            }.apply {
+                add(eventHashcode)
+            }
+    }
+
+    override fun saveUnShownOperationalInApp(operation: String, inApp: InApp) {
+        sessionStorageManager.unShownOperationalInApps[operation] =
+            sessionStorageManager.unShownOperationalInApps.getOrElse(operation) {
+                mutableListOf()
+            }.apply {
+                add(inApp)
+            }
+    }
+
+    override fun getUnShownOperationalInAppsByOperation(operation: String): List<InApp> {
+        return sessionStorageManager.unShownOperationalInApps[operation.lowercase()] ?: emptyList()
+    }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
         sessionStorageManager.operationalInApps[operation] =

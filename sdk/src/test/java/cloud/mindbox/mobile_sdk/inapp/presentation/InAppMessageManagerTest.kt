@@ -51,6 +51,9 @@ internal class InAppMessageManagerTest {
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
+        coEvery {
+            inAppMessageInteractor.listenToTargetingEvents()
+        } just runs
         every {
             Log.isLoggable(any(), any())
         }.answers {
@@ -117,10 +120,8 @@ internal class InAppMessageManagerTest {
             StandardTestDispatcher(testScheduler),
             monitoringRepository
         )
-        every {
-            runBlocking {
-                inAppMessageInteractor.processEventAndConfig()
-            }
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
                 emit(
@@ -128,17 +129,22 @@ internal class InAppMessageManagerTest {
                 )
             }
         }
+
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
+
         inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
+            verify(exactly = 1) {
+                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+            }
         }
         every {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         } just runs
-        verify(exactly = 1) {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+        coVerify(exactly = 1) {
+            inAppMessageInteractor.listenToTargetingEvents()
         }
     }
 
@@ -151,10 +157,11 @@ internal class InAppMessageManagerTest {
             StandardTestDispatcher(testScheduler),
             monitoringRepository
         )
-        every {
-            runBlocking {
-                inAppMessageInteractor.processEventAndConfig()
-            }
+        coEvery {
+            inAppMessageInteractor.listenToTargetingEvents()
+        } just runs
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
                 emit(
@@ -173,6 +180,9 @@ internal class InAppMessageManagerTest {
         } just runs
         verify(exactly = 0) {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
+        }
+        coVerify(exactly = 1) {
+            inAppMessageInteractor.listenToTargetingEvents()
         }
     }
 
@@ -202,6 +212,9 @@ internal class InAppMessageManagerTest {
             verify(exactly = 1) {
                 MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", any())
             }
+        }
+        coVerify(exactly = 1) {
+            inAppMessageInteractor.listenToTargetingEvents()
         }
     }
 

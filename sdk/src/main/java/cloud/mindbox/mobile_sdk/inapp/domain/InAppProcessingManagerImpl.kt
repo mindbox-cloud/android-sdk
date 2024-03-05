@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.Mindbox.logI
 import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -20,14 +20,14 @@ internal class InAppProcessingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppContentFetcher: InAppContentFetcher,
-    private val inAppRepository: InAppRepository,
-    private val sessionStorageManager: SessionStorageManager
+    private val inAppRepository: InAppRepository
 ) : InAppProcessingManager {
 
     companion object {
         private const val RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER =
             "CheckCustomerSegments requires customer"
     }
+
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
@@ -116,20 +116,22 @@ internal class InAppProcessingManagerImpl(
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to targeting is false")
             }
             if (targetingCheck) {
-                sendTargetedInApps(listOf(inApp), triggerEvent)
-                sessionStorageManager.currentShownInAppId = inApp.id
+                sendTargetedInApp(inApp, triggerEvent)
+                inAppRepository.saveTargetedInAppWithEvent(
+                    inAppId = inApp.id,
+                    triggerEvent.hashCode()
+                )
                 return inApp.form.variants.firstOrNull()
             }
         }
         return null
     }
 
-    override suspend fun sendTargetedInApps(inApps: List<InApp>, triggerEvent: InAppEventType) {
+    override suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType) {
         val data = getTargetingData(triggerEvent)
-        inApps.filter { inApp ->
-            inApp.targeting.fetchTargetingInfo(data)
-            inApp.targeting.checkTargeting(data)
-        }.map { inApp ->
+        inApp.targeting.fetchTargetingInfo(data)
+        if (inApp.targeting.checkTargeting(data)) {
+            logI("InApp with id = ${inApp.id} sends targeting by event $triggerEvent")
             inAppRepository.sendUserTargeted(inAppId = inApp.id)
         }
     }

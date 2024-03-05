@@ -17,7 +17,7 @@ internal class InAppSegmentationRepositoryImpl(
 ) : InAppSegmentationRepository {
 
     override suspend fun fetchCustomerSegmentations() {
-        if (sessionStorageManager.inApps.isEmpty()) {
+        if (sessionStorageManager.currentSessionInApps.isEmpty()) {
             MindboxLoggerImpl.d(
                 this,
                 "No unshown inapps. Do not request segmentations"
@@ -34,7 +34,7 @@ internal class InAppSegmentationRepositoryImpl(
         val response = gatewayManager.checkCustomerSegmentations(
             configuration = configuration,
             segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
-                sessionStorageManager.inApps
+                sessionStorageManager.currentSessionInApps
             )
         )
         sessionStorageManager.inAppCustomerSegmentations =
@@ -50,7 +50,7 @@ internal class InAppSegmentationRepositoryImpl(
         val segmentationCheckRequest =
             inAppMapper.mapToProductSegmentationCheckRequest(
                 product,
-                sessionStorageManager.inApps
+                sessionStorageManager.currentSessionInApps
             )
         val result = gatewayManager.checkProductSegmentation(
             configuration,

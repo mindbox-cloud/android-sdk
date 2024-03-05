@@ -31,8 +31,7 @@ internal fun DomainModule(
             inAppFilteringManager = inAppFilteringManager,
             inAppEventManager = inAppEventManager,
             inAppProcessingManager = inAppProcessingManager,
-            inAppABTestLogic = inAppABTestLogic,
-            sessionStorageManager = sessionStorageManager
+            inAppABTestLogic = inAppABTestLogic
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {
@@ -44,8 +43,7 @@ internal fun DomainModule(
             inAppGeoRepository = inAppGeoRepository,
             inAppSegmentationRepository = inAppSegmentationRepository,
             inAppContentFetcher = inAppContentFetcher,
-            inAppRepository = inAppRepository,
-            sessionStorageManager = sessionStorageManager
+            inAppRepository = inAppRepository
         )
     }
 

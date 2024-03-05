@@ -33,10 +33,10 @@ class InAppSegmentationRepositoryTest {
     private val inAppMapper = mockk<InAppMapper>()
     private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) {
         every {
-            inApps
+            currentSessionInApps
         } returns emptyList()
         every {
-            inApps = any()
+            currentSessionInApps = any()
         } just runs
     }
 
@@ -60,7 +60,7 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `request customer segmentations success`() = runTest {
         every {
-            sessionStorageManager.inApps
+            sessionStorageManager.currentSessionInApps
         } returns mutableListOf(InAppStub.getInApp())
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
@@ -98,7 +98,7 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `request customer segmentations no inApps`() = runTest {
-        sessionStorageManager.inApps = mutableListOf()
+        sessionStorageManager.currentSessionInApps = mutableListOf()
         every {
             sessionStorageManager.customerSegmentationFetchStatus =
                 CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
@@ -120,7 +120,7 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `request customer segmentation error`() = runTest {
         every {
-            sessionStorageManager.inApps
+            sessionStorageManager.currentSessionInApps
         } returns mutableListOf(InAppStub.getInApp())
         coEvery { DbManager.listenConfigurations() } answers {
             flow {

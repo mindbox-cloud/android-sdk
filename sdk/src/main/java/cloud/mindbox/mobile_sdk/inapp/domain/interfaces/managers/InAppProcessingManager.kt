@@ -8,5 +8,5 @@ internal interface InAppProcessingManager {
 
     suspend fun chooseInAppToShow(inApps: List<InApp>, triggerEvent: InAppEventType): InAppType?
 
-    suspend fun sendTargetedInApps(inApps: List<InApp>, triggerEvent: InAppEventType)
+    suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType)
 }

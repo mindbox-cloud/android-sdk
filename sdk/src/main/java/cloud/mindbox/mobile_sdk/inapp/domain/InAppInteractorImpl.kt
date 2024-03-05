@@ -2,11 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -16,10 +15,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStat
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -28,14 +25,20 @@ internal class InAppInteractorImpl(
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
-    private val inAppABTestLogic: InAppABTestLogic,
-    private val sessionStorageManager: SessionStorageManager
+    private val inAppABTestLogic: InAppABTestLogic
 ) : InAppInteractor, MindboxLog {
+
+    private val inAppTargetingChannel = Channel<InAppEventType>(20)
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
-                sessionStorageManager.inApps = inApps
+                inAppRepository.saveCurrentSessionInApps(inApps)
+                for (inApp in inApps) {
+                    for (operation in inApp.targeting.getOperationsSet()) {
+                        inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
+                    }
+                }
                 val inAppIds = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
                 inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
@@ -49,31 +52,26 @@ internal class InAppInteractorImpl(
                 logI("Filtered config has ${unShownInApps.size} inapps")
                 for (inApp in unShownInApps) {
                     for (operation in inApp.targeting.getOperationsSet()) {
-                        inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
+                        inAppRepository.saveUnShownOperationalInApp(operation.lowercase(), inApp)
                     }
                 }
             }
-
         return inAppRepository.listenInAppEvents()
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
             .onEach {
                 mindboxLogD("Event triggered: ${it.name}")
-            }.filter {
+            }.filter { event ->
+                if (isInAppShown()) inAppTargetingChannel.send(event)
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
+                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
                 mindboxLogD("Event: ${event.name} combined with $filteredInApps")
-
                 inAppProcessingManager.chooseInAppToShow(
                     filteredInApps,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
-                    withContext(Dispatchers.IO) {
-                        launch {
-                            sendTargetedInApps()
-                        }
-                    }
+                    if (!isInAppShown()) inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
@@ -99,15 +97,22 @@ internal class InAppInteractorImpl(
         inAppRepository.sendInAppClicked(inAppId)
     }
 
-    private suspend fun sendTargetedInApps() {
-        val inApps = mobileConfigRepository.getInAppsSection().filterNot { inApp ->
-            inApp.id == sessionStorageManager.currentShownInAppId
-        }
-        inAppRepository.listenInAppEvents()
-            .filter { inAppEventManager.isValidInAppEvent(it) }
-            .collect {event ->
-                inAppProcessingManager.sendTargetedInApps(inApps, event)
+    override suspend fun listenToTargetingEvents() {
+        val inApps = mobileConfigRepository.getInAppsSection()
+        val inAppsMap = inAppRepository.getTargetedInApps()
+        logI("Whole InApp list = $inApps")
+        logI("InApps that has already sent targeting ${inAppsMap.entries}")
+        inAppTargetingChannel.consumeAsFlow().collect { event ->
+            val filteredInApps =
+                inAppFilteringManager.filterInAppsByEvent(inApps, event)
+            logI("inapps for event $event are = $filteredInApps")
+            for (inApp in filteredInApps) {
+                if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
+                    inAppProcessingManager.sendTargetedInApp(inApp, event)
+                }
             }
+        }
+
 
     }
 

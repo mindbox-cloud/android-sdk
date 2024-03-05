@@ -31,16 +31,13 @@ internal class InAppProcessingManagerTest {
         coEvery { fetchContent(any(), any()) } returns true
     }
 
-    private val mockkSessionStorageManager = mockk<SessionStorageManager> {
-        every {
-            currentShownInAppId = any()
-        } just runs
-    }
-
 
     private val mockInAppRepository = mockk<InAppRepository> {
         every {
             sendUserTargeted(any())
+        } just runs
+        every {
+            saveTargetedInAppWithEvent(any(), any())
         } just runs
     }
 
@@ -84,8 +81,7 @@ internal class InAppProcessingManagerTest {
         inAppGeoRepository = mockkInAppGeoRepository,
         inAppSegmentationRepository = mockkInAppSegmentationRepository,
         inAppContentFetcher = mockkInAppContentFetcher,
-        inAppRepository = mockInAppRepository,
-        sessionStorageManager = mockkSessionStorageManager
+        inAppRepository = mockInAppRepository
     )
 
     @Test
@@ -97,8 +93,8 @@ internal class InAppProcessingManagerTest {
         coEvery {
             testInApp.targeting.fetchTargetingInfo(any())
         } just runs
-        inAppProcessingManager.sendTargetedInApps(
-            listOf(testInApp),
+        inAppProcessingManager.sendTargetedInApp(
+            testInApp,
             InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
         )
         verify(exactly = 0) {
@@ -122,8 +118,12 @@ internal class InAppProcessingManagerTest {
         coEvery {
             testInApp2.targeting.fetchTargetingInfo(any())
         } just runs
-        inAppProcessingManager.sendTargetedInApps(
-            listOf(testInApp, testInApp2),
+        inAppProcessingManager.sendTargetedInApp(
+            testInApp,
+            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
+        )
+        inAppProcessingManager.sendTargetedInApp(
+            testInApp2,
             InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
         )
         verify(exactly = 2) {
@@ -282,8 +282,7 @@ internal class InAppProcessingManagerTest {
             },
             inAppSegmentationRepository = mockkInAppSegmentationRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
-            inAppRepository = mockInAppRepository,
-            sessionStorageManager = mockkSessionStorageManager
+            inAppRepository = mockInAppRepository
         )
 
         val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)

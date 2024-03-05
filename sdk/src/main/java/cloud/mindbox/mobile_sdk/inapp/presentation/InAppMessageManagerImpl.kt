@@ -29,30 +29,35 @@ internal class InAppMessageManagerImpl(
 
     override fun listenEventAndInApp() {
         inAppScope.launch {
-            inAppInteractor.processEventAndConfig()
-                .collect { inAppMessage ->
-                    withContext(Dispatchers.Main) {
-                        if (inAppMessageViewDisplayer.isInAppActive()) {
-                            this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
-                            return@withContext
-                        }
-
-                        if (inAppInteractor.isInAppShown()) {
-                            this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
-                            return@withContext
-                        }
-
-                        inAppMessageViewDisplayer.tryShowInAppMessage(
-                            inAppType = inAppMessage,
-                            onInAppClick = {
-                                inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
-                            },
-                            onInAppShown = {
-                                inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+            launch {
+                inAppInteractor.listenToTargetingEvents()
+            }
+            launch {
+                inAppInteractor.processEventAndConfig()
+                    .collect { inAppMessage ->
+                        withContext(Dispatchers.Main) {
+                            if (inAppMessageViewDisplayer.isInAppActive()) {
+                                this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
+                                return@withContext
                             }
-                        )
+
+                            if (inAppInteractor.isInAppShown()) {
+                                this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
+                                return@withContext
+                            }
+
+                            inAppMessageViewDisplayer.tryShowInAppMessage(
+                                inAppType = inAppMessage,
+                                onInAppClick = {
+                                    inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
+                                },
+                                onInAppShown = {
+                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+                                }
+                            )
+                        }
                     }
-                }
+            }
         }
     }
 
@@ -69,6 +74,7 @@ internal class InAppMessageManagerImpl(
                         MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
                         MindboxPreferences.inAppConfig = ""
                     }
+
                     else -> {
                         // needed to trigger flow event
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
