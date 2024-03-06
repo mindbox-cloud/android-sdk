@@ -28,7 +28,7 @@ internal class InAppInteractorImpl(
     private val inAppABTestLogic: InAppABTestLogic
 ) : InAppInteractor, MindboxLog {
 
-    private val inAppTargetingChannel = Channel<InAppEventType>(20)
+    private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
     override suspend fun processEventAndConfig(): Flow<InAppType> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
