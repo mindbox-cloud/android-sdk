@@ -136,9 +136,9 @@ internal class InAppMessageManagerTest {
         inAppMessageInteractor.processEventAndConfig().test {
             awaitItem()
             awaitComplete()
-            verify(exactly = 1) {
-                inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
-            }
+        }
+        verify(exactly = 1) {
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
         }
         every {
             inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any())
