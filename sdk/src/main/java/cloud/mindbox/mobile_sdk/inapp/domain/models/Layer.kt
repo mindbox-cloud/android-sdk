@@ -10,6 +10,10 @@ internal sealed class Layer {
                 val url: String,
                 val payload: String
             ) : Action()
+
+            internal data class PushPermissionAction(
+                val payload: String
+            ) : Action()
         }
 
         internal sealed class Source {

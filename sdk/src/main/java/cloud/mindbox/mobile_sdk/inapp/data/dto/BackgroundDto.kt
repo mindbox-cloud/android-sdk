@@ -33,6 +33,17 @@ internal data class BackgroundDto(
                         const val REDIRECT_URL_ACTION_TYPE_JSON_NAME = "redirectUrl"
                     }
                 }
+
+                internal data class PushPermissionActionDto(
+                    @SerializedName("intentPayload")
+                    val intentPayload: String?,
+                    @SerializedName("${"$"}type")
+                    val type: String?,
+                ) : ActionDto() {
+                    internal companion object {
+                        const val PUSH_PERMISSION_TYPE_JSON_NAME = "pushPermission"
+                    }
+                }
             }
 
             internal sealed class SourceDto {

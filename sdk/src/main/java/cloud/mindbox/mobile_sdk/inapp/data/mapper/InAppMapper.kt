@@ -7,8 +7,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.ModalWindowDto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -81,6 +79,12 @@ internal class InAppMapper {
                             is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto -> {
                                 Layer.ImageLayer.Action.RedirectUrlAction(
                                     url = layerDto.action.value!!,
+                                    payload = layerDto.action.intentPayload!!
+                                )
+                            }
+
+                            is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto -> {
+                                Layer.ImageLayer.Action.PushPermissionAction(
                                     payload = layerDto.action.intentPayload!!
                                 )
                             }

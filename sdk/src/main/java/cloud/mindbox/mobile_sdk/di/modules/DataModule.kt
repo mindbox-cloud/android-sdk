@@ -20,6 +20,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidato
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
+import cloud.mindbox.mobile_sdk.utils.PushPermissionActionDto
+import cloud.mindbox.mobile_sdk.utils.RedirectUrlActionDto
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -240,8 +242,11 @@ internal fun DataModule(
                     Constants.TYPE_JSON_NAME,
                     true
                 ).registerSubtype(
-                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
-                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                    RedirectUrlActionDto::class.java,
+                    RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                ).registerSubtype(
+                    PushPermissionActionDto::class.java,
+                    PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(
