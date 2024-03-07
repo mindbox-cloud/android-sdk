@@ -1,10 +1,11 @@
-package cloud.mindbox.mobile_sdk.inapp.data.managers
+package cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler
 
 import android.graphics.Color
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
-internal class CloseButtonSnackbarElementDtoDataFiller: DataFiller<ElementDto.CloseButtonElementDto?> {
+internal class CloseButtonSnackbarElementDtoDataFiller:
+    DataFiller<ElementDto.CloseButtonElementDto?> {
     internal companion object {
         const val CLOSE_BUTTON_ELEMENT_JSON_NAME = "closeButton"
         private const val defaultColor = "#FFFFFF"

@@ -3,35 +3,18 @@ package cloud.mindbox.mobile_sdk.di.modules
 import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
-import cloud.mindbox.mobile_sdk.inapp.data.managers.ModalWindowDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
-import cloud.mindbox.mobile_sdk.inapp.data.validators.ABTestValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.JsonValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationNameValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.OperationValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.SdkVersionValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.UrlValidator
-import cloud.mindbox.mobile_sdk.inapp.data.validators.XmlValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppChoosingManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.CallbackRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.ActivityManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.ClipboardManager
@@ -42,11 +25,7 @@ import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogRequestDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogResponseDataManager
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
-import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
+import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
@@ -134,7 +113,7 @@ internal interface MonitoringModule : MindboxModule {
 internal interface DomainModule : MindboxModule {
     val inAppInteractor: InAppInteractor
     val callbackInteractor: CallbackInteractor
-    val inAppChoosingManager: InAppChoosingManager
+    val inAppProcessingManager: InAppProcessingManager
     val inAppEventManager: InAppEventManager
     val inAppFilteringManager: InAppFilteringManager
     val customerAbMixer: CustomerAbMixer

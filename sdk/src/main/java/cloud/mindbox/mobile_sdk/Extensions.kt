@@ -29,7 +29,6 @@ import java.nio.charset.Charset
 import java.util.Queue
 import kotlin.math.roundToInt
 
-
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""
 ) {

@@ -23,9 +23,9 @@ internal object MindboxEventManager {
     private const val EMPTY_JSON_OBJECT = "{}"
     private const val NULL_JSON = "null"
 
-    private const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
-    private const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
-    private const val IN_APP_OPERATION_TARGETING_TYPE = "Inapp.Targeting"
+    const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
+    const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
+    const val IN_APP_OPERATION_TARGETING_TYPE = "Inapp.Targeting"
 
     private val gson = Gson()
 

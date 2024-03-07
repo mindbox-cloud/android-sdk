@@ -1,4 +1,4 @@
-package cloud.mindbox.mobile_sdk.inapp.data.managers
+package cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler
 
 import android.graphics.Color
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
