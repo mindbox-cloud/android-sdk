@@ -10,7 +10,6 @@ import android.content.pm.PackageManager.PackageInfoFlags
 import android.content.res.Resources
 import android.os.Build
 import android.os.Process
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
@@ -21,18 +20,14 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
 import org.threeten.bp.Instant
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
-import java.lang.Runnable
 import java.nio.charset.Charset
 import java.util.Queue
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""
