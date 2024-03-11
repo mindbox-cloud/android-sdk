@@ -4,16 +4,12 @@ package cloud.mindbox.mobile_sdk.di.modules
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.domain.CallbackInteractorImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppProcessingManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 
 
 internal fun DomainModule(
@@ -51,7 +47,10 @@ internal fun DomainModule(
         get() = InAppEventManagerImpl()
 
     override val inAppFilteringManager: InAppFilteringManager
-        get() = InAppFilteringManagerImpl(inAppRepository = inAppRepository)
+        get() = InAppFilteringManagerImpl(
+            inAppRepository = inAppRepository,
+            mindboxNotificationManager = mindboxNotificationManager
+        )
 
     override val inAppABTestLogic: InAppABTestLogic
         get() = InAppABTestLogic(

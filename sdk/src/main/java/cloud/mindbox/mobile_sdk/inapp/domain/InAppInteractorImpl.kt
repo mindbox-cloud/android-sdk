@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -66,8 +67,10 @@ internal class InAppInteractorImpl(
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
                 mindboxLogD("Event: ${event.name} combined with $filteredInApps")
+                val filteredInAppsByPushStatus= inAppFilteringManager.filterPushInAppsByPermissionStatus(filteredInApps)
+                mindboxLogI("InApps after filtered by push permission status $filteredInAppsByPushStatus")
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInApps,
+                    filteredInAppsByPushStatus,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
@@ -106,7 +109,10 @@ internal class InAppInteractorImpl(
             val filteredInApps =
                 inAppFilteringManager.filterInAppsByEvent(inApps, event)
             logI("inapps for event $event are = $filteredInApps")
-            for (inApp in filteredInApps) {
+            val filteredInAppByNotificationStatus =
+                inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
+            mindboxLogI("inapps after filter by notification status $filteredInAppByNotificationStatus")
+            for (inApp in filteredInAppByNotificationStatus) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
                     inAppProcessingManager.sendTargetedInApp(inApp, event)
                 }
