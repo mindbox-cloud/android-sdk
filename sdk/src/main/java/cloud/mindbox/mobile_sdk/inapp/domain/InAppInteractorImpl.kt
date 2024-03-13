@@ -112,8 +112,6 @@ internal class InAppInteractorImpl(
                 }
             }
         }
-
-
     }
 
     override fun isInAppShown(): Boolean {

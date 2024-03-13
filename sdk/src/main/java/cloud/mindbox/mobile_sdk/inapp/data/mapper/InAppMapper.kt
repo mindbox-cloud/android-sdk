@@ -7,8 +7,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType.ModalWindow.*
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.ModalWindowDto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -202,10 +200,10 @@ internal class InAppMapper {
                                                     left = payloadDto.content.position.margin.left!!.roundToInt(),
                                                     right = payloadDto.content.position.margin.right!!.roundToInt(),
                                                     bottom = payloadDto.content.position.margin.bottom!!.roundToInt()
-                                            ),
+                                                ),
 
 
-                                            )
+                                                )
                                         )
                                     }
 
@@ -235,7 +233,7 @@ internal class InAppMapper {
                     )
                 } ?: emptyList(),
                 operations = inAppConfigResponse.settings?.map { (key, value) ->
-                    key.enumValue<OperationName>() to OperationSystemName(value.systemName)
+                    key.enumValue<OperationName>() to OperationSystemName(value.systemName.lowercase())
                 }?.toMap() ?: emptyMap(),
                 abtests = inAppConfigResponse.abtests?.map { dto ->
                     ABTest(
