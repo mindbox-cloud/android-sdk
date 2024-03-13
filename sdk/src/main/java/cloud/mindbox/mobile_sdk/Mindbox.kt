@@ -516,11 +516,13 @@ object Mindbox : MindboxLog {
                             if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
-                                    inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
-                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                                    inAppMessageManager.requestConfig().join()
-                                    firstInitCall = false
+                                    mutex.withLock {
+                                        firstInitCall = false
+                                        inAppMessageManager.listenEventAndInApp()
+                                        inAppMessageManager.initLogs()
+                                        MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                        inAppMessageManager.requestConfig().join()
+                                    }
                                 }
                             }
                         }
@@ -568,13 +570,15 @@ object Mindbox : MindboxLog {
                             )
                             if (firstInitCall) {
                                 mindboxScope.launch {
-                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-                                    if (!firstInitCall) return@launch
-                                    inAppMessageManager.listenEventAndInApp()
-                                    inAppMessageManager.initInAppMessages()
-                                    MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
-                                    inAppMessageManager.requestConfig().join()
-                                    firstInitCall = false
+                                    mutex.withLock {
+                                        InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                        if (!firstInitCall) return@launch
+                                        firstInitCall = false
+                                        inAppMessageManager.listenEventAndInApp()
+                                        inAppMessageManager.initLogs()
+                                        MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+                                        inAppMessageManager.requestConfig().join()
+                                    }
                                 }
                             }
                         },

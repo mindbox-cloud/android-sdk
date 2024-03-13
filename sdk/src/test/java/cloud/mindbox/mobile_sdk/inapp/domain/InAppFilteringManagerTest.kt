@@ -43,7 +43,7 @@ internal class InAppFilteringManagerTest {
     fun `filter inApp by event with App startUp`() {
         val testInApps = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
         val actualResult =
-            inAppFilteringManager.filterInAppsByEvent(testInApps, InAppEventType.AppStartup)
+            inAppFilteringManager.filterUnShownInAppsByEvent(testInApps, InAppEventType.AppStartup)
         assertEquals(testInApps, actualResult)
     }
 
@@ -51,9 +51,9 @@ internal class InAppFilteringManagerTest {
     fun `filter inApp by event with Ordinal event`() {
         val testInApps = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
         val expectedResult = listOf(InAppStub.getInApp().copy(id = "testInAppId"))
-        every { inAppRepository.getOperationalInAppsByOperation(any()) } returns expectedResult
+        every { inAppRepository.getUnShownOperationalInAppsByOperation(any()) } returns expectedResult
         val actualResult =
-            inAppFilteringManager.filterInAppsByEvent(
+            inAppFilteringManager.filterUnShownInAppsByEvent(
                 testInApps,
                 InAppEventType.OrdinalEvent(EventType.SyncOperation(""))
             )

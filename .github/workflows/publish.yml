@@ -30,7 +30,7 @@ jobs:
         run: ./gradlew --no-daemon check
 
   unit:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -48,8 +48,8 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest
 
   build:
-    needs: [unit, lint]
-    runs-on: ubuntu-latest 
+    needs: [ unit, lint ]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -64,7 +64,7 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug
 
   publish:
-    needs: [build]
+    needs: [ build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -91,7 +91,7 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
       - name: Publish to Jitpack
-      # To create release in Jitpack we need to create Github release
+        # To create release in Jitpack we need to create Github release
         run: ./git-release.sh "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
 
       - name: Publish to Sonatype
@@ -99,7 +99,16 @@ jobs:
 
         #To update version in Github README.md
       - name: Version Upgrade
-        run: ./maven-version-update.sh
+        run: |
+          chmod +x ./maven-version-update.sh
+          ./maven-version-update.sh
+      - name: Commit and push if it changed
+        run: |
+          git diff
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git commit -am "Update README.md" || exit 0
+          git push origin HEAD:develop
 
       - name: Job status notification
         uses: rtCamp/action-slack-notify@v2

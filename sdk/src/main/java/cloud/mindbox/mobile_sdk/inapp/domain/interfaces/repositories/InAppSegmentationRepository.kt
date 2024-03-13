@@ -4,8 +4,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 
 internal interface InAppSegmentationRepository {
 
-    var unShownInApps: List<InApp>
-
     suspend fun fetchCustomerSegmentations()
 
     suspend fun fetchProductSegmentation(product: Pair<String, String>)

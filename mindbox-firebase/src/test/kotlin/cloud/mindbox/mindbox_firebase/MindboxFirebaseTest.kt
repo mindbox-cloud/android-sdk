@@ -11,6 +11,7 @@ class MindboxFirebaseTest {
 
     private val remoteMessageWithData = mockk<RemoteMessage>()
     private val remoteMessageWithoutData = mockk<RemoteMessage>()
+    private val remoteMessageWithoutTitle = mockk<RemoteMessage>()
 
     init {
         every { remoteMessageWithData.data } returns mapOf(
@@ -23,6 +24,14 @@ class MindboxFirebaseTest {
             "payload" to "any-value7"
         )
         every { remoteMessageWithoutData.data } returns emptyMap()
+        every { remoteMessageWithoutTitle.data } returns mapOf(
+            "uniqueKey" to "any-value1",
+            "message" to "any-value3",
+            "imageUrl" to "any-value4",
+            "buttons" to "any-value5",
+            "clickUrl" to "any-value6",
+            "payload" to "any-value7"
+        )
     }
 
     @Test
@@ -50,6 +59,14 @@ class MindboxFirebaseTest {
         val mindboxRemoteMessage =
             MindboxFirebase.convertToMindboxRemoteMessage(remoteMessageWithoutData)
         Assert.assertNull(mindboxRemoteMessage)
+    }
+
+    @Test
+    fun `convertToMindboxRemoteMessage returns non null for remote message without title`() {
+        val mindboxRemoteMessage =
+            MindboxFirebase.convertToMindboxRemoteMessage(remoteMessageWithoutTitle)
+        Assert.assertNotNull(mindboxRemoteMessage)
+        Assert.assertEquals("", mindboxRemoteMessage?.title)
     }
 }
 

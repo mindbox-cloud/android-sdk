@@ -29,12 +29,21 @@ internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepos
         return inApps.filterNot { inApp -> inApp.targeting.hasSegmentationNode() }
     }
 
-    override fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp> =
+    override fun filterUnShownInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp> =
         if (event == InAppEventType.AppStartup) {
             inApps
         } else {
-            inAppRepository.getOperationalInAppsByOperation(event.name)
+            inAppRepository.getUnShownOperationalInAppsByOperation(event.name)
         }
+
+    override fun filterInAppsByEvent(
+        inApps: List<InApp>,
+        event: InAppEventType
+    ): List<InApp> {
+        return if (event is InAppEventType.AppStartup) inApps else inAppRepository.getOperationalInAppsByOperation(
+            event.name
+        )
+    }
 
     override fun filterABTestsInApps(
         inApps: List<InApp>,

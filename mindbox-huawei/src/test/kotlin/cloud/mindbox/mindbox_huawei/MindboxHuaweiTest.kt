@@ -10,6 +10,7 @@ class MindboxHuaweiTest {
 
     private val remoteMessageWithData = mockk<RemoteMessage>()
     private val remoteMessageWithoutData = mockk<RemoteMessage>()
+    private val remoteMessageWithoutTitle = mockk<RemoteMessage>()
 
     init {
         every { remoteMessageWithData.data } returns  mapOf(
@@ -21,6 +22,14 @@ class MindboxHuaweiTest {
             "payload" to "payload"
         ).toString()
         every { remoteMessageWithoutData.data } returns ""
+        every { remoteMessageWithoutTitle.data } returns mapOf(
+            "uniqueKey" to "key",
+            "message" to "message",
+            "imageUrl" to "image",
+            "buttons" to "[{\"uniqueKey\": \"button_key\", \"text\": \"button_text\", \"url\": \"button_url\"}]",
+            "clickUrl" to "clickUrl",
+            "payload" to "payload"
+        ).toString()
     }
 
 
@@ -48,5 +57,13 @@ class MindboxHuaweiTest {
     fun `convertToMindboxRemoteMessage returns null with wrong data`() {
         val result = MindboxHuawei.convertToMindboxRemoteMessage(remoteMessageWithoutData)
         Assert.assertNull(result)
+    }
+
+    @Test
+    fun `convertToMindboxRemoteMessage returns non null for remote message without title`() {
+        val mindboxRemoteMessage =
+            MindboxHuawei.convertToMindboxRemoteMessage(remoteMessageWithoutTitle)
+        Assert.assertNotNull(mindboxRemoteMessage)
+        Assert.assertEquals("", mindboxRemoteMessage?.title)
     }
 }
