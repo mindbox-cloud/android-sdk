@@ -27,6 +27,7 @@ internal object MindboxPreferences {
     private const val SHOWN_IDS = "SHOWN_IDS"
     private const val IN_APP_GEO = "IN_APP_GEO"
     private const val LOGS_REQUEST_IDS = "LOGS_REQUEST_IDS"
+    private const val KEY_USER_VISIT_COUNT = "key_user_visit_count"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -188,4 +189,19 @@ internal object MindboxPreferences {
                 SharedPreferencesManager.put(KEY_NEED_PUSH_TOKEN_UPDATE, value)
             }
         }
+    var userVisitCount: Int
+        get() =
+            LoggingExceptionHandler.runCatching(defaultValue = 0) {
+                if (isFirstInitialize) {
+                    SharedPreferencesManager.getInt(KEY_USER_VISIT_COUNT, 0)
+                } else {
+                    SharedPreferencesManager.getInt(KEY_USER_VISIT_COUNT, 1)
+                }
+            }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_USER_VISIT_COUNT, value)
+            }
+        }
+
 }

@@ -483,6 +483,13 @@ object Mindbox : MindboxLog {
             if (!firstInitCall) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             }
+            else
+            {
+                val userVisitCount = MindboxPreferences.userVisitCount
+                mindboxLogI("Current user visit count is $userVisitCount")
+                MindboxPreferences.userVisitCount = userVisitCount + 1
+                mindboxLogI("New user visit count after increment is ${MindboxPreferences.userVisitCount}")
+            }
 
             initScope.launch {
                 val checkResult = checkConfig(configuration)
