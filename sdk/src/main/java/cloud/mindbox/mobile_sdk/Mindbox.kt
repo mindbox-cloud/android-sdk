@@ -486,9 +486,8 @@ object Mindbox : MindboxLog {
             else
             {
                 val userVisitCount = MindboxPreferences.userVisitCount
-                mindboxLogI("Current user visit count is $userVisitCount")
                 MindboxPreferences.userVisitCount = userVisitCount + 1
-                mindboxLogI("New user visit count after increment is ${MindboxPreferences.userVisitCount}")
+                mindboxLogI("Previous user visit count is $userVisitCount. New user visit count after increment is ${MindboxPreferences.userVisitCount}")
             }
 
             initScope.launch {

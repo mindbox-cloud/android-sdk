@@ -189,6 +189,7 @@ internal object MindboxPreferences {
                 SharedPreferencesManager.put(KEY_NEED_PUSH_TOKEN_UPDATE, value)
             }
         }
+
     var userVisitCount: Int
         get() =
             LoggingExceptionHandler.runCatching(defaultValue = 0) {
