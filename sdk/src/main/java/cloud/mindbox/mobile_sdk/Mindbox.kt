@@ -86,6 +86,8 @@ object Mindbox : MindboxLog {
 
     private lateinit var lifecycleManager: LifecycleManager
 
+    private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
+
     internal var pushServiceHandler: PushServiceHandler? = null
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
@@ -485,9 +487,7 @@ object Mindbox : MindboxLog {
             }
             else
             {
-                val userVisitCount = MindboxPreferences.userVisitCount
-                MindboxPreferences.userVisitCount = userVisitCount + 1
-                mindboxLogI("Previous user visit count is $userVisitCount. New user visit count after increment is ${MindboxPreferences.userVisitCount}")
+               userVisitManager.saveUserVisit()
             }
 
             initScope.launch {

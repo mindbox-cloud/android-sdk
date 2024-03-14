@@ -193,16 +193,11 @@ internal object MindboxPreferences {
     var userVisitCount: Int
         get() =
             LoggingExceptionHandler.runCatching(defaultValue = 0) {
-                if (isFirstInitialize) {
-                    SharedPreferencesManager.getInt(KEY_USER_VISIT_COUNT, 0)
-                } else {
-                    SharedPreferencesManager.getInt(KEY_USER_VISIT_COUNT, 1)
-                }
+                SharedPreferencesManager.getInt(KEY_USER_VISIT_COUNT, 0)
             }
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_USER_VISIT_COUNT, value)
             }
         }
-
 }
