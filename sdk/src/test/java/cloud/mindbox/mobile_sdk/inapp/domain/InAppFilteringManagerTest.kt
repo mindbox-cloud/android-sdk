@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -23,6 +24,9 @@ internal class InAppFilteringManagerTest {
 
     @MockK
     private lateinit var inAppRepository: InAppRepository
+
+    @MockK
+    private lateinit var mindboxNotificationManager: MindboxNotificationManager
 
     @Test
     fun `filter not shown inApps`() {

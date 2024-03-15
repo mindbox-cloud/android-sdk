@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -10,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Size
 import kotlin.math.roundToInt
 
 
+@SuppressLint("AppCompatCustomView")
 internal class InAppImageView(context: Context) : ImageView(context) {
 
     companion object {
