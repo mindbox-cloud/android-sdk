@@ -484,8 +484,7 @@ object Mindbox : MindboxLog {
 
             if (!firstInitCall) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-            }
-            else
+            } else
             {
                userVisitManager.saveUserVisit()
             }
