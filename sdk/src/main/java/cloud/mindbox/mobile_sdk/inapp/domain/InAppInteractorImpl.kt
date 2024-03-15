@@ -67,10 +67,11 @@ internal class InAppInteractorImpl(
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
                 mindboxLogD("Event: ${event.name} combined with $filteredInApps")
-                val filteredInAppsByPushStatus= inAppFilteringManager.filterPushInAppsByPermissionStatus(filteredInApps)
-                mindboxLogI("InApps after filtered by push permission status $filteredInAppsByPushStatus")
+                val filteredInAppsByNotificationStatus =
+                    inAppFilteringManager.filterPushInAppsByPermissionStatus(filteredInApps)
+                mindboxLogI("InApps after filtered by push permission status for show $filteredInAppsByNotificationStatus")
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInAppsByPushStatus,
+                    filteredInAppsByNotificationStatus,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
@@ -111,7 +112,7 @@ internal class InAppInteractorImpl(
             logI("inapps for event $event are = $filteredInApps")
             val filteredInAppByNotificationStatus =
                 inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
-            mindboxLogI("inapps after filter by notification status $filteredInAppByNotificationStatus")
+            mindboxLogI("inapps after filter by notification status for targeting $filteredInAppByNotificationStatus")
             for (inApp in filteredInAppByNotificationStatus) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
                     inAppProcessingManager.sendTargetedInApp(inApp, event)

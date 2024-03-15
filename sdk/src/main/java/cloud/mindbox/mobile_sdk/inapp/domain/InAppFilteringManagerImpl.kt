@@ -4,9 +4,9 @@ import cloud.mindbox.mobile_sdk.hasImageLayerWithRedirectUrlAction
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.managers.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal class InAppFilteringManagerImpl(
@@ -58,10 +58,10 @@ internal class InAppFilteringManagerImpl(
 
     override fun filterPushInAppsByPermissionStatus(inApps: List<InApp>): List<InApp> =
         if (!mindboxNotificationManager.isNotificationEnabled()) {
-            mindboxLogI("Notification doesn't enabled")
+            mindboxLogI("Notification doesn't enabled. Use all inapps")
             inApps
         } else {
-            mindboxLogI("Notification already enabled")
+            mindboxLogI("Notification already enabled. Remove pushAction inapps")
             inApps.filter { inApp ->
                 inApp.form.variants.any { it.hasImageLayerWithRedirectUrlAction() }
             }

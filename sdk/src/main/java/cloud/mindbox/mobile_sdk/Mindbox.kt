@@ -553,11 +553,6 @@ object Mindbox : MindboxLog {
                         isAppInBackground = !isApplicationResumed,
                         onActivityStarted = { startedActivity ->
                             UuidCopyManager.onAppMovedToForeground(startedActivity)
-                            mindboxScope.launch {
-                                if (!MindboxPreferences.isFirstInitialize) {
-                                    updateAppInfo(startedActivity.applicationContext)
-                                }
-                            }
                         },
                         onActivityPaused = { pausedActivity ->
                             inAppMessageManager.onPauseCurrentActivity(pausedActivity)
@@ -568,6 +563,11 @@ object Mindbox : MindboxLog {
                                 resumedActivity,
                                 true
                             )
+                            mindboxScope.launch {
+                                if (!MindboxPreferences.isFirstInitialize) {
+                                    updateAppInfo(resumedActivity.applicationContext)
+                                }
+                            }
                             if (firstInitCall) {
                                 mindboxScope.launch {
                                     mutex.withLock {

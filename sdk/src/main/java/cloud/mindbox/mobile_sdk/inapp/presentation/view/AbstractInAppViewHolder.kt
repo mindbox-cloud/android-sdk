@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
@@ -8,10 +9,13 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.createAction
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
@@ -38,6 +42,10 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     private var isActionExecuted: Boolean = false
 
+    private val mindboxNotificationManager by mindboxInject {
+        mindboxNotificationManager
+    }
+
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
@@ -52,31 +60,25 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     abstract fun bind()
 
-    protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
+    protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback,activity:Activity) {
         if (InAppMessageViewDisplayerImpl.isActionExecuted) return
+        var redirectUrl = ""
+        var payload = ""
+        var isNeedDismiss = true
         currentDialog.setSingleClickListener {
-            var redirectUrl = ""
-            var payload = ""
-            when (layer.action) {
-                is Layer.ImageLayer.Action.RedirectUrlAction -> {
-                    redirectUrl = layer.action.url
-                    payload = layer.action.payload
-                }
-
-                is Layer.ImageLayer.Action.PushPermissionAction -> {
-                    redirectUrl = ""
-                    payload = layer.action.payload
-                    mindboxLogI("In-app for push activation was clicked")
-                    // TODO: change logic for open request/settings
-                }
+            InAppActionHandler.handleAction(layer.action.createAction(mindboxNotificationManager),activity){ result->
+                redirectUrl=result.redirectUrl
+                payload=result.payload
+                isNeedDismiss=result.isNeedDismiss
             }
+
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
                 redirectUrl,
                 payload
             )
-            if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
+            if (isNeedDismiss) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
                 hide()
@@ -164,7 +166,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         }
     }
 
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: ViewGroup,currentActivity: Activity) {
         isInAppMessageActive = true
         initView(currentRoot)
         hideKeyboard(currentRoot)

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+ import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.SnackbarPosition
@@ -23,13 +24,13 @@ internal class SnackbarInAppViewHolder(
 
     private var requiredSizes: HashMap<String, Size> = HashMap()
 
-    override fun show(currentRoot: ViewGroup) {
-        super.show(currentRoot)
+    override fun show(currentRoot: ViewGroup,currentActivity: Activity) {
+        super.show(currentRoot, currentActivity)
         mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is Layer.ImageLayer -> {
-                    addUrlSource(layer, inAppCallback)
+                        addUrlSource(layer, inAppCallback,currentActivity)
                 }
             }
         }
@@ -45,8 +46,8 @@ internal class SnackbarInAppViewHolder(
         }
     }
 
-    override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
-        super.addUrlSource(layer, inAppCallback)
+    override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback,activity: Activity) {
+        super.addUrlSource(layer, inAppCallback,activity)
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
                 InAppImageView(currentDialog.context).also { inAppImageView ->

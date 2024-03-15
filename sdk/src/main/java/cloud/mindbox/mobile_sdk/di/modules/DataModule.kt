@@ -17,7 +17,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializat
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
-import cloud.mindbox.mobile_sdk.managers.MindboxNotificationManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -207,7 +208,7 @@ internal fun DataModule(
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {
-        MindboxNotificationManager(
+        MindboxNotificationManagerImpl(
             context = appContext
         )
     }
