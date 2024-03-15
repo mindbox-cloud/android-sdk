@@ -14,6 +14,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInterac
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManagerImpl
 
 
 internal fun DomainModule(
@@ -58,6 +60,9 @@ internal fun DomainModule(
             mixer = customerAbMixer,
             repository = mobileConfigRepository
         )
+
+    override val userVisitManager: UserVisitManager
+        get() = UserVisitManagerImpl()
 
     override val customerAbMixer: CustomerAbMixer
          get() = CustomerAbMixerImpl()
