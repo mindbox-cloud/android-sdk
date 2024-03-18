@@ -437,9 +437,7 @@ internal class MobileConfigSerializationManagerTest {
 
     @Test
     fun `deserialize to modal window inApp form dto with PushPermission action success`() {
-        val color = "#000000"
-        val lineWidth = 4.0
-        val type = "closeButton"
+
         val expectedResult = InAppStub.getFormDto().copy(
             variants = listOf(
                 InAppStub.getModalWindowDto().copy(
@@ -447,28 +445,13 @@ internal class MobileConfigSerializationManagerTest {
                         background = InAppStub.getBackgroundDto().copy(layers = listOf(InAppStub.getImageLayerDto().copy(
                             action = InAppStub.getPushPermissionActionDto().copy(
                                 intentPayload = "123", type = "pushPermission"
-                            ), source = InAppStub.getUrlSourceDto().copy(
-                                type = "url", value = "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg"
-                            ), type = "image"
-                        ))), elements = listOf(InAppStub.getCloseButtonElementDto().copy(
-                            color = color, lineWidth = lineWidth, position = InAppStub.getElementPositionDto().copy(
-                                margin = InAppStub.getElementMarginDto().copy(
-                                    bottom = 0.03,
-                                    kind = "proportion",
-                                    left = 0.03,
-                                    right = 0.03,
-                                    top = 0.03
-                                )
-                            ), size = InAppStub.getElementSizeDto().copy(
-                                height = 24.0,
-                                kind = "dp",
-                                width = 24.0
-                            ), type = type
-                        ))
+                            ), source = InAppStub.getUrlSourceDto()
+                        ))),elements = null
                     ),
                 )
             )
         )
+
         val actualResult = mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject().apply {
             add("variants", JsonArray().apply {
                 val variantObject = JsonObject().apply {
@@ -483,34 +466,12 @@ internal class MobileConfigSerializationManagerTest {
                                     })
                                     add("source", JsonObject().apply {
                                         addProperty("${"$"}type", "url")
-                                        addProperty("value", "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg")
+                                        addProperty("value", "")
                                     })
                                     addProperty("${"$"}type", "image")
                                 }
                                 add(imageLayerObject)
                             })
-                        })
-                        add("elements", JsonArray().apply {
-                            val elementObject = JsonObject().apply {
-                                addProperty("color", color)
-                                addProperty("lineWidth", lineWidth)
-                                add("position", JsonObject().apply {
-                                    add("margin", JsonObject().apply {
-                                        addProperty("bottom", 0.03)
-                                        addProperty("kind", "proportion")
-                                        addProperty("left", 0.03)
-                                        addProperty("right", 0.03)
-                                        addProperty("top", 0.03)
-                                    })
-                                })
-                                add("size", JsonObject().apply {
-                                    addProperty("height", 24.0)
-                                    addProperty("kind", "dp")
-                                    addProperty("width", 24.0)
-                                })
-                                addProperty("${"$"}type", type)
-                            }
-                            add(elementObject)
                         })
                     })
                 }

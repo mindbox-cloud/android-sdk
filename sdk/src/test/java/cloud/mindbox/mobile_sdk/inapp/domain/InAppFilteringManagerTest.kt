@@ -1,10 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
-import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -29,7 +29,7 @@ internal class InAppFilteringManagerTest {
     private lateinit var inAppRepository: InAppRepository
 
     @MockK
-    private lateinit var mindboxNotificationManager: MindboxNotificationManager
+    private lateinit var permissionManager: PermissionManager
 
     @Test
     fun `filter not shown inApps`() {
@@ -129,7 +129,7 @@ internal class InAppFilteringManagerTest {
 
     @Test
     fun `filterPushInAppsByPermissionStatus returns all inApps when notifications disabled`() {
-        every { mindboxNotificationManager.isNotificationEnabled() } returns false
+        every { permissionManager.isNotificationEnabled() } returns false
 
         val inAppWithPushPermissionAction = InAppStub.getInApp().copy(
             form = Form(
@@ -140,7 +140,7 @@ internal class InAppFilteringManagerTest {
                         layers = listOf(
                             Layer.ImageLayer(
                                 action = InAppStub.getPushPermissionAction(),
-                                source = InAppStub.getUrlSource()
+                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
                             )
                         )
                     )
@@ -157,7 +157,7 @@ internal class InAppFilteringManagerTest {
                         layers = listOf(
                             Layer.ImageLayer(
                                 action = InAppStub.getRedirectUrlAction(),
-                                source = InAppStub.getUrlSource()
+                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
                             )
                         )
                     )
@@ -173,7 +173,7 @@ internal class InAppFilteringManagerTest {
 
     @Test
     fun `filterPushInAppsByPermissionStatus filters  inApps with ImageLayer having PushPermissionAction when notifications enabled`() {
-        every { mindboxNotificationManager.isNotificationEnabled() } returns true
+        every { permissionManager.isNotificationEnabled() } returns true
 
         val inAppWithPushPermissionAction = InAppStub.getInApp().copy(
             form = Form(
@@ -184,7 +184,7 @@ internal class InAppFilteringManagerTest {
                         layers = listOf(
                             Layer.ImageLayer(
                                 action = InAppStub.getPushPermissionAction(),
-                                source = InAppStub.getUrlSource()
+                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
                             )
                         )
                     )
@@ -201,7 +201,7 @@ internal class InAppFilteringManagerTest {
                         layers = listOf(
                             Layer.ImageLayer(
                                 action = InAppStub.getRedirectUrlAction(),
-                                source = InAppStub.getUrlSource()
+                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
                             )
                         )
                     )
@@ -213,7 +213,6 @@ internal class InAppFilteringManagerTest {
         val filteredInApps = inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
 
         assertEquals(filteredInApps, listOf(inAppWithRedirectUrlAction))
-        assertNotEquals(filteredInApps,inApps)
+        assertNotEquals(filteredInApps, inApps)
     }
-
 }

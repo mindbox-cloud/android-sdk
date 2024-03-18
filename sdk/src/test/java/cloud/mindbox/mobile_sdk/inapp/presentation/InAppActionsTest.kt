@@ -24,7 +24,7 @@ class InAppActionsTest {
                 InAppActionResult(
                     redirectUrl = url,
                     payload = payload,
-                    isNeedDismiss = true
+                    shouldDismiss = true
                 )
             )
         }
@@ -45,7 +45,7 @@ class InAppActionsTest {
                 InAppActionResult(
                     redirectUrl = url,
                     payload = payload,
-                    isNeedDismiss = false
+                    shouldDismiss = false
                 )
             )
         }
@@ -67,7 +67,7 @@ class InAppActionsTest {
                 InAppActionResult(
                     redirectUrl = "",
                     payload = payload,
-                    isNeedDismiss = true
+                    shouldDismiss = true
                 )
             )
         }

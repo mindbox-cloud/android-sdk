@@ -2,11 +2,6 @@ package cloud.mindbox.mobile_sdk
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
-import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushPermissionInAppAction
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RedirectUrlInAppAction
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
 import com.jakewharton.threetenabp.AndroidThreeTen
@@ -152,114 +147,5 @@ internal class ExtensionsTest {
         )
         val error = VolleyError(networkResponse)
         assertEquals(responseBodyData, error.getErrorResponseBodyData())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns true for Snackbar with RedirectUrlAction`() {
-        val redirectAction = mockk<Layer.ImageLayer.Action.RedirectUrlAction>()
-
-        val imageLayer = mockk<Layer.ImageLayer> {
-            every { action } returns redirectAction
-        }
-
-        val snackbar = mockk<InAppType.Snackbar> {
-            every { layers } returns listOf(imageLayer)
-        }
-
-        assertTrue(snackbar.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns false for Snackbar with PushPermissionAction`() {
-        val pushPermissionAction = mockk<Layer.ImageLayer.Action.PushPermissionAction>()
-
-        val imageLayer = mockk<Layer.ImageLayer> {
-            every { action } returns pushPermissionAction
-        }
-
-        val snackbar = mockk<InAppType.Snackbar> {
-            every { layers } returns listOf(imageLayer)
-        }
-
-        assertFalse(snackbar.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns false for Snackbar with empty layers`() {
-
-        val snackbar = mockk<InAppType.Snackbar> {
-            every { layers } returns emptyList()
-        }
-
-        assertFalse(snackbar.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns true for Modal with RedirectUrlAction`() {
-        val redirectAction = mockk<Layer.ImageLayer.Action.RedirectUrlAction>()
-
-        val imageLayer = mockk<Layer.ImageLayer> {
-            every { action } returns redirectAction
-        }
-
-        val modal = mockk<InAppType.Snackbar> {
-            every { layers } returns listOf(imageLayer)
-        }
-
-        assertTrue(modal.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns false for Modal with PushPermissionAction`() {
-        val pushPermissionAction = mockk<Layer.ImageLayer.Action.PushPermissionAction>()
-
-        val imageLayer = mockk<Layer.ImageLayer> {
-            every { action } returns pushPermissionAction
-        }
-
-        val modal = mockk<InAppType.Snackbar> {
-            every { layers } returns listOf(imageLayer)
-        }
-
-        assertFalse(modal.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `hasImageLayerWithRedirectUrlAction returns false for Modal with empty layers`() {
-
-        val modal = mockk<InAppType.Snackbar> {
-            every { layers } returns emptyList()
-        }
-
-        assertFalse(modal.hasImageLayerWithRedirectUrlAction())
-    }
-
-    @Test
-    fun `createAction returns RedirectUrlInAppAction for RedirectUrlAction`() {
-
-        val mindboxNotificationManager = mockk<MindboxNotificationManager>()
-        val redirectUrlAction =
-            Layer.ImageLayer.Action.RedirectUrlAction(url = "test_url", payload = "test_payload")
-
-        val resultAction = redirectUrlAction.createAction(mindboxNotificationManager)
-
-        assertTrue(resultAction is RedirectUrlInAppAction)
-        resultAction as RedirectUrlInAppAction
-        assertTrue(resultAction.url == "test_url")
-        assertTrue(resultAction.payload == "test_payload")
-    }
-
-    @Test
-    fun `createAction returns PushPermissionInAppAction for PushPermissionAction`() {
-        val mindboxNotificationManager = mockk<MindboxNotificationManager>()
-        val pushPermissionAction =
-            Layer.ImageLayer.Action.PushPermissionAction(payload = "test_payload")
-
-        val resultAction = pushPermissionAction.createAction(mindboxNotificationManager)
-
-        assertTrue(resultAction is PushPermissionInAppAction)
-        resultAction as PushPermissionInAppAction
-        assertTrue(resultAction.payload == "test_payload")
-        assertTrue(resultAction.mindboxNotificationManager == mindboxNotificationManager)
     }
 }

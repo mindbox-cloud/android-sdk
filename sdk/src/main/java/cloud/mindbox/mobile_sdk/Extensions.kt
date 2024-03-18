@@ -16,11 +16,6 @@ import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
-import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppAction
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushPermissionInAppAction
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RedirectUrlInAppAction
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
@@ -202,28 +197,4 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
             )
         )
         ?: ""
-}
-
-internal fun InAppType.hasImageLayerWithRedirectUrlAction(): Boolean {
-    val layers = when (this) {
-        is InAppType.Snackbar -> this.layers
-        is InAppType.ModalWindow -> this.layers
-    }
-    return layers.firstOrNull { layer ->
-        layer is Layer.ImageLayer && layer.action is Layer.ImageLayer.Action.RedirectUrlAction
-    } != null
-}
-
-internal fun Layer.ImageLayer.Action.createAction(mindboxNotificationManager: MindboxNotificationManager): InAppAction {
-    return when (this) {
-        is Layer.ImageLayer.Action.RedirectUrlAction ->
-            RedirectUrlInAppAction(url = this.url, payload = this.payload)
-
-        is Layer.ImageLayer.Action.PushPermissionAction -> {
-            PushPermissionInAppAction(
-                payload = this.payload,
-                mindboxNotificationManager = mindboxNotificationManager
-            )
-        }
-    }
 }

@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
@@ -9,7 +10,6 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.createAction
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -60,16 +60,25 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     abstract fun bind()
 
-    protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback,activity:Activity) {
+    protected open fun addUrlSource(
+        layer: Layer.ImageLayer,
+        inAppCallback: InAppCallback
+    ) {
         if (InAppMessageViewDisplayerImpl.isActionExecuted) return
         var redirectUrl = ""
         var payload = ""
-        var isNeedDismiss = true
+        var shouldDismiss = true
         currentDialog.setSingleClickListener {
-            InAppActionHandler.handleAction(layer.action.createAction(mindboxNotificationManager),activity){ result->
-                redirectUrl=result.redirectUrl
-                payload=result.payload
-                isNeedDismiss=result.isNeedDismiss
+            InAppActionHandler.handle(
+                action = InAppActionHandler.createAction(
+                    layerAction = layer.action,
+                    mindboxNotificationManager = mindboxNotificationManager
+                ),
+                activity = currentDialog.getActivitySafely()
+            ) { result ->
+                redirectUrl = result.redirectUrl
+                payload = result.payload
+                shouldDismiss = result.shouldDismiss
             }
 
             wrapper.onInAppClick.onClick()
@@ -78,7 +87,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 redirectUrl,
                 payload
             )
-            if (isNeedDismiss) {
+            if (shouldDismiss) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
                 hide()
@@ -166,7 +175,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         }
     }
 
-    override fun show(currentRoot: ViewGroup,currentActivity: Activity) {
+    override fun show(currentRoot: ViewGroup) {
         isInAppMessageActive = true
         initView(currentRoot)
         hideKeyboard(currentRoot)
@@ -178,5 +187,17 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         }
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
+    }
+
+    private fun View?.getActivitySafely(): Activity? {
+
+        var context: Context = this!!.context
+        while (context is ContextWrapper) {
+            if (context is Activity) {
+                return context
+            }
+            context = context.baseContext
+        }
+        return null
     }
 }

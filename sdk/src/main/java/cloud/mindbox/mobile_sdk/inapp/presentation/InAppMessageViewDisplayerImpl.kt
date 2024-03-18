@@ -162,7 +162,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         }
 
         currentActivity?.root?.let { root ->
-            currentHolder?.show(root,currentActivity!!)
+            currentHolder?.show(root)
         } ?: run {
             mindboxLogE("failed to show inApp: currentRoot is null")
         }

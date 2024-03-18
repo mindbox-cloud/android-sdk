@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
@@ -95,6 +96,7 @@ internal interface DataModule : MindboxModule {
     val snackBarElementDtoDataFiller: SnackbarElementDtoDataFiller
     val closeButtonSnackbarElementDtoDataFiller: CloseButtonSnackbarElementDtoDataFiller
     val mindboxNotificationManager: MindboxNotificationManager
+    val permissionManager: PermissionManager
 }
 
 internal interface MonitoringModule : MindboxModule {

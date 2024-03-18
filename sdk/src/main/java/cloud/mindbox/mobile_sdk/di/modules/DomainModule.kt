@@ -49,7 +49,7 @@ internal fun DomainModule(
     override val inAppFilteringManager: InAppFilteringManager
         get() = InAppFilteringManagerImpl(
             inAppRepository = inAppRepository,
-            mindboxNotificationManager = mindboxNotificationManager
+            permissionManager = permissionManager
         )
 
     override val inAppABTestLogic: InAppABTestLogic

@@ -101,7 +101,7 @@ internal class InAppStub {
                 value = ""
             )
         fun getUrlSource(): Layer.ImageLayer.Source.UrlSource =
-            Layer.ImageLayer.Source.UrlSource(url = "https:/mindbox.com")
+            Layer.ImageLayer.Source.UrlSource(url = "")
 
         fun getCloseButtonElementDto(): ElementDto.CloseButtonElementDto =
             ElementDto.CloseButtonElementDto(

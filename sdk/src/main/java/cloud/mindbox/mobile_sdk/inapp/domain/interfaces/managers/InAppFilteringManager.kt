@@ -20,4 +20,5 @@ internal interface InAppFilteringManager {
     fun filterABTestsInApps(inApps: List<InApp>, abtestsInAppsPool: Collection<String>): List<InApp>
 
     fun filterPushInAppsByPermissionStatus(inApps: List<InApp>): List<InApp>
+
 }

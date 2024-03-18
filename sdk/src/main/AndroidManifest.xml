@@ -9,14 +9,14 @@
 
     <uses-sdk tools:overrideLibrary="io.mockk, io.mockk.proxy.android" />
     <application>
-        <activity android:name="cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushActivationActivity"
-            android:theme="@style/Theme.MindboxTransparent"
-            android:exported="false"
+        <activity
+            android:name="cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushActivationActivity"
             android:excludeFromRecents="true"
-            android:noHistory="true"
+            android:exported="false"
             android:finishOnTaskLaunch="true"
             android:launchMode="singleInstance"
-            >
+            android:noHistory="true"
+            android:theme="@style/Theme.MindboxTransparent">
         </activity>
     </application>
 </manifest>

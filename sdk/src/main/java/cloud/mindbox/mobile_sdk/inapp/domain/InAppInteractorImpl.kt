@@ -65,13 +65,16 @@ internal class InAppInteractorImpl(
                 if (isInAppShown()) inAppTargetingChannel.send(event)
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
-                mindboxLogD("Event: ${event.name} combined with $filteredInApps")
-                val filteredInAppsByNotificationStatus =
-                    inAppFilteringManager.filterPushInAppsByPermissionStatus(filteredInApps)
-                mindboxLogI("InApps after filtered by push permission status for show $filteredInAppsByNotificationStatus")
+                val filteredInApps =
+                    inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).run {
+                        inAppFilteringManager.filterPushInAppsByPermissionStatus(this)
+                    }.also {
+                        mindboxLogI("InApps was filtered by notification status")
+                    }
+                mindboxLogI("Event: ${event.name} combined with $filteredInApps")
+
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInAppsByNotificationStatus,
+                   filteredInApps,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
@@ -108,19 +111,16 @@ internal class InAppInteractorImpl(
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
         inAppTargetingChannel.consumeAsFlow().collect { event ->
             val filteredInApps =
-                inAppFilteringManager.filterInAppsByEvent(inApps, event)
+                inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).run {
+                    inAppFilteringManager.filterPushInAppsByPermissionStatus(this)
+                }
             logI("inapps for event $event are = $filteredInApps")
-            val filteredInAppByNotificationStatus =
-                inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
-            mindboxLogI("inapps after filter by notification status for targeting $filteredInAppByNotificationStatus")
-            for (inApp in filteredInAppByNotificationStatus) {
+            for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
                     inAppProcessingManager.sendTargetedInApp(inApp, event)
                 }
             }
         }
-
-
     }
 
     override fun isInAppShown(): Boolean {

@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
@@ -119,6 +120,8 @@ internal fun DataModule(
     override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
+
+    override val permissionManager: PermissionManager by lazy { PermissionManagerImpl(appContext) }
 
     override val inAppContentFetcher: InAppContentFetcher by lazy {
         InAppContentFetcherImpl(
