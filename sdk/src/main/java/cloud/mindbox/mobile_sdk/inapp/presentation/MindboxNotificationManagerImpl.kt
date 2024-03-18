@@ -76,6 +76,7 @@ internal class MindboxNotificationManagerImpl(private val context: Context) : Mi
                     val intent = Intent(activity, PushActivationActivity::class.java)
                     activity.startActivity(intent)
                 }
+
             } else {
                 openNotificationSettings(activity)
             }

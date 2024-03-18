@@ -79,11 +79,29 @@ internal class InAppStub {
                 value = ""
             )
 
+        fun getPushPermissionActionDto(): BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto(
+                intentPayload = "",
+                type = "pushPermission",
+            )
+
+        fun getRedirectUrlAction(): Layer.ImageLayer.Action.RedirectUrlAction =
+            Layer.ImageLayer.Action.RedirectUrlAction(
+                payload = "",
+                url = ""
+            )
+
+        fun getPushPermissionAction(): Layer.ImageLayer.Action.PushPermissionAction=
+            Layer.ImageLayer.Action.PushPermissionAction(
+                payload = ""
+            )
         fun getUrlSourceDto(): BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
             BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
                 type = "url",
                 value = ""
             )
+        fun getUrlSource(): Layer.ImageLayer.Source.UrlSource =
+            Layer.ImageLayer.Source.UrlSource(url = "https:/mindbox.com")
 
         fun getCloseButtonElementDto(): ElementDto.CloseButtonElementDto =
             ElementDto.CloseButtonElementDto(
