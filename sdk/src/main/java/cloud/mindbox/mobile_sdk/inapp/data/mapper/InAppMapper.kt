@@ -280,6 +280,12 @@ internal class InAppMapper {
                     )
                 }
 
+                is TreeTargetingDto.VisitNodeDto -> TreeTargeting.VisitNode(
+                    TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME,
+                    treeTargetingDto.kind.enumValue(),
+                    treeTargetingDto.value!!
+                )
+
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,

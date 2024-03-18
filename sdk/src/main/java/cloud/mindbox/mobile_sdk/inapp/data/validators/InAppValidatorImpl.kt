@@ -129,6 +129,12 @@ internal class InAppValidatorImpl(
                     ENDS_WITH
                 ) && !targeting.value.isNullOrBlank()
             }
+
+            is TreeTargetingDto.VisitNodeDto -> {
+                !targeting.type.isNullOrBlank() && targeting.kind.equalsAny(
+                    GREATER_OR_EQUALS, LOWER_OR_EQUALS, EQUALS, NOT_EQUALS
+                ) && (targeting.value?.let { it > 0 } == true)
+            }
         }
     }
 
@@ -182,5 +188,10 @@ internal class InAppValidatorImpl(
         private const val NOT_SUBSTRING = "notSubstring"
         private const val STARTS_WITH = "startsWith"
         private const val ENDS_WITH = "endsWith"
+
+        private const val GREATER_OR_EQUALS = "gte"
+        private const val LOWER_OR_EQUALS = "lte"
+        private const val EQUALS = "equals"
+        private const val NOT_EQUALS = "notEquals"
     }
 }

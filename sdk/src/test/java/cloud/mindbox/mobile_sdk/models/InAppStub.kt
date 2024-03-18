@@ -250,6 +250,14 @@ internal class InAppStub {
             return TreeTargeting.CityNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
+        fun getTargetingVisitNodeDto(): TreeTargetingDto.VisitNodeDto {
+            return TreeTargetingDto.VisitNodeDto(type = null, kind = null, value = null)
+        }
+
+        fun getTargetingVisitNode(): TreeTargeting.VisitNode {
+            return TreeTargeting.VisitNode(type = "", kind = KindVisit.GTE, value = 0L)
+        }
+
         fun getTargetingRegionNode(): TreeTargeting.RegionNode {
             return TreeTargeting.RegionNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }

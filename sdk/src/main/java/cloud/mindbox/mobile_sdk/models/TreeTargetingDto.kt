@@ -170,5 +170,16 @@ internal sealed class TreeTargetingDto {
         }
     }
 
-
+    internal data class VisitNodeDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("kind")
+        val kind: String?,
+        @SerializedName("value")
+        val value: Long?
+    ): TreeTargetingDto() {
+        companion object {
+            const val VISIT_JSON_NAME = "visit"
+        }
+    }
 }
