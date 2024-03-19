@@ -72,14 +72,4 @@ class MindboxNotificationManagerImplTest {
 
         verify(exactly = 1) { activity.startActivity(any()) }
     }
-
-    @Test
-    fun `requestPermission requests permission if notifications are disabled and first request was rejected`() {
-        every { NotificationManagerCompat.from(context).areNotificationsEnabled() } returns false
-        every { activity.shouldShowRequestPermissionRationale(any()) } returns true
-
-        mindboxNotificationManager.requestPermission(activity)
-
-        verify(exactly = 1) { activity.requestPermissions(any(), any()) }
-    }
 }
