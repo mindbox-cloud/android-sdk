@@ -20,6 +20,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -121,7 +123,8 @@ internal fun DataModule(
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
 
-    override val permissionManager: PermissionManager by lazy { PermissionManagerImpl(appContext) }
+    override val permissionManager: PermissionManager
+        get() = PermissionManagerImpl(appContext)
 
     override val inAppContentFetcher: InAppContentFetcher by lazy {
         InAppContentFetcherImpl(
@@ -212,9 +215,13 @@ internal fun DataModule(
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {
         MindboxNotificationManagerImpl(
-            context = appContext
+            context = appContext,
+            requestPermissionManager = requestPermissionManager
         )
     }
+
+    override val requestPermissionManager: RequestPermissionManager
+        get() = RequestPermissionManagerImpl()
 
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(

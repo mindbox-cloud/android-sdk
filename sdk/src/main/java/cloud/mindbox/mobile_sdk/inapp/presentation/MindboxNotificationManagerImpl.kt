@@ -10,10 +10,14 @@ import androidx.core.app.NotificationManagerCompat
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushActivationActivity
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
-internal class MindboxNotificationManagerImpl(private val context: Context) : MindboxNotificationManager {
+internal class MindboxNotificationManagerImpl(
+    private val context: Context,
+    private val requestPermissionManager: RequestPermissionManager
+) : MindboxNotificationManager {
 
     override var shouldOpenSettings: Boolean = true
 
@@ -62,6 +66,7 @@ internal class MindboxNotificationManagerImpl(private val context: Context) : Mi
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 
+                requestPermissionManager.increaseRequestCounter()
                 if (activity.shouldShowRequestPermissionRationale(Constants.POST_NOTIFICATION)) {
                     shouldOpenSettings = false
                 }

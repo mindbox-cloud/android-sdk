@@ -1,75 +1,59 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
-import android.app.Activity
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionResult
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushPermissionInAppAction
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RedirectUrlInAppAction
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 
 class InAppActionsTest {
+
+    private lateinit var mindboxView: MindboxView
+
+    @Before
+    fun setUp() {
+        mindboxView = mockk<MindboxView>(relaxed = true)
+    }
+
     @Test
-    fun `execute of RedirectUrlInAppAction calls callback with correct result`() {
-        val activity = mockk<Activity>(relaxed = true)
+    fun `execute of RedirectUrlInAppAction return correct data`() {
+
         val url = "https://test.url"
         val payload = "testPayload"
         val action = RedirectUrlInAppAction(url, payload)
-        val callback = mockk<(InAppActionResult) -> Unit>(relaxed = true)
 
-        action.execute(activity, callback)
+        val data = action.execute(mindboxView)
 
-        verify(exactly = 1) {
-            callback(
-                InAppActionResult(
-                    redirectUrl = url,
-                    payload = payload,
-                    shouldDismiss = true
-                )
-            )
-        }
+        Assert.assertEquals(url, data.redirectUrl)
+        Assert.assertEquals(payload, data.payload)
+        Assert.assertEquals(true, data.shouldDismiss)
     }
 
     @Test
-    fun `execute of RedirectUrlInAppAction calls callback with isNeedDismiss false`() {
-        val activity = mockk<Activity>(relaxed = true)
+    fun `execute of RedirectUrlInAppAction return data with isNeedDismiss false`() {
         val url = ""
         val payload = ""
         val action = RedirectUrlInAppAction(url, payload)
-        val callback = mockk<(InAppActionResult) -> Unit>(relaxed = true)
 
-        action.execute(activity, callback)
+        val data = action.execute(mindboxView)
 
-        verify(exactly = 1) {
-            callback(
-                InAppActionResult(
-                    redirectUrl = url,
-                    payload = payload,
-                    shouldDismiss = false
-                )
-            )
-        }
+        Assert.assertEquals(url, data.redirectUrl)
+        Assert.assertEquals(payload, data.payload)
+        Assert.assertEquals(false, data.shouldDismiss)
     }
 
     @Test
-    fun `execute of PushPermissionInAppAction triggers permission request and calls callback`() {
-        val activity = mockk<Activity>(relaxed = true)
-        val mindboxNotificationManager = mockk<MindboxNotificationManager>(relaxed = true)
+    fun `execute of PushPermissionInAppAction triggers permission request and return data`() {
         val payload = "testPayload"
-        val action = PushPermissionInAppAction(payload, mindboxNotificationManager)
-        val callback = mockk<(InAppActionResult) -> Unit>(relaxed = true)
+        val action = PushPermissionInAppAction(payload)
 
-        action.execute(activity, callback)
+        val data = action.execute(mindboxView)
 
-        verify { mindboxNotificationManager.requestPermission(activity) }
-        verify {
-            callback(
-                InAppActionResult(
-                    redirectUrl = "",
-                    payload = payload,
-                    shouldDismiss = true
-                )
-            )
-        }
+        verify { mindboxView.requestPermission() }
+        Assert.assertEquals("", data.redirectUrl)
+        Assert.assertEquals(payload, data.payload)
+        Assert.assertEquals(true, data.shouldDismiss)
     }
 }

@@ -1,21 +1,18 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.actions
 
-import android.app.Activity
-import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal interface InAppAction {
-    fun execute(activity: Activity?, callback: (InAppActionResult) -> Unit)
+    fun execute(mindboxView: MindboxView?): InAppActionResult
 }
 
 internal class RedirectUrlInAppAction(val url: String, val payload: String) : InAppAction {
-    override fun execute(activity: Activity?, callback: (InAppActionResult) -> Unit) {
-        callback(
-            InAppActionResult(
-                redirectUrl = url,
-                payload = payload,
-                shouldDismiss = shouldDismiss()
-            )
+    override fun execute(mindboxView: MindboxView?): InAppActionResult {
+        return InAppActionResult(
+            redirectUrl = url,
+            payload = payload,
+            shouldDismiss = shouldDismiss()
         )
     }
 
@@ -25,19 +22,16 @@ internal class RedirectUrlInAppAction(val url: String, val payload: String) : In
 }
 
 internal class PushPermissionInAppAction(
-    val payload: String,
-    val mindboxNotificationManager: MindboxNotificationManager
+    val payload: String
 ) : InAppAction {
 
-    override fun execute(activity: Activity?, callback: (InAppActionResult) -> Unit) {
+    override fun execute(mindboxView: MindboxView?): InAppActionResult {
         mindboxLogI("In-app for push activation was clicked")
-        activity?.let { mindboxNotificationManager.requestPermission(activity = activity) }
-        callback(
-            InAppActionResult(
-                redirectUrl = "",
-                payload = payload,
-                shouldDismiss = shouldDismiss()
-            )
+        mindboxView?.requestPermission()
+        return InAppActionResult(
+            redirectUrl = "",
+            payload = payload,
+            shouldDismiss = shouldDismiss()
         )
     }
 

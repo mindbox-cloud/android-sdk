@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
 
@@ -23,7 +24,7 @@ internal class SnackbarInAppViewHolder(
 
     private var requiredSizes: HashMap<String, Size> = HashMap()
 
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: MindboxView) {
         super.show(currentRoot)
         mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->

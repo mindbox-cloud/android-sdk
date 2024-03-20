@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -22,12 +24,17 @@ class MindboxNotificationManagerImplTest {
 
     @MockK
     private lateinit var mindboxNotificationManager: MindboxNotificationManager
+    private lateinit var mindboxView: MindboxView
+    private lateinit var requestPermissionManager: RequestPermissionManager
 
     @Before
     fun setUp() {
         context = mockk(relaxed = true)
         activity = mockk(relaxed = true)
-        mindboxNotificationManager = MindboxNotificationManagerImpl(context)
+        requestPermissionManager = RequestPermissionManagerImpl()
+        mindboxNotificationManager =
+            MindboxNotificationManagerImpl(context, requestPermissionManager)
+        mindboxView = mockk<MindboxView>(relaxed = true)
     }
 
     @Test
@@ -41,9 +48,12 @@ class MindboxNotificationManagerImplTest {
         every { NotificationManagerCompat.from(context).areNotificationsEnabled() } returns false
         assertFalse(mindboxNotificationManager.isNotificationEnabled())
     }
+
     @Test
     fun `isNotificationEnabled handles exception and returns true by default`() {
-        every { NotificationManagerCompat.from(context).areNotificationsEnabled() } throws RuntimeException("Test exception")
+        every {
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+        } throws RuntimeException("Test exception")
         assertTrue(mindboxNotificationManager.isNotificationEnabled())
     }
 
@@ -59,9 +69,10 @@ class MindboxNotificationManagerImplTest {
 
         mindboxNotificationManager.requestPermission(activity)
 
-        verify(exactly = 0) { activity.requestPermissions(any(),any()) }
+        verify(exactly = 0) { activity.requestPermissions(any(), any()) }
         verify(exactly = 0) { activity.startActivity(any()) }
     }
+
 
     @Test
     fun `requestPermission open temp activity for request permission`() {

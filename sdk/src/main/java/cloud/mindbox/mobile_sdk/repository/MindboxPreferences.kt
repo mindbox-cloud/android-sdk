@@ -27,6 +27,7 @@ internal object MindboxPreferences {
     private const val SHOWN_IDS = "SHOWN_IDS"
     private const val IN_APP_GEO = "IN_APP_GEO"
     private const val LOGS_REQUEST_IDS = "LOGS_REQUEST_IDS"
+    private const val KEY_REQUEST_PERMISSION_COUNT = "key_request_permission_count"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -186,6 +187,17 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_NEED_PUSH_TOKEN_UPDATE, value)
+            }
+        }
+
+    var requestPermissionCount: Int
+        get() =
+            LoggingExceptionHandler.runCatching(defaultValue = 0) {
+                SharedPreferencesManager.getInt(KEY_REQUEST_PERMISSION_COUNT, 0)
+            }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_REQUEST_PERMISSION_COUNT, value)
             }
         }
 }

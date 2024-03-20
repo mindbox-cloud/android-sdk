@@ -3,7 +3,7 @@
     <string name="mindbox_inapp_fetching_timeout">3000</string>
     <string name="mindbox_android_process" />
 
-    <style name="Theme.MindboxTransparent" parent="Theme.AppCompat.NoActionBar">
+    <style name="Theme.MindboxTransparent" parent="Theme.AppCompat.Dialog">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowNoTitle">true</item>
@@ -12,5 +12,6 @@
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowDisablePreview">true</item>
         <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
     </style>
 </resources>

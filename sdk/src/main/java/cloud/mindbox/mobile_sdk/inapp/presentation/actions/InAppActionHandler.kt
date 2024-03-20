@@ -1,24 +1,24 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.actions
 
-import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
-import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
-internal object InAppActionHandler {
+internal class InAppActionHandler {
+
+    var mindboxView: MindboxView? = null
     fun handle(
         action: InAppAction,
-        activity: Activity?,
-        callback: (InAppActionResult) -> Unit
-    ) {
-        LoggingExceptionHandler.runCatching {
-            action.execute(activity = activity, callback = callback)
+        mindboxView: MindboxView?,
+
+        ): InAppActionResult {
+        return LoggingExceptionHandler.runCatching(InAppActionResult("", "", true)) {
+            action.execute(mindboxView = mindboxView)
         }
     }
 
     fun createAction(
         layerAction: Layer.ImageLayer.Action,
-        mindboxNotificationManager: MindboxNotificationManager
     ): InAppAction {
         return when (layerAction) {
             is Layer.ImageLayer.Action.RedirectUrlAction ->
@@ -26,8 +26,7 @@ internal object InAppActionHandler {
 
             is Layer.ImageLayer.Action.PushPermissionAction -> {
                 PushPermissionInAppAction(
-                    payload = layerAction.payload,
-                    mindboxNotificationManager = mindboxNotificationManager
+                    payload = layerAction.payload
                 )
             }
         }

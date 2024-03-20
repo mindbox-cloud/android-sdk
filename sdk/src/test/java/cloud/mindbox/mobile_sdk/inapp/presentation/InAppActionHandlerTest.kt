@@ -4,13 +4,18 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushPermissionInAppAction
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RedirectUrlInAppAction
-import io.mockk.mockk
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 
 class InAppActionHandlerTest {
 
-    private val mindboxNotificationManager = mockk<MindboxNotificationManager>()
+    private lateinit var inAppActionHandler: InAppActionHandler
+
+    @Before
+    fun setUp() {
+        inAppActionHandler = InAppActionHandler()
+    }
 
     @Test
     fun `createAction returns RedirectUrlInAppAction for RedirectUrlAction`() {
@@ -18,9 +23,8 @@ class InAppActionHandlerTest {
         val redirectUrlAction =
             Layer.ImageLayer.Action.RedirectUrlAction(url = "test_url", payload = "test_payload")
 
-        val resultAction = InAppActionHandler.createAction(
-            layerAction = redirectUrlAction,
-            mindboxNotificationManager = mindboxNotificationManager
+        val resultAction = inAppActionHandler.createAction(
+            layerAction = redirectUrlAction
         )
 
         Assert.assertTrue(resultAction is RedirectUrlInAppAction)
@@ -36,11 +40,10 @@ class InAppActionHandlerTest {
             Layer.ImageLayer.Action.PushPermissionAction(payload = "test_payload")
 
         val resultAction =
-            InAppActionHandler.createAction(pushPermissionAction, mindboxNotificationManager)
+            inAppActionHandler.createAction(pushPermissionAction)
 
         Assert.assertTrue(resultAction is PushPermissionInAppAction)
         resultAction as PushPermissionInAppAction
         Assert.assertTrue(resultAction.payload == "test_payload")
-        Assert.assertTrue(resultAction.mindboxNotificationManager == mindboxNotificationManager)
     }
 }
