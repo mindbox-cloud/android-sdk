@@ -61,10 +61,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     abstract fun bind()
 
-    protected open fun addUrlSource(
-        layer: Layer.ImageLayer,
-        inAppCallback: InAppCallback
-    ) {
+    protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
         if (InAppMessageViewDisplayerImpl.isActionExecuted) return
         var redirectUrl: String
         var payload: String
@@ -180,7 +177,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         isInAppMessageActive = true
         initView(currentRoot.container)
         hideKeyboard(currentRoot.container)
-        inAppActionHandler.mindboxView=currentRoot
+        inAppActionHandler.mindboxView = currentRoot
     }
 
     override fun hide() {

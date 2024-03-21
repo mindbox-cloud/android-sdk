@@ -43,11 +43,12 @@ internal class PushActivationActivity : Activity() {
 
             permissionDenied && !shouldShowRationale -> {
                 if (mindboxNotificationManager.shouldOpenSettings) {
-                    if (requestPermissionManager.getCounterValue() > 1) {
+                    if (requestPermissionManager.getRequestCount() > 1) {
                         mindboxLogI("User already rejected permission two times, try open settings")
                         mindboxNotificationManager.openNotificationSettings(this)
                     } else {
                         requestPermissionManager.decreaseRequestCounter()
+                        mindboxLogI("User dismissed request")
                     }
                 } else {
                     mindboxNotificationManager.shouldOpenSettings = true

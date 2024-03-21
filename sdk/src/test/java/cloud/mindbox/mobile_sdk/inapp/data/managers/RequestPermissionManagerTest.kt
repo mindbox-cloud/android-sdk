@@ -76,7 +76,7 @@ class RequestPermissionManagerTest {
     fun `getCounterValue returns the current value of the counter`() {
         every { MindboxPreferences.requestPermissionCount } returns 5
 
-        val result = requestPermissionManager.getCounterValue()
+        val result = requestPermissionManager.getRequestCount()
 
         assertEquals(5, result)
     }

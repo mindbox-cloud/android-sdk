@@ -6,5 +6,5 @@ internal interface RequestPermissionManager {
 
     fun decreaseRequestCounter()
 
-    fun getCounterValue(): Int
+    fun getRequestCount(): Int
 }

@@ -13,5 +13,5 @@ internal class RequestPermissionManagerImpl : RequestPermissionManager {
             MindboxPreferences.requestPermissionCount -= 1
     }
 
-    override fun getCounterValue(): Int = MindboxPreferences.requestPermissionCount
+    override fun getRequestCount(): Int = MindboxPreferences.requestPermissionCount
 }
