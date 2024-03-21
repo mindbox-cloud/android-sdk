@@ -428,13 +428,13 @@ class TreeTargetingTest {
 
 
     @Test
-    fun `check targeting visit GTE returns false when user visit count is higher`() {
+    fun `check targeting visit GTE returns false when user visit count is lower`() {
         mockkObject(MindboxPreferences)
         val kind = KindVisit.GTE
-        val value = 10L
+        val value = 11L
         val targeting = InAppStub.getTargetingVisitNode().copy(kind = kind, value = value)
 
-        val userVisitCount = 11L
+        val userVisitCount = 10L
         every { MindboxPreferences.userVisitCount } returns (userVisitCount.toInt())
 
         val result = targeting.checkTargeting(mockk())
@@ -443,13 +443,13 @@ class TreeTargetingTest {
     }
 
     @Test
-    fun `check targeting visit GTE returns true when user visit count is lower`() {
+    fun `check targeting visit GTE returns true when user visit count is higher`() {
         mockkObject(MindboxPreferences)
         val kind = KindVisit.GTE
-        val value = 10L
+        val value = 9L
         val targeting = InAppStub.getTargetingVisitNode().copy(kind = kind, value = value)
 
-        val userVisitCount = 9L
+        val userVisitCount = 10L
         every { MindboxPreferences.userVisitCount } returns (userVisitCount.toInt())
 
         val result = targeting.checkTargeting(mockk())
@@ -473,13 +473,13 @@ class TreeTargetingTest {
     }
 
     @Test
-    fun `check targeting visit LTE returns false when user visit count is lower`() {
+    fun `check targeting visit LTE returns false when user visit count is higher`() {
         mockkObject(MindboxPreferences)
         val kind = KindVisit.LTE
-        val value = 12L
+        val value = 11L
         val targeting = InAppStub.getTargetingVisitNode().copy(kind = kind, value = value)
 
-        val userVisitCount = 11L
+        val userVisitCount = 12L
         every { MindboxPreferences.userVisitCount } returns (userVisitCount.toInt())
 
         val result = targeting.checkTargeting(mockk())
@@ -488,13 +488,13 @@ class TreeTargetingTest {
     }
 
     @Test
-    fun `check targeting visit LTE returns true when user visit count is lower`() {
+    fun `check targeting visit LTE returns true when user visit count is higher`() {
         mockkObject(MindboxPreferences)
         val kind = KindVisit.LTE
-        val value = 8L
+        val value = 9L
         val targeting = InAppStub.getTargetingVisitNode().copy(kind = kind, value = value)
 
-        val userVisitCount = 9L
+        val userVisitCount = 8L
         every { MindboxPreferences.userVisitCount } returns (userVisitCount.toInt())
 
         val result = targeting.checkTargeting(mockk())
