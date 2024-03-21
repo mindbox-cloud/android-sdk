@@ -8,7 +8,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-class InAppActionHandlerTest {
+class InAppActionHandlerTest<InAppAction> {
 
     private lateinit var inAppActionHandler: InAppActionHandler
 
@@ -20,11 +20,11 @@ class InAppActionHandlerTest {
     @Test
     fun `createAction returns RedirectUrlInAppAction for RedirectUrlAction`() {
 
-        val redirectUrlAction =
-            Layer.ImageLayer.Action.RedirectUrlAction(url = "test_url", payload = "test_payload")
-
-        val resultAction = inAppActionHandler.createAction(
-            layerAction = redirectUrlAction
+        val resultAction = callPrivateMethod<InAppAction>(
+            inAppActionHandler,
+            "createAction",
+            arrayOf(Class.forName("cloud.mindbox.mobile_sdk.inapp.domain.models.Layer\$ImageLayer\$Action")),
+            arrayOf(Layer.ImageLayer.Action.RedirectUrlAction("test_url", "test_payload"))
         )
 
         Assert.assertTrue(resultAction is RedirectUrlInAppAction)
@@ -33,17 +33,31 @@ class InAppActionHandlerTest {
         Assert.assertTrue(resultAction.payload == "test_payload")
     }
 
+
+
     @Test
     fun `createAction returns PushPermissionInAppAction for PushPermissionAction`() {
 
-        val pushPermissionAction =
-            Layer.ImageLayer.Action.PushPermissionAction(payload = "test_payload")
-
-        val resultAction =
-            inAppActionHandler.createAction(pushPermissionAction)
+        val resultAction = callPrivateMethod<InAppAction>(
+            inAppActionHandler,
+            "createAction",
+            arrayOf(Class.forName("cloud.mindbox.mobile_sdk.inapp.domain.models.Layer\$ImageLayer\$Action")),
+            arrayOf(Layer.ImageLayer.Action.PushPermissionAction("test_payload"))
+        )
 
         Assert.assertTrue(resultAction is PushPermissionInAppAction)
         resultAction as PushPermissionInAppAction
         Assert.assertTrue(resultAction.payload == "test_payload")
+    }
+
+    private fun <R> callPrivateMethod(
+        instance: Any,
+        methodName: String,
+        parameterTypes: Array<Class<*>>,
+        arguments: Array<Any>
+    ): R {
+        val method = instance::class.java.getDeclaredMethod(methodName, *parameterTypes)
+        method.isAccessible = true
+        return method.invoke(instance, *arguments) as R
     }
 }
