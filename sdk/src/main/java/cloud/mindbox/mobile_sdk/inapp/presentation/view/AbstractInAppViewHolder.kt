@@ -72,7 +72,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         currentDialog.setSingleClickListener {
 
             val inAppData = inAppActionHandler.handle(
-                inAppActionHandler.createAction(layerAction = layer.action),
+                layer.action,
                 inAppActionHandler.mindboxView
             )
 

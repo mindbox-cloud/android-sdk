@@ -8,16 +8,16 @@ internal class InAppActionHandler {
 
     var mindboxView: MindboxView? = null
     fun handle(
-        action: InAppAction,
-        mindboxView: MindboxView?,
-
+        actionLayer: Layer.ImageLayer.Action,
+        mindboxView: MindboxView?
         ): InAppActionResult {
         return LoggingExceptionHandler.runCatching(InAppActionResult("", "", true)) {
+            val action = createAction(layerAction = actionLayer)
             action.execute(mindboxView = mindboxView)
         }
     }
 
-    fun createAction(
+   private fun createAction(
         layerAction: Layer.ImageLayer.Action,
     ): InAppAction {
         return when (layerAction) {
