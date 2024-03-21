@@ -354,11 +354,11 @@ internal sealed class TreeTargeting(open val type: String) :
             val userVisitCount = MindboxPreferences.userVisitCount.toLong()
             return when (kind) {
                 KindVisit.GTE -> {
-                    value >= userVisitCount
+                    userVisitCount >= value
                 }
 
                 KindVisit.LTE -> {
-                    value <= userVisitCount
+                    userVisitCount <= value
                 }
 
                 KindVisit.EQUALS -> {
