@@ -4,12 +4,18 @@ package cloud.mindbox.mobile_sdk.di.modules
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.domain.*
+import cloud.mindbox.mobile_sdk.inapp.domain.CallbackInteractorImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppProcessingManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppEventManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppFilteringManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManagerImpl
 
 
 internal fun DomainModule(
@@ -57,6 +63,9 @@ internal fun DomainModule(
             mixer = customerAbMixer,
             repository = mobileConfigRepository
         )
+
+    override val userVisitManager: UserVisitManager
+        get() = UserVisitManagerImpl()
 
     override val customerAbMixer: CustomerAbMixer
          get() = CustomerAbMixerImpl()

@@ -1652,6 +1652,204 @@ internal class InAppValidatorTest {
     }
 
     @Test
+    fun `validate targeting dto is visit node and its valid with gte`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "gte", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and its valid with lte`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "lte", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and its valid with equals`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "equals", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and its valid with not equals`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "notEquals", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and type is null`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = null, kind = "notBlank", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and type is blank`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "", kind = "notBlank", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and kind is null`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = null, value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and kind is blank`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and kind is unknown`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "notBlank", value = 1L
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and value is null`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "notBlank", value = null
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is visit node and value is less than 1`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
+                        type = "notBlank", kind = "notBlank", value = 0
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
     fun `in-app version is lower than required`() {
         val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
         assertFalse(

@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidato
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.MonitoringDatabase
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
@@ -120,6 +121,7 @@ internal interface DomainModule : MindboxModule {
     val inAppFilteringManager: InAppFilteringManager
     val customerAbMixer: CustomerAbMixer
     val inAppABTestLogic: InAppABTestLogic
+    val userVisitManager: UserVisitManager
 }
 
 internal interface ApiModule : MindboxModule {

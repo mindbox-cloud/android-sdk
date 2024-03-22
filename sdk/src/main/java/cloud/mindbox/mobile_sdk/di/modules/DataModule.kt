@@ -327,6 +327,9 @@ internal fun DataModule(
                 ).registerSubtype(
                     TreeTargetingDto.ViewProductNodeDto::class.java,
                     TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.VisitNodeDto::class.java,
+                    TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME
                 )
             ).create()
     }

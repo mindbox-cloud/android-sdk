@@ -86,6 +86,8 @@ object Mindbox : MindboxLog {
 
     private lateinit var lifecycleManager: LifecycleManager
 
+    private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
+
     internal var pushServiceHandler: PushServiceHandler? = null
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
@@ -482,6 +484,9 @@ object Mindbox : MindboxLog {
 
             if (!firstInitCall) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            } else
+            {
+               userVisitManager.saveUserVisit()
             }
 
             initScope.launch {
