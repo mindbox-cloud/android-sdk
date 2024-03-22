@@ -65,14 +65,8 @@ internal class InAppInteractorImpl(
                 if (isInAppShown()) inAppTargetingChannel.send(event)
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps =
-                    inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).run {
-                        inAppFilteringManager.filterPushInAppsByPermissionStatus(this)
-                    }.also {
-                        mindboxLogI("InApps was filtered by notification status")
-                    }
+                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
-
                 inAppProcessingManager.chooseInAppToShow(
                    filteredInApps,
                     event
@@ -110,10 +104,7 @@ internal class InAppInteractorImpl(
         logI("Whole InApp list = $inApps")
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
         inAppTargetingChannel.consumeAsFlow().collect { event ->
-            val filteredInApps =
-                inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).run {
-                    inAppFilteringManager.filterPushInAppsByPermissionStatus(this)
-                }
+            val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
