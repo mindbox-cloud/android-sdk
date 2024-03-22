@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -15,7 +14,7 @@ internal class MigrationManager(val context: Context) {
             version282()
         ).filter { it.isNeeded }
             .onEach { migration ->
-                MindboxLoggerImpl.runCatching {
+                loggingRunCatching {
                     mindboxLogI("Run migration '${migration.description}'")
                     migration.run()
                 }
