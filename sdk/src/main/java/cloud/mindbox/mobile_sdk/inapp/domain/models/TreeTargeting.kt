@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
@@ -381,6 +382,35 @@ internal sealed class TreeTargeting(open val type: String) :
 
         override fun hasGeoNode(): Boolean {
             return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
+        }
+
+        override suspend fun getOperationsSet(): Set<String> {
+            return emptySet()
+        }
+    }
+
+    internal data class PushPermissionNode(override val type: String, val value: Boolean): TreeTargeting(type) {
+
+        private val permissionManager: PermissionManager by mindboxInject { permissionManager }
+
+        override fun checkTargeting(data: TargetingData): Boolean {
+            return permissionManager.isNotificationEnabled() == value
+        }
+
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
+            return
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+           return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+           return false
         }
 
         override fun hasOperationNode(): Boolean {

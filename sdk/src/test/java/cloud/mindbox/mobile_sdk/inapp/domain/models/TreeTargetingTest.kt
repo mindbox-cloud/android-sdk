@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -52,6 +53,8 @@ class TreeTargetingTest {
             )
     }
 
+    private val mockkPushPermissionManager: PermissionManager = mockk()
+
     @Before
     fun onTestStart() {
         mockkObject(MindboxEventManager)
@@ -64,6 +67,7 @@ class TreeTargetingTest {
             every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
             every { inAppGeoRepository } returns mockkInAppGeoRepository
             every { gson } returns Gson()
+            every { permissionManager } returns mockkPushPermissionManager
         }
     }
 
@@ -575,6 +579,46 @@ class TreeTargetingTest {
         val result = targeting.checkTargeting(mockk())
 
         assertTrue(result)
+    }
+
+    @Test
+    fun `check targeting push permission with value true returns true when push enabled`() {
+        every {
+            mockkPushPermissionManager.isNotificationEnabled()
+        } returns true
+        val targeting = InAppStub.getTargetingPushPermissionNode().copy(value = true)
+
+        assertTrue(targeting.checkTargeting(mockk()))
+    }
+
+    @Test
+    fun `check targeting push permission with value false returns true when push disabled`() {
+        every {
+            mockkPushPermissionManager.isNotificationEnabled()
+        } returns false
+        val targeting = InAppStub.getTargetingPushPermissionNode().copy(value = false)
+
+        assertTrue(targeting.checkTargeting(mockk()))
+    }
+
+    @Test
+    fun `check targeting push permission with value true returns false when push disabled`() {
+        every {
+            mockkPushPermissionManager.isNotificationEnabled()
+        } returns false
+        val targeting = InAppStub.getTargetingPushPermissionNode().copy(value = true)
+
+        assertFalse(targeting.checkTargeting(mockk()))
+    }
+
+    @Test
+    fun `check targeting push permission with value false returns false when push enabled`() {
+        every {
+            mockkPushPermissionManager.isNotificationEnabled()
+        } returns true
+        val targeting = InAppStub.getTargetingPushPermissionNode().copy(value = false)
+
+        assertFalse(targeting.checkTargeting(mockk()))
     }
 
     class TestTargetingData(

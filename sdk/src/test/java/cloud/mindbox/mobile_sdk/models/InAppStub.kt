@@ -268,6 +268,14 @@ internal class InAppStub {
             return TreeTargeting.CityNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
         }
 
+        fun getTargetingPushPermissionNodeDto(): TreeTargetingDto.PushPermissionDto {
+            return TreeTargetingDto.PushPermissionDto(type = null, value = null)
+        }
+
+        fun getTargetingPushPermissionNode(): TreeTargeting.PushPermissionNode {
+            return TreeTargeting.PushPermissionNode(type = "", value = false)
+        }
+
         fun getTargetingVisitNodeDto(): TreeTargetingDto.VisitNodeDto {
             return TreeTargetingDto.VisitNodeDto(type = null, kind = null, value = null)
         }

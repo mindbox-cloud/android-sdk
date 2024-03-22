@@ -182,4 +182,15 @@ internal sealed class TreeTargetingDto {
             const val VISIT_JSON_NAME = "visit"
         }
     }
+
+    internal data class PushPermissionDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("value")
+        val value: Boolean?
+    ): TreeTargetingDto() {
+        companion object {
+            const val PUSH_PERMISSION_JSON_NAME = "pushEnabled"
+        }
+    }
 }

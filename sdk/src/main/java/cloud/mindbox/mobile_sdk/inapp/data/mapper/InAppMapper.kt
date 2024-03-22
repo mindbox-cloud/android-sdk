@@ -352,6 +352,11 @@ internal class InAppMapper {
                     segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
                     segmentExternalId = treeTargetingDto.segmentExternalId!!
                 )
+
+                is TreeTargetingDto.PushPermissionDto -> TreeTargeting.PushPermissionNode(
+                    type = TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME,
+                    value = treeTargetingDto.value!!
+                )
             }
         }
     }
