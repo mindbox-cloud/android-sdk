@@ -1,12 +1,19 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
-internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepository) :
+internal class InAppFilteringManagerImpl(
+    private val inAppRepository: InAppRepository,
+    private val permissionManager:PermissionManager
+) :
     InAppFilteringManager {
 
     override fun filterNotShownInApps(shownInApps: Set<String>, inApps: List<InApp>): List<InApp> {
@@ -50,4 +57,25 @@ internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepos
         abtestsInAppsPool: Collection<String>
     ): List<InApp> = inApps.filter { inApp: InApp -> abtestsInAppsPool.contains(inApp.id) }
 
+    override fun filterPushInAppsByPermissionStatus(inApps: List<InApp>): List<InApp> =
+        if (permissionManager.isNotificationEnabled()) {
+            mindboxLogI("Notification already enabled. Remove pushAction inapps")
+            inApps.filter { inApp ->
+                inApp.form.variants.any { hasInAppImageLayerWithRedirectUrlAction(it) }
+            }
+        } else {
+            mindboxLogI("Notification doesn't enabled. Use all inapps")
+            inApps
+        }
+
+    private fun hasInAppImageLayerWithRedirectUrlAction(inAppVariant: InAppType): Boolean {
+        val layers = when (inAppVariant) {
+            is InAppType.Snackbar -> inAppVariant.layers
+            is InAppType.ModalWindow -> inAppVariant.layers
+        }
+        return layers.firstOrNull { layer ->
+            layer is Layer.ImageLayer && layer.action is Layer.ImageLayer.Action.RedirectUrlAction
+        } != null
+    }
 }
+

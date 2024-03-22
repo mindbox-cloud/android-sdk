@@ -5,7 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
 import com.jakewharton.threetenabp.AndroidThreeTen
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test

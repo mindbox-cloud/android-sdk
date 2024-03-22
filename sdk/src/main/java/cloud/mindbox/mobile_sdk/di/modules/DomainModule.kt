@@ -53,7 +53,10 @@ internal fun DomainModule(
         get() = InAppEventManagerImpl()
 
     override val inAppFilteringManager: InAppFilteringManager
-        get() = InAppFilteringManagerImpl(inAppRepository = inAppRepository)
+        get() = InAppFilteringManagerImpl(
+            inAppRepository = inAppRepository,
+            permissionManager = permissionManager
+        )
 
     override val inAppABTestLogic: InAppABTestLogic
         get() = InAppABTestLogic(

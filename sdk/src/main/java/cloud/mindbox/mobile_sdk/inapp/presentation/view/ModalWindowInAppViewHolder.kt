@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 
@@ -72,7 +73,7 @@ internal class ModalWindowInAppViewHolder(
         }
     }
 
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: MindboxView) {
         super.show(currentRoot)
         mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->

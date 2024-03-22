@@ -436,6 +436,52 @@ internal class MobileConfigSerializationManagerTest {
     }
 
     @Test
+    fun `deserialize to modal window inApp form dto with PushPermission action success`() {
+
+        val expectedResult = InAppStub.getFormDto().copy(
+            variants = listOf(
+                InAppStub.getModalWindowDto().copy(
+                    type = "modal", content = InAppStub.getModalWindowContentDto().copy(
+                        background = InAppStub.getBackgroundDto().copy(layers = listOf(InAppStub.getImageLayerDto().copy(
+                            action = InAppStub.getPushPermissionActionDto().copy(
+                                intentPayload = "123", type = "pushPermission"
+                            ), source = InAppStub.getUrlSourceDto()
+                        ))),elements = null
+                    ),
+                )
+            )
+        )
+
+        val actualResult = mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject().apply {
+            add("variants", JsonArray().apply {
+                val variantObject = JsonObject().apply {
+                    addProperty("${"$"}type", "modal")
+                    add("content", JsonObject().apply {
+                        add("background", JsonObject().apply {
+                            add("layers", JsonArray().apply {
+                                val imageLayerObject = JsonObject().apply {
+                                    add("action", JsonObject().apply {
+                                        addProperty("intentPayload", "123")
+                                        addProperty("${"$"}type", "pushPermission")
+                                    })
+                                    add("source", JsonObject().apply {
+                                        addProperty("${"$"}type", "url")
+                                        addProperty("value", "")
+                                    })
+                                    addProperty("${"$"}type", "image")
+                                }
+                                add(imageLayerObject)
+                            })
+                        })
+                    })
+                }
+                add(variantObject)
+            })
+        })
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
     fun `deserialize to inApp formDto invalid json object`() {
         assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject()))
     }

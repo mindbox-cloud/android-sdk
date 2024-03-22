@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
-import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 
 internal interface InAppViewHolder<T : InAppType> {
 
@@ -10,7 +10,7 @@ internal interface InAppViewHolder<T : InAppType> {
 
     val isActive: Boolean
 
-    fun show(currentRoot: ViewGroup)
+    fun show(currentRoot: MindboxView)
 
     fun hide()
 
