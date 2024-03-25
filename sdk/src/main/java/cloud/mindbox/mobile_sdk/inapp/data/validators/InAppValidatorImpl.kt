@@ -135,6 +135,10 @@ internal class InAppValidatorImpl(
                     GREATER_OR_EQUALS, LOWER_OR_EQUALS, EQUALS, NOT_EQUALS
                 ) && (targeting.value?.let { it > 0 } == true)
             }
+
+            is TreeTargetingDto.PushPermissionDto -> {
+                !targeting.type.isNullOrBlank() && targeting.value != null
+            }
         }
     }
 

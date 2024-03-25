@@ -330,6 +330,9 @@ internal fun DataModule(
                 ).registerSubtype(
                     TreeTargetingDto.VisitNodeDto::class.java,
                     TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.PushPermissionDto::class.java,
+                    TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
                 )
             ).create()
     }

@@ -1,9 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -13,7 +10,6 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -27,9 +23,6 @@ internal class InAppFilteringManagerTest {
 
     @MockK
     private lateinit var inAppRepository: InAppRepository
-
-    @MockK
-    private lateinit var permissionManager: PermissionManager
 
     @Test
     fun `filter not shown inApps`() {
@@ -127,92 +120,4 @@ internal class InAppFilteringManagerTest {
         assertEquals(expectedResult, actualResult)
     }
 
-    @Test
-    fun `filterPushInAppsByPermissionStatus returns all inApps when notifications disabled`() {
-        every { permissionManager.isNotificationEnabled() } returns false
-
-        val inAppWithPushPermissionAction = InAppStub.getInApp().copy(
-            form = Form(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        type = "modal",
-                        inAppId = "123",
-                        layers = listOf(
-                            Layer.ImageLayer(
-                                action = InAppStub.getPushPermissionAction(),
-                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val inAppWithRedirectUrlAction = InAppStub.getInApp().copy(
-            form = Form(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        type = "modal",
-                        inAppId = "123",
-                        layers = listOf(
-                            Layer.ImageLayer(
-                                action = InAppStub.getRedirectUrlAction(),
-                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val inApps = listOf(inAppWithRedirectUrlAction, inAppWithPushPermissionAction)
-        val filteredInApps = inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
-
-        assertEquals(filteredInApps, inApps)
-    }
-
-    @Test
-    fun `filterPushInAppsByPermissionStatus filters  inApps with ImageLayer having PushPermissionAction when notifications enabled`() {
-        every { permissionManager.isNotificationEnabled() } returns true
-
-        val inAppWithPushPermissionAction = InAppStub.getInApp().copy(
-            form = Form(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        type = "modal",
-                        inAppId = "123",
-                        layers = listOf(
-                            Layer.ImageLayer(
-                                action = InAppStub.getPushPermissionAction(),
-                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val inAppWithRedirectUrlAction = InAppStub.getInApp().copy(
-            form = Form(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        type = "modal",
-                        inAppId = "123",
-                        layers = listOf(
-                            Layer.ImageLayer(
-                                action = InAppStub.getRedirectUrlAction(),
-                                source = InAppStub.getUrlSource().copy(url = "https://mindbox.com")
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val inApps = listOf(inAppWithRedirectUrlAction, inAppWithPushPermissionAction)
-        val filteredInApps = inAppFilteringManager.filterPushInAppsByPermissionStatus(inApps)
-
-        assertEquals(filteredInApps, listOf(inAppWithRedirectUrlAction))
-        assertNotEquals(filteredInApps, inApps)
-    }
 }

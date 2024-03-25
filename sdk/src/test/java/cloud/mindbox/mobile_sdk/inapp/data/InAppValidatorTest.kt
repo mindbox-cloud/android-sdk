@@ -1850,6 +1850,78 @@ internal class InAppValidatorTest {
     }
 
     @Test
+    fun `validate targeting dto is pushPermissionNode and value is null`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingPushPermissionNodeDto().copy(
+                        type = "notBlank", value = null
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is pushPermissionNode and value is true`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingPushPermissionNodeDto().copy(
+                        type = "notBlank", value = true
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is pushPermissionNode and value is false`() {
+        assertTrue(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingPushPermissionNodeDto().copy(
+                        type = "notBlank", value = false
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `validate targeting dto is pushPermissionNode and type is null`() {
+        assertFalse(
+            inAppValidator.validateInApp(
+                InAppStub.getInAppDto().copy(
+                    targeting = InAppStub.getTargetingPushPermissionNodeDto().copy(
+                        type = null, value = true
+                    ), form = InAppStub.getInAppDto().form?.copy(
+                        variants = listOf(
+                            InAppStub.getModalWindowDto()
+                                .copy(type = "def")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
     fun `in-app version is lower than required`() {
         val lowInAppVersion = Constants.SDK_VERSION_NUMERIC - 1
         assertFalse(
