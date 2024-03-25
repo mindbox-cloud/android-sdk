@@ -206,10 +206,10 @@ internal class InAppMapper {
                                                     left = payloadDto.content.position.margin.left!!.roundToInt(),
                                                     right = payloadDto.content.position.margin.right!!.roundToInt(),
                                                     bottom = payloadDto.content.position.margin.bottom!!.roundToInt()
-                                            ),
+                                                ),
 
 
-                                            )
+                                                )
                                         )
                                     }
 
@@ -239,7 +239,7 @@ internal class InAppMapper {
                     )
                 } ?: emptyList(),
                 operations = inAppConfigResponse.settings?.map { (key, value) ->
-                    key.enumValue<OperationName>() to OperationSystemName(value.systemName)
+                    key.enumValue<OperationName>() to OperationSystemName(value.systemName.lowercase())
                 }?.toMap() ?: emptyMap(),
                 abtests = inAppConfigResponse.abtests?.map { dto ->
                     ABTest(
