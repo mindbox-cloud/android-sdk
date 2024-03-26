@@ -14,7 +14,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:finishOnTaskLaunch="true"
-            android:launchMode="singleInstance"
+            android:launchMode="singleTask"
             android:noHistory="true"
             android:theme="@style/Theme.MindboxTransparent">
         </activity>
