@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -65,9 +66,9 @@ internal class InAppInteractorImpl(
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
-                mindboxLogD("Event: ${event.name} combined with $filteredInApps")
+                mindboxLogI("Event: ${event.name} combined with $filteredInApps")
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInApps,
+                   filteredInApps,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
@@ -103,8 +104,7 @@ internal class InAppInteractorImpl(
         logI("Whole InApp list = $inApps")
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
         inAppTargetingChannel.consumeAsFlow().collect { event ->
-            val filteredInApps =
-                inAppFilteringManager.filterInAppsByEvent(inApps, event)
+            val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {

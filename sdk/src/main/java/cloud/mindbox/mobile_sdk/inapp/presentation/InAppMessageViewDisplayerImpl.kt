@@ -1,10 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
-import androidx.core.view.*
+import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
@@ -14,8 +18,14 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
-import java.util.*
+import java.util.LinkedList
 
+internal interface MindboxView {
+
+    val container: ViewGroup
+
+    fun requestPermission()
+}
 
 internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: InAppImageSizeStorage) :
     InAppMessageViewDisplayer {
@@ -35,6 +45,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
+    private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
 
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
@@ -160,7 +171,17 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         }
 
         currentActivity?.root?.let { root ->
-            currentHolder?.show(root)
+            currentHolder?.show(object : MindboxView {
+                override val container: ViewGroup
+                    get() = root
+
+                override fun requestPermission() {
+                    currentActivity?.let { activity ->
+                        mindboxNotificationManager.requestPermission(activity = activity)
+                    }
+                }
+
+            })
         } ?: run {
             mindboxLogE("failed to show inApp: currentRoot is null")
         }

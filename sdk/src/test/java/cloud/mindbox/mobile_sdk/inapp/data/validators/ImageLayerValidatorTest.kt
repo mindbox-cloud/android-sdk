@@ -6,7 +6,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockk
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -130,6 +131,57 @@ internal class ImageLayerValidatorTest {
         // Act
         val actionValidator = ImageLayerValidator.ActionValidator()
         val isValid = actionValidator.isValid(redirectUrlActionDto)
+
+        // Assert
+        assertFalse(isValid)
+    }
+
+    @Test
+    fun `ActionValidator isValid should return true for valid PushPermissionActionDto`() {
+        // Arrange
+        val pushPermissionActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto(
+                type = BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME,
+                intentPayload = "payload"
+            )
+
+        // Act
+        val actionValidator = ImageLayerValidator.ActionValidator()
+        val isValid = actionValidator.isValid(pushPermissionActionDto)
+
+        // Assert
+        assertTrue(isValid)
+    }
+
+    @Test
+    fun `ActionValidator isValid should return false for invalid PushPermissionActionDto`() {
+        // Arrange
+        val pushPermissionActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto(
+                type = BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME,
+                intentPayload = null
+            )
+
+        // Act
+        val actionValidator = ImageLayerValidator.ActionValidator()
+        val isValid = actionValidator.isValid(pushPermissionActionDto)
+
+        // Assert
+        assertFalse(isValid)
+    }
+
+    @Test
+    fun `ActionValidator isValid should return false for invalid Action Type in PushPermissionActionDto `() {
+        // Arrange
+        val pushPermissionActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto(
+                type = "invalidType",
+                intentPayload = "test_payload"
+            )
+
+        // Act
+        val actionValidator = ImageLayerValidator.ActionValidator()
+        val isValid = actionValidator.isValid(pushPermissionActionDto)
 
         // Assert
         assertFalse(isValid)

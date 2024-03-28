@@ -79,11 +79,29 @@ internal class InAppStub {
                 value = ""
             )
 
+        fun getPushPermissionActionDto(): BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto =
+            BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto(
+                intentPayload = "",
+                type = "pushPermission",
+            )
+
+        fun getRedirectUrlAction(): Layer.ImageLayer.Action.RedirectUrlAction =
+            Layer.ImageLayer.Action.RedirectUrlAction(
+                payload = "",
+                url = ""
+            )
+
+        fun getPushPermissionAction(): Layer.ImageLayer.Action.PushPermissionAction=
+            Layer.ImageLayer.Action.PushPermissionAction(
+                payload = ""
+            )
         fun getUrlSourceDto(): BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
             BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
                 type = "url",
                 value = ""
             )
+        fun getUrlSource(): Layer.ImageLayer.Source.UrlSource =
+            Layer.ImageLayer.Source.UrlSource(url = "")
 
         fun getCloseButtonElementDto(): ElementDto.CloseButtonElementDto =
             ElementDto.CloseButtonElementDto(
@@ -248,6 +266,22 @@ internal class InAppStub {
 
         fun getTargetingCityNode(): TreeTargeting.CityNode {
             return TreeTargeting.CityNode(type = "", kind = Kind.POSITIVE, ids = emptyList())
+        }
+
+        fun getTargetingPushPermissionNodeDto(): TreeTargetingDto.PushPermissionDto {
+            return TreeTargetingDto.PushPermissionDto(type = null, value = null)
+        }
+
+        fun getTargetingPushPermissionNode(): TreeTargeting.PushPermissionNode {
+            return TreeTargeting.PushPermissionNode(type = "", value = false)
+        }
+
+        fun getTargetingVisitNodeDto(): TreeTargetingDto.VisitNodeDto {
+            return TreeTargetingDto.VisitNodeDto(type = null, kind = null, value = null)
+        }
+
+        fun getTargetingVisitNode(): TreeTargeting.VisitNode {
+            return TreeTargeting.VisitNode(type = "", kind = KindVisit.GTE, value = 0L)
         }
 
         fun getTargetingRegionNode(): TreeTargeting.RegionNode {

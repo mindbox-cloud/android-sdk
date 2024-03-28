@@ -30,6 +30,7 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.MigrationManager
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.jakewharton.threetenabp.AndroidThreeTen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -85,6 +86,8 @@ object Mindbox : MindboxLog {
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
     private lateinit var lifecycleManager: LifecycleManager
+
+    private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
 
     internal var pushServiceHandler: PushServiceHandler? = null
 
@@ -307,23 +310,23 @@ object Mindbox : MindboxLog {
      * @param pushService - the instance of [MindboxPushService], which handles push notifications.
      */
     fun updatePushToken(context: Context, token: String, pushService: MindboxPushService) =
-        MindboxLoggerImpl.runCatching {
+        loggingRunCatching {
             initComponents(context)
             mindboxLogI("updatePushToken token: $token with provider $pushService")
 
             if (token.trim().isEmpty()) {
                 mindboxLogW("Token is empty! Skipping update token.")
-                return@runCatching
+                return@loggingRunCatching
             }
 
             if (MindboxPreferences.isFirstInitialize) {
                 mindboxLogW("Mindbox init was never called. Skipping update token.")
-                return@runCatching
+                return@loggingRunCatching
             }
 
             if (pushService.tag != pushServiceHandler?.notificationProvider) {
                 mindboxLogW("Token provider ${pushService.tag} not matching with selected provider ${pushServiceHandler?.notificationProvider}. Skipping update token.")
-                return@runCatching
+                return@loggingRunCatching
             }
 
             mindboxScope.launch {
@@ -482,6 +485,9 @@ object Mindbox : MindboxLog {
 
             if (!firstInitCall) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+            } else
+            {
+               userVisitManager.saveUserVisit()
             }
 
             initScope.launch {

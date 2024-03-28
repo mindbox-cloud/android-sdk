@@ -83,6 +83,12 @@ internal class InAppMapper {
                                 )
                             }
 
+                            is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto -> {
+                                Layer.ImageLayer.Action.PushPermissionAction(
+                                    payload = layerDto.action.intentPayload!!
+                                )
+                            }
+
                             else -> {
                                 error("Unknown action cannot be mapped. Should never happen because of validators")
                             }
@@ -274,6 +280,12 @@ internal class InAppMapper {
                     )
                 }
 
+                is TreeTargetingDto.VisitNodeDto -> TreeTargeting.VisitNode(
+                    TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME,
+                    treeTargetingDto.kind.enumValue(),
+                    treeTargetingDto.value!!
+                )
+
                 is TreeTargetingDto.TrueNodeDto -> TreeTargeting.TrueNode(TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME)
                 is TreeTargetingDto.IntersectionNodeDto -> TreeTargeting.IntersectionNode(
                     type = TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME,
@@ -339,6 +351,11 @@ internal class InAppMapper {
                     kind = treeTargetingDto.kind.enumValue(),
                     segmentationExternalId = treeTargetingDto.segmentationExternalId!!,
                     segmentExternalId = treeTargetingDto.segmentExternalId!!
+                )
+
+                is TreeTargetingDto.PushPermissionDto -> TreeTargeting.PushPermissionNode(
+                    type = TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME,
+                    value = treeTargetingDto.value!!
                 )
             }
         }

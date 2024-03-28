@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
 internal interface ITargeting {
     fun checkTargeting(data: TargetingData): Boolean
@@ -32,6 +34,13 @@ internal interface TargetingInfo {
 internal enum class Kind {
     POSITIVE,
     NEGATIVE
+}
+
+internal enum class KindVisit {
+    GTE,
+    LTE,
+    EQUALS,
+    NOT_EQUALS
 }
 
 internal enum class KindAny {
@@ -336,6 +345,80 @@ internal sealed class TreeTargeting(open val type: String) :
 
         override fun hasOperationNode(): Boolean {
             return false
+        }
+    }
+
+    internal data class VisitNode(override val type: String, val kind: KindVisit, val value: Long) :
+        TreeTargeting(type) {
+
+        override fun checkTargeting(data: TargetingData): Boolean {
+            val userVisitCount = MindboxPreferences.userVisitCount.toLong()
+            return when (kind) {
+                KindVisit.GTE -> {
+                    userVisitCount >= value
+                }
+
+                KindVisit.LTE -> {
+                    userVisitCount <= value
+                }
+
+                KindVisit.EQUALS -> {
+                    value == userVisitCount
+                }
+
+                KindVisit.NOT_EQUALS -> {
+                    value != userVisitCount
+                }
+            }
+        }
+
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
+            return
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+            return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+            return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
+        }
+
+        override suspend fun getOperationsSet(): Set<String> {
+            return emptySet()
+        }
+    }
+
+    internal data class PushPermissionNode(override val type: String, val value: Boolean): TreeTargeting(type) {
+
+        private val permissionManager: PermissionManager by mindboxInject { permissionManager }
+
+        override fun checkTargeting(data: TargetingData): Boolean {
+            return permissionManager.isNotificationEnabled() == value
+        }
+
+        override suspend fun fetchTargetingInfo(data: TargetingData) {
+            return
+        }
+
+        override fun hasSegmentationNode(): Boolean {
+           return false
+        }
+
+        override fun hasGeoNode(): Boolean {
+           return false
+        }
+
+        override fun hasOperationNode(): Boolean {
+            return false
+        }
+
+        override suspend fun getOperationsSet(): Set<String> {
+            return emptySet()
         }
     }
 }

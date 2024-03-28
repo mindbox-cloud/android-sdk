@@ -6,7 +6,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
-internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepository) :
+internal class InAppFilteringManagerImpl(
+    private val inAppRepository: InAppRepository
+) :
     InAppFilteringManager {
 
     override fun filterNotShownInApps(shownInApps: Set<String>, inApps: List<InApp>): List<InApp> {
@@ -51,3 +53,4 @@ internal class InAppFilteringManagerImpl(private val inAppRepository: InAppRepos
     ): List<InApp> = inApps.filter { inApp: InApp -> abtestsInAppsPool.contains(inApp.id) }
 
 }
+

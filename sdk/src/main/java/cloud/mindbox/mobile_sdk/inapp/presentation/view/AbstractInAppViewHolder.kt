@@ -8,10 +8,13 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
@@ -38,6 +41,12 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     private var isActionExecuted: Boolean = false
 
+    private val mindboxNotificationManager by mindboxInject {
+        mindboxNotificationManager
+    }
+
+    private var inAppActionHandler = InAppActionHandler()
+
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
@@ -54,22 +63,29 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
 
     protected open fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
         if (InAppMessageViewDisplayerImpl.isActionExecuted) return
+        var redirectUrl: String
+        var payload: String
+        var shouldDismiss: Boolean
         currentDialog.setSingleClickListener {
-            var redirectUrl = ""
-            var payload = ""
-            when (layer.action) {
-                is Layer.ImageLayer.Action.RedirectUrlAction -> {
-                    redirectUrl = layer.action.url
-                    payload = layer.action.payload
-                }
+
+            val inAppData = inAppActionHandler.handle(
+                layer.action,
+                inAppActionHandler.mindboxView
+            )
+
+            with(inAppData) {
+                redirectUrl = this.redirectUrl
+                payload = this.payload
+                shouldDismiss = this.shouldDismiss
             }
+
             wrapper.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
                 redirectUrl,
                 payload
             )
-            if (redirectUrl.isNotBlank() || payload.isNotBlank()) {
+            if (shouldDismiss) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
                 hide()
@@ -157,10 +173,11 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         }
     }
 
-    override fun show(currentRoot: ViewGroup) {
+    override fun show(currentRoot: MindboxView) {
         isInAppMessageActive = true
-        initView(currentRoot)
-        hideKeyboard(currentRoot)
+        initView(currentRoot.container)
+        hideKeyboard(currentRoot.container)
+        inAppActionHandler.mindboxView = currentRoot
     }
 
     override fun hide() {

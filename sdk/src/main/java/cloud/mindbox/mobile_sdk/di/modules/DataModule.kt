@@ -12,14 +12,21 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
+import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
+import cloud.mindbox.mobile_sdk.utils.PushPermissionActionDto
+import cloud.mindbox.mobile_sdk.utils.RedirectUrlActionDto
 import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -116,6 +123,9 @@ internal fun DataModule(
 
     override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
 
+    override val permissionManager: PermissionManager
+        get() = PermissionManagerImpl(appContext)
+
     override val inAppContentFetcher: InAppContentFetcher by lazy {
         InAppContentFetcherImpl(
             inAppImageLoader
@@ -203,6 +213,16 @@ internal fun DataModule(
 
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
+    override val mindboxNotificationManager: MindboxNotificationManager by lazy {
+        MindboxNotificationManagerImpl(
+            context = appContext,
+            requestPermissionManager = requestPermissionManager
+        )
+    }
+
+    override val requestPermissionManager: RequestPermissionManager
+        get() = RequestPermissionManagerImpl()
+
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
@@ -240,8 +260,11 @@ internal fun DataModule(
                     Constants.TYPE_JSON_NAME,
                     true
                 ).registerSubtype(
-                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto::class.java,
-                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                    RedirectUrlActionDto::class.java,
+                    RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                ).registerSubtype(
+                    PushPermissionActionDto::class.java,
+                    PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
                 )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory.of(
@@ -304,6 +327,12 @@ internal fun DataModule(
                 ).registerSubtype(
                     TreeTargetingDto.ViewProductNodeDto::class.java,
                     TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.VisitNodeDto::class.java,
+                    TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME
+                ).registerSubtype(
+                    TreeTargetingDto.PushPermissionDto::class.java,
+                    TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
                 )
             ).create()
     }
