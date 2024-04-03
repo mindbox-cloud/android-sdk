@@ -100,6 +100,8 @@ internal interface DataModule : MindboxModule {
     val mindboxNotificationManager: MindboxNotificationManager
     val permissionManager: PermissionManager
     val requestPermissionManager: RequestPermissionManager
+    val ttlParametersValidator: TtlParametersValidator
+    val inAppConfigTtlValidator: InAppConfigTtlValidator
 }
 
 internal interface MonitoringModule : MindboxModule {

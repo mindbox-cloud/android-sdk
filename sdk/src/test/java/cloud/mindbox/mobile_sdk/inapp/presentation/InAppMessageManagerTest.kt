@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.util.Log
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -39,6 +40,8 @@ internal class InAppMessageManagerTest {
     @MockK
     private lateinit var monitoringRepository: MonitoringInteractor
 
+    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
+
     @OptIn(DelicateCoroutinesApi::class)
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
 
@@ -72,7 +75,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository
+            StandardTestDispatcher(testScheduler), monitoringRepository,
+            sessionStorageManager
         )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
@@ -93,7 +97,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository
+            StandardTestDispatcher(testScheduler), monitoringRepository,
+            sessionStorageManager
         )
         mockkObject(LoggingExceptionHandler)
         coEvery {
@@ -118,7 +123,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler),
-            monitoringRepository
+            monitoringRepository,
+            sessionStorageManager
         )
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
@@ -155,7 +161,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler),
-            monitoringRepository
+            monitoringRepository,
+            sessionStorageManager
         )
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -191,7 +198,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository
+            StandardTestDispatcher(testScheduler), monitoringRepository,
+            sessionStorageManager
         )
         every {
             runBlocking {
@@ -229,7 +237,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository
+            StandardTestDispatcher(testScheduler), monitoringRepository,
+            sessionStorageManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -247,6 +256,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
+        verify(exactly = 1) { sessionStorageManager.shouldCheckInAppTtl = true }
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
@@ -257,7 +267,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository
+            StandardTestDispatcher(testScheduler), monitoringRepository,
+            sessionStorageManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -270,6 +281,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
+        verify(exactly = 0) { sessionStorageManager.shouldCheckInAppTtl = true }
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }
