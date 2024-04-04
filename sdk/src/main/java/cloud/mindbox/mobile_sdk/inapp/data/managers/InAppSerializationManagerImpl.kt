@@ -14,11 +14,23 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
         }
     }
 
+    override fun serializeToShownInAppsString(shownInApps: Map<String, Long>): String {
+        return LoggingExceptionHandler.runCatching("") {
+            gson.toJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
+        }
+    }
+
     override fun serializeToShownInAppsString(
         shownInApps: Set<String>
     ): String {
         return LoggingExceptionHandler.runCatching("") {
             gson.toJson(shownInApps, object : TypeToken<HashSet<String>>() {}.type)
+        }
+    }
+
+    override fun deserializeToShownInAppsMap(shownInApps: String): Map<String, Long> {
+        return LoggingExceptionHandler.runCatching(hashMapOf()) {
+            gson.fromJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
         }
     }
 

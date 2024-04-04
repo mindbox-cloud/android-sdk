@@ -47,6 +47,7 @@ internal class InAppMapper {
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
         formDto: FormDto?,
+        frequencyDto: FrequencyDto,
         targetingDto: TreeTargetingDto?,
     ): InAppDto {
         return inAppDtoBlank.let { inApp ->
@@ -54,6 +55,7 @@ internal class InAppMapper {
                 id = inApp.id,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
+                frequency = frequencyDto,
                 form = formDto
             )
         }
@@ -227,7 +229,27 @@ internal class InAppMapper {
                             } ?: emptyList()
                         ),
                         minVersion = inAppDto.sdkVersion?.minVersion,
-                        maxVersion = inAppDto.sdkVersion?.maxVersion
+                        maxVersion = inAppDto.sdkVersion?.maxVersion,
+                        frequency = when (inAppDto.frequency) {
+                            is FrequencyDto.FrequencyOnceDto -> Frequency(if (inAppDto.frequency.kind == "lifetime") Frequency.Delay.LifetimeDelay else Frequency.Delay.TimeDelay(0))
+                            is FrequencyDto.FrequencyPeriodicDto ->  {
+                                when (inAppDto.frequency.unit) {
+                                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS -> {
+                                        Frequency(Frequency.Delay.TimeDelay((inAppDto.frequency.value * 1000).toLong()))
+                                    }
+                                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS -> {
+                                        Frequency(Frequency.Delay.TimeDelay((inAppDto.frequency.value * 1000 * 60 * 60).toLong()))
+                                    }
+                                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS -> {
+                                        Frequency(Frequency.Delay.TimeDelay((inAppDto.frequency.value * 1000 * 60 * 60 * 24).toLong()))
+                                    }
+                                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES -> {
+                                        Frequency(Frequency.Delay.TimeDelay((inAppDto.frequency.value * 1000 * 60).toLong()))
+                                    }
+                                    else -> error("Unknown time unit cannot be mapped. Should never happen because of validators")
+                                }
+                            }
+                        }
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {

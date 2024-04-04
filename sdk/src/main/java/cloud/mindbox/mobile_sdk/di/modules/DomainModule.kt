@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInte
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManagerImpl
@@ -29,7 +30,8 @@ internal fun DomainModule(
             inAppFilteringManager = inAppFilteringManager,
             inAppEventManager = inAppEventManager,
             inAppProcessingManager = inAppProcessingManager,
-            inAppABTestLogic = inAppABTestLogic
+            inAppABTestLogic = inAppABTestLogic,
+            inAppFrequencyManager = inAppFrequencyManager
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {
@@ -61,6 +63,8 @@ internal fun DomainModule(
 
     override val userVisitManager: UserVisitManager
         get() = UserVisitManagerImpl()
+    override val inAppFrequencyManager: InAppFrequencyManager
+        get() = InAppFrequencyManagerImpl(inAppRepository)
 
     override val customerAbMixer: CustomerAbMixer
          get() = CustomerAbMixerImpl()

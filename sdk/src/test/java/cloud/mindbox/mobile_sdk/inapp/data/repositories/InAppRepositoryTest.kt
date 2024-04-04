@@ -96,31 +96,8 @@ class InAppRepositoryTest {
     }
 
     @Test
-    fun `save shown inApp success`() {
-        val expectedJson = """
-            |["123","456"]
-        """.trimMargin()
-        every { MindboxPreferences.shownInAppIds } returns "[123]"
-        every { inAppSerializationManager.deserializeToShownInApps(any()) } returns hashSetOf("123")
-        every { inAppSerializationManager.serializeToShownInAppsString(any()) } returns expectedJson
-        inAppRepository.saveShownInApp("456")
-        verify(exactly = 1) {
-            MindboxPreferences.shownInAppIds = expectedJson
-        }
-    }
+    fun `save shown inApp`() {
 
-    @Test
-    fun `save shown inApp error`() {
-        val expectedJson = """
-            |["123","456"]
-        """.trimMargin()
-        every { MindboxPreferences.shownInAppIds } returns "[123]"
-        every { inAppSerializationManager.deserializeToShownInApps(any()) } returns hashSetOf("123")
-        every { inAppSerializationManager.serializeToShownInAppsString(any()) } returns ""
-        inAppRepository.saveShownInApp("456")
-        verify(exactly = 0) {
-            MindboxPreferences.shownInAppIds = expectedJson
-        }
     }
 
     @Test

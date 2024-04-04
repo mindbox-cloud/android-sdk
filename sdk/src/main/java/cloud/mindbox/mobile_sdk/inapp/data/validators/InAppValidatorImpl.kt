@@ -12,7 +12,8 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
     private val modalWindowValidator: ModalWindowValidator,
-    private val snackbarValidator: SnackbarValidator
+    private val snackbarValidator: SnackbarValidator,
+    private val frequencyValidator: FrequencyValidator
 ) : InAppValidator {
 
 
@@ -175,7 +176,7 @@ internal class InAppValidatorImpl(
     }
 
     override fun validateInApp(inApp: InAppDto): Boolean {
-        return validateInAppTargeting(inApp.id, inApp.targeting) && validateFormDto(inApp)
+        return validateInAppTargeting(inApp.id, inApp.targeting) && validateFormDto(inApp) && frequencyValidator.isValid(inApp.frequency)
     }
 
     companion object {

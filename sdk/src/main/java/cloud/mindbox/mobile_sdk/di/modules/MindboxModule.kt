@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.di.modules
 import android.app.Application
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -100,6 +100,8 @@ internal interface DataModule : MindboxModule {
     val mindboxNotificationManager: MindboxNotificationManager
     val permissionManager: PermissionManager
     val requestPermissionManager: RequestPermissionManager
+    val frequencyDataFiller: FrequencyDataFiller
+    val frequencyValidator: FrequencyValidator
 }
 
 internal interface MonitoringModule : MindboxModule {
@@ -122,6 +124,7 @@ internal interface DomainModule : MindboxModule {
     val customerAbMixer: CustomerAbMixer
     val inAppABTestLogic: InAppABTestLogic
     val userVisitManager: UserVisitManager
+    val inAppFrequencyManager: InAppFrequencyManager
 }
 
 internal interface ApiModule : MindboxModule {

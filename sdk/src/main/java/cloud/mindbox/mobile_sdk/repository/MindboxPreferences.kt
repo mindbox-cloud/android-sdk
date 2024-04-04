@@ -29,6 +29,7 @@ internal object MindboxPreferences {
     private const val LOGS_REQUEST_IDS = "LOGS_REQUEST_IDS"
     private const val KEY_USER_VISIT_COUNT = "key_user_visit_count"
     private const val KEY_REQUEST_PERMISSION_COUNT = "key_request_permission_count"
+    private const val IN_APPS_METADATA = "key_inapp_metadata"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -210,6 +211,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_USER_VISIT_COUNT, value)
+            }
+        }
+
+    var shownInApps: String
+        get() {
+           return SharedPreferencesManager.getString(IN_APPS_METADATA, "")?: ""
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(IN_APPS_METADATA, value)
             }
         }
 }

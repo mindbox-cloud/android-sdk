@@ -10,15 +10,6 @@ internal class InAppFilteringManagerImpl(
     private val inAppRepository: InAppRepository
 ) :
     InAppFilteringManager {
-
-    override fun filterNotShownInApps(shownInApps: Set<String>, inApps: List<InApp>): List<InApp> {
-        MindboxLoggerImpl.d(
-            this,
-            "Already shown innaps: $shownInApps"
-        )
-        return inApps.filterNot { inApp -> shownInApps.contains(inApp.id) }
-    }
-
     override fun filterOperationFreeInApps(inApps: List<InApp>): List<InApp> {
         return inApps.filterNot { inApp -> inApp.targeting.hasOperationNode() }
     }

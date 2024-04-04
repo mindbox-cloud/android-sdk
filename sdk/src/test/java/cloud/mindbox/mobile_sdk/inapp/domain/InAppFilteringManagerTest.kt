@@ -25,21 +25,6 @@ internal class InAppFilteringManagerTest {
     private lateinit var inAppRepository: InAppRepository
 
     @Test
-    fun `filter not shown inApps`() {
-        val testHashSet = hashSetOf("inAppId")
-        val expectedResult = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
-        every { inAppRepository.getShownInApps() } returns testHashSet
-        val actualResult = inAppFilteringManager.filterNotShownInApps(
-            testHashSet,
-            listOf(
-                InAppStub.getInApp().copy(id = "inAppId"),
-                InAppStub.getInApp().copy(id = "otherInAppId")
-            )
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
     fun `filter inApp by event with App startUp`() {
         val testInApps = listOf(InAppStub.getInApp().copy(id = "otherInAppId"))
         val actualResult =

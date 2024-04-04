@@ -19,7 +19,6 @@ internal class InAppRepositoryImpl(
     override fun saveCurrentSessionInApps(inApps: List<InApp>) {
         sessionStorageManager.currentSessionInApps = inApps
     }
-
     override fun getCurrentSessionInApps(): List<InApp> {
         return sessionStorageManager.currentSessionInApps
     }
@@ -63,21 +62,21 @@ internal class InAppRepositoryImpl(
         return sessionStorageManager.operationalInApps[operation.lowercase()] ?: emptyList()
     }
 
-    override fun getShownInApps(): Set<String> {
-        return inAppSerializationManager.deserializeToShownInApps(MindboxPreferences.shownInAppIds)
+    override fun getShownInApps(): Map<String, Long> {
+        return inAppSerializationManager.deserializeToShownInAppsMap(MindboxPreferences.shownInApps)
     }
 
     override fun listenInAppEvents(): Flow<InAppEventType> {
         return MindboxEventManager.eventFlow
     }
 
-    override fun saveShownInApp(id: String) {
-        inAppSerializationManager.serializeToShownInAppsString(getShownInApps() + id)
-            .apply {
-                if (isNotBlank()) {
-                    MindboxPreferences.shownInAppIds = this
-                }
+    override fun saveShownInApp(id: String, timeStamp: Long) {
+        val newMap = getShownInApps() + hashMapOf(id to timeStamp)
+        inAppSerializationManager.serializeToShownInAppsString(newMap).also {
+            if (it.isNotBlank()) {
+                MindboxPreferences.shownInApps = it
             }
+        }
     }
 
 
