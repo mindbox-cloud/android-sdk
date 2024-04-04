@@ -9,7 +9,10 @@ import java.util.Date
 
 internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
     override fun isValid(item: InAppTtlData): Boolean {
-        if (!item.shouldCheckInAppTtl) return true.also { mindboxLogI("Config was received from backend. Skip checking TTL") }
+        if (!item.shouldCheckInAppTtl) {
+            mindboxLogI("Config was received from backend. Skip checking TTL")
+            return true
+        }
 
         return if (isConfigValid(ttl = item.ttl?.inApps)) {
             true.also {
@@ -28,9 +31,10 @@ internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
                 val configUpdatedTime = MindboxPreferences.inAppConfigUpdatedTime
                 val currentTime = System.currentTimeMillis()
                 val ttlTime = ttl.unit.toMillis(ttl.value)
+                val safeTtlTime = if (Long.MAX_VALUE - configUpdatedTime < ttlTime) Long.MAX_VALUE else configUpdatedTime + ttlTime
                 mindboxLogI("Check In-Apps ttl. Current time $currentTime , config updated time $configUpdatedTime , ttl settings $ttlTime")
-                mindboxLogI("Cached config valid to ${Date(configUpdatedTime + ttlTime)}")
-                val result = currentTime <= configUpdatedTime + ttlTime
+                mindboxLogI("Cached config valid to ${Date(safeTtlTime)}")
+                val result = currentTime - ttlTime <= configUpdatedTime
                 mindboxLogI("Cached config is active $result")
                 result
             } ?: true.also {

@@ -256,7 +256,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 1) { sessionStorageManager.shouldCheckInAppTtl = true }
+        verify(exactly = 1) { sessionStorageManager.configFetchingError = true }
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
@@ -281,7 +281,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 0) { sessionStorageManager.shouldCheckInAppTtl = true }
+        verify(exactly = 0) { sessionStorageManager.configFetchingError = true }
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }

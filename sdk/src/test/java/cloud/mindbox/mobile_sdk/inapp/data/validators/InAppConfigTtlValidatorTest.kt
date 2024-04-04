@@ -184,4 +184,21 @@ class InAppConfigTtlValidatorTest {
 
         assertTrue(isValid)
     }
+
+    @Test
+    fun `isValid returns true if ttl is Long MAX_VALUE `() {
+        val currentTime = System.currentTimeMillis()
+        val mockTtl = TtlDto(
+            TtlParametersDto(
+                unit = InAppTtl.fromString("SECONDS")!!,
+                value = Long.MAX_VALUE
+            )
+        )
+        val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
+        val validator = InAppConfigTtlValidator()
+        every { MindboxPreferences.inAppConfigUpdatedTime } returns currentTime - SECONDS_31
+        val isValid = validator.isValid(inAppTtlData)
+
+        assertTrue(isValid)
+    }
 }

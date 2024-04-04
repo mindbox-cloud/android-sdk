@@ -103,32 +103,37 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun getABTests() = getConfig().abtests
 
-    private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? =
+    private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
 
-        if (inAppConfigTtlValidator.isValid(InAppTtlData(
+        val isValidConfig = inAppConfigTtlValidator.isValid(
+            InAppTtlData(
                 ttl = getInAppTtl(configBlank),
-                shouldCheckInAppTtl = sessionStorageManager.shouldCheckInAppTtl
-            ))) {
-            configBlank?.inApps
-                ?.filter { inAppDtoBlank ->
-                    inAppValidator.validateInAppVersion(inAppDtoBlank)
-                }
-                ?.map { inAppDtoBlank ->
-                    inAppMapper.mapToInAppDto(
-                        inAppDtoBlank = inAppDtoBlank,
-                        formDto = defaultDataManager.fillData(
-                            mobileConfigSerializationManager.deserializeToInAppFormDto(
-                                inAppDtoBlank.form
-                            )
-                        ),
-                        targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
-                            inAppDtoBlank.targeting
+                shouldCheckInAppTtl = sessionStorageManager.configFetchingError
+            )
+        )
+
+        if (!isValidConfig) return emptyList()
+
+        return configBlank?.inApps
+            ?.filter { inAppDtoBlank ->
+                inAppValidator.validateInAppVersion(inAppDtoBlank)
+            }
+            ?.map { inAppDtoBlank ->
+                inAppMapper.mapToInAppDto(
+                    inAppDtoBlank = inAppDtoBlank,
+                    formDto = defaultDataManager.fillData(
+                        mobileConfigSerializationManager.deserializeToInAppFormDto(
+                            inAppDtoBlank.form
                         )
+                    ),
+                    targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
+                        inAppDtoBlank.targeting
                     )
-                }?.filter { inAppDto ->
-                    inAppValidator.validateInApp(inAppDto)
-                }
-        } else emptyList()
+                )
+            }?.filter { inAppDto ->
+                inAppValidator.validateInApp(inAppDto)
+            }
+    }
 
     private fun getMonitoring(configBlank: InAppConfigResponseBlank?): List<LogRequestDto>? =
         configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->
