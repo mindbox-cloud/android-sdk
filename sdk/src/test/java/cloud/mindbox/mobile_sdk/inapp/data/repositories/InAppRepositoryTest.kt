@@ -1,18 +1,17 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import io.mockk.mockkObject
-import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -97,7 +96,22 @@ class InAppRepositoryTest {
 
     @Test
     fun `save shown inApp`() {
+        val id = "testId"
+        val timeStamp = System.currentTimeMillis()
+        val serializedData = "serializedData"
 
+        every { inAppSerializationManager.serializeToShownInAppsString(any<Map<String, Long>>()) } returns serializedData
+        every { MindboxPreferences.shownInApps = any() } just runs
+        every {
+            inAppSerializationManager.deserializeToShownInAppsMap(any())
+        } returns hashMapOf()
+
+        // Call the method under test
+        inAppRepository.saveShownInApp(id, timeStamp)
+
+        // Verify that the correct methods were called with the expected arguments
+        verify { inAppSerializationManager.serializeToShownInAppsString(match<Map<String, Long>> { it[id] == timeStamp }) }
+        verify { MindboxPreferences.shownInApps = serializedData }
     }
 
     @Test

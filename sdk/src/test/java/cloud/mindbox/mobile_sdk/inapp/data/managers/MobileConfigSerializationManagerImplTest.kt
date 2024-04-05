@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.operation.response.ABTestDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
