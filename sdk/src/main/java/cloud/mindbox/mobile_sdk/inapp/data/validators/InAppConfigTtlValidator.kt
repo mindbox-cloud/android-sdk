@@ -15,13 +15,11 @@ internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
         }
 
         return if (isConfigValid(ttl = item.ttl?.inApps)) {
-            true.also {
-                mindboxLogI("Ttl has not expired or ttl config is empty. Use inapps from cached config")
-            }
+            mindboxLogI("Ttl has not expired or ttl config is empty. Use inapps from cached config")
+            true
         } else {
-            false.also {
-                mindboxLogI("In-Apps ttl was expired. Clean inApps list")
-            }
+            mindboxLogI("In-Apps ttl was expired. Clean inApps list")
+            false
         }
     }
 
@@ -34,11 +32,12 @@ internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
                 val safeTtlTime = if (Long.MAX_VALUE - configUpdatedTime < ttlTime) Long.MAX_VALUE else configUpdatedTime + ttlTime
                 mindboxLogI("Check In-Apps ttl. Current time $currentTime , config updated time $configUpdatedTime , ttl settings $ttlTime")
                 mindboxLogI("Cached config valid to ${Date(safeTtlTime)}")
-                val result = currentTime - ttlTime <= configUpdatedTime
+                val result = currentTime.toULong() <= configUpdatedTime.toULong() + ttlTime.toULong()
                 mindboxLogI("Cached config is active $result")
                 result
-            } ?: true.also {
+            } ?: run {
                 mindboxLogI("In-Apps ttl settings is empty")
+                true
             }
         }
     }

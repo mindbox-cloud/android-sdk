@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
 internal class TtlParametersValidator : Validator<SettingsDtoBlank.TtlParametersDtoBlank> {
+
     override fun isValid(item: SettingsDtoBlank.TtlParametersDtoBlank): Boolean =
         unitIsValid(item) && valueIsValid(item)
 
