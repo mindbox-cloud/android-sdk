@@ -16,8 +16,7 @@ internal class MigrationManager(val context: Context) {
         listOf(
             version282(),
             version296()
-        ).filter {
-            it.isNeeded }
+        ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
                     mindboxLogI("Run migration '${migration.description}'")
