@@ -26,13 +26,13 @@ internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
     private fun isConfigValid(ttl: TtlParametersDto?): Boolean {
         return LoggingExceptionHandler.runCatching(true) {
             ttl?.let {
-                val configUpdatedTime = MindboxPreferences.inAppConfigUpdatedTime
-                val currentTime = System.currentTimeMillis()
-                val ttlTime = ttl.unit.toMillis(ttl.value)
-                val safeTtlTime = if (Long.MAX_VALUE - configUpdatedTime < ttlTime) Long.MAX_VALUE else configUpdatedTime + ttlTime
+                val configUpdatedTime = MindboxPreferences.inAppConfigUpdatedTime.toULong()
+                val currentTime = System.currentTimeMillis().toULong()
+                val ttlTime = ttl.unit.toMillis(ttl.value).toULong()
+                val safeTtlTime = minOf(Long.MAX_VALUE.toULong(), configUpdatedTime + ttlTime)
                 mindboxLogI("Check In-Apps ttl. Current time $currentTime , config updated time $configUpdatedTime , ttl settings $ttlTime")
-                mindboxLogI("Cached config valid to ${Date(safeTtlTime)}")
-                val result = currentTime.toULong() <= configUpdatedTime.toULong() + ttlTime.toULong()
+                mindboxLogI("Cached config valid to ${Date(safeTtlTime.toLong())}")
+                val result = currentTime <= configUpdatedTime + ttlTime
                 mindboxLogI("Cached config is active $result")
                 result
             } ?: run {
