@@ -26,12 +26,15 @@ internal data class InApp(
     val targeting: TreeTargeting,
     val form: Form,
 )
+internal typealias SessionDelay = Frequency.Delay.TimeDelay
+
 
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
         object LifetimeDelay: Delay()
         data class TimeDelay(val time: Long): Delay()
     }
+
 }
 
 internal data class Form(

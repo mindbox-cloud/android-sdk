@@ -63,6 +63,7 @@ internal fun DomainModule(
 
     override val userVisitManager: UserVisitManager
         get() = UserVisitManagerImpl()
+
     override val inAppFrequencyManager: InAppFrequencyManager
         get() = InAppFrequencyManagerImpl(inAppRepository)
 

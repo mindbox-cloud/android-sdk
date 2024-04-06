@@ -215,9 +215,11 @@ internal object MindboxPreferences {
         }
 
     var shownInApps: String
-        get() {
-           return SharedPreferencesManager.getString(IN_APPS_METADATA, "")?: ""
+        get() =
+            LoggingExceptionHandler.runCatching("") {
+                SharedPreferencesManager.getString(IN_APPS_METADATA, "") ?: ""
         }
+
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(IN_APPS_METADATA, value)
