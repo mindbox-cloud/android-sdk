@@ -15,7 +15,7 @@ internal class MigrationManager(val context: Context) {
     fun migrateAll() {
         listOf(
             version282(),
-            version296()
+            version290()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
@@ -32,7 +32,7 @@ internal class MigrationManager(val context: Context) {
         fun run()
     }
 
-    private fun version296() = object : Migration {
+    private fun version290() = object : Migration {
         override val description: String
             get() = "Replaces set of shown inapps to map of inapp metadata"
         override val isNeeded: Boolean

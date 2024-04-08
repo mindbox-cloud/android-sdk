@@ -111,7 +111,7 @@ internal class MobileConfigRepositoryImpl(
                             inAppDtoBlank.form
                         )
                     ),
-                   frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDtoBlank(inAppDtoBlank.frequency)),
+                   frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting
                     )

@@ -8,7 +8,7 @@ import com.google.gson.JsonObject
 
 internal interface MobileConfigSerializationManager {
 
-    fun deserializeToFrequencyDtoBlank(frequencyString: JsonObject?): FrequencyDto?
+    fun deserializeToFrequencyDto(frequencyString: JsonObject?): FrequencyDto?
 
     fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank?
 

@@ -33,7 +33,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         return result.getOrNull()
     }
 
-    override fun deserializeToFrequencyDtoBlank(frequencyString: JsonObject?): FrequencyDto? {
+    override fun deserializeToFrequencyDto(frequencyString: JsonObject?): FrequencyDto? {
         val result = runCatching {
             gson.fromJson(frequencyString, FrequencyDto::class.java)
         }
