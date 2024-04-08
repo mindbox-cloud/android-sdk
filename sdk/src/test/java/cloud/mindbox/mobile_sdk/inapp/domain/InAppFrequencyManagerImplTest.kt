@@ -40,7 +40,7 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "2",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10000L, InAppTime.SECONDS) // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS) // 10 seconds delay
             )
         )
 
@@ -61,14 +61,13 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "3",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10000L, InAppTime.SECONDS) // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS) // 10 seconds delay
             )
         )
 
         val inApps = listOf(
             inAppWithTimeDelay
         )
-
         every { inAppRepository.getShownInApps() } returns mapOf(inAppWithTimeDelay.id to currentTime - 15000L)
 
         val result = inAppFrequencyManager.filterInAppsFrequency(inApps)
