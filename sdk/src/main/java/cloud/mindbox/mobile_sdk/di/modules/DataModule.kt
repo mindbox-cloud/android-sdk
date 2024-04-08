@@ -142,7 +142,10 @@ internal fun DataModule(
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
             gatewayManager = gatewayManager,
-            defaultDataManager = defaultDataManager
+            defaultDataManager = defaultDataManager,
+            ttlParametersValidator = ttlParametersValidator,
+            inAppConfigTtlValidator = inAppConfigTtlValidator,
+            sessionStorageManager = sessionStorageManager
         )
     }
 
@@ -210,6 +213,10 @@ internal fun DataModule(
 
     override val operationValidator: OperationValidator
         get() = OperationValidator()
+
+    override val ttlParametersValidator: TtlParametersValidator by lazy { TtlParametersValidator() }
+
+    override val inAppConfigTtlValidator: InAppConfigTtlValidator by lazy { InAppConfigTtlValidator() }
 
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
