@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckReques
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 internal class InAppMapper {
@@ -176,19 +177,19 @@ internal class InAppMapper {
             is FrequencyDto.FrequencyPeriodicDto -> {
                 when (item.unit) {
                     FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS -> {
-                        Frequency.Delay.TimeDelay((item.value * 1000).toLong())
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.SECONDS)
                     }
 
                     FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS -> {
-                        Frequency.Delay.TimeDelay((item.value * 1000 * 60 * 60).toLong())
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.HOURS)
                     }
 
                     FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS -> {
-                        Frequency.Delay.TimeDelay((item.value * 1000 * 60 * 60 * 24).toLong())
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.DAYS)
                     }
 
                     FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES -> {
-                        Frequency.Delay.TimeDelay((item.value * 1000 * 60).toLong())
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.MINUTES)
                     }
 
                     else -> error("Unknown time unit cannot be mapped. Should never happen because of validators")
@@ -448,7 +449,7 @@ internal class InAppMapper {
 
     fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
         TtlParametersDto(
-            inAppTtlDtoBlank.unit.enumValue<InAppTtl>(),
+            inAppTtlDtoBlank.unit.enumValue<InAppTime>(),
             inAppTtlDtoBlank.value!!
         )
     )

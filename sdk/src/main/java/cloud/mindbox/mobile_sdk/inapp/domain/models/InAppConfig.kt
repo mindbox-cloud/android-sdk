@@ -32,7 +32,7 @@ internal typealias SessionDelay = Frequency.Delay.TimeDelay
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
         object LifetimeDelay: Delay()
-        data class TimeDelay(val time: Long): Delay()
+        data class TimeDelay(val time: Long, val unit: InAppTime): Delay()
     }
 
 }

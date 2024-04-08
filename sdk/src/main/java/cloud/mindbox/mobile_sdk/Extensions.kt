@@ -16,6 +16,7 @@ import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -32,7 +33,7 @@ import java.util.Queue
 import kotlin.math.roundToInt
 
 internal fun SessionDelay(): SessionDelay {
-    return Frequency.Delay.TimeDelay(0)
+    return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
 }
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
@@ -78,7 +79,9 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
         )
 }
 
-internal fun String?.equalsAny(vararg values: String): Boolean = values.any { this == it }
+internal fun String?.equalsAny(vararg values: String): Boolean = equalsAny(ignoreCase = false, values = values)
+
+internal fun String?.equalsAny(ignoreCase: Boolean, vararg values: String): Boolean = values.any { this?.equals(it, ignoreCase) == true }
 
 internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T {
     return this?.let {

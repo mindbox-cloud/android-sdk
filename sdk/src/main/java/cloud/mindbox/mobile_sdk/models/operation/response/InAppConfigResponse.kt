@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtl
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
@@ -61,7 +61,7 @@ internal data class TtlDto(
 
 internal data class TtlParametersDto(
     @SerializedName("unit")
-    val unit: InAppTtl,
+    val unit: InAppTime,
     @SerializedName("value")
     val value: Long
 )
@@ -108,15 +108,15 @@ internal sealed class FrequencyDto {
         @SerializedName("unit")
         val unit: String,
         @SerializedName("value")
-        val value: Int
+        val value: Long
     ): FrequencyDto() {
         internal companion object {
             const val FREQUENCY_PERIODIC_JSON_NAME = "periodic"
 
-            const val FREQUENCY_UNIT_SECONDS = "seconds"
-            const val FREQUENCY_UNIT_HOURS = "minutes"
-            const val FREQUENCY_UNIT_MINUTES = "hours"
-            const val FREQUENCY_UNIT_DAYS = "days"
+            const val FREQUENCY_UNIT_HOURS = "MINUTES"
+            const val FREQUENCY_UNIT_MINUTES = "HOURS"
+            const val FREQUENCY_UNIT_DAYS = "DAYS"
+            const val FREQUENCY_UNIT_SECONDS = "SECONDS"
         }
     }
 }

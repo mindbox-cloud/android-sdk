@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.mockk
@@ -39,7 +40,7 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "2",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10000L) // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10000L, InAppTime.SECONDS) // 10 seconds delay
             )
         )
 
@@ -60,7 +61,7 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "3",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10000L) // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10000L, InAppTime.SECONDS) // 10 seconds delay
             )
         )
 

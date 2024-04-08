@@ -20,7 +20,7 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                 }
 
                 is Frequency.Delay.TimeDelay -> {
-                    val delay = lastShownTimeStamp + inApp.frequency.delay.time
+                    val delay = lastShownTimeStamp + inApp.frequency.delay.unit.toMillis(inApp.frequency.delay.time)
                     val currentTime= System.currentTimeMillis()
                     mindboxLogI("Periodic delay. " +
                             "Compare current time with delay. " +

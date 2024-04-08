@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -15,7 +16,7 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
     }
 
     override fun serializeToShownInAppsString(shownInApps: Map<String, Long>): String {
-        return LoggingExceptionHandler.runCatching("") {
+        return loggingRunCatching("") {
             gson.toJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
         }
     }
@@ -29,7 +30,7 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
     }
 
     override fun deserializeToShownInAppsMap(shownInApps: String): Map<String, Long> {
-        return LoggingExceptionHandler.runCatching(hashMapOf()) {
+        return loggingRunCatching(hashMapOf()) {
             gson.fromJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
         }
     }
