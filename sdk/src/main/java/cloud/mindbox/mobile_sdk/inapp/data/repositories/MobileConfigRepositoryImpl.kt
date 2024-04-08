@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.inapp.data.managers.DataManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
@@ -121,11 +121,12 @@ internal class MobileConfigRepositoryImpl(
             ?.map { inAppDtoBlank ->
                 inAppMapper.mapToInAppDto(
                     inAppDtoBlank = inAppDtoBlank,
-                    formDto = defaultDataManager.fillData(
+                    formDto = defaultDataManager.fillFormData(
                         mobileConfigSerializationManager.deserializeToInAppFormDto(
                             inAppDtoBlank.form
                         )
                     ),
+                   frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting
                     )

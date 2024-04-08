@@ -1,10 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -19,6 +22,52 @@ internal class InAppSerializationManagerTest {
     @Before
     fun onTestStart() {
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
+    }
+
+    @Test
+    fun `deserializeToShownInAppsMap returns valid map`() {
+        val json = "{\"app1\":100,\"app2\":200}"
+        val expectedMap = mapOf("app1" to 100L, "app2" to 200L)
+
+        val actualMap = inAppSerializationManager.deserializeToShownInAppsMap(json)
+
+        assertEquals(expectedMap, actualMap)
+    }
+
+    @Test
+    fun `deserializeToShownInAppsMap returns empty map when exception occurs`() {
+        val json = "{\"app1\":100,\"app2\":200}"
+        val gson: Gson = mockk()
+        inAppSerializationManager = InAppSerializationManagerImpl(gson)
+        // Mocking runCatching to throw an exception
+        every {gson.fromJson<String>(json, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
+
+
+        val actualMap = inAppSerializationManager.deserializeToShownInAppsMap(json)
+
+        assertEquals(emptyMap<String, Long>(), actualMap)
+    }
+
+    @Test
+    fun `serializeToShownInAppsString returns valid JSON string`() {
+        val shownInApps = mapOf("app1" to 100L, "app2" to 200L)
+        val expectedJson = "{\"app1\":100,\"app2\":200}"
+
+        val actualJson = inAppSerializationManager.serializeToShownInAppsString(shownInApps)
+
+        assertEquals(expectedJson, actualJson)
+    }
+
+    @Test
+    fun `serializeToShownInAppsString returns empty string when exception occurs`() {
+        val gson: Gson = mockk()
+        inAppSerializationManager = InAppSerializationManagerImpl(gson)
+        val shownInApps = mapOf("app1" to 100L, "app2" to 200L)
+        every { gson.toJson(shownInApps,object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
+
+        val actualJson = inAppSerializationManager.serializeToShownInAppsString(shownInApps)
+
+        assertEquals("", actualJson)
     }
 
     @Test

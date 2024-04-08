@@ -7,8 +7,10 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -25,6 +27,19 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
             MindboxLoggerImpl.e(
                 parent = this@MobileConfigSerializationManagerImpl,
                 message = "Failed to parse JsonObject: $inAppTreeTargeting",
+                exception = error
+            )
+        }
+        return result.getOrNull()
+    }
+
+    override fun deserializeToFrequencyDto(frequencyString: JsonObject?): FrequencyDto? {
+        val result = runCatching {
+            gson.fromJson(frequencyString, FrequencyDto::class.java)
+        }
+        result.exceptionOrNull()?.let { error ->
+            mindboxLogE(
+                message = "Failed to parse JsonObject: $frequencyString",
                 exception = error
             )
         }

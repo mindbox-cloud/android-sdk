@@ -16,4 +16,10 @@ internal object LoggingExceptionHandler: ExceptionHandler() {
 
 }
 
+internal fun <T> loggingRunCatching(
+    defaultValue: T,
+    block: () -> T,
+): T = LoggingExceptionHandler.runCatching(defaultValue, block)
+
 internal fun <T> loggingRunCatching(block: () -> T) = LoggingExceptionHandler.runCatching(block)
+

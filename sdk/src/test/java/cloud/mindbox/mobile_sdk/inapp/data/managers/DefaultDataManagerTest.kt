@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.FrequencyDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.ModalWindowDtoDataFiller
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.SnackBarDtoDataFiller
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -22,6 +24,9 @@ internal class DefaultDataManagerTest {
     @MockK
     private lateinit var modalWindowDtoDataFiller: ModalWindowDtoDataFiller
 
+    @MockK
+    private lateinit var frequencyDtoDataFiller: FrequencyDataFiller
+
     @OverrideMockKs
     private lateinit var defaultDataManager: DataManager
 
@@ -42,7 +47,7 @@ internal class DefaultDataManagerTest {
             snackbarDtoDataFiller.fillData(any())
         } returns snackbar
 
-        val result = defaultDataManager.fillData(testData)
+        val result = defaultDataManager.fillFormData(testData)
 
         assertEquals(result?.variants, listOf(mw, snackbar))
     }

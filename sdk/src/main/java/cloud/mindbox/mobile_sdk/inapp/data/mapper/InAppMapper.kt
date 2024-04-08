@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
+import cloud.mindbox.mobile_sdk.SessionDelay
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -15,6 +16,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckReques
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 internal class InAppMapper {
@@ -47,6 +49,7 @@ internal class InAppMapper {
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
         formDto: FormDto?,
+        frequencyDto: FrequencyDto,
         targetingDto: TreeTargetingDto?,
     ): InAppDto {
         return inAppDtoBlank.let { inApp ->
@@ -54,6 +57,7 @@ internal class InAppMapper {
                 id = inApp.id,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
+                frequency = frequencyDto,
                 form = formDto
             )
         }
@@ -160,6 +164,40 @@ internal class InAppMapper {
         } ?: emptyList()
     }
 
+    private fun getDelay(item: FrequencyDto): Frequency.Delay {
+       return when (item) {
+            is FrequencyDto.FrequencyOnceDto -> {
+                when (item.kind) {
+                    "lifetime" -> Frequency.Delay.LifetimeDelay
+                    "session" -> SessionDelay()
+                    else -> error("Unknown kind cannot be mapped. Should never happen because of validators")
+                }
+            }
+
+            is FrequencyDto.FrequencyPeriodicDto -> {
+                when (item.unit) {
+                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.SECONDS)
+                    }
+
+                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.HOURS)
+                    }
+
+                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.DAYS)
+                    }
+
+                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.MINUTES)
+                    }
+
+                    else -> error("Unknown time unit cannot be mapped. Should never happen because of validators")
+                }
+            }
+        }
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig {
@@ -227,7 +265,8 @@ internal class InAppMapper {
                             } ?: emptyList()
                         ),
                         minVersion = inAppDto.sdkVersion?.minVersion,
-                        maxVersion = inAppDto.sdkVersion?.maxVersion
+                        maxVersion = inAppDto.sdkVersion?.maxVersion,
+                        frequency = Frequency(getDelay(inAppDto.frequency))
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {
@@ -410,7 +449,7 @@ internal class InAppMapper {
 
     fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
         TtlParametersDto(
-            inAppTtlDtoBlank.unit.enumValue<InAppTtl>(),
+            inAppTtlDtoBlank.unit.enumValue<InAppTime>(),
             inAppTtlDtoBlank.value!!
         )
     )

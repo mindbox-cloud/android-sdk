@@ -54,7 +54,7 @@ internal class InAppMessageManagerImpl(
                                     inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                                 },
                                 onInAppShown = {
-                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
                                 }
                             )
                         }

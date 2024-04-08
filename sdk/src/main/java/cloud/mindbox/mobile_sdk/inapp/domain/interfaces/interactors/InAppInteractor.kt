@@ -12,7 +12,7 @@ internal interface InAppInteractor {
     fun setInAppShown()
     suspend fun processEventAndConfig(): Flow<InAppType>
 
-    fun saveShownInApp(id: String)
+    fun saveShownInApp(id: String, timeStamp: Long)
 
     fun sendInAppClicked(inAppId: String)
 

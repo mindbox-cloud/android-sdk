@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
@@ -15,6 +16,7 @@ internal class InAppStub {
         fun getInApp(): InApp = InApp(
             id = "",
             minVersion = null,
+            frequency = getFrequency(),
             maxVersion = null,
             targeting = getTargetingUnionNode().copy(
                 type = "", nodes = listOf(
@@ -26,10 +28,19 @@ internal class InAppStub {
 
         fun getInAppDto(): InAppDto = InAppDto(
             id = "",
+            frequency = getFrequencyOnceDto(),
             sdkVersion = SdkVersion(minVersion = null, maxVersion = null),
             targeting = (TreeTargetingDto.TrueNodeDto("")),
             form = FormDto(variants = listOf(getModalWindowDto()))
         )
+
+        fun getFrequencyOnceDto(): FrequencyDto.FrequencyOnceDto = FrequencyDto.FrequencyOnceDto(
+            type = "", kind = ""
+        )
+
+        fun getFrequencyPeriodicDto(): FrequencyDto.FrequencyPeriodicDto=  FrequencyDto.FrequencyPeriodicDto("", "", 0)
+
+        fun getFrequency(): Frequency = Frequency(Frequency.Delay.LifetimeDelay)
 
         fun getSnackbarContentDto(): PayloadDto.SnackbarDto.ContentDto =
             PayloadDto.SnackbarDto.ContentDto(
@@ -138,6 +149,7 @@ internal class InAppStub {
                 id = "",
                 sdkVersion = null,
                 targeting = null,
+                frequency = null,
                 form = null
             )
         }
