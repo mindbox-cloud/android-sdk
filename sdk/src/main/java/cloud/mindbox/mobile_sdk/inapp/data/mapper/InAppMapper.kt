@@ -276,7 +276,7 @@ internal class InAppMapper {
                         to = it.to.convertToZonedDateTime()
                     )
                 } ?: emptyList(),
-                operations = inAppConfigResponse.settings?.map { (key, value) ->
+                operations = inAppConfigResponse.settings?.operations?.map { (key, value) ->
                     key.enumValue<OperationName>() to OperationSystemName(value.systemName.lowercase())
                 }?.toMap() ?: emptyMap(),
                 abtests = inAppConfigResponse.abtests?.map { dto ->
@@ -445,6 +445,13 @@ internal class InAppMapper {
             }
         )
     }
+
+    fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
+        TtlParametersDto(
+            inAppTtlDtoBlank.unit.enumValue<InAppTtl>(),
+            inAppTtlDtoBlank.value!!
+        )
+    )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
