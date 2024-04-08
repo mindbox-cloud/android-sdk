@@ -410,7 +410,7 @@ internal class InAppMapper {
 
     fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
         TtlParametersDto(
-            InAppTtl.fromString(inAppTtlDtoBlank.unit!!)!!,
+            inAppTtlDtoBlank.unit.enumValue<InAppTtl>(),
             inAppTtlDtoBlank.value!!
         )
     )

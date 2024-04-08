@@ -10,11 +10,6 @@ internal enum class InAppTtl(private val timeUnit: TimeUnit) {
     DAYS(TimeUnit.DAYS);
 
     fun toMillis(value: Long): Long = timeUnit.toMillis(value)
-
-    companion object {
-        fun fromString(unitString: String): InAppTtl? =
-            values().firstOrNull { it.name.equals(unitString, ignoreCase = true) }
-    }
 }
 
 internal data class InAppTtlData(val ttl: TtlDto?, val shouldCheckInAppTtl: Boolean)
