@@ -99,6 +99,9 @@ internal sealed class FrequencyDto {
     ): FrequencyDto() {
         internal companion object {
             const val FREQUENCY_ONCE_JSON_NAME = "once"
+
+            const val FREQUENCY_KIND_LIFETIME = "lifetime"
+            const val FREQUENCY_KIND_SESSION = "session"
         }
     }
 

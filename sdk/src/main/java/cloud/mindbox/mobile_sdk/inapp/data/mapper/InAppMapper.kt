@@ -15,8 +15,9 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_LIFETIME
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_SESSION
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
-import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 internal class InAppMapper {
@@ -165,30 +166,50 @@ internal class InAppMapper {
     }
 
     private fun getDelay(item: FrequencyDto): Frequency.Delay {
-       return when (item) {
+        return when (item) {
             is FrequencyDto.FrequencyOnceDto -> {
-                when (item.kind) {
-                    "lifetime" -> Frequency.Delay.LifetimeDelay
-                    "session" -> SessionDelay()
+                when {
+                    item.kind.equals(
+                        other = FREQUENCY_KIND_LIFETIME,
+                        ignoreCase = true
+                    ) -> Frequency.Delay.LifetimeDelay
+
+                    item.kind.equals(
+                        other = FREQUENCY_KIND_SESSION,
+                        ignoreCase = true
+                    ) -> SessionDelay()
+
                     else -> error("Unknown kind cannot be mapped. Should never happen because of validators")
                 }
             }
 
             is FrequencyDto.FrequencyPeriodicDto -> {
-                when (item.unit) {
-                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS -> {
+                when {
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS,
+                        ignoreCase = true
+                    ) -> {
                         Frequency.Delay.TimeDelay(item.value, InAppTime.SECONDS)
                     }
 
-                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS -> {
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS,
+                        ignoreCase = true
+                    ) -> {
                         Frequency.Delay.TimeDelay(item.value, InAppTime.HOURS)
                     }
 
-                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS -> {
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS,
+                        ignoreCase = true
+                    ) -> {
                         Frequency.Delay.TimeDelay(item.value, InAppTime.DAYS)
                     }
 
-                    FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES -> {
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES,
+                        ignoreCase = true
+                    ) -> {
                         Frequency.Delay.TimeDelay(item.value, InAppTime.MINUTES)
                     }
 

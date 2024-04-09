@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.data.validators
 import cloud.mindbox.mobile_sdk.equalsAny
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_LIFETIME
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_SESSION
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyPeriodicDto.Companion.FREQUENCY_UNIT_DAYS
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyPeriodicDto.Companion.FREQUENCY_UNIT_HOURS
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyPeriodicDto.Companion.FREQUENCY_UNIT_MINUTES
@@ -29,9 +31,5 @@ internal class FrequencyValidator : Validator<FrequencyDto> {
     internal companion object {
         private const val FREQUENCY_TYPE_ONCE = "once"
         private const val FREQUENCY_TYPE_PERIODIC = "periodic"
-
-
-        private const val FREQUENCY_KIND_LIFETIME = "lifetime"
-        private const val FREQUENCY_KIND_SESSION = "session"
     }
 }
