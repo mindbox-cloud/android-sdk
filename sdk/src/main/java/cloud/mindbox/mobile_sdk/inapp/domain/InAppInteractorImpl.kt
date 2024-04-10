@@ -46,9 +46,6 @@ internal class InAppInteractorImpl(
                 inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
                 }
-            }.let { inApps ->
-                inAppFrequencyManager.filterInAppsFrequency(inApps)
-
             }.also { unShownInApps ->
                 logI("Filtered config has ${unShownInApps.size} inapps")
                 for (inApp in unShownInApps) {
@@ -65,7 +62,9 @@ internal class InAppInteractorImpl(
                 if (isInAppShown()) inAppTargetingChannel.send(event)
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
+                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
+                    inAppFrequencyManager.filterInAppsFrequency(it)
+                }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
                 inAppProcessingManager.chooseInAppToShow(
                     filteredInApps,
