@@ -31,7 +31,7 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
 
     override fun deserializeToShownInAppsMap(shownInApps: String): Map<String, Long> {
         return loggingRunCatching(hashMapOf()) {
-            gson.fromJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
+            gson.fromJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type) ?: hashMapOf()
         }
     }
 

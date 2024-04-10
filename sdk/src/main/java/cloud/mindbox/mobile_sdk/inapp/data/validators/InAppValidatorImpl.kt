@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBla
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
@@ -176,7 +177,14 @@ internal class InAppValidatorImpl(
     }
 
     override fun validateInApp(inApp: InAppDto): Boolean {
-        return validateInAppTargeting(inApp.id, inApp.targeting) && validateFormDto(inApp) && frequencyValidator.isValid(inApp.frequency)
+        return validateInAppTargeting(inApp.id, inApp.targeting) && validateFormDto(inApp) && validateFrequency(inApp)
+    }
+
+    private fun validateFrequency(inApp: InAppDto): Boolean {
+        mindboxLogI("Start checking frequency of inapp with id = ${inApp.id}")
+        val isValid = frequencyValidator.isValid(inApp.frequency)
+        mindboxLogI("Finish checking frequency of inapp with id = ${inApp.id}")
+        return isValid
     }
 
     companion object {
