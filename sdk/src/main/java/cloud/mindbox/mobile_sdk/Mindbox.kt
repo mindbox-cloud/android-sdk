@@ -92,6 +92,8 @@ object Mindbox : MindboxLog {
 
     private val mutex = Mutex()
 
+    private val inAppMutex = Mutex()
+
     private var firstInitCall: Boolean = true
 
     /**
@@ -516,7 +518,7 @@ object Mindbox : MindboxLog {
                             if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
-                                    mutex.withLock {
+                                    inAppMutex.withLock {
                                         firstInitCall = false
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
@@ -570,8 +572,8 @@ object Mindbox : MindboxLog {
                             )
                             if (firstInitCall) {
                                 mindboxScope.launch {
-                                    mutex.withLock {
-                                        InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
+                                    inAppMutex.withLock {
                                         if (!firstInitCall) return@launch
                                         firstInitCall = false
                                         inAppMessageManager.listenEventAndInApp()
