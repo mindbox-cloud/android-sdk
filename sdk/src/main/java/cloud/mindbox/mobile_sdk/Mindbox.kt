@@ -578,8 +578,8 @@ object Mindbox : MindboxLog {
                             )
                             if (firstInitCall) {
                                 mindboxScope.launch {
+                                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                     inAppMutex.withLock {
-                                        InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                         if (!firstInitCall) return@launch
                                         firstInitCall = false
                                         inAppMessageManager.listenEventAndInApp()
