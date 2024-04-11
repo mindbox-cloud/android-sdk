@@ -3,7 +3,7 @@ set -e
 version=$(cat gradle.properties | grep SDK_VERSION_NAME | cut -f2 -d"=")
 token=$1
 user=$2
-branch=${GITHUB_REF##*/}
+branch=${GITHUB_REF#refs/heads/}
 repo_full_name=$(git config --get remote.origin.url | sed 's/.*:\/\/github.com\///;s/.git$//' | cut -f2 -d":")
 generate_post_data() {
   cat <<EOF
