@@ -2,7 +2,7 @@ package com.mindbox.example
 
 import android.content.Context
 import android.util.Log
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
@@ -13,7 +13,7 @@ class CustomImageFailureStrategy(
 ) : MindboxImageFailureHandler {
     override fun onImageLoadingFailed(
         context: Context,
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         state: MessageHandlingState,
         error: Throwable
     ): ImageRetryStrategy = if (state.attemptNumber >= maxAttempts) {

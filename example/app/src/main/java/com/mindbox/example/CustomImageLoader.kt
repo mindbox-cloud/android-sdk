@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import cloud.mindbox.mobile_sdk.pushes.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import com.bumptech.glide.Glide
@@ -18,7 +18,7 @@ class CustomImageLoader : MindboxImageLoader {
 
     override fun onLoadImage(
         context: Context,
-        message: RemoteMessage,
+        message: MindboxRemoteMessage,
         state: MessageHandlingState
     ): Bitmap? {
         val imageUrl = message.imageUrl
