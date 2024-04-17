@@ -31,7 +31,7 @@ internal class PushPermissionInAppAction(
             redirectUrl = "",
             payload = payload,
             shouldDismiss = shouldDismiss(),
-            shouldCallRequestPermission = true
+            onCompleted = { mindboxView?.requestPermission() }
         )
     }
 

@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushPermissionInAppAction
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RedirectUrlInAppAction
 import io.mockk.mockk
-import io.mockk.verify
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -51,7 +50,6 @@ class InAppActionsTest {
 
         val data = action.execute(mindboxView)
 
-        verify { mindboxView.requestPermission() }
         Assert.assertEquals("", data.redirectUrl)
         Assert.assertEquals(payload, data.payload)
         Assert.assertEquals(true, data.shouldDismiss)

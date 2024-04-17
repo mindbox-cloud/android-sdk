@@ -4,5 +4,5 @@ internal data class InAppActionResult(
     val redirectUrl: String,
     val payload: String,
     val shouldDismiss: Boolean,
-    val shouldCallRequestPermission: Boolean = false
+    val onCompleted: (() -> Unit)? = null
 )

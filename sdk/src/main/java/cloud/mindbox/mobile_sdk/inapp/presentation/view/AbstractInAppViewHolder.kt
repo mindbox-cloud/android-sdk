@@ -66,7 +66,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         var redirectUrl: String
         var payload: String
         var shouldDismiss: Boolean
-        var shouldCallRequestPermission: Boolean
 
         currentDialog.setSingleClickListener {
 
@@ -79,7 +78,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 redirectUrl = this.redirectUrl
                 payload = this.payload
                 shouldDismiss = this.shouldDismiss
-                shouldCallRequestPermission = this.shouldCallRequestPermission
             }
 
             wrapper.onInAppClick.onClick()
@@ -95,9 +93,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 hide()
             }
 
-            if (shouldCallRequestPermission) {
-                inAppActionHandler.mindboxView?.requestPermission()
-            }
+            inAppData.onCompleted?.invoke()
 
             InAppMessageViewDisplayerImpl.isActionExecuted = true
         }
