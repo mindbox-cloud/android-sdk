@@ -27,11 +27,11 @@ internal class PushPermissionInAppAction(
 
     override fun execute(mindboxView: MindboxView?): InAppActionResult {
         mindboxLogI("In-app for push activation was clicked")
-        mindboxView?.requestPermission()
         return InAppActionResult(
             redirectUrl = "",
             payload = payload,
-            shouldDismiss = shouldDismiss()
+            shouldDismiss = shouldDismiss(),
+            onCompleted = { mindboxView?.requestPermission() }
         )
     }
 

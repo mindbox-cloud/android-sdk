@@ -66,6 +66,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         var redirectUrl: String
         var payload: String
         var shouldDismiss: Boolean
+
         currentDialog.setSingleClickListener {
 
             val inAppData = inAppActionHandler.handle(
@@ -85,11 +86,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
                 redirectUrl,
                 payload
             )
+
             if (shouldDismiss) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
                 hide()
             }
+
+            inAppData.onCompleted?.invoke()
+
             InAppMessageViewDisplayerImpl.isActionExecuted = true
         }
     }
