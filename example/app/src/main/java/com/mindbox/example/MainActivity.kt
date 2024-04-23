@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         //https://developers.mindbox.ru/docs/android-sdk-methods#subscribedeviceuuid-%D0%B8-disposedeviceuuidsubscription
         var subscriptionDeviceUuid = ""
         subscriptionDeviceUuid = Mindbox.subscribeDeviceUuid { deviceUUID ->
-            binding.tvDeviceUUIDResult.post {
+            runOnUiThread {
                 binding.tvDeviceUUIDResult.text = deviceUUID
             }
             Mindbox.disposeDeviceUuidSubscription(subscriptionDeviceUuid)
@@ -114,14 +114,12 @@ class MainActivity : AppCompatActivity() {
         var subscriptionPushToken = ""
         subscriptionPushToken =
             Mindbox.subscribePushToken { token ->
-                binding.tvTokenResult.post {
+                runOnUiThread {
                     binding.tvTokenResult.text = token
-                }
-                Mindbox.disposePushTokenSubscription(subscriptionPushToken)
-                //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-                binding.tvTokenDateResult.post {
+                    //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
                     binding.tvTokenDateResult.text = Mindbox.getPushTokenSaveDate()
                 }
+                Mindbox.disposePushTokenSubscription(subscriptionPushToken)
             }
 
         //https://developers.mindbox.ru/docs/android-sdk-methods#getsdkversion
