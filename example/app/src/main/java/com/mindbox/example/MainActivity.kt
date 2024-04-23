@@ -102,20 +102,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSdkDataOnScreen() {
         //https://developers.mindbox.ru/docs/android-sdk-methods#subscribedeviceuuid-%D0%B8-disposedeviceuuidsubscription
-        val subscriptionDeviceUuid = Mindbox.subscribeDeviceUuid { deviceUUID ->
-            binding.tvDeviceUUIDResult.text = deviceUUID
-        }
-        Mindbox.disposeDeviceUuidSubscription(subscriptionDeviceUuid)
-        //https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
-        val subscriptionPushToken =
-            Mindbox.subscribePushToken { token ->
-                binding.tvTokenResult.text = token
+        var subscriptionDeviceUuid = ""
+        subscriptionDeviceUuid = Mindbox.subscribeDeviceUuid { deviceUUID ->
+            runOnUiThread {
+                binding.tvDeviceUUIDResult.text = deviceUUID
             }
-        Mindbox.disposePushTokenSubscription(subscriptionPushToken)
+            Mindbox.disposeDeviceUuidSubscription(subscriptionDeviceUuid)
+        }
+
+        //https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
+        var subscriptionPushToken = ""
+        subscriptionPushToken =
+            Mindbox.subscribePushToken { token ->
+                runOnUiThread {
+                    binding.tvTokenResult.text = token
+                    //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
+                    binding.tvTokenDateResult.text = Mindbox.getPushTokenSaveDate()
+                }
+                Mindbox.disposePushTokenSubscription(subscriptionPushToken)
+            }
+
         //https://developers.mindbox.ru/docs/android-sdk-methods#getsdkversion
         binding.tvSdkVersionResult.text = Mindbox.getSdkVersion()
-        //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-        binding.tvTokenDateResult.text = Mindbox.getPushTokenSaveDate()
-
     }
 }
