@@ -31,9 +31,15 @@ properties_file="gradle.properties"
 current_version=$(grep -E '^SDK_VERSION_NAME=' gradle.properties | cut -d'=' -f2)
 sed -i '' "s/^SDK_VERSION_NAME=.*/SDK_VERSION_NAME=$version/" $properties_file
 
+build_gradle_example_path="example/app/build.gradle"
+sed -i '' -E "s/cloud.mindbox:mobile-sdk:[0-9]+\.[0-9]+\.[0-9]+(-rc)?/cloud.mindbox:mobile-sdk:$version/" $build_gradle_example_path
+sed -i '' -E "s/cloud.mindbox:mindbox-firebase:[0-9]+\.[0-9]+\.[0-9]+(-rc)?/cloud.mindbox:mindbox-firebase:$version/" $build_gradle_example_path
+sed -i '' -E "s/cloud.mindbox:mindbox-huawei:[0-9]+\.[0-9]+\.[0-9]+(-rc)?/cloud.mindbox:mindbox-huawei:$version/" $build_gradle_example_path
+
 echo "Bump SDK version from $current_version to $version."
 
 git add $properties_file
+git add -f $build_gradle_example_path
 git commit -m "Bump SDK version to $version"
 
 echo "Branch $branch_name has been created."
