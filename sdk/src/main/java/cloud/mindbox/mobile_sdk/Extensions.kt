@@ -9,12 +9,14 @@ import android.content.pm.PackageManager
 import android.content.pm.PackageManager.PackageInfoFlags
 import android.content.res.Resources
 import android.os.Build
+import android.os.Looper
 import android.os.Process
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
+import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -203,4 +205,10 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
             )
         )
         ?: ""
+}
+
+internal fun verifyMainThreadExecution(methodName: String) {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+        logE("Method $methodName must be called by main thread")
+    }
 }
