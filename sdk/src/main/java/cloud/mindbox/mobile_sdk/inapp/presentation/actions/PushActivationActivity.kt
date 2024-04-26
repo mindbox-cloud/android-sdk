@@ -53,7 +53,7 @@ internal class PushActivationActivity : Activity() {
                         mindboxNotificationManager.openNotificationSettings(this)
                         finish()
                     } else {
-                        mindboxLogI("Checking show dialog")
+                        mindboxLogI("Awaiting show dialog")
                         shouldCheckDialogShowing = true
                     }
                 } else {
@@ -86,10 +86,10 @@ internal class PushActivationActivity : Activity() {
         if (shouldCheckDialogShowing) {
             if ((resumeTimes.last() - resumeTimes.first()) < TIME_BETWEEN_RESUME) {
                 resumeTimes.clear()
-                mindboxLogI("Time between resume less than $TIME_BETWEEN_RESUME open settings")
+                mindboxLogI("System dialog not shown -> open settings")
                 mindboxNotificationManager.openNotificationSettings(this)
             } else {
-                mindboxLogI("Time between resume more than $TIME_BETWEEN_RESUME ")
+                mindboxLogI("User dismiss permission request ")
                 requestPermissionManager.decreaseRequestCounter()
             }
             shouldCheckDialogShowing = false
