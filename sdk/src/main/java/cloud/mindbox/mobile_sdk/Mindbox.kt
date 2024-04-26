@@ -7,6 +7,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
+import androidx.annotation.MainThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
@@ -434,6 +435,7 @@ object Mindbox : MindboxLog {
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
      */
+    @MainThread
     fun init(
         application: Application,
         configuration: MindboxConfiguration,
@@ -458,6 +460,7 @@ object Mindbox : MindboxLog {
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
      */
+    @MainThread
     fun init(
         activity: Activity,
         configuration: MindboxConfiguration,
@@ -473,7 +476,7 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-
+            verifyMainThreadExecution("init")
             val currentProcessName = context.getCurrentProcessName()
             if (!context.isMainProcess(currentProcessName)) {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
@@ -667,10 +670,12 @@ object Mindbox : MindboxLog {
      *     listOf(MindboxFirebase, MindboxHuawei)
      * ```
      */
+    @MainThread
     fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
     ) {
+        verifyMainThreadExecution(methodName = "initPushServices")
         initComponents(context, pushServices)
     }
 
