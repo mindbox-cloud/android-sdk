@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.ViewGroup
 import androidx.annotation.RequiresApi
@@ -16,9 +17,12 @@ internal class PushActivationActivity : Activity() {
 
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val requestPermissionManager by mindboxInject { requestPermissionManager }
+    private var shouldCheckDialogShowing = false
+    private val resumeTimes = mutableListOf<Long>()
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 125129
+        private const val TIME_BETWEEN_RESUME = 350
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
@@ -39,6 +43,7 @@ internal class PushActivationActivity : Activity() {
             granted -> {
                 mindboxLogI("User clicked 'allow' in request permission")
                 Mindbox.updateNotificationPermissionStatus(this)
+                finish()
             }
 
             permissionDenied && !shouldShowRationale -> {
@@ -46,20 +51,22 @@ internal class PushActivationActivity : Activity() {
                     if (requestPermissionManager.getRequestCount() > 1) {
                         mindboxLogI("User already rejected permission two times, try open settings")
                         mindboxNotificationManager.openNotificationSettings(this)
+                        finish()
                     } else {
-                        requestPermissionManager.decreaseRequestCounter()
-                        mindboxLogI("User dismissed request")
+                        mindboxLogI("Awaiting show dialog")
+                        shouldCheckDialogShowing = true
                     }
                 } else {
                     mindboxNotificationManager.shouldOpenSettings = true
+                    finish()
                 }
             }
 
             permissionDenied && shouldShowRationale -> {
                 mindboxLogI("User rejected first permission request")
+                finish()
             }
         }
-        finish()
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -72,6 +79,23 @@ internal class PushActivationActivity : Activity() {
         )
         mindboxLogI("Call permission laucher")
         requestPermissions(arrayOf(Constants.POST_NOTIFICATION), PERMISSION_REQUEST_CODE)
+    }
+
+    override fun onResume() {
+        resumeTimes.add(SystemClock.elapsedRealtime())
+        if (shouldCheckDialogShowing) {
+            if ((resumeTimes.last() - resumeTimes.first()) < TIME_BETWEEN_RESUME) {
+                resumeTimes.clear()
+                mindboxLogI("System dialog not shown -> open settings")
+                mindboxNotificationManager.openNotificationSettings(this)
+            } else {
+                mindboxLogI("User dismiss permission request ")
+                requestPermissionManager.decreaseRequestCounter()
+            }
+            shouldCheckDialogShowing = false
+            finish()
+        }
+        super.onResume()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
