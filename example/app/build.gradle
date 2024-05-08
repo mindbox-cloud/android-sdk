@@ -52,9 +52,9 @@ dependencies {
     implementation 'com.huawei.hms:push:6.11.0.300'
 
     //Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.9.1'
-    implementation 'cloud.mindbox:mindbox-firebase:2.9.1'
-    implementation 'cloud.mindbox:mindbox-huawei:2.9.1'
+    implementation 'cloud.mindbox:mobile-sdk:2.10.0-rc'
+    implementation 'cloud.mindbox:mindbox-firebase:2.10.0-rc'
+    implementation 'cloud.mindbox:mindbox-huawei:2.10.0-rc'
 
     //Glade for custom loader
     implementation 'com.github.bumptech.glide:glide:4.15.1'
