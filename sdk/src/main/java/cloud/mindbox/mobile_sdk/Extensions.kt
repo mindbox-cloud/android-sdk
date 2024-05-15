@@ -9,13 +9,18 @@ import android.content.pm.PackageManager
 import android.content.pm.PackageManager.PackageInfoFlags
 import android.content.res.Resources
 import android.os.Build
+import android.os.Looper
 import android.os.Process
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
+import cloud.mindbox.mobile_sdk.Mindbox.logE
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
@@ -28,6 +33,10 @@ import org.threeten.bp.format.DateTimeFormatter
 import java.nio.charset.Charset
 import java.util.Queue
 import kotlin.math.roundToInt
+
+internal fun SessionDelay(): SessionDelay {
+    return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
+}
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""
@@ -72,8 +81,7 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
         )
 }
 
-internal fun String?.equalsAny(vararg values: String): Boolean = values.any { this == it }
-
+internal fun String?.equalsAny(vararg values: String, ignoreCase: Boolean = false): Boolean = values.any { this?.equals(it, ignoreCase) == true }
 internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T {
     return this?.let {
         enumValues<T>().firstOrNull { value ->
@@ -197,4 +205,10 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
             )
         )
         ?: ""
+}
+
+internal fun verifyMainThreadExecution(methodName: String) {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+        logE("Method $methodName must be called by main thread")
+    }
 }

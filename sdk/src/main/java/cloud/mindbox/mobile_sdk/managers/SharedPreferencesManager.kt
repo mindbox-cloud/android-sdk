@@ -9,6 +9,7 @@ internal object SharedPreferencesManager {
 
     private const val FILE_NAME = "preferences"
     private const val DEFAULT_INT_VALUE = -1
+    private const val DEFAULT_LONG_VALUE = 0L
 
     private lateinit var preferences: SharedPreferences
 
@@ -75,6 +76,11 @@ internal object SharedPreferencesManager {
         value: Int,
     ) = LoggingExceptionHandler.runCatching { preferences.edit().putInt(key, value).apply() }
 
+    fun put(
+        key: String,
+        value: Long,
+    ) = LoggingExceptionHandler.runCatching { preferences.edit().putLong(key, value).apply() }
+
     /**
      * Used to retrieve [String] object from the Preferences.
      *
@@ -115,6 +121,13 @@ internal object SharedPreferencesManager {
         defaultValue: Int = DEFAULT_INT_VALUE,
     ): Int = LoggingExceptionHandler.runCatching(defaultValue) {
         preferences.getInt(key, defaultValue)
+    }
+
+    fun getLong(
+        key: String,
+        defaultValue: Long = DEFAULT_LONG_VALUE,
+    ): Long = LoggingExceptionHandler.runCatching(defaultValue) {
+        preferences.getLong(key, defaultValue)
     }
 
     internal fun deleteAll() = runCatching {

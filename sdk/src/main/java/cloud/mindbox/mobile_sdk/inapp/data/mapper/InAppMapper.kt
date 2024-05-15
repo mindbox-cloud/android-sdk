@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
+import cloud.mindbox.mobile_sdk.SessionDelay
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -14,6 +15,8 @@ import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_LIFETIME
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_SESSION
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlin.math.roundToInt
 
@@ -47,6 +50,7 @@ internal class InAppMapper {
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
         formDto: FormDto?,
+        frequencyDto: FrequencyDto,
         targetingDto: TreeTargetingDto?,
     ): InAppDto {
         return inAppDtoBlank.let { inApp ->
@@ -54,6 +58,7 @@ internal class InAppMapper {
                 id = inApp.id,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
+                frequency = frequencyDto,
                 form = formDto
             )
         }
@@ -160,6 +165,60 @@ internal class InAppMapper {
         } ?: emptyList()
     }
 
+    private fun getDelay(item: FrequencyDto): Frequency.Delay {
+        return when (item) {
+            is FrequencyDto.FrequencyOnceDto -> {
+                when {
+                    item.kind.equals(
+                        other = FREQUENCY_KIND_LIFETIME,
+                        ignoreCase = true
+                    ) -> Frequency.Delay.LifetimeDelay
+
+                    item.kind.equals(
+                        other = FREQUENCY_KIND_SESSION,
+                        ignoreCase = true
+                    ) -> SessionDelay()
+
+                    else -> error("Unknown kind cannot be mapped. Should never happen because of validators")
+                }
+            }
+
+            is FrequencyDto.FrequencyPeriodicDto -> {
+                when {
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_SECONDS,
+                        ignoreCase = true
+                    ) -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.SECONDS)
+                    }
+
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_HOURS,
+                        ignoreCase = true
+                    ) -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.HOURS)
+                    }
+
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_DAYS,
+                        ignoreCase = true
+                    ) -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.DAYS)
+                    }
+
+                    item.unit.equals(
+                        other = FrequencyDto.FrequencyPeriodicDto.FREQUENCY_UNIT_MINUTES,
+                        ignoreCase = true
+                    ) -> {
+                        Frequency.Delay.TimeDelay(item.value, InAppTime.MINUTES)
+                    }
+
+                    else -> error("Unknown time unit cannot be mapped. Should never happen because of validators")
+                }
+            }
+        }
+    }
+
     fun mapToInAppConfig(
         inAppConfigResponse: InAppConfigResponse?,
     ): InAppConfig {
@@ -227,7 +286,8 @@ internal class InAppMapper {
                             } ?: emptyList()
                         ),
                         minVersion = inAppDto.sdkVersion?.minVersion,
-                        maxVersion = inAppDto.sdkVersion?.maxVersion
+                        maxVersion = inAppDto.sdkVersion?.maxVersion,
+                        frequency = Frequency(getDelay(inAppDto.frequency))
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {
@@ -238,7 +298,7 @@ internal class InAppMapper {
                         to = it.to.convertToZonedDateTime()
                     )
                 } ?: emptyList(),
-                operations = inAppConfigResponse.settings?.map { (key, value) ->
+                operations = inAppConfigResponse.settings?.operations?.map { (key, value) ->
                     key.enumValue<OperationName>() to OperationSystemName(value.systemName.lowercase())
                 }?.toMap() ?: emptyMap(),
                 abtests = inAppConfigResponse.abtests?.map { dto ->
@@ -407,6 +467,13 @@ internal class InAppMapper {
             }
         )
     }
+
+    fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
+        TtlParametersDto(
+            inAppTtlDtoBlank.unit.enumValue<InAppTime>(),
+            inAppTtlDtoBlank.value!!
+        )
+    )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {

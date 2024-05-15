@@ -1,11 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.inapp.presentation.ActivityManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.ActivityManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.ClipboardManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.ClipboardManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import kotlinx.coroutines.Dispatchers
 
 
@@ -31,7 +26,8 @@ internal fun PresentationModule(
             inAppMessageViewDisplayer = inAppMessageViewDisplayer,
             inAppInteractor = inAppInteractor,
             defaultDispatcher = Dispatchers.IO,
-            monitoringInteractor = monitoringInteractor
+            monitoringInteractor = monitoringInteractor,
+            sessionStorageManager = sessionStorageManager
         )
     }
     override val clipboardManager: ClipboardManager by lazy {

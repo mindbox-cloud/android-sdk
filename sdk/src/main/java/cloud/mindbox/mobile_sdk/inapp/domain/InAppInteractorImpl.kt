@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -26,7 +27,8 @@ internal class InAppInteractorImpl(
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
-    private val inAppABTestLogic: InAppABTestLogic
+    private val inAppABTestLogic: InAppABTestLogic,
+    private val inAppFrequencyManager: InAppFrequencyManager
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
@@ -44,11 +46,6 @@ internal class InAppInteractorImpl(
                 inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
                 }
-            }.let { inApps ->
-                inAppFilteringManager.filterNotShownInApps(
-                    inAppRepository.getShownInApps(),
-                    inApps
-                )
             }.also { unShownInApps ->
                 logI("Filtered config has ${unShownInApps.size} inapps")
                 for (inApp in unShownInApps) {
@@ -65,10 +62,12 @@ internal class InAppInteractorImpl(
                 if (isInAppShown()) inAppTargetingChannel.send(event)
                 !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
-                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
+                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
+                    inAppFrequencyManager.filterInAppsFrequency(it)
+                }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
                 inAppProcessingManager.chooseInAppToShow(
-                   filteredInApps,
+                    filteredInApps,
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
@@ -83,15 +82,10 @@ internal class InAppInteractorImpl(
             }.filterNotNull()
     }
 
-    override fun saveShownInApp(id: String) {
-        val shownInApps = inAppRepository.getShownInApps()
-        val isAlreadySaved = shownInApps.contains(id)
-
-        if (!isAlreadySaved) {
-            inAppRepository.setInAppShown()
-            inAppRepository.sendInAppShown(id)
-            inAppRepository.saveShownInApp(id)
-        }
+    override fun saveShownInApp(id: String, timeStamp: Long) {
+        inAppRepository.setInAppShown()
+        inAppRepository.sendInAppShown(id)
+        inAppRepository.saveShownInApp(id, timeStamp)
     }
 
     override fun sendInAppClicked(inAppId: String) {

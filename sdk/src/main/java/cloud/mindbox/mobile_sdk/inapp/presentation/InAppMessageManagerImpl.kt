@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
@@ -16,6 +17,7 @@ internal class InAppMessageManagerImpl(
     private val inAppInteractor: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher,
     private val monitoringInteractor: MonitoringInteractor,
+    private val sessionStorageManager: SessionStorageManager
 ) : InAppMessageManager {
 
     override fun registerCurrentActivity(activity: Activity) {
@@ -52,7 +54,7 @@ internal class InAppMessageManagerImpl(
                                     inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                                 },
                                 onInAppShown = {
-                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId)
+                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
                                 }
                             )
                         }
@@ -76,6 +78,7 @@ internal class InAppMessageManagerImpl(
                     }
 
                     else -> {
+                        sessionStorageManager.configFetchingError = true
                         // needed to trigger flow event
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
                         MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)

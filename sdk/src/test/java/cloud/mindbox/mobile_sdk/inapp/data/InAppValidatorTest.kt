@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -24,6 +25,9 @@ internal class InAppValidatorTest {
     private val sdkVersionValidator = SdkVersionValidator()
 
     @MockK
+    private lateinit var frequencyValidator: FrequencyValidator
+
+    @MockK
     private lateinit var snackbarValidator: SnackbarValidator
 
     @OverrideMockKs
@@ -32,6 +36,7 @@ internal class InAppValidatorTest {
     @Before
     fun onTestStart() {
         every { modalWindowValidator.isValid(any()) } returns true
+        every { frequencyValidator.isValid(any()) } returns true
     }
 
     @Test
@@ -97,7 +102,7 @@ internal class InAppValidatorTest {
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
         inAppValidator =
-            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator)
+            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator, mockk())
 
         every {
             modalWindowValidator.isValid(any())
@@ -131,7 +136,8 @@ internal class InAppValidatorTest {
         inAppValidator = InAppValidatorImpl(
             sdkVersionValidator = sdkVersionValidator,
             modalWindowValidator = modalWindowValidator,
-            snackbarValidator = snackbarValidator
+            snackbarValidator = snackbarValidator,
+            mockk()
         )
         every {
             modalWindowValidator.isValid(any())

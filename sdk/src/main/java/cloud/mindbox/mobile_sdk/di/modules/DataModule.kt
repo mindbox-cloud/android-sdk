@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImp
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.PushPermissionActionDto
@@ -115,7 +116,8 @@ internal fun DataModule(
     override val defaultDataManager: DataManager by lazy {
         DataManager(
             modalWindowDtoDataFiller = modalWindowDtoDataFiller,
-            snackBarDtoDataFiller = snackBarDtoDataFiller
+            snackBarDtoDataFiller = snackBarDtoDataFiller,
+            frequencyDataFiller = frequencyDataFiller
         )
     }
 
@@ -142,7 +144,10 @@ internal fun DataModule(
             operationNameValidator = operationNameValidator,
             operationValidator = operationValidator,
             gatewayManager = gatewayManager,
-            defaultDataManager = defaultDataManager
+            defaultDataManager = defaultDataManager,
+            ttlParametersValidator = ttlParametersValidator,
+            inAppConfigTtlValidator = inAppConfigTtlValidator,
+            sessionStorageManager = sessionStorageManager
         )
     }
 
@@ -194,7 +199,8 @@ internal fun DataModule(
         InAppValidatorImpl(
             sdkVersionValidator = sdkVersionValidator,
             modalWindowValidator = modalWindowValidator,
-            snackbarValidator = snackbarValidator
+            snackbarValidator = snackbarValidator,
+            frequencyValidator = frequencyValidator
         )
     }
 
@@ -211,6 +217,10 @@ internal fun DataModule(
     override val operationValidator: OperationValidator
         get() = OperationValidator()
 
+    override val ttlParametersValidator: TtlParametersValidator by lazy { TtlParametersValidator() }
+
+    override val inAppConfigTtlValidator: InAppConfigTtlValidator by lazy { InAppConfigTtlValidator() }
+
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {
@@ -222,9 +232,26 @@ internal fun DataModule(
 
     override val requestPermissionManager: RequestPermissionManager
         get() = RequestPermissionManagerImpl()
+    override val frequencyDataFiller: FrequencyDataFiller
+        get() = FrequencyDataFiller()
+    override val frequencyValidator: FrequencyValidator
+        get() = FrequencyValidator()
 
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
+            RuntimeTypeAdapterFactory.of(
+                FrequencyDto::class.java,
+                Constants.TYPE_JSON_NAME,
+                true
+            ).registerSubtype(
+                FrequencyDto.FrequencyOnceDto::class.java,
+                FrequencyDto.FrequencyOnceDto.FREQUENCY_ONCE_JSON_NAME
+            ).registerSubtype(
+                FrequencyDto.FrequencyPeriodicDto::class.java,
+                FrequencyDto.FrequencyPeriodicDto.FREQUENCY_PERIODIC_JSON_NAME
+            )
+        )
+            .registerTypeAdapterFactory(
             RuntimeTypeAdapterFactory.of(
                 PayloadBlankDto::class.java,
                 Constants.TYPE_JSON_NAME,

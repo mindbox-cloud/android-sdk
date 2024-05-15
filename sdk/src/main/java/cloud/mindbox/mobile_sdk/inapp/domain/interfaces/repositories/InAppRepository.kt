@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 internal interface InAppRepository {
     fun saveCurrentSessionInApps(inApps: List<InApp>)
 
+    fun getShownInApps(): Map<String, Long>
     fun getCurrentSessionInApps(): List<InApp>
 
     fun getTargetedInApps(): Map<String, MutableSet<Int>>
@@ -20,12 +21,9 @@ internal interface InAppRepository {
     fun saveOperationalInApp(operation: String, inApp: InApp)
 
     fun getOperationalInAppsByOperation(operation: String): List<InApp>
-
-    fun getShownInApps(): Set<String>
-
     fun listenInAppEvents(): Flow<InAppEventType>
 
-    fun saveShownInApp(id: String)
+    fun saveShownInApp(id: String, timeStamp: Long)
 
     fun sendInAppShown(inAppId: String)
 

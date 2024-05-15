@@ -5,8 +5,6 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal interface InAppFilteringManager {
 
-    fun filterNotShownInApps(shownInApps: Set<String>, inApps: List<InApp>): List<InApp>
-
     fun filterOperationFreeInApps(inApps: List<InApp>): List<InApp>
 
     fun filterGeoFreeInApps(inApps: List<InApp>): List<InApp>
