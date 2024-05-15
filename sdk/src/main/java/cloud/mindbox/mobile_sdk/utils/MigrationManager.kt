@@ -53,6 +53,7 @@ internal class MigrationManager(val context: Context) {
                 gson.toJson(newShownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
             }
             MindboxPreferences.shownInApps = newMapString
+            MindboxPreferences.shownInAppIds = ""
         }
 
     }

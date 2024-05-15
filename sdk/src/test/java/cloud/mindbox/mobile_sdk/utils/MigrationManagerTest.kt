@@ -45,6 +45,9 @@ class MigrationManagerTest {
         verify(exactly = 1) {
             MindboxPreferences.shownInApps = expectedNewMapString
         }
+        verify(exactly = 1) {
+            MindboxPreferences.shownInAppIds = ""
+        }
     }
 
 }
