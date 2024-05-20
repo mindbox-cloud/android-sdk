@@ -2,7 +2,6 @@
 <resources>
     <string name="mindbox_inapp_fetching_timeout">3000</string>
     <string name="mindbox_android_process" />
-    <color name="mindbox_default_notification_color">@android:color/transparent</color>
 
     <style name="Theme.MindboxTransparent" parent="android:Theme.Dialog">
         <item name="android:windowBackground">@android:color/transparent</item>

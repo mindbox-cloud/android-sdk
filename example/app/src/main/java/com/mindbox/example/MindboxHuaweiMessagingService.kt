@@ -33,6 +33,7 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
         val defaultActivity = MainActivity::class.java
 
         // Method for rendering mobile push from Mindbox
+        // Override resource mindbox_default_notification_color to change color pushSmallIcon
         val messageWasHandled = Mindbox.handleRemoteMessage(
             context = applicationContext,
             message = message,
