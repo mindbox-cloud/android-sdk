@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -15,12 +16,24 @@ internal class MigrationManager(val context: Context) {
     fun migrateAll() {
         listOf(
             version282(),
-            version290()
+            version290(),
+            version_0_1(),
+            version_1_2()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
                     mindboxLogI("Run migration '${migration.description}'")
                     migration.run()
+                }
+            }.also {
+                if (MindboxPreferences.versionCode == 0) {
+                    mindboxLogI("Previous version code equals 0 so manually set it to 1")
+                    MindboxPreferences.versionCode += 1
+                }
+                if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
+                    mindboxLogE("Migrations failed, reset memory")
+                    MindboxPreferences.softReset()
+                    MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
                 }
             }
     }
@@ -31,6 +44,41 @@ internal class MigrationManager(val context: Context) {
 
         fun run()
     }
+
+    private fun version_1_2(): Migration {
+        return object : Migration {
+            override val description: String
+                get() = "Migration from version 1 to version 2"
+            override val isNeeded: Boolean
+                get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
+
+            override fun run() {
+                mindboxLogI("Perform migration from version 1 to version 2")
+                val newVersionCode = 2
+                MindboxPreferences.versionCode = newVersionCode
+                mindboxLogI("Setting SDK version code to $newVersionCode")
+            }
+
+        }
+    }
+
+    private fun version_0_1(): Migration {
+        return object : Migration {
+            override val description: String
+                get() = "Migration from version 0 to version 1"
+            override val isNeeded: Boolean
+                get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
+
+            override fun run() {
+                mindboxLogI("Perform migration from version 0 to version 1")
+                val newVersionCode = 1
+                MindboxPreferences.versionCode = newVersionCode
+                mindboxLogI("Setting SDK version code to $newVersionCode")
+            }
+
+        }
+    }
+
 
     private fun version290() = object : Migration {
         override val description: String

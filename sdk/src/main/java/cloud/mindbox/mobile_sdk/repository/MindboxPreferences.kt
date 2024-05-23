@@ -31,8 +31,20 @@ internal object MindboxPreferences {
     private const val KEY_REQUEST_PERMISSION_COUNT = "key_request_permission_count"
     private const val IN_APPS_METADATA = "key_inapp_metadata"
     private const val KEY_CONFIG_UPDATE_DATE = "key_config_update_date"
+    private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
+
+    fun softReset() {
+        inAppConfig = ""
+        shownInAppIds = ""
+        inAppGeo = ""
+        logsRequestIds = ""
+        userVisitCount = 0
+        requestPermissionCount = 0
+        shownInApps = ""
+        inAppConfigUpdatedTime = 0
+    }
 
     var logsRequestIds: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
@@ -235,6 +247,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_CONFIG_UPDATE_DATE, value)
+            }
+        }
+
+    var versionCode: Int
+        get() = LoggingExceptionHandler.runCatching(defaultValue = 0) {
+            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, 0)
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_SDK_VERSION_CODE, value)
             }
         }
 }
