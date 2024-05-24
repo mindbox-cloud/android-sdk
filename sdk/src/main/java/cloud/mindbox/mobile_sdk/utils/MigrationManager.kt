@@ -16,9 +16,7 @@ internal class MigrationManager(val context: Context) {
     fun migrateAll() {
         listOf(
             version282(),
-            version290(),
-            version_0_1(),
-            version_1_2()
+            version290()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
@@ -44,41 +42,6 @@ internal class MigrationManager(val context: Context) {
 
         fun run()
     }
-
-    private fun version_1_2(): Migration {
-        return object : Migration {
-            override val description: String
-                get() = "Migration from version 1 to version 2"
-            override val isNeeded: Boolean
-                get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
-
-            override fun run() {
-                mindboxLogI("Perform migration from version 1 to version 2")
-                val newVersionCode = 2
-                MindboxPreferences.versionCode = newVersionCode
-                mindboxLogI("Setting SDK version code to $newVersionCode")
-            }
-
-        }
-    }
-
-    private fun version_0_1(): Migration {
-        return object : Migration {
-            override val description: String
-                get() = "Migration from version 0 to version 1"
-            override val isNeeded: Boolean
-                get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
-
-            override fun run() {
-                mindboxLogI("Perform migration from version 0 to version 1")
-                val newVersionCode = 1
-                MindboxPreferences.versionCode = newVersionCode
-                mindboxLogI("Setting SDK version code to $newVersionCode")
-            }
-
-        }
-    }
-
 
     private fun version290() = object : Migration {
         override val description: String
