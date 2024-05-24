@@ -8,4 +8,5 @@ internal object Constants {
     internal const val APP_PACKAGE_NAME = "app_package"
     internal const val APP_UID_NAME = "app_uid"
     internal const val SCHEME_PACKAGE = "package"
+    internal const val SDK_VERSION_CODE = 1
 }
