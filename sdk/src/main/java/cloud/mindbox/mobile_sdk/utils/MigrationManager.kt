@@ -24,10 +24,6 @@ internal class MigrationManager(val context: Context) {
                     migration.run()
                 }
             }.also {
-                if (MindboxPreferences.versionCode == 0) {
-                    mindboxLogI("Previous version code equals 0 so manually set it to 1")
-                    MindboxPreferences.versionCode += 1
-                }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
                     mindboxLogE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()

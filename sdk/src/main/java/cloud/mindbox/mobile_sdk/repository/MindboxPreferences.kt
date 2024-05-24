@@ -251,8 +251,8 @@ internal object MindboxPreferences {
         }
 
     var versionCode: Int
-        get() = LoggingExceptionHandler.runCatching(defaultValue = 0) {
-            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, 0)
+        get() = LoggingExceptionHandler.runCatching(defaultValue = 1) {
+            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, 1)
         }
         set(value) {
             LoggingExceptionHandler.runCatching {
