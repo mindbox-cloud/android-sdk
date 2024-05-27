@@ -116,8 +116,8 @@ internal sealed class FrequencyDto {
         internal companion object {
             const val FREQUENCY_PERIODIC_JSON_NAME = "periodic"
 
-            const val FREQUENCY_UNIT_HOURS = "MINUTES"
-            const val FREQUENCY_UNIT_MINUTES = "HOURS"
+            const val FREQUENCY_UNIT_HOURS = "HOURS"
+            const val FREQUENCY_UNIT_MINUTES = "MINUTES"
             const val FREQUENCY_UNIT_DAYS = "DAYS"
             const val FREQUENCY_UNIT_SECONDS = "SECONDS"
         }
