@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtlData
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.models.operation.response.TtlParametersDto
+import cloud.mindbox.mobile_sdk.parseTimeSpanToMillis
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.util.Date
@@ -23,12 +23,12 @@ internal class InAppConfigTtlValidator : Validator<InAppTtlData> {
         }
     }
 
-    private fun isConfigValid(ttl: TtlParametersDto?): Boolean {
+    private fun isConfigValid(ttl: String?): Boolean {
         return LoggingExceptionHandler.runCatching(true) {
             ttl?.let {
                 val configUpdatedTime = MindboxPreferences.inAppConfigUpdatedTime.toULong()
                 val currentTime = System.currentTimeMillis().toULong()
-                val ttlTime = ttl.unit.toMillis(ttl.value).toULong()
+                val ttlTime = ttl.parseTimeSpanToMillis().toULong()
                 val safeTtlTime = minOf(Long.MAX_VALUE.toULong(), configUpdatedTime + ttlTime)
                 mindboxLogI("Check In-Apps ttl. Current time $currentTime , config updated time $configUpdatedTime , ttl settings $ttlTime")
                 mindboxLogI("Cached config valid to ${Date(safeTtlTime.toLong())}")

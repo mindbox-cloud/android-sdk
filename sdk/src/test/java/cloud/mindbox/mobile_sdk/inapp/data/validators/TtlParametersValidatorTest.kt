@@ -10,71 +10,63 @@ class TtlParametersValidatorTest {
 
     @Test
     fun `isValid returns true for valid unit HOURS and non-negative value`() {
-        val validTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "HOURS", value = 1L)
+        val validTtl = SettingsDtoBlank.TtlDtoBlank("01:00:00")
 
         assertTrue(validator.isValid(validTtl))
     }
 
     @Test
     fun `isValid returns true for valid unit DAYS and non-negative value`() {
-        val validTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "DAYS", value = 1L)
+        val validTtl = SettingsDtoBlank.TtlDtoBlank("1.00:00:00")
 
         assertTrue(validator.isValid(validTtl))
     }
 
     @Test
     fun `isValid returns true for valid unit MINUTES and non-negative value`() {
-        val validTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "MINUTES", value = 1L)
+        val validTtl = SettingsDtoBlank.TtlDtoBlank("00:01:00")
 
         assertTrue(validator.isValid(validTtl))
     }
 
     @Test
     fun `isValid returns true for valid unit SECONDS and non-negative value`() {
-        val validTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "SECONDS", value = 1L)
+        val validTtl = SettingsDtoBlank.TtlDtoBlank("00:00:01")
 
         assertTrue(validator.isValid(validTtl))
     }
 
     @Test
     fun `isValid returns false for invalid unit`() {
-        val invalidUnitTtl =
-            SettingsDtoBlank.TtlParametersDtoBlank(unit = "INVALID_UNIT", value = 1L)
+        val invalidUnitTtl = SettingsDtoBlank.TtlDtoBlank("1:00:00:00")
 
         assertFalse(validator.isValid(invalidUnitTtl))
     }
 
     @Test
     fun `isValid returns false for negative value`() {
-        val negativeValueTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "HOURS", value = -1L)
+        val negativeValueTtl = SettingsDtoBlank.TtlDtoBlank("-1:00:00")
 
         assertFalse(validator.isValid(negativeValueTtl))
     }
 
     @Test
     fun `isValid returns true when value is 0`() {
-        val negativeValueTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "HOURS", value = 0L)
+        val negativeValueTtl = SettingsDtoBlank.TtlDtoBlank("-00:00:00")
 
         assertTrue(validator.isValid(negativeValueTtl))
     }
 
     @Test
-    fun `isValid returns false for null unit and value`() {
-        val nullTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = null, value = null)
+    fun `isValid returns false for null value`() {
+        val nullTtl = SettingsDtoBlank.TtlDtoBlank(null)
 
         assertFalse(validator.isValid(nullTtl))
     }
 
     @Test
-    fun `isValid returns false when unit null and value is valid`() {
-        val nullTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = null, value = 1L)
-
-        assertFalse(validator.isValid(nullTtl))
-    }
-
-    @Test
-    fun `isValid returns false when unit is valid and value is null`() {
-        val nullTtl = SettingsDtoBlank.TtlParametersDtoBlank(unit = "DAYS", value = null)
+    fun `isValid returns false when ttl is valid string`() {
+        val nullTtl = SettingsDtoBlank.TtlDtoBlank("one day")
 
         assertFalse(validator.isValid(nullTtl))
     }
