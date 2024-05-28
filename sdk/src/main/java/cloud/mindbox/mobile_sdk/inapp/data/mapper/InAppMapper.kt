@@ -468,11 +468,8 @@ internal class InAppMapper {
         )
     }
 
-    fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlParametersDtoBlank) = TtlDto(
-        TtlParametersDto(
-            inAppTtlDtoBlank.unit.enumValue<InAppTime>(),
-            inAppTtlDtoBlank.value!!
-        )
+    fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlDtoBlank) = TtlDto(
+        inApps = inAppTtlDtoBlank.inApps!!
     )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {

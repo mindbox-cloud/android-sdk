@@ -1,8 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
@@ -162,7 +162,7 @@ internal class MobileConfigRepositoryImpl(
 
     private fun getInAppTtl(configBlank: InAppConfigResponseBlank?): TtlDto? =
         try {
-            configBlank?.settings?.ttl?.inApps?.takeIf { ttlParametersDtoBlank ->
+            configBlank?.settings?.ttl?.takeIf { ttlParametersDtoBlank ->
                 ttlParametersValidator.isValid(ttlParametersDtoBlank)
             }?.let { ttlParametersDtoBlank ->
                 inAppMapper.mapToTtlDto(ttlParametersDtoBlank)
