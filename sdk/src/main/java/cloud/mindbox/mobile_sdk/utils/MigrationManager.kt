@@ -44,6 +44,7 @@ internal class MigrationManager(val context: Context) {
 
             override fun run() {
                 mindboxLogI("execute migration from version 1 to version 2")
+                MindboxPreferences.versionCode +=1
             }
 
         }
@@ -58,8 +59,8 @@ internal class MigrationManager(val context: Context) {
 
             override fun run() {
                 mindboxLogI("execute migration from version 2 to version 3")
+                MindboxPreferences.versionCode +=1
             }
-
         }
     }
 
