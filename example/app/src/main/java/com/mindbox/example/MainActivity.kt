@@ -50,9 +50,13 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, ActivityTransitionByPush::class.java)
             this.startActivity(intent)
         }
+
+        binding.btnOpenPushList.setOnClickListener {
+            startActivity(Intent(this, NotificationHistoryActivity::class.java))
+        }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         processMindboxIntent(intent = intent, context = this)?.let { (url, payload) ->
             binding.tvPushUrlResult.text = url
