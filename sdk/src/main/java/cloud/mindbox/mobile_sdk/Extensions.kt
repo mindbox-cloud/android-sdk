@@ -33,6 +33,10 @@ import org.threeten.bp.format.DateTimeFormatter
 import java.nio.charset.Charset
 import java.util.Queue
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 internal fun SessionDelay(): SessionDelay {
     return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
@@ -211,4 +215,19 @@ internal fun verifyMainThreadExecution(methodName: String) {
     if (Looper.myLooper() != Looper.getMainLooper()) {
         logE("Method $methodName must be called by main thread")
     }
+}
+
+fun String.parseTimeSpanToMillis(): Long {
+    val regex = """(-)?(\d+\.)?([01]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)(\.\d{1,7})?""".toRegex()
+    val matchResult = regex.matchEntire(this)
+        ?: throw IllegalArgumentException("Invalid timeSpan format")
+    val (sign, days, hours, minutes, seconds, fraction) = matchResult.destructured
+    val daysCorrected = if (days.isBlank()) "0" else days.dropLast(1)
+
+    val duration = daysCorrected.toLong().days +
+            hours.toLong().hours +
+            minutes.toLong().minutes +
+            (seconds + fraction).toDouble().seconds
+
+    return if (sign == "-") duration.inWholeMilliseconds * -1 else duration.inWholeMilliseconds
 }
