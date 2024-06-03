@@ -51,6 +51,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.huawei.hms:push:6.11.0.300'
 
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+
     //Mindbox
     implementation 'cloud.mindbox:mobile-sdk:2.10.0-rc'
     implementation 'cloud.mindbox:mindbox-firebase:2.10.0-rc'
