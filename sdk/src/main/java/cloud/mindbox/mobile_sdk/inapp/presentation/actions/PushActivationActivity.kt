@@ -22,7 +22,7 @@ internal class PushActivationActivity : Activity() {
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 125129
-        private const val TIME_BETWEEN_RESUME = 350
+        private const val TIME_BETWEEN_RESUME = 700
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
@@ -84,12 +84,13 @@ internal class PushActivationActivity : Activity() {
     override fun onResume() {
         resumeTimes.add(SystemClock.elapsedRealtime())
         if (shouldCheckDialogShowing) {
-            if ((resumeTimes.last() - resumeTimes.first()) < TIME_BETWEEN_RESUME) {
+            val duration = resumeTimes.last() - resumeTimes.first()
+            if (duration < TIME_BETWEEN_RESUME) {
                 resumeTimes.clear()
-                mindboxLogI("System dialog not shown -> open settings")
+                mindboxLogI("System dialog not shown because timeout=$duration -> open settings")
                 mindboxNotificationManager.openNotificationSettings(this)
             } else {
-                mindboxLogI("User dismiss permission request ")
+                mindboxLogI("User dismiss permission request because timeout=$duration")
                 requestPermissionManager.decreaseRequestCounter()
             }
             shouldCheckDialogShowing = false
