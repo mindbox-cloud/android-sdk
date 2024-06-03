@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
@@ -32,14 +31,7 @@ internal data class SettingsDtoBlank(
 
     internal data class TtlDtoBlank(
         @SerializedName("inapps")
-        val inApps: TtlParametersDtoBlank?
-    )
-
-    internal data class TtlParametersDtoBlank(
-        @SerializedName("unit")
-        val unit: String?,
-        @SerializedName("value")
-        val value: Long?
+        val inApps: String?
     )
 }
 
@@ -56,14 +48,7 @@ internal data class OperationDto(
 
 internal data class TtlDto(
     @SerializedName("inapps")
-    val inApps: TtlParametersDto?
-)
-
-internal data class TtlParametersDto(
-    @SerializedName("unit")
-    val unit: InAppTime,
-    @SerializedName("value")
-    val value: Long
+    val inApps: String
 )
 
 internal data class LogRequestDto(
@@ -116,8 +101,8 @@ internal sealed class FrequencyDto {
         internal companion object {
             const val FREQUENCY_PERIODIC_JSON_NAME = "periodic"
 
-            const val FREQUENCY_UNIT_HOURS = "MINUTES"
-            const val FREQUENCY_UNIT_MINUTES = "HOURS"
+            const val FREQUENCY_UNIT_HOURS = "HOURS"
+            const val FREQUENCY_UNIT_MINUTES = "MINUTES"
             const val FREQUENCY_UNIT_DAYS = "DAYS"
             const val FREQUENCY_UNIT_SECONDS = "SECONDS"
         }
