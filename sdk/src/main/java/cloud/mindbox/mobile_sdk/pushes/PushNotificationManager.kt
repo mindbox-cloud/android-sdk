@@ -6,19 +6,24 @@ import android.app.Notification.VISIBILITY_PRIVATE
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Generator
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.UnknownHostException
@@ -475,6 +480,7 @@ internal object PushNotificationManager {
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setIconColor(context)
             .handlePushClick(
                 context = context,
                 notificationId = notificationId,
@@ -657,6 +663,17 @@ internal object PushNotificationManager {
             NotificationCompat.BigTextStyle()
                 .bigText(text),
         )
+    }
+
+    private fun NotificationCompat.Builder.setIconColor(context: Context) = apply {
+        loggingRunCatching {
+            ContextCompat.getColor(context, R.color.mindbox_default_notification_color).takeIf {
+                it != Color.TRANSPARENT
+            }?.let { defaultColor ->
+                setColor(defaultColor)
+                mindboxLogI("Notification color overridden to ${Integer.toHexString(defaultColor)}")
+            }
+        }
     }
 
     private fun getIntent(
