@@ -21,10 +21,6 @@
             android:name=".NotificationHistoryActivity"
             android:exported="false" />
 
-        <meta-data
-            android:name="com.huawei.hms.client.channel.androidMarket"
-            android:value="false" />
-
         <service
             android:name=".MindboxHuaweiMessagingService"
             android:enabled="true"
