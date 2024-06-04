@@ -51,6 +51,7 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
         // Method for getting info from Mindbox push
         val mindboxMessage = MindboxHuawei.convertToMindboxRemoteMessage(remoteMessage = message)
         Log.d(Utils.TAG, mindboxMessage.toString())
+        // If you want to save the notification you can call your save function from here.
         mindboxMessage?.let {
             NotificationStorage.addNotification(it)
         }

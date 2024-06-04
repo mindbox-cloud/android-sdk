@@ -19,7 +19,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
         pushName: String,
         pushDate: String
     ): String {
-        return """ 
+        return """{
             "data":{
             "customerAction": {
             "customFields": {
@@ -27,7 +27,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
             "mobPushTranslateName": "$pushName"
         }
         }
-        }""".trimIndent().replace("\n", "").filter { !it.isWhitespace() }
+        }}""".trimIndent().replace("\n", "").filter { !it.isWhitespace() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
