@@ -18,7 +18,7 @@ object NotificationStorage {
             pushActions = emptyList(),
             "2",
             "testUrl",
-            payload = "{ \"mobilePhoneNumber\":\"<Phone number>\",\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
+            payload = "{\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
         ), MindboxRemoteMessage(
             "2",
             title = "Second notification title",
@@ -26,7 +26,7 @@ object NotificationStorage {
             pushActions = emptyList(),
             "2",
             "testUrl",
-            payload = "{ \"mobilePhoneNumber\":\"<Phone number>\",\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
+            payload = "{\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
         ), MindboxRemoteMessage(
             "3",
             title = "Third notification title",
@@ -34,7 +34,7 @@ object NotificationStorage {
             pushActions = emptyList(),
             "2",
             "testUrl",
-            payload = "{ \"mobilePhoneNumber\":\"<Phone number>\",\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
+            payload = "{\"pushName\":\"<Push name>\",\"pushDate\":\"<Push date>\"}"
         )
     )
 

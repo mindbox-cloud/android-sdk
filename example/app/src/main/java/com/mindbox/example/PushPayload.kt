@@ -1,3 +1,3 @@
 package com.mindbox.example
 
-data class PushPayload(val mobilePhoneNumber: String, val pushDate: String, val pushName: String)
+data class PushPayload(val pushDate: String, val pushName: String)

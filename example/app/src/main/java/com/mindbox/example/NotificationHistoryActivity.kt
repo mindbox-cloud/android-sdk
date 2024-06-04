@@ -17,8 +17,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
 
     private fun getPushOpenOperationBody(
         pushName: String,
-        pushDate: String,
-        phone: String
+        pushDate: String
     ): String {
         return """ 
             "data":{
@@ -27,20 +26,8 @@ class NotificationHistoryActivity : AppCompatActivity() {
             "mobPushSendDateTime": "$pushDate",
             "mobPushTranslateName": "$pushName"
         }
-        },
-            "customer": {
-            "mobilePhone": "$phone"
         }
-        }"""
-    }
-
-    private fun getNCBodyOpen(phone: String): String {
-        return """
-            "data" : {
-            "customer": {
-            "mobilePhone": "$phone"
-        }
-        }"""
+        }""".trimIndent().replace("\n", "").filter { !it.isWhitespace() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +36,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
         Mindbox.executeAsyncOperation(
             applicationContext,
             "mobileapp.NCOpen",
-            getNCBodyOpen("")
+            ""
         )
         setContentView(binding.root)
         binding.rvList.apply {
@@ -58,7 +45,6 @@ class NotificationHistoryActivity : AppCompatActivity() {
             adapter = NotificationAdapter {
                 /*Assuming payload of push notification has this structure:
                      {
-                        "mobilePhoneNumber":"<Phone number>",
                         "pushName":"<Push name>",
                         "pushDate":"<Push date>"
                       }*/
@@ -68,8 +54,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
                     "mobileapp.NCPushOpen",
                     getPushOpenOperationBody(
                         pushPayload.pushName,
-                        pushPayload.pushDate,
-                        pushPayload.mobilePhoneNumber
+                        pushPayload.pushDate
                     )
                 )
             }
