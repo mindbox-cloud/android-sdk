@@ -41,6 +41,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
             ""
         )
         setContentView(binding.root)
+        Toast.makeText(applicationContext, "Notification center opened", Toast.LENGTH_LONG).show()
         binding.rvList.apply {
             setHasFixedSize(true)
             layoutManager = LinearLayoutManager(applicationContext)
