@@ -1,12 +1,14 @@
 package com.mindbox.example
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.google.gson.Gson
 import com.mindbox.example.databinding.ActivityNotificationHistoryActivivityBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class NotificationHistoryActivity : AppCompatActivity() {
@@ -57,11 +59,16 @@ class NotificationHistoryActivity : AppCompatActivity() {
                         pushPayload.pushDate
                     )
                 )
+                Toast.makeText(
+                    applicationContext,
+                    "Click on notification with unique key ${it.uniqueKey}, title = ${it.title} and description = ${it.description}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
         (binding.rvList.adapter as NotificationAdapter).updateNotifications(NotificationStorage.notifications)
         //Don't listen to storage in your actual app inside activity.
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             NotificationStorage.notificationsFlow.collect {
                 (binding.rvList.adapter as NotificationAdapter).updateNotifications(it)
             }

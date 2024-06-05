@@ -10,7 +10,7 @@ object NotificationStorage {
 
     //Don't use this approach in your app. This storage serves demonstration purpose only.
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val testNotifications = mutableListOf(
+    private val testNotifications = listOf(
         MindboxRemoteMessage(
             uniqueKey = "Push unique key: 1",
             title = "First notification title",
@@ -38,12 +38,12 @@ object NotificationStorage {
         )
     )
 
-    val notifications: MutableList<MindboxRemoteMessage> = testNotifications
+    var notifications: List<MindboxRemoteMessage> = testNotifications
     val notificationsFlow = MutableSharedFlow<List<MindboxRemoteMessage>>(replay = 100)
 
 
     fun addNotification(notification: MindboxRemoteMessage) {
-        notifications.add(notification)
+        notifications = notifications + notification
         scope.launch {
             notificationsFlow.emit(notifications)
         }
