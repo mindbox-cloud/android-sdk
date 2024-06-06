@@ -51,6 +51,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.huawei.hms:push:6.11.0.300'
 
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+
     //Mindbox
     implementation 'cloud.mindbox:mobile-sdk:2.10.0'
     implementation 'cloud.mindbox:mindbox-firebase:2.10.0'
@@ -58,5 +61,6 @@ dependencies {
 
     //Glade for custom loader
     implementation 'com.github.bumptech.glide:glide:4.15.1'
+    implementation 'androidx.activity:activity-ktx:1.9.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'
 }
