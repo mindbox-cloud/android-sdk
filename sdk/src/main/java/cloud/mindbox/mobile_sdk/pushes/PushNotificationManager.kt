@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -238,6 +239,7 @@ internal object PushNotificationManager {
                 state = state,
                 delay = fallback.delay,
             )
+
             is ImageRetryStrategy.Cancel -> {}
             is ImageRetryStrategy.ApplyDefaultAndRetry -> applyDefaultAndRetryNotifyRemoteMessage(
                 context = applicationContext,
@@ -254,6 +256,7 @@ internal object PushNotificationManager {
                 imagePlaceholder = fallback.defaultImage,
                 currentState = state,
             )
+
             is ImageRetryStrategy.ApplyDefault -> applyDefaultNotifyRemoteMessage(
                 context = applicationContext,
                 notificationManager = notificationManager,
@@ -267,6 +270,7 @@ internal object PushNotificationManager {
                 defaultActivity = defaultActivity,
                 imagePlaceholder = fallback.defaultImage,
             )
+
             null -> {
                 notifyRemoteMessage(
                     context = applicationContext,
@@ -500,6 +504,7 @@ internal object PushNotificationManager {
                 defaultActivity = defaultActivity,
             )
             .setNotificationStyle(
+                context = context,
                 image = image,
                 title = title,
                 text = text,
@@ -624,17 +629,26 @@ internal object PushNotificationManager {
     }
 
     private fun NotificationCompat.Builder.setNotificationStyle(
+        context: Context,
         image: Bitmap?,
         title: String,
         text: String?,
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
-                if (image != null) {
-                    setImage(image, title, text)
-                } else {
-                    setText(text)
-                }
+                setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                setCustomContentView(
+                    RemoteViews(context.packageName, R.layout.notification_custom_text).apply {
+                        setTextViewText(R.id.text_view_title, title)
+                        setTextViewText(R.id.text_view_content, text)
+                        setImageViewBitmap(R.id.image_view_large_icon, image)
+                    })
+                setCustomBigContentView(
+                    RemoteViews(context.packageName, R.layout.notification_custom_text_with_image).apply {
+                        setTextViewText(R.id.text_view_title, title)
+                        setTextViewText(R.id.text_view_content, text)
+                        setImageViewBitmap(R.id.image_view_picture, image)
+                    })
             },
             defaultValue = { setText(text) }
         )

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/text_view_title"
+        style="@style/TextAppearance.Compat.Notification.Title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/notification_content_margin_end"
+        android:layout_toStartOf="@+id/image_view_large_icon"
+        android:singleLine="true"
+        tools:text="@tools:sample/lorem" />
+
+    <TextView
+        android:id="@+id/text_view_content"
+        style="@style/TextAppearance.Compat.Notification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/text_view_title"
+        android:layout_marginEnd="@dimen/notification_content_margin_end"
+        android:layout_toStartOf="@+id/image_view_large_icon"
+        android:lineSpacingExtra="3sp"
+        android:maxLines="4"
+        tools:text="@tools:sample/lorem/random" />
+
+    <ImageView
+        android:visibility="gone"
+        android:id="@+id/image_view_large_icon"
+        android:layout_width="@dimen/notification_large_icon_size"
+        android:layout_height="@dimen/notification_large_icon_size"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:scaleType="centerCrop"
+        tools:text="@tools:sample/avatars"/>
+
+    <ImageView
+        android:id="@+id/image_view_picture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/text_view_content"
+        android:layout_marginTop="13dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        tools:text="@tools:sample/avatars" />
+</RelativeLayout>
