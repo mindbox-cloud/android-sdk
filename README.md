@@ -52,6 +52,6 @@ Reach out to us for further help and we'll be glad to assist.
 
 ## License
 
-The library is available as open source under the terms of the [License](https://github.com/mindbox-cloud/android-sdk/blob/develop/LICENSE.md).
+The library is available as open source under the terms of the [License](https://github.com/mindbox-cloud/android-sdk/blob/master/LICENSE.md).
 
 For a better understanding of this content, please familiarize yourself with the Mindbox [Android SDK](https://developers.mindbox.ru/docs/androidhuawei-native-sdk) documentation.
