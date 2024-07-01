@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.models.operation.Cancelable
 import cloud.mindbox.mobile_sdk.models.operation.OperationBody
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequestBase
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
@@ -922,6 +923,52 @@ object Mindbox : MindboxLog {
                 )
             }
         }
+    }
+
+    /**
+     * Executes a synchronous operation with the specified name and body.
+     *
+     * @param context The current context used.
+     * @param operationSystemName The name of the synchronous operation.
+     * @param operationBodyJson JSON body of the operation.
+     * @param onSuccess Callback that will be invoked for a successful response to the given request.
+     * @param onError Callback for response typed [MindboxError] that will be invoked for an error response to the given request.
+     * @param onCancel Callback that will be invoked if the operation is cancelled.
+     * @return [Cancelable] object that can be used to cancel the ongoing operation.
+     */
+    fun executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBodyJson: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit,
+        onCancel: () -> Unit
+    ): Cancelable {
+        initComponents(context)
+        MindboxLoggerImpl.d(
+            this, "executeSyncOperation Cancelable (with operationBodyJson). " +
+                    "operationSystemName: $operationSystemName, operationBodyJson: $operationBodyJson"
+        )
+        val syncOperationJob = if (validateOperation(operationSystemName)) {
+            mindboxScope.launch {
+                try {
+                    InitializeLock.await(InitializeLock.State.APP_STARTED)
+                    MindboxEventManager.syncOperation(
+                        name = operationSystemName,
+                        bodyJson = operationBodyJson,
+                        onSuccess = onSuccess,
+                        onError = onError,
+                    )
+                } catch (e: CancellationException) {
+                    onCancel()
+                    Mindbox.logD("Operation cancelled")
+                }
+            }
+        } else {
+            Job().apply { complete() }
+        }
+
+        return Cancelable { syncOperationJob.cancel() }
     }
 
     /**
