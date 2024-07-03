@@ -859,6 +859,33 @@ object Mindbox : MindboxLog {
      * @param context current context is used
      * @param operationSystemName the name of synchronous operation
      * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     * @param onSuccess Callback for response typed [OperationResponse] that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     * @return [Cancelable] object that can be used to cancel the ongoing operation.
+     */
+    fun <T : OperationBodyRequestBase> executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T,
+        onSuccess: (OperationResponse) -> Unit,
+        onError: (MindboxError) -> Unit,
+        onCancel: () -> Unit
+    ): Cancelable = executeSyncOperation(
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBody = operationBody,
+        classOfV = OperationResponse::class.java,
+        onSuccess = onSuccess,
+        onError = onError,
+        onCancel = onCancel
+    )
+
+    /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
      * @param classOfV Class type for response object.
      * @param onSuccess Callback for response typed [V] which extends [OperationResponseBase] that will be invoked for success response to a given request.
      * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
@@ -889,6 +916,55 @@ object Mindbox : MindboxLog {
                 )
             }
         }
+    }
+
+    /**
+     * Creates and deliveries event synchronously with specified name and body.
+     *
+     * @param context current context is used
+     * @param operationSystemName the name of synchronous operation
+     * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
+     * @param classOfV Class type for response object.
+     * @param onSuccess Callback for response typed [V] which extends [OperationResponseBase] that will be invoked for success response to a given request.
+     * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
+     * @return [Cancelable] object that can be used to cancel the ongoing operation.
+     */
+    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
+        context: Context,
+        operationSystemName: String,
+        operationBody: T,
+        classOfV: Class<V>,
+        onSuccess: (V) -> Unit,
+        onError: (MindboxError) -> Unit,
+        onCancel: () -> Unit
+    ): Cancelable {
+        initComponents(context)
+        MindboxLoggerImpl.d(
+            this, "executeSyncOperation. " +
+                    "operationSystemName: $operationSystemName, classOfV: ${classOfV.simpleName}"
+        )
+
+        val syncOperationJob = if (validateOperation(operationSystemName)) {
+            mindboxScope.launch {
+                try {
+                    InitializeLock.await(InitializeLock.State.APP_STARTED)
+                    MindboxEventManager.syncOperation(
+                        name = operationSystemName,
+                        body = operationBody,
+                        classOfV = classOfV,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
+                } catch (e: CancellationException) {
+                    onCancel()
+                    MindboxLoggerImpl.d(this, "Operation cancelled")
+                }
+            }
+        } else {
+            Job().apply { complete() }
+        }
+
+        return Cancelable { syncOperationJob.cancel() }
     }
 
     /**
