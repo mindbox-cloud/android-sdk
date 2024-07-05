@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -21,6 +22,12 @@ internal class MigrationManager(val context: Context) {
                 loggingRunCatching {
                     mindboxLogI("Run migration '${migration.description}'")
                     migration.run()
+                }
+            }.also {
+                if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
+                    mindboxLogE("Migrations failed, reset memory")
+                    MindboxPreferences.softReset()
+                    MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
                 }
             }
     }

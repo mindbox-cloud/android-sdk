@@ -153,20 +153,31 @@
         android:layout_width="200dp"
         android:layout_height="70dp"
         android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
         android:text="@string/open_activity"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnSyncOperation"
-        android:layout_marginTop="10dp" />
+        app:layout_constraintTop_toBottomOf="@id/btnSyncOperation" />
 
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/btnOpenActivity"
+        android:layout_marginTop="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_open_push_list" />
+
+    <Button
+        android:id="@+id/btn_open_push_list"
+        android:layout_width="200dp"
+        android:layout_height="70dp"
+        android:layout_marginTop="10dp"
+        android:text="@string/open_notification_history"
+        app:layout_constraintEnd_toEndOf="@+id/btnOpenActivity"
+        app:layout_constraintStart_toStartOf="@+id/btnOpenActivity"
+        app:layout_constraintTop_toBottomOf="@+id/btnOpenActivity" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

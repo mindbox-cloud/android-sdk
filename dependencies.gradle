@@ -17,7 +17,7 @@ ext {
         room_compiler: 'androidx.room:room-compiler:2.5.1',
         work_manager: 'androidx.work:work-runtime-ktx:2.7.1',
         androidx_lifecycle: 'androidx.lifecycle:lifecycle-process:2.3.1',
-        hms_push: 'com.huawei.hms:push:6.5.0.300',
+        hms_push: 'com.huawei.hms:push:6.11.0.300',
         hms_ads_identifier: 'com.huawei.hms:ads-identifier:3.4.39.302',
         koin: 'io.insert-koin:koin-android:3.2.2',
         koin_test: 'io.insert-koin:koin-test:3.2.2',

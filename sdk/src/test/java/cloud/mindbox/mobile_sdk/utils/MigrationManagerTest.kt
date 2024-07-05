@@ -40,6 +40,7 @@ class MigrationManagerTest {
         } returns expectedNewMapString
 
         val mm = MigrationManager(mockk())
+        every { MindboxPreferences.versionCode } returns Constants.SDK_VERSION_CODE
         mm.migrateAll()
 
         verify(exactly = 1) {
