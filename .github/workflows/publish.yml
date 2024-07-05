@@ -95,7 +95,7 @@ jobs:
         run: ./git-release.sh "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
 
       - name: Publish to Sonatype
-        run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHUSERNAME}} -PsonatypePassword=${{secrets.OSSRHPASSWORD}}
+        run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHTOKEN}} -PsonatypePassword=${{secrets.OSSRHTOKENPASSWORD}}
 
         #To update version in Github README.md
   #    - name: Version Upgrade
