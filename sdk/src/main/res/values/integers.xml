@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="collapsed_push_notification_content_max_lines">4</integer>
+</resources>
