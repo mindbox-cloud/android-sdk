@@ -505,7 +505,7 @@ internal object PushNotificationManager {
                 defaultActivity = defaultActivity,
             )
             .setNotificationStyle(
-                context =context,
+                context = context,
                 image = image,
                 title = title,
                 text = text,
@@ -639,13 +639,13 @@ internal object PushNotificationManager {
             block = {
                 setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 setCustomContentView(
-                    RemoteViews(context.packageName, R.layout.notification_custom_text).apply {
+                    RemoteViews(context.packageName, R.layout.mindbox_notification_custom_text).apply {
                         setTextViewText(R.id.text_view_title, title)
                         setTextViewText(R.id.text_view_content, text)
                         setImageViewBitmap(R.id.image_view_large_icon, image)
                     })
                 setCustomBigContentView(
-                    RemoteViews(context.packageName, R.layout.notification_custom_text_with_image).apply {
+                    RemoteViews(context.packageName, R.layout.mindbox_notification_custom_text_with_image).apply {
                         setTextViewText(R.id.text_view_title, title)
                         setTextViewText(R.id.text_view_content, text)
                         setImageViewBitmap(R.id.image_view_picture, image)

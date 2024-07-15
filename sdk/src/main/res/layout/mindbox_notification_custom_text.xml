@@ -9,7 +9,7 @@
         style="@style/TextAppearance.Compat.Notification.Title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/notification_content_margin_end"
+        android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
         android:layout_toStartOf="@+id/image_view_large_icon"
         android:singleLine="true" />
 
@@ -19,14 +19,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/text_view_title"
-        android:layout_marginEnd="@dimen/notification_content_margin_end"
+        android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
+        android:layout_marginTop="@dimen/mindbox_notification_content_margin_top"
         android:layout_toStartOf="@+id/image_view_large_icon"
         android:singleLine="true"/>
 
     <ImageView
         android:id="@+id/image_view_large_icon"
-        android:layout_width="@dimen/notification_large_icon_size"
-        android:layout_height="@dimen/notification_large_icon_size"
+        android:layout_width="@dimen/mindbox_notification_large_icon_size"
+        android:layout_height="@dimen/mindbox_notification_large_icon_size"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:scaleType="centerCrop" />
