@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mindbox_default_notification_color">@android:color/transparent</color>
+    <color name="mindbox_content_notification_color">@android:color/white</color>
+    <color name="mindbox_title_notification_color">@android:color/white</color>
+</resources>

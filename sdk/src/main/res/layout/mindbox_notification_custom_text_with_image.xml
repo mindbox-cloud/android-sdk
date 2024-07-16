@@ -6,22 +6,21 @@
 
     <TextView
         android:id="@+id/text_view_title"
-        style="@style/TextAppearance.Compat.Notification.Title"
-        android:textSize="@dimen/mindbox_notification_expanded_title_text_size"
+        style="@style/MindboxNotificationExpandedTitleStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
         android:singleLine="false" />
 
     <TextView
         android:id="@+id/text_view_content"
-        style="@style/TextAppearance.Compat.Notification"
+        style="@style/MindboxTextStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/text_view_title"
         android:layout_marginTop="@dimen/mindbox_notification_content_margin_top"
         android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
-        android:lineSpacingExtra="@dimen/mindbox_notification_line_spacing_extra"
-        android:maxLines="@integer/collapsed_push_notification_content_max_lines" />
+        android:ellipsize="end"/>
 
     <ImageView
         android:id="@+id/image_view_picture"

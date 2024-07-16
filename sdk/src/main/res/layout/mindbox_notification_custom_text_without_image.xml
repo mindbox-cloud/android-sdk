@@ -6,29 +6,19 @@
 
     <TextView
         android:id="@+id/text_view_title"
-        style="@style/TextAppearance.Compat.Notification.Title"
+        style="@style/MindboxNotificationExpandedTitleStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
-        android:layout_toStartOf="@+id/image_view_large_icon"
-        android:singleLine="true" />
+        android:singleLine="false" />
 
     <TextView
         android:id="@+id/text_view_content"
-        style="@style/TextAppearance.Compat.Notification"
+        style="@style/MindboxTextStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/text_view_title"
-        android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
         android:layout_marginTop="@dimen/mindbox_notification_content_margin_top"
-        android:layout_toStartOf="@+id/image_view_large_icon"
-        android:singleLine="true"/>
+        android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end" />
 
-    <ImageView
-        android:id="@+id/image_view_large_icon"
-        android:layout_width="@dimen/mindbox_notification_large_icon_size"
-        android:layout_height="@dimen/mindbox_notification_large_icon_size"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:scaleType="centerCrop" />
 </RelativeLayout>

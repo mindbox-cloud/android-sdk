@@ -638,18 +638,26 @@ internal object PushNotificationManager {
         LoggingExceptionHandler.runCatching(
             block = {
                 setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                setCustomContentView(
-                    RemoteViews(context.packageName, R.layout.mindbox_notification_custom_text).apply {
-                        setTextViewText(R.id.text_view_title, title)
-                        setTextViewText(R.id.text_view_content, text)
-                        setImageViewBitmap(R.id.image_view_large_icon, image)
-                    })
-                setCustomBigContentView(
-                    RemoteViews(context.packageName, R.layout.mindbox_notification_custom_text_with_image).apply {
-                        setTextViewText(R.id.text_view_title, title)
-                        setTextViewText(R.id.text_view_content, text)
-                        setImageViewBitmap(R.id.image_view_picture, image)
-                    })
+                if (image != null) {
+                    setCustomBigContentView(
+                        RemoteViews(
+                            context.packageName,
+                            R.layout.mindbox_notification_custom_text_with_image
+                        ).apply {
+                            setTextViewText(R.id.text_view_title, title)
+                            setTextViewText(R.id.text_view_content, text)
+                            setImageViewBitmap(R.id.image_view_picture, image)
+                        })
+                } else {
+                    setCustomBigContentView(
+                        RemoteViews(
+                            context.packageName,
+                            R.layout.mindbox_notification_custom_text_without_image
+                        ).apply {
+                            setTextViewText(R.id.text_view_title, title)
+                            setTextViewText(R.id.text_view_content, text)
+                        })
+                }
             },
             defaultValue = {
                 mindboxLogE("Error setting notification style, trying to draw using the standard method")
