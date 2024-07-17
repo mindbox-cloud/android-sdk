@@ -20,7 +20,6 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/text_view_title"
         android:layout_marginEnd="@dimen/mindbox_notification_content_margin_end"
-        android:layout_marginTop="@dimen/mindbox_notification_content_margin_top"
         android:layout_toStartOf="@+id/image_view_large_icon"
         android:singleLine="true"/>
 
