@@ -7,6 +7,13 @@
         <item name="android:fontFamily">sans-serif</item>
     </style>
 
+    <style name="MindboxNotificationCollapsedTitleStyle">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/mindbox_title_notification_color</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
     <style name="MindboxTextStyle">
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/mindbox_content_notification_color</item>

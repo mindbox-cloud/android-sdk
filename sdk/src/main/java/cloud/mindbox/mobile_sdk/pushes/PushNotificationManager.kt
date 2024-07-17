@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
@@ -637,35 +636,15 @@ internal object PushNotificationManager {
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
-                setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                if (image != null) {
-                    setCustomBigContentView(
-                        RemoteViews(
-                            context.packageName,
-                            R.layout.mindbox_notification_custom_text_with_image
-                        ).apply {
-                            setTextViewText(R.id.text_view_title, title)
-                            setTextViewText(R.id.text_view_content, text)
-                            setImageViewBitmap(R.id.image_view_picture, image)
-                        })
+                val oldNotificationStyle = context.resources.getBoolean(R.bool.mindbox_old_notification_style)
+                if (oldNotificationStyle) {
+                    setOldNotificationStyle(image, title, text)
                 } else {
-                    setCustomBigContentView(
-                        RemoteViews(
-                            context.packageName,
-                            R.layout.mindbox_notification_custom_text_without_image
-                        ).apply {
-                            setTextViewText(R.id.text_view_title, title)
-                            setTextViewText(R.id.text_view_content, text)
-                        })
+                    setNewNotificationStyle(context, image, title, text)
                 }
             },
             defaultValue = {
-                mindboxLogE("Error setting notification style, trying to draw using the standard method")
-                if (image != null) {
-                    setImage(image, title, text)
-                } else {
-                    setText(text)
-                }
+                setOldNotificationStyle(image, title, text)
             }
         )
     }
@@ -724,4 +703,60 @@ internal object PushNotificationManager {
         `package` = context.packageName
     }
 
+    private fun NotificationCompat.Builder.setOldNotificationStyle(
+        image: Bitmap?,
+        title: String,
+        text: String?
+    ) {
+        if (image != null) {
+            setImage(image, title, text)
+        } else {
+            setText(text)
+        }
+    }
+
+    private fun NotificationCompat.Builder.setNewNotificationStyle(
+        context: Context,
+        image: Bitmap?,
+        title: String,
+        text: String?
+    ) {
+        setStyle(NotificationCompat.DecoratedCustomViewStyle())
+        setCustomContentView(createCollapsedView(context, title, text, image))
+        setCustomBigContentView(createExpandedView(context, title, text, image))
+    }
+
+    private fun createCollapsedView(
+        context: Context,
+        title: String,
+        text: String?,
+        image: Bitmap?
+    ): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.mindbox_notification_custom_text).apply {
+            setTextViewText(R.id.text_view_title, title)
+            setTextViewText(R.id.text_view_content, text)
+            setImageViewBitmap(R.id.image_view_large_icon, image)
+        }
+    }
+
+    private fun createExpandedView(
+        context: Context,
+        title: String,
+        text: String?,
+        image: Bitmap?
+    ): RemoteViews {
+        val layoutId = if (image != null) {
+            R.layout.mindbox_notification_custom_text_with_image
+        } else {
+            R.layout.mindbox_notification_custom_text_without_image
+        }
+
+        return RemoteViews(context.packageName, layoutId).apply {
+            setTextViewText(R.id.text_view_title, title)
+            setTextViewText(R.id.text_view_content, text)
+            if (image != null) {
+                setImageViewBitmap(R.id.image_view_picture, image)
+            }
+        }
+    }
 }
