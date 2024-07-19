@@ -5,7 +5,9 @@ import android.app.Notification.DEFAULT_ALL
 import android.app.Notification.VISIBILITY_PRIVATE
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -20,6 +22,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
+import cloud.mindbox.mobile_sdk.px
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Generator
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -647,14 +650,48 @@ internal object PushNotificationManager {
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
 
+        val resizedBitmap = createCenterInsideBitmap(imageBitmap, Resources.getSystem().displayMetrics.widthPixels - 100.px,  168.px)
+        //val resizedBitmap = createCenterInsideBitmapHorizontalPadding(imageBitmap, 311.px,  168.px)
+
         val style = NotificationCompat.BigPictureStyle()
-            .bigPicture(imageBitmap)
+            .bigPicture(resizedBitmap)
             .bigLargeIcon(null)
             .setBigContentTitle(title)
         text?.let(style::setSummaryText)
 
         return setStyle(style)
     }
+
+
+//    private fun resizeBitmapToFitHeight(bitmap: Bitmap, targetHeightDp: Float): Bitmap {
+//        // Конвертация dp в пиксели
+//        val targetHeightPx = targetHeightDp.toInt().px
+//
+//        // Изменение размера битмапа до нужной высоты
+//        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+//        val scaleWidthPx = (targetHeightPx * aspectRatio).toInt()
+//
+//        val scaledBitmap = bitmap.scale(scaleWidthPx, targetHeightPx, false)
+//
+//        // Создание нового битмапа с прозрачными полосами, если ширина меньше, чем 256dp в пикселях
+//        val targetWidthPx = Resources.getSystem().displayMetrics.widthPixels - 64.px
+//
+//        if (scaleWidthPx < targetWidthPx) {
+//            val paddedBitmap = Bitmap.createBitmap(targetWidthDpPx, targetHeightPx, Bitmap.Config.ARGB_8888)
+//            val canvas = Canvas(paddedBitmap)
+//            val paint = Paint()
+//            paint.color = Color.TRANSPARENT
+//            canvas.drawBitmap(
+//                scaledBitmap,
+//                ((targetWidthDpPx - targetWidthPx) / 2).toFloat(),
+//                0f,
+//                null
+//            )
+//            return paddedBitmap
+//        }
+//
+//        return scaledBitmap
+//    }
 
     private fun NotificationCompat.Builder.setText(
         text: String?,
@@ -692,6 +729,27 @@ internal object PushNotificationManager {
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
+    }
+
+    private fun createCenterInsideBitmap(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        val srcWidth = src.width
+        val srcHeight = src.height
+
+        val scale = minOf(targetWidth.toFloat() / srcWidth, targetHeight.toFloat() / srcHeight)
+
+        val scaledWidth = (srcWidth * scale).toInt()
+        val scaledHeight = (srcHeight * scale).toInt()
+
+        val result = Bitmap.createBitmap(targetWidth, scaledHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        canvas.drawColor(Color.TRANSPARENT)
+
+        val left = (targetWidth - scaledWidth) / 2
+
+        val scaledBitmap = Bitmap.createScaledBitmap(src, scaledWidth, scaledHeight, true)
+        canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
+
+        return result
     }
 
 }
