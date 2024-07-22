@@ -41,6 +41,14 @@ internal object PushNotificationManager {
     private const val EXTRA_PAYLOAD = "push_payload"
 
     private const val MAX_ACTIONS_COUNT = 3
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS = 250
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS = 200
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 190
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 150
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27 = 190
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS = 130
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS = 130
+    private const val MARGIN_ANDROID_30_AND_LESS = 32
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
@@ -474,6 +482,7 @@ internal object PushNotificationManager {
         val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
         }
+        val hasButtons = pushActions.isNotEmpty()
         return NotificationCompat.Builder(context, channelId)
             .setContentTitle(title)
             .setContentText(text)
@@ -506,6 +515,7 @@ internal object PushNotificationManager {
                 image = image,
                 title = title,
                 text = text,
+                hasButtons = hasButtons
             )
             .build()
     }
@@ -630,11 +640,12 @@ internal object PushNotificationManager {
         image: Bitmap?,
         title: String,
         text: String?,
+        hasButtons: Boolean
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
                 if (image != null) {
-                    setImage(image, title, text)
+                    setImage(image, title, text, hasButtons)
                 } else {
                     setText(text)
                 }
@@ -647,11 +658,12 @@ internal object PushNotificationManager {
         imageBitmap: Bitmap,
         title: String,
         text: String?,
+        hasButtons: Boolean
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
 
-        val resizedBitmap = createCenterInsideBitmap(imageBitmap, Resources.getSystem().displayMetrics.widthPixels - 100.px,  168.px)
-        //val resizedBitmap = createCenterInsideBitmapHorizontalPadding(imageBitmap, 311.px,  168.px)
+
+        val resizedBitmap = createCenterInsideBitmap(imageBitmap, hasButtons)
 
         val style = NotificationCompat.BigPictureStyle()
             .bigPicture(resizedBitmap)
@@ -661,37 +673,6 @@ internal object PushNotificationManager {
 
         return setStyle(style)
     }
-
-
-//    private fun resizeBitmapToFitHeight(bitmap: Bitmap, targetHeightDp: Float): Bitmap {
-//        // Конвертация dp в пиксели
-//        val targetHeightPx = targetHeightDp.toInt().px
-//
-//        // Изменение размера битмапа до нужной высоты
-//        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
-//        val scaleWidthPx = (targetHeightPx * aspectRatio).toInt()
-//
-//        val scaledBitmap = bitmap.scale(scaleWidthPx, targetHeightPx, false)
-//
-//        // Создание нового битмапа с прозрачными полосами, если ширина меньше, чем 256dp в пикселях
-//        val targetWidthPx = Resources.getSystem().displayMetrics.widthPixels - 64.px
-//
-//        if (scaleWidthPx < targetWidthPx) {
-//            val paddedBitmap = Bitmap.createBitmap(targetWidthDpPx, targetHeightPx, Bitmap.Config.ARGB_8888)
-//            val canvas = Canvas(paddedBitmap)
-//            val paint = Paint()
-//            paint.color = Color.TRANSPARENT
-//            canvas.drawBitmap(
-//                scaledBitmap,
-//                ((targetWidthDpPx - targetWidthPx) / 2).toFloat(),
-//                0f,
-//                null
-//            )
-//            return paddedBitmap
-//        }
-//
-//        return scaledBitmap
-//    }
 
     private fun NotificationCompat.Builder.setText(
         text: String?,
@@ -731,25 +712,55 @@ internal object PushNotificationManager {
         `package` = context.packageName
     }
 
-    private fun createCenterInsideBitmap(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
-        val srcWidth = src.width
-        val srcHeight = src.height
+    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
+        return runCatching {
 
-        val scale = minOf(targetWidth.toFloat() / srcWidth, targetHeight.toFloat() / srcHeight)
+            val targetWidth= getImageWidth().px
+            val targetHeight = getImageHeight(hasButtons).px
 
-        val scaledWidth = (srcWidth * scale).toInt()
-        val scaledHeight = (srcHeight * scale).toInt()
+            val srcWidth = src.width
+            val srcHeight = src.height
 
-        val result = Bitmap.createBitmap(targetWidth, scaledHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(result)
-        canvas.drawColor(Color.TRANSPARENT)
+            val scale = minOf(targetWidth.toFloat() / srcWidth, targetHeight.toFloat() / srcHeight)
 
-        val left = (targetWidth - scaledWidth) / 2
+            val scaledWidth = (srcWidth * scale).toInt()
+            val scaledHeight = (srcHeight * scale).toInt()
 
-        val scaledBitmap = Bitmap.createScaledBitmap(src, scaledWidth, scaledHeight, true)
-        canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
+            val result = Bitmap.createBitmap(targetWidth, scaledHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+            canvas.drawColor(Color.TRANSPARENT)
 
-        return result
+            val left = (targetWidth - scaledWidth) / 2
+
+
+            val scaledBitmap = Bitmap.createScaledBitmap(src, scaledWidth, scaledHeight, true)
+            canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
+            return result
+        }.getOrDefault(src)
     }
 
+    private fun getImageWidth(): Int {
+        return runCatching {
+            val defaultWidth = Resources.getSystem().displayMetrics.widthPixels
+            return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) defaultWidth - MARGIN_ANDROID_30_AND_LESS else defaultWidth
+        }.getOrElse { 0 }
+    }
+
+    private fun getImageHeight(hasButtons: Boolean): Int {
+        return when {
+            Build.VERSION.SDK_INT >= 31 -> {
+                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS
+            }
+
+            Build.VERSION.SDK_INT in 28..30 -> {
+                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_28_30
+            }
+
+            Build.VERSION.SDK_INT in 24..27 -> {
+                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_24_27
+            }
+
+            else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
+        }
+    }
 }
