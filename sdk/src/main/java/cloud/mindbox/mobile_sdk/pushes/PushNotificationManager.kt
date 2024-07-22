@@ -43,8 +43,8 @@ internal object PushNotificationManager {
     private const val MAX_ACTIONS_COUNT = 3
     private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS = 250
     private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS = 200
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 190
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 150
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 250
+    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 200
     private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27 = 190
     private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS = 130
     private const val EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS = 130
@@ -715,8 +715,8 @@ internal object PushNotificationManager {
     private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
         return runCatching {
 
-            val targetWidth= getImageWidth().px
-            val targetHeight = getImageHeight(hasButtons).px
+            val targetWidth= getImageWidth()
+            val targetHeight = getImageHeight(hasButtons)
 
             val srcWidth = src.width
             val srcHeight = src.height
@@ -742,7 +742,7 @@ internal object PushNotificationManager {
     private fun getImageWidth(): Int {
         return runCatching {
             val defaultWidth = Resources.getSystem().displayMetrics.widthPixels
-            return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) defaultWidth - MARGIN_ANDROID_30_AND_LESS else defaultWidth
+            return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) defaultWidth - MARGIN_ANDROID_30_AND_LESS.px else defaultWidth
         }.getOrElse { 0 }
     }
 
@@ -761,6 +761,6 @@ internal object PushNotificationManager {
             }
 
             else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
-        }
+        }.px
     }
 }
