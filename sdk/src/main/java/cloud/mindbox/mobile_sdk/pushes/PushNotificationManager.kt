@@ -22,10 +22,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import cloud.mindbox.mobile_sdk.utils.Generator
-import cloud.mindbox.mobile_sdk.utils.ImagePushSizeManager
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.UnknownHostException
@@ -506,7 +503,8 @@ internal object PushNotificationManager {
                 image = image,
                 title = title,
                 text = text,
-                hasButtons = hasButtons
+                hasButtons = hasButtons,
+                context = context
             )
             .build()
     }
@@ -631,12 +629,15 @@ internal object PushNotificationManager {
         image: Bitmap?,
         title: String,
         text: String?,
-        hasButtons: Boolean
+        hasButtons: Boolean,
+        context: Context
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
                 if (image != null) {
-                    setImage(image, title, text, hasButtons)
+                    val useScale = context.resources.getBoolean(R.bool.mindbox_use_central_inside_notification_scale)
+                    val bigPicture = if (useScale) createCenterInsideBitmap(image, hasButtons) else image
+                    setImage(image, bigPicture, title, text)
                 } else {
                     setText(text)
                 }
@@ -647,17 +648,13 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.setImage(
         imageBitmap: Bitmap,
+        bigPicture: Bitmap,
         title: String,
-        text: String?,
-        hasButtons: Boolean
+        text: String?
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
-
-
-        val resizedBitmap = createCenterInsideBitmap(imageBitmap, hasButtons)
-
         val style = NotificationCompat.BigPictureStyle()
-            .bigPicture(resizedBitmap)
+            .bigPicture(bigPicture)
             .bigLargeIcon(null)
             .setBigContentTitle(title)
         text?.let(style::setSummaryText)
@@ -706,8 +703,10 @@ internal object PushNotificationManager {
     private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
         return runCatching {
 
-            val targetWidth= ImagePushSizeManager.getImageWidthInPixels()
-            val targetHeight = ImagePushSizeManager.getImageHeightInPixels(hasButtons)
+            val targetWidth = imageWidthInPixels
+            val targetHeight =
+                if (hasButtons) imageHeightWithButtonIxPixels else imageHeightWithoutButtonIxPixels
+            if (targetWidth == 0 || targetHeight == 0) return  src
 
             val srcWidth = src.width
             val srcHeight = src.height
@@ -722,7 +721,6 @@ internal object PushNotificationManager {
             canvas.drawColor(Color.TRANSPARENT)
 
             val left = (targetWidth - scaledWidth) / 2
-
 
             val scaledBitmap = Bitmap.createScaledBitmap(src, scaledWidth, scaledHeight, true)
             canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
