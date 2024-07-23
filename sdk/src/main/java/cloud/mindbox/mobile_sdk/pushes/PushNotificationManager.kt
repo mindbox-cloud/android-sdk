@@ -5,7 +5,6 @@ import android.app.Notification.DEFAULT_ALL
 import android.app.Notification.VISIBILITY_PRIVATE
 import android.content.Context
 import android.content.Intent
-import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -22,9 +21,9 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
-import cloud.mindbox.mobile_sdk.px
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.Generator
+import cloud.mindbox.mobile_sdk.utils.ImagePushSizeManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.Dispatchers
@@ -41,14 +40,6 @@ internal object PushNotificationManager {
     private const val EXTRA_PAYLOAD = "push_payload"
 
     private const val MAX_ACTIONS_COUNT = 3
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS = 250
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS = 200
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 250
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 200
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27 = 190
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS = 130
-    private const val EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS = 130
-    private const val MARGIN_ANDROID_30_AND_LESS = 32
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
@@ -715,8 +706,8 @@ internal object PushNotificationManager {
     private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
         return runCatching {
 
-            val targetWidth= getImageWidth()
-            val targetHeight = getImageHeight(hasButtons)
+            val targetWidth= ImagePushSizeManager.getImageWidthInPixels()
+            val targetHeight = ImagePushSizeManager.getImageHeightInPixels(hasButtons)
 
             val srcWidth = src.width
             val srcHeight = src.height
@@ -737,30 +728,5 @@ internal object PushNotificationManager {
             canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
             return result
         }.getOrDefault(src)
-    }
-
-    private fun getImageWidth(): Int {
-        return runCatching {
-            val defaultWidth = Resources.getSystem().displayMetrics.widthPixels
-            return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) defaultWidth - MARGIN_ANDROID_30_AND_LESS.px else defaultWidth
-        }.getOrElse { 0 }
-    }
-
-    private fun getImageHeight(hasButtons: Boolean): Int {
-        return when {
-            Build.VERSION.SDK_INT >= 31 -> {
-                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS
-            }
-
-            Build.VERSION.SDK_INT in 28..30 -> {
-                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_28_30
-            }
-
-            Build.VERSION.SDK_INT in 24..27 -> {
-                if (hasButtons) EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS else EXPANDED_PUSH_IMAGE_HEIGHT_24_27
-            }
-
-            else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
-        }.px
     }
 }
