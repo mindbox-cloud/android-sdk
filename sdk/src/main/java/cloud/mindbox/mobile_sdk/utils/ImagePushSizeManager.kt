@@ -6,8 +6,8 @@ import cloud.mindbox.mobile_sdk.px
 
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS = 270
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS = 220
-private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 180
-private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 140
+private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30 = 190
+private const val EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS = 150
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27 = 180
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS = 120
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS = 130
@@ -21,7 +21,7 @@ internal val imageWidthInPixels: Int
         }.getOrElse { 0 }
     }
 
-val imageHeightWithoutButtonIxPixels: Int
+internal val imageHeightWithoutButtonIxPixels: Int
     get() {
         return when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS
@@ -31,7 +31,7 @@ val imageHeightWithoutButtonIxPixels: Int
         }.px
     }
 
-val imageHeightWithButtonIxPixels: Int
+internal val imageHeightWithButtonIxPixels: Int
     get() {
         return when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS
