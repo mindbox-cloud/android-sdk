@@ -6,6 +6,7 @@ import android.app.Notification.VISIBILITY_PRIVATE
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
 import androidx.annotation.DrawableRes
@@ -16,14 +17,13 @@ import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import cloud.mindbox.mobile_sdk.utils.Generator
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.UnknownHostException
@@ -471,6 +471,7 @@ internal object PushNotificationManager {
         val correctedLinksActivities = activities?.mapKeys { (key, _) ->
             key.replace("*", ".*").toRegex()
         }
+        val hasButtons = pushActions.isNotEmpty()
         return NotificationCompat.Builder(context, channelId)
             .setContentTitle(title)
             .setContentText(text)
@@ -503,6 +504,8 @@ internal object PushNotificationManager {
                 image = image,
                 title = title,
                 text = text,
+                hasButtons = hasButtons,
+                context = context
             )
             .build()
     }
@@ -627,11 +630,15 @@ internal object PushNotificationManager {
         image: Bitmap?,
         title: String,
         text: String?,
+        hasButtons: Boolean,
+        context: Context
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
                 if (image != null) {
-                    setImage(image, title, text)
+                    val useScale = context.resources.getBoolean(R.bool.mindbox_use_central_inside_notification_scale)
+                    val bigPicture = if (useScale) createCenterInsideBitmap(image, hasButtons) else image
+                    setImage(image, bigPicture, title, text)
                 } else {
                     setText(text)
                 }
@@ -642,13 +649,13 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.setImage(
         imageBitmap: Bitmap,
+        bigPicture: Bitmap,
         title: String,
-        text: String?,
+        text: String?
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
-
         val style = NotificationCompat.BigPictureStyle()
-            .bigPicture(imageBitmap)
+            .bigPicture(bigPicture)
             .bigLargeIcon(null)
             .setBigContentTitle(title)
         text?.let(style::setSummaryText)
@@ -694,4 +701,45 @@ internal object PushNotificationManager {
         `package` = context.packageName
     }
 
+    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
+        return runCatching {
+
+            val targetWidth = imageWidthInPixels
+            val targetHeight =
+                if (hasButtons) imageHeightWithButtonIxPixels else imageHeightWithoutButtonIxPixels
+            mindboxLogI("Target dimensions: width=$targetWidth, height=$targetHeight")
+
+            if (targetWidth == 0 || targetHeight == 0) {
+                mindboxLogI("Target dimensions are zero. Returning original bitmap")
+                return  src
+            }
+            val srcWidth = src.width
+            val srcHeight = src.height
+
+            val scale = minOf(targetWidth.toFloat() / srcWidth, targetHeight.toFloat() / srcHeight)
+            mindboxLogI("Source dimensions: width=$srcWidth, height=$srcHeight. Scale factor: $scale")
+
+            val scaledWidth = (srcWidth * scale).toInt()
+            val scaledHeight = (srcHeight * scale).toInt()
+            mindboxLogI("Scaled dimensions: width=$scaledWidth, height=$scaledHeight")
+
+            val result = Bitmap.createBitmap(targetWidth, scaledHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+            canvas.drawColor(Color.TRANSPARENT)
+
+            val left = (targetWidth - scaledWidth) / 2
+            mindboxLogI("Drawing bitmap at position: left=$left")
+
+            if (left == 0) {
+                mindboxLogI("Left=0, we will get the same bitmap as the original. Returning original bitmap.")
+                return src
+            }
+
+            val scaledBitmap = Bitmap.createScaledBitmap(src, scaledWidth, scaledHeight, true)
+            canvas.drawBitmap(scaledBitmap, left.toFloat(), 0f, null)
+            return result
+        }.onFailure {
+            mindboxLogE("Error occurred during image scaling return original bitmap  ", it)
+        }.getOrDefault(src)
+    }
 }
