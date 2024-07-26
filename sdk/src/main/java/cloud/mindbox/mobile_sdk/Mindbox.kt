@@ -1016,7 +1016,8 @@ object Mindbox : MindboxLog {
 
     /**
      * Writes a log message to the Mindbox logging system with the specified log level.
-     *
+     * This method should be used only after Mindbox has been initialized by calling `Mindbox.init`.
+     * Otherwise, the logs will not be recorded.
      * This method takes a log message and a log level, and routes the message to the appropriate
      * @param message The message to be logged.
      * @param logLevel The severity level of the log message. See [Level].
