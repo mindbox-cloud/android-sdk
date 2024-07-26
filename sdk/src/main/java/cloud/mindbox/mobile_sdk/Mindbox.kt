@@ -1014,6 +1014,25 @@ object Mindbox : MindboxLog {
         return intent?.let(PushNotificationManager::getPayloadFromPushIntent)
     }
 
+    /**
+     * Writes a log message to the Mindbox logging system with the specified log level.
+     * This method should be used only after Mindbox has been initialized by calling `Mindbox.init`.
+     * Otherwise, the logs will not be recorded.
+     * This method takes a log message and a log level, and routes the message to the appropriate
+     * @param message The message to be logged.
+     * @param logLevel The severity level of the log message. See [Level].
+     */
+    fun writeLog(message: String, logLevel: Level) {
+        when(logLevel){
+            Level.VERBOSE -> mindboxLogD(message = message)
+            Level.DEBUG -> mindboxLogD(message = message)
+            Level.INFO ->  mindboxLogI(message = message)
+            Level.WARN -> mindboxLogW(message = message)
+            Level.ERROR -> mindboxLogE(message = message)
+            Level.NONE -> mindboxLogD(message = message)
+        }
+    }
+
     private fun deliverToken(token: String?) {
         Executors.newSingleThreadScheduledExecutor().schedule({
             tokenCallbacks.keys.asIterable().forEach { key ->
