@@ -637,7 +637,7 @@ internal object PushNotificationManager {
             block = {
                 if (image != null) {
                     val useScale = context.resources.getBoolean(R.bool.mindbox_use_central_inside_notification_scale)
-                    val bigPicture = if (useScale) createCenterInsideBitmap(image, hasButtons) else image
+                    val bigPicture = if (useScale) createCenterInsideBitmap(image, hasButtons, title.length) else image
                     setImage(image, bigPicture, title, text)
                 } else {
                     setText(text)
@@ -701,12 +701,12 @@ internal object PushNotificationManager {
         `package` = context.packageName
     }
 
-    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean): Bitmap {
+    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean, charCountInTitle:Int): Bitmap {
         return runCatching {
 
             val targetWidth = imageWidthInPixels
             val targetHeight =
-                if (hasButtons) imageHeightWithButtonIxPixels else imageHeightWithoutButtonIxPixels
+                if (hasButtons) getImageHeightWithButtonIxPixels(charCountInTitle) else getImageHeightWithoutButtonIxPixels(charCountInTitle)
             mindboxLogI("Target dimensions: width=$targetWidth, height=$targetHeight")
 
             if (targetWidth == 0 || targetHeight == 0) {
