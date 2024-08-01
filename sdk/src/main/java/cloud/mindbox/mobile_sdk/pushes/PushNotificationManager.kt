@@ -711,7 +711,7 @@ internal object PushNotificationManager {
 
             if (targetWidth == 0 || targetHeight == 0) {
                 mindboxLogI("Target dimensions are zero. Returning original bitmap")
-                return  src
+                return src
             }
             val srcWidth = src.width
             val srcHeight = src.height
