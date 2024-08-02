@@ -110,12 +110,15 @@ jobs:
           #git commit -am "Update README.md" || exit 0
           #git push origin HEAD:develop
 
-      - name: Job status notification
-        uses: rtCamp/action-slack-notify@v2
+      - name: Send message to LOOP
         env:
-          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_MESSAGE: 'SDK is available for public release https://oss.sonatype.org/#stagingRepositories'
-          SLACK_USERNAME: MindBox-bot
-          SLACK_ICON: 'https://mindbox.ru/blog/wp-content/uploads/2020/06/favicon.png'
-          SLACK_COLOR: ${{job.status}}
+          LOOP_NOTIFICATION_WEBHOOK_URL: ${{ secrets.LOOP_NOTIFICATION_WEBHOOK_URL }}
+        run: |
+          MESSAGE=$(cat <<EOF
+          {
+            "text": "SDK is available for public release https://oss.sonatype.org/#stagingRepositories"
+          }
+          EOF)
+          curl -X POST "$LOOP_NOTIFICATION_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$MESSAGE"
