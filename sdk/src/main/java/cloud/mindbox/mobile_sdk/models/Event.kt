@@ -22,6 +22,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
         private const val APP_INSTALLED_ORDINAL = 0
         private const val APP_INFO_UPDATED_ORDINAL = 1
+        //use it when returning a delivered operation, it is not used now
         private const val PUSH_DELIVERED_ORDINAL = 2
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
