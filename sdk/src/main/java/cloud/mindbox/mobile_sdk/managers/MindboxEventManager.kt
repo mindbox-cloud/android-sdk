@@ -56,16 +56,6 @@ internal object MindboxEventManager {
         )
     }
 
-    fun pushDelivered(context: Context, uniqKey: String) {
-        asyncOperation(
-            context,
-            Event(
-                eventType = EventType.PushDelivered,
-                additionalFields = hashMapOf(EventParameters.UNIQ_KEY.fieldName to uniqKey),
-            ),
-        )
-    }
-
     fun inAppShown(context: Context, body: String) {
         asyncOperation(context, IN_APP_OPERATION_VIEW_TYPE, body)
     }
