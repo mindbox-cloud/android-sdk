@@ -361,7 +361,6 @@ object Mindbox : MindboxLog {
     fun onPushReceived(context: Context, uniqKey: String) = LoggingExceptionHandler.runCatching {
         initComponents(context)
         MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey")
-        MindboxEventManager.pushDelivered(context, uniqKey)
 
         if (!MindboxPreferences.isFirstInitialize) {
             mindboxScope.launch {

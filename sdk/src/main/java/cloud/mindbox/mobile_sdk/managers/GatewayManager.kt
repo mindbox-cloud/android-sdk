@@ -72,15 +72,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
             }
 
-            is EventType.PushDelivered -> {
-                urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
-                urlQueries[UrlQuery.UNIQ_KEY.value] =
-                    event.additionalFields?.get(EventParameters.UNIQ_KEY.fieldName) ?: ""
-                urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
-                urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
-            }
-
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
@@ -173,8 +164,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
-
-        is EventType.PushDelivered -> Request.Method.GET
     }
 
     private fun getTimeOffset(
