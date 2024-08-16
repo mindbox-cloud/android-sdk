@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -11,10 +12,6 @@ internal class ActivityManagerImpl(
     private val callbackInteractor: CallbackInteractor,
     private val context: Context
 ) : ActivityManager {
-
-    companion object {
-        private const val ALL_MATCHING_ACTIVITIES_FLAG: Int = 0
-    }
 
     override fun tryOpenUrl(url: String): Boolean {
         try {
@@ -39,7 +36,7 @@ internal class ActivityManagerImpl(
                 if (intent.resolveActivity(context.packageManager) != null) {
                     if (intent.resolveActivityInfo(
                             context.packageManager,
-                            ALL_MATCHING_ACTIVITIES_FLAG
+                            PackageManager.MATCH_ALL
                         )?.exported == false
                     ) {
                         intent.`package` = context.packageName
