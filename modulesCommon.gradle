@@ -5,7 +5,7 @@ apply plugin: 'org.jetbrains.dokka'
 apply plugin: 'signing'
 apply plugin: 'maven-publish'
 
-group = 'com.github.mindbox-moscow'
+group = 'com.github.mindbox-cloud'
 
 android {
     compileSdkVersion 33
@@ -68,25 +68,25 @@ afterEvaluate {
                 version = SDK_VERSION_NAME
                 pom {
                     name = ARTIFACT_NAME
-                    description = 'Test release'
-                    url = 'https://github.com/mindbox-moscow/android-sdk'
+                    description = 'Android Mindbox SDK'
+                    url = 'https://github.com/mindbox-cloud/android-sdk'
                     licenses {
                         license {
                             name = 'The Mindbox License'
-                            url = 'https://github.com/mindbox-moscow/android-sdk/blob/master/LICENSE.md'
+                            url = 'https://github.com/mindbox-cloud/android-sdk/blob/master/LICENSE.md'
                         }
                     }
                     developers {
                         developer {
-                            id = 'mindbox'
-                            name = 'Petr Nikitin'
-                            email = 'nikitin@mindbox.ru'
+                            id = 'Mindbox'
+                            name = 'Mindbox'
+                            email = 'android-sdk@mindbox.ru'
                         }
                     }
                     scm {
-                        connection = 'scm:https://github.com/mindbox-moscow/android-sdk.git'
-                        developerConnection = 'scm:git://github.com/mindbox-moscow/android-sdk.git'
-                        url = 'https://github.com/mindbox-moscow/android-sdk'
+                        connection = 'scm:https://github.com/mindbox-cloud/android-sdk.git'
+                        developerConnection = 'scm:git://github.com/mindbox-cloud/android-sdk.git'
+                        url = 'https://github.com/mindbox-cloud/android-sdk'
                     }
                 }
             }
