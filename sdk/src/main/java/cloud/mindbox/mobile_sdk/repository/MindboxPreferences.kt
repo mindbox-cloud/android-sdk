@@ -32,6 +32,7 @@ internal object MindboxPreferences {
     private const val IN_APPS_METADATA = "key_inapp_metadata"
     private const val KEY_CONFIG_UPDATE_DATE = "key_config_update_date"
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
+    private const val KEY_NEED_DEVICE_INFO_UPDATE = "key_need_device_info_update"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -257,6 +258,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_SDK_VERSION_CODE, value)
+            }
+        }
+
+    var isDeviceInfoNeedUpdated: Boolean
+        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
+            SharedPreferencesManager.getBoolean(KEY_NEED_DEVICE_INFO_UPDATE, true)
+        }
+        set(value) {
+            LoggingExceptionHandler.runCatching {
+                SharedPreferencesManager.put(KEY_NEED_DEVICE_INFO_UPDATE, value)
             }
         }
 }

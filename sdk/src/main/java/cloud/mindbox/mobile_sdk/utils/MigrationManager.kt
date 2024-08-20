@@ -16,7 +16,8 @@ internal class MigrationManager(val context: Context) {
     fun migrateAll() {
         listOf(
             version282(),
-            version290()
+            version290(),
+            version2101MBX2936()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
@@ -79,6 +80,24 @@ internal class MigrationManager(val context: Context) {
             Mindbox.mindboxScope.launch {
                 MindboxPreferences.isPushTokenNeedUpdated = false
                 Mindbox.updateAppInfo(context)
+            }
+        }
+    }
+
+    private fun version2101MBX2936() = object : Migration {
+
+        override val description: String
+            get() = "Sending an information update to clients device recovery"
+
+        override val isNeeded: Boolean
+            get() = SharedPreferencesManager.isInitialized()
+                    && !MindboxPreferences.isFirstInitialize
+                    && MindboxPreferences.isDeviceInfoNeedUpdated
+
+        override fun run() {
+            Mindbox.mindboxScope.launch {
+                MindboxPreferences.isDeviceInfoNeedUpdated = false
+                Mindbox.updateAppInfo(context, sendWithoutChanges = true)
             }
         }
     }

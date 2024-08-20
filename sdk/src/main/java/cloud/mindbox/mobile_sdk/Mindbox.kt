@@ -1134,6 +1134,7 @@ object Mindbox : MindboxLog {
     internal suspend fun updateAppInfo(
         context: Context,
         token: String? = null,
+        sendWithoutChanges: Boolean = false
     ) = withContext(infoUpdatedThreadDispatcher) {
         LoggingExceptionHandler.runCatchingSuspending {
             val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
@@ -1148,7 +1149,7 @@ object Mindbox : MindboxLog {
                         "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
                         "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
             )
-            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
+            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled, sendWithoutChanges)) {
                 val initData = UpdateData(
                     token = pushToken ?: MindboxPreferences.pushToken ?: "",
                     isTokenAvailable = isTokenAvailable,
@@ -1170,8 +1171,13 @@ object Mindbox : MindboxLog {
         isTokenAvailable: Boolean,
         pushToken: String?,
         isNotificationEnabled: Boolean,
-    ) = isTokenAvailable && pushToken != MindboxPreferences.pushToken
-            || isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+        sendWithoutChanges: Boolean = false
+    ): Boolean {
+        return if (sendWithoutChanges) true else {
+            (isTokenAvailable && pushToken != MindboxPreferences.pushToken)
+                    || (isNotificationEnabled != MindboxPreferences.isNotificationEnabled)
+        }
+    }
 
     private fun checkConfig(
         newConfiguration: MindboxConfiguration,
