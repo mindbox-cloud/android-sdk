@@ -97,7 +97,11 @@ internal class MigrationManager(val context: Context) {
         override fun run() {
             Mindbox.mindboxScope.launch {
                 MindboxPreferences.isDeviceInfoNeedUpdated = false
-                Mindbox.updateAppInfo(context, forceChanges = true)
+                if (!MindboxPreferences.isDeviceInfoNeedUpdated) {
+                    Mindbox.updateAppInfo(context, forceChanges = true)
+                } else {
+                    mindboxLogE("Failed to update MindboxPreferences.isDeviceInfoNeedUpdated")
+                }
             }
         }
     }
