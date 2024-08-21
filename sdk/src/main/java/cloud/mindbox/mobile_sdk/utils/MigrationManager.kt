@@ -9,9 +9,12 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class MigrationManager(val context: Context) {
 
+    private val migrationMutex = Mutex()
 
     fun migrateAll() {
         listOf(
@@ -96,11 +99,19 @@ internal class MigrationManager(val context: Context) {
 
         override fun run() {
             Mindbox.mindboxScope.launch {
-                MindboxPreferences.isDeviceInfoNeedUpdated = false
-                if (!MindboxPreferences.isDeviceInfoNeedUpdated) {
-                    Mindbox.updateAppInfo(context, forceChanges = true)
-                } else {
-                    mindboxLogE("Failed to update MindboxPreferences.isDeviceInfoNeedUpdated")
+                migrationMutex.withLock {
+                    if (!isNeeded) {
+                        mindboxLogI("Migration MBX2936 already completed")
+                        return@withLock
+                    }
+                    mindboxLogI("Migration MBX2936 launched")
+                    MindboxPreferences.isDeviceInfoNeedUpdated = false
+
+                    if (!MindboxPreferences.isDeviceInfoNeedUpdated) {
+                        Mindbox.updateAppInfo(context, forceChanges = true)
+                    } else {
+                        mindboxLogE("Failed to update MindboxPreferences.isDeviceInfoNeedUpdated")
+                    }
                 }
             }
         }
