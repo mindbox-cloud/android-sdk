@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.utils
 import android.content.res.Resources
 import android.os.Build
 import cloud.mindbox.mobile_sdk.px
+
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS_TITLE_2_STRING = 250
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS_TITLE_2_STRING = 190
 private const val EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS = 270

@@ -22,6 +22,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
         private const val APP_INSTALLED_ORDINAL = 0
         private const val APP_INFO_UPDATED_ORDINAL = 1
+        //use it when returning a delivered operation, it is not used now
         private const val PUSH_DELIVERED_ORDINAL = 2
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
@@ -33,7 +34,6 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
             APP_INSTALLED_WITHOUT_CUSTOMER -> object : TypeToken<AppInstalledWithoutCustomer>() {}
             APP_INFO_UPDATED_ORDINAL -> object : TypeToken<AppInfoUpdated>() {}
-            PUSH_DELIVERED_ORDINAL -> object : TypeToken<PushDelivered>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
@@ -50,8 +50,6 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
     object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
 
-    object PushDelivered : EventType("", "/mobile-push/delivered")
-
     object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
 
     object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
@@ -64,7 +62,6 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         is AppInstalled -> APP_INSTALLED_ORDINAL
         is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
         is AppInfoUpdated -> APP_INFO_UPDATED_ORDINAL
-        is PushDelivered -> PUSH_DELIVERED_ORDINAL
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
@@ -76,8 +73,4 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 internal sealed class InAppEventType(val name: String) {
     object AppStartup : InAppEventType("appStartup")
     class OrdinalEvent(val eventType: EventType, val body: String? = null) : InAppEventType(eventType.operation)
-}
-
-internal enum class EventParameters(val fieldName: String) {
-    UNIQ_KEY("uniqKey")
 }
