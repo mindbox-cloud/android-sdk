@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.example.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 Log.d("Test", "Notification permission allowed")
+                Mindbox.updateNotificationPermissionStatus(this)
             } else {
                 Log.d("Test", "Notification permission not allowed")
             }
