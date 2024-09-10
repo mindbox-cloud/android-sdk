@@ -11,10 +11,11 @@ import org.junit.Before
 import org.junit.Test
 
 class InitializeLockTest {
-    private val awaitSync = AwaitSync()
+    private lateinit var awaitSync: AwaitSync
 
     @Before
     fun setUp() {
+        awaitSync = AwaitSync()
         InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         InitializeLock.reset(InitializeLock.State.APP_STARTED)
     }
@@ -22,7 +23,7 @@ class InitializeLockTest {
     @Test
     fun `test complete and await SAVE_MINDBOX_CONFIG`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
 
@@ -37,7 +38,7 @@ class InitializeLockTest {
     @Test
     fun `test complete and await APP_STARTED`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.APP_STARTED)
         }
         awaitSync.waitForAwait()
@@ -53,7 +54,7 @@ class InitializeLockTest {
     @Test
     fun `test reset and await APP_STARTED`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.APP_STARTED)
 
         }
@@ -69,7 +70,7 @@ class InitializeLockTest {
     @Test
     fun `test coroutine doesnt complete without change state`() = runBlocking {
         val result = try {
-            withTimeout(3_000) {
+            withTimeout(100) {
                 InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             }
             true
@@ -83,7 +84,7 @@ class InitializeLockTest {
     fun `test coroutine doesnt complete without change state for APP_STARTED`() = runBlocking {
         val result = try {
             InitializeLock.complete(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-            withTimeout(3_000) {
+            withTimeout(100) {
                 InitializeLock.await(InitializeLock.State.APP_STARTED)
             }
             true
@@ -96,7 +97,7 @@ class InitializeLockTest {
     @Test
     fun `test coroutine complete when reset status SAVE_MINDBOX_CONFIG`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         awaitSync.waitForAwait()
@@ -110,7 +111,7 @@ class InitializeLockTest {
     @Test
     fun `test multiple completes for the same state`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         awaitSync.waitForAwait()
@@ -124,7 +125,7 @@ class InitializeLockTest {
     @Test
     fun `test coroutine is cancelled before state completion`() = runBlocking {
         val job = launch {
-            awaitSync.signalAwait()
+            awaitSync.complete()
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         awaitSync.waitForAwait()
@@ -140,7 +141,7 @@ class InitializeLockTest {
 
         launch {
             InitializeLock.complete(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-            awaitSync.signalAwait()
+            awaitSync.complete()
         }
         val job = launch {
             awaitSync.waitForAwait()

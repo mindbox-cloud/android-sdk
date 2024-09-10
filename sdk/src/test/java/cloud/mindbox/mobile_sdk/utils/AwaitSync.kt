@@ -6,7 +6,7 @@ import kotlinx.coroutines.withTimeout
 internal class AwaitSync {
     private val deferred = CompletableDeferred<Unit>()
 
-    fun signalAwait() {
+    fun complete() {
         deferred.complete(Unit)
     }
 
