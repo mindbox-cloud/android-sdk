@@ -2,18 +2,18 @@ package cloud.mindbox.mobile_sdk
 
 import androidx.annotation.WorkerThread
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
-import java.util.concurrent.CountDownLatch
 
 internal object InitializeLock {
 
-    private val map: MutableMap<State, CountDownLatch> = mutableMapOf(
-        State.SAVE_MINDBOX_CONFIG to CountDownLatch(1),
-        State.APP_STARTED to CountDownLatch(1)
+    private val map: MutableMap<State, CompletableDeferred<Unit>> = mutableMapOf(
+        State.SAVE_MINDBOX_CONFIG to CompletableDeferred(),
+        State.APP_STARTED to CompletableDeferred()
     )
 
     @WorkerThread
-    internal fun await(state: State) {
+    internal suspend fun await(state: State) {
         State.values().filter { state >= it }
             .sortedBy { it.ordinal }
             .mapNotNull { map[it] }
@@ -23,13 +23,13 @@ internal object InitializeLock {
     }
 
     internal fun complete(state: State) {
-        map[state]?.countDown()
+        map[state]?.complete(Unit)
         mindboxLogI("State $state completed")
     }
     
     internal fun reset(state: State) {
-        map[state]?.countDown()
-        map[state] = CountDownLatch(1)
+        map[state]?.complete(Unit)
+        map[state] = CompletableDeferred()
         mindboxLogI("State $state is reset")
     }
 
