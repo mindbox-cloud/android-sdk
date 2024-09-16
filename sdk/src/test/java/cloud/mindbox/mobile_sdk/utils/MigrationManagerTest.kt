@@ -42,11 +42,10 @@ class MigrationManagerTest {
         val mm = MigrationManager(mockk())
         every { MindboxPreferences.versionCode } returns Constants.SDK_VERSION_CODE
         mm.migrateAll()
-
-        verify(exactly = 1) {
+        coVerify(exactly = 1, timeout = 100) {
             MindboxPreferences.shownInApps = expectedNewMapString
         }
-        verify(exactly = 1) {
+        coVerify(exactly = 1, timeout = 100) {
             MindboxPreferences.shownInAppIds = ""
         }
     }
