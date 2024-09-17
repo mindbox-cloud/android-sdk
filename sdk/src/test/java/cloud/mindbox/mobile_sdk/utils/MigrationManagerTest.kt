@@ -4,6 +4,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 
@@ -14,8 +16,9 @@ class MigrationManagerTest {
         mockkObject(MindboxPreferences)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `run method properly updates MindboxPreferences shownInApps`() {
+    fun `run method properly updates MindboxPreferences shownInApps`() = runTest {
         val gson: Gson = mockk()
         val oldShownInAppIds = setOf("app1", "app2")
         val oldShownInAppIdsString = Gson().toJson(oldShownInAppIds)
@@ -42,11 +45,10 @@ class MigrationManagerTest {
         val mm = MigrationManager(mockk())
         every { MindboxPreferences.versionCode } returns Constants.SDK_VERSION_CODE
         mm.migrateAll()
-
-        verify(exactly = 1) {
+        coVerify(exactly = 1) {
             MindboxPreferences.shownInApps = expectedNewMapString
         }
-        verify(exactly = 1) {
+        coVerify(exactly = 1) {
             MindboxPreferences.shownInAppIds = ""
         }
     }

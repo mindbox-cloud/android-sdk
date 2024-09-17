@@ -25,10 +25,7 @@ import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.utils.Constants
-import cloud.mindbox.mobile_sdk.utils.PushPermissionActionDto
-import cloud.mindbox.mobile_sdk.utils.RedirectUrlActionDto
-import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory
+import cloud.mindbox.mobile_sdk.utils.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 
@@ -236,6 +233,9 @@ internal fun DataModule(
         get() = FrequencyDataFiller()
     override val frequencyValidator: FrequencyValidator
         get() = FrequencyValidator()
+    override val migrationManager: MigrationManager by lazy {
+        MigrationManager(appContext)
+    }
 
     override val gson: Gson by lazy {
         GsonBuilder().registerTypeAdapterFactory(
