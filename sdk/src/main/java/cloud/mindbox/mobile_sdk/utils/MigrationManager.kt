@@ -24,17 +24,15 @@ internal class MigrationManager(val context: Context) {
             version290()
         ).filter { it.isNeeded }
             .onEach { migration ->
-                loggingRunCatching {
-                    val job = Mindbox.mindboxScope.launch {
-                        migrationMutex.withLock {
-                            if (migration.isNeeded) {
-                                mindboxLogI("Run migration '${migration.description}'")
-                                migration.run()
-                            }
+                val job = Mindbox.mindboxScope.launch {
+                    migrationMutex.withLock {
+                        if (migration.isNeeded) {
+                            mindboxLogI("Run migration '${migration.description}'")
+                            migration.run()
                         }
                     }
-                    migrationJobs.add(job)
                 }
+                migrationJobs.add(job)
             }.also {
                 migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
