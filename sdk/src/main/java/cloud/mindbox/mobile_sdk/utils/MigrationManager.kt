@@ -8,22 +8,24 @@ import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class MigrationManager(val context: Context) {
 
-    private  val migrationMutex = Mutex()
+    private val migrationMutex = Mutex()
+    private val migrationJobs = mutableListOf<Job>()
 
-    fun migrateAll() {
+    suspend fun migrateAll() {
         listOf(
             version282(),
             version290()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 loggingRunCatching {
-                    Mindbox.mindboxScope.launch {
+                    val job = Mindbox.mindboxScope.launch {
                         migrationMutex.withLock {
                             if (migration.isNeeded) {
                                 mindboxLogI("Run migration '${migration.description}'")
@@ -31,8 +33,10 @@ internal class MigrationManager(val context: Context) {
                             }
                         }
                     }
+                    migrationJobs.add(job)
                 }
             }.also {
+                migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
                     mindboxLogE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()

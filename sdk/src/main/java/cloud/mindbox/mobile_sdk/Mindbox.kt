@@ -100,7 +100,7 @@ object Mindbox : MindboxLog {
 
     private var firstInitCall: Boolean = true
 
-    private  val migrationManager: MigrationManager by mindboxInject { migrationManager }
+    private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
     /**
      * Allows you to specify additional components for message handling
@@ -485,7 +485,6 @@ object Mindbox : MindboxLog {
             }
 
             initComponents(context.applicationContext, pushServices)
-            migrationManager.migrateAll()
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                     "configuration: $configuration, pushServices: " +
                     pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
@@ -498,6 +497,7 @@ object Mindbox : MindboxLog {
             }
 
             initScope.launch {
+                migrationManager.migrateAll()
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 DbManager.saveConfigurations(Configuration(configuration))
