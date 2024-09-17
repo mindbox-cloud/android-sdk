@@ -18,7 +18,7 @@ class MigrationManagerTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `run method properly updates MindboxPreferences shownInApps`() = runTest{
+    fun `run method properly updates MindboxPreferences shownInApps`() = runTest {
         val gson: Gson = mockk()
         val oldShownInAppIds = setOf("app1", "app2")
         val oldShownInAppIdsString = Gson().toJson(oldShownInAppIds)
