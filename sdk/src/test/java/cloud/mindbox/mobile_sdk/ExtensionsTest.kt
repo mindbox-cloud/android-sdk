@@ -148,4 +148,35 @@ internal class ExtensionsTest {
         val error = VolleyError(networkResponse)
         assertEquals(responseBodyData, error.getErrorResponseBodyData())
     }
+
+    @Test
+    fun `isUuid returns true for valid UUID`() {
+        val validUuid = "123e4567-e89b-12d3-a456-426614174000"
+        assertTrue(validUuid.isUuid())
+    }
+
+    @Test
+    fun `isUuid returns false for invalid UUID`() {
+        val invalidUuid = "123-e89b-12d3-426614174000"
+        assertFalse(invalidUuid.isUuid())
+    }
+
+    @Test
+    fun `isUuid returns false for empty string`() {
+        val emptyString = ""
+        assertFalse(emptyString.isUuid())
+    }
+
+    @Test
+    fun `isUuid returns false for blank string`() {
+        val blankString = "   "
+        assertFalse(blankString.isUuid())
+    }
+
+    @Test
+    fun `isUuid returns false when UUID string is too long`() {
+        val longUuid = "123e4567-e89b-12d3-a456-426614174000-extra-uuid"
+        assertFalse(longUuid.isUuid())
+    }
+
 }
