@@ -235,12 +235,8 @@ internal fun String.parseTimeSpanToMillis(): Long {
 }
 
 internal fun String.isUuid(): Boolean {
-    return if (this.isBlank()) {
-        false
-    } else {
-        loggingRunCatching(false) {
-            UUID.fromString(this)
-            true
-        }
+    return loggingRunCatching(false) {
+        UUID.fromString(this)
+        true
     }
 }
