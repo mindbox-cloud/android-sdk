@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.core.util.PatternsCompat
-import cloud.mindbox.mobile_sdk.models.isUuid
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
 internal object SdkValidation {

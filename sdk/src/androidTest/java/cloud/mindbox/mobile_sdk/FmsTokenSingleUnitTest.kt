@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
 import androidx.test.platform.app.InstrumentationRegistry
-import cloud.mindbox.mobile_sdk.models.isUuid
 import org.junit.After
 import org.junit.Assert
 import org.junit.Test

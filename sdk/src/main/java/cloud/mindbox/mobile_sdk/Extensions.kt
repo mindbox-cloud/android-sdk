@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
 import org.threeten.bp.Instant
@@ -32,6 +33,7 @@ import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.nio.charset.Charset
 import java.util.Queue
+import java.util.UUID
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -217,7 +219,7 @@ internal fun verifyMainThreadExecution(methodName: String) {
     }
 }
 
-fun String.parseTimeSpanToMillis(): Long {
+internal fun String.parseTimeSpanToMillis(): Long {
     val regex = """(-)?(\d+\.)?([01]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)(\.\d{1,7})?""".toRegex()
     val matchResult = regex.matchEntire(this)
         ?: throw IllegalArgumentException("Invalid timeSpan format")
@@ -230,4 +232,11 @@ fun String.parseTimeSpanToMillis(): Long {
             (seconds + fraction).toDouble().seconds
 
     return if (sign == "-") duration.inWholeMilliseconds * -1 else duration.inWholeMilliseconds
+}
+
+internal fun String.isUuid(): Boolean {
+    return loggingRunCatching(false) {
+        UUID.fromString(this)
+        true
+    }
 }
