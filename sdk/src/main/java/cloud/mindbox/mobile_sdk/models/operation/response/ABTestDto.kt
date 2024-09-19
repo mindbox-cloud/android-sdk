@@ -8,7 +8,7 @@ internal data class ABTestDto(
     @SerializedName("sdkVersion")
     val sdkVersion: SdkVersion?,
     @SerializedName("salt")
-    val salt: String?,
+    val salt: String,
     @SerializedName("variants")
     val variants: List<VariantDto>?,
 ) {

@@ -149,7 +149,7 @@ internal class MobileConfigRepositoryImpl(
                 operationNameValidator.isValid(name)
                         && operationValidator.isValid(operation)
             }?.map { (name, operation) ->
-                name!! to OperationDto(operation!!.systemName!!)
+                name!! to OperationDto(operation!!.systemName)
             }?.toMap()
             ?: emptyMap()
 

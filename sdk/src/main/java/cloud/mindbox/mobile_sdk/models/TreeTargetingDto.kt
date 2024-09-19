@@ -61,7 +61,7 @@ internal sealed class TreeTargetingDto {
         @SerializedName("kind")
         val kind: String?,
         @SerializedName("ids")
-        val ids: List<String?>?,
+        val ids: List<Long?>?,
     ) : TreeTargetingDto() {
         companion object {
             const val COUNTRY_JSON_NAME = "country"
@@ -74,7 +74,7 @@ internal sealed class TreeTargetingDto {
         @SerializedName("kind")
         val kind: String?,
         @SerializedName("ids")
-        val ids: List<String>?,
+        val ids: List<Long>?,
     ) : TreeTargetingDto() {
         companion object {
             const val CITY_JSON_NAME = "city"
@@ -87,7 +87,7 @@ internal sealed class TreeTargetingDto {
         @SerializedName("kind")
         val kind: String?,
         @SerializedName("ids")
-        val ids: List<String?>?,
+        val ids: List<Long?>?,
     ) : TreeTargetingDto() {
         companion object {
             const val REGION_JSON_NAME = "region"

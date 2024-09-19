@@ -7,6 +7,6 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 internal class TtlParametersValidator : Validator<SettingsDtoBlank.TtlDtoBlank> {
 
     override fun isValid(item: SettingsDtoBlank.TtlDtoBlank): Boolean = loggingRunCatching(false) {
-        item.inApps!!.parseTimeSpanToMillis() >= 0
+        item.inApps.parseTimeSpanToMillis() >= 0
     }
 }

@@ -147,8 +147,8 @@ internal class InAppProcessingManagerImpl(
 
     private fun handleCustomerSegmentationErrorLog(error: CustomerSegmentationError) {
         val volleyError = error.cause as? VolleyError
-        volleyError?.let { error ->
-            if ((error.networkResponse?.statusCode == 400) && (error.getErrorResponseBodyData()
+        volleyError?.let {
+            if ((volleyError.networkResponse?.statusCode == 400) && (volleyError.getErrorResponseBodyData()
                     .contains(RESPONSE_STATUS_CUSTOMER_SEGMENTS_REQUIRE_CUSTOMER))
             ) {
                 mindboxLogI("Cannot check customer segment. It's a new customer")

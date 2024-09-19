@@ -26,6 +26,10 @@ import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
+import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.reflect.TypeToken
 import org.threeten.bp.Instant
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
@@ -240,3 +244,21 @@ internal fun String.isUuid(): Boolean {
         true
     }
 }
+
+inline fun <reified T> Gson.fromJson(json: String?): Result<T> = runCatching {
+    fromJson(json, object : TypeToken<T>() {}.type)
+}
+
+inline fun <reified T> Gson.fromJson(json: JsonElement?): Result<T> = runCatching {
+    fromJson(json, object : TypeToken<T>() {}.type)
+}
+
+internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? =
+    this.getOrElse {
+        runIfNull(it)
+        null
+    }
+
+internal fun JsonObject.getOrNull(memberName: String?): JsonElement? = runCatching {
+    this.get(memberName)
+}.getOrNull()

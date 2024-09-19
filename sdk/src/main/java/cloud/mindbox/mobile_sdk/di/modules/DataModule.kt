@@ -149,7 +149,12 @@ internal fun DataModule(
     }
 
     override val mobileConfigSerializationManager: MobileConfigSerializationManager
-        get() = MobileConfigSerializationManagerImpl(gson = gson)
+        get() = MobileConfigSerializationManagerImpl(
+            gson = gson.newBuilder()
+                .registerTypeAdapter(String::class.java, StrictStringAdapter())
+                .registerTypeAdapterFactory(NullableTypAdapterFactory())
+                .create()
+        )
 
     override val inAppGeoRepository: InAppGeoRepository by lazy {
         InAppGeoRepositoryImpl(

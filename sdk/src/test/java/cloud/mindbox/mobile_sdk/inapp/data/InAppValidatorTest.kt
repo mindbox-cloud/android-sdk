@@ -1322,7 +1322,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = InAppStub.getTargetingCountryNodeDto()
-                            .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                            .copy(type = null, kind = "positive", ids = listOf(123, 456)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1341,7 +1341,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCountryNodeDto()
-                            .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = null, ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1398,7 +1398,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCountryNodeDto()
-                            .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "negative", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1417,7 +1417,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCountryNodeDto()
-                            .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "positive", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1436,7 +1436,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = InAppStub.getTargetingCityNodeDto()
-                            .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                            .copy(type = null, kind = "positive", ids = listOf(123, 456)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1455,7 +1455,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCityNodeDto()
-                            .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = null, ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1512,7 +1512,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCityNodeDto()
-                            .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "negative", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1531,7 +1531,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingCityNodeDto()
-                            .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "positive", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1550,7 +1550,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = InAppStub.getTargetingRegionNodeDto()
-                            .copy(type = null, kind = "positive", ids = listOf("123", "456")),
+                            .copy(type = null, kind = "positive", ids = listOf(123, 456)),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1569,7 +1569,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingRegionNodeDto()
-                            .copy(type = "country", kind = null, ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = null, ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1626,7 +1626,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingRegionNodeDto()
-                            .copy(type = "country", kind = "negative", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "negative", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
@@ -1645,7 +1645,7 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto()
                     .copy(
                         targeting = (InAppStub.getTargetingRegionNodeDto()
-                            .copy(type = "country", kind = "positive", ids = listOf("123", "456"))),
+                            .copy(type = "country", kind = "positive", ids = listOf(123, 456))),
                         form = InAppStub.getInAppDto().form?.copy(
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
