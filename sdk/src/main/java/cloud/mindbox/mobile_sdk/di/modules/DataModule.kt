@@ -152,7 +152,6 @@ internal fun DataModule(
         get() = MobileConfigSerializationManagerImpl(
             gson = gson.newBuilder()
                 .registerTypeAdapter(String::class.java, StrictStringAdapter())
-                .registerTypeAdapterFactory(NullableTypAdapterFactory())
                 .create()
         )
 

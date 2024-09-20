@@ -67,10 +67,11 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         MonitoringDto(logs = json!!
             .asJsonObject.get("logs")
             .asJsonArray.mapNotNull { log ->
-                gson.fromJson<LogRequestDtoBlank>(log)
-                    .getOrNull {
-                        mindboxLogW("Failed to parse log block", it)
-                    }
+                runCatching {
+                    gson.fromJson(log, LogRequestDtoBlank::class.java)?.copy()
+                }.getOrNull {
+                    mindboxLogW("Failed to parse log block", it)
+                }
             })
     }.getOrNull {
         mindboxLogE("Failed to parse monitoring block", it)
@@ -88,7 +89,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 runCatching {
                     operationsJson.asJsonObject.entrySet().associate { (key, value) ->
                         key to runCatching {
-                            gson.fromJson(value, OperationDtoBlank::class.java)
+                            gson.fromJson(value, OperationDtoBlank::class.java)?.copy()
                         }.getOrNull {
                             mindboxLogE("Failed to parse operation $key", it)
                         }
@@ -98,7 +99,9 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 }
             }
 
-            val ttl = gson.fromJson<TtlDtoBlank>(json.asJsonObject.get("ttl")).getOrNull {
+            val ttl = runCatching {
+                gson.fromJson(json.asJsonObject.get("ttl"), TtlDtoBlank::class.java)?.copy()
+            }.getOrNull {
                 mindboxLogE("Failed to parse ttl block", it)
             }
 
@@ -111,7 +114,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
     internal fun deserializeAbtests(json: JsonElement?): List<ABTestDto>? = runCatching {
         json?.asJsonArray?.map { abtest ->
             gson.fromJson<ABTestDto?>(abtest).getOrThrow()!!
-        }
+        }?.map { it.copy() }
     }.getOrNull {
         mindboxLogE("Failed to parse abtests block", it)
     }

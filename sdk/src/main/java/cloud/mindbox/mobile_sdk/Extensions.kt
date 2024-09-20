@@ -245,10 +245,6 @@ internal fun String.isUuid(): Boolean {
     }
 }
 
-inline fun <reified T> Gson.fromJson(json: String?): Result<T> = runCatching {
-    fromJson(json, object : TypeToken<T>() {}.type)
-}
-
 inline fun <reified T> Gson.fromJson(json: JsonElement?): Result<T> = runCatching {
     fromJson(json, object : TypeToken<T>() {}.type)
 }
