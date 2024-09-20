@@ -108,7 +108,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
             SettingsDtoBlank(operations, ttl)
         }
     }.getOrNull {
-        mindboxLogE("Failed to parse monitoring block", it)
+        mindboxLogE("Failed to parse settings block", it)
     }
 
     internal fun deserializeAbtests(json: JsonElement?): List<ABTestDto>? = runCatching {

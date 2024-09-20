@@ -10,14 +10,15 @@ import java.io.IOException
 class StrictStringAdapter : TypeAdapter<String?>() {
     @Throws(IOException::class)
     override fun read(reader: JsonReader): String? {
-        if (reader.peek() == JsonToken.NULL) {
-            reader.nextNull()
-            return null
+        return when (reader.peek()) {
+            JsonToken.NULL -> {
+                reader.nextNull()
+                null
+            }
+
+            JsonToken.STRING -> reader.nextString()
+            else -> throw JsonSyntaxException("Expected STRING but was " + reader.peek())
         }
-        if (reader.peek() != JsonToken.STRING) {
-            throw JsonSyntaxException("Expected STRING but was " + reader.peek())
-        }
-        return reader.nextString()
     }
 
     @Throws(IOException::class)

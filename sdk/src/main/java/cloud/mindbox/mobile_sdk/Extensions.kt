@@ -245,16 +245,15 @@ internal fun String.isUuid(): Boolean {
     }
 }
 
-inline fun <reified T> Gson.fromJson(json: JsonElement?): Result<T> = runCatching {
+internal inline fun <reified T> Gson.fromJson(json: JsonElement?): Result<T> = runCatching {
     fromJson(json, object : TypeToken<T>() {}.type)
 }
-
-internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? =
-    this.getOrElse {
-        runIfNull(it)
-        null
-    }
 
 internal fun JsonObject.getOrNull(memberName: String?): JsonElement? = runCatching {
     this.get(memberName)
 }.getOrNull()
+
+internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? = getOrElse {
+    runIfNull(it)
+    null
+}
