@@ -1,4 +1,4 @@
-name: SDK Distribute
+name: Distribute PushOk
 
 on:
   pull_request:
@@ -14,11 +14,19 @@ jobs:
     if: github.event.pull_request.merged == true || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get last 3 commit messages
+        run: |
+          commits=$(git log -3 --pretty=format:"%s")
+          echo "commits=$commits" >> $GITHUB_ENV 
+
       - name: trigger build & send to FAD
         uses: benc-uk/workflow-dispatch@v1
-        with:
+        with: 
           workflow: 61033697
           repo: mindbox-cloud/android-app
           ref: develop
           token: ${{ secrets.GITHUBACCESSTOKEN }}
-
+          inputs: '{"branch": "${{ github.head_ref }}", "commits": "${{ env.commits }}"}'
