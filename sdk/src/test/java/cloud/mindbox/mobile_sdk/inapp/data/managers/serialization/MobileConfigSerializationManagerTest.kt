@@ -1,6 +1,7 @@
-package cloud.mindbox.mobile_sdk.inapp.data.managers
+package cloud.mindbox.mobile_sdk.inapp.data.managers.serialization
 
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
+import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -136,7 +137,7 @@ internal class MobileConfigSerializationManagerTest {
     @Test
     fun `deserialize to in app targeting city dto success`() {
         val expectedResult = InAppStub.getTargetingCityNodeDto()
-            .copy(type = "city", kind = "positive", listOf("123"))
+            .copy(type = "city", kind = "positive", listOf(123))
         val actualResult =
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "city")
@@ -151,7 +152,7 @@ internal class MobileConfigSerializationManagerTest {
     @Test
     fun `deserialize to in app targeting country dto success`() {
         val expectedResult = InAppStub.getTargetingCountryNodeDto()
-            .copy(type = "country", kind = "positive", listOf("123"))
+            .copy(type = "country", kind = "positive", listOf(123))
         val actualResult =
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "country")
@@ -167,7 +168,7 @@ internal class MobileConfigSerializationManagerTest {
     @Test
     fun `deserialize to in app targeting region dto success`() {
         val expectedResult = InAppStub.getTargetingRegionNodeDto()
-            .copy(type = "region", kind = "positive", listOf("123"))
+            .copy(type = "region", kind = "positive", listOf(123))
         val actualResult =
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "region")

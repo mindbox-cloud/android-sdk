@@ -50,6 +50,7 @@ class InAppActionHandlerTest<InAppAction> {
         Assert.assertTrue(resultAction.payload == "test_payload")
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun <R> callPrivateMethod(
         instance: Any,
         methodName: String,

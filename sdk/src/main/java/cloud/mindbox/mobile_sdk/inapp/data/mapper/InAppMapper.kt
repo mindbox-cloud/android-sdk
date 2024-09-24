@@ -68,10 +68,10 @@ internal class InAppMapper {
         logRequestDtoBlank: LogRequestDtoBlank,
     ): LogRequestDto {
         return LogRequestDto(
-            requestId = logRequestDtoBlank.requestId!!,
-            deviceId = logRequestDtoBlank.deviceId!!,
-            from = logRequestDtoBlank.from!!,
-            to = logRequestDtoBlank.to!!
+            requestId = logRequestDtoBlank.requestId,
+            deviceId = logRequestDtoBlank.deviceId,
+            from = logRequestDtoBlank.from,
+            to = logRequestDtoBlank.to
         )
     }
 
@@ -306,7 +306,7 @@ internal class InAppMapper {
                         id = dto.id,
                         minVersion = dto.sdkVersion?.minVersion,
                         maxVersion = dto.sdkVersion?.maxVersion,
-                        salt = dto.salt!!,
+                        salt = dto.salt,
                         variants = dto.variants?.map { variantDto ->
                             ABTest.Variant(
                                 id = variantDto.id,
@@ -469,7 +469,7 @@ internal class InAppMapper {
     }
 
     fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlDtoBlank) = TtlDto(
-        inApps = inAppTtlDtoBlank.inApps!!
+        inApps = inAppTtlDtoBlank.inApps
     )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {

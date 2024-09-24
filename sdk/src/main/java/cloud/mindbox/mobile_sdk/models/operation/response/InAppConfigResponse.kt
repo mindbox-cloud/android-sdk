@@ -26,12 +26,12 @@ internal data class SettingsDtoBlank(
  {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
-        val systemName: String?
+        val systemName: String
     )
 
     internal data class TtlDtoBlank(
         @SerializedName("inapps")
-        val inApps: String?
+        val inApps: String
     )
 }
 
@@ -128,13 +128,13 @@ internal data class MonitoringDto(
 
 internal data class LogRequestDtoBlank(
     @SerializedName("requestId")
-    val requestId: String?,
+    val requestId: String,
     @SerializedName("deviceUUID")
-    val deviceId: String?,
+    val deviceId: String,
     @SerializedName("from")
-    val from: String?,
+    val from: String,
     @SerializedName("to")
-    val to: String?,
+    val to: String,
 )
 
 internal data class InAppConfigResponseBlank(

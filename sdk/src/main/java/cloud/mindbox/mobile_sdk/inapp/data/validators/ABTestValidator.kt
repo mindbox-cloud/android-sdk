@@ -24,7 +24,7 @@ internal class ABTestValidator(private val sdkVersionValidator: SdkVersionValida
             return false
         }
 
-        if (item.salt.isNullOrBlank()) {
+        if (item.salt.isBlank()) {
             mindboxLogW("In abtest ${item.id} 'salt' field is invalid. All abtests will not be used.")
             return false
         }
