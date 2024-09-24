@@ -66,17 +66,9 @@ dependencies {
     kapt libs.glide.compiler
 
     // Test dependencies
-    testImplementation libs.junit
-    testImplementation libs.kotlinx.coroutines.test
-    testImplementation libs.turbine
-    testImplementation libs.robolectric
-    testImplementation libs.mockk
-    testImplementation libs.mockk.android
-    testImplementation libs.mockk.agent
-    testImplementation libs.test.core
+    testImplementation libs.bundles.test
 
     // Android Test dependencies
-    androidTestImplementation libs.androidx.junit
-    androidTestImplementation libs.espresso
+    androidTestImplementation libs.bundles.androidTest
 
 }

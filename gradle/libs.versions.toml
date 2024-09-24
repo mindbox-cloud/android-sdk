@@ -4,24 +4,24 @@ build_tools = "34.0.0"
 min_sdk = "19"
 target_sdk = "34"
 
+firebase_bom = "32.7.2"
+hms_push = "6.11.0.300"
+room = "2.5.1"
 kotlin = "1.8.21"
 gradle_plugin = "7.4.2"
-androidx_core_ktx = "1.7.0"
-androidx_annotations = "1.3.0"
-firebase_bom = "32.7.2"
 gms_play_services_basement = "18.0.0"
 gms_play_services_base = "18.0.1"
 gms_play_services_ads_identifier = "18.0.1"
 google_services = "4.3.10"
+hms_ads_identifier = "3.4.39.302"
 kotlinx_coroutines_core = "1.4.2"
 kotlinx_coroutines_android = "1.5.0"
 volley = "1.2.1"
 gson = "2.8.9"
-room = "2.5.1"
 work_manager = "2.7.1"
 androidx_lifecycle = "2.3.1"
-hms_push = "6.11.0.300"
-hms_ads_identifier = "3.4.39.302"
+androidx_core_ktx = "1.7.0"
+androidx_annotations = "1.3.0"
 constraint_layout = "2.1.4"
 threetenapb = "1.4.6"
 glide = "4.15.1"
@@ -45,6 +45,20 @@ buildscript-plugins = [
     "google_services",
     "maven_plugin",
     "agcp"
+]
+
+test = [
+    "junit",
+    "mockk",
+    "robolectric",
+    "test_core",
+    "turbine",
+    "kotlinx_coroutines_test"
+]
+
+androidTest = [
+    "androidx_junit",
+    "espresso"
 ]
 
 [libraries]

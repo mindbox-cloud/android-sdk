@@ -29,10 +29,6 @@ dependencies {
     implementation libs.gms.play.services.ads.identifier
 
     // Test dependencies
-    testImplementation libs.junit
-    testImplementation libs.mockk
-    testImplementation libs.mockk.android
-    testImplementation libs.mockk.agent
-    testImplementation libs.test.core
+    testImplementation libs.bundles.test
 
 }
