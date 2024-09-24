@@ -1,19 +1,18 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
-apply plugin: 'org.jetbrains.dokka'
 apply plugin: 'signing'
 apply plugin: 'maven-publish'
 
 group = 'com.github.mindbox-cloud'
 
 android {
-    compileSdkVersion 34
-    buildToolsVersion "34.0.0"
+    compileSdkVersion libs.versions.compile.sdk.get().toInteger()
+    buildToolsVersion libs.versions.build.tools.get()
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 34
+        minSdkVersion libs.versions.min.sdk.get().toInteger()
+        targetSdkVersion libs.versions.target.sdk.get().toInteger()
         versionCode 1
         multiDexEnabled true
         versionName '"' + SDK_VERSION_NAME + '"'
@@ -42,11 +41,6 @@ android {
 
     kotlinOptions {
         jvmTarget = '1.8'
-    }
-
-    dokka {
-        outputFormat = 'javadoc'
-        outputDirectory = "$buildDir/dokka"
     }
 
     task androidSourcesJar(type: Jar) {
