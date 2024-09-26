@@ -4,10 +4,11 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
-import com.google.gson.Gson
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -68,19 +69,24 @@ class MonitoringMobileConfigSerializationManagerTest {
     @Test
     fun monitoringConfig_withLogsOneElementTypeError_shouldParseSuccessfullyRemainsElements() {
         // Type of `requestId` is Int instead of String
+        mockkObject(MindboxLoggerImpl)
         val json = getJson("ConfigParsing/Monitoring/MonitoringLogsOneElementTypeError.json")
         val config = manager.deserializeMonitoring(json)!!
 
         assertEquals(1, config.logs?.size)
+        verify(exactly = 1) { MindboxLoggerImpl.e(any(),"Failed to parse logs block", any()) }
     }
 
     @Test
     fun monitoringConfig_withLogsTwoElementsError_shouldParseSuccessfullyRemainsElements() {
         // Key is `request` instead `requestId` and key is `device` instead of `deviceUUID`
+        mockkObject(MindboxLoggerImpl)
+
         val json = getJson("ConfigParsing/Monitoring/MonitoringLogsTwoElementsError.json")
         val config = manager.deserializeMonitoring(json)!!
 
         assertEquals(0, config.logs?.size)
+        verify(exactly = 2) { MindboxLoggerImpl.e(any(),"Failed to parse logs block", any()) }
     }
 
     @Test

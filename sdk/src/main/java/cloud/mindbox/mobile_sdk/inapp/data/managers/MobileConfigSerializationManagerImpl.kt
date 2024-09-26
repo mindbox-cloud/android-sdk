@@ -6,7 +6,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank.InAppDtoBlank
@@ -55,10 +54,10 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
             return null
         }
 
-        val inApps = deserializeInApps(jsonObject.getOrNull("inapps"))
-        val settings = deserializeSettings(jsonObject.getOrNull("settings"))
-        val abtests = deserializeAbtests(jsonObject.getOrNull("abtests"))
-        val monitoring = deserializeMonitoring(jsonObject.getOrNull("monitoring"))
+        val inApps = jsonObject.getOrNull("inapps")?.let { deserializeInApps(it) }
+        val settings = jsonObject.getOrNull("settings")?.let { deserializeSettings(it) }
+        val abtests = jsonObject.getOrNull("abtests")?.let { deserializeAbtests(it) }
+        val monitoring = jsonObject.getOrNull("monitoring")?.let { deserializeMonitoring(it) }
 
         return InAppConfigResponseBlank(inApps, monitoring, settings, abtests)
     }
@@ -70,7 +69,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 runCatching {
                     gson.fromJson(log, LogRequestDtoBlank::class.java)?.copy()
                 }.getOrNull {
-                    mindboxLogW("Failed to parse log block", it)
+                    mindboxLogE("Failed to parse logs block", it)
                 }
             })
     }.getOrNull {

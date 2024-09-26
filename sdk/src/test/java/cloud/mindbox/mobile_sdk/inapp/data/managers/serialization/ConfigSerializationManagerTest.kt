@@ -4,8 +4,11 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.verify
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertNull
 import org.junit.Before
@@ -156,5 +159,65 @@ internal class ConfigSerializationManagerTest {
         assertNotNull(config.monitoring)
         assertNotNull(config.settings)
         assertNotNull(config.inApps)
+    }
+
+    @Test
+    fun `empty config`() {
+        // Key is `abtestsTest` instead of `abtests`
+        mockkStatic(::mindboxLogE)
+        val json = getJson("ConfigParsing/Config/EmptyConfigs/EmptyConfig.json")
+        val config = manager.deserializeToConfigDtoBlank(json.toString())!!
+
+        assertNull(config.abtests)
+        assertNull(config.monitoring)
+        assertNull(config.settings)
+        assertNull(config.inApps)
+
+        verify(exactly = 0) { mindboxLogE(any(), any()) }
+    }
+
+    @Test
+    fun `no monitoring in config`() {
+        // Key is `abtestsTest` instead of `abtests`
+        mockkStatic(::mindboxLogE)
+        val json = getJson("ConfigParsing/Config/EmptyConfigs/NoMonitoring.json")
+        val config = manager.deserializeToConfigDtoBlank(json.toString())!!
+
+        assertNull(config.monitoring)
+        assertNotNull(config.abtests)
+        assertNotNull(config.settings)
+        assertNotNull(config.inApps)
+
+        verify(exactly = 0) { mindboxLogE(any(), any()) }
+    }
+
+    @Test
+    fun `empty monitoring in config`() {
+        // Key is `abtestsTest` instead of `abtests`
+        mockkStatic(::mindboxLogE)
+        val json = getJson("ConfigParsing/Config/EmptyConfigs/EmptyMonitoring.json")
+        val config = manager.deserializeToConfigDtoBlank(json.toString())!!
+
+        assertNull(config.abtests)
+        assertNull(config.monitoring)
+        assertNull(config.settings)
+        assertNull(config.inApps)
+
+        verify(exactly = 0) { mindboxLogE(any(), any()) }
+    }
+
+    @Test
+    fun `empty monitoring logs in config`() {
+        // Key is `abtestsTest` instead of `abtests`
+        mockkStatic(::mindboxLogE)
+        val json = getJson("ConfigParsing/Config/EmptyConfigs/EmptyLogsMonitoring.json")
+        val config = manager.deserializeToConfigDtoBlank(json.toString())!!
+
+        assertNull(config.abtests)
+        assertNull(config.monitoring)
+        assertNull(config.settings)
+        assertNull(config.inApps)
+
+        verify(exactly = 0) { mindboxLogE(any(), any()) }
     }
 }
