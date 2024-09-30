@@ -9,8 +9,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.verify
-import junit.framework.TestCase.assertNotNull
-import junit.framework.TestCase.assertNull
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
