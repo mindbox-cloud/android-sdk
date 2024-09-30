@@ -367,19 +367,19 @@ internal class InAppMapper {
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
                     type = TreeTargetingDto.CityNodeDto.CITY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
                     type = TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
                     type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
