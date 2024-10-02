@@ -17,6 +17,7 @@ import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.Mindbox.logE
+import cloud.mindbox.mobile_sdk.Mindbox.logW
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -217,9 +218,11 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
         ?: ""
 }
 
-internal fun verifyMainThreadExecution(methodName: String) {
-    if (Looper.myLooper() != Looper.getMainLooper()) {
-        logE("Method $methodName must be called by main thread")
+internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boolean = true) {
+    val isMainThread = Looper.myLooper() == Looper.getMainLooper()
+    when {
+        shouldBeMainThread && !isMainThread -> logE("Method $methodName must be called on the main thread")
+        !shouldBeMainThread && isMainThread -> logW("Method $methodName should not be called on the main thread")
     }
 }
 

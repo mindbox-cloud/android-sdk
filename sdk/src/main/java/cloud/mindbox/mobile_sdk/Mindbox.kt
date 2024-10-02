@@ -478,7 +478,7 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-            verifyMainThreadExecution("init")
+            verifyThreadExecution(methodName = "init")
             val currentProcessName = context.getCurrentProcessName()
             if (!context.isMainProcess(currentProcessName)) {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
@@ -678,7 +678,7 @@ object Mindbox : MindboxLog {
         context: Context,
         pushServices: List<MindboxPushService>,
     ) {
-        verifyMainThreadExecution(methodName = "initPushServices")
+        verifyThreadExecution(methodName = "initPushServices")
         initComponents(context, pushServices)
     }
 
@@ -956,6 +956,8 @@ object Mindbox : MindboxLog {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+
+        verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
         MindboxLoggerImpl.d(
             this, "handleRemoteMessage. channelId: $channelId, " +
                     "channelName: $channelName, channelDescription: $channelDescription, " +
