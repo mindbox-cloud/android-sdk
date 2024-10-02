@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
@@ -944,6 +945,7 @@ object Mindbox : MindboxLog {
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
+    @WorkerThread
     fun handleRemoteMessage(
         context: Context,
         message: Any?,
