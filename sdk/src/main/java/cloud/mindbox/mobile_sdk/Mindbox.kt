@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
@@ -477,7 +478,7 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-            verifyMainThreadExecution("init")
+            verifyThreadExecution(methodName = "init")
             val currentProcessName = context.getCurrentProcessName()
             if (!context.isMainProcess(currentProcessName)) {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
@@ -677,7 +678,7 @@ object Mindbox : MindboxLog {
         context: Context,
         pushServices: List<MindboxPushService>,
     ) {
-        verifyMainThreadExecution(methodName = "initPushServices")
+        verifyThreadExecution(methodName = "initPushServices")
         initComponents(context, pushServices)
     }
 
@@ -944,6 +945,7 @@ object Mindbox : MindboxLog {
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
+    @WorkerThread
     fun handleRemoteMessage(
         context: Context,
         message: Any?,
@@ -954,6 +956,8 @@ object Mindbox : MindboxLog {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+
+        verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
         MindboxLoggerImpl.d(
             this, "handleRemoteMessage. channelId: $channelId, " +
                     "channelName: $channelName, channelDescription: $channelDescription, " +
