@@ -1,23 +1,23 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.inapp.data.dto.*
-import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.FormBlankDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
-import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
-import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.*
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank.InAppDtoBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.OperationDtoBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.TtlDtoBlank
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 
 internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
     MobileConfigSerializationManager {
-
 
     override fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto? {
         val result = runCatching {
@@ -47,17 +47,75 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
     }
 
     override fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank? {
-        val result = runCatching {
-            gson.fromJson(inAppConfig, InAppConfigResponseBlank::class.java)
+        val jsonObject = runCatching {
+            JsonParser.parseString(inAppConfig).asJsonObject
+        }.getOrElse {
+            mindboxLogE("Failed to parse inAppConfig json", it)
+            return null
         }
-        result.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this@MobileConfigSerializationManagerImpl,
-                message = "Failed to parse inAppConfig: $inAppConfig",
-                exception = error
-            )
+
+        val inApps = jsonObject.getOrNull("inapps")?.let { deserializeInApps(it) }
+        val settings = jsonObject.getOrNull("settings")?.let { deserializeSettings(it) }
+        val abtests = jsonObject.getOrNull("abtests")?.let { deserializeAbtests(it) }
+        val monitoring = jsonObject.getOrNull("monitoring")?.let { deserializeMonitoring(it) }
+
+        return InAppConfigResponseBlank(inApps, monitoring, settings, abtests)
+    }
+
+    internal fun deserializeMonitoring(json: JsonElement?): MonitoringDto? = runCatching {
+        MonitoringDto(logs = json!!
+            .asJsonObject.get("logs")
+            .asJsonArray.mapNotNull { log ->
+                runCatching {
+                    gson.fromJson(log, LogRequestDtoBlank::class.java)?.copy()
+                }.getOrNull {
+                    mindboxLogE("Failed to parse logs block", it)
+                }
+            })
+    }.getOrNull {
+        mindboxLogE("Failed to parse monitoring block", it)
+    }
+
+    internal fun deserializeInApps(json: JsonElement?): List<InAppDtoBlank>? =
+        gson.fromJson<List<InAppDtoBlank>>(json)
+            .getOrNull {
+                mindboxLogE("Failed to parse inapps block", it)
+            }
+
+    internal fun deserializeSettings(json: JsonElement?): SettingsDtoBlank? = runCatching {
+        json?.let {
+            val operations = json.asJsonObject.get("operations")?.let { operationsJson ->
+                runCatching {
+                    operationsJson.asJsonObject.entrySet().associate { (key, value) ->
+                        key to runCatching {
+                            gson.fromJson(value, OperationDtoBlank::class.java)?.copy()
+                        }.getOrNull {
+                            mindboxLogE("Failed to parse operation $key", it)
+                        }
+                    }.filterValues { it != null }
+                }.getOrNull {
+                    mindboxLogE("Failed to parse operations block", it)
+                }
+            }
+
+            val ttl = runCatching {
+                gson.fromJson(json.asJsonObject.get("ttl"), TtlDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse ttl block", it)
+            }
+
+            SettingsDtoBlank(operations, ttl)
         }
-        return result.getOrNull()
+    }.getOrNull {
+        mindboxLogE("Failed to parse settings block", it)
+    }
+
+    internal fun deserializeAbtests(json: JsonElement?): List<ABTestDto>? = runCatching {
+        json?.asJsonArray?.map { abtest ->
+            gson.fromJson<ABTestDto?>(abtest).getOrThrow()!!
+        }?.map { it.copy() }
+    }.getOrNull {
+        mindboxLogE("Failed to parse abtests block", it)
     }
 
     override fun deserializeToInAppFormDto(inAppForm: JsonObject?): FormDto? {

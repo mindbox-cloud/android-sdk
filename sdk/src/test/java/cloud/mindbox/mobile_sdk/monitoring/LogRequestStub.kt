@@ -14,10 +14,10 @@ internal class LogRequestStub {
         )
 
         fun getLogRequestDtoBlank(): LogRequestDtoBlank = LogRequestDtoBlank(
-            requestId = null,
-            deviceId = null,
-            from = null,
-            to = null
+            requestId = "",
+            deviceId = "",
+            from = "",
+            to = ""
         )
     }
 }

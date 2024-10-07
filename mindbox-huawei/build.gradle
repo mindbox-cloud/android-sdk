@@ -12,14 +12,18 @@ android {
 dependencies {
     implementation project(path: ':sdk')
 
-    implementation sdkDependencies.kotlinx_coroutines_core
-    implementation sdkDependencies.hms_push
-    implementation sdkDependencies.hms_ads_identifier
-    implementation sdkDependencies.gson
-    implementation sdkDependencies.androidx_annotations
-    testImplementation testDependencies.junit
-    testImplementation testDependencies.mockk
-    testImplementation testDependencies.mockk_android
-    testImplementation testDependencies.mockk_agent
-    testImplementation testDependencies.test_core
+    // Implementation dependencies
+    implementation libs.kotlinx.coroutines.core
+
+    // HMS
+    implementation libs.hms.push
+    implementation libs.hms.ads.identifier
+
+    // GSON
+    implementation libs.gson
+    implementation libs.androidx.annotations
+
+    // Test dependencies
+    testImplementation libs.bundles.test
+
 }

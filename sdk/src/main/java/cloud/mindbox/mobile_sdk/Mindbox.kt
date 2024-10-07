@@ -100,6 +100,8 @@ object Mindbox : MindboxLog {
 
     private var firstInitCall: Boolean = true
 
+    private val migrationManager: MigrationManager by mindboxInject { migrationManager }
+
     /**
      * Allows you to specify additional components for message handling
      * when calling the [handleRemoteMessage] function.
@@ -495,6 +497,7 @@ object Mindbox : MindboxLog {
             }
 
             initScope.launch {
+                migrationManager.migrateAll()
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 DbManager.saveConfigurations(Configuration(configuration))
@@ -1047,7 +1050,6 @@ object Mindbox : MindboxLog {
         SharedPreferencesManager.with(context)
         DbManager.init(context)
         setPushServiceHandler(context, pushServices)
-        MigrationManager(context).migrateAll()
     }
 
     private fun <T> asyncOperation(

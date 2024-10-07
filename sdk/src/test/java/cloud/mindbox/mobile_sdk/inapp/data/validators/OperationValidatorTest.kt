@@ -17,7 +17,6 @@ class OperationValidatorTest {
 
     @Test
     fun `operation is not valid`() {
-        assertFalse(validator.isValid(SettingsDtoBlank.OperationDtoBlank(systemName = null)))
         assertFalse(validator.isValid(SettingsDtoBlank.OperationDtoBlank(systemName = "")))
         assertFalse(validator.isValid(SettingsDtoBlank.OperationDtoBlank(systemName = "   ")))
         assertFalse(validator.isValid(SettingsDtoBlank.OperationDtoBlank(systemName = "\t")))

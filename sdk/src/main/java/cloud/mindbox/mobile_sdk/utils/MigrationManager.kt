@@ -8,22 +8,33 @@ import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class MigrationManager(val context: Context) {
 
+    private val migrationMutex = Mutex()
+    private val migrationJobs = mutableListOf<Job>()
 
-    fun migrateAll() {
+    suspend fun migrateAll() {
         listOf(
             version282(),
             version290()
         ).filter { it.isNeeded }
             .onEach { migration ->
-                loggingRunCatching {
-                    mindboxLogI("Run migration '${migration.description}'")
-                    migration.run()
+                val job = Mindbox.mindboxScope.launch {
+                    migrationMutex.withLock {
+                        if (migration.isNeeded) {
+                            mindboxLogI("Run migration '${migration.description}'")
+                            migration.run()
+                        }
+                    }
                 }
+                migrationJobs.add(job)
             }.also {
+                migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
                     mindboxLogE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()
@@ -36,7 +47,7 @@ internal class MigrationManager(val context: Context) {
         val description: String
         val isNeeded: Boolean
 
-        fun run()
+        suspend fun run()
     }
 
     private fun version290() = object : Migration {
@@ -45,7 +56,7 @@ internal class MigrationManager(val context: Context) {
         override val isNeeded: Boolean
             get() = MindboxPreferences.shownInAppIds != ""
 
-        override fun run() {
+        override suspend fun run() {
             val gson = Gson()
             val oldShownInApps = LoggingExceptionHandler.runCatching<Set<String>>(HashSet()) {
                 gson.fromJson(
@@ -75,11 +86,9 @@ internal class MigrationManager(val context: Context) {
                     && !MindboxPreferences.isFirstInitialize
                     && MindboxPreferences.isPushTokenNeedUpdated
 
-        override fun run() {
-            Mindbox.mindboxScope.launch {
+        override suspend fun run() {
                 MindboxPreferences.isPushTokenNeedUpdated = false
                 Mindbox.updateAppInfo(context)
-            }
         }
     }
 }

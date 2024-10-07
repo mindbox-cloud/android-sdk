@@ -37,7 +37,7 @@ internal class MonitoringValidatorTest {
     fun `monitoring validation requestId error null`() {
         assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
-                .copy(requestId = null, deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                .copy(requestId = "", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
     }
 
@@ -45,7 +45,7 @@ internal class MonitoringValidatorTest {
     fun `monitoring validation deviceId error empty string`() {
         assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
-                .copy(requestId = "asd", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                .copy(requestId = "", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
     }
 
@@ -53,7 +53,7 @@ internal class MonitoringValidatorTest {
     fun `monitoring validation deviceId error null`() {
         assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
-                .copy(requestId = "asd", deviceId = null, from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                .copy(requestId = "asd", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
         ))
     }
 
@@ -69,7 +69,7 @@ internal class MonitoringValidatorTest {
     fun `monitoring validation from error null`() {
         assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
-                .copy(requestId = "123", deviceId = "abvc", from = null, to = "2023-01-30T00:00:00")
+                .copy(requestId = "123", deviceId = "abvc", from = "", to = "2023-01-30T00:00:00")
         ))
     }
 
@@ -93,7 +93,7 @@ internal class MonitoringValidatorTest {
     fun `monitoring validation to error null`() {
         assertFalse(monitoringValidator.validateLogRequestDtoBlank(
             LogRequestStub.getLogRequestDtoBlank()
-                .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = null)
+                .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "")
         ))
     }
 

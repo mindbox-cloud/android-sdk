@@ -123,7 +123,7 @@ internal class ABTestValidatorTest(
                         variant2.copy(modulus = modulus.copy(lower = 60, upper = 40)),
                     )
                 ) to false,
-                abtest.copy(salt = null) to false,
+                abtest.copy(salt = "") to false,
                 abtest.copy(salt = "") to false,
                 abtest.copy(id = "") to false,
                 abtest.copy(sdkVersion = null) to false,

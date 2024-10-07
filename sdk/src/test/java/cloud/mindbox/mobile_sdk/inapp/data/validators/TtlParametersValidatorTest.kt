@@ -58,13 +58,6 @@ class TtlParametersValidatorTest {
     }
 
     @Test
-    fun `isValid returns false for null value`() {
-        val nullTtl = SettingsDtoBlank.TtlDtoBlank(null)
-
-        assertFalse(validator.isValid(nullTtl))
-    }
-
-    @Test
     fun `isValid returns false when ttl is valid string`() {
         val nullTtl = SettingsDtoBlank.TtlDtoBlank("one day")
 

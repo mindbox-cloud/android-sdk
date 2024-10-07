@@ -68,10 +68,10 @@ internal class InAppMapper {
         logRequestDtoBlank: LogRequestDtoBlank,
     ): LogRequestDto {
         return LogRequestDto(
-            requestId = logRequestDtoBlank.requestId!!,
-            deviceId = logRequestDtoBlank.deviceId!!,
-            from = logRequestDtoBlank.from!!,
-            to = logRequestDtoBlank.to!!
+            requestId = logRequestDtoBlank.requestId,
+            deviceId = logRequestDtoBlank.deviceId,
+            from = logRequestDtoBlank.from,
+            to = logRequestDtoBlank.to
         )
     }
 
@@ -306,7 +306,7 @@ internal class InAppMapper {
                         id = dto.id,
                         minVersion = dto.sdkVersion?.minVersion,
                         maxVersion = dto.sdkVersion?.maxVersion,
-                        salt = dto.salt!!,
+                        salt = dto.salt,
                         variants = dto.variants?.map { variantDto ->
                             ABTest.Variant(
                                 id = variantDto.id,
@@ -367,19 +367,19 @@ internal class InAppMapper {
                 is TreeTargetingDto.CityNodeDto -> TreeTargeting.CityNode(
                     type = TreeTargetingDto.CityNodeDto.CITY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.CountryNodeDto -> TreeTargeting.CountryNode(
                     type = TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.RegionNodeDto -> TreeTargeting.RegionNode(
                     type = TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME,
                     kind = if (treeTargetingDto.kind == "positive") Kind.POSITIVE else Kind.NEGATIVE,
-                    ids = treeTargetingDto.ids as List<String>
+                    ids = treeTargetingDto.ids!!.map { it.toString() }
                 )
 
                 is TreeTargetingDto.ViewProductCategoryNodeDto -> ViewProductCategoryNode(
@@ -469,7 +469,7 @@ internal class InAppMapper {
     }
 
     fun mapToTtlDto(inAppTtlDtoBlank: SettingsDtoBlank.TtlDtoBlank) = TtlDto(
-        inApps = inAppTtlDtoBlank.inApps!!
+        inApps = inAppTtlDtoBlank.inApps
     )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {

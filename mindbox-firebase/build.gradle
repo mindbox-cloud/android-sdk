@@ -12,23 +12,23 @@ android {
 dependencies {
     implementation project(path: ':sdk')
 
-    implementation sdkDependencies.androidx_core_ktx
-    implementation sdkDependencies.kotlinx_coroutines_core
+    // Implementation dependencies
+    implementation libs.androidx.core.ktx
+    implementation libs.kotlinx.coroutines.core
 
-    implementation sdkDependencies.gson
+    // GSON
+    implementation libs.gson
 
     // Firebase messaging
-    implementation platform(sdkDependencies.firebase_bom)
-    implementation sdkDependencies.firebase_messaging
-    implementation sdkDependencies.gms_play_services_base
-    implementation sdkDependencies.gms_play_services_basement
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.messaging
+    implementation libs.gms.play.services.base
+    implementation libs.gms.play.services.basement
 
     // Ads
-    implementation sdkDependencies.gms_play_services_ads_identifier
-    testImplementation testDependencies.junit
-    testImplementation testDependencies.mockk
-    testImplementation testDependencies.mockk_android
-    testImplementation testDependencies.mockk_agent
-    testImplementation testDependencies.test_core
+    implementation libs.gms.play.services.ads.identifier
+
+    // Test dependencies
+    testImplementation libs.bundles.test
 
 }
