@@ -325,6 +325,7 @@ object Mindbox : MindboxLog {
                 return@loggingRunCatching
             }
 
+
             if (MindboxPreferences.isFirstInitialize) {
                 mindboxLogW("Mindbox init was never called. Skipping update token.")
                 return@loggingRunCatching
