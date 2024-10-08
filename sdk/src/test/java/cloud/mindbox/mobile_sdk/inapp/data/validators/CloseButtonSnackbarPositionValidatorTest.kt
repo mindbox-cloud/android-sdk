@@ -6,7 +6,8 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkObject
 import io.mockk.verify
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -80,7 +81,7 @@ internal class CloseButtonSnackbarPositionValidatorTest {
 
         verify(exactly = 1) {
             MindboxLoggerImpl.i(any(), "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                    "Actual params : kind =  ${positionDto.margin?.kind}, top = ${positionDto.margin?.top}, bottom = ${positionDto.margin?.bottom}, left = ${positionDto.margin?.left}, right = ${positionDto.margin?.right}")
+                "Actual params : kind =  ${positionDto.margin?.kind}, top = ${positionDto.margin?.top}, bottom = ${positionDto.margin?.bottom}, left = ${positionDto.margin?.left}, right = ${positionDto.margin?.right}")
         }
     }
 }

@@ -15,5 +15,4 @@ internal object MindboxWorkerFactory : WorkerFactory() {
     ): ListenableWorker? = workerClassName
         .takeIf { it == MindboxOneTimeEventWorker::class.java.name }
         ?.let { MindboxOneTimeEventWorker(appContext, workerParameters) }
-
 }

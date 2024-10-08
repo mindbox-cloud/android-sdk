@@ -28,5 +28,4 @@ open class CopyPayloadInAppCallback : InAppCallback {
     override fun onInAppDismissed(id: String) {
         return
     }
-
 }

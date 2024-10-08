@@ -10,5 +10,4 @@ open class PoolResponse(
 ) {
 
     override fun toString() = "PoolResponse(ids=$ids, name=$name, description=$description)"
-
 }

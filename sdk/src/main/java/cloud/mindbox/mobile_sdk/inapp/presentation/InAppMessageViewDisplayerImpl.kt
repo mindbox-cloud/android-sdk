@@ -47,7 +47,6 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
 
-
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
@@ -180,11 +179,9 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                         mindboxNotificationManager.requestPermission(activity = activity)
                     }
                 }
-
             })
         } ?: run {
             mindboxLogE("failed to show inApp: currentRoot is null")
         }
     }
 }
-

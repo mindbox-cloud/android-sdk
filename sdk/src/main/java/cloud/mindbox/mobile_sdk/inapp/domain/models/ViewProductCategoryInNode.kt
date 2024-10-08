@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 
-
 internal data class ViewProductCategoryInNode(
     override val type: String,
     val kind: KindAny,
@@ -26,19 +25,18 @@ internal data class ViewProductCategoryInNode(
             when (kind) {
                 KindAny.ANY -> ids.any { (externalSystemName, externalId) ->
                     values.any { value ->
-                        value.externalId.equals(externalId, true)
-                                && value.externalSystemName.equals(externalSystemName, true)
+                        value.externalId.equals(externalId, true) &&
+                            value.externalSystemName.equals(externalSystemName, true)
                     }
                 }
                 KindAny.NONE -> ids.none { (externalSystemName, externalId) ->
                     values.any { value ->
-                        value.externalId.equals(externalId, true)
-                                && value.externalSystemName.equals(externalSystemName, true)
+                        value.externalId.equals(externalId, true) &&
+                            value.externalSystemName.equals(externalSystemName, true)
                     }
                 }
             }
         } ?: false
-
     }
 
     override suspend fun getOperationsSet(): Set<String> =

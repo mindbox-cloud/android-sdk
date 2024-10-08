@@ -8,7 +8,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 

@@ -41,7 +41,6 @@ internal class VariantValidatorTest(
                 variant.copy(objects = listOf(objectDto.copy(inapps = listOf("")))) to true,
                 variant.copy(objects = listOf(objectDto.copy(inapps = listOf("123", "321")))) to true,
                 variant.copy(objects = listOf(objectDto.copy(inapps = listOf("123")))) to true,
-
                 null to false,
                 variant.copy(id = "") to false,
                 variant.copy(id = "   ") to false,

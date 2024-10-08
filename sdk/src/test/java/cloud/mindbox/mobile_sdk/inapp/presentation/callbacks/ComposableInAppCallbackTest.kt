@@ -15,7 +15,6 @@ class ComposableInAppCallbackTest {
     private lateinit var mockCallback2: InAppCallback
     private lateinit var callback: ComposableInAppCallback
 
-
     @Before
     fun setup() {
         mockCallback1 = mockk(relaxed = true)
@@ -55,5 +54,4 @@ class ComposableInAppCallbackTest {
         verify(exactly = 1) { mockCallback1.onInAppDismissed(id) }
         verify(exactly = 1) { mockCallback2.onInAppDismissed(id) }
     }
-
 }

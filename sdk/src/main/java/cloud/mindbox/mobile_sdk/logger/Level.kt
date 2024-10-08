@@ -8,5 +8,4 @@ enum class Level(var value: Int) {
     WARN(3),
     ERROR(4),
     NONE(5)
-
 }

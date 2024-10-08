@@ -72,7 +72,6 @@ internal object PushNotificationManager {
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
     ): Boolean = LoggingExceptionHandler.runCatchingSuspending(defaultValue = false) {
-
         Mindbox.onPushReceived(
             context = context.applicationContext,
             uniqKey = remoteMessage.uniqueKey,
@@ -127,7 +126,7 @@ internal object PushNotificationManager {
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
-                            "because the notification was deleted",
+                        "because the notification was deleted",
                 ),
             )
             return
@@ -165,7 +164,7 @@ internal object PushNotificationManager {
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
-                            "because the notification was deleted",
+                        "because the notification was deleted",
                 ),
             )
             return
@@ -297,9 +296,9 @@ internal object PushNotificationManager {
         notificationId: Int,
         state: MessageHandlingState,
     ) = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            state.attemptNumber > 1 &&
-            state.isMessageDisplayed &&
-            !isNotificationActive(notificationManager, notificationId)
+        state.attemptNumber > 1 &&
+        state.isMessageDisplayed &&
+        !isNotificationActive(notificationManager, notificationId)
 
     private fun retryNotifyRemoteMessage(
         context: Context,
@@ -701,9 +700,8 @@ internal object PushNotificationManager {
         `package` = context.packageName
     }
 
-    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean, charCountInTitle:Int): Bitmap {
+    private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean, charCountInTitle: Int): Bitmap {
         return runCatching {
-
             val targetWidth = imageWidthInPixels
             val targetHeight =
                 if (hasButtons) getImageHeightWithButtonIxPixels(charCountInTitle) else getImageHeightWithoutButtonIxPixels(charCountInTitle)

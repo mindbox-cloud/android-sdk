@@ -8,7 +8,6 @@ import org.junit.Test
 
 class MindboxFirebaseTest {
 
-
     private val remoteMessageWithData = mockk<RemoteMessage>()
     private val remoteMessageWithoutData = mockk<RemoteMessage>()
     private val remoteMessageWithoutTitle = mockk<RemoteMessage>()
@@ -69,4 +68,3 @@ class MindboxFirebaseTest {
         Assert.assertEquals("", mindboxRemoteMessage?.title)
     }
 }
-

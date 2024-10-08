@@ -74,7 +74,6 @@ internal class MonitoringRepositoryImpl(
                     if (LogStoringDataCheckerImpl.deletionIsInProgress.get().not()) {
                         LogStoringDataCheckerImpl.deletionIsInProgress.set(true)
                         monitoringDao.deleteFirstTenPercentOfLogs()
-
                     }
                 }
             } catch (_: Exception) {
@@ -109,5 +108,4 @@ internal class MonitoringRepositoryImpl(
             configuration = configuration
         )
     }
-
 }

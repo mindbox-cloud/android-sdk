@@ -118,7 +118,6 @@ internal object DbManager {
         }.filterNotNull()
     }
 
-
     private fun getEvents(): List<Event> = LoggingExceptionHandler.runCatching(
         defaultValue = listOf(),
     ) {
@@ -146,5 +145,4 @@ internal object DbManager {
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         timeNow - this.enqueueTimestamp >= HALF_YEAR_IN_MILLISECONDS
     }
-
 }

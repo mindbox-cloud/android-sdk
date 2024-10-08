@@ -9,5 +9,4 @@ open class BalanceTypeResponse(
 ) {
 
     override fun toString() = "BalanceTypeResponse(ids=$ids, name=$name)"
-
 }

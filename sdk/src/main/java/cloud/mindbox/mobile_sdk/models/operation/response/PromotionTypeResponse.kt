@@ -5,6 +5,6 @@ import com.google.gson.annotations.SerializedName
 enum class PromotionTypeResponse {
 
     @SerializedName("mindbox") MINDBOX,
-    @SerializedName("external") EXTERNAL
 
+    @SerializedName("external") EXTERNAL
 }

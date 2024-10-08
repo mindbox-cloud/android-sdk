@@ -3,7 +3,9 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
-import android.view.*
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
@@ -19,7 +21,6 @@ import cloud.mindbox.mobile_sdk.isTop
 import cloud.mindbox.mobile_sdk.px
 import cloud.mindbox.mobile_sdk.setOnAnimationEnd
 import kotlin.math.abs
-
 
 internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
@@ -77,11 +78,9 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                                 snackBarInAppType.position.margin.right.px,
                                 snackBarInAppType.position.margin.bottom.px + navigationBarHeight
                             )
-
                         }
                     }
                 }
-
             }
         }
 
@@ -191,7 +190,6 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
-
     @RequiresApi(21)
     constructor(
         context: Context,
@@ -206,10 +204,12 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         backButtonHandler = BackButtonHandler(this, listener)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        return if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null)
-            true else super.onKeyDown(keyCode, event)
-    }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean =
+        if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
+            true
+        } else {
+            super.onKeyDown(keyCode, event)
+        }
 
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         val handled = backButtonHandler?.dispatchKeyEvent(event)

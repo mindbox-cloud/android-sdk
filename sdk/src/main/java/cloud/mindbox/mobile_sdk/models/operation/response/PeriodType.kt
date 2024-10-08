@@ -4,8 +4,12 @@ import com.google.gson.annotations.SerializedName
 
 enum class PeriodType {
 
-    @SerializedName("FixedDays") FIXED_DAYS,
-    @SerializedName("FixedWeeks") FIXED_WEEKS,
-    @SerializedName("FixedMonths") FIXED_MONTHS
+    @SerializedName("FixedDays")
+    FIXED_DAYS,
 
+    @SerializedName("FixedWeeks")
+    FIXED_WEEKS,
+
+    @SerializedName("FixedMonths")
+    FIXED_MONTHS
 }

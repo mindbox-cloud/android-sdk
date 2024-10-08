@@ -29,14 +29,12 @@ import cloud.mindbox.mobile_sdk.utils.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 
-
 internal fun DataModule(
     appContextModule: AppContextModule,
     apiModule: ApiModule
 ): DataModule = object : DataModule,
     AppContextModule by appContextModule,
     ApiModule by apiModule {
-
 
     override val inAppImageLoader: InAppImageLoader
         get() = InAppGlideImageLoaderImpl(
@@ -105,10 +103,10 @@ internal fun DataModule(
         get() = CloseButtonSnackbarElementDtoDataFiller()
 
     override val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
-            by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = modalElementDtoDataFiller) }
+        by lazy { ModalWindowDtoDataFiller(elementDtoDataFiller = modalElementDtoDataFiller) }
 
     override val snackBarDtoDataFiller: SnackBarDtoDataFiller
-            by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = snackBarElementDtoDataFiller) }
+        by lazy { SnackBarDtoDataFiller(elementDtoDataFiller = snackBarElementDtoDataFiller) }
 
     override val defaultDataManager: DataManager by lazy {
         DataManager(
@@ -242,130 +240,136 @@ internal fun DataModule(
     }
 
     override val gson: Gson by lazy {
-        GsonBuilder().registerTypeAdapterFactory(
-            RuntimeTypeAdapterFactory.of(
-                FrequencyDto::class.java,
-                Constants.TYPE_JSON_NAME,
-                true
-            ).registerSubtype(
-                FrequencyDto.FrequencyOnceDto::class.java,
-                FrequencyDto.FrequencyOnceDto.FREQUENCY_ONCE_JSON_NAME
-            ).registerSubtype(
-                FrequencyDto.FrequencyPeriodicDto::class.java,
-                FrequencyDto.FrequencyPeriodicDto.FREQUENCY_PERIODIC_JSON_NAME
-            )
-        )
+        GsonBuilder()
             .registerTypeAdapterFactory(
-            RuntimeTypeAdapterFactory.of(
-                PayloadBlankDto::class.java,
-                Constants.TYPE_JSON_NAME,
-                true
-            ).registerSubtype(
-                PayloadBlankDto.ModalWindowBlankDto::class.java,
-                PayloadDto.ModalWindowDto.MODAL_JSON_NAME
-            ).registerSubtype(
-                PayloadBlankDto.SnackBarBlankDto::class.java,
-                PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
-            )
-        ).registerTypeAdapterFactory(
-            RuntimeTypeAdapterFactory.of(
-                ElementDto::class.java,
-                Constants.TYPE_JSON_NAME, true
-            ).registerSubtype(
-                ElementDto.CloseButtonElementDto::class.java,
-                ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
-            )
-        ).registerTypeAdapterFactory(
-            RuntimeTypeAdapterFactory.of(
-                BackgroundDto.LayerDto.ImageLayerDto.SourceDto::class.java,
-                Constants.TYPE_JSON_NAME,
-                true
-            ).registerSubtype(
-                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
-                BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
-            )
-        )
-            .registerTypeAdapterFactory(
-                RuntimeTypeAdapterFactory.of(
-                    BackgroundDto.LayerDto.ImageLayerDto.ActionDto::class.java,
-                    Constants.TYPE_JSON_NAME,
-                    true
-                ).registerSubtype(
-                    RedirectUrlActionDto::class.java,
-                    RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
-                ).registerSubtype(
-                    PushPermissionActionDto::class.java,
-                    PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
-                )
+                RuntimeTypeAdapterFactory
+                    .of(
+                        FrequencyDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        FrequencyDto.FrequencyOnceDto::class.java,
+                        FrequencyDto.FrequencyOnceDto.FREQUENCY_ONCE_JSON_NAME
+                    ).registerSubtype(
+                        FrequencyDto.FrequencyPeriodicDto::class.java,
+                        FrequencyDto.FrequencyPeriodicDto.FREQUENCY_PERIODIC_JSON_NAME
+                    )
             ).registerTypeAdapterFactory(
-                RuntimeTypeAdapterFactory.of(
-                    BackgroundDto.LayerDto::class.java,
-                    Constants.TYPE_JSON_NAME,
-                    true
-                ).registerSubtype(
-                    BackgroundDto.LayerDto.ImageLayerDto::class.java,
-                    BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME
-                )
+                RuntimeTypeAdapterFactory
+                    .of(
+                        PayloadBlankDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        PayloadBlankDto.ModalWindowBlankDto::class.java,
+                        PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+                    ).registerSubtype(
+                        PayloadBlankDto.SnackBarBlankDto::class.java,
+                        PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                    )
             ).registerTypeAdapterFactory(
-                RuntimeTypeAdapterFactory.of(
-                    PayloadDto::class.java,
-                    Constants.TYPE_JSON_NAME, true
-                ).registerSubtype(
-                    PayloadDto.ModalWindowDto::class.java,
-                    PayloadDto.ModalWindowDto.MODAL_JSON_NAME
-                ).registerSubtype(
-                    PayloadDto.SnackbarDto::class.java,
-                    PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
-                )
+                RuntimeTypeAdapterFactory
+                    .of(
+                        ElementDto::class.java,
+                        Constants.TYPE_JSON_NAME, true
+                    ).registerSubtype(
+                        ElementDto.CloseButtonElementDto::class.java,
+                        ElementDto.CloseButtonElementDto.CLOSE_BUTTON_ELEMENT_JSON_NAME
+                    )
             ).registerTypeAdapterFactory(
-                RuntimeTypeAdapterFactory.of(
-                    TreeTargetingDto::class.java,
-                    Constants.TYPE_JSON_NAME,
-                    true
-                ).registerSubtype(
-                    TreeTargetingDto.TrueNodeDto::class.java,
-                    TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.IntersectionNodeDto::class.java,
-                    TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.UnionNodeDto::class.java,
-                    TreeTargetingDto.UnionNodeDto.OR_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.SegmentNodeDto::class.java,
-                    TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.CountryNodeDto::class.java,
-                    TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.CityNodeDto::class.java,
-                    TreeTargetingDto.CityNodeDto.CITY_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.RegionNodeDto::class.java,
-                    TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.OperationNodeDto::class.java,
-                    TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.ViewProductCategoryNodeDto::class.java,
-                    TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
-                    TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
-                    TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.ViewProductNodeDto::class.java,
-                    TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.VisitNodeDto::class.java,
-                    TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME
-                ).registerSubtype(
-                    TreeTargetingDto.PushPermissionDto::class.java,
-                    TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
-                )
+                RuntimeTypeAdapterFactory
+                    .of(
+                        BackgroundDto.LayerDto.ImageLayerDto.SourceDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto::class.java,
+                        BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME
+                    )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        BackgroundDto.LayerDto.ImageLayerDto.ActionDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        RedirectUrlActionDto::class.java,
+                        RedirectUrlActionDto.REDIRECT_URL_ACTION_TYPE_JSON_NAME
+                    ).registerSubtype(
+                        PushPermissionActionDto::class.java,
+                        PushPermissionActionDto.PUSH_PERMISSION_TYPE_JSON_NAME
+                    )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        BackgroundDto.LayerDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        BackgroundDto.LayerDto.ImageLayerDto::class.java,
+                        BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME
+                    )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        PayloadDto::class.java,
+                        Constants.TYPE_JSON_NAME, true
+                    ).registerSubtype(
+                        PayloadDto.ModalWindowDto::class.java,
+                        PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+                    ).registerSubtype(
+                        PayloadDto.SnackbarDto::class.java,
+                        PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                    )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        TreeTargetingDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        TreeTargetingDto.TrueNodeDto::class.java,
+                        TreeTargetingDto.TrueNodeDto.TRUE_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.IntersectionNodeDto::class.java,
+                        TreeTargetingDto.IntersectionNodeDto.AND_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.UnionNodeDto::class.java,
+                        TreeTargetingDto.UnionNodeDto.OR_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.SegmentNodeDto::class.java,
+                        TreeTargetingDto.SegmentNodeDto.SEGMENT_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.CountryNodeDto::class.java,
+                        TreeTargetingDto.CountryNodeDto.COUNTRY_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.CityNodeDto::class.java,
+                        TreeTargetingDto.CityNodeDto.CITY_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.RegionNodeDto::class.java,
+                        TreeTargetingDto.RegionNodeDto.REGION_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.OperationNodeDto::class.java,
+                        TreeTargetingDto.OperationNodeDto.API_METHOD_CALL_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.ViewProductCategoryNodeDto::class.java,
+                        TreeTargetingDto.ViewProductCategoryNodeDto.VIEW_PRODUCT_CATEGORY_ID_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.ViewProductCategoryInNodeDto::class.java,
+                        TreeTargetingDto.ViewProductCategoryInNodeDto.VIEW_PRODUCT_CATEGORY_ID_IN_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.ViewProductSegmentNodeDto::class.java,
+                        TreeTargetingDto.ViewProductSegmentNodeDto.VIEW_PRODUCT_SEGMENT_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.ViewProductNodeDto::class.java,
+                        TreeTargetingDto.ViewProductNodeDto.VIEW_PRODUCT_ID_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.VisitNodeDto::class.java,
+                        TreeTargetingDto.VisitNodeDto.VISIT_JSON_NAME
+                    ).registerSubtype(
+                        TreeTargetingDto.PushPermissionDto::class.java,
+                        TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
+                    )
             ).create()
     }
-
 }

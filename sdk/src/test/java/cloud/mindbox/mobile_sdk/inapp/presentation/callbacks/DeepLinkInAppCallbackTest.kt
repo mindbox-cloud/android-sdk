@@ -11,7 +11,6 @@ import org.junit.Test
 
 class DeepLinkInAppCallbackTest {
 
-
     private val deepLinkInAppCallback: DeepLinkInAppCallback = DeepLinkInAppCallback()
 
     private val mockActivityManager: ActivityManager = mockk()

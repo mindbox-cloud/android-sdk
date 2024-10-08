@@ -39,5 +39,4 @@ class FmsTokenRepeatedUnitTest {
 
         Assert.assertEquals(true, result?.isUuid() ?: true)
     }
-
 }

@@ -9,8 +9,9 @@ internal class RequestPermissionManagerImpl : RequestPermissionManager {
 
     override fun decreaseRequestCounter() {
         val currentRequestCount = MindboxPreferences.requestPermissionCount
-        if (currentRequestCount > 0)
+        if (currentRequestCount > 0) {
             MindboxPreferences.requestPermissionCount -= 1
+        }
     }
 
     override fun getRequestCount(): Int = MindboxPreferences.requestPermissionCount

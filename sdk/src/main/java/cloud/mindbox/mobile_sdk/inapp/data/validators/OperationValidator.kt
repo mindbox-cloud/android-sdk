@@ -6,5 +6,4 @@ internal class OperationValidator : Validator<SettingsDtoBlank.OperationDtoBlank
 
     override fun isValid(item: SettingsDtoBlank.OperationDtoBlank?): Boolean =
         !item?.systemName.isNullOrBlank()
-
 }

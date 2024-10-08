@@ -23,7 +23,6 @@ internal class HuaweiServiceHandler(
         private const val HMS_APP_ID_KEY = "client/app_id"
         private const val HMS_TOKEN_SCOPE = "HCM"
         private const val TOKEN_ACQUISITION_DELAY = 2000L
-
     }
 
     override val notificationProvider: String = MindboxHuawei.tag
@@ -73,5 +72,4 @@ internal class HuaweiServiceHandler(
     } else {
         null
     }
-
 }

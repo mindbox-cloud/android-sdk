@@ -18,8 +18,7 @@ import cloud.mindbox.mobile_sdk.removeChildById
 internal class ModalWindowInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
     private val inAppCallback: InAppCallback,
-) :
-    AbstractInAppViewHolder<InAppType.ModalWindow>() {
+) : AbstractInAppViewHolder<InAppType.ModalWindow>() {
 
     private var currentBackground: ViewGroup? = null
 

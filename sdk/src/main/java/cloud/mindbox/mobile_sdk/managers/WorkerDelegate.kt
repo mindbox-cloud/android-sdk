@@ -71,7 +71,6 @@ internal class WorkerDelegate {
         configuration: Configuration,
         parent: Any,
     ) = LoggingExceptionHandler.runCatching {
-
         val eventsCount = events.size - 1
         val deviceUuid = MindboxPreferences.deviceUuid
 
@@ -137,5 +136,4 @@ internal class WorkerDelegate {
         isWorkerStopped = true
         MindboxLoggerImpl.d(parent, "onStopped work")
     }
-
 }

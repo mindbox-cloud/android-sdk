@@ -9,7 +9,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class SuspendLazyKtTest {
 
@@ -44,5 +43,4 @@ class SuspendLazyKtTest {
     private interface TestInterface {
         fun call(): String
     }
-
 }

@@ -127,7 +127,6 @@ internal class CloseButtonSnackbarElementDtoDataFillerTest {
 
         val expectedResult = InAppStub.getElementSizeDto().copy(
             height = 16.0, kind = "dp", width = 16.0
-
         )
 
         assertEquals("#FF0000", result?.color)

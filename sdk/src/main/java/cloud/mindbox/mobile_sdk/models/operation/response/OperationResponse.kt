@@ -29,9 +29,8 @@ open class OperationResponse(
 
     override fun toString() =
         "OperationResponse(status=$status, customer=$customer, productList=$productList, " +
-                "recommendations=$recommendations, customerSegmentations=$customerSegmentations, " +
-                "promoCode=$promoCode, personalOffers=$personalOffers, balances=$balances, " +
-                "discountCards=$discountCards, promoActions=$promoActions, " +
-                "retailOrderStatistics=$retailOrderStatistics)"
-
+            "recommendations=$recommendations, customerSegmentations=$customerSegmentations, " +
+            "promoCode=$promoCode, personalOffers=$personalOffers, balances=$balances, " +
+            "discountCards=$discountCards, promoActions=$promoActions, " +
+            "retailOrderStatistics=$retailOrderStatistics)"
 }

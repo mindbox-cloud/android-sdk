@@ -13,7 +13,7 @@ class MindboxHuaweiTest {
     private val remoteMessageWithoutTitle = mockk<RemoteMessage>()
 
     init {
-        every { remoteMessageWithData.data } returns  mapOf(
+        every { remoteMessageWithData.data } returns mapOf(
             "uniqueKey" to "key",
             "title" to "title",
             "message" to "message",
@@ -32,7 +32,6 @@ class MindboxHuaweiTest {
         ).toString()
     }
 
-
     @Test
     fun `isMindboxPush returns true when map has uniqueKey`() {
         val result = MindboxHuawei.isMindboxPush(remoteMessageWithData)
@@ -50,7 +49,6 @@ class MindboxHuaweiTest {
         val result = MindboxHuawei.convertToMindboxRemoteMessage(remoteMessageWithData)
         Assert.assertNotNull(result)
         Assert.assertEquals("key", result?.uniqueKey)
-
     }
 
     @Test

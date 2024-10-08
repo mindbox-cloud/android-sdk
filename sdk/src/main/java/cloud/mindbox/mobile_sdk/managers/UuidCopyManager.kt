@@ -29,7 +29,7 @@ internal object UuidCopyManager {
         if (!MindboxPreferences.uuidDebugEnabled) return false
         if (appOpenTimestampList.size < COPY_UUID_APP_OPEN_TIMES) return false
         val combinationStartTimestamp = appOpenTimestampList[
-                appOpenTimestampList.size - COPY_UUID_APP_OPEN_TIMES
+            appOpenTimestampList.size - COPY_UUID_APP_OPEN_TIMES
         ]
         val combinationEndTimestamp = appOpenTimestampList.last()
         return combinationStartTimestamp + COPY_UUID_APP_OPEN_TIME_LIMIT > combinationEndTimestamp

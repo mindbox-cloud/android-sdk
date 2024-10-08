@@ -73,7 +73,6 @@ internal class MigrationManager(val context: Context) {
             MindboxPreferences.shownInApps = newMapString
             MindboxPreferences.shownInAppIds = ""
         }
-
     }
 
     private fun version282() = object : Migration {
@@ -82,13 +81,13 @@ internal class MigrationManager(val context: Context) {
             get() = "Updates the push notification token to resolve an issue with the push notification provider."
 
         override val isNeeded: Boolean
-            get() = SharedPreferencesManager.isInitialized()
-                    && !MindboxPreferences.isFirstInitialize
-                    && MindboxPreferences.isPushTokenNeedUpdated
+            get() = SharedPreferencesManager.isInitialized() &&
+                !MindboxPreferences.isFirstInitialize &&
+                MindboxPreferences.isPushTokenNeedUpdated
 
         override suspend fun run() {
-                MindboxPreferences.isPushTokenNeedUpdated = false
-                Mindbox.updateAppInfo(context)
+            MindboxPreferences.isPushTokenNeedUpdated = false
+            Mindbox.updateAppInfo(context)
         }
     }
 }

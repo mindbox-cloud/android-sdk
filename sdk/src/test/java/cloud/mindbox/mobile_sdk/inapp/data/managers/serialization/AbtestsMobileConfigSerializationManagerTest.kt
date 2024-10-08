@@ -10,7 +10,6 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
-
 class AbtestsMobileConfigSerializationManagerTest {
 
     private val manager: MobileConfigSerializationManagerImpl by mindboxInject {
@@ -80,4 +79,3 @@ class AbtestsMobileConfigSerializationManagerTest {
         assertNull(config)
     }
 }
-

@@ -24,26 +24,28 @@ internal val imageWidthInPixels: Int
         }.getOrElse { 0 }
     }
 
-fun getImageHeightWithoutButtonIxPixels(charCountInTitle: Int): Int {
-    return when {
+fun getImageHeightWithoutButtonIxPixels(charCountInTitle: Int): Int =
+    when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING)
+            if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING) {
                 EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS
-            else EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS_TITLE_2_STRING
+            } else {
+                EXPANDED_PUSH_IMAGE_HEIGHT_31_PLUS_TITLE_2_STRING
+            }
         Build.VERSION.SDK_INT in Build.VERSION_CODES.P..Build.VERSION_CODES.R -> EXPANDED_PUSH_IMAGE_HEIGHT_28_30
         Build.VERSION.SDK_INT in Build.VERSION_CODES.N..Build.VERSION_CODES.O_MR1 -> EXPANDED_PUSH_IMAGE_HEIGHT_24_27
         else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
     }.px
-}
 
-fun getImageHeightWithButtonIxPixels(charCountInTitle: Int): Int {
-    return when {
+fun getImageHeightWithButtonIxPixels(charCountInTitle: Int): Int =
+    when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING)
+            if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING) {
                 EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS
-            else EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS_TITLE_2_STRING
+            } else {
+                EXPANDED_PUSH_IMAGE_HEIGHT_31_WITH_BUTTONS_TITLE_2_STRING
+            }
         Build.VERSION.SDK_INT in Build.VERSION_CODES.P..Build.VERSION_CODES.R -> EXPANDED_PUSH_IMAGE_HEIGHT_28_30_WITH_BUTTONS
         Build.VERSION.SDK_INT in Build.VERSION_CODES.N..Build.VERSION_CODES.O_MR1 -> EXPANDED_PUSH_IMAGE_HEIGHT_24_27_WITH_BUTTONS
         else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
     }.px
-}

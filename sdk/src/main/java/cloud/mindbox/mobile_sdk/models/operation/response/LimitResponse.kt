@@ -25,6 +25,5 @@ open class LimitResponse(
     fun usedAmount() = used as? Double
 
     override fun toString() = "LimitResponse(type=$type, amount=$amount, used=$used, " +
-            "untilDateTimeUtc=$untilDateTimeUtc, period=$period)"
-
+        "untilDateTimeUtc=$untilDateTimeUtc, period=$period)"
 }

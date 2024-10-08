@@ -31,5 +31,4 @@ interface MindboxImageLoader {
         message: MindboxRemoteMessage,
         state: MessageHandlingState,
     ): Bitmap?
-
 }

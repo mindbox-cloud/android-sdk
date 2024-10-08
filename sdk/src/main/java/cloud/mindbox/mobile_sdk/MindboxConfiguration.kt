@@ -63,15 +63,15 @@ class MindboxConfiguration private constructor(
 
     override fun toString(): String {
         return "MindboxConfiguration(previousInstallationId = $previousInstallationId, " +
-                "previousDeviceUUID = $previousDeviceUUID, " +
-                "endpointId = $endpointId, " +
-                "domain = $domain, " +
-                "packageName = $packageName, " +
-                "versionName = $versionName, " +
-                "versionCode = $versionCode, " +
-                "subscribeCustomerIfCreated = $subscribeCustomerIfCreated, " +
-                "shouldCreateCustomer = $shouldCreateCustomer, " +
-                "uuidDebugEnabled = $uuidDebugEnabled)"
+            "previousDeviceUUID = $previousDeviceUUID, " +
+            "endpointId = $endpointId, " +
+            "domain = $domain, " +
+            "packageName = $packageName, " +
+            "versionName = $versionName, " +
+            "versionCode = $versionCode, " +
+            "subscribeCustomerIfCreated = $subscribeCustomerIfCreated, " +
+            "shouldCreateCustomer = $shouldCreateCustomer, " +
+            "uuidDebugEnabled = $uuidDebugEnabled)"
     }
 
     /**
@@ -84,7 +84,6 @@ class MindboxConfiguration private constructor(
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
             private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
-
         }
 
         internal var previousInstallationId: String = ""
@@ -173,10 +172,9 @@ class MindboxConfiguration private constructor(
                         PackageInfoCompat.getLongVersionCode(packageInfo).toString().trim()
                     }
 
-                //need for scheduling and stopping one-time background service
+                // need for scheduling and stopping one-time background service
                 SharedPreferencesManager.with(context)
                 MindboxPreferences.hostAppName = packageName
-
             } catch (e: Exception) {
                 MindboxLoggerImpl.e(
                     this,
@@ -184,7 +182,5 @@ class MindboxConfiguration private constructor(
                 )
             }
         }
-
     }
-
 }

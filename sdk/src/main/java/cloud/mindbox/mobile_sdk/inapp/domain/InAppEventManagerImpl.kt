@@ -16,7 +16,8 @@ internal class InAppEventManagerImpl : InAppEventManager {
             MindboxEventManager.IN_APP_OPERATION_TARGETING_TYPE,
             MindboxEventManager.IN_APP_OPERATION_CLICK_TYPE
         ).contains(event.name).not())
-        return isAppStartUp || (isOrdinalEvent &&
+        return isAppStartUp ||
+            (isOrdinalEvent &&
                 isNotInAppEvent)
     }
 }

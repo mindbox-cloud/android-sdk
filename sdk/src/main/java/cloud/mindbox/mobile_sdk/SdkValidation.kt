@@ -11,11 +11,10 @@ internal object SdkValidation {
         INVALID_FORMAT_DOMAIN(true, "The domain must not start with https:// and must not end with /"),
         INVALID_DOMAIN(true, "The domain is not valid"),
         EMPTY_ENDPOINT(true, "Endpoint must not be empty"),
-        INVALID_DEVICE_ID(false ,"Invalid previous device UUID format"),
+        INVALID_DEVICE_ID(false, "Invalid previous device UUID format"),
         INVALID_INSTALLATION_ID(false, "Invalid UUID format of previous installationId");
 
         override fun toString() = "$name(critical=$critical, message=$message)"
-
     }
 
     fun validateConfiguration(
@@ -45,12 +44,11 @@ internal object SdkValidation {
         }
     }
 
-    private fun isDomainWellFormatted(domain: String) = !domain.startsWith("http")
-            && !domain.startsWith("/")
-            && !domain.endsWith("/")
+    private fun isDomainWellFormatted(domain: String) = !domain.startsWith("http") &&
+        !domain.startsWith("/") &&
+        !domain.endsWith("/")
 
     private fun isDomainValid(
         domain: String
     ) = PatternsCompat.DOMAIN_NAME.matcher(domain).matches()
-
 }

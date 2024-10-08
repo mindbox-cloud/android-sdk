@@ -16,7 +16,7 @@ internal object MindboxPreferences {
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
     private const val KEY_HOST_APP_MANE =
-        "key_host_app_name" //need for scheduling and stopping one-time background service
+        "key_host_app_name" // need for scheduling and stopping one-time background service
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
     private const val KEY_INSTANCE_ID = "key_instance_id"
     private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
@@ -231,7 +231,7 @@ internal object MindboxPreferences {
         get() =
             LoggingExceptionHandler.runCatching("") {
                 SharedPreferencesManager.getString(IN_APPS_METADATA, "") ?: ""
-        }
+            }
 
         set(value) {
             LoggingExceptionHandler.runCatching {

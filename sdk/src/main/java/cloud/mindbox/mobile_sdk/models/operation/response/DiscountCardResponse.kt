@@ -12,5 +12,4 @@ open class DiscountCardResponse(
 ) {
 
     override fun toString() = "DiscountCardResponse(ids=$ids, customFields=$customFields, status=$status, type=$type)"
-
 }
