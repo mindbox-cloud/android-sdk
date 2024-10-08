@@ -24,6 +24,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
+      - name: Get changed Kotlin files
+        id: get_changed_files
+        run: |
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '\.kt$|\.kts$' || true)
+            echo "Changed Kotlin files:"
+            echo "$CHANGED_FILES"
+            echo "CHANGED_FILES<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run ktlintCheck on changed files
+        if: steps.get_changed_files.outputs.CHANGED_FILES != ''
+        run: ./gradlew ktlintCheck -PinternalKtlintGitFilter="${{ steps.get_changed_files.outputs.CHANGED_FILES }}"
+
       - name: lint check
         run: ./gradlew --no-daemon lintDebug
 

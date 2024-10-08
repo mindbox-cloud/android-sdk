@@ -954,7 +954,6 @@ object Mindbox : MindboxLog {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
-
         verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
         MindboxLoggerImpl.d(
             this, "handleRemoteMessage. channelId: $channelId, " +
