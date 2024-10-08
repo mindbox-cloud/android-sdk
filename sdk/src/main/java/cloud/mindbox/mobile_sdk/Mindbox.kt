@@ -576,7 +576,6 @@ object Mindbox : MindboxLog {
                             inAppMessageManager.onPauseCurrentActivity(pausedActivity)
                         },
                         onActivityResumed = { resumedActivity ->
-                            // implement control for blur
                             inAppMessageManager.onResumeCurrentActivity(
                                 resumedActivity,
                                 true
