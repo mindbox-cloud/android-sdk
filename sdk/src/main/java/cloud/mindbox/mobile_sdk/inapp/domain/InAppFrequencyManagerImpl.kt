@@ -17,7 +17,7 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                 }
             when (inApp.frequency.delay) {
                 is Frequency.Delay.LifetimeDelay -> {
-                    mindboxLogI("InApp with id = ${inApp.id} has lifetime delay and lastShownTimestamp is ${lastShownTimeStamp}. Skip this inApp")
+                    mindboxLogI("InApp with id = ${inApp.id} has lifetime delay and lastShownTimestamp is $lastShownTimeStamp. Skip this inApp")
                     false
                 }
 

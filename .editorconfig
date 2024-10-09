@@ -19,9 +19,6 @@ ktlint_standard_no-empty-first-line-in-class-body = disabled
 # works only with multiline-expression-wrapping
 ktlint_standard_string-template-indent = disabled
 
-# curly braces for single parameter
-ktlint_standard_string-template = disabled
-
 # multiline expression should start on a new line
 ktlint_standard_multiline-expression-wrapping = disabled
 

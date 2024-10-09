@@ -30,7 +30,7 @@ internal class InAppValidatorImpl(
                 if (targeting.nodes.isNullOrEmpty()) {
                     MindboxLoggerImpl.d(
                         this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                        "nodes is ${targeting.nodes} for in-app with id $id"
                     )
                     return false
                 }
@@ -46,7 +46,7 @@ internal class InAppValidatorImpl(
                 if (targeting.nodes.isNullOrEmpty()) {
                     MindboxLoggerImpl.d(
                         this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                        "nodes is ${targeting.nodes} for in-app with id $id"
                     )
                     return false
                 }
