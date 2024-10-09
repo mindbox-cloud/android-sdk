@@ -1193,7 +1193,7 @@ object Mindbox : MindboxLog {
         isNotificationEnabled: Boolean,
     ) = isTokenAvailable &&
         pushToken != MindboxPreferences.pushToken ||
-        isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+        isNotificationEnabled !=  MindboxPreferences.isNotificationEnabled
 
     private fun checkConfig(
         newConfiguration: MindboxConfiguration,
