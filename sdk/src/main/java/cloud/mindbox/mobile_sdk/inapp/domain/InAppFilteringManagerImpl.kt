@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal class InAppFilteringManagerImpl(
@@ -32,8 +31,10 @@ internal class InAppFilteringManagerImpl(
     override fun filterInAppsByEvent(
         inApps: List<InApp>,
         event: InAppEventType
-    ): List<InApp> {
-        return if (event is InAppEventType.AppStartup) inApps else inAppRepository.getOperationalInAppsByOperation(
+    ): List<InApp> = if (event is InAppEventType.AppStartup) {
+        inApps
+    } else {
+        inAppRepository.getOperationalInAppsByOperation(
             event.name
         )
     }
@@ -42,6 +43,4 @@ internal class InAppFilteringManagerImpl(
         inApps: List<InApp>,
         abtestsInAppsPool: Collection<String>
     ): List<InApp> = inApps.filter { inApp: InApp -> abtestsInAppsPool.contains(inApp.id) }
-
 }
-

@@ -9,9 +9,7 @@ import io.mockk.verify
 import org.junit.Before
 import org.junit.Test
 
-
 class UrlInAppCallbackTest {
-
 
     private val urlInAppCallback: UrlInAppCallback = UrlInAppCallback()
 
@@ -36,5 +34,4 @@ class UrlInAppCallbackTest {
             mockActivityManager.tryOpenUrl(url)
         }
     }
-
 }

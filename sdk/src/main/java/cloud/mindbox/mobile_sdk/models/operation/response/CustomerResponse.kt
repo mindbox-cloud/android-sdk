@@ -32,12 +32,11 @@ open class CustomerResponse private constructor(
 ) {
 
     override fun toString() = "CustomerResponse(discountCard=$discountCard, " +
-            "birthDate=$birthDate, sex=$sex, timeZone=$timeZone, lastName=$lastName, " +
-            "firstName=$firstName, middleName=$middleName, fullName=$fullName, area=$area, " +
-            "email=$email, mobilePhone=$mobilePhone, ids=$ids, customFields=$customFields, " +
-            "subscriptions=$subscriptions, processingStatus=$processingStatus, " +
-            "isEmailInvalid=$isEmailInvalid, isMobilePhoneInvalid=$isMobilePhoneInvalid, " +
-            "changeDateTimeUtc=$changeDateTimeUtc, ianaTimeZone=$ianaTimeZone, " +
-            "timeZoneSource=$timeZoneSource)"
-
+        "birthDate=$birthDate, sex=$sex, timeZone=$timeZone, lastName=$lastName, " +
+        "firstName=$firstName, middleName=$middleName, fullName=$fullName, area=$area, " +
+        "email=$email, mobilePhone=$mobilePhone, ids=$ids, customFields=$customFields, " +
+        "subscriptions=$subscriptions, processingStatus=$processingStatus, " +
+        "isEmailInvalid=$isEmailInvalid, isMobilePhoneInvalid=$isMobilePhoneInvalid, " +
+        "changeDateTimeUtc=$changeDateTimeUtc, ianaTimeZone=$ianaTimeZone, " +
+        "timeZoneSource=$timeZoneSource)"
 }

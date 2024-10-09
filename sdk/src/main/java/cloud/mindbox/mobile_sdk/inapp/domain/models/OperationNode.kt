@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-
 internal data class OperationNode(
     override val type: String,
     val systemName: String,

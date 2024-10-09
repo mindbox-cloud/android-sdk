@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.models
 
 import com.google.gson.Gson
 import com.google.gson.annotations.JsonAdapter
+
 /**
  * A class for representing Mindbox error.
  * Used in operations.
@@ -11,7 +12,6 @@ sealed class MindboxError(open val statusCode: Int?) {
     companion object {
 
         private val gson by lazy { Gson() }
-
     }
 
     fun toJson(): String = gson.toJson(this)
@@ -51,10 +51,8 @@ sealed class MindboxError(open val statusCode: Int?) {
     ) : MindboxError(statusCode) {
 
         constructor() : this(errorMessage = "Cannot reach server")
-
     }
 
     @JsonAdapter(MindboxErrorAdapter::class)
     data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
-
 }

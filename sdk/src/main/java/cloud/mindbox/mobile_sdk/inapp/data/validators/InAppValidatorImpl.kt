@@ -1,14 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
 import cloud.mindbox.mobile_sdk.equalsAny
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
@@ -16,7 +16,6 @@ internal class InAppValidatorImpl(
     private val snackbarValidator: SnackbarValidator,
     private val frequencyValidator: FrequencyValidator
 ) : InAppValidator {
-
 
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
         return when (targeting) {
@@ -28,11 +27,10 @@ internal class InAppValidatorImpl(
                 false
             }
             is TreeTargetingDto.UnionNodeDto -> {
-
                 if (targeting.nodes.isNullOrEmpty()) {
                     MindboxLoggerImpl.d(
                         this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                        "nodes is ${targeting.nodes} for in-app with id $id"
                     )
                     return false
                 }
@@ -48,7 +46,7 @@ internal class InAppValidatorImpl(
                 if (targeting.nodes.isNullOrEmpty()) {
                     MindboxLoggerImpl.d(
                         this,
-                        "nodes is ${targeting.nodes.toString()} for in-app with id $id"
+                        "nodes is ${targeting.nodes} for in-app with id $id"
                     )
                     return false
                 }
@@ -61,11 +59,11 @@ internal class InAppValidatorImpl(
                 isValid
             }
             is TreeTargetingDto.SegmentNodeDto -> {
-                val rez = targeting.segmentExternalId != null
-                        && targeting.segmentationInternalId != null
-                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
-                        && targeting.segmentationExternalId != null
-                        && targeting.type != null
+                val rez = targeting.segmentExternalId != null &&
+                    targeting.segmentationInternalId != null &&
+                    targeting.kind.equalsAny(POSITIVE, NEGATIVE) &&
+                    targeting.segmentationExternalId != null &&
+                    targeting.type != null
                 if (!rez) {
                     MindboxLoggerImpl.d(
                         this,
@@ -78,64 +76,68 @@ internal class InAppValidatorImpl(
                 targeting.type != null
             }
             is TreeTargetingDto.CityNodeDto -> {
-                targeting.type != null
-                        && !targeting.ids.isNullOrEmpty()
-                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
+                targeting.type != null &&
+                    !targeting.ids.isNullOrEmpty() &&
+                    targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.CountryNodeDto -> {
-                targeting.type != null
-                        && !targeting.ids.isNullOrEmpty()
-                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
+                targeting.type != null &&
+                    !targeting.ids.isNullOrEmpty() &&
+                    targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.RegionNodeDto -> {
-                targeting.type != null
-                        && !targeting.ids.isNullOrEmpty()
-                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
+                targeting.type != null &&
+                    !targeting.ids.isNullOrEmpty() &&
+                    targeting.kind.equalsAny(POSITIVE, NEGATIVE)
             }
             is TreeTargetingDto.OperationNodeDto -> {
-                !targeting.type.isNullOrEmpty()
-                        && !targeting.systemName.isNullOrEmpty()
+                !targeting.type.isNullOrEmpty() &&
+                    !targeting.systemName.isNullOrEmpty()
             }
             is TreeTargetingDto.ViewProductCategoryNodeDto -> {
-                !targeting.type.isNullOrBlank()
-                        && targeting.kind.equalsAny(
-                    SUBSTRING,
-                    NOT_SUBSTRING,
-                    STARTS_WITH,
-                    ENDS_WITH
-                )
-                        && !targeting.value.isNullOrBlank()
+                !targeting.type.isNullOrBlank() &&
+                    targeting.kind.equalsAny(
+                        SUBSTRING,
+                        NOT_SUBSTRING,
+                        STARTS_WITH,
+                        ENDS_WITH
+                    ) &&
+                    !targeting.value.isNullOrBlank()
             }
             is TreeTargetingDto.ViewProductCategoryInNodeDto -> {
-                !targeting.type.isNullOrBlank()
-                        && targeting.kind.equalsAny(ANY, NONE)
-                        && !targeting.values.isNullOrEmpty()
-                        && targeting.values.all { value ->
-                    !value.id.isNullOrBlank()
-                            && !value.externalId.isNullOrBlank()
-                            && !value.externalSystemName.isNullOrBlank()
-                }
+                !targeting.type.isNullOrBlank() &&
+                    targeting.kind.equalsAny(ANY, NONE) &&
+                    !targeting.values.isNullOrEmpty() &&
+                    targeting.values.all { value ->
+                        !value.id.isNullOrBlank() &&
+                            !value.externalId.isNullOrBlank() &&
+                            !value.externalSystemName.isNullOrBlank()
+                    }
             }
             is TreeTargetingDto.ViewProductSegmentNodeDto -> {
-                !targeting.type.isNullOrBlank()
-                        && targeting.kind.equalsAny(POSITIVE, NEGATIVE)
-                        && !targeting.segmentationExternalId.isNullOrBlank()
-                        && !targeting.segmentExternalId.isNullOrBlank()
-                        && !targeting.segmentationInternalId.isNullOrBlank()
+                !targeting.type.isNullOrBlank() &&
+                    targeting.kind.equalsAny(POSITIVE, NEGATIVE) &&
+                    !targeting.segmentationExternalId.isNullOrBlank() &&
+                    !targeting.segmentExternalId.isNullOrBlank() &&
+                    !targeting.segmentationInternalId.isNullOrBlank()
             }
             is TreeTargetingDto.ViewProductNodeDto -> {
-                !targeting.type.isNullOrBlank() && targeting.kind.equalsAny(
-                    SUBSTRING,
-                    NOT_SUBSTRING,
-                    STARTS_WITH,
-                    ENDS_WITH
-                ) && !targeting.value.isNullOrBlank()
+                !targeting.type.isNullOrBlank() &&
+                    targeting.kind.equalsAny(
+                        SUBSTRING,
+                        NOT_SUBSTRING,
+                        STARTS_WITH,
+                        ENDS_WITH
+                    ) &&
+                    !targeting.value.isNullOrBlank()
             }
 
             is TreeTargetingDto.VisitNodeDto -> {
-                !targeting.type.isNullOrBlank() && targeting.kind.equalsAny(
-                    GREATER_OR_EQUALS, LOWER_OR_EQUALS, EQUALS, NOT_EQUALS
-                ) && (targeting.value?.let { it > 0 } == true)
+                !targeting.type.isNullOrBlank() &&
+                    targeting.kind.equalsAny(
+                        GREATER_OR_EQUALS, LOWER_OR_EQUALS, EQUALS, NOT_EQUALS
+                    ) &&
+                    (targeting.value?.let { it > 0 } == true)
             }
 
             is TreeTargetingDto.PushPermissionDto -> {

@@ -25,9 +25,7 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 
-
-internal abstract class AbstractInAppViewHolder<T : InAppType> :
-    InAppViewHolder<InAppType> {
+internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder<InAppType> {
 
     protected open var isInAppMessageActive = false
 
@@ -68,7 +66,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> :
         var shouldDismiss: Boolean
 
         currentDialog.setSingleClickListener {
-
             val inAppData = inAppActionHandler.handle(
                 layer.action,
                 inAppActionHandler.mindboxView

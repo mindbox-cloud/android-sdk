@@ -8,6 +8,5 @@ open class CatalogProductListResponse(
 ) {
 
     override fun toString() = "CatalogProductListResponse(processingStatus=$processingStatus, " +
-            "items=$items)"
-
+        "items=$items)"
 }

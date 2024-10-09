@@ -127,7 +127,6 @@ internal class CloseButtonModalElementDtoDataFillerTest {
 
         val expectedResult = InAppStub.getElementSizeDto().copy(
             height = 24.0, kind = "dp", width = 24.0
-
         )
 
         assertEquals("#FF0000", result?.color)

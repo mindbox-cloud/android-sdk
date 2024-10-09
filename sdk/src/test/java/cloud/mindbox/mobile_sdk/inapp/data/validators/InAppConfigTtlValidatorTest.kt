@@ -14,7 +14,7 @@ import org.junit.Test
 
 class InAppConfigTtlValidatorTest {
 
-   private companion object TestValue {
+    private companion object TestValue {
         const val SECONDS_29 = 29 * 1000
         const val SECONDS_31 = 31 * 1000
         const val SECONDS_59 = 59 * 1000
@@ -37,7 +37,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when TTL has not expired and unit is HOURS`() {
-
         val mockTtl = TtlDto(inApps = "01:00:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -51,7 +50,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns false when TTL has expired and unit is HOURS`() {
-
         val mockTtl = TtlDto(inApps = "01:00:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -65,7 +63,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when TTL has not expired and unit is DAYS`() {
-
         val mockTtl = TtlDto(inApps = "1.00:00:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -79,7 +76,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns false when TTL has expired and unit is DAYS`() {
-
         val mockTtl = TtlDto(inApps = "1.00:00:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -93,7 +89,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when TTL has not expired and unit is MINUTES`() {
-
         val mockTtl = TtlDto(inApps = "00:01:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -107,7 +102,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns false when TTL has expired and unit is MINUTES`() {
-
         val mockTtl = TtlDto(inApps = "00:01:00")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -121,7 +115,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when TTL has not expired and unit is SECONDS`() {
-
         val mockTtl = TtlDto(inApps = "00:00:30")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -135,7 +128,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns false when TTL has not expired and unit is SECONDS`() {
-
         val mockTtl = TtlDto(inApps = "00:00:30")
         val currentTime = System.currentTimeMillis()
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = mockTtl)
@@ -149,7 +141,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when shouldCheckInAppTtl is false and ttl is null`() {
-
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = false, ttl = null)
         val validator = InAppConfigTtlValidator()
 
@@ -160,7 +151,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when shouldCheckInAppTtl is false and ttl is not null`() {
-
         val currentTime = System.currentTimeMillis()
         val mockTtl = TtlDto(inApps = "00:00:01")
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = false, ttl = mockTtl)
@@ -174,7 +164,6 @@ class InAppConfigTtlValidatorTest {
 
     @Test
     fun `isValid returns true when ttlParametersIsNull and shouldCheckInAppTtl is true`() {
-
         val inAppTtlData = InAppTtlData(shouldCheckInAppTtl = true, ttl = null)
         val validator = InAppConfigTtlValidator()
 

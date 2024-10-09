@@ -48,7 +48,6 @@ internal class LogRequestDataManagerImplTest {
         assertEquals(expectedResult, actualResult)
     }
 
-
     @Test
     fun `test monitoring checks only current deviceUuid success`() {
         val testLogRequests = listOf(

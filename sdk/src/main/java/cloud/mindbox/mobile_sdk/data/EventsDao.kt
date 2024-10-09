@@ -22,5 +22,4 @@ internal interface EventsDao {
 
     @Query("DELETE FROM $EVENTS_TABLE_NAME")
     fun deleteAll()
-
 }

@@ -164,7 +164,6 @@ internal class MobileConfigSerializationManagerTest {
         assertEquals(expectedResult, actualResult)
     }
 
-
     @Test
     fun `deserialize to in app targeting region dto success`() {
         val expectedResult = InAppStub.getTargetingRegionNodeDto()
@@ -438,7 +437,6 @@ internal class MobileConfigSerializationManagerTest {
 
     @Test
     fun `deserialize to modal window inApp form dto with PushPermission action success`() {
-
         val expectedResult = InAppStub.getFormDto().copy(
             variants = listOf(
                 InAppStub.getModalWindowDto().copy(
@@ -447,7 +445,7 @@ internal class MobileConfigSerializationManagerTest {
                             action = InAppStub.getPushPermissionActionDto().copy(
                                 intentPayload = "123", type = "pushPermission"
                             ), source = InAppStub.getUrlSourceDto()
-                        ))),elements = null
+                        ))), elements = null
                     ),
                 )
             )
@@ -566,6 +564,4 @@ internal class MobileConfigSerializationManagerTest {
             })
         }))
     }
-
-
 }

@@ -19,6 +19,7 @@ object MindboxFirebase : MindboxPushService {
     override val tag: String = "FCM"
 
     private val gson by lazy { Gson() }
+
     override fun getServiceHandler(
         logger: MindboxLogger,
         exceptionHandler: ExceptionHandler,

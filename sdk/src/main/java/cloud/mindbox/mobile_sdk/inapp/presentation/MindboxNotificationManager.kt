@@ -11,5 +11,4 @@ internal interface MindboxNotificationManager {
     fun requestPermission(activity: Activity)
 
     var shouldOpenSettings: Boolean
-
 }

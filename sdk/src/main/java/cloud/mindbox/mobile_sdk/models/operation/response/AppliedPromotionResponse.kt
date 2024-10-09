@@ -20,8 +20,7 @@ open class AppliedPromotionResponse(
 ) {
 
     override fun toString() = "AppliedPromotionResponse(type=$type, coupon=$coupon, " +
-            "promotion=$promotion, limits=$limits, spentBonusPointsAmount=$spentBonusPointsAmount, " +
-            "amount=$amount, groupingKey=$groupingKey, balanceType=$balanceType, " +
-            "expirationDateTimeUtc=$expirationDateTimeUtc, issuedCoupon=$issuedCoupon)"
-
+        "promotion=$promotion, limits=$limits, spentBonusPointsAmount=$spentBonusPointsAmount, " +
+        "amount=$amount, groupingKey=$groupingKey, balanceType=$balanceType, " +
+        "expirationDateTimeUtc=$expirationDateTimeUtc, issuedCoupon=$issuedCoupon)"
 }

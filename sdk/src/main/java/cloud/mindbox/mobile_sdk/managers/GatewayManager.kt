@@ -35,6 +35,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
 
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
+
     private fun getCustomerSegmentationsUrl(configuration: Configuration): String {
         return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
     }
@@ -53,7 +54,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         shouldCountOffset: Boolean,
         event: Event,
     ): String {
-
         val urlQueries: HashMap<String, String> = hashMapOf(
             UrlQuery.DEVICE_UUID.value to deviceUuid,
         )
@@ -171,7 +171,9 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         shouldCountOffset: Boolean,
     ): String = if (shouldCountOffset) {
         (System.currentTimeMillis() - timeMls).toString()
-    } else "0"
+    } else {
+        "0"
+    }
 
     private fun <T : OperationResponseBaseInternal> handleSuccessResponse(
         data: String,
@@ -261,15 +263,16 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         }
     }
 
-    private fun convertBodyToJson(body: String?): JSONObject? {
-        return if (body == null) {
+    private fun convertBodyToJson(body: String?): JSONObject? =
+        if (body == null) {
             null
-        } else try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            null
+        } else {
+            try {
+                JSONObject(body)
+            } catch (e: JSONException) {
+                null
+            }
         }
-    }
 
     private suspend fun <T> convertJsonToBody(
         data: String,

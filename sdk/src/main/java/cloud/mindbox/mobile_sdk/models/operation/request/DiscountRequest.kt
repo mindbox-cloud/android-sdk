@@ -26,5 +26,4 @@ open class DiscountRequest private constructor(
         externalPromoAction = externalPromoAction,
         amount = amount
     )
-
 }

@@ -10,14 +10,12 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
 
-
 internal class SnackbarInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.Snackbar>,
     private val inAppCallback: InAppCallback,
     private val inAppImageSizeStorage: InAppImageSizeStorage,
     private val isFirstShow: Boolean = true,
-) :
-    AbstractInAppViewHolder<InAppType.Snackbar>() {
+) : AbstractInAppViewHolder<InAppType.Snackbar>() {
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -76,7 +74,6 @@ internal class SnackbarInAppViewHolder(
                 }
             }
         }
-
     }
 
     override fun bind() {

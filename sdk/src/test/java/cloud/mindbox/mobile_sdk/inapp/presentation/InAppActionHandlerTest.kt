@@ -19,7 +19,6 @@ class InAppActionHandlerTest<InAppAction> {
 
     @Test
     fun `createAction returns RedirectUrlInAppAction for RedirectUrlAction`() {
-
         val resultAction = callPrivateMethod<InAppAction>(
             inAppActionHandler,
             "createAction",
@@ -33,11 +32,8 @@ class InAppActionHandlerTest<InAppAction> {
         Assert.assertTrue(resultAction.payload == "test_payload")
     }
 
-
-
     @Test
     fun `createAction returns PushPermissionInAppAction for PushPermissionAction`() {
-
         val resultAction = callPrivateMethod<InAppAction>(
             inAppActionHandler,
             "createAction",

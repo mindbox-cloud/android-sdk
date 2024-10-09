@@ -4,7 +4,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-
 class JsonValidatorTest {
 
     private val jsonValidator = JsonValidator()
@@ -51,7 +50,7 @@ class JsonValidatorTest {
           {"name": "John", "age": 30},
           {"name": "Jane", "age": 25}
         ]
-    """.trimIndent()
+        """.trimIndent()
         assertTrue(jsonValidator.isValid(jsonString))
     }
 

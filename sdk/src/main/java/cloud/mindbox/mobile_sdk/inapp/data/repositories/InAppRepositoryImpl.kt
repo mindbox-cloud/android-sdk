@@ -14,11 +14,11 @@ internal class InAppRepositoryImpl(
     private val context: Context,
     private val sessionStorageManager: SessionStorageManager,
     private val inAppSerializationManager: InAppSerializationManager,
-) :
-    InAppRepository {
+) : InAppRepository {
     override fun saveCurrentSessionInApps(inApps: List<InApp>) {
         sessionStorageManager.currentSessionInApps = inApps
     }
+
     override fun getCurrentSessionInApps(): List<InApp> {
         return sessionStorageManager.currentSessionInApps
     }
@@ -78,7 +78,6 @@ internal class InAppRepositoryImpl(
             }
         }
     }
-
 
     override fun sendInAppShown(inAppId: String) {
         inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {

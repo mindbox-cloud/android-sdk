@@ -29,7 +29,6 @@ class CallbackRepositoryTest {
     @MockK
     private lateinit var urlValidator: UrlValidator
 
-
     @Test
     fun testValidateUserString_InvalidXml() {
         val userString = "<xml>data</xml>"

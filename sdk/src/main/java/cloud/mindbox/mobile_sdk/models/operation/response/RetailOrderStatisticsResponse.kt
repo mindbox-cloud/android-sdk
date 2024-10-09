@@ -7,5 +7,4 @@ open class RetailOrderStatisticsResponse(
 ) {
 
     override fun toString() = "RetailOrderStatistics(totalPaidAmount=$totalPaidAmount)"
-
 }

@@ -2,9 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.*
-import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 
@@ -21,6 +19,7 @@ internal class UserVisitManagerTest {
     }
 
     private val userVisitManager = UserVisitManagerImpl()
+
     @Test
     fun `save user visit count when visit count more than 0`() {
         val previousUserCount = 1

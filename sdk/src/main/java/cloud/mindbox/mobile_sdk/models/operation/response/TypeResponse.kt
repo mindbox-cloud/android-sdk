@@ -9,5 +9,4 @@ open class TypeResponse(
 ) {
 
     override fun toString() = "TypeResponse(ids=$ids, name=$name)"
-
 }

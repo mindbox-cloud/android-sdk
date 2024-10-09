@@ -58,7 +58,6 @@ internal class InAppProcessingManagerImpl(
                                 }
                             }
                         }
-
                     }
                 val targetingJob = launch(start = CoroutineStart.LAZY) {
                     runCatching {
@@ -162,5 +161,4 @@ internal class InAppProcessingManagerImpl(
         override val triggerEventName: String,
         override val operationBody: String? = null,
     ) : TargetingData.OperationName, TargetingData.OperationBody
-
 }

@@ -12,7 +12,7 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogRequestDataManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.managers.LogResponseDataManagerImpl
 import java.io.File
 
-internal const val monitoringDatabaseName = "MonitoringDatabase"
+internal const val MONITORING_DATABASE_NAME = "MonitoringDatabase"
 
 internal fun MonitoringModule(
     appContextModule: AppContextModule,
@@ -52,7 +52,7 @@ internal fun MonitoringModule(
                         "files",
                         "databases"
                     )
-                }/$monitoringDatabaseName"
+                }/$MONITORING_DATABASE_NAME"
             )
         )
     }
@@ -68,7 +68,7 @@ internal fun MonitoringModule(
         Room.databaseBuilder(
             appContext,
             MonitoringDatabase::class.java,
-            monitoringDatabaseName
+            MONITORING_DATABASE_NAME
         )
             .fallbackToDestructiveMigration()
             .addMigrations(MonitoringDatabase.MIGRATION_1_2)
@@ -78,5 +78,4 @@ internal fun MonitoringModule(
     override val monitoringDao: MonitoringDao by lazy {
         monitoringDatabase.monitoringDao()
     }
-
 }

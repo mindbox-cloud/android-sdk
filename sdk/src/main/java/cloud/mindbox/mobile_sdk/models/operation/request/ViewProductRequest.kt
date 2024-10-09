@@ -19,5 +19,4 @@ open class ViewProductRequest private constructor(
         productGroup: ProductGroupRequest,
         customerAction: CustomerActionRequest? = null
     ) : this(null, productGroup, customerAction)
-
 }

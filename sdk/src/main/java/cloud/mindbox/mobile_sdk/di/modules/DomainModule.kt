@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
@@ -13,7 +12,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyM
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManagerImpl
-
 
 internal fun DomainModule(
     dataModule: DataModule,
@@ -68,5 +66,5 @@ internal fun DomainModule(
         get() = InAppFrequencyManagerImpl(inAppRepository)
 
     override val customerAbMixer: CustomerAbMixer
-         get() = CustomerAbMixerImpl()
+        get() = CustomerAbMixerImpl()
 }

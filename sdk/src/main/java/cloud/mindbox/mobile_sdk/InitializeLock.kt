@@ -26,7 +26,7 @@ internal object InitializeLock {
         map[state]?.complete(Unit)
         mindboxLogI("State $state completed")
     }
-    
+
     internal fun reset(state: State) {
         map[state]?.complete(Unit)
         map[state] = CompletableDeferred()

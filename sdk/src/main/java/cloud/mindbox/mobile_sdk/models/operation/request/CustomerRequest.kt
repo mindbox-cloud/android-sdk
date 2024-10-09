@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.models.operation.Sex
 import cloud.mindbox.mobile_sdk.models.operation.adapters.DateOnlyAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
-import java.util.*
+import java.util.TimeZone
 
 open class CustomerRequest private constructor(
     @SerializedName("authenticationTicket") val authenticationTicket: String? = null,
@@ -87,5 +87,4 @@ open class CustomerRequest private constructor(
         customFields = customFields,
         subscriptions = subscriptions
     )
-
 }

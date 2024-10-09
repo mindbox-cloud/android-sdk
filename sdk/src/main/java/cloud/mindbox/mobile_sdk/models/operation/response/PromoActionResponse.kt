@@ -21,7 +21,6 @@ open class PromoActionResponse(
 
     override fun toString() =
         "PromoActionResponse(ids=$ids, name=$name, description=$description, " +
-                "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc, " +
-                "customFields=$customFields, limits=$limits)"
-
+            "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc, " +
+            "customFields=$customFields, limits=$limits)"
 }

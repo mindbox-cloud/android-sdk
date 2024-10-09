@@ -6,8 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
  * Ready-to-use implementation of InAppCallback designed with composite pattern that handles
  * multiple different implementations at once
  **/
-open class ComposableInAppCallback :
-    InAppCallback {
+open class ComposableInAppCallback : InAppCallback {
 
     protected val callbacks: List<InAppCallback>
 

@@ -47,5 +47,4 @@ class ProductListResponseAdapter : TypeAdapter<Any>() {
             }
         }
     }
-
 }

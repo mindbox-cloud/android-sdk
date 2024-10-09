@@ -7,5 +7,4 @@ class DateOnly : Date {
     constructor() : super()
 
     constructor(date: Long) : super(date)
-
 }

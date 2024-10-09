@@ -10,6 +10,5 @@ open class ContentResponse(
 ) {
 
     override fun toString() = "ContentResponse(type=$type, promotion=$promotion, " +
-            "possibleDiscounts=$possibleDiscounts, message=$message)"
-
+        "possibleDiscounts=$possibleDiscounts, message=$message)"
 }

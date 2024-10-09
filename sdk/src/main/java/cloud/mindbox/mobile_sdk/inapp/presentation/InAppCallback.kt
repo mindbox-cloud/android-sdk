@@ -5,7 +5,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
  **/
 interface InAppCallback {
 
-
     /**
      * Method that triggers when user clicks on InApp message
      *

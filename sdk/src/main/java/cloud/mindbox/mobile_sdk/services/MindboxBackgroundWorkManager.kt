@@ -85,5 +85,4 @@ internal object BackgroundWorkManager {
     }
 
     private fun getUniqueWorkerNameFor(id: Int): String = "$NOTIFICATION_WORKER_TAG-$id"
-
 }

@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.di.modules
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import kotlinx.coroutines.Dispatchers
 
-
 internal fun PresentationModule(
     domainModule: DomainModule,
     monitoringModule: MonitoringModule,

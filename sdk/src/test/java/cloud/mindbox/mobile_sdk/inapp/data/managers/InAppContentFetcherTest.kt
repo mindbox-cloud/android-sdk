@@ -11,8 +11,5 @@ internal class InAppContentFetcherTest {
     private val inAppContentFetcher = InAppContentFetcherImpl(inAppImageLoader)
 
     @Test
-    fun `fetching content of modal window success`() {
-
-    }
-
+    fun `fetching content of modal window success`() { }
 }

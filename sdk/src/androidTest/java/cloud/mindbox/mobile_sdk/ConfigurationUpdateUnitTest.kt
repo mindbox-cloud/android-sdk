@@ -140,5 +140,4 @@ class ConfigurationUpdateUnitTest {
         productCategory = category?.let { ProductCategoryRequest(Ids(ids = mapOf("website" to it))) },
         product = product?.let { ProductRequest(Ids(ids = mapOf("website" to it))) },
     )
-
 }

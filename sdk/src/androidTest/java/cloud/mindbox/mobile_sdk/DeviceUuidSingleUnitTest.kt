@@ -61,5 +61,4 @@ class DeviceUuidSingleUnitTest {
     fun clear() {
         clearPreferences()
     }
-
 }

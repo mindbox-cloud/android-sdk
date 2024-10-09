@@ -9,5 +9,4 @@ open class UsedPointOfContactResponse(
 ) {
 
     override fun toString() = "UsedPointOfContactResponse(ids=$ids, name=$name)"
-
 }

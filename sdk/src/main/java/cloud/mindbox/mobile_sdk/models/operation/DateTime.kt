@@ -7,5 +7,4 @@ class DateTime : Date {
     constructor() : super()
 
     constructor(date: Long) : super(date)
-
 }

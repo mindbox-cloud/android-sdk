@@ -8,5 +8,4 @@ open class BenefitResponse(
 ) {
 
     override fun toString() = "BenefitResponse(amount=$amount, limit=$limit)"
-
 }

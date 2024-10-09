@@ -25,7 +25,6 @@ internal class InAppGlideImageLoaderImpl(
 
     private val requests = HashMap<String, Target<Drawable>>()
 
-
     override suspend fun loadImage(inAppId: String, url: String): Boolean {
         mindboxLogD("loading image for inapp with id $inAppId started")
         return suspendCancellableCoroutine { cancellableContinuation ->
@@ -74,7 +73,6 @@ internal class InAppGlideImageLoaderImpl(
                     }
                 }).preload()
             requests[inAppId] = target
-
         }
     }
 

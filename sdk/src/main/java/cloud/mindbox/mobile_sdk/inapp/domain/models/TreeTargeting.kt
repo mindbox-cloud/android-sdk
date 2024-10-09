@@ -96,13 +96,10 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val countryId = inAppGeoRepositoryImpl.getGeo().countryId
-            return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId)
-                .not()
+            return if (kind == Kind.POSITIVE) ids.contains(countryId) else ids.contains(countryId).not()
         }
 
-        override suspend fun getOperationsSet(): Set<String> {
-            return emptySet()
-        }
+        override suspend fun getOperationsSet(): Set<String> = emptySet()
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
@@ -110,17 +107,11 @@ internal sealed class TreeTargeting(open val type: String) :
             }
         }
 
-        override fun hasSegmentationNode(): Boolean {
-            return false
-        }
+        override fun hasSegmentationNode(): Boolean = false
 
-        override fun hasGeoNode(): Boolean {
-            return true
-        }
+        override fun hasGeoNode(): Boolean = true
 
-        override fun hasOperationNode(): Boolean {
-            return false
-        }
+        override fun hasOperationNode(): Boolean = false
     }
 
     internal data class CityNode(
@@ -134,13 +125,10 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val cityId = inAppGeoRepositoryImpl.getGeo().cityId
-            return if (kind == Kind.POSITIVE) ids.contains(cityId) else ids.contains(cityId)
-                .not()
+            return if (kind == Kind.POSITIVE) ids.contains(cityId) else ids.contains(cityId).not()
         }
 
-        override suspend fun getOperationsSet(): Set<String> {
-            return emptySet()
-        }
+        override suspend fun getOperationsSet(): Set<String> = emptySet()
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED) {
@@ -148,17 +136,11 @@ internal sealed class TreeTargeting(open val type: String) :
             }
         }
 
-        override fun hasSegmentationNode(): Boolean {
-            return false
-        }
+        override fun hasSegmentationNode(): Boolean = false
 
-        override fun hasGeoNode(): Boolean {
-            return true
-        }
+        override fun hasGeoNode(): Boolean = true
 
-        override fun hasOperationNode(): Boolean {
-            return false
-        }
+        override fun hasOperationNode(): Boolean = false
     }
 
     internal data class RegionNode(
@@ -172,8 +154,13 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun checkTargeting(data: TargetingData): Boolean {
             if (inAppGeoRepositoryImpl.getGeoFetchedStatus() != GeoFetchStatus.GEO_FETCH_SUCCESS) return false
             val regionId = inAppGeoRepositoryImpl.getGeo().regionId
-            return if (kind == Kind.POSITIVE) ids.contains(regionId) else ids.contains(regionId)
-                .not()
+            return if (kind == Kind.POSITIVE) {
+                ids.contains(regionId)
+            } else {
+                ids
+                    .contains(regionId)
+                    .not()
+            }
         }
 
         override suspend fun getOperationsSet(): Set<String> {
@@ -227,28 +214,30 @@ internal sealed class TreeTargeting(open val type: String) :
 
         override fun hasSegmentationNode(): Boolean {
             for (node in nodes) {
-                if (node.hasSegmentationNode())
+                if (node.hasSegmentationNode()) {
                     return true
+                }
             }
             return false
         }
 
         override fun hasGeoNode(): Boolean {
             for (node in nodes) {
-                if (node.hasGeoNode())
+                if (node.hasGeoNode()) {
                     return true
+                }
             }
             return false
         }
 
         override fun hasOperationNode(): Boolean {
             for (node in nodes) {
-                if (node.hasOperationNode())
+                if (node.hasOperationNode()) {
                     return true
+                }
             }
             return false
         }
-
     }
 
     internal data class UnionNode(
@@ -281,24 +270,21 @@ internal sealed class TreeTargeting(open val type: String) :
 
         override fun hasSegmentationNode(): Boolean {
             for (node in nodes) {
-                if (node.hasSegmentationNode())
-                    return true
+                if (node.hasSegmentationNode()) return true
             }
             return false
         }
 
         override fun hasGeoNode(): Boolean {
             for (node in nodes) {
-                if (node.hasGeoNode())
-                    return true
+                if (node.hasGeoNode()) return true
             }
             return false
         }
 
         override fun hasOperationNode(): Boolean {
             for (node in nodes) {
-                if (node.hasOperationNode())
-                    return true
+                if (node.hasOperationNode()) return true
             }
             return false
         }
@@ -322,12 +308,9 @@ internal sealed class TreeTargeting(open val type: String) :
                     ?.segment
                     ?.let { it != segmentExternalId } == true
             }
-
         }
 
-        override suspend fun getOperationsSet(): Set<String> {
-            return emptySet()
-        }
+        override suspend fun getOperationsSet(): Set<String> = emptySet()
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
             if (inAppSegmentationRepository.getCustomerSegmentationFetched() == CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
@@ -335,22 +318,18 @@ internal sealed class TreeTargeting(open val type: String) :
             }
         }
 
-        override fun hasSegmentationNode(): Boolean {
-            return true
-        }
+        override fun hasSegmentationNode(): Boolean = true
 
-        override fun hasGeoNode(): Boolean {
-            return false
-        }
+        override fun hasGeoNode(): Boolean = false
 
-        override fun hasOperationNode(): Boolean {
-            return false
-        }
+        override fun hasOperationNode(): Boolean = false
     }
 
-    internal data class VisitNode(override val type: String, val kind: KindVisit, val value: Long) :
-        TreeTargeting(type) {
-
+    internal data class VisitNode(
+        override val type: String,
+        val kind: KindVisit,
+        val value: Long
+    ) : TreeTargeting(type) {
         override fun checkTargeting(data: TargetingData): Boolean {
             val userVisitCount = MindboxPreferences.userVisitCount.toLong()
             return when (kind) {
@@ -393,32 +372,22 @@ internal sealed class TreeTargeting(open val type: String) :
         }
     }
 
-    internal data class PushPermissionNode(override val type: String, val value: Boolean): TreeTargeting(type) {
+    internal data class PushPermissionNode(override val type: String, val value: Boolean) : TreeTargeting(type) {
 
         private val permissionManager: PermissionManager by mindboxInject { permissionManager }
 
-        override fun checkTargeting(data: TargetingData): Boolean {
-            return permissionManager.isNotificationEnabled() == value
-        }
+        override fun checkTargeting(data: TargetingData): Boolean = permissionManager.isNotificationEnabled() == value
 
         override suspend fun fetchTargetingInfo(data: TargetingData) {
             return
         }
 
-        override fun hasSegmentationNode(): Boolean {
-           return false
-        }
+        override fun hasSegmentationNode(): Boolean = false
 
-        override fun hasGeoNode(): Boolean {
-           return false
-        }
+        override fun hasGeoNode(): Boolean = false
 
-        override fun hasOperationNode(): Boolean {
-            return false
-        }
+        override fun hasOperationNode(): Boolean = false
 
-        override suspend fun getOperationsSet(): Set<String> {
-            return emptySet()
-        }
+        override suspend fun getOperationsSet(): Set<String> = emptySet()
     }
 }

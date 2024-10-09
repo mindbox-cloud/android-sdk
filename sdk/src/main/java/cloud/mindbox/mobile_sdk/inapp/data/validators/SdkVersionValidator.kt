@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.validators
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import cloud.mindbox.mobile_sdk.utils.Constants
 
-internal class SdkVersionValidator: Validator<SdkVersion?> {
+internal class SdkVersionValidator : Validator<SdkVersion?> {
 
     override fun isValid(item: SdkVersion?): Boolean =
         item?.let { sdkVersion ->

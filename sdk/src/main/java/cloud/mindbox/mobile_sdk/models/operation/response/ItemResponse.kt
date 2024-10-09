@@ -12,8 +12,7 @@ open class ItemResponse(
 ) {
 
     override fun toString() = "ItemResponse(basePricePerItem=$basePricePerItem, " +
-            "product=$product, minPricePerItem=$minPricePerItem, " +
-            "priceForCustomer=$priceForCustomer, appliedPromotions=$appliedPromotions, " +
-            "placeholders=$placeholders)"
-
+        "product=$product, minPricePerItem=$minPricePerItem, " +
+        "priceForCustomer=$priceForCustomer, appliedPromotions=$appliedPromotions, " +
+        "placeholders=$placeholders)"
 }

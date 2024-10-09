@@ -73,7 +73,6 @@ class MindboxNotificationManagerImplTest {
         verify(exactly = 0) { activity.startActivity(any()) }
     }
 
-
     @Test
     fun `requestPermission open temp activity for request permission`() {
         every { NotificationManagerCompat.from(context).areNotificationsEnabled() } returns false

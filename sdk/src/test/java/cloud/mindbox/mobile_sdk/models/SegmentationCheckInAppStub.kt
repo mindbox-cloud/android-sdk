@@ -15,5 +15,4 @@ internal class SegmentationCheckInAppStub {
         fun getSegmentationCheckResponse(): SegmentationCheckResponse =
             SegmentationCheckResponse("", customerSegmentations = null)
     }
-
 }

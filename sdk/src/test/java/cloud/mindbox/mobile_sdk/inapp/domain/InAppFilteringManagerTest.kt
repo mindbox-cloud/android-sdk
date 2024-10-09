@@ -104,5 +104,4 @@ internal class InAppFilteringManagerTest {
         )
         assertEquals(expectedResult, actualResult)
     }
-
 }

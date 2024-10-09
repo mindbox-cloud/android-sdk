@@ -11,14 +11,14 @@ internal class CallbackRepositoryImpl(
     private val urlValidator: UrlValidator
 ) : CallbackRepository {
 
-    override fun validateUserString(userString: String): Boolean {
-        return !(xmlValidator.isValid(userString) || jsonValidator.isValid(userString) || urlValidator.isValid(
+    override fun validateUserString(userString: String): Boolean = !(xmlValidator.isValid(userString) ||
+        jsonValidator.isValid(userString) ||
+        urlValidator.isValid(
             userString
-        ) || userString.isBlank())
-    }
+        ) ||
+        userString.isBlank())
 
     override fun isValidUrl(url: String): Boolean {
         return urlValidator.isValid(url)
     }
-
 }

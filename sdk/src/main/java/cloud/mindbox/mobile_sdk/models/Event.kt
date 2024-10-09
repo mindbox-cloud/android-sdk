@@ -11,9 +11,11 @@ internal data class Event(
     @PrimaryKey(autoGenerate = true) val uid: Long = 0L,
     val eventType: EventType,
     val transactionId: String = UUID.randomUUID().toString(),
-    val enqueueTimestamp: Long = System.currentTimeMillis(), // date of event creating
+    // date of event creating
+    val enqueueTimestamp: Long = System.currentTimeMillis(),
     val additionalFields: HashMap<String, String>? = null,
-    val body: String? = null, //json
+    // json
+    val body: String? = null,
 )
 
 internal sealed class EventType(val operation: String, val endpoint: String) {
@@ -22,7 +24,8 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
         private const val APP_INSTALLED_ORDINAL = 0
         private const val APP_INFO_UPDATED_ORDINAL = 1
-        //use it when returning a delivered operation, it is not used now
+
+        // use it when returning a delivered operation, it is not used now
         private const val PUSH_DELIVERED_ORDINAL = 2
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
@@ -40,7 +43,6 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
             SYNC_OPERATION_ORDINAL -> object : TypeToken<SyncOperation>() {}
             else -> throw IllegalArgumentException("Unknown TypeToken for $ordinal EventType ordinal")
         }
-
     }
 
     object AppInstalled : EventType("MobilePush.ApplicationInstalled", "/v3/operations/async")
@@ -67,10 +69,10 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
         is SyncOperation -> SYNC_OPERATION_ORDINAL
     }
-
 }
 
 internal sealed class InAppEventType(val name: String) {
     object AppStartup : InAppEventType("appStartup")
+
     class OrdinalEvent(val eventType: EventType, val body: String? = null) : InAppEventType(eventType.operation)
 }

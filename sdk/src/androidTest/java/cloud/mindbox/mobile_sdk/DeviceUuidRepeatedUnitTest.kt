@@ -37,5 +37,4 @@ class DeviceUuidRepeatedUnitTest {
 
         Assert.assertEquals(true, result.isUuid())
     }
-
 }

@@ -18,13 +18,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-
 class InAppSegmentationRepositoryTest {
 
     @get:Rule
@@ -89,7 +89,7 @@ class InAppSegmentationRepositoryTest {
 
         verify {
             sessionStorageManager setProperty "customerSegmentationFetchStatus" value
-                    CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         }
         verify(exactly = 1) {
             sessionStorageManager setProperty "inAppCustomerSegmentations" value any<SegmentationCheckWrapper>()
@@ -144,7 +144,6 @@ class InAppSegmentationRepositoryTest {
         }
     }
 
-
     @Test
     fun `get product segmentation success`() {
         val expectedResult = setOf(
@@ -159,7 +158,6 @@ class InAppSegmentationRepositoryTest {
                                 )
                         )
                     )
-
                 )
             )
         )
@@ -170,7 +168,6 @@ class InAppSegmentationRepositoryTest {
         }
         assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testId"))
     }
-
 
     @Test
     fun `get product segmentation no segmentation`() {
@@ -200,7 +197,6 @@ class InAppSegmentationRepositoryTest {
                                 )
                         )
                     )
-
                 )
             )
         every {
@@ -327,6 +323,4 @@ class InAppSegmentationRepositoryTest {
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
     }
-
-
 }

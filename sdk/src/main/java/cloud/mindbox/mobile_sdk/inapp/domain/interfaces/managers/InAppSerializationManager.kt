@@ -5,6 +5,7 @@ internal interface InAppSerializationManager {
     fun serializeToShownInAppsString(shownInApps: Map<String, Long>): String
 
     fun deserializeToShownInAppsMap(shownInApps: String): Map<String, Long>
+
     fun serializeToInAppHandledString(inAppId: String): String
 
     fun serializeToShownInAppsString(shownInApps: Set<String>): String

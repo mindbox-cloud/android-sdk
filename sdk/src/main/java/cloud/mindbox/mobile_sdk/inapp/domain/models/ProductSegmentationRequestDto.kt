@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import com.google.gson.annotations.SerializedName
 
-
 internal data class ProductSegmentationRequestDto(
     @SerializedName("products")
     val products: List<ProductRequestDto>,

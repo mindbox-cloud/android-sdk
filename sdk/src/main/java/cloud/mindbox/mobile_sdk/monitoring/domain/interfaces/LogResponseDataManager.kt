@@ -14,7 +14,10 @@ internal interface LogResponseDataManager {
     ): String
 
     fun getFilteredLogs(
-        filteredLogs: List<LogResponse>, firstLog: LogResponse,
-        lastLog: LogResponse, from: ZonedDateTime, to: ZonedDateTime,
+        filteredLogs: List<LogResponse>,
+        firstLog: LogResponse,
+        lastLog: LogResponse,
+        from: ZonedDateTime,
+        to: ZonedDateTime,
     ): List<LogResponse>
 }

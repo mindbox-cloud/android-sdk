@@ -17,5 +17,4 @@ internal interface MobileConfigRepository {
     suspend fun getOperations(): Map<OperationName, OperationSystemName>
 
     suspend fun getABTests(): List<ABTest>
-
 }

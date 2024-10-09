@@ -80,15 +80,11 @@ internal class InAppMessageManagerTest {
         )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
-
         } just runs
         inAppMessageManager.requestConfig()
         advanceUntilIdle();
         {
-            coVerify(exactly = 1)
-            {
-                inAppMessageInteractor.fetchMobileConfig()
-            }
+            coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
         }.shouldNotThrow()
     }
 
@@ -286,7 +282,4 @@ internal class InAppMessageManagerTest {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }
     }
-
-
 }
-

@@ -25,7 +25,5 @@ class CustomFields(val fields: Map<String, Any?>? = null) {
         vararg pairs: AndroidXPair<String, Any?>
     ) : this(*pairs.mapNotNull { pair -> pair.first?.let { Pair(it, pair.second) } }.toTypedArray())
 
-
     override fun toString() = "CustomFields(fields=$fields)"
-
 }

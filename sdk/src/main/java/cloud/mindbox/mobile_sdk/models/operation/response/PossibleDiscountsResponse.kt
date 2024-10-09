@@ -9,6 +9,5 @@ open class PossibleDiscountsResponse(
 ) {
 
     override fun toString() = "PossibleDiscountsResponse(discountsCount=$discountsCount, " +
-            "discount=$discount, products=$products)"
-
+        "discount=$discount, products=$products)"
 }

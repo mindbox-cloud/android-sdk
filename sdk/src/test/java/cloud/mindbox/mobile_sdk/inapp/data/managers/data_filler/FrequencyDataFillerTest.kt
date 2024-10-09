@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler
 
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FrequencyDataFillerTest {
@@ -10,7 +10,7 @@ class FrequencyDataFillerTest {
 
     @Test
     fun `fill data returns original object`() {
-        val expectedFrequency  = InAppStub.getFrequencyOnceDto().copy("random", "value")
+        val expectedFrequency = InAppStub.getFrequencyOnceDto().copy("random", "value")
         val actualFrequency = frequencyDataFiller.fillData(expectedFrequency)
 
         assertEquals(expectedFrequency, actualFrequency)

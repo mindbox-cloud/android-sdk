@@ -24,5 +24,4 @@ internal class ApplyDefaultStrategyImpl(
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy = ImageRetryStrategy.ApplyDefault(defaultImage = defaultImage)
-
 }

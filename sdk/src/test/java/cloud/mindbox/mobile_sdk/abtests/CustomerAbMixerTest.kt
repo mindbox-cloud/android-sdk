@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import java.util.*
 
 @RunWith(Parameterized::class)
 class CustomerAbMixerTest(
@@ -14,7 +13,7 @@ class CustomerAbMixerTest(
     private val salt = "BBBC2BA1-0B5B-4C9E-AB0E-95C54775B4F1"
 
     companion object {
-        private const val referenceIntegerModulusValues = """
+        private const val REFERENCE_INTEGER_MODULUS_VALUES = """
     47ADA4EA-A22F-1D49-C01E-52DDB7875B4B 28, 019C07D8-B6C5-1F90-DA3A-666EEC13AB35 97,
     16B72230-967D-E01F-640B-7E4729B49FCE 63, B4D121D3-FD32-8CB0-8B55-31FCACDABF8A 52,
     9A1F2232-7B2E-BBCF-BEC7-8F5564AFE39D 91, 7D0216B6-1238-7A5F-FCFB-81E6F0919683 32,
@@ -519,7 +518,7 @@ class CustomerAbMixerTest(
         @JvmStatic
         @Parameterized.Parameters(name = "{index}: uuid({0}) to hash {1}")
         fun data(): Iterable<Array<Any>> {
-            return referenceIntegerModulusValues.split(",", "\r", "\n")
+            return REFERENCE_INTEGER_MODULUS_VALUES.split(",", "\r", "\n")
                 .filter { it.isNotBlank() }
                 .map { str ->
                     str.trim().split(' ')
@@ -538,5 +537,4 @@ class CustomerAbMixerTest(
             mixer.stringModulusHash(uuid, salt)
         )
     }
-
 }

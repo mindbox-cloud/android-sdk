@@ -3,12 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.presentation.ClipboardManager
-import io.mockk.every
-import io.mockk.just
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.runs
-import io.mockk.verify
+import io.mockk.*
 import org.junit.Before
 import org.junit.Test
 

@@ -13,5 +13,4 @@ open class StatusResponse(
 ) {
 
     override fun toString() = "StatusResponse(ids=$ids, dateTimeUtc=$dateTimeUtc)"
-
 }

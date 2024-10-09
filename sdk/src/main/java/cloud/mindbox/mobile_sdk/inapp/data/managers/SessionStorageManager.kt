@@ -18,5 +18,4 @@ internal class SessionStorageManager {
     var currentSessionInApps: List<InApp> = mutableListOf()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
-
 }

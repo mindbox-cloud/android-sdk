@@ -4,7 +4,9 @@ import com.google.gson.annotations.SerializedName
 
 enum class ContentTypeResponse {
 
-    @SerializedName("possibleDiscounts") POSSIBLE_DISCOUNTS,
-    @SerializedName("text") TEXT
+    @SerializedName("possibleDiscounts")
+    POSSIBLE_DISCOUNTS,
 
+    @SerializedName("text")
+    TEXT
 }

@@ -133,5 +133,4 @@ internal object SharedPreferencesManager {
     internal fun deleteAll() = runCatching {
         preferences.edit().clear().apply()
     }.exceptionOrNull()
-
 }

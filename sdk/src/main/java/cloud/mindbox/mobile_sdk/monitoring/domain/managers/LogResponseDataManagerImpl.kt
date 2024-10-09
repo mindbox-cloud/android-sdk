@@ -45,10 +45,14 @@ internal class LogResponseDataManagerImpl : LogResponseDataManager {
         if (firstLog.zonedDateTime.isAfter(to)) return emptyList()
         if (lastLog.zonedDateTime.isBefore(from)) return emptyList()
         if (filteredLogs.isEmpty()) return emptyList()
-        return if (filteredLogs.joinToString().length * 2 < OPERATION_LIMIT) filteredLogs else {
+        return if (filteredLogs.joinToString().length * 2 < OPERATION_LIMIT) {
+            filteredLogs
+        } else {
             var droppingLogsCount = 1
-            while (filteredLogs.dropLast(droppingLogsCount)
-                    .joinToString().length * 2 > OPERATION_LIMIT
+            while (filteredLogs
+                    .dropLast(droppingLogsCount)
+                    .joinToString()
+                    .length * 2 > OPERATION_LIMIT
             ) {
                 droppingLogsCount++
             }

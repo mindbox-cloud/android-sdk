@@ -8,5 +8,4 @@ open class UsedResponse(
 ) {
 
     override fun toString() = "UsedResponse(usageServiceStatus=$usageServiceStatus, amount=$amount)"
-
 }

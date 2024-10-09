@@ -415,7 +415,6 @@ internal class InAppValidatorTest {
         )
     }
 
-
     @Test
     fun `validate targetingDto is view product node with null value`() {
         assertFalse(
@@ -756,7 +755,6 @@ internal class InAppValidatorTest {
             )
         )
     }
-
 
     @Test
     fun `validate targetingDto is OperationNode with empty operation`() {

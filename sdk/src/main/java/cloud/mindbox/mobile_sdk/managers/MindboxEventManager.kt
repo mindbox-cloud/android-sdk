@@ -113,14 +113,14 @@ internal object MindboxEventManager {
             LoggingExceptionHandler.runCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
-                val isInstallEvent = event.eventType is EventType.AppInstalled
-                        || event.eventType is EventType.AppInstalledWithoutCustomer
+                val isInstallEvent = event.eventType is EventType.AppInstalled ||
+                    event.eventType is EventType.AppInstalledWithoutCustomer
                 val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
                 if (!isInitialized || configuration == null) {
                     this@MindboxEventManager.mindboxLogW("Event ${event.eventType.operation} will be sent later, " +
-                            "because configuration was not initialized")
+                        "because configuration was not initialized")
                     this@MindboxEventManager.mindboxLogI("isFirstInitialize: ${MindboxPreferences.isFirstInitialize}, " +
-                                "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
+                        "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
                 } else {
                     WorkerDelegate().sendEvent(
                         context = context,
@@ -211,5 +211,4 @@ internal object MindboxEventManager {
     }
 
     fun <T> operationBodyJson(body: T): String = gson.toJson(body)
-
 }

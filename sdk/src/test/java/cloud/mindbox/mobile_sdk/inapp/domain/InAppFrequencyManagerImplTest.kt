@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -24,11 +24,10 @@ class InAppFrequencyManagerImplTest {
 
     @Test
     fun `filterInAppsFrequency returns empty list for inApps with lifetime delay`() {
-        val inApp =             InAppStub.getInApp().copy(id = "1", frequency = InAppStub.getFrequency().copy(delay = Frequency.Delay.LifetimeDelay))
+        val inApp = InAppStub.getInApp().copy(id = "1", frequency = InAppStub.getFrequency().copy(delay = Frequency.Delay.LifetimeDelay))
 
-        val inApps = listOf(inApp
-        )
-        every { inAppRepository.getShownInApps() } returns mapOf(inApp.id to  15000L)
+        val inApps = listOf(inApp)
+        every { inAppRepository.getShownInApps() } returns mapOf(inApp.id to 15000L)
         val result = inAppFrequencyManager.filterInAppsFrequency(inApps)
 
         assertEquals(emptyList<InApp>(), result)
@@ -40,7 +39,8 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "2",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS) // 10 seconds delay
+                // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS)
             )
         )
 
@@ -61,7 +61,8 @@ class InAppFrequencyManagerImplTest {
         val inAppWithTimeDelay = InAppStub.getInApp().copy(
             id = "3",
             frequency = Frequency(
-                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS) // 10 seconds delay
+                // 10 seconds delay
+                delay = Frequency.Delay.TimeDelay(time = 10L, InAppTime.SECONDS)
             )
         )
 
@@ -74,5 +75,4 @@ class InAppFrequencyManagerImplTest {
 
         assertEquals(listOf(inAppWithTimeDelay), result)
     }
-
 }

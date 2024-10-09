@@ -48,7 +48,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -74,7 +74,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -100,7 +100,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -126,7 +126,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -152,7 +152,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -178,7 +178,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -192,7 +192,7 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
+                    "Actual params : kind =  ${testItem.margin?.kind}, top = ${testItem.margin?.top}, bottom = ${testItem.margin?.bottom}, left = ${testItem.margin?.left}, right = ${testItem.margin?.right}"
             )
         }
     }
@@ -206,9 +206,8 @@ internal class CloseButtonModalPositionValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button position margin is not valid. Expected kind != null and top/left/right/bottom in range [0, 1.0]. " +
-                        "Actual params : kind =  ${testItem?.margin?.kind}, top = ${testItem?.margin?.top}, bottom = ${testItem?.margin?.bottom}, left = ${testItem?.margin?.left}, right = ${testItem?.margin?.right}"
+                    "Actual params : kind =  ${testItem?.margin?.kind}, top = ${testItem?.margin?.top}, bottom = ${testItem?.margin?.bottom}, left = ${testItem?.margin?.left}, right = ${testItem?.margin?.right}"
             )
         }
     }
-
 }

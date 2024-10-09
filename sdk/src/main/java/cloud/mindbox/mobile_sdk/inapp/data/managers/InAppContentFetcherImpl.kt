@@ -13,7 +13,6 @@ internal class InAppContentFetcherImpl(
     private val inAppImageLoader: InAppImageLoader,
 ) : InAppContentFetcher {
 
-
     override suspend fun fetchContent(inAppId: String, formVariant: InAppType): Boolean {
         val inAppImageStorage: MutableList<Deferred<Boolean>> = mutableListOf()
         when (formVariant) {
@@ -30,12 +29,16 @@ internal class InAppContentFetcherImpl(
                             }
                         }
                     }
-                if (inAppImageStorage.map { deferredResult -> deferredResult.await() }
-                        .contains(false)) return false
+                if (inAppImageStorage
+                        .map { deferredResult -> deferredResult.await() }
+                        .contains(false)) {
+                    return false
+                }
             }
 
             is InAppType.Snackbar -> {
-                formVariant.layers.filterIsInstance<Layer.ImageLayer>()
+                formVariant.layers
+                    .filterIsInstance<Layer.ImageLayer>()
                     .forEach { layer ->
                         when (layer.source) {
                             is Layer.ImageLayer.Source.UrlSource -> {
@@ -47,8 +50,11 @@ internal class InAppContentFetcherImpl(
                             }
                         }
                     }
-                if (inAppImageStorage.map { deferredResult -> deferredResult.await() }
-                        .contains(false)) return false
+                if (inAppImageStorage
+                        .map { deferredResult -> deferredResult.await() }
+                        .contains(false)) {
+                    return false
+                }
             }
         }
         return true

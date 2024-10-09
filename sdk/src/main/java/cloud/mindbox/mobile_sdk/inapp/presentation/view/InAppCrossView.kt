@@ -21,7 +21,6 @@ internal class InAppCrossView : View {
 
     private val paint: Paint
 
-
     constructor(
         context: Context,
         closeButtonElement: Element.CloseButton

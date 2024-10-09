@@ -17,5 +17,4 @@ open class PersonalOfferItemResponse(
     override fun toString() =
         "PersonalOfferItemResponse(product=$product, benefit=$benefit, " +
             "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc)"
-
 }

@@ -9,7 +9,6 @@ import cloud.mindbox.mobile_sdk.dp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Size
 import kotlin.math.roundToInt
 
-
 internal class InAppImageView(context: Context) : ImageView(context) {
 
     companion object {
@@ -23,7 +22,7 @@ internal class InAppImageView(context: Context) : ImageView(context) {
     fun prepareViewForSnackBar(size: Size, marginStart: Int, marginEnd: Int) {
         val oneThirdScreenHeight = resources.displayMetrics.heightPixels / 3
         val desiredHeight =
-            (((resources.displayMetrics.widthPixels.toDouble() - marginStart.toDouble() - marginEnd.toDouble())/ (size.width.toDouble())) * size.height).roundToInt()
+            (((resources.displayMetrics.widthPixels.toDouble() - marginStart.toDouble() - marginEnd.toDouble()) / (size.width.toDouble())) * size.height).roundToInt()
         layoutParams = ConstraintLayout.LayoutParams(
             ConstraintLayout.LayoutParams.MATCH_PARENT,
             if (desiredHeight > oneThirdScreenHeight) oneThirdScreenHeight else desiredHeight

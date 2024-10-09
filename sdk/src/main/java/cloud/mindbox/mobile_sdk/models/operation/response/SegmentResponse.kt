@@ -8,5 +8,4 @@ open class SegmentResponse(
 ) {
 
     override fun toString() = "SegmentResponse(ids=$ids)"
-
 }

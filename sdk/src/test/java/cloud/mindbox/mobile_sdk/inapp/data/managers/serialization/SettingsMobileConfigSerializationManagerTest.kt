@@ -6,7 +6,6 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.models.operation.response.ABTestDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
-import com.google.gson.Gson
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.*
@@ -443,4 +442,3 @@ class SettingsMobileConfigSerializationManagerTest {
         )
     }
 }
-

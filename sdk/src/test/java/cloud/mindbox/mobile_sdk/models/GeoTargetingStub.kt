@@ -8,6 +8,5 @@ class GeoTargetingStub {
         fun getGeoTargeting() = GeoTargeting(cityId = "", regionId = "", countryId = "")
 
         fun getGeoTargetingDto() = GeoTargetingDto(cityId = "", regionId = "", countryId = "")
-
     }
 }

@@ -40,5 +40,4 @@ internal class RetryOrDefaultStrategyImpl(
     } else {
         ImageRetryStrategy.Retry(delay = delay)
     }
-
 }

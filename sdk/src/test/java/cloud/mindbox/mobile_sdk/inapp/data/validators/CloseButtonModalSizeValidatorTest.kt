@@ -36,7 +36,7 @@ internal class CloseButtonModalSizeValidatorTest {
     fun `invalid CloseButtonElementDto SizeDto`() {
         val sizeDto = mockk<ElementDto.CloseButtonElementDto.SizeDto>()
         every { sizeDto.kind } returns null
-        every { sizeDto.height } returns -5.0  // Invalid height
+        every { sizeDto.height } returns -5.0 // Invalid height
         every { sizeDto.width } returns 10.0
 
         assertFalse(closeButtonValidator.isValid(sizeDto))
@@ -51,7 +51,7 @@ internal class CloseButtonModalSizeValidatorTest {
             MindboxLoggerImpl.i(
                 any(),
                 "Close button size is not valid. Expected kind != null and width/height in range [0, inf]. " +
-                        "Actual params : kind =  ${sizeDto.kind}, height = ${sizeDto.height}, width = ${sizeDto.width}"
+                    "Actual params : kind =  ${sizeDto.kind}, height = ${sizeDto.height}, width = ${sizeDto.width}"
             )
         }
     }

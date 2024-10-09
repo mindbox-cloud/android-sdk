@@ -5,6 +5,7 @@ import org.junit.Test
 
 class ExtensionsKtTest {
 
+    @Suppress("ktlint:standard:enum-entry-name-case")
     enum class TestEnum {
         FIRST,
         S_E_C_O_N_D,

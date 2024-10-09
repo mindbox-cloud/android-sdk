@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import java.util.UUID
+
 /**
 * A class for internal sdk work only. Do not extend or use it
 * */
@@ -12,7 +13,6 @@ abstract class PushServiceHandler {
     companion object {
 
         private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
-
     }
 
     abstract val notificationProvider: String
@@ -29,16 +29,16 @@ abstract class PushServiceHandler {
                 MindboxLoggerImpl.d(
                     this,
                     "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
-                            "Will be generated from random. " +
-                            "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
-                            "uuid from AdvertisingIdClient = $id",
+                        "Will be generated from random. " +
+                        "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
+                        "uuid from AdvertisingIdClient = $id",
                 )
                 generateRandomUuid()
             } else {
                 MindboxLoggerImpl.d(
                     this,
                     "Received from $notificationProvider AdvertisingIdClient: " +
-                            "device uuid - $id",
+                        "device uuid - $id",
                 )
                 id
             }
@@ -60,7 +60,7 @@ abstract class PushServiceHandler {
         MindboxLoggerImpl.w(
             this,
             "Unable to determine $notificationProvider services availability. " +
-                    "Failed with exception $e",
+                "Failed with exception $e",
         )
         false
     }
@@ -91,11 +91,10 @@ abstract class PushServiceHandler {
         MindboxLoggerImpl.d(
             this,
             "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
-                    "Will be generated from random",
+                "Will be generated from random",
         )
         generateRandomUuid()
     }
 
     private fun generateRandomUuid() = UUID.randomUUID().toString()
-
 }

@@ -18,7 +18,6 @@ class InAppActionsTest {
 
     @Test
     fun `execute of RedirectUrlInAppAction return correct data`() {
-
         val url = "https://test.url"
         val payload = "testPayload"
         val action = RedirectUrlInAppAction(url, payload)

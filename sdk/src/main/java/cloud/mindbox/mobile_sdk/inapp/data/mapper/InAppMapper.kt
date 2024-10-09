@@ -33,7 +33,6 @@ internal class InAppMapper {
                                 ?: ""
                         )
                     } ?: emptyList()
-
                 )
             } ?: emptyList()
         )
@@ -266,12 +265,9 @@ internal class InAppMapper {
                                                     right = payloadDto.content.position.margin.right!!.roundToInt(),
                                                     bottom = payloadDto.content.position.margin.bottom!!.roundToInt()
                                                 ),
-
-
-                                                )
+                                            )
                                         )
                                     }
-
                                     null -> {
                                         return InAppConfig(
                                             listOf(),
@@ -280,8 +276,6 @@ internal class InAppMapper {
                                             listOf()
                                         ) // should never trigger because of validator
                                     }
-
-
                                 }
                             } ?: emptyList()
                         ),

@@ -32,5 +32,4 @@ class CustomerFieldsAdapter : TypeAdapter<CustomFields?>() {
             gson.fromJson<Map<String, Any?>?>(reader, Map::class.java)?.let(::CustomFields)
         }
     }
-
 }

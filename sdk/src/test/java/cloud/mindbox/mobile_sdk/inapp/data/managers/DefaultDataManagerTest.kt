@@ -9,7 +9,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -37,7 +37,6 @@ internal class DefaultDataManagerTest {
         val snackbar = InAppStub.getSnackbarDto()
 
         val testData = InAppStub.getInAppDto().form?.copy(variants = listOf(mw, snackbar, null))
-
 
         every {
             modalWindowDtoDataFiller.fillData(any())

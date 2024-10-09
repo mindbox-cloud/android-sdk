@@ -9,16 +9,16 @@ internal class CloseButtonModalElementDtoDataFiller :
 
     internal companion object {
         const val CLOSE_BUTTON_ELEMENT_JSON_NAME = "closeButton"
-        private const val defaultColor = "#FFFFFF"
-        private const val defaultLineWidth = 2
-        private const val defaultModalWidthSize = 24.0
-        private const val defaultModalHeightSize = 24.0
-        private const val defaultSizeKind = "dp"
-        private const val defaultBottomPosition = 0.02
-        private const val defaultTopPosition = 0.02
-        private const val defaultLeftPosition = 0.02
-        private const val defaultRightPosition = 0.02
-        private const val defaultPositionKind = "proportion"
+        private const val DEFAULT_COLOR = "#FFFFFF"
+        private const val DEFAULT_LINE_WIDTH = 2
+        private const val DEFAULT_MODAL_WIDTH_SIZE = 24.0
+        private const val DEFAULT_MODAL_HEIGHT_SIZE = 24.0
+        private const val DEFAULT_SIZE_KIND = "dp"
+        private const val DEFAULT_BOTTOM_POSITION = 0.02
+        private const val DEFAULT_TOP_POSITION = 0.02
+        private const val DEFAULT_LEFT_POSITION = 0.02
+        private const val DEFAULT_RIGHT_POSITION = 0.02
+        private const val DEFAULT_POSITION_KIND = "proportion"
         private val sizeNames = setOf("dp")
         private val marginNames = setOf("proportion")
     }
@@ -30,7 +30,7 @@ internal class CloseButtonModalElementDtoDataFiller :
                 item.color
             } else {
                 mindboxLogI("Color is not valid. Applying default")
-                defaultColor
+                DEFAULT_COLOR
             }
         val newLineWidth = if (item.lineWidth != null && item.lineWidth.toString()
                 .toDoubleOrNull() != null
@@ -38,7 +38,7 @@ internal class CloseButtonModalElementDtoDataFiller :
             item.lineWidth
         } else {
             mindboxLogI("Line width is not valid. Applying default")
-            defaultLineWidth
+            DEFAULT_LINE_WIDTH
         }
         val newPosition =
             if (item.position?.margin != null && marginNames.contains(
@@ -50,11 +50,11 @@ internal class CloseButtonModalElementDtoDataFiller :
                 mindboxLogI("Unknown position ${item.position?.margin?.kind}. Applying default")
                 ElementDto.CloseButtonElementDto.PositionDto(
                     ElementDto.CloseButtonElementDto.PositionDto.MarginDto(
-                        bottom = defaultBottomPosition,
-                        kind = defaultPositionKind,
-                        left = defaultLeftPosition,
-                        right = defaultRightPosition,
-                        top = defaultTopPosition
+                        bottom = DEFAULT_BOTTOM_POSITION,
+                        kind = DEFAULT_POSITION_KIND,
+                        left = DEFAULT_LEFT_POSITION,
+                        right = DEFAULT_RIGHT_POSITION,
+                        top = DEFAULT_TOP_POSITION
                     )
                 )
             }
@@ -65,9 +65,9 @@ internal class CloseButtonModalElementDtoDataFiller :
                 mindboxLogI("Unknown size ${item.size?.kind}. Applying default")
 
                 ElementDto.CloseButtonElementDto.SizeDto(
-                    height = defaultModalHeightSize,
-                    kind = defaultSizeKind,
-                    width = defaultModalWidthSize
+                    height = DEFAULT_MODAL_HEIGHT_SIZE,
+                    kind = DEFAULT_SIZE_KIND,
+                    width = DEFAULT_MODAL_WIDTH_SIZE
                 )
             }
         return item.copy(

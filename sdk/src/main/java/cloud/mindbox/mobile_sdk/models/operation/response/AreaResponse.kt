@@ -9,5 +9,4 @@ open class AreaResponse(
 ) {
 
     override fun toString() = "AreaResponse(ids=$ids, name=$name)"
-
 }

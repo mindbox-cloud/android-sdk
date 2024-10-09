@@ -7,5 +7,4 @@ open class ManufacturerResponse(
 ) {
 
     override fun toString() = "ManufacturerResponse(name=$name)"
-
 }

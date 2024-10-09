@@ -20,7 +20,6 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
     companion object {
 
         private const val IMAGE_CONNECTION_TIMEOUT = 30_000
-
     }
 
     override fun onLoadImage(
@@ -46,5 +45,4 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
         MindboxLoggerImpl.d(this, "Image successfully decoded, bitmap=$bitmap")
         return bitmap
     }
-
 }

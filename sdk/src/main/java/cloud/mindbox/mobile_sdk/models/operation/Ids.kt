@@ -10,7 +10,6 @@ class Ids(val ids: Map<String, String?>) {
     companion object {
 
         private const val MINDBOX_ID_KEY = "mindboxId"
-
     }
 
     constructor(vararg pairs: Pair<String, String?>) : this(pairs.toMap())
@@ -38,5 +37,4 @@ class Ids(val ids: Map<String, String?>) {
     )
 
     override fun toString() = "Ids(ids=$ids)"
-
 }

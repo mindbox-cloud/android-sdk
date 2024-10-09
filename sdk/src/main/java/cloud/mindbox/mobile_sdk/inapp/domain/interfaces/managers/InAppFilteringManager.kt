@@ -16,5 +16,4 @@ internal interface InAppFilteringManager {
     fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp>
 
     fun filterABTestsInApps(inApps: List<InApp>, abtestsInAppsPool: Collection<String>): List<InApp>
-
 }

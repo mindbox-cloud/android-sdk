@@ -42,7 +42,7 @@ internal class MonitoringRepositoryImplTest {
             "ad487f74-924f-44f0-b4f7-f239ea5643c5"
         )
         every { MindboxPreferences.logsRequestIds } returns
-                "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
+            "[\"71110297-58ad-4b3c-add1-60df8acb9e5e\",\"ad487f74-924f-44f0-b4f7-f239ea5643c5\"]"
         assertTrue(
             monitoringRepository.getRequestIds()
                 .containsAll(testHashSet) && testHashSet.containsAll(monitoringRepository.getRequestIds())

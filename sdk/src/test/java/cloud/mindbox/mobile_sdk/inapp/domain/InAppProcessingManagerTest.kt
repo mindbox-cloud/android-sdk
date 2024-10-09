@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.di.MindboxDI
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
@@ -30,7 +29,6 @@ internal class InAppProcessingManagerTest {
     private val mockkInAppContentFetcher = mockk<InAppContentFetcher> {
         coEvery { fetchContent(any(), any()) } returns true
     }
-
 
     private val mockInAppRepository = mockk<InAppRepository> {
         every {
@@ -133,18 +131,19 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `choose inApp to show chooses first correct inApp`() = runTest {
-
         val validId = "validId"
         val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
 
         val actualResult = inAppProcessingManager.chooseInAppToShow(
             listOf(
                 InAppStub.getInApp().copy(
-                    id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                    id = "123",
+                    targeting = InAppStub.getTargetingRegionNode().copy(
                         type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                     )
                 ),
-                InAppStub.getInApp()
+                InAppStub
+                    .getInApp()
                     .copy(
                         id = validId,
                         targeting = InAppStub.getTargetingTrueNode(),
@@ -156,8 +155,8 @@ internal class InAppProcessingManagerTest {
                             )
                         )
                     ),
-
-                ), event
+            ),
+            event
         )
         assertEquals(expectedResult, actualResult)
     }
@@ -168,17 +167,19 @@ internal class InAppProcessingManagerTest {
             inAppProcessingManager.chooseInAppToShow(
                 listOf(
                     InAppStub.getInApp().copy(
-                        id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                        id = "123",
+                        targeting = InAppStub.getTargetingRegionNode().copy(
                             type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                         )
                     ),
                     InAppStub.getInApp().copy(
-                        id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                        id = "123",
+                        targeting = InAppStub.getTargetingRegionNode().copy(
                             type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                         )
                     ),
-
-                    ), event
+                ),
+                event
             )
         )
     }
@@ -192,17 +193,19 @@ internal class InAppProcessingManagerTest {
                 MindboxDI.appModule.inAppProcessingManager.chooseInAppToShow(
                     listOf(
                         InAppStub.getInApp().copy(
-                            id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                            id = "123",
+                            targeting = InAppStub.getTargetingRegionNode().copy(
                                 type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                             )
                         ),
                         InAppStub.getInApp().copy(
-                            id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                            id = "123",
+                            targeting = InAppStub.getTargetingRegionNode().copy(
                                 type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                             )
                         ),
-
-                        ), event
+                    ),
+                    event
                 )
             }
         }
@@ -213,20 +216,24 @@ internal class InAppProcessingManagerTest {
         val validId = "validId"
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
-                id = "123", targeting = InAppStub.getTargetingSegmentNode().copy(
+                id = "123",
+                targeting = InAppStub.getTargetingSegmentNode().copy(
                     type = "",
                     kind = Kind.POSITIVE,
                     segmentationExternalId = "segmentationExternalId1",
                     segmentExternalId = "segmentExternalId1"
                 )
-            ), InAppStub.getInApp().copy(
-                id = "124", targeting = InAppStub.getTargetingSegmentNode().copy(
+            ),
+            InAppStub.getInApp().copy(
+                id = "124",
+                targeting = InAppStub.getTargetingSegmentNode().copy(
                     type = "",
                     kind = Kind.POSITIVE,
                     segmentationExternalId = "segmentationExternalId2",
                     segmentExternalId = "segmentExternalId2"
                 )
-            ), InAppStub.getInApp().copy(
+            ),
+            InAppStub.getInApp().copy(
                 id = validId,
                 targeting = InAppStub.getTargetingTrueNode(),
                 form = InAppStub.getInApp().form.copy(
@@ -256,14 +263,18 @@ internal class InAppProcessingManagerTest {
         val validId = "validId"
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
-                id = "123", targeting = InAppStub.getTargetingRegionNode().copy(
+                id = "123",
+                targeting = InAppStub.getTargetingRegionNode().copy(
                     type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
                 )
-            ), InAppStub.getInApp().copy(
-                id = "124", targeting = InAppStub.getTargetingRegionNode().copy(
+            ),
+            InAppStub.getInApp().copy(
+                id = "124",
+                targeting = InAppStub.getTargetingRegionNode().copy(
                     type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
                 )
-            ), InAppStub.getInApp().copy(
+            ),
+            InAppStub.getInApp().copy(
                 id = validId,
                 targeting = InAppStub.getTargetingTrueNode(),
                 form = InAppStub.getInApp().form.copy(

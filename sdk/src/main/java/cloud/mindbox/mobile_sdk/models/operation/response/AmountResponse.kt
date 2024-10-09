@@ -8,5 +8,4 @@ open class AmountResponse(
 ) {
 
     override fun toString() = "AmountResponse(type=$type, value=$value)"
-
 }

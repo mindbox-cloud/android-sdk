@@ -3,7 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager

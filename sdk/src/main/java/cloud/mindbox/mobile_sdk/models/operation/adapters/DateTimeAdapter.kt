@@ -16,7 +16,6 @@ class DateTimeAdapter : TypeAdapter<DateTime>() {
     companion object {
 
         private const val WRITE_DATA_FORMAT = "dd.MM.yyyy HH:mm:ss.FFF"
-
     }
 
     override fun write(out: JsonWriter?, value: DateTime?) {
@@ -42,5 +41,4 @@ class DateTimeAdapter : TypeAdapter<DateTime>() {
             }
         }
     }
-
 }

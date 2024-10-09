@@ -34,5 +34,4 @@ internal object MindboxRoomConverter {
     fun eventTypeToString(
         value: EventType?
     ): String = value?.let { "${it.ordinal()};${gson.toJson(it)}" } ?: ""
-
 }

@@ -30,7 +30,7 @@ internal class FirebaseServiceHandler(
     }
 
     override suspend fun getToken(
-        context: Context,
+        context: Context
     ): String? = suspendCancellableCoroutine { continuation ->
         FirebaseMessaging.getInstance().token
             .addOnCanceledListener {
@@ -80,5 +80,4 @@ internal class FirebaseServiceHandler(
     } else {
         null
     }
-
 }

@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.di.modules
 import android.content.pm.ApplicationInfo
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
-
 internal fun AppModule(
     applicationContextModule: AppContextModule,
     domainModule: DomainModule,
@@ -22,5 +21,4 @@ internal fun AppModule(
     override fun isDebug(): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         (applicationContextModule.appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     }
-
 }

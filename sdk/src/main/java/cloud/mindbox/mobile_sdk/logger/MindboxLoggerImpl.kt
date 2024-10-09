@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepositor
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.*
 import org.threeten.bp.Instant
+
 /**
  * An interface for internal sdk work only. Do not implement or use it.
  * */
@@ -24,7 +25,6 @@ interface MindboxLogger {
     fun w(parent: Any, message: String)
 
     fun w(parent: Any, message: String, exception: Throwable)
-
 }
 
 internal object MindboxLoggerImpl : MindboxLogger {
@@ -40,11 +40,9 @@ internal object MindboxLoggerImpl : MindboxLogger {
             Log.e(TAG, "Mindbox monitoring caught unhandled error", throwable)
         })
 
-
     init {
 
         VolleyLog.DEBUG = false
-
     }
 
     @Volatile
@@ -116,7 +114,6 @@ internal object MindboxLoggerImpl : MindboxLogger {
         parent: Any,
         message: String,
     ) = "${parent.javaClass.simpleName}: $message"
-
 }
 
 internal fun Any.mindboxLogD(message: String) = MindboxLoggerImpl.d(this, message)
@@ -133,7 +130,10 @@ internal fun Any.mindboxLogE(message: String, exception: Throwable? = null) = ex
 
 internal interface MindboxLog {
     fun logD(message: String) = this.mindboxLogD(message)
+
     fun logI(message: String) = this.mindboxLogI(message)
+
     fun logW(message: String, exception: Throwable? = null) = this.mindboxLogW(message, exception)
+
     fun logE(message: String, exception: Throwable? = null) = this.mindboxLogE(message, exception)
 }

@@ -5,10 +5,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.operation.response.*
-import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 
 internal class InAppStub {
 
@@ -19,7 +15,8 @@ internal class InAppStub {
             frequency = getFrequency(),
             maxVersion = null,
             targeting = getTargetingUnionNode().copy(
-                type = "", nodes = listOf(
+                type = "",
+                nodes = listOf(
                     getTargetingTrueNode(), getTargetingSegmentNode()
                 )
             ),
@@ -38,7 +35,7 @@ internal class InAppStub {
             type = "", kind = ""
         )
 
-        fun getFrequencyPeriodicDto(): FrequencyDto.FrequencyPeriodicDto=  FrequencyDto.FrequencyPeriodicDto("", "", 0)
+        fun getFrequencyPeriodicDto(): FrequencyDto.FrequencyPeriodicDto = FrequencyDto.FrequencyPeriodicDto("", "", 0)
 
         fun getFrequency(): Frequency = Frequency(Frequency.Delay.LifetimeDelay)
 
@@ -102,15 +99,17 @@ internal class InAppStub {
                 url = ""
             )
 
-        fun getPushPermissionAction(): Layer.ImageLayer.Action.PushPermissionAction=
+        fun getPushPermissionAction(): Layer.ImageLayer.Action.PushPermissionAction =
             Layer.ImageLayer.Action.PushPermissionAction(
                 payload = ""
             )
+
         fun getUrlSourceDto(): BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto =
             BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
                 type = "url",
                 value = ""
             )
+
         fun getUrlSource(): Layer.ImageLayer.Source.UrlSource =
             Layer.ImageLayer.Source.UrlSource(url = "")
 
@@ -346,6 +345,5 @@ internal class InAppStub {
                 externalSystemName = "",
                 externalId = "",
             )
-
     }
 }

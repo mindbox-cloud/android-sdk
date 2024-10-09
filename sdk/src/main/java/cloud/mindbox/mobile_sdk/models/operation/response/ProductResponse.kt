@@ -17,7 +17,6 @@ open class ProductResponse(
 
     override fun toString() =
         "ProductResponse(ids=$ids, name=$name, displayName=$displayName, " +
-                "url=$url, pictureUrl=$pictureUrl, price=$price, " +
-                "oldPrice=$oldPrice, customFields=$customFields)"
-
+            "url=$url, pictureUrl=$pictureUrl, price=$price, " +
+            "oldPrice=$oldPrice, customFields=$customFields)"
 }

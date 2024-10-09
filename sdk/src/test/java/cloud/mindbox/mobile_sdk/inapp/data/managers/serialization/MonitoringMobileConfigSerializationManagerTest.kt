@@ -14,7 +14,6 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
-
 class MonitoringMobileConfigSerializationManagerTest {
 
     private val manager: MobileConfigSerializationManagerImpl by mindboxInject {
@@ -74,7 +73,7 @@ class MonitoringMobileConfigSerializationManagerTest {
         val config = manager.deserializeMonitoring(json)!!
 
         assertEquals(1, config.logs?.size)
-        verify(exactly = 1) { MindboxLoggerImpl.e(any(),"Failed to parse logs block", any()) }
+        verify(exactly = 1) { MindboxLoggerImpl.e(any(), "Failed to parse logs block", any()) }
     }
 
     @Test
@@ -86,7 +85,7 @@ class MonitoringMobileConfigSerializationManagerTest {
         val config = manager.deserializeMonitoring(json)!!
 
         assertEquals(0, config.logs?.size)
-        verify(exactly = 2) { MindboxLoggerImpl.e(any(),"Failed to parse logs block", any()) }
+        verify(exactly = 2) { MindboxLoggerImpl.e(any(), "Failed to parse logs block", any()) }
     }
 
     @Test
@@ -107,4 +106,3 @@ class MonitoringMobileConfigSerializationManagerTest {
         assertEquals(0, config?.logs?.size)
     }
 }
-

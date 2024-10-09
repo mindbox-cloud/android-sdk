@@ -9,8 +9,10 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import com.google.gson.Gson
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
+import io.mockk.mockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -206,7 +208,6 @@ class ViewProductCategoryNodeTest {
         ).onEach { node ->
             assertFalse(node.toString(), node.checkTargeting(data))
         }
-
     }
 
     @Test

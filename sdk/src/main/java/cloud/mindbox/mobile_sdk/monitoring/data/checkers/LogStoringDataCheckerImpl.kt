@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal class LogStoringDataCheckerImpl(private val dbFile: File) : LogStoringDataChecker {
 
-
     private var previousSize: Long? = null
 
     override fun isDatabaseMemorySizeExceeded(): Boolean {
@@ -33,6 +32,5 @@ internal class LogStoringDataCheckerImpl(private val dbFile: File) : LogStoringD
         var needCleanLog: AtomicBoolean = AtomicBoolean(false)
         var deletionIsInProgress: AtomicBoolean = AtomicBoolean(false)
         const val MAX_LOG_SIZE = 10 * 1024 * 1024
-
     }
 }

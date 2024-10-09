@@ -9,18 +9,19 @@ internal class InAppImageSizeStorageImpl : InAppImageSizeStorage {
     private val storage: ConcurrentHashMap<String, ConcurrentHashMap<String, Size>> =
         ConcurrentHashMap()
 
-    override fun getSizeByIdAndUrl(id: String, url: String): Size {
-        return storage[id]?.get(url) ?: Size(0,0)
+    override fun getSizeByIdAndUrl(id: String, url: String): Size = storage[id]?.get(url) ?: Size(0, 0)
 
+    override fun addSize(
+        id: String,
+        url: String,
+        width: Int,
+        height: Int
+    ) {
+        storage[id] = storage
+            .getOrElse(id) {
+                ConcurrentHashMap()
+            }.also { map ->
+                map[url] = Size(width, height)
+            }
     }
-
-    override fun addSize(id: String, url: String, width: Int, height: Int) {
-        storage[id] = storage.getOrElse(id) {
-            ConcurrentHashMap()
-        }.also { map ->
-            map[url] = Size(width, height)
-        }
-    }
-
-
 }

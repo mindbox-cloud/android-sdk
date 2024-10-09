@@ -41,7 +41,6 @@ class ParseTimeSpanTest(
             arrayOf("00:00:000", null),
             arrayOf("+0:0:0", null),
             arrayOf("12345678901234567890.00:00:00.00", null),
-
             arrayOf("0:0:0.1234567", 123L),
             arrayOf("0:0:0.1", 100L),
             arrayOf("0:0:0.01", 10L),

@@ -42,7 +42,7 @@ internal data class MindboxRequest(
         private const val DEFAULT_RESPONSE_CHARSET = "UTF-8"
     }
 
-    //building headers
+    // building headers
     override fun getHeaders(): MutableMap<String, String> {
         val params: MutableMap<String, String> = HashMap()
 
@@ -66,14 +66,13 @@ internal data class MindboxRequest(
         return params
     }
 
-    //Logging responses
+    // Logging responses
     override fun parseNetworkResponse(response: NetworkResponse?): Response<JSONObject> {
         return LoggingExceptionHandler.runCatching(
             block = {
                 logResponse(response)
 
                 try {
-
                     val body = String(
                         response?.data ?: ByteArray(0),
                         Charset.forName(
@@ -107,7 +106,7 @@ internal data class MindboxRequest(
         )
     }
 
-    //Logging error responses
+    // Logging error responses
     override fun parseNetworkError(volleyError: VolleyError): VolleyError {
         LoggingExceptionHandler.runCatching {
             try {
@@ -178,5 +177,4 @@ internal data class MindboxRequest(
             }
         }
     }
-
 }

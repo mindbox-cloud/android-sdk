@@ -19,5 +19,4 @@ internal class CancellationStrategyImpl : MindboxImageFailureHandler {
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy = ImageRetryStrategy.Cancel
-
 }

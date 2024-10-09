@@ -28,11 +28,13 @@ internal class MonitoringMapper {
         monitoringStatus: String,
         requestId: String,
         monitoringEntityList: List<LogResponse>,
-    ): LogResponseDto {
-        return monitoringEntityList.fold(
+    ): LogResponseDto =
+        monitoringEntityList.fold(
             initial = LogResponseDto(
                 status = monitoringStatus, requestId = requestId, content = mutableListOf()
             )
-        ) { sum, term -> sum.content.add("${term.zonedDateTime} ${term.log}"); sum }
-    }
+        ) { sum, term ->
+            sum.content.add("${term.zonedDateTime} ${term.log}")
+            sum
+        }
 }

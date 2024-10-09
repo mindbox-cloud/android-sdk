@@ -26,10 +26,9 @@ open class PromoCodeResponse(
 ) {
 
     override fun toString() = "PromoCodeResponse(issueStatus=$issueStatus, ids=$ids, pool=$pool, " +
-            "availableFromDateTimeUtc=$availableFromDateTimeUtc, " +
-            "availableTillDateTimeUtc=$availableTillDateTimeUtc, isUsed=$isUsed, " +
-            "usedPointOfContact=$usedPointOfContact, usedDateTimeUtc=$usedDateTimeUtc, " +
-            "issuedPointOfContact=$issuedPointOfContact, issuedDateTimeUtc=$issuedDateTimeUtc, " +
-            "blockedDateTimeUtc=$blockedDateTimeUtc)"
-
+        "availableFromDateTimeUtc=$availableFromDateTimeUtc, " +
+        "availableTillDateTimeUtc=$availableTillDateTimeUtc, isUsed=$isUsed, " +
+        "usedPointOfContact=$usedPointOfContact, usedDateTimeUtc=$usedDateTimeUtc, " +
+        "issuedPointOfContact=$issuedPointOfContact, issuedDateTimeUtc=$issuedDateTimeUtc, " +
+        "blockedDateTimeUtc=$blockedDateTimeUtc)"
 }

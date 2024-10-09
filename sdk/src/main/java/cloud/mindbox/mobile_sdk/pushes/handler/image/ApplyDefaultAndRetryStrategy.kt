@@ -44,5 +44,4 @@ internal class ApplyDefaultAndRetryStrategyImpl(
     } else {
         ImageRetryStrategy.ApplyDefaultAndRetry(delay = delay, defaultImage = defaultImage)
     }
-
 }

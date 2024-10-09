@@ -4,7 +4,9 @@ import com.google.gson.annotations.SerializedName
 
 enum class QuantityTypeRequest {
 
-    @SerializedName("int") INT,
-    @SerializedName("double") DOUBLE
+    @SerializedName("int")
+    INT,
 
+    @SerializedName("double")
+    DOUBLE
 }

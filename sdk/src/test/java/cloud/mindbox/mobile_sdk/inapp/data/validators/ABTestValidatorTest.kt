@@ -61,7 +61,6 @@ internal class ABTestValidatorTest(
                         variant1
                     )
                 ) to true,
-
                 abtest.copy(variants = listOf()) to false,
                 abtest.copy(variants = listOf(variant1)) to false,
                 abtest.copy(variants = listOf(variant1, variant1)) to false,
@@ -92,7 +91,7 @@ internal class ABTestValidatorTest(
                 ) to false,
                 abtest.copy(
                     variants = listOf(
-                        variant2.copy(modulus =modulus.copy(lower = 60, upper = 100)),
+                        variant2.copy(modulus = modulus.copy(lower = 60, upper = 100)),
                         variant1
                     )
                 ) to false,
@@ -135,5 +134,4 @@ internal class ABTestValidatorTest(
     fun `abtest is valid`() {
         Assert.assertEquals(isValid, validator.isValid(abTestDto))
     }
-
 }

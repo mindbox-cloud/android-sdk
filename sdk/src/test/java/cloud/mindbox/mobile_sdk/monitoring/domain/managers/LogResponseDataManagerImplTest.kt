@@ -30,7 +30,6 @@ class LogResponseDataManagerImplTest {
 
     @Test
     fun `test get status returns status ok`() {
-
         val expectedResult = LogResponseDataManagerImpl.STATUS_OK
         val filteredLogs =
             listOf(
@@ -51,7 +50,6 @@ class LogResponseDataManagerImplTest {
             lastLog = lastLog, from = from, to = to
         )
         assertEquals(expectedResult, actualResult)
-
     }
 
     @Test
@@ -97,7 +95,6 @@ class LogResponseDataManagerImplTest {
             to = to
         )
         assertEquals(expectedResult, actualResult)
-
     }
 
     @Test
@@ -183,7 +180,6 @@ class LogResponseDataManagerImplTest {
         )
 
         assertEquals(filteredLogs, actualResult)
-
     }
 
     @Test
@@ -204,7 +200,6 @@ class LogResponseDataManagerImplTest {
         )
 
         assertEquals(filteredLogs, actualResult)
-
     }
 
     @Test
@@ -267,7 +262,6 @@ class LogResponseDataManagerImplTest {
         )
 
         assertEquals(expectedResult, actualResult)
-
     }
 
     @Test
@@ -307,5 +301,4 @@ class LogResponseDataManagerImplTest {
         )
         assertEquals(expectedResult, actualResult)
     }
-
 }

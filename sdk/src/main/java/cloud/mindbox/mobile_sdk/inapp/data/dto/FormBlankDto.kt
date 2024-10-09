@@ -43,6 +43,7 @@ internal sealed class PayloadBlankDto {
                     @SerializedName("top")
                     val top: Double?
                 )
+
                 internal data class GravityBlankDto(
                     @SerializedName("horizontal")
                     val horizontal: String?,
@@ -50,9 +51,9 @@ internal sealed class PayloadBlankDto {
                     val vertical: String?
                 )
             }
-
         }
     }
+
     data class ModalWindowBlankDto(
         @SerializedName("content")
         val content: ContentBlankDto?,
@@ -68,4 +69,6 @@ internal sealed class PayloadBlankDto {
     }
 }
 
-internal data class BackgroundBlankDto(@SerializedName("layers") val layers: JsonArray?)
+internal data class BackgroundBlankDto(
+    @SerializedName("layers") val layers: JsonArray?
+)
