@@ -5,13 +5,14 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockk
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 internal class CloseButtonModalElementValidatorTest {
 
-    @get: Rule
+    @get:Rule
     val rule = MockKRule(this)
 
     @MockK

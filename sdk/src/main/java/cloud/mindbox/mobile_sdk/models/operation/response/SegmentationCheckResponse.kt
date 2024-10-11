@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
-
 import com.google.gson.annotations.SerializedName
 
 internal data class SegmentationCheckResponse(

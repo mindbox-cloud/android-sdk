@@ -52,5 +52,4 @@ internal class InAppEventManagerTest {
     fun `validate system event`() {
         assertFalse(inAppEventManager.isValidInAppEvent(InAppEventType.OrdinalEvent(EventType.AppInstalledWithoutCustomer)))
     }
-
 }

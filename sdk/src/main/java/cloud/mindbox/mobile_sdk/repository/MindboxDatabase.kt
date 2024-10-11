@@ -1,7 +1,10 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import android.content.Context
-import androidx.room.*
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import cloud.mindbox.mobile_sdk.converters.MindboxRoomConverter
@@ -23,33 +26,30 @@ internal abstract class MindboxDatabase : RoomDatabase() {
 
             override fun migrate(database: SupportSQLiteDatabase) {
                 val query = "ALTER TABLE $CONFIGURATION_TABLE_NAME " +
-                        "ADD COLUMN shouldCreateCustomer INTEGER NOT NULL DEFAULT 1"
+                    "ADD COLUMN shouldCreateCustomer INTEGER NOT NULL DEFAULT 1"
                 database.execSQL(query)
             }
-
         }
 
         internal var isTestMode = false
 
         internal fun getInstance(context: Context) = if (!isTestMode) {
-            Room.databaseBuilder(
-                context.applicationContext,
-                MindboxDatabase::class.java,
-                DATABASE_NAME,
-            )
-                .addMigrations(MIGRATION_1_2)
+            Room
+                .databaseBuilder(
+                    context.applicationContext,
+                    MindboxDatabase::class.java,
+                    DATABASE_NAME,
+                ).addMigrations(MIGRATION_1_2)
                 .build()
         } else {
-            Room.inMemoryDatabaseBuilder(context.applicationContext, MindboxDatabase::class.java)
+            Room
+                .inMemoryDatabaseBuilder(context.applicationContext, MindboxDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
         }
-
     }
 
     abstract fun configurationDao(): ConfigurationsDao
 
-
     abstract fun eventsDao(): EventsDao
-
 }

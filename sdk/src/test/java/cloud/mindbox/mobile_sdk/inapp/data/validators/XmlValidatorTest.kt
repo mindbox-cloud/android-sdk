@@ -58,5 +58,4 @@ class XmlValidatorTest {
             """.trimIndent()
         assertFalse(xmlValidator.isValid(xmlString))
     }
-
 }

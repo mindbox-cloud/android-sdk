@@ -41,14 +41,13 @@ internal sealed class PayloadDto {
                     @SerializedName("top")
                     val top: Double?
                 ) {
-                    fun isValidPosition(): Boolean {
-                        return kind != null
-                                && bottom.isInRange(0.0, Double.MAX_VALUE)
-                                && top.isInRange(0.0, Double.MAX_VALUE)
-                                && left.isInRange(0.0, Double.MAX_VALUE)
-                                && right.isInRange(0.0, Double.MAX_VALUE)
-                    }
+                    fun isValidPosition(): Boolean = kind != null &&
+                        bottom.isInRange(0.0, Double.MAX_VALUE) &&
+                        top.isInRange(0.0, Double.MAX_VALUE) &&
+                        left.isInRange(0.0, Double.MAX_VALUE) &&
+                        right.isInRange(0.0, Double.MAX_VALUE)
                 }
+
                 internal data class GravityDto(
                     @SerializedName("horizontal")
                     val horizontal: String?,
@@ -56,7 +55,6 @@ internal sealed class PayloadDto {
                     val vertical: String?
                 )
             }
-
         }
 
         internal companion object {

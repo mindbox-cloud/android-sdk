@@ -7,12 +7,10 @@ import android.content.IntentFilter
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.runs
-import io.mockk.slot
 import io.mockk.verify
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -21,7 +19,6 @@ import org.robolectric.Shadows.shadowOf
 
 @RunWith(RobolectricTestRunner::class)
 internal class ActivityManagerTest {
-
 
     private lateinit var context: Context
 
@@ -79,6 +76,7 @@ internal class ActivityManagerTest {
         // Assert
         assert(!result)
     }
+
     @Test
     fun `try open url doesn't open deeplink`() {
         context = ApplicationProvider.getApplicationContext()
@@ -92,7 +90,8 @@ internal class ActivityManagerTest {
             ComponentName(
                 packageName,
                 componentName
-            ), IntentFilter(Intent.ACTION_VIEW).apply {
+            ),
+            IntentFilter(Intent.ACTION_VIEW).apply {
                 addCategory(Intent.CATEGORY_DEFAULT)
                 addDataScheme("https")
             }
@@ -102,8 +101,6 @@ internal class ActivityManagerTest {
         } returns true
         assertFalse(activityManager.tryOpenUrl(url))
     }
-
-
 
     @Test
     fun `test tryOpenDeepLink with valid deep link`() {
@@ -121,7 +118,8 @@ internal class ActivityManagerTest {
         val componentName = ComponentName(packageName, primitiveComponentName)
         packageManager.addActivityIfNotPresent(componentName)
         packageManager.addIntentFilterForActivity(
-            componentName, IntentFilter(Intent.ACTION_VIEW).apply {
+            componentName,
+            IntentFilter(Intent.ACTION_VIEW).apply {
                 addCategory(Intent.CATEGORY_DEFAULT)
                 addDataScheme("app")
             }
@@ -147,7 +145,8 @@ internal class ActivityManagerTest {
             ComponentName(
                 packageName,
                 componentName
-            ), IntentFilter(Intent.ACTION_VIEW).apply {
+            ),
+            IntentFilter(Intent.ACTION_VIEW).apply {
                 addCategory(Intent.CATEGORY_DEFAULT)
                 addDataScheme("app")
             }

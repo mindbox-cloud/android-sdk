@@ -63,5 +63,4 @@ class FmsTokenSingleUnitTest {
     fun clear() {
         clearPreferences()
     }
-
 }

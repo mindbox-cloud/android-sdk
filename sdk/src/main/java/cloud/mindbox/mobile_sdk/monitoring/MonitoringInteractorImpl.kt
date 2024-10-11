@@ -15,9 +15,7 @@ internal class MonitoringInteractorImpl(
     private val monitoringRepository: MonitoringRepository,
     private val logResponseDataManager: LogResponseDataManager,
     private val logRequestDataManager: LogRequestDataManager,
-) :
-    MonitoringInteractor {
-
+) : MonitoringInteractor {
 
     override fun processLogs() {
         MindboxLoggerImpl.monitoringScope.launch {

@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
-
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
@@ -22,8 +21,7 @@ internal data class SettingsDtoBlank(
     val operations: Map<String?, OperationDtoBlank?>?,
     @SerializedName("ttl")
     val ttl: TtlDtoBlank?
-)
- {
+) {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
         val systemName: String
@@ -39,8 +37,9 @@ internal data class SettingsDto(
     @SerializedName("operations")
     val operations: Map<String, OperationDto>?,
     @SerializedName("ttl")
-    val ttl:TtlDto?
+    val ttl: TtlDto?
 )
+
 internal data class OperationDto(
     @SerializedName("systemName")
     val systemName: String
@@ -81,7 +80,7 @@ internal sealed class FrequencyDto {
         val type: String,
         @SerializedName("kind")
         val kind: String
-    ): FrequencyDto() {
+    ) : FrequencyDto() {
         internal companion object {
             const val FREQUENCY_ONCE_JSON_NAME = "once"
 
@@ -97,7 +96,7 @@ internal sealed class FrequencyDto {
         val unit: String,
         @SerializedName("value")
         val value: Long
-    ): FrequencyDto() {
+    ) : FrequencyDto() {
         internal companion object {
             const val FREQUENCY_PERIODIC_JSON_NAME = "periodic"
 
@@ -157,7 +156,8 @@ internal data class InAppConfigResponseBlank(
         val sdkVersion: SdkVersion?,
         @SerializedName("targeting")
         val targeting: JsonObject?,
+        // FormDto. Parsed after filtering inApp versions.
         @SerializedName("form")
-        val form: JsonObject?, // FormDto. Parsed after filtering inApp versions.
+        val form: JsonObject?,
     )
 }

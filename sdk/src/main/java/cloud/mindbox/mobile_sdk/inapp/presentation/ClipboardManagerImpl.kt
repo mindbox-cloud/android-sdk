@@ -14,7 +14,6 @@ internal class ClipboardManagerImpl(private val context: Context) : ClipboardMan
         )
     }
 
-
     companion object {
         private const val PAYLOAD_LABEL = "payload"
     }

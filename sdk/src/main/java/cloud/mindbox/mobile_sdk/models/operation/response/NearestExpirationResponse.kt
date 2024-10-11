@@ -12,5 +12,4 @@ open class NearestExpirationResponse(
 ) {
 
     override fun toString() = "NearestExpirationResponse(total=$total, date=$date)"
-
 }

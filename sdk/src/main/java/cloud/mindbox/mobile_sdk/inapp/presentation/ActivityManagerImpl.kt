@@ -7,7 +7,6 @@ import android.net.Uri
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
-
 internal class ActivityManagerImpl(
     private val callbackInteractor: CallbackInteractor,
     private val context: Context
@@ -20,7 +19,9 @@ internal class ActivityManagerImpl(
                 return if (callbackInteractor.isValidUrl(url) && intent.resolveActivity(context.packageManager) == null) {
                     context.startActivity(intent)
                     true
-                } else false
+                } else {
+                    false
+                }
             }
         } catch (e: Exception) {
             return false

@@ -52,5 +52,4 @@ class MigrationManagerTest {
             MindboxPreferences.shownInAppIds = ""
         }
     }
-
 }

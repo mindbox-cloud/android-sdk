@@ -21,7 +21,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class TreeTargetingTest {
 
@@ -92,7 +91,6 @@ class TreeTargetingTest {
                 .copy(kind = Kind.POSITIVE, ids = listOf("788", "456"))
                 .checkTargeting(mockk())
         )
-
     }
 
     @Test
@@ -184,7 +182,6 @@ class TreeTargetingTest {
                 .checkTargeting(mockk())
         )
     }
-
 
     @Test
     fun `segment targeting positive success check`() {
@@ -302,7 +299,6 @@ class TreeTargetingTest {
         )
     }
 
-
     @Test
     fun `union targeting check both true`() {
         assertTrue(
@@ -337,14 +333,12 @@ class TreeTargetingTest {
 
     @Test
     fun `operation targeting check`() = runTest {
-
         val testTargeting = spyk(
             OperationNode(systemName = "testOperation", type = "apiMethodCall"),
             recordPrivateCalls = true
         )
 
         assertTrue(testTargeting.checkTargeting(TestTargetingData("testOperation")))
-
     }
 
     @Test
@@ -427,9 +421,7 @@ class TreeTargetingTest {
         coVerify {
             mockkInAppSegmentationRepository.fetchCustomerSegmentations()
         }
-
     }
-
 
     @Test
     fun `check targeting visit GTE returns false when user visit count is lower`() {
@@ -625,5 +617,4 @@ class TreeTargetingTest {
         override val triggerEventName: String,
         override val operationBody: String? = null
     ) : TargetingData.OperationBody, TargetingData.OperationName
-
 }

@@ -1,14 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.callbacks
 
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import io.mockk.just
-import io.mockk.mockkObject
-import io.mockk.runs
-import io.mockk.verify
-import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -65,5 +60,4 @@ internal class LoggingInAppCallbackTest {
             )
         }
     }
-
 }

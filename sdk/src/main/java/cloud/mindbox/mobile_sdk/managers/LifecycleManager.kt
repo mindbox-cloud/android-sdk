@@ -13,7 +13,7 @@ import cloud.mindbox.mobile_sdk.models.DIRECT
 import cloud.mindbox.mobile_sdk.models.LINK
 import cloud.mindbox.mobile_sdk.models.PUSH
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import java.util.*
+import java.util.Timer
 import kotlin.concurrent.timer
 
 internal class LifecycleManager(
@@ -27,7 +27,6 @@ internal class LifecycleManager(
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
 ) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
 
-
     companion object {
 
         private const val SCHEMA_HTTP = "http"
@@ -36,7 +35,6 @@ internal class LifecycleManager(
         private const val TIMER_PERIOD = 1200000L
         private const val MAX_INTENT_HASHES_SIZE = 50
     }
-
 
     private var isIntentChanged = true
     private var timer: Timer? = null
@@ -51,7 +49,6 @@ internal class LifecycleManager(
     private var skipSendingTrackVisit = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
-
     }
 
     override fun onActivityStarted(activity: Activity) = LoggingExceptionHandler.runCatching {
@@ -97,11 +94,9 @@ internal class LifecycleManager(
     }
 
     override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {
-
     }
 
     override fun onActivityDestroyed(activity: Activity) {
-
     }
 
     fun isTrackVisitSent(): Boolean {
@@ -196,5 +191,4 @@ internal class LifecycleManager(
         timer?.cancel()
         timer = null
     }
-
 }

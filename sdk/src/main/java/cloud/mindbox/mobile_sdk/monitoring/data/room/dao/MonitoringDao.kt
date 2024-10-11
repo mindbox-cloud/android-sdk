@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.monitoring.data.room.dao
 import androidx.room.*
 import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 
-
 @Dao
 internal interface MonitoringDao {
 

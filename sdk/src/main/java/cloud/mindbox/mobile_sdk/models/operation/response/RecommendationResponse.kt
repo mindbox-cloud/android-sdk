@@ -20,8 +20,7 @@ open class RecommendationResponse(
 ) {
 
     override fun toString() = "RecommendationResponse(name=$name, description=$description, " +
-            "displayName=$displayName, url=$url, pictureUrl=$pictureUrl, price=$price, " +
-            "oldPrice=$oldPrice, category=$category, vendorCode=$vendorCode, ids=$ids, " +
-            "manufacturer=$manufacturer, customFields=$customFields)"
-
+        "displayName=$displayName, url=$url, pictureUrl=$pictureUrl, price=$price, " +
+        "oldPrice=$oldPrice, category=$category, vendorCode=$vendorCode, ids=$ids, " +
+        "manufacturer=$manufacturer, customFields=$customFields)"
 }

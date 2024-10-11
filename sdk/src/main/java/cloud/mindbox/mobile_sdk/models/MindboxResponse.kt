@@ -17,7 +17,5 @@ internal class MindboxResponse(
         internal const val STATUS_VALIDATION_ERROR = "ValidationError"
         internal const val STATUS_PROTOCOL_ERROR = "ProtocolError"
         internal const val STATUS_INTERNAL_SERVER_ERROR = "InternalServerError"
-
     }
-
 }

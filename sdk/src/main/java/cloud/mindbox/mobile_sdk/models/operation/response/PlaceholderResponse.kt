@@ -9,5 +9,4 @@ open class PlaceholderResponse(
 ) {
 
     override fun toString() = "PlaceholderResponse(ids=$ids, content=$content)"
-
 }

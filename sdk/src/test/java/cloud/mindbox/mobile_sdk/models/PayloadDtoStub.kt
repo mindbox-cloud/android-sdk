@@ -19,7 +19,8 @@ internal class PayloadDtoStub {
         )
 
         fun getSnackbarPositionDto() = PayloadDto.SnackbarDto.ContentDto.PositionDto(
-            gravity = getSnackbarGravityDto(), margin = PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto(
+            gravity = getSnackbarGravityDto(),
+            margin = PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto(
                 bottom = null,
                 kind = null,
                 left = null,

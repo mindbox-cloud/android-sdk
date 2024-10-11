@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 
-
 internal data class ViewProductCategoryNode(
     override val type: String,
     val kind: KindSubstring,

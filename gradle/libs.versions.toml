@@ -37,6 +37,7 @@ kotlinx_coroutines_test = "1.4.2"
 
 agcp = "1.6.0.300"
 maven_plugin = "2.1"
+ktlint-plugin = "12.1.1"
 
 [bundles]
 buildscript-plugins = [
@@ -44,7 +45,8 @@ buildscript-plugins = [
     "kotlin_gradle_plugin",
     "google_services",
     "maven_plugin",
-    "agcp"
+    "agcp",
+    "ktlint_gradle_plugin"
 ]
 
 test = [
@@ -104,3 +106,4 @@ kotlin_gradle_plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", v
 google_services = { module = "com.google.gms:google-services", version.ref = "google_services" }
 maven_plugin = { module = "com.github.dcendents:android-maven-gradle-plugin", version.ref = "maven_plugin" }
 agcp = { module = "com.huawei.agconnect:agcp", version.ref = "agcp" }
+ktlint_gradle_plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }

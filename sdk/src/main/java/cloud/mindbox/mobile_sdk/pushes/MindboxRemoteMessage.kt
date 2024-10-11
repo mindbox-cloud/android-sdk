@@ -1,4 +1,5 @@
 package cloud.mindbox.mobile_sdk.pushes
+
 /**
  * A class representing mindbox remote message
  * You can use it as a model to store data from mindbox

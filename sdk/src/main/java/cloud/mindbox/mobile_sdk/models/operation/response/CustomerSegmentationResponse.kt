@@ -8,6 +8,5 @@ open class CustomerSegmentationResponse(
 ) {
 
     override fun toString() = "CustomerSegmentationResponse(segmentation=$segmentation, " +
-            "segment=$segment)"
-
+        "segment=$segment)"
 }

@@ -1,20 +1,17 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.mockkStatic
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
 internal class InAppSerializationManagerTest {
 
-    private val gson: Gson  = Gson()
+    private val gson: Gson = Gson()
     private lateinit var inAppSerializationManager: InAppSerializationManager
     private val inAppId = "validInAppId"
     private val otherInAppId = "otherInAppId"
@@ -40,8 +37,7 @@ internal class InAppSerializationManagerTest {
         val gson: Gson = mockk()
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
         // Mocking runCatching to throw an exception
-        every {gson.fromJson<String>(json, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
-
+        every { gson.fromJson<String>(json, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
 
         val actualMap = inAppSerializationManager.deserializeToShownInAppsMap(json)
 
@@ -63,7 +59,7 @@ internal class InAppSerializationManagerTest {
         val gson: Gson = mockk()
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
         val shownInApps = mapOf("app1" to 100L, "app2" to 200L)
-        every { gson.toJson(shownInApps,object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
+        every { gson.toJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
 
         val actualJson = inAppSerializationManager.serializeToShownInAppsString(shownInApps)
 
@@ -149,6 +145,4 @@ internal class InAppSerializationManagerTest {
         val actualResult = inAppSerializationManager.deserializeToShownInApps(testString)
         assertEquals(expectedResult, actualResult)
     }
-
-
 }

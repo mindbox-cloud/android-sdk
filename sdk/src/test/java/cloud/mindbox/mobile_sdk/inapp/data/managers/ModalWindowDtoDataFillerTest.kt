@@ -9,7 +9,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -17,6 +17,7 @@ internal class ModalWindowDtoDataFillerTest {
 
     @get:Rule
     val rule = MockKRule(this)
+
     @MockK
     private lateinit var elementDtoDataFiller: ModalElementDtoDataFiller
 
