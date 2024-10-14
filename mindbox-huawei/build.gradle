@@ -13,6 +13,7 @@ dependencies {
     implementation project(path: ':sdk')
 
     // Implementation dependencies
+    implementation(platform(libs.kotlinx.coroutines.bom))
     implementation libs.kotlinx.coroutines.core
 
     // HMS
