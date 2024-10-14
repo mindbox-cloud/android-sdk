@@ -14,8 +14,7 @@ gms_play_services_base = "18.0.1"
 gms_play_services_ads_identifier = "18.0.1"
 google_services = "4.3.10"
 hms_ads_identifier = "3.4.39.302"
-kotlinx_coroutines_core = "1.6.4"
-kotlinx_coroutines_android = "1.6.4"
+kotlinx_coroutines_bom = "1.6.4"
 volley = "1.2.1"
 gson = "2.8.9"
 work_manager = "2.7.1"
@@ -33,7 +32,6 @@ mockk = "1.13.3"
 robolectric = "4.11"
 test_core = "1.5.0"
 turbine = "0.12.1"
-kotlinx_coroutines_test = "1.6.4"
 
 agcp = "1.6.0.300"
 maven_plugin = "2.1"
@@ -70,8 +68,9 @@ firebase_messaging = { group = "com.google.firebase", name = "firebase-messaging
 gms_play_services_basement = { group = "com.google.android.gms", name = "play-services-basement", version.ref = "gms_play_services_basement" }
 gms_play_services_base = { group = "com.google.android.gms", name = "play-services-base", version.ref = "gms_play_services_base" }
 gms_play_services_ads_identifier = { group = "com.google.android.gms", name = "play-services-ads-identifier", version.ref = "gms_play_services_ads_identifier" }
-kotlinx_coroutines_core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx_coroutines_core" }
-kotlinx_coroutines_android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx_coroutines_android" }
+kotlinx_coroutines_bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-bom", version.ref = "kotlinx_coroutines_bom" }
+kotlinx_coroutines_core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core" }
+kotlinx_coroutines_android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android" }
 volley = { group = "com.android.volley", name = "volley", version.ref = "volley" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 room_runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
@@ -96,7 +95,7 @@ mockk_agent = { group = "io.mockk", name = "mockk-agent", version.ref = "mockk" 
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 test_core = { group = "androidx.test", name = "core", version.ref = "test_core" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
-kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx_coroutines_test" }
+kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test" }
 
 # Buildscript plugins
 android_tools_build_gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle_plugin" }
