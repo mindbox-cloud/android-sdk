@@ -8,17 +8,24 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import cloud.mindbox.mindbox_common.MindboxCommon
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.mindbox.example.databinding.ActivityMainBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : AppCompatActivity() {
 
     private var _binding: ActivityMainBinding? = null
     private val binding: ActivityMainBinding
         get() = _binding!!
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
@@ -54,6 +61,20 @@ class MainActivity : AppCompatActivity() {
         binding.btnOpenPushList.setOnClickListener {
             startActivity(Intent(this, NotificationHistoryActivity::class.java))
         }
+
+
+        binding.btnDownloadAndExecute.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
+                MindboxCommon(context = baseContext).apply {
+                    downloadConfig {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setMessage(it)
+                            .show()
+                    }
+                }
+            }
+        }
+
     }
 
     override fun onNewIntent(intent: Intent) {

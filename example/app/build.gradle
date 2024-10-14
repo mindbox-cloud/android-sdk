@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
     id 'com.huawei.agconnect'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -11,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId "com.mindbox.example"
-        minSdk 19
+        minSdk 24
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -39,6 +40,9 @@ android {
     }
 } */
 dependencies {
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
+    implementation("io.ktor:ktor-client-core:2.3.12")
+    implementation("io.ktor:ktor-client-cio:2.3.12")
 
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -58,6 +62,7 @@ dependencies {
     implementation 'cloud.mindbox:mobile-sdk:2.11.1'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
+    implementation 'cloud.mindbox:mindbox-common:1.0.9'
 
     //Glade for custom loader
     implementation 'com.github.bumptech.glide:glide:4.15.1'
