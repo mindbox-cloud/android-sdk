@@ -23,8 +23,8 @@ class ExampleApp : Application() {
         //https://developers.mindbox.ru/docs/android-sdk-initialization
         val configuration = MindboxConfiguration.Builder(
             context = applicationContext,
-            domain = "",//paste your domain address
-            endpointId = ""//paste your domain address
+            domain = "api.mindbox.ru",//paste your domain address
+            endpointId = "Mpush-test.AndroidAppExample"//paste your domain address
         )
             .shouldCreateCustomer(true)
             .subscribeCustomerIfCreated(true)

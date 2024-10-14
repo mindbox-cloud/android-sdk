@@ -11,9 +11,10 @@ dependencyResolutionManagement {
         google()
         maven { url 'https://developer.huawei.com/repo/' }
         mavenCentral()
-
+        mavenLocal()
     }
 }
 
 rootProject.name = "Mindbox Android Sdk Example"
 include ':app'
+include ':mylibrary'

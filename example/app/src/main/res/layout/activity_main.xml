@@ -180,4 +180,15 @@
         app:layout_constraintStart_toStartOf="@+id/btnOpenActivity"
         app:layout_constraintTop_toBottomOf="@+id/btnOpenActivity" />
 
+    <Button
+        android:id="@+id/btn_download_and_execute"
+        android:layout_width="200dp"
+        android:layout_height="70dp"
+        android:layout_marginTop="10dp"
+        android:text="Downdload and execute"
+        app:layout_constraintEnd_toEndOf="@+id/btn_open_push_list"
+        app:layout_constraintStart_toStartOf="@+id/btn_open_push_list"
+        app:layout_constraintTop_toBottomOf="@+id/btn_open_push_list" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
