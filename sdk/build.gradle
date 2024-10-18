@@ -1,5 +1,6 @@
 apply plugin: "java-platform"
 apply from: "../modulesCommon.gradle"
+apply plugin: 'com.google.devtools.ksp'
 
 
 javaPlatform {
@@ -12,6 +13,12 @@ dependencies {
     }
 }
 android {
+    namespace 'cloud.mindbox.mobile_sdk'
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         consumerProguardFiles "consumer-rules.pro",
                     "${rootProject.projectDir}/proguard/proguard-gson.pro",
@@ -53,7 +60,7 @@ dependencies {
     // Database
     implementation libs.room.runtime
     implementation libs.room.ktx
-    kapt libs.room.compiler
+    ksp libs.room.compiler
 
     // Work Manager
     implementation libs.work.manager
@@ -64,7 +71,7 @@ dependencies {
 
     // Glide
     implementation libs.glide
-    kapt libs.glide.compiler
+    ksp libs.glide.compiler
 
     // Test dependencies
     testImplementation libs.bundles.test

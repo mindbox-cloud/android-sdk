@@ -24,10 +24,10 @@ internal abstract class MindboxDatabase : RoomDatabase() {
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
 
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 val query = "ALTER TABLE $CONFIGURATION_TABLE_NAME " +
                     "ADD COLUMN shouldCreateCustomer INTEGER NOT NULL DEFAULT 1"
-                database.execSQL(query)
+                db.execSQL(query)
             }
         }
 
