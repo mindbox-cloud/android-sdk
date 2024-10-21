@@ -41,7 +41,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     companion object {
         private const val ANIM_DURATION = 500L
         private const val ANIM_SWIPE_DURATION = 100L
-        private const val MODAL_WINDOW_MARGIN = 40
+        private const val MODAL_WINDOW_MARGIN = 0
         private const val CLICK_THRESHOLD = 100
     }
 
