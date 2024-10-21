@@ -1,9 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.annotation.SuppressLint
+import android.graphics.Color
+import android.view.KeyEvent
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
+import android.webkit.*
 import android.widget.FrameLayout
+import android.widget.RelativeLayout
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
@@ -57,17 +61,58 @@ internal class ModalWindowInAppViewHolder(
         currentBackground?.isVisible = true
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
         super.addUrlSource(layer, inAppCallback)
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
-                InAppImageView(currentDialog.context).also { inAppImageView ->
-                    inAppImageView.visibility = View.INVISIBLE
-                    currentDialog.addView(inAppImageView)
-                    inAppImageView.prepareViewForModalWindow(currentDialog)
-                    preparedImages[inAppImageView] = false
-                    getImageFromCache(layer.source.url, inAppImageView)
+                val webView = WebView(currentDialog.context).apply {
+                    setWebChromeClient(WebChromeClient())
+                    setWebViewClient(object : WebViewClient() {
+                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                            super.onReceivedError(view, request, error)
+                        }
+
+                        override fun onLoadResource(view: WebView?, url: String?) {
+                            super.onLoadResource(view, url)
+                            if (url == "https://personalization-web-staging.mindbox.ru/web/contacts/28553/") {
+                                mindboxLogI("onCompleted script. Close inapp")
+                                hide()
+                            }
+                        }
+
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                            return super.shouldOverrideUrlLoading(view, request)
+                        }
+
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                        }
+
+                        override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean {
+                            return super.shouldOverrideKeyEvent(view, event)
+                        }
+                    })
+                    layoutParams = RelativeLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.builtInZoomControls = true
+                    settings.displayZoomControls = false
+                    settings.defaultTextEncodingName = "utf-8"
+                    settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                    setBackgroundColor(Color.TRANSPARENT)
                 }
+                val unEncodedHtml = currentDialog.context.assets
+                    .open("webview.html")
+                    .bufferedReader()
+                    .use { it.readText() }
+                val baseUrl = "file:///android_asset/"
+                currentDialog.addView(webView)
+                webView.loadDataWithBaseURL(baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
             }
         }
     }
@@ -95,7 +140,8 @@ internal class ModalWindowInAppViewHolder(
 
     override fun initView(currentRoot: ViewGroup) {
         currentRoot.removeChildById(R.id.inapp_background_layout)
-        currentBackground = LayoutInflater.from(currentRoot.context)
+        currentBackground = LayoutInflater
+            .from(currentRoot.context)
             .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
         currentRoot.addView(currentBackground)
         super.initView(currentRoot)
