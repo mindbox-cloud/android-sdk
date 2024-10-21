@@ -49,11 +49,6 @@ android {
     }
 }
 
-/*tasks.register('androidSourcesJar', Jar) {
-    archiveClassifier.set('sources')
-    from android.sourceSets.main.java.srcDirs
-}*/
-
 afterEvaluate {
     publishing {
         publications {
