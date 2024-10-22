@@ -1,11 +1,13 @@
 package cloud.mindbox.mobile_sdk.monitoring.data.repositories
 
+import android.util.Log
 import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.monitoring.data.checkers.LogStoringDataCheckerImpl
 import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
 import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
+import cloud.mindbox.mobile_sdk.monitoring.data.room.entities.MonitoringEntity
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.LogStoringDataChecker
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringRepository
@@ -67,6 +69,58 @@ internal class MonitoringRepositoryImpl(
                 message
             )
         )
+        if (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
+            LogStoringDataCheckerImpl.needCleanLog.set(true)
+            try {
+                Mutex().withLock {
+                    if (LogStoringDataCheckerImpl.deletionIsInProgress.get().not()) {
+                        LogStoringDataCheckerImpl.deletionIsInProgress.set(true)
+                        monitoringDao.deleteFirstTenPercentOfLogs()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private val queue: MutableList<MonitoringEntity> = mutableListOf()
+
+    @Volatile
+    private var isWriting = false
+
+    private val mutex = Mutex()
+
+    override suspend fun saveLogQueue(zonedDateTime: ZonedDateTime, message: String) {
+        Log.wtf("MY_TAG", "saveLogQueue: add to Queue")
+        mutex.withLock {
+            queue.add(
+                monitoringMapper.mapLogInfoToMonitoringEntity(
+                    zonedDateTime.convertToString(),
+                    message
+                )
+            )
+        }
+
+        if (isWriting) {
+            Log.wtf("MY_TAG", "saveLogQueue: isWriting true")
+            return
+        }
+
+        isWriting = true
+        Log.wtf("MY_TAG", "saveLogQueue: queue ${queue.size}")
+        while (queue.isNotEmpty()) {
+            Log.wtf("MY_TAG", "saveLogQueue: start")
+            val logs = mutableListOf<MonitoringEntity>()
+            mutex.withLock {
+                logs.addAll(queue)
+                queue.clear()
+            }
+
+            Log.wtf("MY_TAG", "saveLogQueue: insertLogs ${logs.size}")
+            monitoringDao.insertLogs(logs)
+            isWriting = false
+        }
+
         if (logStoringDataChecker.isDatabaseMemorySizeExceeded()) {
             LogStoringDataCheckerImpl.needCleanLog.set(true)
             try {

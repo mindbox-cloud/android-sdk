@@ -6,9 +6,9 @@ target_sdk = "34"
 
 firebase_bom = "32.7.2"
 hms_push = "6.11.0.300"
-room = "2.5.1"
-kotlin = "1.8.21"
-gradle_plugin = "7.4.2"
+room = "2.6.1"
+kotlin = "1.9.22"
+gradle_plugin = "8.6.0"
 gms_play_services_basement = "18.1.0"
 gms_play_services_base = "18.0.1"
 gms_play_services_ads_identifier = "18.0.1"
@@ -34,17 +34,21 @@ test_core = "1.5.0"
 turbine = "0.12.1"
 
 agcp = "1.6.0.300"
-maven_plugin = "2.1"
 ktlint-plugin = "12.1.1"
+ksp = "1.9.22-1.0.17"
+benchmark-gradle-plugin = "1.3.3"
+runner = "1.6.2"
+benchmark-junit4 = "1.3.3"
+rules = "1.6.1"
 
 [bundles]
 buildscript-plugins = [
     "android_tools_build_gradle",
     "kotlin_gradle_plugin",
     "google_services",
-    "maven_plugin",
     "agcp",
-    "ktlint_gradle_plugin"
+    "ktlint_gradle_plugin",
+    "ksp_gradle_plugin"
 ]
 
 test = [
@@ -103,6 +107,10 @@ kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 android_tools_build_gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle_plugin" }
 kotlin_gradle_plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 google_services = { module = "com.google.gms:google-services", version.ref = "google_services" }
-maven_plugin = { module = "com.github.dcendents:android-maven-gradle-plugin", version.ref = "maven_plugin" }
 agcp = { module = "com.huawei.agconnect:agcp", version.ref = "agcp" }
 ktlint_gradle_plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
+ksp_gradle_plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+benchmark-gradle-plugin = { group = "androidx.benchmark", name = "benchmark-gradle-plugin", version.ref = "benchmark-gradle-plugin" }
+runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
+benchmark-junit4 = { group = "androidx.benchmark", name = "benchmark-junit4", version.ref = "benchmark-junit4" }
+rules = { group = "androidx.test", name = "rules", version.ref = "rules" }

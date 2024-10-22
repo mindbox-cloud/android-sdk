@@ -41,7 +41,6 @@ internal object MindboxLoggerImpl : MindboxLogger {
         })
 
     init {
-
         VolleyLog.DEBUG = false
     }
 
@@ -65,7 +64,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
         if (level.value <= Level.DEBUG.value) {
             Log.d(TAG, logMessage)
         }
-        saveLog(logMessage)
+        addQueue(logMessage)
     }
 
     override fun e(parent: Any, message: String) {
@@ -107,6 +106,18 @@ internal object MindboxLoggerImpl : MindboxLogger {
                 Instant.now().convertToZonedDateTimeAtUTC(),
                 message
             )
+            Log.d("MY_TAG_TRACK", "saveLog: END ${System.currentTimeMillis()}")
+        }
+    }
+
+    private fun addQueue(message: String) {
+        if (!MindboxDI.isInitialized()) return
+        monitoringScope.launch {
+            monitoringRepository.saveLogQueue(
+                Instant.now().convertToZonedDateTimeAtUTC(),
+                message
+            )
+            Log.d("MY_TAG_TRACK", "saveLog: END ${System.currentTimeMillis()}")
         }
     }
 

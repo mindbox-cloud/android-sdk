@@ -9,6 +9,10 @@ internal interface MonitoringDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(entity: MonitoringEntity)
 
+    @Transaction
+    @Insert(onConflict = OnConflictStrategy.NONE)
+    suspend fun insertLogs(entities: List<MonitoringEntity>)
+
     @Query("DELETE FROM ${MonitoringEntity.TABLE_NAME} WHERE id IN (SELECT id FROM ${MonitoringEntity.TABLE_NAME} ORDER BY id ASC LIMIT (SELECT CNT/10 FROM (SELECT COUNT(id) as CNT FROM ${MonitoringEntity.TABLE_NAME})))")
     suspend fun deleteFirstTenPercentOfLogs()
 

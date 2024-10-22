@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.library'
+    id 'androidx.benchmark'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'cloud.mindbox.benchmark'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 34
+
+
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR,LOW-BATTERY"
+        testInstrumentationRunner 'androidx.benchmark.junit4.AndroidBenchmarkRunner'
+    }
+
+    testBuildType = "release"
+    buildTypes {
+        debug {
+            // Since debuggable can"t be modified by gradle for library modules,
+            // it must be done in a manifest - see src/androidTest/AndroidManifest.xml
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "benchmark-proguard-rules.pro"
+        }
+        release {
+            isDefault = true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+    implementation project(":sdk")
+    implementation platform(libs.kotlinx.coroutines.bom)
+    implementation libs.kotlinx.coroutines.test
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.rules
+    androidTestImplementation libs.runner
+    androidTestImplementation libs.androidx.junit
+    androidTestImplementation libs.junit
+    androidTestImplementation libs.benchmark.junit4
+
+    // Add your dependencies here. Note that you cannot benchmark code
+    // in an app module this way - you will need to move any code you
+    // want to benchmark to a library module:
+    // https://developer.android.com/studio/projects/android-library#Convert
+
+}
