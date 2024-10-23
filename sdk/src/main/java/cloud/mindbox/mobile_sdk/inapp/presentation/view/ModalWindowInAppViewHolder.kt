@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.os.Build
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -16,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 
@@ -61,13 +63,12 @@ internal class ModalWindowInAppViewHolder(
         currentBackground?.isVisible = true
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
         super.addUrlSource(layer, inAppCallback)
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
                 val webView = WebView(currentDialog.context).apply {
-                    setWebChromeClient(WebChromeClient())
                     setWebViewClient(object : WebViewClient() {
                         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                             super.onReceivedError(view, request, error)
@@ -82,17 +83,40 @@ internal class ModalWindowInAppViewHolder(
                         }
 
                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                mindboxLogD("shouldOverrideUrlLoading: ${request?.url}")
+                            }
                             return super.shouldOverrideUrlLoading(view, request)
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
+                            mindboxLogD("onPageFinished: $url")
+                            view?.evaluateJavascript(
+                                """
+                                 document.addEventListener('click', function(event) {
+                                    var target = event.target;
+                                    if (target.classList.contains('popmechanic-close')) {
+                                        Android.onCloseButtonClicked();
+                                    }
+                                });
+                                """.trimMargin()
+                            ) {
+                                mindboxLogD("onPageFinished: $it")
+                            }
                         }
 
-                        override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean {
-                            return super.shouldOverrideKeyEvent(view, event)
-                        }
+                        override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean = super.shouldOverrideKeyEvent(view, event)
                     })
+                    addJavascriptInterface(
+                        WebAppInterface({
+                            "Mindbox".mindboxLogD("Hide on close button clicked")
+                            currentDialog.post {
+                                hide()
+                            }
+                        }),
+                        "Android"
+                    )
                     layoutParams = RelativeLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
@@ -110,7 +134,7 @@ internal class ModalWindowInAppViewHolder(
                     .open("webview.html")
                     .bufferedReader()
                     .use { it.readText() }
-                val baseUrl = "file:///android_asset/"
+                val baseUrl = "file:///android_asset/webview.html"
                 currentDialog.addView(webView)
                 webView.loadDataWithBaseURL(baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
             }
