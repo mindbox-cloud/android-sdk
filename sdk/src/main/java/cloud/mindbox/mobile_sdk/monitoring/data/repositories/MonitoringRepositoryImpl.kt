@@ -83,6 +83,15 @@ internal class MonitoringRepositoryImpl(
         }
     }
 
+    override suspend fun addLogQueue(zonedDateTime: String, message: String) {
+        mutex.withLock {
+            queue.add(MonitoringEntity(
+                time = zonedDateTime,
+                log = message
+            ))
+        }
+    }
+
     private val queue: MutableList<MonitoringEntity> = mutableListOf()
 
     @Volatile
@@ -90,17 +99,7 @@ internal class MonitoringRepositoryImpl(
 
     private val mutex = Mutex()
 
-    override suspend fun saveLogQueue(zonedDateTime: ZonedDateTime, message: String) {
-        Log.wtf("MY_TAG", "saveLogQueue: add to Queue")
-        mutex.withLock {
-            queue.add(
-                monitoringMapper.mapLogInfoToMonitoringEntity(
-                    zonedDateTime.convertToString(),
-                    message
-                )
-            )
-        }
-
+    override suspend fun saveLogQueue() {
         if (isWriting) {
             Log.wtf("MY_TAG", "saveLogQueue: isWriting true")
             return
@@ -117,7 +116,9 @@ internal class MonitoringRepositoryImpl(
             }
 
             Log.wtf("MY_TAG", "saveLogQueue: insertLogs ${logs.size}")
-            monitoringDao.insertLogs(logs)
+            if (logs.size > 0) {
+                monitoringDao.insertLogs(logs)
+            }
             isWriting = false
         }
 

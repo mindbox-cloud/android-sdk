@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.logger
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -36,9 +37,13 @@ internal object MindboxLoggerImpl : MindboxLogger {
     private val monitoringRepository: MonitoringRepository by mindboxInject { monitoringRepository }
 
     val monitoringScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
-            Log.e(TAG, "Mindbox monitoring caught unhandled error", throwable)
-        })
+        CoroutineScope(
+            SupervisorJob() +
+                Dispatchers.IO +
+                CoroutineExceptionHandler { _, throwable ->
+                    Log.e(TAG, "Mindbox monitoring caught unhandled error", throwable)
+                }
+        )
 
     init {
         VolleyLog.DEBUG = false
@@ -112,12 +117,13 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     private fun addQueue(message: String) {
         if (!MindboxDI.isInitialized()) return
+
         monitoringScope.launch {
-            monitoringRepository.saveLogQueue(
-                Instant.now().convertToZonedDateTimeAtUTC(),
+            monitoringRepository.addLogQueue(
+                Instant.now().convertToZonedDateTimeAtUTC().convertToString(),
                 message
             )
-            Log.d("MY_TAG_TRACK", "saveLog: END ${System.currentTimeMillis()}")
+            monitoringRepository.saveLogQueue()
         }
     }
 
