@@ -56,7 +56,7 @@ dependencies {
 
 
     //Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.11.1'
+    implementation 'cloud.mindbox:mobile-sdk:2.11.2'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
 
