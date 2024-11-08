@@ -8,5 +8,4 @@ internal class OperationNameValidator : Validator<String?> {
     override fun isValid(item: String?): Boolean = item.equalsAny(
         *OperationName.values().map { it.operation }.toTypedArray()
     )
-
 }

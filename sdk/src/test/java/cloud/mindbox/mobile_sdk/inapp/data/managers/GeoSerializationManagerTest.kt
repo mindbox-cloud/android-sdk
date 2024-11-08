@@ -54,7 +54,8 @@ internal class GeoSerializationManagerTest {
         val testJson = ""
         val expectedResult = GeoTargetingStub.getGeoTargeting().copy(cityId = "",
             regionId = "",
-            countryId = "")
+            countryId = ""
+        )
         val actualResult = geoSerializationManager.deserializeToGeoTargeting(testJson)
         assertEquals(expectedResult, actualResult)
     }
@@ -109,6 +110,4 @@ internal class GeoSerializationManagerTest {
         val actualResult = geoSerializationManager.serializeToGeoString(testGeoTargeting)
         assertEquals(expectedResult, actualResult)
     }
-
-
 }

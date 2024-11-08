@@ -22,5 +22,4 @@ internal class GeoSerializationManagerImpl(private val gson: Gson) : GeoSerializ
             gson.toJson(inAppGeo)
         }
     }
-
 }

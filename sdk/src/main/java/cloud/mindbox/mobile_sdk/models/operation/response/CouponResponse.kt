@@ -9,5 +9,4 @@ open class CouponResponse(
 ) {
 
     override fun toString() = "CouponResponse(ids=$ids, pool=$pool)"
-
 }

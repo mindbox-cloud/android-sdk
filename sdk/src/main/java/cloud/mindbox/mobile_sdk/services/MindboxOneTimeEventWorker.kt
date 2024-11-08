@@ -16,11 +16,11 @@ internal class MindboxOneTimeEventWorker(
     override fun doWork(): Result = LoggingExceptionHandler.runCatching(
         defaultValue = Result.failure()
     ) {
-            workerDelegate.sendEventsWithResult(
-                context = applicationContext,
-                parent = this
-            )
-        }
+        workerDelegate.sendEventsWithResult(
+            context = applicationContext,
+            parent = this
+        )
+    }
 
     override fun onStopped() {
         super.onStopped()

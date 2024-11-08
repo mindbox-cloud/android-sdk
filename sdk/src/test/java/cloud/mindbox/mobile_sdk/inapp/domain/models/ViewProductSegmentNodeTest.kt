@@ -7,8 +7,10 @@ import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.ProductSegmentationResponseStub
 import com.google.gson.Gson
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
+import io.mockk.mockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -16,7 +18,6 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewProductSegmentNodeTest {
@@ -66,7 +67,6 @@ class ViewProductSegmentNodeTest {
 
     @Test
     fun `check targeting positive success`() = runTest {
-
         val productSegmentation =
             setOf(
                 ProductSegmentationResponseStub.getProductSegmentationResponseWrapper()
@@ -81,7 +81,6 @@ class ViewProductSegmentNodeTest {
                                         )
                                 )
                             )
-
                         )
                     )
             )
@@ -127,7 +126,6 @@ class ViewProductSegmentNodeTest {
                                         )
                                 )
                             )
-
                         )
                     )
             )
@@ -173,7 +171,6 @@ class ViewProductSegmentNodeTest {
                                         )
                                 )
                             )
-
                         )
                     )
             )
@@ -219,7 +216,6 @@ class ViewProductSegmentNodeTest {
                                         )
                                 )
                             )
-
                         )
                     )
             )

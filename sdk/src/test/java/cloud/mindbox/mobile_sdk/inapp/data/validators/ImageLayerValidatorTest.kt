@@ -14,7 +14,7 @@ import org.junit.Test
 internal class ImageLayerValidatorTest {
 
     @get:Rule
-    val rule= MockKRule(this)
+    val rule = MockKRule(this)
 
     @MockK
     private lateinit var sourceValidator: ImageLayerValidator.SourceValidator
@@ -25,11 +25,8 @@ internal class ImageLayerValidatorTest {
     @OverrideMockKs
     private lateinit var imageLayerValidator: ImageLayerValidator
 
-
-
     @Test
     fun `isValid should return true for valid ImageLayerDto`() {
-
         every { actionValidator.isValid(any()) } returns true
 
         every { sourceValidator.isValid(any()) } returns true
@@ -49,7 +46,6 @@ internal class ImageLayerValidatorTest {
 
     @Test
     fun `isValid should return false for invalid ImageLayerDto`() {
-
         every { actionValidator.isValid(any()) } returns true
 
         every { sourceValidator.isValid(any()) } returns true
@@ -69,7 +65,6 @@ internal class ImageLayerValidatorTest {
 
     @Test
     fun `SourceValidator isValid should return true for valid UrlSourceDto`() {
-
         // Arrange
         val urlSourceDto = BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto(
             type = BackgroundDto.LayerDto.ImageLayerDto.SourceDto.UrlSourceDto.URL_SOURCE_JSON_NAME,
@@ -186,5 +181,4 @@ internal class ImageLayerValidatorTest {
         // Assert
         assertFalse(isValid)
     }
-
 }

@@ -33,5 +33,4 @@ class DateOnlyAdapter : TypeAdapter<DateOnly>() {
             reader.nextString()?.let { formatter.parse(it)?.time?.let(::DateOnly) }
         }
     }
-
 }

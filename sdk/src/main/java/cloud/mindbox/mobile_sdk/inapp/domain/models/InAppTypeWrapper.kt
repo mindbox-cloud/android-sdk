@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
-
-internal data class InAppTypeWrapper<out T: InAppType>(
+internal data class InAppTypeWrapper<out T : InAppType>(
     val inAppType: T,
     val onInAppClick: OnInAppClick,
     val onInAppShown: OnInAppShown,

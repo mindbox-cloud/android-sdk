@@ -8,11 +8,10 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.just
-import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
-import org.junit.Assert.*
-import org.junit.Before
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +44,5 @@ class ClipboardManagerTest {
         val expectedClipData = ClipData.newPlainText("payload", copyString)
         assertTrue(clipDataSlot.isCaptured)
         assertEquals(clipDataSlot.captured.getItemAt(0).text, expectedClipData.getItemAt(0).text)
-
     }
 }

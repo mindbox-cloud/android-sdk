@@ -31,10 +31,10 @@ internal typealias SessionDelay = Frequency.Delay.TimeDelay
 
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
-        object LifetimeDelay: Delay()
-        data class TimeDelay(val time: Long, val unit: InAppTime): Delay()
-    }
+        object LifetimeDelay : Delay()
 
+        data class TimeDelay(val time: Long, val unit: InAppTime) : Delay()
+    }
 }
 
 internal data class Form(
@@ -50,7 +50,7 @@ internal sealed class InAppType(open val inAppId: String) {
         val elements: List<Element>,
         val position: Position
     ) : InAppType(inAppId) {
-        internal data class Position(val gravity: Gravity,  val margin: Margin) {
+        internal data class Position(val gravity: Gravity, val margin: Margin) {
 
             internal data class Margin(
                 val kind: MarginKind,
@@ -63,6 +63,7 @@ internal sealed class InAppType(open val inAppId: String) {
                     DP
                 }
             }
+
             internal data class Gravity(
                 val horizontal: HorizontalGravity,
                 val vertical: VerticalGravity
@@ -70,7 +71,8 @@ internal sealed class InAppType(open val inAppId: String) {
                 internal enum class HorizontalGravity {
                     CENTER
                 }
-                internal enum class VerticalGravity{
+
+                internal enum class VerticalGravity {
                     TOP,
                     BOTTOM
                 }
@@ -84,7 +86,6 @@ internal sealed class InAppType(open val inAppId: String) {
         val layers: List<Layer>,
         val elements: List<Element>
     ) : InAppType(inAppId)
-
 }
 
 internal data class ABTest(

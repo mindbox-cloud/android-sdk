@@ -6,7 +6,8 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkObject
 import io.mockk.verify
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -17,7 +18,6 @@ internal class CloseButtonSnackbarSizeValidatorTest {
 
     @OverrideMockKs
     private lateinit var closeButtonSnackbarSizeValidator: CloseButtonSnackbarSizeValidator
-
 
     @Test
     fun `should return true when size is valid`() {
@@ -56,9 +56,8 @@ internal class CloseButtonSnackbarSizeValidatorTest {
         verify {
             MindboxLoggerImpl.i(any(),
                 "Close button size is not valid. Expected kind != null and width/height in range [0, inf]. " +
-                        "Actual params : kind =  ${sizeDto?.kind}, height = ${sizeDto?.height}, width = ${sizeDto?.width}"
+                    "Actual params : kind =  ${sizeDto?.kind}, height = ${sizeDto?.height}, width = ${sizeDto?.width}"
             )
         }
     }
-
 }

@@ -1,4 +1,5 @@
 package cloud.mindbox.mobile_sdk.utils
+
 /**
  * A class for internal sdk work only. Do not extend or use it
  * */
@@ -39,5 +40,4 @@ abstract class ExceptionHandler {
     }
 
     protected abstract fun handle(exception: Throwable)
-
 }

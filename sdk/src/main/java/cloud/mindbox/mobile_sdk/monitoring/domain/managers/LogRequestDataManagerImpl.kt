@@ -16,5 +16,4 @@ internal class LogRequestDataManagerImpl : LogRequestDataManager {
     override fun checkRequestIdProcessed(requestIds: HashSet<String>, requestId: String): Boolean {
         return requestIds.contains(requestId)
     }
-
 }

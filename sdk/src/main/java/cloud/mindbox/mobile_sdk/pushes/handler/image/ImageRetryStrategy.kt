@@ -53,5 +53,4 @@ sealed class ImageRetryStrategy {
         val delay: Long = 0L,
         val defaultImage: Bitmap? = null,
     ) : ImageRetryStrategy()
-
 }

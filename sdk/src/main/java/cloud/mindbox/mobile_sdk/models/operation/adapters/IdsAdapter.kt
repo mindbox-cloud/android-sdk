@@ -47,5 +47,4 @@ class IdsAdapter : TypeAdapter<Ids?>() {
             Ids(ids)
         }
     }
-
 }

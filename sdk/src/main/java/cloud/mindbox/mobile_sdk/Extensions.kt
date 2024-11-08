@@ -17,6 +17,7 @@ import android.view.animation.Animation
 import android.view.animation.Animation.AnimationListener
 import androidx.annotation.IdRes
 import cloud.mindbox.mobile_sdk.Mindbox.logE
+import cloud.mindbox.mobile_sdk.Mindbox.logW
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -92,18 +93,17 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
 }
 
 internal fun String?.equalsAny(vararg values: String, ignoreCase: Boolean = false): Boolean = values.any { this?.equals(it, ignoreCase) == true }
-internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T {
-    return this?.let {
-        enumValues<T>().firstOrNull { value ->
-            value.name
-                .replace("_", "")
-                .equals(
-                    this.replace("_", "").trim(),
-                    ignoreCase = true
-                )
-        }
-    } ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
-}
+
+internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T = this?.let {
+    enumValues<T>().firstOrNull { value ->
+        value.name
+            .replace("_", "")
+            .equals(
+                this.replace("_", "").trim(),
+                ignoreCase = true
+            )
+    }
+} ?: default ?: throw IllegalArgumentException("Value for $this could not be found")
 
 internal fun Double?.isInRange(start: Double, end: Double): Boolean {
     if (this == null) return false
@@ -162,13 +162,12 @@ internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
 
         override fun onAnimationRepeat(animation: Animation?) {
         }
-
     })
 }
 
-internal fun ViewGroup.removeChildById(@IdRes viewId: Int) {
-    return removeView(findViewById(viewId))
-}
+internal fun ViewGroup.removeChildById(
+    @IdRes viewId: Int
+) = removeView(findViewById(viewId))
 
 internal val Activity?.root: ViewGroup?
     get() = this?.window?.decorView?.rootView as ViewGroup?
@@ -217,9 +216,11 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
         ?: ""
 }
 
-internal fun verifyMainThreadExecution(methodName: String) {
-    if (Looper.myLooper() != Looper.getMainLooper()) {
-        logE("Method $methodName must be called by main thread")
+internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boolean = true) {
+    val isMainThread = Looper.myLooper() == Looper.getMainLooper()
+    when {
+        shouldBeMainThread && !isMainThread -> logE("Method $methodName must be called on the main thread")
+        !shouldBeMainThread && isMainThread -> logW("Method $methodName should not be called on the main thread")
     }
 }
 
@@ -231,9 +232,9 @@ internal fun String.parseTimeSpanToMillis(): Long {
     val daysCorrected = if (days.isBlank()) "0" else days.dropLast(1)
 
     val duration = daysCorrected.toLong().days +
-            hours.toLong().hours +
-            minutes.toLong().minutes +
-            (seconds + fraction).toDouble().seconds
+        hours.toLong().hours +
+        minutes.toLong().minutes +
+        (seconds + fraction).toDouble().seconds
 
     return if (sign == "-") duration.inWholeMilliseconds * -1 else duration.inWholeMilliseconds
 }

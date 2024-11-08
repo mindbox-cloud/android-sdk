@@ -12,7 +12,6 @@ import org.junit.Test
 
 internal class ModalWindowValidatorTest {
 
-
     @get:Rule
     val rule = MockKRule(this)
 

@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.abtests
 
 import java.security.MessageDigest
 
-internal class CustomerAbMixerImpl: CustomerAbMixer {
+internal class CustomerAbMixerImpl : CustomerAbMixer {
 
     private val sha256 by lazy {
         MessageDigest.getInstance("SHA-256").apply { reset() }

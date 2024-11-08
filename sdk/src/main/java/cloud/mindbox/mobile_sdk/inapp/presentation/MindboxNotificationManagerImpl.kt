@@ -65,7 +65,6 @@ internal class MindboxNotificationManagerImpl(
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-
                 requestPermissionManager.increaseRequestCounter()
                 if (activity.shouldShowRequestPermissionRationale(Constants.POST_NOTIFICATION)) {
                     shouldOpenSettings = false
@@ -73,7 +72,6 @@ internal class MindboxNotificationManagerImpl(
 
                 val intent = Intent(activity, PushActivationActivity::class.java)
                 activity.startActivity(intent)
-
             } else {
                 openNotificationSettings(activity)
             }

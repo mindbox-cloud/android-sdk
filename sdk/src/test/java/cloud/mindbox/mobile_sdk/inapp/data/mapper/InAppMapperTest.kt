@@ -70,5 +70,4 @@ class InAppMapperTest {
         assertTrue(city.ids.contains("8"))
         assertTrue(city.ids.contains("9"))
     }
-
 }

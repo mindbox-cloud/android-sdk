@@ -4,5 +4,5 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 
 internal interface InAppFrequencyManager {
 
-    fun filterInAppsFrequency(inApps: List<InApp>) : List<InApp>
+    fun filterInAppsFrequency(inApps: List<InApp>): List<InApp>
 }

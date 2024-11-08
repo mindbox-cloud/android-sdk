@@ -13,7 +13,6 @@ open class BalanceResponse(
 
     override fun toString() =
         "BalanceResponse(total=$total, available=$available, blocked=$blocked, " +
-                "nearestExpiration=$nearestExpiration, systemName=$systemName, " +
-                "balanceType=$balanceType)"
-
+            "nearestExpiration=$nearestExpiration, systemName=$systemName, " +
+            "balanceType=$balanceType)"
 }

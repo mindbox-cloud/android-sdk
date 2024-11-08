@@ -8,7 +8,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 internal class InAppABTestLogic(
     private val mixer: CustomerAbMixer,
     private val repository: MobileConfigRepository,
-): MindboxLog {
+) : MindboxLog {
 
     suspend fun getInAppsPool(allInApps: List<String>): Set<String> {
         val abtests = repository.getABTests()
@@ -66,5 +66,4 @@ internal class InAppABTestLogic(
 
     private fun getIntersectionForAllABTests(inAppsForAbtest: List<Set<String>>): Set<String> =
         inAppsForAbtest.reduce { acc, list -> acc.intersect(list) }
-
 }

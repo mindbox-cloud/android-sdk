@@ -66,5 +66,4 @@ open class LineRequest private constructor(
         discounts = discounts,
         product = product
     )
-
 }

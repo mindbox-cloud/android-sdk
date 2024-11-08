@@ -37,12 +37,11 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
 
     private fun logMindboxRequest(request: MindboxRequest) {
         LoggingExceptionHandler.runCatching {
-
             val builder = StringBuilder()
             builder.appendLine("---> Method: ${request.methodType} ${request.fullUrl}")
             builder.appendLine(request.headers
                 .map { (key, value) -> "$key: $value" }
-                .joinToString(separator =  System.getProperty("line.separator") ?:  "\n"))
+                .joinToString(separator = System.getProperty("line.separator") ?: "\n"))
             builder.appendLine("${request.jsonRequest}")
             builder.append("---> End of request")
 

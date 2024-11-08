@@ -5,7 +5,6 @@ import com.google.gson.JsonParseException
 import org.junit.Assert.*
 import org.junit.Test
 
-
 class NullableTypAdapterFactoryTest {
 
     private val gson by lazy {
@@ -20,7 +19,9 @@ class NullableTypAdapterFactoryTest {
             """{
                 "field1": null,
                 "field2": null
-            }""".trimIndent(), StubObject::class.java
+            }
+            """.trimIndent(),
+            StubObject::class.java
         )
 
         assertNull(result.field1)
@@ -55,7 +56,6 @@ class NullableTypAdapterFactoryTest {
         assertEquals(StubObject("string1", null), result)
     }
 
-
     @Test
     fun parse_throw_error_when_json_corrupted() {
         assertThrows(JsonParseException::class.java) {
@@ -63,7 +63,9 @@ class NullableTypAdapterFactoryTest {
                 """{
                 "field1": "string1"
                 "field2": "string2"
-            }""".trimIndent(), StubObject::class.java
+            }
+                """.trimIndent(),
+                StubObject::class.java
             )
         }
     }
@@ -75,7 +77,9 @@ class NullableTypAdapterFactoryTest {
                 """{
                 "field1": 123,
                 "field2": null
-            }""".trimIndent(), StubObject::class.java
+            }
+                """.trimIndent(),
+                StubObject::class.java
             )
         }
     }
@@ -87,7 +91,9 @@ class NullableTypAdapterFactoryTest {
                 """{
                 "field1": "123",
                 "field2": {}
-            }""".trimIndent(), StubObject::class.java
+            }
+                """.trimIndent(),
+                StubObject::class.java
             )
         }
     }
@@ -99,15 +105,15 @@ class NullableTypAdapterFactoryTest {
                 """{
                 "field1": [],
                 "field2": null
-            }""".trimIndent(), StubObject::class.java
+            }
+                """.trimIndent(),
+                StubObject::class.java
             )
         }
     }
-
 
     data class StubObject(
         val field1: String,
         val field2: String?,
     )
-
 }

@@ -39,7 +39,6 @@ internal class MobileConfigRepositoryImpl(
     private val ttlParametersValidator: TtlParametersValidator,
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
     private val sessionStorageManager: SessionStorageManager
-
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -104,7 +103,6 @@ internal class MobileConfigRepositoryImpl(
     override suspend fun getABTests() = getConfig().abtests
 
     private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
-
         val isValidConfig = inAppConfigTtlValidator.isValid(
             InAppTtlData(
                 ttl = getInAppTtl(configBlank),
@@ -126,7 +124,7 @@ internal class MobileConfigRepositoryImpl(
                             inAppDtoBlank.form
                         )
                     ),
-                   frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
+                    frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting
                     )
@@ -146,8 +144,8 @@ internal class MobileConfigRepositoryImpl(
     private fun getSettings(configBlank: InAppConfigResponseBlank?): SettingsDto {
         val operations = configBlank?.settings?.operations
             ?.filter { (name, operation) ->
-                operationNameValidator.isValid(name)
-                        && operationValidator.isValid(operation)
+                operationNameValidator.isValid(name) &&
+                    operationValidator.isValid(operation)
             }?.map { (name, operation) ->
                 name!! to OperationDto(operation!!.systemName)
             }?.toMap()
@@ -171,7 +169,6 @@ internal class MobileConfigRepositoryImpl(
             mindboxLogE("Error parse inapps ttl", e)
             null
         }
-
 
     private fun getABTests(configBlank: InAppConfigResponseBlank?): List<ABTestDto> {
         return try {

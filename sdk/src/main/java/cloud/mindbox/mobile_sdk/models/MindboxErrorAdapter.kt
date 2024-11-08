@@ -109,7 +109,5 @@ internal class MindboxErrorAdapter : TypeAdapter<MindboxError?>() {
             is MindboxError.Unknown -> name("errorName").value(value.throwable?.javaClass?.canonicalName)
                 .name("errorMessage").value(value.throwable?.localizedMessage)
         }
-    }
-        .endObject()
-
+    }.endObject()
 }

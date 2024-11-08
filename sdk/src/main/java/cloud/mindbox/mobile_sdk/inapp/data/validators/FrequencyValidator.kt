@@ -11,8 +11,8 @@ import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.Frequency
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyPeriodicDto.Companion.FREQUENCY_UNIT_SECONDS
 
 internal class FrequencyValidator : Validator<FrequencyDto> {
-    override fun isValid(item: FrequencyDto): Boolean {
-        return when (item) {
+    override fun isValid(item: FrequencyDto): Boolean =
+        when (item) {
             is FrequencyDto.FrequencyOnceDto -> {
                 val isValid = (item.type == FREQUENCY_TYPE_ONCE && item.kind.equalsAny(ignoreCase = true, values = arrayOf(FREQUENCY_KIND_LIFETIME, FREQUENCY_KIND_SESSION)))
                 mindboxLogI("Current frequency is once and it's kind is ${item.kind}. It is valid = $isValid")
@@ -26,7 +26,6 @@ internal class FrequencyValidator : Validator<FrequencyDto> {
                 isValid
             }
         }
-    }
 
     internal companion object {
         private const val FREQUENCY_TYPE_ONCE = "once"

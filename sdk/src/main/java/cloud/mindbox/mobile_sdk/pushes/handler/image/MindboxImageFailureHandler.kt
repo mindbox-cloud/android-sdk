@@ -34,5 +34,4 @@ interface MindboxImageFailureHandler {
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy
-
 }

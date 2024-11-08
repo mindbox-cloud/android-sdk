@@ -6,9 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto.PositionDto.MarginDto
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
-internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarElementDtoDataFiller) :
-    DataFiller<PayloadDto.SnackbarDto?> {
-
+internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarElementDtoDataFiller) : DataFiller<PayloadDto.SnackbarDto?> {
     private val horizontalPositionNames = setOf("center", "left", "right")
     private val verticalPositionNames = setOf("center", "top", "bottom")
     private val marginNames = setOf("dp")
@@ -19,10 +17,16 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarE
     private val defaultTopMargin = 0.0
     private val defaultLeftMargin = 0.0
     private val defaultRightMargin = 0.0
+
     override fun fillData(item: PayloadDto.SnackbarDto?): PayloadDto.SnackbarDto? {
-        val newGravityDto = if (item?.content?.position?.gravity?.horizontal != null
-            && item.content.position.gravity.vertical != null
-            && horizontalPositionNames.contains(item.content.position.gravity.horizontal) && verticalPositionNames.contains(
+        val newGravityDto = if (item
+                ?.content
+                ?.position
+                ?.gravity
+                ?.horizontal != null &&
+            item.content.position.gravity.vertical != null &&
+            horizontalPositionNames.contains(item.content.position.gravity.horizontal) &&
+            verticalPositionNames.contains(
                 item.content.position.gravity.vertical
             )
         ) {
@@ -34,10 +38,9 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarE
             )
             mindboxLogI(
                 "Unknown gravity: horizontal = ${item?.content?.position?.gravity?.horizontal} " +
-                        "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default $gravityDto"
+                    "and vertical = ${item?.content?.position?.gravity?.vertical}. Applying default $gravityDto"
             )
             gravityDto
-
         }
         val newMarginDto =
             if (item?.content?.position?.margin != null && marginNames.contains(item.content.position.margin.kind)) {
@@ -65,5 +68,4 @@ internal class SnackBarDtoDataFiller(private val elementDtoDataFiller: SnackbarE
             ), type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
         )
     }
-
 }

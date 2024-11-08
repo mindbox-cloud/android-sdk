@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.di
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import kotlin.reflect.KProperty
 
-
 internal fun <T> mindboxInject(initializer: AppModule.() -> T) = MindboxInjector(initializer)
 
 internal class MindboxInjector<T>(private val initializer: AppModule.() -> T) {

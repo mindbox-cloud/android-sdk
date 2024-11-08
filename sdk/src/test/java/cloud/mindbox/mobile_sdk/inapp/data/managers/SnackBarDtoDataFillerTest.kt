@@ -42,9 +42,9 @@ internal class SnackBarDtoDataFillerTest {
         every {
             elementDtoDataFiller.fillData(any())
         } answers
-                {
-                    callOriginal()
-                }
+            {
+                callOriginal()
+            }
         val item = InAppStub.getSnackbarDto().copy(
             content = InAppStub.getSnackbarContentDto().copy(
                 background = InAppStub.getBackgroundDto(),
@@ -53,10 +53,8 @@ internal class SnackBarDtoDataFillerTest {
                     gravity = null,
                     margin = PayloadDtoStub.getSnackbarMarginDto().copy(
                         bottom = 10.0, kind = "dp", left = 10.0, right = 10.0, top = 10.0
-
                     )
                 )
-
             ),
             type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
         )
@@ -69,5 +67,4 @@ internal class SnackBarDtoDataFillerTest {
         // Assert
         verify(exactly = 1) { elementDtoDataFiller.fillData(item.content?.elements) }
     }
-
 }

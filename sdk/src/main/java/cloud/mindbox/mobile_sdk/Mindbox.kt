@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
@@ -144,8 +145,8 @@ object Mindbox : MindboxLog {
     ) {
         MindboxLoggerImpl.d(
             this, "setMessageHandling " +
-                    "imageFailureHandler: ${imageFailureHandler.javaClass.simpleName}, " +
-                    "imageLoader: ${imageLoader.javaClass.simpleName}"
+                "imageFailureHandler: ${imageFailureHandler.javaClass.simpleName}, " +
+                "imageLoader: ${imageLoader.javaClass.simpleName}"
         )
         PushNotificationManager.messageHandler = MindboxMessageHandler(
             imageFailureHandler = imageFailureHandler,
@@ -180,8 +181,8 @@ object Mindbox : MindboxLog {
     fun subscribePushToken(subscription: (String?) -> Unit): String {
         MindboxLoggerImpl.d(this, "subscribePushToken")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
-                "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
-                "IN Mindbox.disposePushTokenSubscription(...))"
+            "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
+            "IN Mindbox.disposePushTokenSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.pushToken)
@@ -258,8 +259,8 @@ object Mindbox : MindboxLog {
     fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
         MindboxLoggerImpl.d(this, "subscribeDeviceUuid")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
-                "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
-                "IN Mindbox.disposeDeviceUuidSubscription(...))"
+            "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
+            "IN Mindbox.disposeDeviceUuidSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
             subscription.invoke(MindboxPreferences.deviceUuid)
@@ -477,7 +478,7 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         LoggingExceptionHandler.runCatching {
-            verifyMainThreadExecution("init")
+            verifyThreadExecution(methodName = "init")
             val currentProcessName = context.getCurrentProcessName()
             if (!context.isMainProcess(currentProcessName)) {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
@@ -486,14 +487,13 @@ object Mindbox : MindboxLog {
 
             initComponents(context.applicationContext, pushServices)
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
-                    "configuration: $configuration, pushServices: " +
-                    pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
+                "configuration: $configuration, pushServices: " +
+                pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
 
             if (!firstInitCall) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
-            } else
-            {
-               userVisitManager.saveUserVisit()
+            } else {
+                userVisitManager.saveUserVisit()
             }
 
             initScope.launch {
@@ -510,8 +510,8 @@ object Mindbox : MindboxLog {
                 if (checkResult == ConfigUpdate.UPDATED) {
                     firstInitialization(context.applicationContext, validatedConfiguration)
 
-                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized
-                            && !lifecycleManager.isTrackVisitSent()
+                    val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized &&
+                        !lifecycleManager.isTrackVisitSent()
                     if (isTrackVisitNotSent) {
                         MindboxLoggerImpl.d(this, "Track visit event with source $DIRECT")
                         sendTrackVisitEvent(context.applicationContext, DIRECT)
@@ -554,8 +554,8 @@ object Mindbox : MindboxLog {
                     if (isApplicationResumed || context !is Application) {
                         logW(
                             "We recommend to call Mindbox.init() synchronously from " +
-                                    "Application.onCreate. If you can't do so, don't forget to " +
-                                    "call Mindbox.initPushServices from Application.onCreate",
+                                "Application.onCreate. If you can't do so, don't forget to " +
+                                "call Mindbox.initPushServices from Application.onCreate",
                         )
                     }
 
@@ -576,7 +576,6 @@ object Mindbox : MindboxLog {
                             inAppMessageManager.onPauseCurrentActivity(pausedActivity)
                         },
                         onActivityResumed = { resumedActivity ->
-                            //TODO implement control for blur
                             inAppMessageManager.onResumeCurrentActivity(
                                 resumedActivity,
                                 true
@@ -660,7 +659,6 @@ object Mindbox : MindboxLog {
         inAppMessageManager.registerInAppCallback(inAppCallback)
     }
 
-
     /**
      * Method to initialise push services
      *
@@ -677,7 +675,7 @@ object Mindbox : MindboxLog {
         context: Context,
         pushServices: List<MindboxPushService>,
     ) {
-        verifyMainThreadExecution(methodName = "initPushServices")
+        verifyThreadExecution(methodName = "initPushServices")
         initComponents(context, pushServices)
     }
 
@@ -733,8 +731,8 @@ object Mindbox : MindboxLog {
         MindboxLoggerImpl.e(
             Mindbox,
             "Mindbox was previously initialized with $savedProvider push service but " +
-                    "Mindbox did not find it within pushServices. Check your Mindbox.init() and " +
-                    "Mindbox.initPushServices()",
+                "Mindbox did not find it within pushServices. Check your Mindbox.init() and " +
+                "Mindbox.initPushServices()",
         )
         null
     }
@@ -825,7 +823,7 @@ object Mindbox : MindboxLog {
         initComponents(context)
         MindboxLoggerImpl.d(
             this, "executeAsyncOperation (with operationBodyJson). " +
-                    "operationSystemName: $operationSystemName"
+                "operationSystemName: $operationSystemName"
         )
         asyncOperation(context, operationSystemName, operationBodyJson)
     }
@@ -875,7 +873,7 @@ object Mindbox : MindboxLog {
         initComponents(context)
         MindboxLoggerImpl.d(
             this, "executeSyncOperation. " +
-                    "operationSystemName: $operationSystemName, classOfV: ${classOfV.simpleName}"
+                "operationSystemName: $operationSystemName, classOfV: ${classOfV.simpleName}"
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
@@ -911,7 +909,7 @@ object Mindbox : MindboxLog {
         initComponents(context)
         MindboxLoggerImpl.d(
             this, "executeSyncOperation (with operationBodyJson). " +
-                    "operationSystemName: $operationSystemName, operationBodyJson: $operationBodyJson"
+                "operationSystemName: $operationSystemName, operationBodyJson: $operationBodyJson"
         )
         if (validateOperation(operationSystemName)) {
             mindboxScope.launch {
@@ -944,6 +942,7 @@ object Mindbox : MindboxLog {
      *
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
+    @WorkerThread
     fun handleRemoteMessage(
         context: Context,
         message: Any?,
@@ -954,13 +953,14 @@ object Mindbox : MindboxLog {
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+        verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
         MindboxLoggerImpl.d(
             this, "handleRemoteMessage. channelId: $channelId, " +
-                    "channelName: $channelName, channelDescription: $channelDescription, " +
-                    "defaultActivity: ${defaultActivity.simpleName}, " +
-                    "activities: ${
-                        activities?.map { "${it.key}: ${it.value.simpleName}" }?.joinToString(", ")
-                    }"
+                "channelName: $channelName, channelDescription: $channelDescription, " +
+                "defaultActivity: ${defaultActivity.simpleName}, " +
+                "activities: ${
+                    activities?.map { "${it.key}: ${it.value.simpleName}" }?.joinToString(", ")
+                }"
         )
         if (message == null) {
             MindboxLoggerImpl.d(this, "handleRemoteMessage. Message is null.")
@@ -1025,10 +1025,10 @@ object Mindbox : MindboxLog {
      * @param logLevel The severity level of the log message. See [Level].
      */
     fun writeLog(message: String, logLevel: Level) {
-        when(logLevel){
+        when (logLevel) {
             Level.VERBOSE -> mindboxLogD(message = message)
             Level.DEBUG -> mindboxLogD(message = message)
-            Level.INFO ->  mindboxLogI(message = message)
+            Level.INFO -> mindboxLogI(message = message)
             Level.WARN -> mindboxLogW(message = message)
             Level.ERROR -> mindboxLogE(message = message)
             Level.NONE -> mindboxLogD(message = message)
@@ -1122,12 +1122,13 @@ object Mindbox : MindboxLog {
         val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
 
-
         val isTokenAvailable = !pushToken.isNullOrEmpty()
         val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
         val timezone = if (configuration.shouldCreateCustomer) {
             TimeZone.getDefault().id
-        } else null
+        } else {
+            null
+        }
         val initData = InitData(
             token = pushToken ?: "",
             isTokenAvailable = isTokenAvailable,
@@ -1165,8 +1166,8 @@ object Mindbox : MindboxLog {
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
             this@Mindbox.mindboxLogI(
                 "updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
-                        "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
-                        "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
+                    "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
+                    "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
             )
             if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
                 val initData = UpdateData(
@@ -1190,15 +1191,16 @@ object Mindbox : MindboxLog {
         isTokenAvailable: Boolean,
         pushToken: String?,
         isNotificationEnabled: Boolean,
-    ) = isTokenAvailable && pushToken != MindboxPreferences.pushToken
-            || isNotificationEnabled != MindboxPreferences.isNotificationEnabled
+    ) = isTokenAvailable &&
+        pushToken != MindboxPreferences.pushToken ||
+        isNotificationEnabled != MindboxPreferences.isNotificationEnabled
 
     private fun checkConfig(
         newConfiguration: MindboxConfiguration,
     ): ConfigUpdate = LoggingExceptionHandler.runCatching(ConfigUpdate.UPDATED) {
         MindboxLoggerImpl.d(
             this, "checkConfig. " +
-                    "isFirstInitialize: ${MindboxPreferences.isFirstInitialize}"
+                "isFirstInitialize: ${MindboxPreferences.isFirstInitialize}"
         )
         if (MindboxPreferences.isFirstInitialize) {
             ConfigUpdate.UPDATED
@@ -1212,14 +1214,14 @@ object Mindbox : MindboxLog {
 
                 MindboxLoggerImpl.d(
                     this, "checkConfig. isUrlChanged: $isUrlChanged, " +
-                            "isEndpointChanged: $isEndpointChanged, " +
-                            "isShouldCreateCustomerChanged: $isShouldCreateCustomerChanged"
+                        "isEndpointChanged: $isEndpointChanged, " +
+                        "isShouldCreateCustomerChanged: $isShouldCreateCustomerChanged"
                 )
                 when {
                     isUrlChanged || isEndpointChanged -> ConfigUpdate.UPDATED
                     !isShouldCreateCustomerChanged -> ConfigUpdate.NOT_UPDATED
                     currentConfiguration.shouldCreateCustomer &&
-                            !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
+                        !newConfiguration.shouldCreateCustomer -> ConfigUpdate.UPDATED_SCC
 
                     else -> ConfigUpdate.UPDATED
                 }
@@ -1306,5 +1308,4 @@ object Mindbox : MindboxLog {
     }
 
     internal fun generateRandomUuid() = UUID.randomUUID().toString()
-
 }

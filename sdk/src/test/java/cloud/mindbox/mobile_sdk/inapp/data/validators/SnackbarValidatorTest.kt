@@ -342,6 +342,4 @@ internal class SnackbarValidatorTest {
         val rez = snackbarValidator.isValid(testItem)
         assertTrue(rez)
     }
-
-
 }

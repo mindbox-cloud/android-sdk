@@ -4,13 +4,27 @@ import com.google.gson.annotations.SerializedName
 
 enum class AppliedPromotionTypeResponse {
 
-    @SerializedName("discount") DISCOUNT,
-    @SerializedName("correctionDiscount") CORRECTION_DISCOUNT,
-    @SerializedName("deliveryDiscount") DELIVERY_DISCOUNT,
-    @SerializedName("earnedBonusPoints") EARNED_BONUS_POINTS,
-    @SerializedName("spentBonusPoints") SPEND_BONUS_POINTS,
-    @SerializedName("issuedCoupon") ISSUED_COUPON,
-    @SerializedName("message") MESSAGE,
-    @SerializedName("preconditionMarker") PRECONDITION_MARKER
+    @SerializedName("discount")
+    DISCOUNT,
 
+    @SerializedName("correctionDiscount")
+    CORRECTION_DISCOUNT,
+
+    @SerializedName("deliveryDiscount")
+    DELIVERY_DISCOUNT,
+
+    @SerializedName("earnedBonusPoints")
+    EARNED_BONUS_POINTS,
+
+    @SerializedName("spentBonusPoints")
+    SPEND_BONUS_POINTS,
+
+    @SerializedName("issuedCoupon")
+    ISSUED_COUPON,
+
+    @SerializedName("message")
+    MESSAGE,
+
+    @SerializedName("preconditionMarker")
+    PRECONDITION_MARKER
 }

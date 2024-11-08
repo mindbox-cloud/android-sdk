@@ -10,5 +10,4 @@ open class PromotionResponse(
 ) {
 
     override fun toString() = "PromotionResponse(ids=$ids, name=$name, type=$type)"
-
 }

@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 
-internal class UserVisitManagerImpl: UserVisitManager {
+internal class UserVisitManagerImpl : UserVisitManager {
     override fun saveUserVisit() {
         var userVisitCount = MindboxPreferences.userVisitCount
         when {
