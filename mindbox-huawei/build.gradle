@@ -9,9 +9,9 @@ android {
 
     defaultConfig {
         consumerProguardFiles "consumer-rules.pro",
-                "${rootProject.projectDir}/proguard/proguard-gson.pro",
-                "${rootProject.projectDir}/proguard/proguard-huawei.pro",
-                "${rootProject.projectDir}/proguard/proguard-kotlin.pro"
+                "../proguard/proguard-gson.pro",
+                "../proguard/proguard-huawei.pro",
+                "../proguard/proguard-kotlin.pro"
     }
 }
 
