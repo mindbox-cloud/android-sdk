@@ -67,4 +67,7 @@ dependencies {
 
     // Multidex
     implementation "androidx.multidex:multidex:2.0.1"
+
+    // WorkManager
+    implementation "androidx.work:work-runtime-ktx:2.8.1"
 }
