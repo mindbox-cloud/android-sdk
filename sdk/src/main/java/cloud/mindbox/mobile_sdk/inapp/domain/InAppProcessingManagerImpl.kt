@@ -8,10 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRep
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
-import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.logger.*
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
@@ -128,7 +125,25 @@ internal class InAppProcessingManagerImpl(
 
     override suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType) {
         val data = getTargetingData(triggerEvent)
-        inApp.targeting.fetchTargetingInfo(data)
+        runCatching {
+            inApp.targeting.fetchTargetingInfo(data)
+        }.onFailure { throwable ->
+            when (throwable) {
+                is GeoError -> {
+                    inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
+                    InAppProcessingManagerImpl.mindboxLogE("Error fetching geo", throwable)
+                }
+
+                is CustomerSegmentationError -> {
+                    inAppSegmentationRepository.setCustomerSegmentationStatus(
+                        CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                    )
+                    handleCustomerSegmentationErrorLog(throwable)
+                }
+
+                else -> InAppProcessingManagerImpl.mindboxLogE("Error fetching segmentation", throwable)
+            }
+        }
         if (inApp.targeting.checkTargeting(data)) {
             logI("InApp with id = ${inApp.id} sends targeting by event $triggerEvent")
             inAppRepository.sendUserTargeted(inAppId = inApp.id)
