@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.webkit.CookieManager
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
@@ -19,13 +20,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        const val URL = "https://example.com/"
+        const val URL = "https://your-website.com/"
         const val FETCHING_DEVICE_UUID_TIMEOUT = 4000L
     }
 
@@ -48,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         webView = binding.webView.apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            webViewClient = createWebViewClient()
+            webViewClient = webViewClientInstance
         }
 
         /***
@@ -59,7 +61,9 @@ class MainActivity : AppCompatActivity() {
          ***/
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                deviceUUID = getDeviceUUID()
+                val deviceUUID = withContext(Dispatchers.IO) {
+                    getDeviceUUID()
+                }
                 Mindbox.writeLog("DeviceUUID for synchronization received: $deviceUUID", logLevel = Level.DEBUG)
                 webView.loadUrl(URL)
             } catch (e: TimeoutCancellationException) {
@@ -94,19 +98,22 @@ class MainActivity : AppCompatActivity() {
         _binding = null
     }
 
-    private fun createWebViewClient() = object : WebViewClient() {
+    private val webViewClientInstance: WebViewClient by lazy {
 
-        override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
-            super.onPageStarted(view, url, favicon)
-            Log.d(Utils.TAG, "Page started loading: $url")
-            // Synchronizing deviceUUID
-            deviceUUID?.let {
-                syncMindboxDeviceUUIDs(it)
-            } ?: run {
-                Mindbox.subscribeDeviceUuid { uuid ->
-                    if (uuid.isNotEmpty()) {
-                        deviceUUID = uuid
-                        syncMindboxDeviceUUIDs(uuid)
+        object : WebViewClient() {
+
+            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                Log.d(Utils.TAG, "Page started loading: $url")
+                // Synchronizing deviceUUID
+                deviceUUID?.let {
+                    syncMindboxDeviceUUIDs(it)
+                } ?: run {
+                    Mindbox.subscribeDeviceUuid { uuid ->
+                        if (uuid.isNotEmpty()) {
+                            deviceUUID = uuid
+                            syncMindboxDeviceUUIDs(uuid)
+                        }
                     }
                 }
             }
@@ -130,11 +137,11 @@ class MainActivity : AppCompatActivity() {
     private fun syncMindboxDeviceUUIDs(uuid: String) {
         webView.evaluateJavascript(
             """
-                    document.cookie = "mindboxDeviceUUID=$uuid";
-                    window.localStorage.setItem('mindboxDeviceUUID', '$uuid');
-                  """
+            document.cookie = "mindboxDeviceUUID=$uuid";
+            window.localStorage.setItem('mindboxDeviceUUID', '$uuid');
+            """
         ) {
-            Mindbox.writeLog("Device UUID synchronized: with deviceUUID$uuid", logLevel = Level.DEBUG)
+            Mindbox.writeLog("Device UUID synchronized with deviceUUID: $uuid", logLevel = Level.DEBUG)
         }
     }
 
@@ -155,9 +162,9 @@ class MainActivity : AppCompatActivity() {
 
     // Use this method to clear WebView cache
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun clearAllWebData() {
-        webView.clearCache(true)
+    private fun clearAllCookies() {
 
+        WebStorage.getInstance().deleteAllData()
         val cookieManager = CookieManager.getInstance()
         cookieManager.removeAllCookies { success ->
             if (success) {
@@ -165,16 +172,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.e(Utils.TAG, "Failed to clear cookies")
             }
-        }
-
-        android.webkit.WebStorage.getInstance().deleteAllData()
-
-        val cacheDir = cacheDir
-        if (cacheDir.isDirectory) {
-            cacheDir.listFiles()?.forEach { file ->
-                file.deleteRecursively()
-            }
-            Log.d(Utils.TAG, "All WebView cache files cleared")
         }
     }
 }
