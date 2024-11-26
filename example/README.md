@@ -12,8 +12,10 @@ or add app in your existing project
 
 4) Set your domain and endpoint in the [ExampleApplication](https://github.com/mindbox-cloud/android-sdk/blob/develop/example/app/src/main/java/com/mindbox/example/ExampleApplication.kt) class within the configuration builder
 
-5) Run the application
+5) Set your URL in [MainActivity](https://github.com/mindbox-cloud/android-sdk/blob/webView_integration/example/app/src/main/java/com/mindbox/example/MainActivity.kt)
 
-6) After 5 minutes check your user in your Mindbox admin site
+6) Run the application
 
-7) Run in-app and send mobile push
+7) After 5 minutes check your user in your Mindbox admin site
+
+8) Check integration

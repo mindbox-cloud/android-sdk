@@ -1,67 +1,90 @@
 package com.mindbox.example
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.result.contract.ActivityResultContracts
+import android.webkit.CookieManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.Level
 import com.mindbox.example.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
+@RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        const val URL = "https://example.com/"
+        const val FETCHING_DEVICE_UUID_TIMEOUT = 4000L
+    }
+
+    private lateinit var webView: WebView
+    private var deviceUUID: String? = null
     private var _binding: ActivityMainBinding? = null
     private val binding: ActivityMainBinding
         get() = _binding!!
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        showSdkDataOnScreen()
+        //Use this line to enable debugging
+        WebView.setWebContentsDebuggingEnabled(true)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            checkAndRequestPostNotificationsPermission()
+        //initialize webview after Mindbox.init if init in activity
+        webView = binding.webView.apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            webViewClient = createWebViewClient()
+        }
+
+        /***
+         * Start loading the page after obtaining the deviceUUID.
+         * On the first app launch, obtaining the deviceUUID may take several seconds.
+         * If you don't wait for the deviceUUID, synchronization will occur on the next page load.
+         * The waiting time can be adjusted in the GET_DEVICE_UUID_TIMEOUT constant.
+         ***/
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                deviceUUID = getDeviceUUID()
+                Mindbox.writeLog("DeviceUUID for synchronization received: $deviceUUID", logLevel = Level.DEBUG)
+                webView.loadUrl(URL)
+            } catch (e: TimeoutCancellationException) {
+                Mindbox.writeLog("Timeout while waiting for synchronization Device UUID. Loading without UUID", logLevel = Level.DEBUG)
+                webView.loadUrl(URL)
+            } catch (e: Exception) {
+                Mindbox.writeLog("Failed to get Device UUID for synchronization: ${e.message}", logLevel = Level.ERROR)
+                webView.loadUrl(URL)
+            }
+        }
+
+        binding.viewCookiesButton.setOnClickListener {
+            showCookies()
         }
 
         processMindboxIntent(intent = intent, context = this)?.let { (url, payload) ->
-            binding.tvPushUrlResult.text = url
-            binding.tvPushPayloadResult.text = payload
-            proceedUrl(url = url)
+            Log.d(Utils.TAG, "Data from push: url: $url, payload: $payload")
         }
 
-        binding.btnAsyncOperation.setOnClickListener {
-            //https://developers.mindbox.ru/docs/android-integration-of-actions
-            sendAsync(type = AsyncOperationType.OPERATION_BODY_JSON, context = this)
-            showToast(context = this, message = "Operation was sent")
-        }
-
-        binding.btnSyncOperation.setOnClickListener {
-            //https://developers.mindbox.ru/docs/android-integration-of-actions
-            sendSync(type = SyncOperationType.OPERATION_BODY_WITH_CUSTOM_RESPONSE, context = this)
-        }
-        binding.btnOpenActivity.setOnClickListener {
-            val intent = Intent(this, ActivityTransitionByPush::class.java)
-            this.startActivity(intent)
-        }
-
-        binding.btnOpenPushList.setOnClickListener {
-            startActivity(Intent(this, NotificationHistoryActivity::class.java))
-        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         processMindboxIntent(intent = intent, context = this)?.let { (url, payload) ->
-            binding.tvPushUrlResult.text = url
-            binding.tvPushPayloadResult.text = payload
-            proceedUrl(url = url)
+            Log.d(Utils.TAG, "Data from push: url: $url, payload: $payload")
         }
         Mindbox.onNewIntent(intent)
     }
@@ -71,62 +94,87 @@ class MainActivity : AppCompatActivity() {
         _binding = null
     }
 
-    //https://developers.mindbox.ru/docs/android-sdk-methods#updatenotificationpermissionstatus-since-281
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                Mindbox.updateNotificationPermissionStatus(context = this)
-            } else {
-                Log.d(Utils.TAG, "Notification permission not allowed")
-            }
-        }
+    private fun createWebViewClient() = object : WebViewClient() {
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun checkAndRequestPostNotificationsPermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            Log.d(Utils.TAG, "Already granted")
-        }
-    }
-
-    //navigation to fragments after click on push. Check url and open the required fragment
-    private fun proceedUrl(url: String?) {
-        if (url == "https://gotofragment.com") {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, FragmentForNavigation())
-                .addToBackStack(null)
-                .commit()
-        }
-    }
-
-    private fun showSdkDataOnScreen() {
-        //https://developers.mindbox.ru/docs/android-sdk-methods#subscribedeviceuuid-%D0%B8-disposedeviceuuidsubscription
-        var subscriptionDeviceUuid = ""
-        subscriptionDeviceUuid = Mindbox.subscribeDeviceUuid { deviceUUID ->
-            runOnUiThread {
-                binding.tvDeviceUUIDResult.text = deviceUUID
-            }
-            Mindbox.disposeDeviceUuidSubscription(subscriptionDeviceUuid)
-        }
-
-        //https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
-        var subscriptionPushToken = ""
-        subscriptionPushToken =
-            Mindbox.subscribePushToken { token ->
-                runOnUiThread {
-                    binding.tvTokenResult.text = token
-                    //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-                    binding.tvTokenDateResult.text = Mindbox.getPushTokenSaveDate()
+        override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+            Log.d(Utils.TAG, "Page started loading: $url")
+            // Synchronizing deviceUUID
+            deviceUUID?.let {
+                syncMindboxDeviceUUIDs(it)
+            } ?: run {
+                Mindbox.subscribeDeviceUuid { uuid ->
+                    if (uuid.isNotEmpty()) {
+                        deviceUUID = uuid
+                        syncMindboxDeviceUUIDs(uuid)
+                    }
                 }
-                Mindbox.disposePushTokenSubscription(subscriptionPushToken)
             }
+        }
+    }
 
-        //https://developers.mindbox.ru/docs/android-sdk-methods#getsdkversion
-        binding.tvSdkVersionResult.text = Mindbox.getSdkVersion()
+    // Getting device UUID by mindbox mobile sdk
+    private suspend fun getDeviceUUID(): String = withTimeout(FETCHING_DEVICE_UUID_TIMEOUT) {
+        suspendCancellableCoroutine { continuation ->
+            Mindbox.subscribeDeviceUuid { uuid ->
+                if (uuid.isNotEmpty()) {
+                    continuation.resume(uuid)
+                } else {
+                    continuation.resumeWithException(Exception("Device UUID is empty"))
+                }
+            }
+        }
+    }
+
+    // Synchronize deviceUUID
+    private fun syncMindboxDeviceUUIDs(uuid: String) {
+        webView.evaluateJavascript(
+            """
+                    document.cookie = "mindboxDeviceUUID=$uuid";
+                    window.localStorage.setItem('mindboxDeviceUUID', '$uuid');
+                  """
+        ) {
+            Mindbox.writeLog("Device UUID synchronized: with deviceUUID$uuid", logLevel = Level.DEBUG)
+        }
+    }
+
+    // Use it to debug data after tracker initialize
+    // For example add button for debug
+    private fun showCookies() {
+        val cookies = CookieManager.getInstance().getCookie(URL)
+        Log.d(Utils.TAG, "Cookies: $cookies")
+        Mindbox.subscribeDeviceUuid { uuid ->
+            Log.d(Utils.TAG, "mobile sdk deviceUUID=$uuid")
+        }
+        webView.evaluateJavascript(
+            "(function() {return window.localStorage.getItem('mindboxDeviceUUID')})()"
+        ) { result ->
+            Log.d(Utils.TAG, "js sdk deviceUUID: $result")
+        }
+    }
+
+    // Use this method to clear WebView cache
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun clearAllWebData() {
+        webView.clearCache(true)
+
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.removeAllCookies { success ->
+            if (success) {
+                Log.d(Utils.TAG, "All cookies cleared")
+            } else {
+                Log.e(Utils.TAG, "Failed to clear cookies")
+            }
+        }
+
+        android.webkit.WebStorage.getInstance().deleteAllData()
+
+        val cacheDir = cacheDir
+        if (cacheDir.isDirectory) {
+            cacheDir.listFiles()?.forEach { file ->
+                file.deleteRecursively()
+            }
+            Log.d(Utils.TAG, "All WebView cache files cleared")
+        }
     }
 }

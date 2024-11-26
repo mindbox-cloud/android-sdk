@@ -6,178 +6,27 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/tvDeviceUuidText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/device_uuid"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="20dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvDeviceUUIDResult"
-        android:textIsSelectable="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="20dp"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvToken"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/token"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        app:layout_constraintTop_toBottomOf="@+id/tvDeviceUuidText"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTokenResult"
-        android:textIsSelectable="true"
-        android:layout_width="280dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toBottomOf="@id/tvToken"
-        app:layout_constraintTop_toTopOf="@id/tvDeviceUUIDResult" />
-
-    <TextView
-        android:id="@+id/tvTokenDate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/token_date"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        app:layout_constraintTop_toBottomOf="@+id/tvTokenResult"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTokenDateResult"
-        android:textIsSelectable="true"
-        android:layout_width="280dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toBottomOf="@id/tvTokenResult" />
-
-    <TextView
-        android:id="@+id/tvPushUrl"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/tvTokenDateResult"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/push_url" />
-
-    <TextView
-        android:id="@+id/tvPushUrlResult"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toBottomOf="@id/tvTokenDateResult"
-        android:layout_marginTop="10dp" />
-
-    <TextView
-        android:id="@+id/tvPushPayload"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/tvPushUrl"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/push_payload" />
-
-    <TextView
-        android:id="@+id/tvPushPayloadResult"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toBottomOf="@id/tvPushUrl"
-        android:layout_marginTop="10dp" />
-
-    <TextView
-        android:id="@+id/tvSdkVersion"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/tvPushPayload"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/sdk_version" />
-
-    <TextView
-        android:id="@+id/tvSdkVersionResult"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        app:layout_constraintStart_toEndOf="@+id/tvPushUrl"
-        app:layout_constraintTop_toBottomOf="@id/tvPushPayload"
-        android:layout_marginTop="10dp" />
-
-    <Button
-        android:id="@+id/btnAsyncOperation"
-        android:layout_width="200dp"
-        android:layout_height="70dp"
-        android:layout_marginStart="20dp"
-        android:text="@string/async_operation"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvSdkVersion"
-        android:layout_marginTop="10dp" />
-
-    <Button
-        android:id="@+id/btnSyncOperation"
-        android:layout_width="200dp"
-        android:layout_height="70dp"
-        android:layout_marginStart="20dp"
-        android:text="@string/sync_operation"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnAsyncOperation"
-        android:layout_marginTop="10dp" />
-
-    <Button
-        android:id="@+id/btnOpenActivity"
-        android:layout_width="200dp"
-        android:layout_height="70dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/open_activity"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnSyncOperation" />
-
-    <FrameLayout
-        android:id="@+id/fragmentContainer"
-        android:layout_width="match_parent"
+    <!-- WebView -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/viewCookiesButton"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_open_push_list" />
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="#F5F5F5" />
 
+    <!-- Button for view cookies -->
     <Button
-        android:id="@+id/btn_open_push_list"
-        android:layout_width="200dp"
-        android:layout_height="70dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/open_notification_history"
-        app:layout_constraintEnd_toEndOf="@+id/btnOpenActivity"
-        app:layout_constraintStart_toStartOf="@+id/btnOpenActivity"
-        app:layout_constraintTop_toBottomOf="@+id/btnOpenActivity" />
+        android:id="@+id/viewCookiesButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/view_cookies"
+        app:layout_constraintTop_toBottomOf="@id/webView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_margin="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

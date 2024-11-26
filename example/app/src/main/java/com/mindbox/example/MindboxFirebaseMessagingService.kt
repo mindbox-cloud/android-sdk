@@ -41,10 +41,7 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
         // Method for getting info from Mindbox push
         val mindboxMessage = MindboxFirebase.convertToMindboxRemoteMessage(remoteMessage = message)
         Log.d(Utils.TAG, mindboxMessage.toString())
-        // If you want to save the notification you can call your save function from here.
-        mindboxMessage?.let {
-            NotificationStorage.addNotification(it)
-        }
+
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
             Log.d(Utils.TAG, "This push not from Mindbox")
@@ -53,7 +50,7 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         // Token transfer to Mindbox SDK
-        //https://developers.mindbox.ru/docs/android-sdk-methods#updatepushtoken
+        // https://developers.mindbox.ru/docs/android-sdk-methods#updatepushtoken
         Mindbox.updatePushToken(
             context = applicationContext,
             token = token,

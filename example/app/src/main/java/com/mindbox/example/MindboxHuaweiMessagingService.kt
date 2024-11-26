@@ -62,9 +62,7 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
                 MindboxHuawei.convertToMindboxRemoteMessage(remoteMessage = message)
             Log.d(Utils.TAG, mindboxMessage.toString())
             // If you want to save the notification you can call your save function from here.
-            mindboxMessage?.let {
-                NotificationStorage.addNotification(it)
-            }
+
             if (!messageWasHandled) {
                 // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
                 Log.d(Utils.TAG, "This push not from Mindbox")

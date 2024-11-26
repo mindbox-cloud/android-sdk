@@ -12,5 +12,6 @@
     <string name="open_activity">Open second activity</string>
     <string name="token_date">Token date:</string>
     <string name="open_notification_history">Open Notification history</string>
+    <string name="view_cookies">View Cookies</string>
 
 </resources>
