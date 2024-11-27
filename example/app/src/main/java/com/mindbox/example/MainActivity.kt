@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
          ***/
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val deviceUUID = withContext(Dispatchers.IO) {
+                deviceUUID = withContext(Dispatchers.IO) {
                     getDeviceUUID()
                 }
                 Mindbox.writeLog("DeviceUUID for synchronization received: $deviceUUID", logLevel = Level.DEBUG)
