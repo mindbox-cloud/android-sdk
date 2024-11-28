@@ -2,8 +2,7 @@ package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
-import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
@@ -13,21 +12,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class MigrationManager(val context: Context) {
+internal class MigrationManager(val context: Context) : MindboxLog {
 
     private val migrationMutex = Mutex()
     private val migrationJobs = mutableListOf<Job>()
 
     suspend fun migrateAll() {
         listOf(
-            version282(),
-            version290()
+            version290(),
+            version2120(),
         ).filter { it.isNeeded }
             .onEach { migration ->
                 val job = Mindbox.mindboxScope.launch {
                     migrationMutex.withLock {
                         if (migration.isNeeded) {
-                            mindboxLogI("Run migration '${migration.description}'")
+                            logI("Run migration '${migration.description}'")
                             migration.run()
                         }
                     }
@@ -36,7 +35,7 @@ internal class MigrationManager(val context: Context) {
             }.also {
                 migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
-                    mindboxLogE("Migrations failed, reset memory")
+                    logE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()
                     MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
                 }
@@ -75,19 +74,22 @@ internal class MigrationManager(val context: Context) {
         }
     }
 
-    private fun version282() = object : Migration {
-
+    private fun version2120() = object : Migration {
         override val description: String
-            get() = "Updates the push notification token to resolve an issue with the push notification provider."
-
+            get() = "Changes the push token save format to multiple tokens with providers."
         override val isNeeded: Boolean
-            get() = SharedPreferencesManager.isInitialized() &&
-                !MindboxPreferences.isFirstInitialize &&
-                MindboxPreferences.isPushTokenNeedUpdated
+            get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
 
         override suspend fun run() {
-            MindboxPreferences.isPushTokenNeedUpdated = false
-            Mindbox.updateAppInfo(context)
+            val provider = SharedPreferencesManager.getString("KEY_PUSH_TOKEN")
+            val token = SharedPreferencesManager.getString("KEY_PUSH_TOKEN")
+
+            SharedPreferencesManager.remove("key_notification_provider")
+            if (token != null && provider != null) {
+                MindboxPreferences.pushTokens = mapOf(provider to token)
+            }
+
+            MindboxPreferences.versionCode++
         }
     }
 }

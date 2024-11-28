@@ -1,7 +1,11 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk.pushes.PushTokenMap
+import cloud.mindbox.mobile_sdk.pushes.toPreferences
+import cloud.mindbox.mobile_sdk.pushes.toTokensMap
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,7 +23,6 @@ internal object MindboxPreferences {
         "key_host_app_name" // need for scheduling and stopping one-time background service
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
     private const val KEY_INSTANCE_ID = "key_instance_id"
-    private const val KEY_NOTIFICATION_PROVIDER = "key_notification_provider"
     private const val KEY_UUID_DEBUG_ENABLED = "key_uuid_debug_enabled"
     private const val KEY_NEED_PUSH_TOKEN_UPDATE = "key_need_push_token_update"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
@@ -109,13 +112,13 @@ internal object MindboxPreferences {
             }
         }
 
-    var pushToken: String?
-        get() = LoggingExceptionHandler.runCatching(defaultValue = null) {
-            SharedPreferencesManager.getString(KEY_PUSH_TOKEN)
+    var pushTokens: PushTokenMap
+        get() = loggingRunCatching(defaultValue = emptyMap()) {
+            SharedPreferencesManager.getString(KEY_PUSH_TOKEN).toTokensMap()
         }
         set(value) {
-            LoggingExceptionHandler.runCatching {
-                SharedPreferencesManager.put(KEY_PUSH_TOKEN, value)
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_PUSH_TOKEN, value.toPreferences())
                 tokenSaveDate = Date().toString()
             }
         }
@@ -172,16 +175,6 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_INSTANCE_ID, value)
-            }
-        }
-
-    var notificationProvider: String
-        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
-            SharedPreferencesManager.getString(KEY_NOTIFICATION_PROVIDER) ?: ""
-        }
-        set(value) {
-            LoggingExceptionHandler.runCatching {
-                SharedPreferencesManager.put(KEY_NOTIFICATION_PROVIDER, value)
             }
         }
 
