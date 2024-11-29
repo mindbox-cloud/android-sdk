@@ -1,17 +1,18 @@
 package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import java.util.UUID
 
 /**
 * A class for internal sdk work only. Do not extend or use it
 * */
-abstract class PushServiceHandler {
+abstract class PushServiceHandler : MindboxLog {
 
     companion object {
-
         private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
     }
 
@@ -26,8 +27,7 @@ abstract class PushServiceHandler {
             val (id, isLimitAdTrackingEnabled) = getAdsId(context)
 
             if (isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
-                MindboxLoggerImpl.d(
-                    this,
+                logI(
                     "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
                         "Will be generated from random. " +
                         "isLimitAdTrackingEnabled = $isLimitAdTrackingEnabled, " +
@@ -35,8 +35,7 @@ abstract class PushServiceHandler {
                 )
                 generateRandomUuid()
             } else {
-                MindboxLoggerImpl.d(
-                    this,
+                logI(
                     "Received from $notificationProvider AdvertisingIdClient: " +
                         "device uuid - $id",
                 )
@@ -57,8 +56,7 @@ abstract class PushServiceHandler {
         }
         isAvailable
     } catch (e: Exception) {
-        MindboxLoggerImpl.w(
-            this,
+        logW(
             "Unable to determine $notificationProvider services availability. " +
                 "Failed with exception $e",
         )
@@ -68,19 +66,13 @@ abstract class PushServiceHandler {
     suspend fun registerToken(
         context: Context,
         previousToken: String?,
-    ): String? = try {
+    ): String? = loggingRunCatchingSuspending(null) {
         val token = getToken(context)
-        MindboxLoggerImpl.d(this, "registerToken. token: $token, previousToken: $previousToken")
+        logI("registerToken for $notificationProvider. token: $token, previousToken: $previousToken")
         if (!token.isNullOrEmpty() && token != previousToken) {
-            MindboxLoggerImpl.i(this, "Token gets or updates from $notificationProvider")
+            logI("Token gets or updates from $notificationProvider")
         }
         token
-    } catch (e: Exception) {
-        MindboxLoggerImpl.w(
-            this,
-            "Fetching $notificationProvider registration token failed with exception $e",
-        )
-        null
     }
 
     protected abstract fun isAvailable(context: Context): Boolean
@@ -88,8 +80,7 @@ abstract class PushServiceHandler {
     protected abstract suspend fun getToken(context: Context): String?
 
     private fun onAdsIdAcquisitionFailure(): (Throwable) -> String = {
-        MindboxLoggerImpl.d(
-            this,
+        logI(
             "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
                 "Will be generated from random",
         )
