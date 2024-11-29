@@ -36,7 +36,7 @@ internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap
                     handler.notificationProvider to token
                 }
             }.awaitAll()
-            .filter { (_, token) -> !token.isNullOrEmpty() }
-            .mapNotNull { (provider, token) -> token?.let { provider to token } }
-            .toMap()
+            .mapNotNull { (provider, token) ->
+                if (!token.isNullOrEmpty()) provider to token else null
+            }.toMap()
     }
