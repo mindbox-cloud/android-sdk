@@ -1099,14 +1099,17 @@ object Mindbox : MindboxLog {
         context: Context,
         configuration: MindboxConfiguration,
     ) = loggingRunCatchingSuspending {
-        logI("First SDK initialization")
-
-        val tokens = MindboxPreferences.pushTokens
-        val pushTokens: PushTokenMap = getPushTokens(context, tokens)
+        val pushTokens: PushTokenMap = getPushTokens(context, emptyMap())
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
         val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
+
+        logI(
+            "First SDK initialization with deviceUuid: $deviceUuid, " +
+                "pushTokens: $pushTokens, " +
+                "isNotificationEnabled: $isNotificationEnabled"
+        )
 
         val timezone = TimeZone.getDefault().id.takeIf { configuration.shouldCreateCustomer }
         val initData = InitData(
@@ -1116,7 +1119,7 @@ object Mindbox : MindboxLog {
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
             ianaTimeZone = timezone,
-            tokens = tokens.toTokenData(),
+            tokens = pushTokens.toTokenData(),
         )
 
         MindboxPreferences.pushTokens = pushTokens
