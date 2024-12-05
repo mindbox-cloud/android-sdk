@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
@@ -12,30 +14,31 @@ import io.mockk.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
+import java.util.UUID
 
 class MindboxTest {
 
-    private val context = mockk<Context>()
+    private val context = mockk<Context> {
+        every { applicationContext } returns mockk<Application>(relaxed = true)
+    }
 
     private val firstProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "FCM"
-        coEvery { registerToken(context, any()) } returns "tokenFCM"
+        coEvery { registerToken(any(), any()) } returns "tokenFCM"
     }
 
     private val secondProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "HMS"
-        coEvery { registerToken(context, any()) } returns "tokenHMS"
+        coEvery { registerToken(any(), any()) } returns "tokenHMS"
     }
 
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
-        coEvery { registerToken(context, any()) } returns "tokenRuStore"
+        coEvery { registerToken(any(), any()) } returns "tokenRuStore"
     }
 
     @Before
     fun setUp() {
-        Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
-
         mockkObject(MindboxPreferences)
         mockkObject(PushNotificationManager)
         mockkObject(MindboxEventManager)
@@ -47,6 +50,10 @@ class MindboxTest {
         every { PushNotificationManager.isNotificationsEnabled(any()) } returns true
         every { MindboxPreferences.isNotificationEnabled } returns true
         every { MindboxPreferences.instanceId } returns "instanceId"
+        every { MindboxPreferences.deviceUuid } returns "deviceUUID"
+        every { MindboxPreferences.infoUpdatedVersion } returns 1
+
+        Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
     }
 
     @Test
@@ -99,6 +106,8 @@ class MindboxTest {
 
     @Test
     fun `updateAppInfo call appInfoUpdate when token changed`() = runTest {
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+
         Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
 
         verify(exactly = 1) {
@@ -169,6 +178,62 @@ class MindboxTest {
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
                 )
+            )
+        }
+    }
+
+    @Test
+    fun `updateAppInfo call appInfoUpdate when token provided`() = runTest {
+        every { MindboxPreferences.pushTokens } returns mapOf()
+
+        Mindbox.updateAppInfo(context, PushToken("HMS", "tokenHMS"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context, UpdateData(
+                    isNotificationsEnabled = true,
+                    instanceId = "instanceId",
+                    version = 1,
+                    tokens = listOf(
+                        TokenData(token = "tokenFCM", notificationProvider = "FCM"),
+                        TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+                    ),
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `firstInitialization call appInfoUpdate`() = runTest {
+        val uuid = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+        mockkStatic(UUID::class)
+        every { UUID.randomUUID() } returns uuid
+        coEvery { firstProvider.getAdsIdentification(context) } returns "adsId"
+        coEvery { secondProvider.getAdsIdentification(context) } returns "adsId"
+        coEvery { thirdProvider.getAdsIdentification(context) } returns "adsId"
+        every { MindboxPreferences.pushTokens } returns mapOf()
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) {
+            MindboxEventManager.appInstalled(
+                context,
+                InitData(
+                    isNotificationsEnabled = true,
+                    externalDeviceUUID = "",
+                    instanceId = uuid.toString(),
+                    version = 0,
+                    subscribe = false,
+                    installationId = "",
+                    ianaTimeZone = null,
+                    tokens = listOf(
+                        TokenData(token = "tokenFCM", notificationProvider = "FCM"),
+                        TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+                    ),
+                ),
+                any()
             )
         }
     }
