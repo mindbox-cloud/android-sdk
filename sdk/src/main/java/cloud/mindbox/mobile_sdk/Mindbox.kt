@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -302,6 +303,8 @@ object Mindbox : MindboxLog {
                     pushServiceHandlers.firstOrNull()?.let { handler ->
                         if (pushServiceHandlers.size == 1) {
                             updateAppInfo(context, PushToken(handler.notificationProvider, token))
+                        } else {
+                            updateAppInfo(context)
                         }
                     }
                 }
@@ -1095,7 +1098,8 @@ object Mindbox : MindboxLog {
         }
     }
 
-    private suspend fun firstInitialization(
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal suspend fun firstInitialization(
         context: Context,
         configuration: MindboxConfiguration,
     ) = loggingRunCatchingSuspending {
@@ -1139,9 +1143,12 @@ object Mindbox : MindboxLog {
         val savedPushTokens = MindboxPreferences.pushTokens
         val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
 
-        val pushTokens: PushTokenMap = pushToken
-            ?.let { savedPushTokens + (pushToken.provider to pushToken.token) }
-            ?: run { savedPushTokens + getPushTokens(context, savedPushTokens) }
+        val pushTokens: PushTokenMap =
+            if (pushToken != null && pushToken.token == savedPushTokens[pushToken.provider]) {
+                savedPushTokens
+            } else {
+                savedPushTokens + getPushTokens(context, savedPushTokens)
+            }
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
