@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -302,6 +303,8 @@ object Mindbox : MindboxLog {
                     pushServiceHandlers.firstOrNull()?.let { handler ->
                         if (pushServiceHandlers.size == 1) {
                             updateAppInfo(context, PushToken(handler.notificationProvider, token))
+                        } else {
+                            updateAppInfo(context)
                         }
                     }
                 }
@@ -1095,18 +1098,22 @@ object Mindbox : MindboxLog {
         }
     }
 
-    private suspend fun firstInitialization(
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal suspend fun firstInitialization(
         context: Context,
         configuration: MindboxConfiguration,
     ) = loggingRunCatchingSuspending {
-        logI("First SDK initialization")
-
-        val tokens = MindboxPreferences.pushTokens
-        val pushTokens: PushTokenMap = getPushTokens(context, tokens)
+        val pushTokens: PushTokenMap = getPushTokens(context, emptyMap())
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
         val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
+
+        logI(
+            "First SDK initialization with deviceUuid: $deviceUuid, " +
+                "pushTokens: $pushTokens, " +
+                "isNotificationEnabled: $isNotificationEnabled"
+        )
 
         val timezone = TimeZone.getDefault().id.takeIf { configuration.shouldCreateCustomer }
         val initData = InitData(
@@ -1116,7 +1123,7 @@ object Mindbox : MindboxLog {
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
             ianaTimeZone = timezone,
-            tokens = tokens.toTokenData(),
+            tokens = pushTokens.toTokenData(),
         )
 
         MindboxPreferences.pushTokens = pushTokens
@@ -1136,9 +1143,12 @@ object Mindbox : MindboxLog {
         val savedPushTokens = MindboxPreferences.pushTokens
         val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
 
-        val pushTokens: PushTokenMap = pushToken
-            ?.let { savedPushTokens + (pushToken.provider to pushToken.token) }
-            ?: run { savedPushTokens + getPushTokens(context, savedPushTokens) }
+        val pushTokens: PushTokenMap =
+            if (pushToken != null && pushToken.token == savedPushTokens[pushToken.provider]) {
+                savedPushTokens
+            } else {
+                savedPushTokens + getPushTokens(context, savedPushTokens)
+            }
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
