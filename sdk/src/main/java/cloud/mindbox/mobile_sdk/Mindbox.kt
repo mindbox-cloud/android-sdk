@@ -91,9 +91,9 @@ object Mindbox : MindboxLog {
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
-    private val mutex = Mutex()
-
+    private val getDeviceIdMutex = Mutex()
     private val inAppMutex = Mutex()
+    private val mutexUpdateAppInfo: Mutex = Mutex()
 
     private var firstInitCall: Boolean = true
 
@@ -1084,7 +1084,7 @@ object Mindbox : MindboxLog {
     private suspend fun getDeviceId(
         context: Context,
     ): String {
-        mutex.withLock {
+        getDeviceIdMutex.withLock {
             return MindboxPreferences.deviceUuid.ifEmpty {
                 val adidResult = mindboxScope.async {
                     pushServiceHandlers.firstNotNullOfOrNull { handler ->
@@ -1140,40 +1140,42 @@ object Mindbox : MindboxLog {
         context: Context,
         pushToken: PushToken? = null,
     ): Unit = loggingRunCatchingSuspending {
-        val savedPushTokens = MindboxPreferences.pushTokens
-        val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
+        mutexUpdateAppInfo.withLock {
+            val savedPushTokens = MindboxPreferences.pushTokens
+            val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
 
-        val pushTokens: PushTokenMap =
-            if (pushToken != null && pushToken.token == savedPushTokens[pushToken.provider]) {
-                savedPushTokens
-            } else {
-                savedPushTokens + getPushTokens(context, savedPushTokens)
+            val pushTokens: PushTokenMap =
+                if (pushToken != null && pushToken.token == savedPushTokens[pushToken.provider]) {
+                    savedPushTokens
+                } else {
+                    savedPushTokens + getPushTokens(context, savedPushTokens)
+                }
+
+            val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
+
+            if (pushTokens == savedPushTokens && isNotificationEnabled == savedIsNotificationEnabled) {
+                return@loggingRunCatchingSuspending
             }
 
-        val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
+            mindboxLogI(
+                "updateAppInfo. pushToken: $pushTokens, isNotificationEnabled: $isNotificationEnabled, " +
+                    "old isNotificationEnabled: $savedPushTokens"
+            )
+            val initData = UpdateData(
+                isNotificationsEnabled = isNotificationEnabled,
+                instanceId = MindboxPreferences.instanceId,
+                version = MindboxPreferences.infoUpdatedVersion,
+                tokens = pushTokens.toTokenData(),
+            )
 
-        if (pushTokens == savedPushTokens && isNotificationEnabled == savedIsNotificationEnabled) {
-            return@loggingRunCatchingSuspending
-        }
+            MindboxEventManager.appInfoUpdate(context, initData)
 
-        mindboxLogI(
-            "updateAppInfo. pushToken: $pushTokens, isNotificationEnabled: $isNotificationEnabled, " +
-                "old isNotificationEnabled: $savedPushTokens"
-        )
-        val initData = UpdateData(
-            isNotificationsEnabled = isNotificationEnabled,
-            instanceId = MindboxPreferences.instanceId,
-            version = MindboxPreferences.infoUpdatedVersion,
-            tokens = pushTokens.toTokenData(),
-        )
-
-        MindboxEventManager.appInfoUpdate(context, initData)
-
-        if (isNotificationEnabled != savedIsNotificationEnabled) {
-            MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-        }
-        if (pushTokens != savedPushTokens) {
-            MindboxPreferences.pushTokens = pushTokens
+            if (isNotificationEnabled != savedIsNotificationEnabled) {
+                MindboxPreferences.isNotificationEnabled = isNotificationEnabled
+            }
+            if (pushTokens != savedPushTokens) {
+                MindboxPreferences.pushTokens = pushTokens
+            }
         }
     }
 
