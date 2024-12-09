@@ -10,7 +10,12 @@ android {
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
+        consumerProguardFiles(
+            "consumer-rules.pro",
+            "../proguard/proguard-gson.pro",
+            "../proguard/proguard-rustore.pro",
+            "../proguard/proguard-kotlin.pro"
+        )
     }
 
     buildFeatures {
