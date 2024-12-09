@@ -37,6 +37,8 @@ agcp = "1.6.0.300"
 ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 
+pushclient = "6.4.0"
+
 [bundles]
 buildscript-plugins = [
     "android_tools_build_gradle",
@@ -86,6 +88,9 @@ constraint_layout = { group = "androidx.constraintlayout", name = "constraintlay
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenapb" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide_compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
+
+# RuStore libraries
+rustore_pushclient = { module = "ru.rustore.sdk:pushclient", version.ref = "pushclient" }
 
 # Test libraries
 junit = { group = "junit", name = "junit", version.ref = "junit" }
