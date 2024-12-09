@@ -3,6 +3,7 @@ package com.mindbox.example
 import android.app.Application
 import cloud.mindbox.mindbox_firebase.MindboxFirebase
 import cloud.mindbox.mindbox_huawei.MindboxHuawei
+import cloud.mindbox.mindbox_rustore.MindboxRuStore
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.logger.Level
@@ -11,6 +12,7 @@ import cloud.mindbox.mobile_sdk.logger.Level
 class ExampleApp : Application() {
 
     companion object {
+        const val RU_STORE_PROJECT_ID = "" //paste your RuStore project id
         private var privateApplication: Application? = null
         val application: Application
             get() = privateApplication!!
@@ -33,13 +35,13 @@ class ExampleApp : Application() {
         //https://developers.mindbox.ru/docs/android-sdk-methods#initpushservices
         Mindbox.initPushServices(
             context = applicationContext,
-            pushServices = listOf(MindboxFirebase, MindboxHuawei)
+            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(RU_STORE_PROJECT_ID))
         )
         //https://developers.mindbox.ru/docs/android-sdk-methods#init
         Mindbox.init(
             application = this,
             configuration = configuration,
-            pushServices = listOf(MindboxFirebase, MindboxHuawei)
+            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(RU_STORE_PROJECT_ID))
         )
 
         //https://developers.mindbox.ru/docs/android-sdk-methods#setloglevel
