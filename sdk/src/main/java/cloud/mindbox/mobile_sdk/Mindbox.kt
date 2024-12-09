@@ -496,7 +496,7 @@ object Mindbox : MindboxLog {
                 return@runCatching
             }
 
-            initComponents(context.applicationContext, pushServices)
+            initComponents(context.applicationContext)
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                 "configuration: $configuration, pushServices: " +
                 pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
@@ -509,6 +509,7 @@ object Mindbox : MindboxLog {
 
             initScope.launch {
                 migrationManager.migrateAll()
+                setPushServiceHandler(context, pushServices)
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 DbManager.saveConfigurations(Configuration(configuration))
@@ -687,27 +688,26 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         verifyThreadExecution(methodName = "initPushServices")
-        initComponents(context, pushServices)
+        initComponents(context)
+        mindboxScope.launch {
+            setPushServiceHandler(context, pushServices)
+        }
     }
 
-    private fun setPushServiceHandler(
+    private suspend fun setPushServiceHandler(
         context: Context,
         pushServices: List<MindboxPushService>? = null,
-    ): Unit = loggingRunCatching {
+    ): Unit = loggingRunCatchingSuspending {
         if (pushServiceHandlers.isEmpty() && pushServices != null) {
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
 
             pushServiceHandlers = selectPushServiceHandler(context, pushServices)
 
-            mindboxScope.launch {
-                pushServiceHandlers.map {
-                    it.initService(context)
-                }
+            pushServiceHandlers.map {
+                it.initService(context)
             }
             if (!MindboxPreferences.isFirstInitialize) {
-                mindboxScope.launch {
-                    updateAppInfo(context)
-                }
+                updateAppInfo(context)
             }
         }
     }
@@ -1033,12 +1033,11 @@ object Mindbox : MindboxLog {
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
 
-    internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
+    internal fun initComponents(context: Context) {
         MindboxDI.init(context.applicationContext)
         AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
-        setPushServiceHandler(context, pushServices)
     }
 
     private fun <T> asyncOperation(
