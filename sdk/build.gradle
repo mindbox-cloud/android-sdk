@@ -10,6 +10,7 @@ dependencies {
     constraints {
         api("cloud.mindbox:mindbox-firebase:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-huawei:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-rustore:$SDK_VERSION_NAME")
     }
 }
 android {
