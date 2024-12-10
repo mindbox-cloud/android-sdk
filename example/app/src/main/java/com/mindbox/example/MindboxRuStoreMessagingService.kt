@@ -11,7 +11,7 @@ import ru.rustore.sdk.pushclient.messaging.service.RuStoreMessagingService
 class MindboxRuStoreMessagingService : RuStoreMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
-
+        super.onMessageReceived(message)
         val channelId = "mindbox_app_channel"
         val channelName = "defaultChannelName"
         val channelDescription = "defaultDescription"
@@ -55,6 +55,7 @@ class MindboxRuStoreMessagingService : RuStoreMessagingService() {
     }
 
     override fun onNewToken(token: String) {
+        super.onNewToken(token)
         // Token transfer to Mindbox SDK
         //https://developers.mindbox.ru/docs/android-sdk-methods#updatepushtoken
         Mindbox.updatePushToken(
