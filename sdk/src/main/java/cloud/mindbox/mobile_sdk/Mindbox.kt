@@ -445,7 +445,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -470,7 +470,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -642,7 +642,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
@@ -679,7 +679,7 @@ object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -912,10 +912,10 @@ object Mindbox : MindboxLog {
     }
 
     /**
-     * Handles only Mindbox notification message from [HmsMessageService] or [FirebaseMessageService].
+     * Handles only Mindbox notification message from [HmsMessageService], [FirebaseMessageService], [RuStoreMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
-     * @param message the [MindboxRemoteMessage] received from Firebase or HMS
+     * @param message the [MindboxRemoteMessage] received from Firebase, HMS, RuStore
      * @param channelId the id of channel for Mindbox pushes
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
@@ -939,30 +939,36 @@ object Mindbox : MindboxLog {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+    ): Boolean = loggingRunCatching(defaultValue = false) {
         verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
-        MindboxLoggerImpl.d(
-            this, "handleRemoteMessage. channelId: $channelId, " +
+        mindboxLogI(
+            "handleRemoteMessage. channelId: $channelId, " +
                 "channelName: $channelName, channelDescription: $channelDescription, " +
                 "defaultActivity: ${defaultActivity.simpleName}, " +
                 "activities: ${
-                    activities?.map { "${it.key}: ${it.value.simpleName}" }?.joinToString(", ")
+                    activities?.map {
+                        "${it.key}: ${it.value.simpleName}"
+                    }?.joinToString(", ")
                 }"
         )
         if (message == null) {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. Message is null.")
-            return@runCatching false
+            logI("Cannot handle null message")
+            return@loggingRunCatching false
         }
         if (pushServiceHandlers.isEmpty()) {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. PushServiceHandler is null.")
+            logW("No push service handlers found.")
         }
-        val convertedMessage = pushServiceHandlers.firstNotNullOfOrNull { handler ->
-            handler.convertToRemoteMessage(message)
+        val convertedMessage = when (message) {
+            is MindboxRemoteMessage -> message
+            else -> pushServiceHandlers.firstNotNullOfOrNull { handler ->
+                handler.convertToRemoteMessage(message)
+            }
         }
         if (convertedMessage == null) {
-            return@runCatching false
+            logW("Cannot convert message: $message")
+            return@loggingRunCatching false
         } else {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. ConvertedMessage: $convertedMessage")
+            logI("Try to handle converted message: $convertedMessage")
         }
 
         runBlocking(mindboxScope.coroutineContext) {
