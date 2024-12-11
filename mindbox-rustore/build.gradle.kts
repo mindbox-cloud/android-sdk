@@ -32,6 +32,7 @@ dependencies {
     implementation(platform(libs.kotlinx.coroutines.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.gson)
 
     // Test dependencies
     testImplementation(libs.bundles.test)

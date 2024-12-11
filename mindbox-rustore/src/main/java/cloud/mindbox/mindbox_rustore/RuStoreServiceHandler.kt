@@ -11,6 +11,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import ru.rustore.sdk.core.util.RuStoreUtils
 import ru.rustore.sdk.pushclient.RuStorePushClient
 import ru.rustore.sdk.pushclient.common.logger.DefaultLogger
+import ru.rustore.sdk.pushclient.messaging.model.RemoteMessage
 import java.util.UUID
 import kotlin.coroutines.resumeWithException
 
@@ -36,9 +37,12 @@ class RuStoreServiceHandler(
         }
     }
 
-    override fun convertToRemoteMessage(message: Any): MindboxRemoteMessage? {
-        TODO("Not yet implemented")
-    }
+    override fun convertToRemoteMessage(message: Any): MindboxRemoteMessage? =
+        message.takeIf { it is RemoteMessage }?.let {
+            exceptionHandler.runCatching(null) {
+                MindboxRuStore.convertToMindboxRemoteMessage(message as RemoteMessage)
+            }
+        }
 
     override fun getAdsId(context: Context): Pair<String?, Boolean> =
         UUID.randomUUID().toString() to false
@@ -50,7 +54,8 @@ class RuStoreServiceHandler(
     override fun isAvailable(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < RU_STORE_MIN_API_VERSION) {
             logger.e(
-                this, "RuStore push notifications do not work on this device. " +
+                this,
+                "RuStore push notifications do not work on this device. " +
                     "Requires at least Android API $RU_STORE_MIN_API_VERSION"
             )
             return false
@@ -59,13 +64,14 @@ class RuStoreServiceHandler(
         return RuStoreUtils.isRuStoreInstalled(context)
     }
 
-    override suspend fun getToken(context: Context): String? = suspendCancellableCoroutine { continuation ->
-        RuStorePushClient.getToken()
-            .addOnSuccessListener { token ->
-                continuation.resumeWith(Result.success(token))
-            }
-            .addOnFailureListener { throwable ->
-                continuation.resumeWithException(throwable)
-            }
-    }
+    override suspend fun getToken(context: Context): String? =
+        suspendCancellableCoroutine { continuation ->
+            RuStorePushClient.getToken()
+                .addOnSuccessListener { token ->
+                    continuation.resumeWith(Result.success(token))
+                }
+                .addOnFailureListener { throwable ->
+                    continuation.resumeWithException(throwable)
+                }
+        }
 }
