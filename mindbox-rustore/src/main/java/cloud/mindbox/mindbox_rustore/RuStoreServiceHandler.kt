@@ -22,7 +22,7 @@ class RuStoreServiceHandler(
 ) : PushServiceHandler() {
 
     companion object {
-        const val RU_STORE_MIN_API_VERSION = Build.VERSION_CODES.M
+        const val RU_STORE_MIN_API_VERSION = Build.VERSION_CODES.N
     }
 
     override val notificationProvider: String = MindboxRuStoreInternal.tag
