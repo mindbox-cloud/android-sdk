@@ -508,7 +508,7 @@ object Mindbox : MindboxLog {
             }
 
             initScope.launch {
-                migrationManager.migrateAll()
+                InitializeLock.await(InitializeLock.State.MIGRATION)
                 setPushServiceHandler(context, pushServices)
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
@@ -690,6 +690,7 @@ object Mindbox : MindboxLog {
         verifyThreadExecution(methodName = "initPushServices")
         initComponents(context)
         mindboxScope.launch {
+            InitializeLock.await(InitializeLock.State.MIGRATION)
             setPushServiceHandler(context, pushServices)
         }
     }
@@ -703,9 +704,9 @@ object Mindbox : MindboxLog {
 
             pushServiceHandlers = selectPushServiceHandler(context, pushServices)
 
-            pushServiceHandlers.map {
-                it.initService(context)
-            }
+            pushServiceHandlers.map { handler ->
+                mindboxScope.async { handler.initService(context) }
+            }.awaitAll()
             if (!MindboxPreferences.isFirstInitialize) {
                 updateAppInfo(context)
             }
@@ -1044,6 +1045,10 @@ object Mindbox : MindboxLog {
         AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
+
+        mindboxScope.launch {
+            migrationManager.migrateAll()
+        }
     }
 
     private fun <T> asyncOperation(

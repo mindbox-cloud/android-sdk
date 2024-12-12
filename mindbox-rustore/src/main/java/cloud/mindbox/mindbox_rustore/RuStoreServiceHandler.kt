@@ -7,7 +7,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import ru.rustore.sdk.core.util.RuStoreUtils
 import ru.rustore.sdk.pushclient.RuStorePushClient
 import ru.rustore.sdk.pushclient.common.logger.DefaultLogger
@@ -27,13 +29,17 @@ class RuStoreServiceHandler(
 
     override val notificationProvider: String = MindboxRuStoreInternal.tag
 
-    override fun initService(context: Context) {
-        exceptionHandler.runCatching {
-            RuStorePushClient.init(
-                application = context.applicationContext as Application,
-                projectId = projectId,
-                logger = DefaultLogger(),
-            )
+    override suspend fun initService(context: Context) {
+        exceptionHandler.runCatchingSuspending {
+            logger.d(this@RuStoreServiceHandler, "RuStorePushClient.init ${Thread.currentThread()}")
+
+            withContext(Dispatchers.Main) {
+                RuStorePushClient.init(
+                    application = context.applicationContext as Application,
+                    projectId = projectId,
+                    logger = DefaultLogger(),
+                )
+            }
         }
     }
 
@@ -66,6 +72,7 @@ class RuStoreServiceHandler(
 
     override suspend fun getToken(context: Context): String? =
         suspendCancellableCoroutine { continuation ->
+            logger.d(this@RuStoreServiceHandler, "RuStorePushClient.getToken ${Thread.currentThread()}")
             RuStorePushClient.getToken()
                 .addOnSuccessListener { token ->
                     continuation.resumeWith(Result.success(token))

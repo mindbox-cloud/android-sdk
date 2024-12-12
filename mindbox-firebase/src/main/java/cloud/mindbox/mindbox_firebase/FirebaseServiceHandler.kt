@@ -21,7 +21,7 @@ internal class FirebaseServiceHandler(
 
     override val notificationProvider: String = MindboxFirebase.tag
 
-    override fun initService(context: Context) {
+    override suspend fun initService(context: Context) {
         FirebaseApp.initializeApp(context)
     }
 
