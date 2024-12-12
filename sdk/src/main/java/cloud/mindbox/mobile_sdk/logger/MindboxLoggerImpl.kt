@@ -29,7 +29,7 @@ interface MindboxLogger {
 
 internal object MindboxLoggerImpl : MindboxLogger {
 
-    private const val TAG = "Mindbox"
+    const val TAG = "Mindbox"
 
     private val DEFAULT_LOG_LEVEL = Level.WARN
 

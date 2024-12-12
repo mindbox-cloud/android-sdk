@@ -34,6 +34,7 @@ internal object InitializeLock {
     }
 
     internal enum class State {
+        MIGRATION,
         SAVE_MINDBOX_CONFIG,
         APP_STARTED
     }

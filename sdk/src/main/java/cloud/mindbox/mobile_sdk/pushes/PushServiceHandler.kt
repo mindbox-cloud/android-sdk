@@ -18,7 +18,7 @@ abstract class PushServiceHandler : MindboxLog {
 
     abstract val notificationProvider: String
 
-    abstract fun initService(context: Context)
+    abstract suspend fun initService(context: Context)
 
     abstract fun convertToRemoteMessage(message: Any): MindboxRemoteMessage?
 
