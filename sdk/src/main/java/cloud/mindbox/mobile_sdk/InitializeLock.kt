@@ -7,10 +7,10 @@ import kotlinx.coroutines.Job
 
 internal object InitializeLock {
 
-    private val map: MutableMap<State, CompletableDeferred<Unit>> = mutableMapOf(
-        State.SAVE_MINDBOX_CONFIG to CompletableDeferred(),
-        State.APP_STARTED to CompletableDeferred()
-    )
+    private val map: MutableMap<State, CompletableDeferred<Unit>> =
+        State.values()
+            .associateWith<State, CompletableDeferred<Unit>> { CompletableDeferred() }
+            .toMutableMap()
 
     @WorkerThread
     internal suspend fun await(state: State) {

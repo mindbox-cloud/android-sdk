@@ -31,8 +31,6 @@ class RuStoreServiceHandler(
 
     override suspend fun initService(context: Context) {
         exceptionHandler.runCatchingSuspending {
-            logger.d(this@RuStoreServiceHandler, "RuStorePushClient.init ${Thread.currentThread()}")
-
             withContext(Dispatchers.Main) {
                 RuStorePushClient.init(
                     application = context.applicationContext as Application,
@@ -59,7 +57,7 @@ class RuStoreServiceHandler(
 
     override fun isAvailable(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < RU_STORE_MIN_API_VERSION) {
-            logger.e(
+            logger.w(
                 this,
                 "RuStore push notifications do not work on this device. " +
                     "Requires at least Android API $RU_STORE_MIN_API_VERSION"
@@ -72,7 +70,6 @@ class RuStoreServiceHandler(
 
     override suspend fun getToken(context: Context): String? =
         suspendCancellableCoroutine { continuation ->
-            logger.d(this@RuStoreServiceHandler, "RuStorePushClient.getToken ${Thread.currentThread()}")
             RuStorePushClient.getToken()
                 .addOnSuccessListener { token ->
                     continuation.resumeWith(Result.success(token))
