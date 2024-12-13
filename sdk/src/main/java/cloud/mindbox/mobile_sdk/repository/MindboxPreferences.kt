@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PushTokenMap
 import cloud.mindbox.mobile_sdk.pushes.toPreferences
 import cloud.mindbox.mobile_sdk.pushes.toTokensMap
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,7 @@ internal object MindboxPreferences {
 
     private const val KEY_IS_FIRST_INITIALIZATION = "key_is_first_initialization"
     private const val KEY_DEVICE_UUID = "key_device_uuid"
-    private const val KEY_PUSH_TOKEN = "key_firebase_token"
+    private const val KEY_PUSH_TOKENS = "key_push_tokens"
     private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
     private const val KEY_HOST_APP_MANE =
@@ -114,11 +115,11 @@ internal object MindboxPreferences {
 
     var pushTokens: PushTokenMap
         get() = loggingRunCatching(defaultValue = emptyMap()) {
-            SharedPreferencesManager.getString(KEY_PUSH_TOKEN).toTokensMap()
+            SharedPreferencesManager.getString(KEY_PUSH_TOKENS).toTokensMap()
         }
         set(value) {
             loggingRunCatching {
-                SharedPreferencesManager.put(KEY_PUSH_TOKEN, value.toPreferences())
+                SharedPreferencesManager.put(KEY_PUSH_TOKENS, value.toPreferences())
                 tokenSaveDate = Date().toString()
             }
         }
@@ -244,8 +245,8 @@ internal object MindboxPreferences {
         }
 
     var versionCode: Int
-        get() = LoggingExceptionHandler.runCatching(defaultValue = 1) {
-            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, 1)
+        get() = LoggingExceptionHandler.runCatching(defaultValue = Constants.SDK_VERSION_CODE) {
+            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, Constants.SDK_VERSION_CODE)
         }
         set(value) {
             LoggingExceptionHandler.runCatching {

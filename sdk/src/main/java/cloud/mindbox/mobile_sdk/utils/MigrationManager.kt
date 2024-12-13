@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
@@ -17,7 +19,14 @@ internal class MigrationManager(val context: Context) : MindboxLog {
     private val migrationMutex = Mutex()
     private val migrationJobs = mutableListOf<Job>()
 
+    @Volatile
+    private var isMigrating = false
+
     suspend fun migrateAll() {
+        if (isMigrating) return
+        mindboxLogI("Migrations started")
+
+        isMigrating = true
         listOf(
             version290(),
             version2120(),
@@ -40,6 +49,8 @@ internal class MigrationManager(val context: Context) : MindboxLog {
                     MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
                 }
             }
+
+        InitializeLock.complete(InitializeLock.State.MIGRATION)
     }
 
     private interface Migration {
@@ -75,21 +86,25 @@ internal class MigrationManager(val context: Context) : MindboxLog {
     }
 
     private fun version2120() = object : Migration {
+        val VERSION_CODE = 2
+
         override val description: String
             get() = "Changes the push token save format to multiple tokens with providers."
         override val isNeeded: Boolean
-            get() = MindboxPreferences.versionCode < Constants.SDK_VERSION_CODE
+            get() = MindboxPreferences.versionCode < VERSION_CODE
 
         override suspend fun run() {
-            val provider = SharedPreferencesManager.getString("KEY_PUSH_TOKEN")
-            val token = SharedPreferencesManager.getString("KEY_PUSH_TOKEN")
+            val provider = SharedPreferencesManager.getString("key_notification_provider")
+            val token = SharedPreferencesManager.getString("key_firebase_token")
 
             SharedPreferencesManager.remove("key_notification_provider")
-            if (token != null && provider != null) {
+            SharedPreferencesManager.remove("key_firebase_token")
+            val savedTokens = MindboxPreferences.pushTokens
+            if (token != null && provider != null && savedTokens.isEmpty()) {
                 MindboxPreferences.pushTokens = mapOf(provider to token)
             }
 
-            MindboxPreferences.versionCode++
+            MindboxPreferences.versionCode = VERSION_CODE
         }
     }
 }
