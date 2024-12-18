@@ -96,6 +96,7 @@ object Mindbox : MindboxLog {
     private val mutexUpdateAppInfo: Mutex = Mutex()
 
     private var firstInitCall: Boolean = true
+    private var isPushServiceInitialized = false
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
@@ -699,7 +700,8 @@ object Mindbox : MindboxLog {
         context: Context,
         pushServices: List<MindboxPushService>? = null,
     ): Unit = loggingRunCatchingSuspending {
-        if (pushServiceHandlers.isEmpty() && pushServices != null) {
+        if (pushServiceHandlers.isEmpty() && pushServices != null && !isPushServiceInitialized) {
+            isPushServiceInitialized = true
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
 
             pushServiceHandlers = selectPushServiceHandler(context, pushServices)
