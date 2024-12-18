@@ -4,7 +4,6 @@ import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PushTokenMap
 import cloud.mindbox.mobile_sdk.pushes.toPreferences
 import cloud.mindbox.mobile_sdk.pushes.toTokensMap
-import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CoroutineScope
@@ -245,8 +244,8 @@ internal object MindboxPreferences {
         }
 
     var versionCode: Int
-        get() = LoggingExceptionHandler.runCatching(defaultValue = Constants.SDK_VERSION_CODE) {
-            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, Constants.SDK_VERSION_CODE)
+        get() = LoggingExceptionHandler.runCatching(defaultValue = 1) {
+            SharedPreferencesManager.getInt(KEY_SDK_VERSION_CODE, 1)
         }
         set(value) {
             LoggingExceptionHandler.runCatching {
