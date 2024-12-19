@@ -37,7 +37,7 @@ agcp = "1.6.0.300"
 ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 
-pushclient = "6.4.0"
+pushclient = "6.5.1"
 
 [bundles]
 buildscript-plugins = [

@@ -24,7 +24,11 @@ internal class MigrationManager(val context: Context) : MindboxLog {
 
     suspend fun migrateAll() {
         if (isMigrating) return
-        mindboxLogI("Migrations started")
+        mindboxLogI("Check migrations needed")
+
+        if (MindboxPreferences.isFirstInitialize) {
+            MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
+        }
 
         isMigrating = true
         listOf(
@@ -91,7 +95,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
         override val description: String
             get() = "Changes the push token save format to multiple tokens with providers."
         override val isNeeded: Boolean
-            get() = MindboxPreferences.versionCode < VERSION_CODE
+            get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
 
         override suspend fun run() {
             val provider = SharedPreferencesManager.getString("key_notification_provider")

@@ -7,9 +7,7 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import ru.rustore.sdk.core.util.RuStoreUtils
 import ru.rustore.sdk.pushclient.RuStorePushClient
 import ru.rustore.sdk.pushclient.common.logger.DefaultLogger
@@ -31,13 +29,12 @@ class RuStoreServiceHandler(
 
     override suspend fun initService(context: Context) {
         exceptionHandler.runCatchingSuspending {
-            withContext(Dispatchers.Main) {
-                RuStorePushClient.init(
-                    application = context.applicationContext as Application,
-                    projectId = projectId,
-                    logger = DefaultLogger(),
-                )
-            }
+            logger.d(this, "RuStoreServiceHandler initService, ${Thread.currentThread().name}")
+            RuStorePushClient.init(
+                application = context.applicationContext as Application,
+                projectId = projectId,
+                logger = DefaultLogger(),
+            )
         }
     }
 
