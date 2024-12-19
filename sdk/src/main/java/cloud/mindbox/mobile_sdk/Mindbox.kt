@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.annotation.MainThread
+import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -29,10 +30,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import cloud.mindbox.mobile_sdk.utils.Constants
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import cloud.mindbox.mobile_sdk.utils.MigrationManager
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.*
 import com.jakewharton.threetenabp.AndroidThreeTen
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
@@ -78,8 +76,6 @@ object Mindbox : MindboxLog {
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
-    private val infoUpdatedThreadDispatcher = Executors.newSingleThreadExecutor()
-        .asCoroutineDispatcher()
     private val initScope = createMindboxScope()
     internal var mindboxScope = createMindboxScope()
         private set
@@ -91,13 +87,13 @@ object Mindbox : MindboxLog {
 
     private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
 
-    internal var pushServiceHandler: PushServiceHandler? = null
+    internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
-    private val mutex = Mutex()
-
+    private val getDeviceIdMutex = Mutex()
     private val inAppMutex = Mutex()
+    private val mutexUpdateAppInfo: Mutex = Mutex()
 
     private var firstInitCall: Boolean = true
 
@@ -185,7 +181,12 @@ object Mindbox : MindboxLog {
             "IN Mindbox.disposePushTokenSubscription(...))"
 
         if (SharedPreferencesManager.isInitialized() && !MindboxPreferences.isFirstInitialize) {
-            subscription.invoke(MindboxPreferences.pushToken)
+            subscription.invoke(
+                MindboxPreferences.pushTokens
+                    .entries
+                    .firstOrNull()
+                    ?.value
+            )
         } else {
             tokenCallbacks[subscriptionId] = subscription
         }
@@ -290,7 +291,7 @@ object Mindbox : MindboxLog {
      */
     @Deprecated(
         message = "Use updatePushToken(context: Context, token: String, services: MindboxPushService)",
-        level = DeprecationLevel.WARNING,
+        level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("this.updatePushToken(context, token, pushService)")
     )
     fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
@@ -299,7 +300,13 @@ object Mindbox : MindboxLog {
         if (token.trim().isNotEmpty()) {
             if (!MindboxPreferences.isFirstInitialize) {
                 mindboxScope.launch {
-                    updateAppInfo(context, token)
+                    pushServiceHandlers.firstOrNull()?.let { handler ->
+                        if (pushServiceHandlers.size == 1) {
+                            updateAppInfo(context, PushToken(handler.notificationProvider, token))
+                        } else {
+                            updateAppInfo(context)
+                        }
+                    }
                 }
             } else {
                 mindboxLogI("updatePushToken. MindboxPreferences.isFirstInitialize == true. Skipping update.")
@@ -330,13 +337,17 @@ object Mindbox : MindboxLog {
                 return@loggingRunCatching
             }
 
-            if (pushService.tag != pushServiceHandler?.notificationProvider) {
-                mindboxLogW("Token provider ${pushService.tag} not matching with selected provider ${pushServiceHandler?.notificationProvider}. Skipping update token.")
+            val notificationProvider = pushServiceHandlers.firstOrNull { handler ->
+                pushService.tag == handler.notificationProvider
+            }
+
+            if (notificationProvider == null) {
+                mindboxLogW("Unknown token provider ${pushService.tag}. Skipping token update.")
                 return@loggingRunCatching
             }
 
             mindboxScope.launch {
-                updateAppInfo(context, token)
+                updateAppInfo(context, PushToken(pushService.tag, token))
             }
         }
 
@@ -403,7 +414,7 @@ object Mindbox : MindboxLog {
      * Recommended call this method from background thread.
      *
      * @param context used to initialize the main tools
-     * @param intent - intent recieved in app component
+     * @param intent - intent received in app component
      *
      * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
      *         false if Mindbox SDK cannot find critical information in intent
@@ -434,7 +445,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -459,7 +470,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -485,7 +496,7 @@ object Mindbox : MindboxLog {
                 return@runCatching
             }
 
-            initComponents(context.applicationContext, pushServices)
+            initComponents(context.applicationContext)
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
                 "configuration: $configuration, pushServices: " +
                 pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
@@ -497,7 +508,8 @@ object Mindbox : MindboxLog {
             }
 
             initScope.launch {
-                migrationManager.migrateAll()
+                InitializeLock.await(InitializeLock.State.MIGRATION)
+                setPushServiceHandler(context, pushServices)
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 DbManager.saveConfigurations(Configuration(configuration))
@@ -630,7 +642,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
@@ -667,7 +679,7 @@ object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei)
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
      * ```
      */
     @MainThread
@@ -676,33 +688,28 @@ object Mindbox : MindboxLog {
         pushServices: List<MindboxPushService>,
     ) {
         verifyThreadExecution(methodName = "initPushServices")
-        initComponents(context, pushServices)
+        initComponents(context)
+        mindboxScope.launch {
+            InitializeLock.await(InitializeLock.State.MIGRATION)
+            setPushServiceHandler(context, pushServices)
+        }
     }
 
-    private fun setPushServiceHandler(
+    private suspend fun setPushServiceHandler(
         context: Context,
         pushServices: List<MindboxPushService>? = null,
-    ) = LoggingExceptionHandler.runCatching {
-        if (pushServiceHandler == null && pushServices != null) {
+    ): Unit = loggingRunCatchingSuspending {
+        if (pushServiceHandlers.isEmpty() && pushServices != null) {
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
-            val savedProvider = MindboxPreferences.notificationProvider
-            selectPushServiceHandler(context, pushServices, savedProvider)
-                ?.let { pushServiceHandler ->
-                    this.pushServiceHandler = pushServiceHandler
-                    pushServiceHandler.notificationProvider
-                        .takeIf { it != savedProvider }
-                        ?.let { newProvider ->
-                            MindboxPreferences.notificationProvider = newProvider
-                            if (!MindboxPreferences.isFirstInitialize) {
-                                mindboxScope.launch {
-                                    updateAppInfo(context)
-                                }
-                            }
-                        }
-                    mindboxScope.launch {
-                        pushServiceHandler.initService(context)
-                    }
-                }
+
+            pushServiceHandlers = selectPushServiceHandler(context, pushServices)
+
+            pushServiceHandlers.map { handler ->
+                mindboxScope.async { handler.initService(context) }
+            }.awaitAll()
+            if (!MindboxPreferences.isFirstInitialize) {
+                updateAppInfo(context)
+            }
         }
     }
 
@@ -713,29 +720,10 @@ object Mindbox : MindboxLog {
     private fun selectPushServiceHandler(
         context: Context,
         pushServices: List<MindboxPushService>,
-        savedProvider: String,
-    ): PushServiceHandler? {
-        val serviceHandlers = pushServices
+    ): List<PushServiceHandler> =
+        pushServices
             .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
-        return serviceHandlers.firstOrNull { it.notificationProvider == savedProvider }
-            ?: initAvailablePushService(context, serviceHandlers, savedProvider)
-    }
-
-    private fun initAvailablePushService(
-        context: Context,
-        serviceHandlers: List<PushServiceHandler>,
-        savedProvider: String,
-    ) = if (savedProvider.isBlank()) {
-        serviceHandlers.firstOrNull { it.isServiceAvailable(context) }
-    } else {
-        MindboxLoggerImpl.e(
-            Mindbox,
-            "Mindbox was previously initialized with $savedProvider push service but " +
-                "Mindbox did not find it within pushServices. Check your Mindbox.init() and " +
-                "Mindbox.initPushServices()",
-        )
-        null
-    }
+            .filter { it.isServiceAvailable(context) }
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -925,10 +913,10 @@ object Mindbox : MindboxLog {
     }
 
     /**
-     * Handles only Mindbox notification message from [HmsMessageService] or [FirebaseMessageServise].
+     * Handles only Mindbox notification message from [HmsMessageService], [FirebaseMessageService], [RuStoreMessagingService].
      *
      * @param context context used for Mindbox initializing and push notification showing
-     * @param message the [MindboxRemoteMessage] received from Firebase or HMS
+     * @param message the [MindboxRemoteMessage] received from Firebase, HMS, RuStore
      * @param channelId the id of channel for Mindbox pushes
      * @param channelName the name of channel for Mindbox pushes
      * @param pushSmallIcon icon for push notification as drawable resource
@@ -952,28 +940,36 @@ object Mindbox : MindboxLog {
         defaultActivity: Class<out Activity>,
         channelDescription: String? = null,
         activities: Map<String, Class<out Activity>>? = null,
-    ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
+    ): Boolean = loggingRunCatching(defaultValue = false) {
         verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
-        MindboxLoggerImpl.d(
-            this, "handleRemoteMessage. channelId: $channelId, " +
+        mindboxLogI(
+            "handleRemoteMessage. channelId: $channelId, " +
                 "channelName: $channelName, channelDescription: $channelDescription, " +
                 "defaultActivity: ${defaultActivity.simpleName}, " +
                 "activities: ${
-                    activities?.map { "${it.key}: ${it.value.simpleName}" }?.joinToString(", ")
+                    activities?.map {
+                        "${it.key}: ${it.value.simpleName}"
+                    }?.joinToString(", ")
                 }"
         )
         if (message == null) {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. Message is null.")
-            return@runCatching false
+            logI("Cannot handle null message")
+            return@loggingRunCatching false
         }
-        if (pushServiceHandler == null) {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. PushServiceHandler is null.")
+        if (pushServiceHandlers.isEmpty()) {
+            logW("No push service handlers found.")
         }
-        val convertedMessage = pushServiceHandler?.convertToRemoteMessage(message)
+        val convertedMessage = when (message) {
+            is MindboxRemoteMessage -> message
+            else -> pushServiceHandlers.firstNotNullOfOrNull { handler ->
+                handler.convertToRemoteMessage(message)
+            }
+        }
         if (convertedMessage == null) {
-            return@runCatching false
+            logW("Cannot convert message: $message")
+            return@loggingRunCatching false
         } else {
-            MindboxLoggerImpl.d(this, "handleRemoteMessage. ConvertedMessage: $convertedMessage")
+            logI("Try to handle converted message: $convertedMessage")
         }
 
         runBlocking(mindboxScope.coroutineContext) {
@@ -1035,21 +1031,24 @@ object Mindbox : MindboxLog {
         }
     }
 
-    private fun deliverToken(token: String?) {
+    private fun deliverToken(tokens: PushTokenMap) {
         Executors.newSingleThreadScheduledExecutor().schedule({
             tokenCallbacks.keys.asIterable().forEach { key ->
-                tokenCallbacks[key]?.invoke(token)
+                tokenCallbacks[key]?.invoke(tokens.entries.firstOrNull()?.value)
                 tokenCallbacks.remove(key)
             }
         }, DELIVER_TOKEN_DELAY, TimeUnit.SECONDS)
     }
 
-    internal fun initComponents(context: Context, pushServices: List<MindboxPushService>? = null) {
+    internal fun initComponents(context: Context) {
         MindboxDI.init(context.applicationContext)
         AndroidThreeTen.init(context)
         SharedPreferencesManager.with(context)
         DbManager.init(context)
-        setPushServiceHandler(context, pushServices)
+
+        mindboxScope.launch {
+            migrationManager.migrateAll()
+        }
     }
 
     private fun <T> asyncOperation(
@@ -1095,105 +1094,100 @@ object Mindbox : MindboxLog {
     private suspend fun getDeviceId(
         context: Context,
     ): String {
-        mutex.withLock {
-            return if (MindboxPreferences.deviceUuid.isEmpty()) {
-                val adid = mindboxScope.async {
-                    pushServiceHandler?.getAdsIdentification(context) ?: generateRandomUuid()
-                }
-                val adidResult = adid.await()
+        getDeviceIdMutex.withLock {
+            return MindboxPreferences.deviceUuid.ifEmpty {
+                val adidResult = mindboxScope.async {
+                    pushServiceHandlers.firstNotNullOfOrNull { handler ->
+                        handler.getAdsIdentification(context)
+                    }
+                }.await() ?: generateRandomUuid()
+
                 MindboxPreferences.deviceUuid = adidResult
                 adidResult
-            } else {
-                MindboxPreferences.deviceUuid
             }
         }
     }
 
-    private suspend fun firstInitialization(
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal suspend fun firstInitialization(
         context: Context,
         configuration: MindboxConfiguration,
-    ) = LoggingExceptionHandler.runCatchingSuspending {
-        MindboxLoggerImpl.d(this, "firstInitialization")
-        val pushToken = withContext(mindboxScope.coroutineContext) {
-            pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
-        }
+    ) = loggingRunCatchingSuspending {
+        val pushTokens: PushTokenMap = getPushTokens(context, emptyMap())
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
         val deviceUuid = getDeviceId(context)
         val instanceId = generateRandomUuid()
 
-        val isTokenAvailable = !pushToken.isNullOrEmpty()
-        val notificationProvider = pushServiceHandler?.notificationProvider ?: ""
-        val timezone = if (configuration.shouldCreateCustomer) {
-            TimeZone.getDefault().id
-        } else {
-            null
-        }
+        logI(
+            "First SDK initialization with deviceUuid: $deviceUuid, " +
+                "pushTokens: $pushTokens, " +
+                "isNotificationEnabled: $isNotificationEnabled"
+        )
+
+        val timezone = TimeZone.getDefault().id.takeIf { configuration.shouldCreateCustomer }
         val initData = InitData(
-            token = pushToken ?: "",
-            isTokenAvailable = isTokenAvailable,
             installationId = configuration.previousInstallationId,
             externalDeviceUUID = configuration.previousDeviceUUID,
             isNotificationsEnabled = isNotificationEnabled,
             subscribe = configuration.subscribeCustomerIfCreated,
             instanceId = instanceId,
-            notificationProvider = notificationProvider,
-            ianaTimeZone = timezone
+            ianaTimeZone = timezone,
+            tokens = pushTokens.toTokenData(),
         )
 
-        MindboxPreferences.pushToken = pushToken
+        MindboxPreferences.pushTokens = pushTokens
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
-        MindboxPreferences.notificationProvider = notificationProvider
 
         MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 
         deliverDeviceUuid(deviceUuid)
-        deliverToken(pushToken)
+        deliverToken(pushTokens)
     }
 
     internal suspend fun updateAppInfo(
         context: Context,
-        token: String? = null,
-    ) = withContext(infoUpdatedThreadDispatcher) {
-        LoggingExceptionHandler.runCatchingSuspending {
-            val pushToken = token ?: withContext(mindboxScope.coroutineContext) {
-                pushServiceHandler?.registerToken(context, MindboxPreferences.pushToken)
-            }
+        pushToken: PushToken? = null,
+    ): Unit = loggingRunCatchingSuspending {
+        mutexUpdateAppInfo.withLock {
+            val savedPushTokens = MindboxPreferences.pushTokens
+            val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
 
-            val isTokenAvailable = !pushToken.isNullOrEmpty()
+            val pushTokens: PushTokenMap =
+                if (pushToken != null && pushToken.token == savedPushTokens[pushToken.provider]) {
+                    savedPushTokens
+                } else {
+                    savedPushTokens + getPushTokens(context, savedPushTokens)
+                }
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-            this@Mindbox.mindboxLogI(
-                "updateAppInfo. isTokenAvailable: $isTokenAvailable, " +
-                    "pushToken: $pushToken, isNotificationEnabled: $isNotificationEnabled, " +
-                    "old isNotificationEnabled: ${MindboxPreferences.isNotificationEnabled}"
+
+            if (pushTokens == savedPushTokens && isNotificationEnabled == savedIsNotificationEnabled) {
+                return@loggingRunCatchingSuspending
+            }
+
+            mindboxLogI(
+                "updateAppInfo. pushToken: $pushTokens, isNotificationEnabled: $isNotificationEnabled, " +
+                    "old isNotificationEnabled: $savedPushTokens"
             )
-            if (isUpdateInfoRequired(isTokenAvailable, pushToken, isNotificationEnabled)) {
-                val initData = UpdateData(
-                    token = pushToken ?: MindboxPreferences.pushToken ?: "",
-                    isTokenAvailable = isTokenAvailable,
-                    isNotificationsEnabled = isNotificationEnabled,
-                    instanceId = MindboxPreferences.instanceId,
-                    version = MindboxPreferences.infoUpdatedVersion,
-                    notificationProvider = pushServiceHandler?.notificationProvider ?: "",
-                )
+            val initData = UpdateData(
+                isNotificationsEnabled = isNotificationEnabled,
+                instanceId = MindboxPreferences.instanceId,
+                version = MindboxPreferences.infoUpdatedVersion,
+                tokens = pushTokens.toTokenData(),
+            )
 
-                MindboxEventManager.appInfoUpdate(context, initData)
+            MindboxEventManager.appInfoUpdate(context, initData)
 
+            if (isNotificationEnabled != savedIsNotificationEnabled) {
                 MindboxPreferences.isNotificationEnabled = isNotificationEnabled
-                MindboxPreferences.pushToken = pushToken
+            }
+            if (pushTokens != savedPushTokens) {
+                MindboxPreferences.pushTokens = pushTokens
             }
         }
     }
-
-    private fun isUpdateInfoRequired(
-        isTokenAvailable: Boolean,
-        pushToken: String?,
-        isNotificationEnabled: Boolean,
-    ) = isTokenAvailable &&
-        pushToken != MindboxPreferences.pushToken ||
-        isNotificationEnabled != MindboxPreferences.isNotificationEnabled
 
     private fun checkConfig(
         newConfiguration: MindboxConfiguration,
@@ -1307,5 +1301,5 @@ object Mindbox : MindboxLog {
         }
     }
 
-    internal fun generateRandomUuid() = UUID.randomUUID().toString()
+    internal fun generateRandomUuid(): String = UUID.randomUUID().toString()
 }
