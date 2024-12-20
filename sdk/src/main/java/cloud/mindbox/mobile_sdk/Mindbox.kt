@@ -160,7 +160,7 @@ object Mindbox : MindboxLog {
      */
     @Deprecated(
         message = "Use subscribePushToken instead",
-        level = DeprecationLevel.WARNING,
+        level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("subscribePushToken"),
     )
     fun subscribeFmsToken(subscription: (String?) -> Unit): String {
@@ -185,8 +185,10 @@ object Mindbox : MindboxLog {
             subscription.invoke(
                 MindboxPreferences.pushTokens
                     .entries
-                    .firstOrNull()
+                    .takeIf { it.isNotEmpty() }
+                    ?.maxBy { it.value.updateDate }
                     ?.value
+                    ?.token
             )
         } else {
             tokenCallbacks[subscriptionId] = subscription
@@ -202,7 +204,7 @@ object Mindbox : MindboxLog {
      */
     @Deprecated(
         message = "Use disposePushTokenSubscription",
-        level = DeprecationLevel.WARNING,
+        level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("disposePushTokenSubscription"),
     )
     fun disposeFmsTokenSubscription(
@@ -226,20 +228,30 @@ object Mindbox : MindboxLog {
      * Returns date of push token saving
      */
     @Deprecated(
-        message = "Use getPushTokenSaveDate instead",
-        level = DeprecationLevel.WARNING,
+        message = "Use getPushTokensSaveDate instead",
+        level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("getPushTokenSaveDate"),
     )
     fun getFmsTokenSaveDate(): String {
-        MindboxLoggerImpl.d(this, "getFmsTokenSaveDate")
+        logW("Used deprecated getFmsTokenSaveDate")
         return getPushTokenSaveDate()
     }
 
     /**
      * Returns date of push token saving
      */
-    fun getPushTokenSaveDate(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
-        MindboxLoggerImpl.d(this, "getPushTokenSaveDate")
+    @Deprecated(
+        message = "Use getPushTokensSaveDate instead",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("getPushTokenSaveDate"),
+    )
+    fun getPushTokenSaveDate(): String = loggingRunCatching(defaultValue = "") {
+        logW("getPushTokenSaveDate")
+        MindboxPreferences.tokenSaveDate
+    }
+
+    fun getPushTokensSaveDate(): String = loggingRunCatching(defaultValue = "") {
+        logI("getPushTokensSaveDate")
         MindboxPreferences.tokenSaveDate
     }
 
@@ -1138,7 +1150,9 @@ object Mindbox : MindboxLog {
             tokens = pushTokens.toTokenData(),
         )
 
-        MindboxPreferences.pushTokens = pushTokens
+        MindboxPreferences.pushTokens = pushTokens.mapValues {
+            PrefPushToken(it.value, Date().time)
+        }
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
 
@@ -1153,7 +1167,8 @@ object Mindbox : MindboxLog {
         pushToken: PushToken? = null,
     ): Unit = loggingRunCatchingSuspending {
         mutexUpdateAppInfo.withLock {
-            val savedPushTokens = MindboxPreferences.pushTokens
+            val prefsPushTokens = MindboxPreferences.pushTokens
+            val savedPushTokens = prefsPushTokens.mapValues { it.value.token }
             val savedIsNotificationEnabled = MindboxPreferences.isNotificationEnabled
 
             val pushTokens: PushTokenMap =
@@ -1186,7 +1201,13 @@ object Mindbox : MindboxLog {
                 MindboxPreferences.isNotificationEnabled = isNotificationEnabled
             }
             if (pushTokens != savedPushTokens) {
-                MindboxPreferences.pushTokens = pushTokens
+                MindboxPreferences.pushTokens = pushTokens.mapValues { (provider, token) ->
+                    val prefsToken = prefsPushTokens[provider]
+                    PrefPushToken(
+                        token,
+                        if (token != prefsToken?.token) Date().time else prefsToken.updateDate
+                    )
+                }
             }
         }
     }

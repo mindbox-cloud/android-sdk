@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
-import cloud.mindbox.mobile_sdk.pushes.PushTokenMap
+import cloud.mindbox.mobile_sdk.pushes.PrefPushTokenMap
 import cloud.mindbox.mobile_sdk.pushes.toPreferences
 import cloud.mindbox.mobile_sdk.pushes.toTokensMap
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -113,7 +113,7 @@ internal object MindboxPreferences {
             }
         }
 
-    var pushTokens: PushTokenMap
+    var pushTokens: PrefPushTokenMap
         get() = loggingRunCatching(defaultValue = emptyMap()) {
             SharedPreferencesManager.getString(KEY_PUSH_TOKENS).toTokensMap()
         }

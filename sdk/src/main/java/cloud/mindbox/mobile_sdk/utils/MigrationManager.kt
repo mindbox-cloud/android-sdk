@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -13,6 +14,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 internal class MigrationManager(val context: Context) : MindboxLog {
 
@@ -100,12 +104,17 @@ internal class MigrationManager(val context: Context) : MindboxLog {
         override suspend fun run() {
             val provider = SharedPreferencesManager.getString("key_notification_provider")
             val token = SharedPreferencesManager.getString("key_firebase_token")
+            val updateDate = SharedPreferencesManager.getString("key_firebase_token_save_date")
 
             SharedPreferencesManager.remove("key_notification_provider")
             SharedPreferencesManager.remove("key_firebase_token")
+            SharedPreferencesManager.remove("key_firebase_token_save_date")
             val savedTokens = MindboxPreferences.pushTokens
             if (token != null && provider != null && savedTokens.isEmpty()) {
-                MindboxPreferences.pushTokens = mapOf(provider to token)
+                val timestamp: Long? = updateDate?.let {
+                    SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.ENGLISH).parse(it)?.time
+                }
+                MindboxPreferences.pushTokens = mapOf(provider to PrefPushToken(token, timestamp ?: Date().time))
             }
 
             MindboxPreferences.versionCode = VERSION_CODE
