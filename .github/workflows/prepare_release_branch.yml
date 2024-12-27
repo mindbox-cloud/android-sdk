@@ -40,7 +40,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       
       - name: Bump version
-        run: ./.github/git-release-branch-create.sh "${{ needs.extract_version.outputs.version }}"
+        run: ./.github/bump_versions_in_release_branch.sh "${{ needs.extract_version.outputs.version }}"
 
       - name: Ouput version
         id: bump
