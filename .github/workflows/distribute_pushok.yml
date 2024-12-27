@@ -8,10 +8,11 @@ on:
   push:
     branches:
       - 'release/*'
+      - 'support/*'
 
 jobs:
-  update_on_merge:
-    if: github.event.pull_request.merged == true || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
+  distribution:
+    if: github.event.pull_request.merged == true || (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/support/')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

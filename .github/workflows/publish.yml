@@ -1,20 +1,18 @@
 name: SDK publish
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - 'master'
       - 'support/*'
-    paths-ignore:
-      - '**.md'
-    tags-ignore:
-      - '**'
-
+ 
 jobs:
   lint:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -22,17 +20,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
-
       - name: lint check
         run: ./gradlew --no-daemon check
 
-  unit:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -40,18 +36,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
-
       - name: unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
   build:
-    needs: [ unit, lint ]
+    needs: [lint, unit-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -59,22 +53,35 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-
       - name: build project
         run: ./gradlew --no-daemon assembleDebug
 
-  publish:
-    needs: [ build ]
+  set-tag:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+      - name: Extract SDK version
+        run: |
+            SDK_VERSION=$(grep '^SDK_VERSION_NAME=' gradle.properties | cut -d '=' -f2)
+            echo "SDK_VERSION=$SDK_VERSION" >> $GITHUB_ENV
+            echo "Extracted SDK version: $SDK_VERSION"
+      - name: Create tag
+        run: |
+            git tag ${{ env.SDK_VERSION }}
+            git push origin ${{ env.SDK_VERSION }}
+
+  publish:
+    needs: [set-tag]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-
       - name: Prepare to publish
         run: |
           echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
@@ -89,36 +96,35 @@ jobs:
           SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
-
-      - name: Publish to Jitpack
-        # To create release in Jitpack we need to create Github release
-        run: ./git-release.sh "${{secrets.GITHUBACCESSTOKEN}}" "${{secrets.GITHUBUSER}}"
-
       - name: Publish to Sonatype
         run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.OSSRHTOKEN}} -PsonatypePassword=${{secrets.OSSRHTOKENPASSWORD}}
 
-        #To update version in Github README.md
-  #    - name: Version Upgrade
-  #      run: |
-   #       chmod +x ./maven-version-update.sh
-    #      ./maven-version-update.sh
-     # - name: Commit and push if it changed
-      #  run: |
-       #   git diff
-        #  git config --global user.email "actions@github.com"
-         # git config --global user.name "GitHub Actions"
-          #git commit -am "Update README.md" || exit 0
-          #git push origin HEAD:develop
-
-      - name: Send message to LOOP
+  release-github:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Github Release generation
+        run: ./.github/git-release-ci.sh
         env:
-          LOOP_NOTIFICATION_WEBHOOK_URL: ${{ secrets.LOOP_NOTIFICATION_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+
+  merge:
+    needs: [publish]
+    if: startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Create Pull Request
+        run: gh pr create --base develop --head master --title "Merge 'master' into 'develop' after release" --body "Automated Pull Request to merge 'master' into 'develop' after release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge Pull Request
         run: |
-          MESSAGE=$(cat <<EOF
-          {
-            "text": "SDK is available for public release https://oss.sonatype.org/#stagingRepositories"
-          }
-          EOF)
-          curl -X POST "$LOOP_NOTIFICATION_WEBHOOK_URL" \
-              -H "Content-Type: application/json" \
-              -d "$MESSAGE"
+          pr_number=$(gh pr list --base develop --head master --json number --jq '.[0].number')
+          gh pr merge $pr_number --merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
