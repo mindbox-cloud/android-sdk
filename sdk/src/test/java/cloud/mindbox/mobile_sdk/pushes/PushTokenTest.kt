@@ -7,31 +7,31 @@ class PushTokenTest {
 
     @Test
     fun `convert PushTokenMap to preferences correctly`() {
-        val oneToken: PushTokenMap = mapOf("provider" to "token")
-        assertEquals("{\"provider\":\"token\"}", oneToken.toPreferences())
+        val oneToken: PrefPushTokenMap = mapOf("provider" to PrefPushToken("token", 1L))
+        assertEquals("{\"provider\":{\"token\":\"token\",\"updateDate\":1}}", oneToken.toPreferences())
 
-        val threeTokens: PushTokenMap = mapOf(
-            "provider1" to "token1",
-            "provider2" to "token2",
-            "provider3" to "token3",
+        val threeTokens: PrefPushTokenMap = mapOf(
+            "provider1" to PrefPushToken("token1", 1L),
+            "provider2" to PrefPushToken("token2", 2L),
+            "provider3" to PrefPushToken("token3", 3L),
         )
-        assertEquals("{\"provider1\":\"token1\",\"provider2\":\"token2\",\"provider3\":\"token3\"}", threeTokens.toPreferences())
+        assertEquals("{\"provider1\":{\"token\":\"token1\",\"updateDate\":1},\"provider2\":{\"token\":\"token2\",\"updateDate\":2},\"provider3\":{\"token\":\"token3\",\"updateDate\":3}}", threeTokens.toPreferences())
 
-        val noToken: PushTokenMap = mapOf()
+        val noToken: PrefPushTokenMap = mapOf()
         assertEquals("{}", noToken.toPreferences())
     }
 
     @Test
     fun `convert preferences tokens to PushTokenMap correctly`() {
-        val oneToken = "{\"provider\":\"token\"}"
-        assertEquals(mapOf("provider" to "token"), oneToken.toTokensMap())
+        val oneToken = "{\"provider\":{\"token\":\"token\",\"updateDate\":1}}"
+        assertEquals(mapOf("provider" to PrefPushToken("token", 1L)), oneToken.toTokensMap())
 
-        val threeTokens = "{\"provider1\":\"token1\",\"provider2\":\"token2\",\"provider3\":\"token3\"}"
+        val threeTokens = "{\"provider1\":{\"token\":\"token1\",\"updateDate\":1},\"provider2\":{\"token\":\"token2\",\"updateDate\":2},\"provider3\":{\"token\":\"token3\",\"updateDate\":3}}"
         assertEquals(
             mapOf(
-                "provider1" to "token1",
-                "provider2" to "token2",
-                "provider3" to "token3",
+                "provider1" to PrefPushToken("token1", 1L),
+                "provider2" to PrefPushToken("token2", 2L),
+                "provider3" to PrefPushToken("token3", 3L),
             ),
             threeTokens.toTokensMap()
         )

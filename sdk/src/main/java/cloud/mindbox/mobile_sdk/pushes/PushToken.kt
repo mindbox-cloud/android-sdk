@@ -21,7 +21,7 @@ internal data class PrefPushToken(
 internal typealias PushTokenMap = Map<String, String>
 internal typealias PrefPushTokenMap = Map<String, PrefPushToken>
 
-internal fun PrefPushTokenMap.toPreferences(): String =
+internal fun <K, V> Map<K, V>.toPreferences(): String =
     runCatching {
         Gson().toJson(this)
     }.getOrDefault("")
