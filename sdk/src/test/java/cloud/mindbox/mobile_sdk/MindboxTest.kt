@@ -6,14 +6,18 @@ import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
+import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.*
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.UUID
 
 class MindboxTest {
@@ -43,9 +47,9 @@ class MindboxTest {
         mockkObject(PushNotificationManager)
         mockkObject(MindboxEventManager)
         every { MindboxPreferences.pushTokens } returns mapOf(
-            "FCM" to "tokenFCM",
-            "HMS" to "tokenHMS",
-            "RuStore" to "tokenRuStore",
+            "FCM" to PrefPushToken("tokenFCM", 1L),
+            "HMS" to PrefPushToken("tokenHMS", 2L),
+            "RuStore" to PrefPushToken("tokenRuStore", 3L),
         )
         every { PushNotificationManager.isNotificationsEnabled(any()) } returns true
         every { MindboxPreferences.isNotificationEnabled } returns true
@@ -236,5 +240,32 @@ class MindboxTest {
                 any()
             )
         }
+    }
+
+    @Test
+    fun `getPushTokensSaveDate returns correctly map`() {
+        val tokensDate = Mindbox.getPushTokensSaveDate()
+        assertEquals(
+            mapOf(
+                "FCM" to 1L,
+                "HMS" to 2L,
+                "RuStore" to 3L,
+            ), tokensDate
+        )
+    }
+
+    @Test
+    @Suppress("DEPRECATION_ERROR")
+    fun `getPushTokenSaveDate returns correctly map`() {
+        every { MindboxPreferences.pushTokens } returns mapOf(
+            "TEST" to PrefPushToken("tokenRuStore", 1736502001L)
+        )
+
+        val timestamp: Long? = SimpleDateFormat(
+            "EEE MMM dd HH:mm:ss zzz yyyy",
+            Locale.ENGLISH
+        ).parse(Mindbox.getPushTokenSaveDate())?.time
+
+        assertEquals(1736502000L, timestamp)
     }
 }

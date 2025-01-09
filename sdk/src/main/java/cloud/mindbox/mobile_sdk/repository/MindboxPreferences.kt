@@ -10,21 +10,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import java.util.Date
 
 internal object MindboxPreferences {
 
     private const val KEY_IS_FIRST_INITIALIZATION = "key_is_first_initialization"
     private const val KEY_DEVICE_UUID = "key_device_uuid"
     private const val KEY_PUSH_TOKENS = "key_push_tokens"
-    private const val KEY_FIREBASE_TOKEN_SAVE_DATE = "key_firebase_token_save_date"
     private const val KEY_IS_NOTIFICATION_ENABLED = "key_is_notification_enabled"
     private const val KEY_HOST_APP_MANE =
         "key_host_app_name" // need for scheduling and stopping one-time background service
     private const val KEY_INFO_UPDATED_VERSION = "key_info_updated_version"
     private const val KEY_INSTANCE_ID = "key_instance_id"
     private const val KEY_UUID_DEBUG_ENABLED = "key_uuid_debug_enabled"
-    private const val KEY_NEED_PUSH_TOKEN_UPDATE = "key_need_push_token_update"
     private const val DEFAULT_INFO_UPDATED_VERSION = 1
     private const val IN_APP_CONFIG = "IN_APP_CONFIG"
     private const val SHOWN_IDS = "SHOWN_IDS"
@@ -119,17 +116,6 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_PUSH_TOKENS, value.toPreferences())
-                tokenSaveDate = Date().toString()
-            }
-        }
-
-    var tokenSaveDate: String
-        get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
-            SharedPreferencesManager.getString(KEY_FIREBASE_TOKEN_SAVE_DATE) ?: ""
-        }
-        set(value) {
-            LoggingExceptionHandler.runCatching {
-                SharedPreferencesManager.put(KEY_FIREBASE_TOKEN_SAVE_DATE, value)
             }
         }
 
@@ -185,16 +171,6 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_UUID_DEBUG_ENABLED, value)
-            }
-        }
-
-    var isPushTokenNeedUpdated: Boolean
-        get() = LoggingExceptionHandler.runCatching(defaultValue = true) {
-            SharedPreferencesManager.getBoolean(KEY_NEED_PUSH_TOKEN_UPDATE, true)
-        }
-        set(value) {
-            LoggingExceptionHandler.runCatching {
-                SharedPreferencesManager.put(KEY_NEED_PUSH_TOKEN_UPDATE, value)
             }
         }
 
