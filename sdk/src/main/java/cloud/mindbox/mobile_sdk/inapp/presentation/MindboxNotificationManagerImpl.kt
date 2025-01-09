@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
@@ -39,16 +38,10 @@ internal class MindboxNotificationManagerImpl(
                     }
                 }
 
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP -> {
+                else -> {
                     Intent(Constants.NOTIFICATION_SETTINGS).apply {
                         putExtra(Constants.APP_PACKAGE_NAME, activity.packageName)
                         putExtra(Constants.APP_UID_NAME, activity.applicationInfo.uid)
-                    }
-                }
-
-                else -> {
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts(Constants.SCHEME_PACKAGE, activity.packageName, null)
                     }
                 }
             }

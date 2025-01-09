@@ -59,9 +59,6 @@ internal class HuaweiServiceHandler(
         return id to isLimitAdTrackingEnabled
     }
 
-    override fun ensureVersionCompatibility(context: Context, logParent: Any) {
-    }
-
     override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()
         .isHuaweiMobileServicesAvailable(context) == ConnectionResult.SUCCESS
 

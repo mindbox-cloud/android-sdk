@@ -48,8 +48,6 @@ abstract class PushServiceHandler {
 
     abstract fun getAdsId(context: Context): Pair<String?, Boolean>
 
-    abstract fun ensureVersionCompatibility(context: Context, logParent: Any)
-
     fun isServiceAvailable(context: Context): Boolean = try {
         val isAvailable = isAvailable(context)
         if (!isAvailable) {
