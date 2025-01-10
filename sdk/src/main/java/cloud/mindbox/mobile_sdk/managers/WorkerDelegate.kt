@@ -26,8 +26,6 @@ internal class WorkerDelegate {
         try {
             Mindbox.initComponents(context)
 
-            Mindbox.pushServiceHandler?.ensureVersionCompatibility(context, parent)
-
             val configuration = DbManager.getConfigurations()
 
             if (MindboxPreferences.isFirstInitialize || configuration == null) {
