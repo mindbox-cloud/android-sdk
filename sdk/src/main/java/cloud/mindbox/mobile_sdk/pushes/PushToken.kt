@@ -13,17 +13,23 @@ internal data class PushToken(
     val token: String,
 )
 
-internal typealias PushTokenMap = Map<String, String>
+internal data class PrefPushToken(
+    val token: String,
+    val updateDate: Long,
+)
 
-internal fun PushTokenMap.toPreferences(): String =
+internal typealias PushTokenMap = Map<String, String>
+internal typealias PrefPushTokenMap = Map<String, PrefPushToken>
+
+internal fun <K, V> Map<K, V>.toPreferences(): String =
     runCatching {
         Gson().toJson(this)
     }.getOrDefault("")
 
-internal fun String?.toTokensMap(): PushTokenMap =
+internal fun String?.toTokensMap(): PrefPushTokenMap =
     runCatching {
-        val pushTokenMapType = object : TypeToken<PushTokenMap>() {}.type
-        Gson().fromJson(this, pushTokenMapType) as PushTokenMap
+        val pushTokenMapType = object : TypeToken<PrefPushTokenMap>() {}.type
+        Gson().fromJson(this, pushTokenMapType) as PrefPushTokenMap
     }.getOrDefault(emptyMap())
 
 internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap): PushTokenMap =
