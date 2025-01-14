@@ -11,7 +11,7 @@ class MindboxFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
 
         if (MindboxFirebase.isMindboxPush(message)) {
-            handleMindboxRemoteMessage(applicationContext, message)
+            handleMindboxRemoteMessage(applicationContext, MindboxFirebase.convertToMindboxRemoteMessage(message))
         } else {
             // Handle other push notifications
         }

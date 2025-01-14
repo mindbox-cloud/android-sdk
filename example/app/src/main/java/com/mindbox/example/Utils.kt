@@ -7,8 +7,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.EmptyInAppCallback
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.PushAction
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.retryOrDefaultStrategy
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 
 class Utils {
@@ -62,4 +66,38 @@ enum class SyncOperationType() {
     OPERATION_BODY,
     OPERATION_BODY_JSON,
     OPERATION_BODY_WITH_CUSTOM_RESPONSE
+}
+
+fun MindboxRemoteMessage.toMap(): Map<String, String> {
+    return mapOf(
+        "uniqueKey" to uniqueKey,
+        "title" to title,
+        "description" to description,
+        "pushLink" to (pushLink ?: ""),
+        "imageUrl" to (imageUrl ?: ""),
+        "payload" to (payload ?: ""),
+        "pushActions" to Gson().toJson(pushActions)
+    )
+}
+
+fun Map<String, String>.toMindboxRemoteMessage(): MindboxRemoteMessage {
+    val gson = Gson()
+    val pushActionsJson = this["pushActions"]
+    val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
+
+    return MindboxRemoteMessage(
+        uniqueKey = this["uniqueKey"] ?: "",
+        title = this["title"] ?: "",
+        description = this["description"] ?: "",
+        pushActions = if (pushActionsJson != null) {
+            runCatching {
+                gson.fromJson<List<PushAction>>(pushActionsJson, pushActionsType)
+            }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        },
+        pushLink = this["pushLink"],
+        imageUrl = this["imageUrl"],
+        payload = this["payload"]
+    )
 }

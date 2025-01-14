@@ -5,7 +5,9 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.Level
-import com.google.firebase.messaging.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
+import com.google.gson.Gson
+import com.mindbox.example.toMindboxRemoteMessage
 
 internal class MindboxNotificationWorker(
     context: Context,
@@ -13,11 +15,8 @@ internal class MindboxNotificationWorker(
 ) : Worker(context, workerParams) {
 
     override fun doWork(): Result {
-        val message = RemoteMessage
-            .Builder("FCM")
-            .setData(inputData.keyValueMap.mapValues { it.value.toString() })
-            .build()
-
+        val data = inputData.keyValueMap.mapValues { it.value.toString() }
+        val message = data.toMindboxRemoteMessage()
         Mindbox.writeLog("MindboxNotificationWorker try to show scheduled notification", Level.INFO)
 
         val result = handleMindboxRemoteMessage(applicationContext, message)

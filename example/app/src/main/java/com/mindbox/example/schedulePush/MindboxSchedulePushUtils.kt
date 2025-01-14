@@ -5,20 +5,21 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
-import cloud.mindbox.mindbox_firebase.MindboxFirebase
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.Level
-import com.google.firebase.messaging.RemoteMessage
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
+import com.google.gson.Gson
 import com.mindbox.example.ActivityTransitionByPush
 import com.mindbox.example.MainActivity
 import com.mindbox.example.R
+import com.mindbox.example.toMap
 import java.util.Date
 import kotlin.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-fun showMindboxNotification(applicationContext: Context, message: RemoteMessage): Boolean {
+fun showMindboxNotification(applicationContext: Context, message: MindboxRemoteMessage): Boolean {
     val channelId = "mindbox_app_channel"
     val channelName = "defaultChannelName"
     val channelDescription = "defaultDescription"
@@ -47,10 +48,11 @@ fun showMindboxNotification(applicationContext: Context, message: RemoteMessage)
     return messageWasHandled
 }
 
-fun scheduleMindboxNotification(context: Context, remoteMessage: RemoteMessage, delay: Duration) {
+fun scheduleMindboxNotification(context: Context, remoteMessage: MindboxRemoteMessage, delay: Duration) {
     val data = Data
         .Builder()
-        .putAll(remoteMessage.data.mapValues { it.value.toString() })
+        .putAll(remoteMessage.toMap())
+        //.putString("mindboxRemoteMessage", messageJson)
         .build()
 
     val notificationWorkRequest: WorkRequest = OneTimeWorkRequestBuilder<MindboxNotificationWorker>()
@@ -65,10 +67,13 @@ fun scheduleMindboxNotification(context: Context, remoteMessage: RemoteMessage, 
     }
 }
 
-fun handleMindboxRemoteMessage(applicationContext: Context, message: RemoteMessage): Boolean {
-    val mindboxRemoteMessage = MindboxFirebase.convertToMindboxRemoteMessage(message) ?: return false
+fun handleMindboxRemoteMessage(applicationContext: Context, message: MindboxRemoteMessage?): Boolean {
 
-    val payload = mindboxRemoteMessage.getPayloadWithShowTime()
+    if (message == null) {
+        Mindbox.writeLog("Cannot convert message", Level.ERROR)
+        return false
+    }
+    val payload = message.getPayloadWithShowTime()
 
     return payload?.let {
         val delay: Duration = (payload.showTime.time - Date().time).toDuration(DurationUnit.MILLISECONDS)
