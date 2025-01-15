@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import com.mindbox.example.schedulePush.MindboxSchedulePushUtils
+import com.mindbox.example.schedulePush.handleMindboxRemoteMessage
 
 class MindboxHuaweiMessagingService : HmsMessageService() {
 
