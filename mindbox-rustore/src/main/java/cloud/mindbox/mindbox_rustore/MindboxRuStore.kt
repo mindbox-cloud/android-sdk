@@ -7,45 +7,21 @@ import cloud.mindbox.mobile_sdk.pushes.PushAction
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import ru.rustore.sdk.pushclient.messaging.model.RemoteMessage
 
 @Suppress("unused")
-fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStoreInternal.apply {
+fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStore.apply {
     this.projectId = projectId
 }
 
 /***
- * Use factory function MindboxRuStore(projectId) to create an instance of this class.
+ * Use factory function MindboxRuStore(projectId) to set up RuStore projectId.
  */
-abstract class MindboxRuStore : MindboxPushService by MindboxRuStoreInternal {
+object MindboxRuStore : MindboxPushService {
 
-    companion object {
-        /**
-         * Checks if [RemoteMessage] is sent with Mindbox
-         * Returns true if it is or false otherwise
-         **/
-        fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
-            return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
-        }
-
-        /**
-         * Converts [RemoteMessage] to [MindboxRemoteMessage]
-         * Use this method to get mindbox push-notification data
-         * It is encouraged to use this method inside try/catch block
-         * @throws JsonSyntaxException – if remote message can't be parsed
-         **/
-        fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
-            return MindboxRuStoreInternal.convertToMindboxRemoteMessage(remoteMessage)
-        }
-    }
-
-    var projectId: String = ""
+    internal var projectId: String = ""
         internal set(value) = run { field = value }
-}
-
-internal object MindboxRuStoreInternal : MindboxRuStore() {
 
     override val tag: String = "RuStore"
 
@@ -53,10 +29,26 @@ internal object MindboxRuStoreInternal : MindboxRuStore() {
 
     private val gson by lazy { Gson() }
 
+    fun init(projectId: String) = MindboxRuStore.apply { MindboxRuStore.projectId = projectId }
+
     override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler): PushServiceHandler {
         return RuStoreServiceHandler(logger, exceptionHandler, projectId)
     }
 
+    /**
+     * Checks if [RemoteMessage] is sent with Mindbox
+     * Returns true if it is or false otherwise
+     **/
+    fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
+        return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
+    }
+
+    /**
+     * Converts [RemoteMessage] to [MindboxRemoteMessage]
+     * Use this method to get mindbox push-notification data
+     * It is encouraged to use this method inside try/catch block
+     * @throws JsonSyntaxException – if remote message can't be parsed
+     **/
     fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
         val data = remoteMessage?.data ?: return null
         val uniqueKey = data[RuStoreMessage.DATA_UNIQUE_KEY] ?: return null

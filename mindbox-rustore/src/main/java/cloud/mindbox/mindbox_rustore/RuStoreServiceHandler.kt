@@ -2,6 +2,7 @@ package cloud.mindbox.mindbox_rustore
 
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
@@ -23,16 +24,22 @@ class RuStoreServiceHandler(
 
     companion object {
         const val RU_STORE_MIN_API_VERSION = Build.VERSION_CODES.N
+        const val RU_STORE_META_DATA = "ru.rustore.sdk.pushclient.project_id"
     }
 
-    override val notificationProvider: String = MindboxRuStoreInternal.tag
+    override val notificationProvider: String = MindboxRuStore.tag
 
     override suspend fun initService(context: Context) {
         exceptionHandler.runCatchingSuspending {
             logger.d(this, "RuStoreServiceHandler initService, ${Thread.currentThread().name}")
             RuStorePushClient.init(
                 application = context.applicationContext as Application,
-                projectId = projectId,
+                projectId = projectId.takeIf { it.isNotBlank() }
+                    ?: runCatching {
+                        context.packageManager
+                            .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+                            .metaData?.getString(RU_STORE_META_DATA) ?: ""
+                    }.getOrDefault(""),
                 logger = DefaultLogger(),
             )
         }
