@@ -31,7 +31,7 @@ class RuStoreServiceHandler(
 
     override suspend fun initService(context: Context) {
         exceptionHandler.runCatchingSuspending {
-            logger.d(this, "RuStoreServiceHandler initService, ${Thread.currentThread().name}")
+            logger.d(this, "RuStoreServiceHandler initService")
             RuStorePushClient.init(
                 application = context.applicationContext as Application,
                 projectId = projectId.takeIf { it.isNotBlank() }
