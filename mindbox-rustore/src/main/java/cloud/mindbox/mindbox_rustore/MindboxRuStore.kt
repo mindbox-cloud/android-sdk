@@ -29,8 +29,6 @@ object MindboxRuStore : MindboxPushService {
 
     private val gson by lazy { Gson() }
 
-    fun init(projectId: String) = MindboxRuStore.apply { MindboxRuStore.projectId = projectId }
-
     override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler): PushServiceHandler {
         return RuStoreServiceHandler(logger, exceptionHandler, projectId)
     }
