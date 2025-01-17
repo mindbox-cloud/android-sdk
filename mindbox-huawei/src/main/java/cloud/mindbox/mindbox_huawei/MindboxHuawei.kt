@@ -46,13 +46,13 @@ object MindboxHuawei : MindboxPushService {
             uniqueKey = parsedMessage.uniqueKey,
             title = parsedMessage.title ?: "",
             description = parsedMessage.message,
-            pushActions = parsedMessage.buttons.map { pushAction ->
+            pushActions = parsedMessage.buttons?.map { pushAction ->
                 MindboxPushAction(
                     uniqueKey = pushAction.uniqueKey,
                     text = pushAction.text,
                     url = pushAction.url,
                 )
-            },
+            } ?: emptyList(),
             pushLink = parsedMessage.clickUrl,
             imageUrl = parsedMessage.imageUrl,
             payload = parsedMessage.payload,
