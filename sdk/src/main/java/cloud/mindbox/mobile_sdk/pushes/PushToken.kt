@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.async
@@ -34,15 +36,26 @@ internal fun String?.toTokensMap(): PrefPushTokenMap =
 
 internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap): PushTokenMap =
     withContext(Mindbox.mindboxScope.coroutineContext) {
-        Mindbox.pushServiceHandlers
+        val handlers = Mindbox.pushServiceHandlers
+        if (handlers.isEmpty()) {
+            return@withContext emptyMap()
+        }
+        Stopwatch.start(Stopwatch.GET_PUSH_TOKENS)
+        handlers
             .map { handler ->
                 async {
                     val provider = handler.notificationProvider
                     val token = handler.registerToken(context, previousToken[provider])
                     handler.notificationProvider to token
                 }
-            }.awaitAll()
+            }
+            .awaitAll()
             .mapNotNull { (provider, token) ->
                 if (!token.isNullOrEmpty()) provider to token else null
-            }.toMap()
+            }
+            .toMap()
+            .also { tokens ->
+                val duration = Stopwatch.stop(Stopwatch.GET_PUSH_TOKENS)
+                mindboxLogI("Push tokens $tokens received in $duration")
+            }
     }
