@@ -1,0 +1,1 @@
+-keep class cloud.mindbox.mindbox_huawei.*
