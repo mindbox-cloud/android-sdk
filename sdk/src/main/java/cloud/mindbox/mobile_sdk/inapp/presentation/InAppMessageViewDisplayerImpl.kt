@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
+import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -84,7 +85,8 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     private fun tryShowInAppFromQueue() {
         if (inAppQueue.isNotEmpty() && !isInAppActive()) {
             inAppQueue.pop().let {
-                mindboxLogI("trying to show in-app with id ${it.inAppType.inAppId} from queue")
+                val duration = Stopwatch.track(Stopwatch.INIT_SDK)
+                mindboxLogI("trying to show in-app with id ${it.inAppType.inAppId} from queue $duration after init")
                 showInAppMessage(it)
             }
         }
@@ -125,7 +127,8 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             }
         }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
-            mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown immediately")
+            val duration = Stopwatch.track(Stopwatch.INIT_SDK)
+            mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown immediately $duration after init")
             showInAppMessage(wrapper)
         } else {
             if (currentHolder?.wrapper?.inAppType?.inAppId == wrapper.inAppType.inAppId) {
