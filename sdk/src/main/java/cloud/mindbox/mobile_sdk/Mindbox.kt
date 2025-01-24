@@ -554,6 +554,7 @@ object Mindbox : MindboxLog {
                 logW("Skip Mindbox init not in main process! Current process $currentProcessName")
                 return@runCatching
             }
+            Stopwatch.start(Stopwatch.INIT_SDK)
 
             initComponents(context.applicationContext)
             logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
@@ -588,7 +589,9 @@ object Mindbox : MindboxLog {
                         sendTrackVisitEvent(context.applicationContext, DIRECT)
                     }
                 } else {
-                    updateAppInfo(context.applicationContext)
+                    mindboxScope.launch {
+                        updateAppInfo(context.applicationContext)
+                    }
                     MindboxEventManager.sendEventsIfExist(context.applicationContext)
                 }
                 MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
@@ -767,8 +770,10 @@ object Mindbox : MindboxLog {
             pushServiceHandlers.map { handler ->
                 mindboxScope.async { handler.initService(context) }
             }.awaitAll()
-            if (!MindboxPreferences.isFirstInitialize) {
-                updateAppInfo(context)
+            mindboxScope.launch {
+                if (!MindboxPreferences.isFirstInitialize) {
+                    updateAppInfo(context)
+                }
             }
         }
     }
