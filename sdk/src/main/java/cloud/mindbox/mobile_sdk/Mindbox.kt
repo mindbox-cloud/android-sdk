@@ -14,6 +14,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
@@ -102,6 +103,8 @@ object Mindbox : MindboxLog {
     private var firstInitCall: Boolean = true
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
+
+    private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
 
     /**
      * Allows you to specify additional components for message handling
@@ -1244,6 +1247,7 @@ object Mindbox : MindboxLog {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
     ) = LoggingExceptionHandler.runCatching {
+        sessionStorageManager.hasSessionExpired(System.currentTimeMillis())
         DbManager.getConfigurations()?.endpointId?.let { endpointId ->
             val applicationContext = context.applicationContext
             val trackVisitData = TrackVisitData(

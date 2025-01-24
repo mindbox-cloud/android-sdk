@@ -20,6 +20,12 @@ internal class InAppMessageManagerImpl(
     private val sessionStorageManager: SessionStorageManager
 ) : InAppMessageManager {
 
+    init {
+        sessionStorageManager.addSessionExpirationListener {
+            mindboxLogD("Session expired.Start a new session right now!")
+        }
+    }
+
     override fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
