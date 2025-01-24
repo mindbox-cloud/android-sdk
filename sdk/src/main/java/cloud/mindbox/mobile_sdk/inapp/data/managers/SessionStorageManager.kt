@@ -1,8 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
-internal class SessionStorageManager {
+private typealias SessionExpirationListener = () -> Unit
+
+internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
     var unShownOperationalInApps: HashMap<String, MutableList<InApp>> = HashMap()
@@ -18,4 +23,43 @@ internal class SessionStorageManager {
     var currentSessionInApps: List<InApp> = mutableListOf()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
+    var lastTrackVisitSendTime: Long = 0L
+    var sessionTime: Long = 20000L
+
+    private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
+
+    fun addSessionExpirationListener(listener: SessionExpirationListener) {
+        sessionExpirationListeners.add(listener)
+    }
+
+    fun hasSessionExpired() {
+        val currentTime = timeProvider.currentTimeMillis()
+        val timeBetweenVisits = currentTime - lastTrackVisitSendTime
+        val checkingSessionResultLog = when {
+            lastTrackVisitSendTime == 0L -> "First track visit on sdk init"
+
+            sessionTime < 0L -> "Session time is incorrect. Session time is $sessionTime ms. Skip checking session expiration"
+
+            sessionTime == 0L -> "Session time is not set. Skip checking session expiration"
+
+            timeBetweenVisits > sessionTime -> {
+                notifySessionExpired()
+                "Session expired. Needs to open a new session. Time between trackVisits is $timeBetweenVisits ms. Session time is $sessionTime ms"
+            }
+
+            else -> {
+                "Session active. Updating lastTrackVisitSendTime. Time between trackVisits is $timeBetweenVisits ms. Session time is $sessionTime ms"
+            }
+        }
+        lastTrackVisitSendTime = currentTime
+        mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
+    }
+
+    private fun notifySessionExpired() {
+        sessionExpirationListeners.forEach {
+            loggingRunCatching {
+                it.invoke()
+            }
+        }
+    }
 }
