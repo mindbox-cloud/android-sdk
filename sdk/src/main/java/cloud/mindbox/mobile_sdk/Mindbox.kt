@@ -1247,7 +1247,7 @@ object Mindbox : MindboxLog {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
     ) = LoggingExceptionHandler.runCatching {
-        sessionStorageManager.hasSessionExpired(System.currentTimeMillis())
+        sessionStorageManager.hasSessionExpired()
         DbManager.getConfigurations()?.endpointId?.let { endpointId ->
             val applicationContext = context.applicationContext
             val trackVisitData = TrackVisitData(

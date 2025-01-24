@@ -118,7 +118,7 @@ internal fun DataModule(
 
     override val inAppImageSizeStorage: InAppImageSizeStorage by lazy { InAppImageSizeStorageImpl() }
 
-    override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager() }
+    override val sessionStorageManager: SessionStorageManager by lazy { SessionStorageManager(timeProvider) }
 
     override val permissionManager: PermissionManager
         get() = PermissionManagerImpl(appContext)
@@ -237,6 +237,9 @@ internal fun DataModule(
         get() = FrequencyValidator()
     override val migrationManager: MigrationManager by lazy {
         MigrationManager(appContext)
+    }
+    override val timeProvider: DefaultTimeProvider by lazy {
+        DefaultTimeProvider()
     }
 
     override val gson: Gson by lazy {

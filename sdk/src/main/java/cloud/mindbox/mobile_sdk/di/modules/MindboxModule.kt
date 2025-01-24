@@ -26,6 +26,7 @@ import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
+import cloud.mindbox.mobile_sdk.utils.DefaultTimeProvider
 import cloud.mindbox.mobile_sdk.utils.MigrationManager
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
@@ -105,6 +106,7 @@ internal interface DataModule : MindboxModule {
     val frequencyDataFiller: FrequencyDataFiller
     val frequencyValidator: FrequencyValidator
     val migrationManager: MigrationManager
+    val timeProvider: DefaultTimeProvider
 }
 
 internal interface MonitoringModule : MindboxModule {

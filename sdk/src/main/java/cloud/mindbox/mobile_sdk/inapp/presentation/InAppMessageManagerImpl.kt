@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -22,7 +23,7 @@ internal class InAppMessageManagerImpl(
 
     init {
         sessionStorageManager.addSessionExpirationListener {
-            mindboxLogD("Session expired.Start a new session right now!")
+            mindboxLogI("Session expired.Start a new session right now!")
         }
     }
 
