@@ -238,8 +238,8 @@ internal fun DataModule(
     override val migrationManager: MigrationManager by lazy {
         MigrationManager(appContext)
     }
-    override val timeProvider: DefaultTimeProvider by lazy {
-        DefaultTimeProvider()
+    override val timeProvider: SystemTimeProvider by lazy {
+        SystemTimeProvider()
     }
 
     override val gson: Gson by lazy {
