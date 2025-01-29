@@ -72,6 +72,7 @@ object Mindbox : MindboxLog {
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
+    private const val INIT_PUSH_SERVICES_TIMEOUT = 5000L
 
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
@@ -94,6 +95,7 @@ object Mindbox : MindboxLog {
     private val getDeviceIdMutex = Mutex()
     private val inAppMutex = Mutex()
     private val mutexUpdateAppInfo: Mutex = Mutex()
+    private val pushServiceMutex = Mutex()
 
     private var firstInitCall: Boolean = true
     private var isPushServiceInitialized = false
@@ -761,19 +763,30 @@ object Mindbox : MindboxLog {
         context: Context,
         pushServices: List<MindboxPushService>? = null,
     ): Unit = loggingRunCatchingSuspending {
-        if (pushServiceHandlers.isEmpty() && pushServices != null && !isPushServiceInitialized) {
-            isPushServiceInitialized = true
-            mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
+        pushServiceMutex.withLock {
+            if (pushServiceHandlers.isEmpty() && pushServices != null && !isPushServiceInitialized) {
+                mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
 
-            pushServiceHandlers = selectPushServiceHandler(context, pushServices)
+                pushServiceHandlers = selectPushServiceHandler(context, pushServices)
 
-            pushServiceHandlers.map { handler ->
-                mindboxScope.async { handler.initService(context) }
-            }.awaitAll()
-            mindboxScope.launch {
-                if (!MindboxPreferences.isFirstInitialize) {
-                    updateAppInfo(context)
+                Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
+                pushServiceHandlers.map { handler ->
+                    mindboxScope.async {
+                        withTimeoutOrNull(INIT_PUSH_SERVICES_TIMEOUT) {
+                            handler.initService(context)
+                        }
+                    }
+                }.awaitAll()
+
+                isPushServiceInitialized = true
+                mindboxLogI("initPushServices completed in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
+                mindboxScope.launch {
+                    if (!MindboxPreferences.isFirstInitialize) {
+                        updateAppInfo(context)
+                    }
                 }
+            } else {
+                mindboxLogI("initPushServices: Push services already initialized")
             }
         }
     }

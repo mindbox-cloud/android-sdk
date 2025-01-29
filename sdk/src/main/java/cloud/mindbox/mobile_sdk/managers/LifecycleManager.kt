@@ -5,7 +5,8 @@ import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.OnLifecycleEvent
 import cloud.mindbox.mobile_sdk.Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -25,7 +26,7 @@ internal class LifecycleManager(
     private var onActivityStarted: (activity: Activity) -> Unit,
     private var onActivityStopped: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
-) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
+) : Application.ActivityLifecycleCallbacks, LifecycleEventObserver {
 
     companion object {
 
@@ -190,5 +191,13 @@ internal class LifecycleManager(
     private fun cancelKeepAliveTimer() = LoggingExceptionHandler.runCatching {
         timer?.cancel()
         timer = null
+    }
+
+    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+        when (event) {
+            Lifecycle.Event.ON_STOP -> onAppMovedToBackground()
+            Lifecycle.Event.ON_START -> onAppMovedToForeground()
+            else -> {}
+        }
     }
 }
