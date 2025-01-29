@@ -97,6 +97,7 @@ internal class InAppMessageManagerTest {
             sessionStorageManager
         )
         mockkObject(LoggingExceptionHandler)
+        every { MindboxPreferences.inAppConfig } returns "test"
         coEvery {
             MindboxLoggerImpl.e(any(), any())
         } just runs
@@ -108,6 +109,9 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
+        }
+        verify(exactly = 1) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
     }
 

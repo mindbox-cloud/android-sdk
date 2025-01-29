@@ -19,10 +19,8 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.suspendLazy
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -43,8 +41,16 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private val inAppConfig = Mindbox.mindboxScope.suspendLazy {
-        listenInAppConfig().first()
+    private val _configState = MutableStateFlow<InAppConfig?>(null)
+    private val configState: StateFlow<InAppConfig?> = _configState.asStateFlow()
+
+    init {
+        Mindbox.mindboxScope.launch {
+            MindboxPreferences.inAppConfigFlow
+                .collectLatest { configString ->
+                    processConfigUpdate(configString)
+                }
+        }
     }
 
     override suspend fun fetchMobileConfig() {
@@ -55,42 +61,39 @@ internal class MobileConfigRepositoryImpl(
         MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
     }
 
-    private fun listenInAppConfig(): Flow<InAppConfig> {
-        return MindboxPreferences.inAppConfigFlow.map { inAppConfigString ->
-            mutex.withLock {
-                this@MobileConfigRepositoryImpl.mindboxLogD(
-                    message = "CachedConfig : $inAppConfigString"
-                )
-                val configBlank =
-                    mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
+    private suspend fun processConfigUpdate(inAppConfigString: String) {
+        mutex.withLock {
+            this@MobileConfigRepositoryImpl.mindboxLogD(
+                message = "CachedConfig : $inAppConfigString"
+            )
+            val configBlank =
+                mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
 
-                val filteredConfig = InAppConfigResponse(
-                    inApps = runCatching { getInApps(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get inApps $it")
-                        null
-                    },
-                    monitoring = runCatching { getMonitoring(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get logs $it")
-                        null
-                    },
-                    settings = runCatching { getSettings(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get settings $it")
-                        null
-                    },
-                    abtests = runCatching { getABTests(configBlank) }.getOrElse {
-                        mindboxLogW("Unable to get abtests $it")
-                        null
-                    },
-                )
+            val filteredConfig = InAppConfigResponse(
+                inApps = runCatching { getInApps(configBlank) }.getOrElse {
+                    mindboxLogW("Unable to get inApps $it")
+                    null
+                },
+                monitoring = runCatching { getMonitoring(configBlank) }.getOrElse {
+                    mindboxLogW("Unable to get logs $it")
+                    null
+                },
+                settings = runCatching { getSettings(configBlank) }.getOrElse {
+                    mindboxLogW("Unable to get settings $it")
+                    null
+                },
+                abtests = runCatching { getABTests(configBlank) }.getOrElse {
+                    mindboxLogW("Unable to get abtests $it")
+                    null
+                },
+            )
 
-                return@map inAppMapper.mapToInAppConfig(filteredConfig)
-                    .also { inAppConfig ->
-                        MindboxLoggerImpl.d(
-                            parent = this@MobileConfigRepositoryImpl,
-                            message = "Providing config: $inAppConfig"
-                        )
-                    }
-            }
+            var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+            _configState.value = updatedInAppConfig
+            MindboxLoggerImpl.d(
+                parent = this@MobileConfigRepositoryImpl,
+                message = "Providing config: $updatedInAppConfig"
+            )
         }
     }
 
@@ -101,6 +104,10 @@ internal class MobileConfigRepositoryImpl(
     override suspend fun getInAppsSection() = getConfig().inApps
 
     override suspend fun getABTests() = getConfig().abtests
+
+    override fun resetCurrentConfig() {
+        _configState.value = null
+    }
 
     private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
         val isValidConfig = inAppConfigTtlValidator.isValid(
@@ -183,5 +190,9 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    private suspend fun getConfig(): InAppConfig = inAppConfig.invoke()
+    private suspend fun getConfig(): InAppConfig {
+        return configState
+            .filterNotNull()
+            .first()
+    }
 }
