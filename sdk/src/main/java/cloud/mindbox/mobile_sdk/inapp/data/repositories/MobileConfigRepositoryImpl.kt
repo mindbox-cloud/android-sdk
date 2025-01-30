@@ -42,8 +42,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private val _configState = MutableStateFlow<InAppConfig?>(null)
-    private val configState: StateFlow<InAppConfig?> = _configState.asStateFlow()
+    private var configState = MutableStateFlow<InAppConfig?>(null)
 
     init {
         Mindbox.mindboxScope.launch {
@@ -86,7 +85,7 @@ internal class MobileConfigRepositoryImpl(
             )
 
             var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
-            _configState.value = updatedInAppConfig
+            configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
     }
@@ -100,7 +99,7 @@ internal class MobileConfigRepositoryImpl(
     override suspend fun getABTests() = getConfig().abtests
 
     override fun resetCurrentConfig() {
-        _configState.value = null
+        configState.value = null
     }
 
     private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
