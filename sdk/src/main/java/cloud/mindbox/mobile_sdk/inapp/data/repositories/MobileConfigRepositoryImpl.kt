@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -10,9 +11,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtlData
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -70,30 +71,23 @@ internal class MobileConfigRepositoryImpl(
                 mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
 
             val filteredConfig = InAppConfigResponse(
-                inApps = runCatching { getInApps(configBlank) }.getOrElse {
+                inApps = runCatching { getInApps(configBlank) }.getOrNull {
                     mindboxLogW("Unable to get inApps $it")
-                    null
                 },
-                monitoring = runCatching { getMonitoring(configBlank) }.getOrElse {
+                monitoring = runCatching { getMonitoring(configBlank) }.getOrNull {
                     mindboxLogW("Unable to get logs $it")
-                    null
                 },
-                settings = runCatching { getSettings(configBlank) }.getOrElse {
+                settings = runCatching { getSettings(configBlank) }.getOrNull {
                     mindboxLogW("Unable to get settings $it")
-                    null
                 },
-                abtests = runCatching { getABTests(configBlank) }.getOrElse {
+                abtests = runCatching { getABTests(configBlank) }.getOrNull {
                     mindboxLogW("Unable to get abtests $it")
-                    null
                 },
             )
 
             var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
             _configState.value = updatedInAppConfig
-            MindboxLoggerImpl.d(
-                parent = this@MobileConfigRepositoryImpl,
-                message = "Providing config: $updatedInAppConfig"
-            )
+            mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
     }
 
