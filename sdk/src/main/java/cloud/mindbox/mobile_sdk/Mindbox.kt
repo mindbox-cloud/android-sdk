@@ -94,9 +94,9 @@ object Mindbox : MindboxLog {
     private val getDeviceIdMutex = Mutex()
     private val inAppMutex = Mutex()
     private val mutexUpdateAppInfo: Mutex = Mutex()
+    private val pushServiceMutex = Mutex()
 
     private var firstInitCall: Boolean = true
-    private var isPushServiceInitialized = false
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
@@ -569,10 +569,10 @@ object Mindbox : MindboxLog {
 
             initScope.launch {
                 InitializeLock.await(InitializeLock.State.MIGRATION)
+                DbManager.saveConfigurations(Configuration(configuration))
                 setPushServiceHandler(context, pushServices)
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
-                DbManager.saveConfigurations(Configuration(configuration))
                 logI("init. checkResult: $checkResult")
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                     logI("init. softReinitialization")
@@ -759,17 +759,34 @@ object Mindbox : MindboxLog {
 
     private suspend fun setPushServiceHandler(
         context: Context,
-        pushServices: List<MindboxPushService>? = null,
+        pushServices: List<MindboxPushService>,
     ): Unit = loggingRunCatchingSuspending {
-        if (pushServiceHandlers.isEmpty() && pushServices != null && !isPushServiceInitialized) {
-            isPushServiceInitialized = true
+        if (pushServices.isEmpty()) {
+            mindboxLogW("initPushServices: Push services list is empty")
+            return@loggingRunCatchingSuspending
+        }
+
+        if (pushServiceHandlers.isNotEmpty()) {
+            mindboxLogI("initPushServices: Push services already initialized")
+            return@loggingRunCatchingSuspending
+        }
+
+        pushServiceMutex.withLock {
+            if (pushServiceHandlers.isNotEmpty()) {
+                mindboxLogI("initPushServices: Push services already initialized")
+                return@withLock
+            }
+
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
+            Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
 
             pushServiceHandlers = selectPushServiceHandler(context, pushServices)
 
             pushServiceHandlers.map { handler ->
                 mindboxScope.async { handler.initService(context) }
             }.awaitAll()
+
+            mindboxLogI("initPushServices completed in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
             mindboxScope.launch {
                 if (!MindboxPreferences.isFirstInitialize) {
                     updateAppInfo(context)

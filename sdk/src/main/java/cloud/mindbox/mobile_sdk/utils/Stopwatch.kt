@@ -8,6 +8,7 @@ internal object Stopwatch : MindboxLog {
 
     internal const val INIT_SDK = "INIT_SDK"
     internal const val GET_PUSH_TOKENS = "GET_PUSH_TOKENS"
+    internal const val INIT_PUSH_SERVICES = "INIT_PUSH_SERVICES"
 
     private val entries: MutableMap<String, Long> by lazy { mutableMapOf() }
 
