@@ -184,7 +184,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     override fun hide() {
         (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentDialog)
+            post { removeView(currentDialog) }
         }
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()

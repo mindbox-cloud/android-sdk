@@ -42,7 +42,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private var configState = MutableStateFlow<InAppConfig?>(null)
+    private val configState = MutableStateFlow<InAppConfig?>(null)
 
     init {
         Mindbox.mindboxScope.launch {

@@ -88,7 +88,8 @@ internal class ModalWindowInAppViewHolder(
 
     override fun hide() {
         (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentBackground)
+            mindboxLogI("Hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+            post { removeView(currentBackground) }
         }
         super.hide()
     }
