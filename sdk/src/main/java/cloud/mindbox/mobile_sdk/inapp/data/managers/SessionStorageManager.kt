@@ -20,7 +20,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var inAppProductSegmentations: HashMap<String, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
-    var currentSessionInApps: List<InApp> = mutableListOf()
+    var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
     var lastTrackVisitSendTime: Long = 0L
@@ -53,6 +53,21 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         }
         lastTrackVisitSendTime = currentTime
         mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
+    }
+
+    fun clearSessionData() {
+        inAppCustomerSegmentations = null
+        unShownOperationalInApps.clear()
+        operationalInApps.clear()
+        isInAppMessageShown = false
+        customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
+        productSegmentationFetchStatus = ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        inAppProductSegmentations.clear()
+        currentSessionInApps = emptyList()
+        shownInAppIdsWithEvents.clear()
+        configFetchingError = false
+        sessionTime = 0L
     }
 
     private fun notifySessionExpired() {
