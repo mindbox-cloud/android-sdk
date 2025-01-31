@@ -26,7 +26,7 @@ jobs:
       - name: Trigger build & send to FAD
         run: |
           curl --location 'https://mindbox.gitlab.yandexcloud.net/api/v4/projects/868/trigger/pipeline' \
-            --form 'token="glptt-74df0063bac887544d1627ed2b8688c88696217a"' \
+            --form 'token="${{ secrets.GITLAB_TRIGGER_TOKEN }}"' \
             --form 'ref="test_branch"' \
             --form "variables[INPUT_BRANCH]=\"${{ github.head_ref || github.ref_name }}\"" \
             --form "variables[INPUT_COMMITS]=\"${{ env.commits }}\""
