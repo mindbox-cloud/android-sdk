@@ -72,6 +72,7 @@ object Mindbox : MindboxLog {
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
+    private const val INIT_PUSH_SERVICES_TIMEOUT = 5000L
 
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
@@ -570,7 +571,6 @@ object Mindbox : MindboxLog {
             initScope.launch {
                 InitializeLock.await(InitializeLock.State.MIGRATION)
                 DbManager.saveConfigurations(Configuration(configuration))
-                setPushServiceHandler(context, pushServices)
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
                 logI("init. checkResult: $checkResult")
@@ -580,6 +580,7 @@ object Mindbox : MindboxLog {
                 }
 
                 if (checkResult == ConfigUpdate.UPDATED) {
+                    setPushServiceHandler(context, pushServices)
                     firstInitialization(context.applicationContext, validatedConfiguration)
 
                     val isTrackVisitNotSent = Mindbox::lifecycleManager.isInitialized &&
@@ -590,7 +591,7 @@ object Mindbox : MindboxLog {
                     }
                 } else {
                     mindboxScope.launch {
-                        updateAppInfo(context.applicationContext)
+                        setPushServiceHandler(context, pushServices)
                     }
                     MindboxEventManager.sendEventsIfExist(context.applicationContext)
                 }
@@ -783,7 +784,11 @@ object Mindbox : MindboxLog {
             pushServiceHandlers = selectPushServiceHandler(context, pushServices)
 
             pushServiceHandlers.map { handler ->
-                mindboxScope.async { handler.initService(context) }
+                mindboxScope.async {
+                    withTimeoutOrNull(INIT_PUSH_SERVICES_TIMEOUT) {
+                        handler.initService(context)
+                    }
+                }
             }.awaitAll()
 
             mindboxLogI("initPushServices completed in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
