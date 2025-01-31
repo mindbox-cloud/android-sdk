@@ -9,10 +9,10 @@ on:
     branches:
       - 'release/*'
       - 'support/*'
+      - 'poziev/change-trigger-job'
 
 jobs:
   distribution:
-    if: github.event.pull_request.merged == true || (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/support/')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,14 +24,9 @@ jobs:
           echo "commits=$commits" >> $GITHUB_ENV 
 
       - name: Trigger build & send to FAD
-        uses: benc-uk/workflow-dispatch@v1
-        with: 
-          workflow: 61033697
-          repo: mindbox-cloud/android-app
-          ref: develop
-          token: ${{ secrets.GITHUBACCESSTOKEN }}
-          inputs: >
-            {
-              "branch": "${{ github.head_ref || github.ref_name }}",
-              "commits": "${{ env.commits }}"
-            }
+        run: |
+          curl --location 'https://mindbox.gitlab.yandexcloud.net/api/v4/projects/868/trigger/pipeline' \
+            --form 'token="glptt-74df0063bac887544d1627ed2b8688c88696217a"' \
+            --form 'ref="test_branch"' \
+            --form "variables[INPUT_BRANCH]=\"${{ github.head_ref || github.ref_name }}\"" \
+            --form "variables[INPUT_COMMITS]=\"${{ env.commits }}\""
