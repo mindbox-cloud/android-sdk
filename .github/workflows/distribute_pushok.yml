@@ -24,14 +24,9 @@ jobs:
           echo "commits=$commits" >> $GITHUB_ENV 
 
       - name: Trigger build & send to FAD
-        uses: benc-uk/workflow-dispatch@v1
-        with: 
-          workflow: 61033697
-          repo: mindbox-cloud/android-app
-          ref: develop
-          token: ${{ secrets.GITHUBACCESSTOKEN }}
-          inputs: >
-            {
-              "branch": "${{ github.head_ref || github.ref_name }}",
-              "commits": "${{ env.commits }}"
-            }
+        run: |
+          curl --location 'https://mindbox.gitlab.yandexcloud.net/api/v4/projects/900/trigger/pipeline' \
+            --form 'token="${{ secrets.GITLAB_TRIGGER_TOKEN }}"' \
+            --form 'ref="develop"' \
+            --form "variables[INPUT_BRANCH]=\"${{ github.head_ref || github.ref_name }}\"" \
+            --form "variables[INPUT_COMMITS]=\"${{ env.commits }}\""
