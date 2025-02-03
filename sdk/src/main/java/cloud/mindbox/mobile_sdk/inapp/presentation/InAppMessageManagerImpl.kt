@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -20,7 +21,8 @@ internal class InAppMessageManagerImpl(
     private val inAppInteractor: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher,
     private val monitoringInteractor: MonitoringInteractor,
-    private val sessionStorageManager: SessionStorageManager
+    private val sessionStorageManager: SessionStorageManager,
+    private val userVisitManager: UserVisitManager
 ) : InAppMessageManager {
 
     init {
@@ -141,6 +143,8 @@ internal class InAppMessageManagerImpl(
             inAppMessageViewDisplayer.hideCurrentInApp()
             processingJob?.cancel()
             inAppInteractor.resetInAppConfigAndEvents()
+            sessionStorageManager.clearSessionData()
+            userVisitManager.saveUserVisit()
             InitializeLock.reset(InitializeLock.State.APP_STARTED)
             listenEventAndInApp()
             initLogs()
