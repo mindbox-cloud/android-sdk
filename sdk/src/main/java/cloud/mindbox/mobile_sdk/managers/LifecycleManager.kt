@@ -5,14 +5,14 @@ import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import cloud.mindbox.mobile_sdk.Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.DIRECT
 import cloud.mindbox.mobile_sdk.models.LINK
 import cloud.mindbox.mobile_sdk.models.PUSH
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.Timer
 import kotlin.concurrent.timer
 
@@ -25,7 +25,7 @@ internal class LifecycleManager(
     private var onActivityStarted: (activity: Activity) -> Unit,
     private var onActivityStopped: (activity: Activity) -> Unit,
     private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
-) : Application.ActivityLifecycleCallbacks, LifecycleObserver {
+) : Application.ActivityLifecycleCallbacks, LifecycleEventObserver {
 
     companion object {
 
@@ -51,8 +51,8 @@ internal class LifecycleManager(
     override fun onActivityCreated(activity: Activity, p1: Bundle?) {
     }
 
-    override fun onActivityStarted(activity: Activity) = LoggingExceptionHandler.runCatching {
-        MindboxLoggerImpl.d(this, "onActivityStarted. activity: ${activity.javaClass.simpleName}")
+    override fun onActivityStarted(activity: Activity): Unit = loggingRunCatching {
+        mindboxLogI("onActivityStarted. activity: ${activity.javaClass.simpleName}")
         onActivityStarted.invoke(activity)
         val areActivitiesEqual = currentActivityName == activity.javaClass.name
         val intent = activity.intent
@@ -65,28 +65,28 @@ internal class LifecycleManager(
 
         if (isAppInBackground || !isIntentChanged) {
             isAppInBackground = false
-            return@runCatching
+            return@loggingRunCatching
         }
 
         sendTrackVisit(activity.intent, areActivitiesEqual)
     }
 
     override fun onActivityResumed(activity: Activity) {
-        MindboxLoggerImpl.d(this, "onActivityResumed. activity: ${activity.javaClass.simpleName}")
+        mindboxLogI("onActivityResumed. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = true
         onActivityResumed.invoke(activity)
         isCurrentActivityResumed = true
     }
 
     override fun onActivityPaused(activity: Activity) {
-        MindboxLoggerImpl.d(this, "onActivityPaused. activity: ${activity.javaClass.simpleName}")
+        mindboxLogI("onActivityPaused. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = false
         onActivityPaused.invoke(activity)
         isCurrentActivityResumed = false
     }
 
     override fun onActivityStopped(activity: Activity) {
-        MindboxLoggerImpl.d(this, "onActivityStopped. activity: ${activity.javaClass.simpleName}")
+        mindboxLogI("onActivityStopped. activity: ${activity.javaClass.simpleName}")
         if (currentIntent == null || currentActivityName == null) {
             updateActivityParameters(activity)
         }
@@ -112,7 +112,7 @@ internal class LifecycleManager(
         skipSendingTrackVisit = true
     }
 
-    fun onNewIntent(newIntent: Intent?) = newIntent?.let { intent ->
+    fun onNewIntent(newIntent: Intent?): Unit? = newIntent?.let { intent ->
         if (intent.data != null || intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true) {
             isIntentChanged = updateHashesList(intent.hashCode())
             sendTrackVisit(intent)
@@ -120,16 +120,14 @@ internal class LifecycleManager(
         }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    private fun onAppMovedToBackground() = LoggingExceptionHandler.runCatching {
-        MindboxLoggerImpl.d(this, "onAppMovedToBackground")
+    private fun onAppMovedToBackground(): Unit = loggingRunCatching {
+        mindboxLogI("onAppMovedToBackground")
         isAppInBackground = true
         cancelKeepAliveTimer()
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    private fun onAppMovedToForeground() = LoggingExceptionHandler.runCatching {
-        MindboxLoggerImpl.d(this, "onAppMovedToForeground")
+    private fun onAppMovedToForeground(): Unit = loggingRunCatching {
+        mindboxLogI("onAppMovedToForeground")
         if (!skipSendingTrackVisit) {
             currentIntent?.let(::sendTrackVisit)
         } else {
@@ -137,7 +135,7 @@ internal class LifecycleManager(
         }
     }
 
-    private fun updateActivityParameters(activity: Activity) = LoggingExceptionHandler.runCatching {
+    private fun updateActivityParameters(activity: Activity): Unit = loggingRunCatching {
         currentActivityName = activity.javaClass.name
         currentIntent = activity.intent
     }
@@ -145,7 +143,7 @@ internal class LifecycleManager(
     private fun sendTrackVisit(
         intent: Intent,
         areActivitiesEqual: Boolean = true,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         val source = if (isIntentChanged) source(intent) else DIRECT
 
         if (areActivitiesEqual || source != DIRECT) {
@@ -153,11 +151,11 @@ internal class LifecycleManager(
             onTrackVisitReady.invoke(source, requestUrl)
             startKeepAliveTimer()
 
-            MindboxLoggerImpl.d(this, "Track visit event with source $source and url $requestUrl")
+            mindboxLogI("Track visit event with source $source and url $requestUrl")
         }
     }
 
-    private fun source(intent: Intent?) = LoggingExceptionHandler.runCatching(defaultValue = null) {
+    private fun source(intent: Intent?): String? = loggingRunCatching(defaultValue = null) {
         when {
             intent?.scheme == SCHEMA_HTTP || intent?.scheme == SCHEMA_HTTPS -> LINK
             intent?.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true -> PUSH
@@ -165,20 +163,19 @@ internal class LifecycleManager(
         }
     }
 
-    private fun updateHashesList(code: Int) =
-        LoggingExceptionHandler.runCatching(defaultValue = true) {
-            if (!intentHashes.contains(code)) {
-                if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
-                    intentHashes.removeAt(0)
-                }
-                intentHashes.add(code)
-                true
-            } else {
-                false
+    private fun updateHashesList(code: Int): Boolean = loggingRunCatching(defaultValue = true) {
+        if (!intentHashes.contains(code)) {
+            if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
+                intentHashes.removeAt(0)
             }
+            intentHashes.add(code)
+            true
+        } else {
+            false
         }
+    }
 
-    private fun startKeepAliveTimer() = LoggingExceptionHandler.runCatching {
+    private fun startKeepAliveTimer(): Unit = loggingRunCatching {
         cancelKeepAliveTimer()
         timer = timer(
             initialDelay = TIMER_PERIOD,
@@ -187,8 +184,18 @@ internal class LifecycleManager(
         )
     }
 
-    private fun cancelKeepAliveTimer() = LoggingExceptionHandler.runCatching {
+    private fun cancelKeepAliveTimer(): Unit = loggingRunCatching {
         timer?.cancel()
         timer = null
+    }
+
+    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+        when (event) {
+            Lifecycle.Event.ON_STOP -> onAppMovedToBackground()
+            Lifecycle.Event.ON_START -> onAppMovedToForeground()
+            else -> {
+                // do nothing
+            }
+        }
     }
 }
