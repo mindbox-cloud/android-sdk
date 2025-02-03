@@ -117,11 +117,11 @@ class MainActivity : AppCompatActivity() {
         //https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
         var subscriptionPushToken = ""
         subscriptionPushToken =
-            Mindbox.subscribePushToken { token ->
+            Mindbox.subscribePushTokens { tokens ->
                 runOnUiThread {
-                    binding.tvTokenResult.text = token
+                    binding.tvTokenResult.text = tokens
                     //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-                    binding.tvTokenDateResult.text = Mindbox.getPushTokenSaveDate()
+                    binding.tvTokenDateResult.text = Mindbox.getPushTokensSaveDate().toString()
                 }
                 Mindbox.disposePushTokenSubscription(subscriptionPushToken)
             }
