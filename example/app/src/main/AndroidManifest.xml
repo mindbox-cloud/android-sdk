@@ -61,6 +61,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <meta-data
+            android:name="ru.rustore.sdk.pushclient.project_id"
+            android:value="RU_STORE_PROJECT_ID" />
     </application>
 
 </manifest>
