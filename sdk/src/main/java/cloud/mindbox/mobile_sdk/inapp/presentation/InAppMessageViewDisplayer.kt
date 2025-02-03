@@ -24,4 +24,6 @@ internal interface InAppMessageViewDisplayer {
     fun registerInAppCallback(inAppCallback: InAppCallback)
 
     fun isInAppActive(): Boolean
+
+    fun hideCurrentInApp()
 }

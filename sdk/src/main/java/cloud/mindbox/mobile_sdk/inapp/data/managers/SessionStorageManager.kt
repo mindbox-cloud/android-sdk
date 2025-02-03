@@ -24,7 +24,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
     var lastTrackVisitSendTime: Long = 0L
-    var sessionTime: Long = 20000L
+    var sessionTime: Long = 0L
 
     private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
 
