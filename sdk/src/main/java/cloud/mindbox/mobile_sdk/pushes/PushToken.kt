@@ -2,12 +2,13 @@ package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 
 private const val GET_PUSH_TOKEN_TIMEOUT = 5000L
 
@@ -45,19 +46,17 @@ internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap
         handlers
             .map { handler ->
                 async {
-                    val provider = handler.notificationProvider
-                    try {
-                        withTimeout(GET_PUSH_TOKEN_TIMEOUT) {
-                            val token = handler.registerToken(context, previousToken[provider])
-                            handler.notificationProvider to token
-                        }
-                    } catch (e: TimeoutCancellationException) {
-                        mindboxLogE("Failed to get push token from $provider")
-                        provider to null
+                    runCatching {
+                        val provider = handler.notificationProvider
+                        val token = handler.registerToken(context, previousToken[provider])
+                        handler.notificationProvider to token
+                    }.getOrElse {
+                        Mindbox.logE("Failed to get push token from provider", it)
+                        handler.notificationProvider to null
                     }
                 }
             }
-            .awaitAll()
+            .awaitAllWithTimeout(GET_PUSH_TOKEN_TIMEOUT)
             .mapNotNull { (provider, token) ->
                 if (!token.isNullOrEmpty()) provider to token else null
             }

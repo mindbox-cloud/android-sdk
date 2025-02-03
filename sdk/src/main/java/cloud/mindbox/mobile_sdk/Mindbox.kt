@@ -785,11 +785,13 @@ object Mindbox : MindboxLog {
 
             pushServiceHandlers.map { handler ->
                 mindboxScope.async {
-                    withTimeoutOrNull(INIT_PUSH_SERVICES_TIMEOUT) {
+                    runCatching {
                         handler.initService(context)
+                    }.getOrNull {
+                        mindboxLogE("initPushServices: ${handler.notificationProvider} failed to initialize", it)
                     }
                 }
-            }.awaitAll()
+            }.awaitAllWithTimeout(INIT_PUSH_SERVICES_TIMEOUT)
 
             mindboxLogI("initPushServices completed in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
             mindboxScope.launch {
