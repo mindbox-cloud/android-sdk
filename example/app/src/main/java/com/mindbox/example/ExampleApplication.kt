@@ -32,22 +32,22 @@ class ExampleApp : Application() {
             .subscribeCustomerIfCreated(true)
             .build()
 
+        //https://developers.mindbox.ru/docs/android-sdk-methods#setloglevel
+        if (BuildConfig.DEBUG) {
+            Mindbox.setLogLevel(level = Level.DEBUG)
+        }
+
         //https://developers.mindbox.ru/docs/android-sdk-methods#initpushservices
         Mindbox.initPushServices(
             context = applicationContext,
-            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(RU_STORE_PROJECT_ID))
+            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
         )
         //https://developers.mindbox.ru/docs/android-sdk-methods#init
         Mindbox.init(
             application = this,
             configuration = configuration,
-            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(RU_STORE_PROJECT_ID))
+            pushServices = listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
         )
-
-        //https://developers.mindbox.ru/docs/android-sdk-methods#setloglevel
-        if (BuildConfig.DEBUG) {
-            Mindbox.setLogLevel(level = Level.DEBUG)
-        }
 
         //https://developers.mindbox.ru/docs/in-app#inappcallback
         chooseInappCallback(selectedInappCallback = RegisterInappCallback.DEFAULT)
