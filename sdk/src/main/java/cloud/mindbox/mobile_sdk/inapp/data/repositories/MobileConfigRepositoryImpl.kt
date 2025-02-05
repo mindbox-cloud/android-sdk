@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -37,7 +38,9 @@ internal class MobileConfigRepositoryImpl(
     private val defaultDataManager: DataManager,
     private val ttlParametersValidator: TtlParametersValidator,
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
-    private val sessionStorageManager: SessionStorageManager
+    private val sessionStorageManager: SessionStorageManager,
+    private val slidingExpirationValidator: SlidingExpirationParametersValidator,
+    private val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -85,6 +88,7 @@ internal class MobileConfigRepositoryImpl(
             )
 
             var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+            mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -155,7 +159,12 @@ internal class MobileConfigRepositoryImpl(
             mindboxLogW("Unable to get InAppTtl settings $it")
             null
         }
-        return SettingsDto(operations, ttl)
+
+        val slidingExpiration = runCatching { getInAppSession(configBlank) }.getOrNull {
+            mindboxLogW("Unable to get InAppSession settings $it")
+        }
+
+        return SettingsDto(operations, ttl, slidingExpiration)
     }
 
     private fun getInAppTtl(configBlank: InAppConfigResponseBlank?): TtlDto? =
@@ -167,6 +176,18 @@ internal class MobileConfigRepositoryImpl(
             }
         } catch (e: java.lang.Exception) {
             mindboxLogE("Error parse inapps ttl", e)
+            null
+        }
+
+    private fun getInAppSession(configBlank: InAppConfigResponseBlank?): SlidingExpirationDto? =
+        try {
+            configBlank?.settings?.slidingExpiration?.takeIf { slidingExpirationDtoBlank ->
+                slidingExpirationValidator.isValid(slidingExpirationDtoBlank)
+            }?.let { slidingExpirationDtoBlank ->
+                inAppMapper.mapToSlidingExpiration(slidingExpirationDtoBlank)
+            }
+        } catch (e: Exception) {
+            mindboxLogE("Error parse inappsSession time", e)
             null
         }
 
