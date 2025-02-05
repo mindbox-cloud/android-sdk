@@ -60,7 +60,7 @@ class MindboxRuStoreMessagingService : RuStoreMessagingService() {
         Mindbox.updatePushToken(
             context = applicationContext,
             token = token,
-            pushService = MindboxRuStore(projectId = RU_STORE_PROJECT_ID)
+            pushService = MindboxRuStore
         )
     }
 

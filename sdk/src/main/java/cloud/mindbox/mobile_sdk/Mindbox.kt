@@ -505,7 +505,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
      */
     @MainThread
@@ -530,7 +530,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
      */
     @MainThread
@@ -705,7 +705,7 @@ object Mindbox : MindboxLog {
      * @param configuration contains the data that is needed to connect to the Mindbox
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
      * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
@@ -742,7 +742,7 @@ object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param pushServices list, containing [MindboxPushService]s, i.e.
      * ```
-     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore(projectId))
+     *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
      */
     @MainThread
