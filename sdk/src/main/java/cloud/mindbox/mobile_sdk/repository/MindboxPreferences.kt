@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PrefPushTokenMap
 import cloud.mindbox.mobile_sdk.pushes.toPreferences
 import cloud.mindbox.mobile_sdk.pushes.toTokensMap
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CoroutineScope

@@ -55,10 +55,6 @@ class RuStoreServiceHandler(
     override fun getAdsId(context: Context): Pair<String?, Boolean> =
         UUID.randomUUID().toString() to false
 
-    override fun ensureVersionCompatibility(context: Context, logParent: Any) {
-        // do nothing
-    }
-
     override fun isAvailable(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < RU_STORE_MIN_API_VERSION) {
             logger.w(
