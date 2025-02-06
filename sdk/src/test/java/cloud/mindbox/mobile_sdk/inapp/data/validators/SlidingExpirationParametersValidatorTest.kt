@@ -58,9 +58,16 @@ class SlidingExpirationParametersValidatorTest {
     }
 
     @Test
-    fun `isValid returns false when sessionTime is valid string`() {
-        val nullInAppSessionTime = SettingsDtoBlank.SlidingExpirationDtoBlank("one day")
+    fun `isValid returns false for invalid formats`() {
+        val invalidInputs = listOf(
+            "123",
+            "",
+            " "
+        )
 
-        assertFalse(validator.isValid(nullInAppSessionTime))
+        invalidInputs.forEach { input ->
+            val invalidInAppSessionTime = SettingsDtoBlank.SlidingExpirationDtoBlank(input)
+            assertFalse(validator.isValid(invalidInAppSessionTime))
+        }
     }
 }

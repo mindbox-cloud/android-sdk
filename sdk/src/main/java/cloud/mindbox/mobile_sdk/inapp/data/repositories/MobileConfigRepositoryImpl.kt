@@ -17,7 +17,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
-import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
+import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -40,7 +40,7 @@ internal class MobileConfigRepositoryImpl(
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
     private val sessionStorageManager: SessionStorageManager,
     private val slidingExpirationValidator: SlidingExpirationParametersValidator,
-    private val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl
+    private val mobileConfigSettingsManager: MobileConfigSettingsManager
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
