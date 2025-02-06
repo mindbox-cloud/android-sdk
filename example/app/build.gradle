@@ -31,6 +31,25 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
 }
 // If the version of firebase-bom used in the sdk is higher, then it will be applied
 // To change the dependency resolution strategy use the code below
@@ -51,14 +70,15 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.huawei.hms:push:6.11.0.300'
+    implementation 'ru.rustore.sdk:pushclient:6.5.1'
 
     implementation 'com.google.code.gson:gson:2.11.0'
 
-
     //Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.11.2'
+    implementation 'cloud.mindbox:mobile-sdk:2.12.0-rc'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
+    implementation 'cloud.mindbox:mindbox-rustore'
 
     //Glade for custom loader
     implementation 'com.github.bumptech.glide:glide:4.15.1'

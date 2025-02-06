@@ -21,6 +21,7 @@ class InitializeLockTest {
     @Test
     fun `test complete and await SAVE_MINDBOX_CONFIG`() = runTest {
         val job = launch {
+            InitializeLock.complete(InitializeLock.State.MIGRATION)
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
 
@@ -86,6 +87,7 @@ class InitializeLockTest {
     @Test
     fun `test coroutine complete when reset status SAVE_MINDBOX_CONFIG`() = runTest {
         val job = launch {
+            InitializeLock.complete(InitializeLock.State.MIGRATION)
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         advanceTimeBy(100)
@@ -99,6 +101,7 @@ class InitializeLockTest {
     @Test
     fun `test multiple completes for the same state`() = runTest {
         val job = launch {
+            InitializeLock.complete(InitializeLock.State.MIGRATION)
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         advanceTimeBy(100)
@@ -125,6 +128,7 @@ class InitializeLockTest {
     @Test
     fun `test coroutine when states already completed`() = runTest {
         launch {
+            InitializeLock.complete(InitializeLock.State.MIGRATION)
             InitializeLock.complete(InitializeLock.State.SAVE_MINDBOX_CONFIG)
         }
         advanceTimeBy(100)

@@ -10,6 +10,7 @@ dependencies {
     constraints {
         api("cloud.mindbox:mindbox-firebase:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-huawei:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-rustore:$SDK_VERSION_NAME")
     }
 }
 android {
@@ -25,7 +26,8 @@ android {
                     "../proguard/proguard-kotlin.pro",
                     "../proguard/proguard-room.pro",
                     "../proguard/proguard-volley.pro",
-                    "../proguard/proguard-workmanager.pro"
+                    "../proguard/proguard-workmanager.pro",
+                    "../proguard/proguard-lifecycle.pro"
     }
 
     testOptions {

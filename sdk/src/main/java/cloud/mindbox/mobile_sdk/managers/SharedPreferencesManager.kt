@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 
 internal object SharedPreferencesManager {
@@ -133,4 +134,8 @@ internal object SharedPreferencesManager {
     internal fun deleteAll() = runCatching {
         preferences.edit().clear().apply()
     }.exceptionOrNull()
+
+    internal fun remove(key: String) = runCatching {
+        preferences.edit { remove(key) }
+    }
 }

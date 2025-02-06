@@ -1,10 +1,12 @@
 package cloud.mindbox.mobile_sdk.utils
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -12,22 +14,36 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-internal class MigrationManager(val context: Context) {
+internal class MigrationManager(val context: Context) : MindboxLog {
 
     private val migrationMutex = Mutex()
     private val migrationJobs = mutableListOf<Job>()
 
+    @Volatile
+    private var isMigrating = false
+
     suspend fun migrateAll() {
+        if (isMigrating) return
+        mindboxLogI("Check migrations needed")
+
+        if (MindboxPreferences.isFirstInitialize) {
+            MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
+        }
+
+        isMigrating = true
         listOf(
-            version282(),
-            version290()
+            version290(),
+            version2120(),
         ).filter { it.isNeeded }
             .onEach { migration ->
                 val job = Mindbox.mindboxScope.launch {
                     migrationMutex.withLock {
                         if (migration.isNeeded) {
-                            mindboxLogI("Run migration '${migration.description}'")
+                            logI("Run migration '${migration.description}'")
                             migration.run()
                         }
                     }
@@ -36,11 +52,13 @@ internal class MigrationManager(val context: Context) {
             }.also {
                 migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
-                    mindboxLogE("Migrations failed, reset memory")
+                    logE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()
                     MindboxPreferences.versionCode = Constants.SDK_VERSION_CODE
                 }
             }
+
+        InitializeLock.complete(InitializeLock.State.MIGRATION)
     }
 
     private interface Migration {
@@ -75,19 +93,31 @@ internal class MigrationManager(val context: Context) {
         }
     }
 
-    private fun version282() = object : Migration {
+    private fun version2120() = object : Migration {
+        val VERSION_CODE = 2
 
         override val description: String
-            get() = "Updates the push notification token to resolve an issue with the push notification provider."
-
+            get() = "Changes the push token save format to multiple tokens with providers."
         override val isNeeded: Boolean
-            get() = SharedPreferencesManager.isInitialized() &&
-                !MindboxPreferences.isFirstInitialize &&
-                MindboxPreferences.isPushTokenNeedUpdated
+            get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
 
         override suspend fun run() {
-            MindboxPreferences.isPushTokenNeedUpdated = false
-            Mindbox.updateAppInfo(context)
+            val provider = SharedPreferencesManager.getString("key_notification_provider")
+            val token = SharedPreferencesManager.getString("key_firebase_token")
+            val updateDate = SharedPreferencesManager.getString("key_firebase_token_save_date")
+
+            SharedPreferencesManager.remove("key_notification_provider")
+            SharedPreferencesManager.remove("key_firebase_token")
+            SharedPreferencesManager.remove("key_firebase_token_save_date")
+            val savedTokens = MindboxPreferences.pushTokens
+            if (token != null && provider != null && savedTokens.isEmpty()) {
+                val timestamp: Long? = updateDate?.let {
+                    SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.ENGLISH).parse(it)?.time
+                }
+                MindboxPreferences.pushTokens = mapOf(provider to PrefPushToken(token, timestamp ?: Date().time))
+            }
+
+            MindboxPreferences.versionCode = VERSION_CODE
         }
     }
 }
