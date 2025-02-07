@@ -85,6 +85,9 @@ object Mindbox : MindboxLog {
     internal var mindboxScope = createMindboxScope()
         private set
 
+    internal var eventScope = createScopeWithIODispatcher()
+        private set
+
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
@@ -601,7 +604,7 @@ object Mindbox : MindboxLog {
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
                         },
                         onTrackVisitReady = { source, requestUrl ->
-                            runBlocking(Dispatchers.IO) {
+                            eventScope.launch {
                                 sendTrackVisitEvent(
                                     MindboxDI.appModule.appContext,
                                     source,
@@ -711,6 +714,10 @@ object Mindbox : MindboxLog {
 
     private fun createMindboxScope() = CoroutineScope(
         Default + SupervisorJob() + coroutineExceptionHandler,
+    )
+
+    private fun createScopeWithIODispatcher() = CoroutineScope(
+        Dispatchers.IO + SupervisorJob() + coroutineExceptionHandler,
     )
 
     private fun selectPushServiceHandler(
