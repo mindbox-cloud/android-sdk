@@ -11,6 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 class SessionStorageManagerTest {
     private lateinit var mockTimeProvider: TimeProvider
@@ -22,7 +23,7 @@ class SessionStorageManagerTest {
         currentTime: Long
     ) {
         sessionStorageManager.lastTrackVisitSendTime = lastTrackTime
-        sessionStorageManager.sessionTime = sessionTime
+        sessionStorageManager.sessionTime = sessionTime.milliseconds
         every { mockTimeProvider.currentTimeMillis() } returns currentTime
     }
 
@@ -112,7 +113,7 @@ class SessionStorageManagerTest {
             currentSessionInApps = listOf(mockk())
             shownInAppIdsWithEvents["event"] = mutableSetOf(1, 2, 3)
             configFetchingError = true
-            sessionTime = 1000L
+            sessionTime = 1000L.milliseconds
         }
 
         sessionStorageManager.clearSessionData()
@@ -128,6 +129,6 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.currentSessionInApps.isEmpty())
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
-        assertEquals(0L, sessionStorageManager.sessionTime)
+        assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
     }
 }

@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank.InAppDtoBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.OperationDtoBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.SlidingExpirationDtoBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.TtlDtoBlank
 import com.google.gson.Gson
 import com.google.gson.JsonElement
@@ -104,7 +105,13 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 mindboxLogE("Failed to parse ttl block", it)
             }
 
-            SettingsDtoBlank(operations, ttl)
+            val slidingExpiration = runCatching {
+                gson.fromJson(json.asJsonObject.get("slidingExpiration"), SlidingExpirationDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse slidingExpiration block")
+            }
+
+            SettingsDtoBlank(operations, ttl, slidingExpiration)
         }
     }.getOrNull {
         mindboxLogE("Failed to parse settings block", it)

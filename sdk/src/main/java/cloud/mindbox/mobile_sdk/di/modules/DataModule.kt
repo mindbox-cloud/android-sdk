@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -142,7 +143,9 @@ internal fun DataModule(
             defaultDataManager = defaultDataManager,
             ttlParametersValidator = ttlParametersValidator,
             inAppConfigTtlValidator = inAppConfigTtlValidator,
-            sessionStorageManager = sessionStorageManager
+            sessionStorageManager = sessionStorageManager,
+            slidingExpirationValidator = slidingExpirationParametersValidator,
+            mobileConfigSettingsManager = mobileConfigSettingsManager
         )
     }
 
@@ -220,6 +223,8 @@ internal fun DataModule(
 
     override val inAppConfigTtlValidator: InAppConfigTtlValidator by lazy { InAppConfigTtlValidator() }
 
+    override val slidingExpirationParametersValidator: SlidingExpirationParametersValidator by lazy { SlidingExpirationParametersValidator() }
+    override val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl by lazy { MobileConfigSettingsManagerImpl(sessionStorageManager) }
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {
