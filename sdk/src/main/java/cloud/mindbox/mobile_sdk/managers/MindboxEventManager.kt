@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.google.gson.Gson
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -211,4 +212,9 @@ internal object MindboxEventManager {
     }
 
     fun <T> operationBodyJson(body: T): String = gson.toJson(body)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun resetEventFlowCache() {
+        eventFlow.resetReplayCache()
+    }
 }
