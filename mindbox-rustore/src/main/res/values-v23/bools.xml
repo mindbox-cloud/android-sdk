@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="mindbox_enable_rustore_push_client_init_provider">true</bool>
+</resources>
