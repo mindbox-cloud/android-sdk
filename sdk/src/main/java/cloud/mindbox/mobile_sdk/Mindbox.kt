@@ -570,9 +570,9 @@ object Mindbox : MindboxLog {
 
             initScope.launch {
                 InitializeLock.await(InitializeLock.State.MIGRATION)
-                DbManager.saveConfigurations(Configuration(configuration))
                 val checkResult = checkConfig(configuration)
                 val validatedConfiguration = validateConfiguration(configuration)
+                DbManager.saveConfigurations(Configuration(configuration))
                 logI("init. checkResult: $checkResult")
                 if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                     logI("init. softReinitialization")
