@@ -8,7 +8,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal class MobileConfigSettingsManagerImpl(private val sessionStorageManager: SessionStorageManager) : MobileConfigSettingsManager {
     override fun saveSessionTime(config: InAppConfigResponse) {
-        config.settings?.slidingExpiration?.inappSession?.parseTimeSpanToMillis()?.let { sessionTime ->
+        config.settings?.slidingExpiration?.config?.parseTimeSpanToMillis()?.let { sessionTime ->
             if (sessionTime > 0) {
                 sessionStorageManager.sessionTime = sessionTime.milliseconds
                 mindboxLogI("Session time set to ${sessionStorageManager.sessionTime.inWholeMilliseconds} ms")

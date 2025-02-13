@@ -7,6 +7,6 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 internal class SlidingExpirationParametersValidator : Validator<SettingsDtoBlank.SlidingExpirationDtoBlank> {
     override fun isValid(item: SettingsDtoBlank.SlidingExpirationDtoBlank): Boolean =
         loggingRunCatching(false) {
-            item.inappSession.parseTimeSpanToMillis() > 0
+            item.config.parseTimeSpanToMillis() > 0
         }
 }
