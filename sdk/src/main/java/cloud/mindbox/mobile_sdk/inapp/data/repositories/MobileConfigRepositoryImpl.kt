@@ -187,7 +187,7 @@ internal class MobileConfigRepositoryImpl(
                 inAppMapper.mapToSlidingExpiration(slidingExpirationDtoBlank)
             }
         } catch (e: Exception) {
-            mindboxLogE("Error parse  config session time", e)
+            mindboxLogE("Error parse config session time", e)
             null
         }
 
