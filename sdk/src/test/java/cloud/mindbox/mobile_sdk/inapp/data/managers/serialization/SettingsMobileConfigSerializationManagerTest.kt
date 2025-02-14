@@ -97,6 +97,8 @@ class SettingsMobileConfigSerializationManagerTest {
 
         assertNotNull(config.settings)
         assertEquals(3, config.settings!!.operations!!.size)
+        assertNotNull(config.settings.ttl?.inApps)
+        assertNotNull(config.settings.slidingExpiration?.config)
 
         assertNotNull(config.abtests)
         assertEquals(2, config.abtests!!.size)
@@ -114,6 +116,9 @@ class SettingsMobileConfigSerializationManagerTest {
 
         assertNotNull(config.ttl)
         assertNotNull(config.ttl?.inApps)
+
+        assertNotNull(config.slidingExpiration)
+        assertNotNull(config.slidingExpiration?.config)
     }
 
     // MARK: - Operations
@@ -439,6 +444,82 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNull(
             "TTL must be `null` if the key `inapps` is not a `String`",
             config.ttl?.inApps,
+        )
+    }
+
+    // MARK: - SlidingExpiration
+
+    @Test
+    fun settings_config_withSlidingExpirationError_shouldSetTtlToNull() {
+        val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull("SlidingExpiration must be `null` if the key `slidingExpiration` is not found", config.slidingExpiration)
+        assertNull("Config session time must be `null`", config.slidingExpiration?.config)
+    }
+
+    @Test
+    fun settings_config_withSlidingExpirationTypeError_shouldSetTtlToNull() {
+        val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull(
+            "SlidingExpiration must be `null` if the type of `config` is not a `slidingExpiration`",
+            config.slidingExpiration,
+        )
+        assertNull("Config session time must be `null`", config.slidingExpiration?.config)
+    }
+
+    @Test
+    fun settings_config_withSlidingExpirationConfigError_shouldSetTtlToNull() {
+        val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationConfigsError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull("SlidingExpiration must be `null` if the key `config` is not found", config.slidingExpiration)
+        assertNull("Config session time must be `null`", config.slidingExpiration?.config)
+    }
+
+    @Test
+    fun settings_config_withSlidingExpirationConfigTypeError_shouldSetTtlToNull() {
+        val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationConfigTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull("SlidingExpiration must be `null` if the key `config` is not a `String`", config.slidingExpiration)
+        assertNull(
+            "Config session time must be `null` if the key `config` is not a `String`",
+            config.slidingExpiration?.config,
         )
     }
 }
