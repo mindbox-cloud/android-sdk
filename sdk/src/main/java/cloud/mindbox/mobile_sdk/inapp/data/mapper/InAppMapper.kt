@@ -467,7 +467,7 @@ internal class InAppMapper {
     )
 
     fun mapToSlidingExpiration(slidingExpirationDtoBlank: SettingsDtoBlank.SlidingExpirationDtoBlank) = SlidingExpirationDto(
-        inappSession = slidingExpirationDtoBlank.inappSession
+        config = slidingExpirationDtoBlank.config
     )
 
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {

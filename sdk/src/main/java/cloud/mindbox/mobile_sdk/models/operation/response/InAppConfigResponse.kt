@@ -35,8 +35,8 @@ internal data class SettingsDtoBlank(
     )
 
     internal data class SlidingExpirationDtoBlank(
-        @SerializedName("inappSession")
-        val inappSession: String
+        @SerializedName("config")
+        val config: String
     )
 }
 
@@ -60,8 +60,8 @@ internal data class TtlDto(
 )
 
 internal data class SlidingExpirationDto(
-    @SerializedName("inappSession")
-    val inappSession: String
+    @SerializedName("config")
+    val config: String
 )
 
 internal data class LogRequestDto(

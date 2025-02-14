@@ -160,8 +160,8 @@ internal class MobileConfigRepositoryImpl(
             null
         }
 
-        val slidingExpiration = runCatching { getInAppSession(configBlank) }.getOrNull {
-            mindboxLogW("Unable to get InAppSession settings $it")
+        val slidingExpiration = runCatching { getConfigSession(configBlank) }.getOrNull {
+            mindboxLogW("Unable to get slidingExpiration settings $it")
         }
 
         return SettingsDto(operations, ttl, slidingExpiration)
@@ -179,7 +179,7 @@ internal class MobileConfigRepositoryImpl(
             null
         }
 
-    private fun getInAppSession(configBlank: InAppConfigResponseBlank?): SlidingExpirationDto? =
+    private fun getConfigSession(configBlank: InAppConfigResponseBlank?): SlidingExpirationDto? =
         try {
             configBlank?.settings?.slidingExpiration?.takeIf { slidingExpirationDtoBlank ->
                 slidingExpirationValidator.isValid(slidingExpirationDtoBlank)
@@ -187,7 +187,7 @@ internal class MobileConfigRepositoryImpl(
                 inAppMapper.mapToSlidingExpiration(slidingExpirationDtoBlank)
             }
         } catch (e: Exception) {
-            mindboxLogE("Error parse inappsSession time", e)
+            mindboxLogE("Error parse config session time", e)
             null
         }
 

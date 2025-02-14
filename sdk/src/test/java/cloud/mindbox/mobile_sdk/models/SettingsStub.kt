@@ -14,7 +14,7 @@ internal class SettingsStub {
                     operations = emptyMap(),
                     ttl = null,
                     slidingExpiration = SlidingExpirationDto(
-                        inappSession = timeSpan
+                        config = timeSpan
                     )
                 ),
                 abtests = null
