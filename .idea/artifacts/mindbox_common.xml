@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="mindbox-common">
+    <output-path>$PROJECT_DIR$/mindbox-common/build/libs</output-path>
+    <root id="archive" name="mindbox-common.jar">
+      <element id="module-output" name="AndroidSdk.mindbox-common.androidMain" />
+    </root>
+  </artifact>
+</component>

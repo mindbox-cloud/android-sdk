@@ -5,6 +5,7 @@ buildscript {
         maven { url("https://plugins.gradle.org/m2/") }
         maven { url("https://developer.huawei.com/repo/") }
         maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
+        gradlePluginPortal()
     }
     dependencies {
         classpath libs.bundles.buildscript.plugins

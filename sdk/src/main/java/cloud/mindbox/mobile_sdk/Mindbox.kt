@@ -13,6 +13,10 @@ import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.mindbox_common.MindboxCommon
+import cloud.mindbox.mobile_sdk.Mindbox.disposeDeviceUuidSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.disposePushTokenSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.handleRemoteMessage
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -37,7 +41,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.*
+import java.util.Date
+import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -313,7 +319,10 @@ object Mindbox : MindboxLog {
      */
     fun getSdkVersion(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
         MindboxLoggerImpl.d(this, "getSdkVersion")
-        BuildConfig.VERSION_NAME
+        MindboxCommon.commonFunction()
+        runBlocking(Dispatchers.IO) {
+            MindboxCommon.getConfig()
+        }
     }
 
     /**
