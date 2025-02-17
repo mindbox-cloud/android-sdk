@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-sdk tools:overrideLibrary="ru.rustore.sdk.*,com.vk.push.*,ru.ok.tracer.*" />
+    <application>
+        <provider
+            android:name="ru.rustore.sdk.pushclient.provider.RuStorePushClientInitProvider"
+            android:authorities="${applicationId}.rustorepushclientinitprovider"
+            android:enabled="@bool/mindbox_enable_rustore_push_client_init_provider"
+            android:exported="false"
+            tools:node="mergeOnlyAttributes" />
+    </application>
+</manifest>

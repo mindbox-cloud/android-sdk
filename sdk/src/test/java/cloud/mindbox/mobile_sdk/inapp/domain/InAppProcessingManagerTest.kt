@@ -8,9 +8,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmen
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.models.*
 import com.android.volley.VolleyError
+import com.google.gson.Gson
 import io.mockk.*
 import io.mockk.junit4.MockKRule
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -18,7 +18,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppProcessingManagerTest {
 
     @get:Rule
@@ -72,6 +71,7 @@ internal class InAppProcessingManagerTest {
             every { inAppGeoRepository } returns mockkInAppGeoRepository
             every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
             every { inAppRepository } returns mockInAppRepository
+            every { gson } returns Gson()
         }
     }
 
@@ -301,5 +301,99 @@ internal class InAppProcessingManagerTest {
             testInAppList, event
         )
         assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `send inapptargeting for or node when geo return 500`() = runTest {
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+        coEvery { mockkInAppGeoRepository.fetchGeo() } throws GeoError(VolleyError())
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = TreeTargeting.UnionNode(
+                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                nodes = listOf(
+                    InAppStub.getTargetingCountryNode().copy(kind = Kind.NEGATIVE),
+                    InAppStub.getTargetingTrueNode()
+                )
+            )
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `send inapptargeting for or node when customer segment return 500`() = runTest {
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+        coEvery { mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any()) } just runs
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = TreeTargeting.UnionNode(
+                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                nodes = listOf(
+                    InAppStub.getTargetingSegmentNode().copy(kind = Kind.NEGATIVE),
+                    InAppStub.getTargetingTrueNode()
+                )
+            )
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `send inapptargeting for or node when product segment return 500`() = runTest {
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = TreeTargeting.UnionNode(
+                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                nodes = listOf(
+                    spyk(InAppStub.getTargetingViewProductSegmentNode().copy(kind = Kind.NEGATIVE)) {
+                        coEvery { fetchTargetingInfo(any()) } throws ProductSegmentationError(VolleyError())
+                    },
+                    InAppStub.getTargetingTrueNode()
+                )
+            )
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `not send inapptargeting when geo return 500`() = runTest {
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+        coEvery { mockkInAppGeoRepository.fetchGeo() } throws GeoError(VolleyError())
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingCountryNode().copy(kind = Kind.NEGATIVE)
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `not send inapptargeting when customer segment return 500`() = runTest {
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+        coEvery { mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any()) } just runs
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingSegmentNode().copy(kind = Kind.NEGATIVE)
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `not send inapptargeting when product segment return 500`() = runTest {
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = spyk(InAppStub.getTargetingViewProductSegmentNode().copy(kind = Kind.NEGATIVE)) {
+                coEvery { fetchTargetingInfo(any()) } throws ProductSegmentationError(VolleyError())
+            }
+        )
+        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
     }
 }

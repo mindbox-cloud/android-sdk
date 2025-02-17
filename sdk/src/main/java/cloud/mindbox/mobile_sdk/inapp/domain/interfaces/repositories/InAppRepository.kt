@@ -36,4 +36,6 @@ internal interface InAppRepository {
     fun setInAppShown()
 
     fun isInAppShown(): Boolean
+
+    fun clearInAppEvents()
 }

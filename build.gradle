@@ -4,6 +4,7 @@ buildscript {
         mavenCentral()
         maven { url("https://plugins.gradle.org/m2/") }
         maven { url("https://developer.huawei.com/repo/") }
+        maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
     }
     dependencies {
         classpath libs.bundles.buildscript.plugins
@@ -15,10 +16,11 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://developer.huawei.com/repo/' }
+        maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
         mavenLocal()
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.getLayout().getBuildDirectory()
 }

@@ -27,7 +27,7 @@ internal class HuaweiServiceHandler(
 
     override val notificationProvider: String = MindboxHuawei.tag
 
-    override fun initService(context: Context) {
+    override suspend fun initService(context: Context) {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
         val appId = getAppId(context)
         HmsInstanceId.getInstance(context).getToken(appId, HMS_TOKEN_SCOPE)
@@ -57,9 +57,6 @@ internal class HuaweiServiceHandler(
         val id = info?.id
         val isLimitAdTrackingEnabled = info?.isLimitAdTrackingEnabled ?: false
         return id to isLimitAdTrackingEnabled
-    }
-
-    override fun ensureVersionCompatibility(context: Context, logParent: Any) {
     }
 
     override fun isAvailable(context: Context) = HuaweiApiAvailability.getInstance()

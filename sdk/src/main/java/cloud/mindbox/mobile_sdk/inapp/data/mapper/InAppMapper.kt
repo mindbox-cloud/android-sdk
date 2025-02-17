@@ -466,6 +466,10 @@ internal class InAppMapper {
         inApps = inAppTtlDtoBlank.inApps
     )
 
+    fun mapToSlidingExpiration(slidingExpirationDtoBlank: SettingsDtoBlank.SlidingExpirationDtoBlank) = SlidingExpirationDto(
+        config = slidingExpirationDtoBlank.config
+    )
+
     private fun getTargetingProductSegmentationsList(targeting: TreeTargeting): List<String> {
         return when (targeting) {
             is TreeTargeting.IntersectionNode -> {

@@ -97,7 +97,7 @@ internal class InAppInteractorImpl(
         val inAppsMap = inAppRepository.getTargetedInApps()
         logI("Whole InApp list = $inApps")
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
-        inAppTargetingChannel.consumeAsFlow().collect { event ->
+        inAppTargetingChannel.receiveAsFlow().collect { event ->
             val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
@@ -118,5 +118,10 @@ internal class InAppInteractorImpl(
 
     override suspend fun fetchMobileConfig() {
         mobileConfigRepository.fetchMobileConfig()
+    }
+
+    override fun resetInAppConfigAndEvents() {
+        mobileConfigRepository.resetCurrentConfig()
+        inAppRepository.clearInAppEvents()
     }
 }

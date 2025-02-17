@@ -5,6 +5,7 @@ import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -21,12 +22,10 @@ internal class WorkerDelegate {
         context: Context,
         parent: Any,
     ): ListenableWorker.Result {
-        MindboxLoggerImpl.d(parent, "Start working...")
+        mindboxLogI("Start working...")
 
         try {
             Mindbox.initComponents(context)
-
-            Mindbox.pushServiceHandler?.ensureVersionCompatibility(context, parent)
 
             val configuration = DbManager.getConfigurations()
 
@@ -36,15 +35,12 @@ internal class WorkerDelegate {
             }
 
             val events = DbManager.getFilteredEventsForBackgroundSend()
-            return if (events.isNullOrEmpty()) {
-                MindboxLoggerImpl.d(parent, "Events list is empty")
-                if (DbManager.getFilteredEvents().isNullOrEmpty()) {
+            return if (events.isEmpty()) {
+                mindboxLogI("Events list is empty")
+                if (DbManager.getFilteredEvents().isEmpty()) {
                     ListenableWorker.Result.success()
                 } else {
-                    MindboxLoggerImpl.d(
-                        parent,
-                        "Database contains events that can't be sent right now. Worker will restart",
-                    )
+                    mindboxLogI("Database contains events that can't be sent right now. Worker will restart",)
                     ListenableWorker.Result.retry()
                 }
             } else {

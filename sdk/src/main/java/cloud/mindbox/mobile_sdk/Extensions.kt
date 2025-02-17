@@ -173,15 +173,10 @@ internal val Activity?.root: ViewGroup?
     get() = this?.window?.decorView?.rootView as ViewGroup?
 
 internal fun Activity.postDelayedAnimation(action: Runnable) {
-    val durationAnimationDefault = 400L
     val duration = try {
         resources.getInteger(android.R.integer.config_mediumAnimTime).toLong()
     } catch (_: Exception) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            window.transitionBackgroundFadeDuration
-        } else {
-            durationAnimationDefault
-        }
+        window.transitionBackgroundFadeDuration
     }
     this.root?.postDelayed(action, duration)
 }

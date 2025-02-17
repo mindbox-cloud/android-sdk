@@ -21,3 +21,7 @@ internal fun <T> loggingRunCatching(
 ): T = LoggingExceptionHandler.runCatching(defaultValue, block)
 
 internal fun <T> loggingRunCatching(block: () -> T) = LoggingExceptionHandler.runCatching(block)
+
+internal suspend fun <T> loggingRunCatchingSuspending(block: suspend () -> T) = LoggingExceptionHandler.runCatchingSuspending(block)
+
+internal suspend fun <T> loggingRunCatchingSuspending(defaultValue: T, block: suspend () -> T) = LoggingExceptionHandler.runCatchingSuspending(defaultValue, block)

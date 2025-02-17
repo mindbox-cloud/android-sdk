@@ -8,7 +8,6 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
-import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.doOnLayout
 import androidx.core.view.marginBottom
@@ -190,7 +189,6 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
-    @RequiresApi(21)
     constructor(
         context: Context,
         attrs: AttributeSet,
