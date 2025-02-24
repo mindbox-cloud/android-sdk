@@ -18,4 +18,6 @@ internal interface InAppInteractor {
     fun sendInAppClicked(inAppId: String)
 
     suspend fun fetchMobileConfig()
+
+    fun resetInAppConfigAndEvents()
 }

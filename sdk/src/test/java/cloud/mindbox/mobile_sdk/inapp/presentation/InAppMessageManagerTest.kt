@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -42,6 +43,8 @@ internal class InAppMessageManagerTest {
 
     private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
 
+    private val userVisitManager = mockk<UserVisitManager>()
+
     @OptIn(DelicateCoroutinesApi::class)
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
 
@@ -76,7 +79,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
@@ -94,9 +98,11 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         mockkObject(LoggingExceptionHandler)
+        every { MindboxPreferences.inAppConfig } returns "test"
         coEvery {
             MindboxLoggerImpl.e(any(), any())
         } just runs
@@ -109,6 +115,9 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
         }
+        verify(exactly = 1) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        }
     }
 
     @Test
@@ -120,7 +129,8 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler),
             monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
@@ -158,7 +168,8 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler),
             monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -195,7 +206,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         every {
             runBlocking {
@@ -234,7 +246,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -264,7 +277,8 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
             StandardTestDispatcher(testScheduler), monitoringRepository,
-            sessionStorageManager
+            sessionStorageManager,
+            userVisitManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()

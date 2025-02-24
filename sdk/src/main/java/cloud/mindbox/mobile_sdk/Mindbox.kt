@@ -15,6 +15,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
@@ -81,6 +82,9 @@ object Mindbox : MindboxLog {
     internal var mindboxScope = createMindboxScope()
         private set
 
+    internal var eventScope = createMindboxScope(Dispatchers.IO)
+        private set
+
     private val tokenCallbacks = ConcurrentHashMap<String, (String?) -> Unit>()
     private val deviceUuidCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
@@ -100,6 +104,8 @@ object Mindbox : MindboxLog {
     private var firstInitCall: Boolean = true
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
+
+    private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
 
     /**
      * Allows you to specify additional components for message handling
@@ -673,7 +679,7 @@ object Mindbox : MindboxLog {
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
                         },
                         onTrackVisitReady = { source, requestUrl ->
-                            runBlocking(Dispatchers.IO) {
+                            eventScope.launch {
                                 sendTrackVisitEvent(
                                     MindboxDI.appModule.appContext,
                                     source,
@@ -802,9 +808,10 @@ object Mindbox : MindboxLog {
         }
     }
 
-    private fun createMindboxScope() = CoroutineScope(
-        Default + SupervisorJob() + coroutineExceptionHandler,
-    )
+    private fun createMindboxScope(dispatcher: CoroutineDispatcher = Default) =
+        CoroutineScope(
+            dispatcher + SupervisorJob() + coroutineExceptionHandler
+        )
 
     private fun selectPushServiceHandler(
         context: Context,
@@ -1336,6 +1343,7 @@ object Mindbox : MindboxLog {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
     ) = LoggingExceptionHandler.runCatching {
+        sessionStorageManager.hasSessionExpired()
         DbManager.getConfigurations()?.endpointId?.let { endpointId ->
             val applicationContext = context.applicationContext
             val trackVisitData = TrackVisitData(

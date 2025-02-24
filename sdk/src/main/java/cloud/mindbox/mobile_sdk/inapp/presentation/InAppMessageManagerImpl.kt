@@ -1,11 +1,15 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -17,8 +21,18 @@ internal class InAppMessageManagerImpl(
     private val inAppInteractor: InAppInteractor,
     private val defaultDispatcher: CoroutineDispatcher,
     private val monitoringInteractor: MonitoringInteractor,
-    private val sessionStorageManager: SessionStorageManager
+    private val sessionStorageManager: SessionStorageManager,
+    private val userVisitManager: UserVisitManager
 ) : InAppMessageManager {
+
+    init {
+        sessionStorageManager.addSessionExpirationListener {
+            mindboxLogI("Start a new session now!")
+            handleSessionExpiration()
+        }
+    }
+
+    private var processingJob: Job? = null
 
     override fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
@@ -30,7 +44,7 @@ internal class InAppMessageManagerImpl(
         CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
     override fun listenEventAndInApp() {
-        inAppScope.launch {
+        processingJob = inAppScope.launch {
             launch {
                 inAppInteractor.listenToTargetingEvents()
             }
@@ -47,7 +61,6 @@ internal class InAppMessageManagerImpl(
                                 this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
                                 return@withContext
                             }
-
                             inAppMessageViewDisplayer.tryShowInAppMessage(
                                 inAppType = inAppMessage,
                                 onInAppClick = {
@@ -85,6 +98,7 @@ internal class InAppMessageManagerImpl(
                     }
                 }
             } else {
+                MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
                 MindboxLoggerImpl.e(
                     this@InAppMessageManagerImpl::class,
                     "Failed to get config",
@@ -121,6 +135,21 @@ internal class InAppMessageManagerImpl(
     override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
+        }
+    }
+
+    override fun handleSessionExpiration() {
+        inAppScope.launch {
+            inAppMessageViewDisplayer.hideCurrentInApp()
+            processingJob?.cancel()
+            inAppInteractor.resetInAppConfigAndEvents()
+            sessionStorageManager.clearSessionData()
+            userVisitManager.saveUserVisit()
+            InitializeLock.reset(InitializeLock.State.APP_STARTED)
+            listenEventAndInApp()
+            initLogs()
+            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+            requestConfig().join()
         }
     }
 

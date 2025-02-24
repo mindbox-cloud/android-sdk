@@ -187,4 +187,13 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             mindboxLogE("failed to show inApp: currentRoot is null")
         }
     }
+
+    override fun hideCurrentInApp() {
+        currentHolder?.hide()
+        pausedHolder?.hide()
+        currentHolder = null
+        pausedHolder = null
+        inAppQueue.clear()
+        mindboxLogI("Hide active in-app if it's present")
+    }
 }

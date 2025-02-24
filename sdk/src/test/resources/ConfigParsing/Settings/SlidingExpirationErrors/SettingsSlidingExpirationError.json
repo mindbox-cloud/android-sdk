@@ -13,7 +13,7 @@
   "ttl": {
     "inapps": "1.00:00:00"
   },
-  "slidingExpiration": {
+  "slidingExpirationTest": {
     "config": "0.00:30:00"
   }
 }

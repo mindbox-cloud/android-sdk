@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.data.mappers.MonitoringMapper
@@ -26,6 +27,7 @@ import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.MigrationManager
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
@@ -105,6 +107,9 @@ internal interface DataModule : MindboxModule {
     val frequencyDataFiller: FrequencyDataFiller
     val frequencyValidator: FrequencyValidator
     val migrationManager: MigrationManager
+    val timeProvider: SystemTimeProvider
+    val slidingExpirationParametersValidator: SlidingExpirationParametersValidator
+    val mobileConfigSettingsManager: MobileConfigSettingsManager
 }
 
 internal interface MonitoringModule : MindboxModule {

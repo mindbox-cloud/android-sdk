@@ -20,7 +20,9 @@ internal data class SettingsDtoBlank(
     @SerializedName("operations")
     val operations: Map<String?, OperationDtoBlank?>?,
     @SerializedName("ttl")
-    val ttl: TtlDtoBlank?
+    val ttl: TtlDtoBlank?,
+    @SerializedName("slidingExpiration")
+    val slidingExpiration: SlidingExpirationDtoBlank?
 ) {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
@@ -31,13 +33,20 @@ internal data class SettingsDtoBlank(
         @SerializedName("inapps")
         val inApps: String
     )
+
+    internal data class SlidingExpirationDtoBlank(
+        @SerializedName("config")
+        val config: String
+    )
 }
 
 internal data class SettingsDto(
     @SerializedName("operations")
     val operations: Map<String, OperationDto>?,
     @SerializedName("ttl")
-    val ttl: TtlDto?
+    val ttl: TtlDto?,
+    @SerializedName("slidingExpiration")
+    val slidingExpiration: SlidingExpirationDto?
 )
 
 internal data class OperationDto(
@@ -48,6 +57,11 @@ internal data class OperationDto(
 internal data class TtlDto(
     @SerializedName("inapps")
     val inApps: String
+)
+
+internal data class SlidingExpirationDto(
+    @SerializedName("config")
+    val config: String
 )
 
 internal data class LogRequestDto(

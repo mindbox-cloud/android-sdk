@@ -119,4 +119,8 @@ internal class InAppRepositoryImpl(
     override fun isInAppShown(): Boolean {
         return sessionStorageManager.isInAppMessageShown
     }
+
+    override fun clearInAppEvents() {
+        MindboxEventManager.resetEventFlowCache()
+    }
 }
