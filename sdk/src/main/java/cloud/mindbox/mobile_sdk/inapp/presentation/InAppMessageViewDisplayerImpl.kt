@@ -19,6 +19,8 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -189,11 +191,13 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     }
 
     override fun hideCurrentInApp() {
-        currentHolder?.hide()
-        pausedHolder?.hide()
-        currentHolder = null
-        pausedHolder = null
-        inAppQueue.clear()
-        mindboxLogI("Hide active in-app if it's present")
+        loggingRunCatching {
+            currentHolder?.hide()
+            currentHolder = null
+            pausedHolder?.hide()
+            pausedHolder = null
+            inAppQueue.clear()
+            isActionExecuted = false
+        }
     }
 }
