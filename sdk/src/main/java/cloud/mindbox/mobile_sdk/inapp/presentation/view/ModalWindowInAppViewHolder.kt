@@ -88,7 +88,7 @@ internal class ModalWindowInAppViewHolder(
 
     override fun hide() {
         (currentDialog.parent as? ViewGroup?)?.apply {
-            post { removeView(currentBackground) }
+            removeView(currentBackground)
         }
         super.hide()
     }
