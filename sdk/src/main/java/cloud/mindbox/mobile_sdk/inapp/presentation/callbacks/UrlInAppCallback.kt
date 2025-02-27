@@ -7,7 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 /**
  * Ready-to-use implementation of InAppCallback that handles opening url in browser
  **/
-open class UrlInAppCallback : InAppCallback {
+public open class UrlInAppCallback : InAppCallback {
 
     private val activityManager: ActivityManager by mindboxInject {
         activityManager
