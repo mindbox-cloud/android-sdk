@@ -14,7 +14,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  * @param delay Period in milliseconds after which the download will be retried.
  * @param defaultImage Optional image
  */
-fun MindboxImageFailureHandler.Companion.retryOrDefaultStrategy(
+public fun MindboxImageFailureHandler.Companion.retryOrDefaultStrategy(
     maxAttempts: Int,
     delay: Long = 0L,
     defaultImage: Bitmap? = null,

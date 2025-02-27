@@ -12,7 +12,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  * @param maxAttempts Maximum number of attempts to load an image
  * @param delay Period in milliseconds after which the download will be retried.
  */
-fun MindboxImageFailureHandler.Companion.retryOrCancelStrategy(
+public fun MindboxImageFailureHandler.Companion.retryOrCancelStrategy(
     maxAttempts: Int,
     delay: Long = 0L,
 ): MindboxImageFailureHandler = RetryOrCancelStrategyImpl(
