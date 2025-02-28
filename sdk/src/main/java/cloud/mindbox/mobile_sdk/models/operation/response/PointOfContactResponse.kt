@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-enum class PointOfContactResponse {
+public enum class PointOfContactResponse {
 
     @SerializedName("Email", alternate = ["EMAIL", "email"])
     EMAIL,

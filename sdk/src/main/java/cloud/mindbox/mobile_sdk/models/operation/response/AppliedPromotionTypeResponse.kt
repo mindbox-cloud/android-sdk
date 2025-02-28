@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-enum class AppliedPromotionTypeResponse {
+public enum class AppliedPromotionTypeResponse {
 
     @SerializedName("discount")
     DISCOUNT,
