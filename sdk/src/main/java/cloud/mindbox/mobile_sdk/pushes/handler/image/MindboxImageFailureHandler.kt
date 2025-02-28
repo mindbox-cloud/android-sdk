@@ -13,9 +13,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  * @see MindboxImageFailureHandler.Companion.retryOrDefaultStrategy
  * @see MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy
  */
-interface MindboxImageFailureHandler {
-
-    companion object
+public interface MindboxImageFailureHandler {
 
     /**
      * Called when an image loading error occurs.
@@ -28,10 +26,12 @@ interface MindboxImageFailureHandler {
      * @return Strategy for error handling
      *
      */
-    fun onImageLoadingFailed(
+    public fun onImageLoadingFailed(
         context: Context,
         message: MindboxRemoteMessage,
         state: MessageHandlingState,
         error: Throwable,
     ): ImageRetryStrategy
+
+    public companion object
 }

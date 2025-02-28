@@ -7,24 +7,24 @@ import com.google.gson.annotations.JsonAdapter
  * A class for representing Mindbox error.
  * Used in operations.
  * */
-sealed class MindboxError(open val statusCode: Int?) {
+public sealed class MindboxError(public open val statusCode: Int?) {
 
-    companion object {
+    private companion object {
 
         private val gson by lazy { Gson() }
     }
 
-    fun toJson(): String = gson.toJson(this)
+    public fun toJson(): String = gson.toJson(this)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class Validation(
+    public data class Validation(
         override val statusCode: Int,
         val status: String,
         val validationMessages: List<ValidationMessage>,
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class Protocol(
+    public data class Protocol(
         override val statusCode: Int,
         val status: String,
         val errorMessage: String?,
@@ -33,7 +33,7 @@ sealed class MindboxError(open val statusCode: Int?) {
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class InternalServer(
+    public data class InternalServer(
         override val statusCode: Int,
         val status: String,
         val errorMessage: String?,
@@ -42,7 +42,7 @@ sealed class MindboxError(open val statusCode: Int?) {
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class UnknownServer(
+    public data class UnknownServer(
         override val statusCode: Int? = null,
         val status: String? = null,
         val errorMessage: String? = null,
@@ -50,9 +50,9 @@ sealed class MindboxError(open val statusCode: Int?) {
         val httpStatusCode: Int? = null,
     ) : MindboxError(statusCode) {
 
-        constructor() : this(errorMessage = "Cannot reach server")
+        public constructor() : this(errorMessage = "Cannot reach server")
     }
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
+    public data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
 }
