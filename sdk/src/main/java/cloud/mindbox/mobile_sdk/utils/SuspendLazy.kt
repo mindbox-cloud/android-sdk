@@ -8,7 +8,7 @@ internal fun <T> CoroutineScope.suspendLazy(
     initializer: suspend CoroutineScope.() -> T
 ): SuspendLazy<T> = SuspendLazySuspendingImpl(this, initializer)
 
-interface SuspendLazy<out T> {
+internal interface SuspendLazy<out T> {
     suspend operator fun invoke(): T
 }
 

@@ -3,27 +3,27 @@ package cloud.mindbox.mobile_sdk.utils
 /**
  * A class for internal sdk work only. Do not extend or use it
  * */
-abstract class ExceptionHandler {
+public abstract class ExceptionHandler {
 
-    fun <T> runCatching(block: () -> T) {
+    public fun <T> runCatching(block: () -> T) {
         runCatching(Unit, block)
     }
 
-    suspend fun <T> runCatchingSuspending(block: suspend () -> T) {
+    public suspend fun <T> runCatchingSuspending(block: suspend () -> T) {
         runCatchingSuspending(Unit, block)
     }
 
-    fun <T> runCatching(
+    public fun <T> runCatching(
         defaultValue: T,
         block: () -> T,
     ): T = runCatching(block = block) { defaultValue }
 
-    suspend fun <T> runCatchingSuspending(
+    public suspend fun <T> runCatchingSuspending(
         defaultValue: T,
         block: suspend () -> T,
     ): T = runCatchingSuspending(block = block) { defaultValue }
 
-    fun <T> runCatching(
+    public fun <T> runCatching(
         block: () -> T,
         defaultValue: (Throwable) -> T,
     ): T = kotlin.runCatching { block.invoke() }.getOrElse { exception ->
@@ -31,7 +31,7 @@ abstract class ExceptionHandler {
         defaultValue.invoke(exception)
     }
 
-    suspend fun <T> runCatchingSuspending(
+    public suspend fun <T> runCatchingSuspending(
         block: suspend () -> T,
         defaultValue: (Throwable) -> T,
     ): T = kotlin.runCatching { block.invoke() }.getOrElse { exception ->

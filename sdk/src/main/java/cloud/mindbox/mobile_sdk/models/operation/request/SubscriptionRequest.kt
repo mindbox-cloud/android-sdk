@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 
 import com.google.gson.annotations.SerializedName
 
-open class SubscriptionRequest(
-    @SerializedName("isSubscribed") val isSubscribed: Boolean? = null,
-    @SerializedName("brand") val brand: String? = null,
-    @SerializedName("pointOfContact") val pointOfContact: PointOfContactRequest? = null,
-    @SerializedName("topic") val topic: String? = null
+public open class SubscriptionRequest(
+    @SerializedName("isSubscribed") public val isSubscribed: Boolean? = null,
+    @SerializedName("brand") public val brand: String? = null,
+    @SerializedName("pointOfContact") public val pointOfContact: PointOfContactRequest? = null,
+    @SerializedName("topic") public val topic: String? = null
 )

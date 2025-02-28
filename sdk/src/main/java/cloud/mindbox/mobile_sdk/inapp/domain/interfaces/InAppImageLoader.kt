@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces
 
-interface InAppImageLoader {
+internal interface InAppImageLoader {
 
     suspend fun loadImage(inAppId: String, url: String): Boolean
 

@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 /**
  * A class to hold validation message if validation error occurs
  * */
-data class ValidationMessage(
+public data class ValidationMessage(
     @SerializedName("message") val message: String? = null,
     @SerializedName("location") val location: String? = null,
 )
