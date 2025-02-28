@@ -75,7 +75,7 @@ public object Mindbox : MindboxLog {
     private const val DELIVER_TOKEN_DELAY = 1L
     private const val INIT_PUSH_SERVICES_TIMEOUT = 5000L
 
-    internal val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+    public val coroutineExceptionHandler: CoroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
     private val initScope = createMindboxScope()
