@@ -1,12 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Color
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
-import android.widget.Toast
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -28,6 +28,11 @@ internal class WebViewInAppViewHolder(
     private val inAppCallback: InAppCallback,
 ) : AbstractInAppViewHolder<InAppType.WebView>() {
 
+    companion object {
+        @SuppressLint("StaticFieldLeak")
+        private var webView: WebView? = null
+    }
+
     override val isActive: Boolean
         get() = isInAppMessageActive
 
@@ -39,10 +44,10 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
-    fun addUrlSource(layer: Layer.WebViewLayer, inAppCallback: InAppCallback) {
-        WebView.setWebContentsDebuggingEnabled(true)
-        val webView = WebView(currentDialog.context).apply {
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun createWebView(): WebView  {
+        mindboxLogI("WEBVIEW Create webview")
+        return WebView(currentDialog.context).apply {
             webViewClient = object : WebViewClient() {
                 override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                     super.onReceivedError(view, request, error)
@@ -52,6 +57,7 @@ internal class WebViewInAppViewHolder(
                     super.onLoadResource(view, url)
                     if (url == "https://personalization-web-staging.mindbox.ru/web/contacts/28553/") {
                         mindboxLogI("onCompleted script. Close inapp")
+                        inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                         hide()
                     }
                     mindboxLogI("onLoadResource. $url")
@@ -65,6 +71,12 @@ internal class WebViewInAppViewHolder(
 
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     mindboxLogD("shouldOverrideUrlLoading: ${request?.url}")
+                    if (request?.url.toString().contains("www.21vek.by")) {
+                        hide()
+                        val intent = Intent(Intent.ACTION_VIEW, request?.url)
+                        currentDialog.context.startActivity(intent)
+                        return true
+                    }
                     return super.shouldOverrideUrlLoading(view, request)
                 }
 
@@ -92,15 +104,11 @@ internal class WebViewInAppViewHolder(
                 WebAppInterface { request ->
                     this.post {
                         mindboxLogI("WEBVIEW Action ${request.action} ${request.screen}")
-                        Toast.makeText(context, "${request.action} ${request.screen}", Toast.LENGTH_SHORT).show()
                         when (request.action) {
                             "collapse" -> hide()
                             "expand", "show" -> {
-                                this.post {
-                                    mindboxLogI("WEBVIEW Expand inapp ${this.contentHeight}")
-                                }
+                                // change size
                             }
-
                             "go-item" -> {
                                 // hide()
                             }
@@ -119,35 +127,42 @@ internal class WebViewInAppViewHolder(
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
             settings.defaultTextEncodingName = "utf-8"
-            settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            settings.cacheMode = WebSettings.LOAD_DEFAULT
             setBackgroundColor(Color.parseColor("#00000000"))
         }
+    }
 
-        currentDialog.addView(webView)
-        Mindbox.mindboxScope.launch {
-            val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
-            val stringRequest = StringRequest(
-                Request.Method.GET,
-                layer.contentUrl,
-                { response ->
 
-                    val unEncodedHtml = currentDialog.context.assets
-                        .open("webview.html")
-                        .bufferedReader()
-                        .use { it.readText() }
+    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+    fun addUrlSource(layer: Layer.WebViewLayer, inAppCallback: InAppCallback) {
+        if (webView == null) {
+            WebView.setWebContentsDebuggingEnabled(true)
+            webView = createWebView()
+            Mindbox.mindboxScope.launch {
+                val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
+                val stringRequest = StringRequest(
+                    Request.Method.GET,
+                    layer.contentUrl,
+                    { _ ->
+                        val unEncodedHtml = currentDialog.context.assets
+                            .open("webview.html")
+                            .bufferedReader()
+                            .use { it.readText() }
 
-                    // val unEncodedHtml = response
+                        // val unEncodedHtml = response
 //                        .replace("{ENDPOINT_ID}", "Test-staging.mobile-sdk-test-staging.mindbox.ru")
 //                        .replace("{DEVICE_UUID}", MindboxPreferences.deviceUuid)
 
-                    webView.loadDataWithBaseURL(layer.baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
-                },
-                { error ->
-                    hide()
-                }
-            )
-            requestQueue.add(stringRequest)
+                        webView?.loadDataWithBaseURL(layer.baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
+                    },
+                    { _ ->
+                        hide()
+                    }
+                )
+                requestQueue.add(stringRequest)
+            }
         }
+        currentDialog.addView(webView)
     }
 
     override fun show(currentRoot: MindboxView) {
@@ -171,5 +186,10 @@ internal class WebViewInAppViewHolder(
     override fun initView(currentRoot: ViewGroup) {
         currentRoot.removeChildById(R.id.inapp_background_layout)
         super.initView(currentRoot)
+    }
+
+    override fun hide() {
+        currentDialog.removeView(webView)
+        super.hide()
     }
 }
