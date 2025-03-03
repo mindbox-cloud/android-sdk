@@ -6,7 +6,7 @@ To run the example application with functioning mobile push notifications (compl
 2) Add your application to either Firebase, Huawei, RuStore project, following the instructions provided at:
 [Firebase Key Generation](https://developers.mindbox.ru/docs/firebase-get-keys) / 
 [Huawei Key Generation](https://developers.mindbox.ru/docs/huawei-get-keys) /
-[RuStore Key Generation](https://developers.mindbox.ru/docs/huawei-get-keys) /
+[RuStore Key Generation](https://developers.mindbox.ru/docs/rustore-get-keys) /
 or add app in your existing project
 
 3) Configure Push Notification Services:
