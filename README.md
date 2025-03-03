@@ -25,7 +25,7 @@ To integrate Mindbox SDK into your Android app, follow the installation process 
     }
 ```
 
-### Initialization
+### Initialization 
 
 Initialize the Mindbox SDK in your Activity or Application class. Check documentation [here](https://developers.mindbox.ru/docs/android-sdk-initialization) for more details.
 
