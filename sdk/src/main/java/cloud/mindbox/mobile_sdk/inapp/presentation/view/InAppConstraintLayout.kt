@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.KeyEvent
@@ -9,10 +10,7 @@ import android.view.MotionEvent
 import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.doOnLayout
-import androidx.core.view.marginBottom
-import androidx.core.view.marginTop
-import androidx.core.view.updateLayoutParams
+import androidx.core.view.*
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -40,7 +38,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     companion object {
         private const val ANIM_DURATION = 500L
         private const val ANIM_SWIPE_DURATION = 100L
-        private const val MODAL_WINDOW_MARGIN = 0
+        private const val MODAL_WINDOW_MARGIN = 40
         private const val CLICK_THRESHOLD = 100
     }
 
@@ -63,19 +61,14 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                         SnackbarPosition.TOP -> {
                             gravity = Gravity.TOP
                             setMargins(
-                                snackBarInAppType.position.margin.left.px,
-                                snackBarInAppType.position.margin.top.px + statusBarHeight,
-                                snackBarInAppType.position.margin.right.px,
-                                0
+                                snackBarInAppType.position.margin.left.px, snackBarInAppType.position.margin.top.px + statusBarHeight, snackBarInAppType.position.margin.right.px, 0
                             )
                         }
+
                         SnackbarPosition.BOTTOM -> {
                             gravity = Gravity.BOTTOM
                             setMargins(
-                                snackBarInAppType.position.margin.left.px,
-                                0,
-                                snackBarInAppType.position.margin.right.px,
-                                snackBarInAppType.position.margin.bottom.px + navigationBarHeight
+                                snackBarInAppType.position.margin.left.px, 0, snackBarInAppType.position.margin.right.px, snackBarInAppType.position.margin.bottom.px + navigationBarHeight
                             )
                         }
                     }
@@ -95,16 +88,10 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                 MotionEvent.ACTION_MOVE -> {
                     if (snackBarInAppType.isTop()) {
                         val displacement = minOf(event.rawY + rightDY, startingY)
-                        view!!.animate()
-                            .y(displacement)
-                            .setDuration(0)
-                            .start()
+                        view!!.animate().y(displacement).setDuration(0).start()
                     } else if (!snackBarInAppType.isTop()) {
                         val displacement = maxOf(event.rawY + rightDY, startingY)
-                        view!!.animate()
-                            .y(displacement)
-                            .setDuration(0)
-                            .start()
+                        view!!.animate().y(displacement).setDuration(0).start()
                     }
                 }
 
@@ -116,10 +103,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                     if (abs(view.translationY) > (height / 2)) {
                         swipeToDismissCallback?.invoke()
                     } else {
-                        view!!.animate()
-                            .y(startingY)
-                            .setDuration(ANIM_SWIPE_DURATION)
-                            .start()
+                        view!!.animate().y(startingY).setDuration(ANIM_SWIPE_DURATION).start()
                     }
                 }
 
@@ -132,31 +116,23 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     fun slideUp(
-        isReverse: Boolean = false,
-        onAnimationEnd: Runnable = Runnable { }
+        isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }
     ) {
         animateY(
-            if (!isReverse) height.toFloat() else 0f,
-            if (!isReverse) 0f else height.toFloat() + marginBottom,
-            onAnimationEnd
+            if (!isReverse) height.toFloat() else 0f, if (!isReverse) 0f else height.toFloat() + marginBottom, onAnimationEnd
         )
     }
 
     fun slideDown(
-        isReverse: Boolean = false,
-        onAnimationEnd: Runnable = Runnable { }
+        isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }
     ) {
         animateY(
-            if (!isReverse) -height.toFloat() else 0f,
-            if (!isReverse) 0f else -height.toFloat() - marginTop,
-            onAnimationEnd
+            if (!isReverse) -height.toFloat() else 0f, if (!isReverse) 0f else -height.toFloat() - marginTop, onAnimationEnd
         )
     }
 
     private fun animateY(
-        from: Float,
-        to: Float,
-        onAnimationEnd: Runnable
+        from: Float, to: Float, onAnimationEnd: Runnable
     ) {
         TranslateAnimation(0f, 0f, from, to).apply {
             duration = ANIM_DURATION
@@ -168,13 +144,34 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
+    private fun prepareLayoutForWebView() {
+        val top = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            rootWindowInsets?.getInsets(WindowInsetsCompat.Type.statusBars())?.top ?: 0
+        } else {
+            0
+        }
+        val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            rootWindowInsets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        } else {
+            0
+        }
+        updateLayoutParams<MarginLayoutParams> {
+            setMargins(
+                0,
+                top,
+                0,
+                bottom,
+            )
+        }
+        updateLayoutParams<FrameLayout.LayoutParams> {
+            gravity = Gravity.CENTER
+        }
+    }
+
     private fun prepareLayoutForModalWindow() {
         updateLayoutParams<MarginLayoutParams> {
             setMargins(
-                MODAL_WINDOW_MARGIN.px,
-                MODAL_WINDOW_MARGIN.px,
-                MODAL_WINDOW_MARGIN.px,
-                MODAL_WINDOW_MARGIN.px
+                MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px, MODAL_WINDOW_MARGIN.px
             )
         }
         updateLayoutParams<FrameLayout.LayoutParams> {
@@ -184,6 +181,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     fun prepareLayoutForInApp(inAppType: InAppType) {
         when (inAppType) {
+            is InAppType.WebView -> prepareLayoutForWebView()
             is InAppType.ModalWindow -> prepareLayoutForModalWindow()
             is InAppType.Snackbar -> prepareLayoutForSnackbar(inAppType)
         }
@@ -202,12 +200,11 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         backButtonHandler = BackButtonHandler(this, listener)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean =
-        if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
-            true
-        } else {
-            super.onKeyDown(keyCode, event)
-        }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean = if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
+        true
+    } else {
+        super.onKeyDown(keyCode, event)
+    }
 
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         val handled = backButtonHandler?.dispatchKeyEvent(event)

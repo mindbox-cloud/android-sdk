@@ -67,6 +67,20 @@ internal sealed class PayloadBlankDto {
             val elements: List<JsonObject?>?
         )
     }
+
+    data class WebViewBlankDto(
+        @SerializedName("content")
+        val content: ContentBlankDto?,
+        @SerializedName("${"$"}type")
+        val type: String?
+    ) : PayloadBlankDto() {
+        internal data class ContentBlankDto(
+            @SerializedName("background")
+            val background: BackgroundBlankDto?,
+            @SerializedName("elements")
+            val elements: List<JsonObject?>?
+        )
+    }
 }
 
 internal data class BackgroundBlankDto(

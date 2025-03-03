@@ -1,14 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
-import android.annotation.SuppressLint
-import android.graphics.Color
-import android.os.Build
-import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
-import android.webkit.*
 import android.widget.FrameLayout
-import android.widget.RelativeLayout
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
@@ -17,7 +12,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 
@@ -63,80 +57,17 @@ internal class ModalWindowInAppViewHolder(
         currentBackground?.isVisible = true
     }
 
-    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
         super.addUrlSource(layer, inAppCallback)
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
-                val webView = WebView(currentDialog.context).apply {
-                    setWebViewClient(object : WebViewClient() {
-                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                            super.onReceivedError(view, request, error)
-                        }
-
-                        override fun onLoadResource(view: WebView?, url: String?) {
-                            super.onLoadResource(view, url)
-                            if (url == "https://personalization-web-staging.mindbox.ru/web/contacts/28553/") {
-                                mindboxLogI("onCompleted script. Close inapp")
-                                hide()
-                            }
-                        }
-
-                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                mindboxLogD("shouldOverrideUrlLoading: ${request?.url}")
-                            }
-                            return super.shouldOverrideUrlLoading(view, request)
-                        }
-
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            mindboxLogD("onPageFinished: $url")
-                            view?.evaluateJavascript(
-                                """
-                                 document.addEventListener('click', function(event) {
-                                    var target = event.target;
-                                    if (target.classList.contains('popmechanic-close')) {
-                                        Android.onCloseButtonClicked();
-                                    }
-                                });
-                                """.trimMargin()
-                            ) {
-                                mindboxLogD("onPageFinished: $it")
-                            }
-                        }
-
-                        override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean = super.shouldOverrideKeyEvent(view, event)
-                    })
-                    addJavascriptInterface(
-                        WebAppInterface({
-                            "Mindbox".mindboxLogD("Hide on close button clicked")
-                            currentDialog.post {
-                                hide()
-                            }
-                        }),
-                        "Android"
-                    )
-                    layoutParams = RelativeLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.builtInZoomControls = true
-                    settings.displayZoomControls = false
-                    settings.defaultTextEncodingName = "utf-8"
-                    settings.cacheMode = WebSettings.LOAD_NO_CACHE
-                    setBackgroundColor(Color.TRANSPARENT)
+                InAppImageView(currentDialog.context).also { inAppImageView ->
+                    inAppImageView.visibility = View.INVISIBLE
+                    currentDialog.addView(inAppImageView)
+                    inAppImageView.prepareViewForModalWindow(currentDialog)
+                    preparedImages[inAppImageView] = false
+                    getImageFromCache(layer.source.url, inAppImageView)
                 }
-                val unEncodedHtml = currentDialog.context.assets
-                    .open("webview.html")
-                    .bufferedReader()
-                    .use { it.readText() }
-                val baseUrl = "file:///android_asset/webview.html"
-                currentDialog.addView(webView)
-                webView.loadDataWithBaseURL(baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
             }
         }
     }
@@ -149,6 +80,7 @@ internal class ModalWindowInAppViewHolder(
                 is Layer.ImageLayer -> {
                     addUrlSource(layer, inAppCallback)
                 }
+                else -> {}
             }
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
@@ -164,8 +96,7 @@ internal class ModalWindowInAppViewHolder(
 
     override fun initView(currentRoot: ViewGroup) {
         currentRoot.removeChildById(R.id.inapp_background_layout)
-        currentBackground = LayoutInflater
-            .from(currentRoot.context)
+        currentBackground = LayoutInflater.from(currentRoot.context)
             .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
         currentRoot.addView(currentBackground)
         super.initView(currentRoot)

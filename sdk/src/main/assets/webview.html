@@ -1,16 +1,28 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <title>Сайт для тестирования форм</title>
-    <script>
-        mindbox = window.mindbox || function() { mindbox.queue.push(arguments); };
-        mindbox.queue = mindbox.queue || [];
-        mindbox('create', {
-        endpointId: 'Test-staging.personalization-test-site-staging.mindbox.ru'
-        });
-    </script>
-    <script src="https://api-staging.mindbox.ru/scripts/v1/tracker.js" async></script>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Сайт для тестирования квизов</title>
 </head>
 <body color="transparent">
+<div id="qz-target"></div>
 </body>
+<script>
+    console.log("sdkVersion: " + SDK.sdkVersion());
+    console.log("endpointId: " + SDK.endpointId());
+    console.log("deviceUuid: " + SDK.deviceUuid());
+    window.mindbox = (method, callback) => {
+         switch (method) {
+           case 'helpers.getEndpointId':
+             return callback(SDK.endpointId());
+           case 'helpers.getDeviceUUID':
+             return callback(SDK.deviceUuid());
+           default:;
+         }
+       };
+       window.mindbox.quizzes = {queue:[]};
+       (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static-staging.mindbox.ru/quizzes/quizzes.js","752","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-staging.mindbox.ru"});
+     })();
+</script>
 </html>

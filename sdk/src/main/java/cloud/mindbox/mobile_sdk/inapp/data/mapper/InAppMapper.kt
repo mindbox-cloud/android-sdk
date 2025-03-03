@@ -110,6 +110,13 @@ internal class InAppMapper {
                         }
                     )
                 }
+                is BackgroundDto.LayerDto.WebViewLayerDto -> {
+                    Layer.WebViewLayer(
+                        baseUrl = layerDto.baseUrl,
+                        contentUrl = layerDto.contentUrl,
+                        additionalScripts = layerDto.additionalScripts
+                    )
+                }
 
                 else -> {
                     error("Unknown layer cannot be mapped. Should never happen because of validators")
@@ -230,6 +237,14 @@ internal class InAppMapper {
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
+                                    is PayloadDto.WebViewDto -> {
+                                        InAppType.WebView(
+                                            inAppId = inAppDto.id,
+                                            type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
+                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
+                                        )
+                                    }
+
                                     is PayloadDto.ModalWindowDto -> {
                                         InAppType.ModalWindow(
                                             type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,

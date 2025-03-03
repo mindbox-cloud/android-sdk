@@ -22,4 +22,10 @@ internal sealed class Layer {
             ) : Source()
         }
     }
+
+    internal data class WebViewLayer(
+        val baseUrl: String?,
+        val contentUrl: String?,
+        val additionalScripts: String?
+    ) : Layer()
 }

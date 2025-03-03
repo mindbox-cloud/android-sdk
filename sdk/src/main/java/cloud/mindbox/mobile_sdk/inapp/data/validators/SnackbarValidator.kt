@@ -26,6 +26,7 @@ internal class SnackbarValidator(
                     mindboxLogD("Finish checking image layer and it's validity = $rez")
                     !rez
                 }
+                else -> false
             }
         }
         if (invalidLayer != null) {

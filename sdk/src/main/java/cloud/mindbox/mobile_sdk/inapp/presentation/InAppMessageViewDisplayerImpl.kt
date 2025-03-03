@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -127,6 +128,10 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             is InAppType.Snackbar -> {
                 InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
             }
+
+            is InAppType.WebView -> {
+                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+            }
         }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)
@@ -161,6 +166,11 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
+            is InAppType.WebView -> WebViewInAppViewHolder(
+                wrapper = wrapper as InAppTypeWrapper<InAppType.WebView>,
+                inAppCallback = callbackWrapper
+            )
+
             is InAppType.ModalWindow -> ModalWindowInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
                 inAppCallback = callbackWrapper
