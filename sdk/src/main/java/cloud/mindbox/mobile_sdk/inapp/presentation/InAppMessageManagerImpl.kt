@@ -140,7 +140,9 @@ internal class InAppMessageManagerImpl(
 
     override fun handleSessionExpiration() {
         inAppScope.launch {
-            inAppMessageViewDisplayer.hideCurrentInApp()
+            withContext(Dispatchers.Main) {
+                inAppMessageViewDisplayer.hideCurrentInApp()
+            }
             processingJob?.cancel()
             inAppInteractor.resetInAppConfigAndEvents()
             sessionStorageManager.clearSessionData()

@@ -1,8 +1,8 @@
 [versions]
-compile_sdk = "34"
+compile_sdk = "35"
 build_tools = "34.0.0"
 min_sdk = "21"
-target_sdk = "34"
+target_sdk = "35"
 
 firebase_bom = "32.7.2"
 hms_push = "6.11.0.300"
@@ -29,7 +29,7 @@ junit = "4.13.2"
 androidx_junit = "1.1.3"
 espresso = "3.4.0"
 mockk = "1.13.13"
-robolectric = "4.11"
+robolectric = "4.14"
 test_core = "1.5.0"
 turbine = "0.12.1"
 

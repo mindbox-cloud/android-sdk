@@ -37,8 +37,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
-    private var isActionExecuted: Boolean = false
-
     private val mindboxNotificationManager by mindboxInject {
         mindboxNotificationManager
     }
@@ -184,7 +182,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     override fun hide() {
         (currentDialog.parent as? ViewGroup?)?.apply {
-            post { removeView(currentDialog) }
+            removeView(_currentDialog)
         }
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
