@@ -45,7 +45,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/mobile/byendpoint/${configuration.endpointId}-webview.json"
+        return "https://${configuration.domain}/mobile/byendpoint/${configuration.endpointId}.json"
     }
 
     private fun buildEventUrl(

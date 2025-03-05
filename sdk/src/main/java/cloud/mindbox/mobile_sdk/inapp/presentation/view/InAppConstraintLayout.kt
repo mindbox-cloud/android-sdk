@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.KeyEvent
@@ -10,7 +9,10 @@ import android.view.MotionEvent
 import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.*
+import androidx.core.view.doOnLayout
+import androidx.core.view.marginBottom
+import androidx.core.view.marginTop
+import androidx.core.view.updateLayoutParams
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -116,7 +118,8 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     fun slideUp(
-        isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }
+        isReverse: Boolean = false,
+        onAnimationEnd: Runnable = Runnable { }
     ) {
         animateY(
             if (!isReverse) height.toFloat() else 0f, if (!isReverse) 0f else height.toFloat() + marginBottom, onAnimationEnd
@@ -124,7 +127,8 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     fun slideDown(
-        isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }
+        isReverse: Boolean = false,
+        onAnimationEnd: Runnable = Runnable { }
     ) {
         animateY(
             if (!isReverse) -height.toFloat() else 0f, if (!isReverse) 0f else -height.toFloat() - marginTop, onAnimationEnd
@@ -132,7 +136,9 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     private fun animateY(
-        from: Float, to: Float, onAnimationEnd: Runnable
+        from: Float,
+        to: Float,
+        onAnimationEnd: Runnable
     ) {
         TranslateAnimation(0f, 0f, from, to).apply {
             duration = ANIM_DURATION
@@ -145,23 +151,8 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     private fun prepareLayoutForWebView() {
-        val top = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            rootWindowInsets?.getInsets(WindowInsetsCompat.Type.statusBars())?.top ?: 0
-        } else {
-            0
-        }
-        val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            rootWindowInsets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
-        } else {
-            0
-        }
         updateLayoutParams<MarginLayoutParams> {
-            setMargins(
-                0,
-                top,
-                0,
-                bottom,
-            )
+            setMargins(0, 0, 0, 0)
         }
         updateLayoutParams<FrameLayout.LayoutParams> {
             gravity = Gravity.CENTER

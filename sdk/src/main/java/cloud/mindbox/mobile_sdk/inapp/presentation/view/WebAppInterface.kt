@@ -4,8 +4,8 @@ import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.google.gson.Gson
+import java.util.UUID
 
 @SuppressLint("JavascriptInterface")
 class WebAppInterface(val onAction: (RequestBody) -> Unit) {
@@ -17,7 +17,7 @@ class WebAppInterface(val onAction: (RequestBody) -> Unit) {
     fun endpointId(): String = "Test-staging.mobile-sdk-test-staging.mindbox.ru"
 
     @JavascriptInterface
-    fun deviceUuid(): String = MindboxPreferences.deviceUuid
+    fun deviceUuid(): String = UUID.randomUUID().toString() // MindboxPreferences.deviceUuid
 
     @JavascriptInterface
     fun resize(height: Float) {

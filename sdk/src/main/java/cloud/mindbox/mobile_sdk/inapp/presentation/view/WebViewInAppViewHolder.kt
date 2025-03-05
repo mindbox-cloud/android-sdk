@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
+import android.widget.Toast
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -45,11 +46,15 @@ internal class WebViewInAppViewHolder(
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun createWebView(): WebView  {
+    private fun createWebView(): WebView {
         mindboxLogI("WEBVIEW Create webview")
         return WebView(currentDialog.context).apply {
             webViewClient = object : WebViewClient() {
-                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: WebResourceError?
+                ) {
                     super.onReceivedError(view, request, error)
                 }
 
@@ -63,13 +68,19 @@ internal class WebViewInAppViewHolder(
                     mindboxLogI("onLoadResource. $url")
                 }
 
-                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
                     mindboxLogI("shouldInterceptRequest request ${request?.url}}")
                     val response = super.shouldInterceptRequest(view, request)
                     return response
                 }
 
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
                     mindboxLogD("shouldOverrideUrlLoading: ${request?.url}")
                     if (request?.url.toString().contains("www.21vek.by")) {
                         hide()
@@ -105,10 +116,19 @@ internal class WebViewInAppViewHolder(
                     this.post {
                         mindboxLogI("WEBVIEW Action ${request.action} ${request.screen}")
                         when (request.action) {
-                            "collapse" -> hide()
+                            "collapse", "close" -> {
+                                hide()
+                                Toast.makeText(
+                                    currentDialog.context,
+                                    "Close inapp",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
                             "expand", "show" -> {
                                 // change size
                             }
+
                             "go-item" -> {
                                 // hide()
                             }
@@ -132,7 +152,6 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     fun addUrlSource(layer: Layer.WebViewLayer, inAppCallback: InAppCallback) {
         if (webView == null) {
@@ -143,17 +162,23 @@ internal class WebViewInAppViewHolder(
                 val stringRequest = StringRequest(
                     Request.Method.GET,
                     layer.contentUrl,
-                    { _ ->
-                        val unEncodedHtml = currentDialog.context.assets
-                            .open("webview.html")
-                            .bufferedReader()
-                            .use { it.readText() }
+                    { response ->
+//                        val unEncodedHtml = currentDialog.context.assets
+//                            .open("webview.html")
+//                            .bufferedReader()
+//                            .use { it.readText() }
 
-                        // val unEncodedHtml = response
-//                        .replace("{ENDPOINT_ID}", "Test-staging.mobile-sdk-test-staging.mindbox.ru")
+                        val unEncodedHtml = response
+//                     .replace("{ENDPOINT_ID}", "Test-staging.mobile-sdk-test-staging.mindbox.ru")
 //                        .replace("{DEVICE_UUID}", MindboxPreferences.deviceUuid)
 
-                        webView?.loadDataWithBaseURL(layer.baseUrl, unEncodedHtml, "text/html", "UTF-8", null)
+                        webView?.loadDataWithBaseURL(
+                            layer.baseUrl,
+                            unEncodedHtml,
+                            "text/html",
+                            "UTF-8",
+                            null
+                        )
                     },
                     { _ ->
                         hide()

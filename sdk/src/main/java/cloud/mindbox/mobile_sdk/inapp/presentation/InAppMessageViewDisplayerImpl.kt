@@ -4,11 +4,9 @@ import android.app.Activity
 import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
@@ -21,7 +19,6 @@ import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
-
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -50,6 +47,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
+    private val gson by mindboxInject { gson }
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
@@ -122,7 +120,24 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     ) {
         val wrapper = when (inAppType) {
             is InAppType.ModalWindow -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                var wrapper: InAppTypeWrapper<InAppType> = InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                val layer = inAppType.layers.firstOrNull()
+                if (layer is Layer.ImageLayer) {
+                    val action = layer.action
+                    if (action is Layer.ImageLayer.Action.RedirectUrlAction) {
+                        runCatching {
+                            gson.fromJson(action.payload, Layer.WebViewLayer::class.java)
+                        }.getOrNull()?.let { webview ->
+                            val webViewInApp = InAppType.WebView(
+                                inAppId = inAppType.inAppId,
+                                type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
+                                layers = listOf(webview),
+                            )
+                            wrapper = InAppTypeWrapper(webViewInApp, onInAppClick, onInAppShown)
+                        }
+                    }
+                }
+                wrapper
             }
 
             is InAppType.Snackbar -> {
