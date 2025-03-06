@@ -1,0 +1,21 @@
+public final class cloud/mindbox/mindbox_rustore/BuildConfig {
+	public static final field BUILD_TYPE Ljava/lang/String;
+	public static final field DEBUG Z
+	public static final field LIBRARY_PACKAGE_NAME Ljava/lang/String;
+	public static final field VERSION_NAME Ljava/lang/String;
+	public fun <init> ()V
+}
+
+public final class cloud/mindbox/mindbox_rustore/MindboxRuStore : cloud/mindbox/mobile_sdk/pushes/MindboxPushService {
+	public static final field INSTANCE Lcloud/mindbox/mindbox_rustore/MindboxRuStore;
+	public final fun convertToMindboxRemoteMessage (Lru/rustore/sdk/pushclient/messaging/model/RemoteMessage;)Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;
+	public fun getServiceHandler (Lcloud/mindbox/mobile_sdk/logger/MindboxLogger;Lcloud/mindbox/mobile_sdk/utils/ExceptionHandler;)Lcloud/mindbox/mobile_sdk/pushes/PushServiceHandler;
+	public fun getTag ()Ljava/lang/String;
+	public final fun isMindboxPush (Lru/rustore/sdk/pushclient/messaging/model/RemoteMessage;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mindbox_rustore/MindboxRuStoreKt {
+	public static final fun MindboxRuStore (Ljava/lang/String;)Lcloud/mindbox/mindbox_rustore/MindboxRuStore;
+}
+

@@ -1,0 +1,1422 @@
+public final class cloud/mindbox/mobile_sdk/BuildConfig {
+	public static final field BUILD_TYPE Ljava/lang/String;
+	public static final field DEBUG Z
+	public static final field LIBRARY_PACKAGE_NAME Ljava/lang/String;
+	public static final field VERSION_NAME Ljava/lang/String;
+	public fun <init> ()V
+}
+
+public final class cloud/mindbox/mobile_sdk/InitializeMindboxException : java/lang/Exception {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class cloud/mindbox/mobile_sdk/Mindbox : cloud/mindbox/mobile_sdk/logger/MindboxLog {
+	public static final field INSTANCE Lcloud/mindbox/mobile_sdk/Mindbox;
+	public final fun disposeDeviceUuidSubscription (Ljava/lang/String;)V
+	public final fun disposeFmsTokenSubscription (Ljava/lang/String;)V
+	public final fun disposePushTokenSubscription (Ljava/lang/String;)V
+	public final fun executeAsyncOperation (Landroid/content/Context;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/OperationBody;)V
+	public final fun executeAsyncOperation (Landroid/content/Context;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequestBase;)V
+	public final fun executeAsyncOperation (Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun executeSyncOperation (Landroid/content/Context;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequestBase;Ljava/lang/Class;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+	public final fun executeSyncOperation (Landroid/content/Context;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequestBase;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+	public final fun executeSyncOperation (Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+	public final fun getCoroutineExceptionHandler ()Lkotlinx/coroutines/CoroutineExceptionHandler;
+	public final fun getFmsTokenSaveDate ()Ljava/lang/String;
+	public final fun getMindboxWorkerFactory ()Landroidx/work/WorkerFactory;
+	public final fun getPayloadFromPushIntent (Landroid/content/Intent;)Ljava/lang/String;
+	public final fun getPushTokenSaveDate ()Ljava/lang/String;
+	public final fun getPushTokensSaveDate ()Ljava/util/Map;
+	public final fun getSdkVersion ()Ljava/lang/String;
+	public final fun getUrlFromPushIntent (Landroid/content/Intent;)Ljava/lang/String;
+	public final fun handleRemoteMessage (Landroid/content/Context;Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Class;Ljava/lang/String;Ljava/util/Map;)Z
+	public static synthetic fun handleRemoteMessage$default (Lcloud/mindbox/mobile_sdk/Mindbox;Landroid/content/Context;Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Class;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Z
+	public final fun init (Landroid/app/Activity;Lcloud/mindbox/mobile_sdk/MindboxConfiguration;Ljava/util/List;)V
+	public final fun init (Landroid/app/Application;Lcloud/mindbox/mobile_sdk/MindboxConfiguration;Ljava/util/List;)V
+	public final fun init (Landroid/content/Context;Lcloud/mindbox/mobile_sdk/MindboxConfiguration;Ljava/util/List;)V
+	public final fun initPushServices (Landroid/content/Context;Ljava/util/List;)V
+	public fun logD (Ljava/lang/String;)V
+	public fun logE (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public fun logI (Ljava/lang/String;)V
+	public fun logW (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public final fun onNewIntent (Landroid/content/Intent;)V
+	public final fun onPushClicked (Landroid/content/Context;Landroid/content/Intent;)Z
+	public final fun onPushClicked (Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun onPushReceived (Landroid/content/Context;Ljava/lang/String;)V
+	public final fun registerInAppCallback (Lcloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback;)V
+	public final fun setLogLevel (Lcloud/mindbox/mobile_sdk/logger/Level;)V
+	public final fun setMessageHandling (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader;)V
+	public static synthetic fun setMessageHandling$default (Lcloud/mindbox/mobile_sdk/Mindbox;Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader;ILjava/lang/Object;)V
+	public final fun subscribeDeviceUuid (Lkotlin/jvm/functions/Function1;)Ljava/lang/String;
+	public final fun subscribeFmsToken (Lkotlin/jvm/functions/Function1;)Ljava/lang/String;
+	public final fun subscribePushToken (Lkotlin/jvm/functions/Function1;)Ljava/lang/String;
+	public final fun subscribePushTokens (Lkotlin/jvm/functions/Function1;)Ljava/lang/String;
+	public final fun updateNotificationPermissionStatus (Landroid/content/Context;)V
+	public final fun updatePushToken (Landroid/content/Context;Ljava/lang/String;)V
+	public final fun updatePushToken (Landroid/content/Context;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/pushes/MindboxPushService;)V
+	public final fun writeLog (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/logger/Level;)V
+}
+
+public final class cloud/mindbox/mobile_sdk/MindboxConfiguration {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;)V
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/MindboxConfiguration$Builder {
+	public fun <init> (Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun build ()Lcloud/mindbox/mobile_sdk/MindboxConfiguration;
+	public final fun getDomain ()Ljava/lang/String;
+	public final fun getEndpointId ()Ljava/lang/String;
+	public final fun setPreviousDeviceUuid (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;
+	public final fun setPreviousInstallationId (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;
+	public final fun shouldCreateCustomer (Z)Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;
+	public final fun subscribeCustomerIfCreated (Z)Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;
+	public final fun uuidDebugEnabled (Z)Lcloud/mindbox/mobile_sdk/MindboxConfiguration$Builder;
+}
+
+public final class cloud/mindbox/mobile_sdk/data/ConfigurationsDao_Impl : cloud/mindbox/mobile_sdk/data/ConfigurationsDao {
+	public fun <init> (Landroidx/room/RoomDatabase;)V
+	public fun get ()Lcloud/mindbox/mobile_sdk/models/Configuration;
+	public static fun getRequiredConverters ()Ljava/util/List;
+	public fun insert (Lcloud/mindbox/mobile_sdk/models/Configuration;)V
+	public fun listenConfiguration ()Lkotlinx/coroutines/flow/Flow;
+}
+
+public final class cloud/mindbox/mobile_sdk/data/EventsDao_Impl : cloud/mindbox/mobile_sdk/data/EventsDao {
+	public fun <init> (Landroidx/room/RoomDatabase;)V
+	public fun delete (Ljava/lang/String;)V
+	public fun deleteAll ()V
+	public fun deleteEvents (Ljava/util/List;)V
+	public fun getAll ()Ljava/util/List;
+	public static fun getRequiredConverters ()Ljava/util/List;
+	public fun insert (Lcloud/mindbox/mobile_sdk/models/Event;)V
+}
+
+public abstract interface class cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public abstract fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public abstract fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/ComposableInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback;)V
+	public fun <init> (Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> ([Lcloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback;)V
+	protected final fun getCallbacks ()Ljava/util/List;
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/CopyPayloadInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> ()V
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/DeepLinkInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> ()V
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/EmptyInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> ()V
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/LoggingInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> ()V
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public class cloud/mindbox/mobile_sdk/inapp/presentation/callbacks/UrlInAppCallback : cloud/mindbox/mobile_sdk/inapp/presentation/InAppCallback {
+	public fun <init> ()V
+	public fun onInAppClick (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun onInAppDismissed (Ljava/lang/String;)V
+}
+
+public final class cloud/mindbox/mobile_sdk/logger/Level : java/lang/Enum {
+	public static final field DEBUG Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static final field ERROR Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static final field INFO Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static final field NONE Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static final field VERBOSE Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static final field WARN Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()I
+	public final fun setValue (I)V
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/logger/Level;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/logger/Level;
+}
+
+public abstract interface class cloud/mindbox/mobile_sdk/logger/MindboxLogger {
+	public abstract fun d (Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun e (Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun e (Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public abstract fun i (Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun w (Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun w (Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Throwable;)V
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/MindboxError {
+	public synthetic fun <init> (Ljava/lang/Integer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getStatusCode ()Ljava/lang/Integer;
+	public final fun toJson ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/MindboxError$InternalServer : cloud/mindbox/mobile_sdk/models/MindboxError {
+	public fun <init> (ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lcloud/mindbox/mobile_sdk/models/MindboxError$InternalServer;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/MindboxError$InternalServer;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/MindboxError$InternalServer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrorId ()Ljava/lang/String;
+	public final fun getErrorMessage ()Ljava/lang/String;
+	public final fun getHttpStatusCode ()Ljava/lang/Integer;
+	public final fun getStatus ()Ljava/lang/String;
+	public fun getStatusCode ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/MindboxError$Protocol : cloud/mindbox/mobile_sdk/models/MindboxError {
+	public fun <init> (ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Protocol;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/MindboxError$Protocol;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Protocol;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrorId ()Ljava/lang/String;
+	public final fun getErrorMessage ()Ljava/lang/String;
+	public final fun getHttpStatusCode ()Ljava/lang/Integer;
+	public final fun getStatus ()Ljava/lang/String;
+	public fun getStatusCode ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/MindboxError$Unknown : cloud/mindbox/mobile_sdk/models/MindboxError {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/Throwable;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Unknown;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/MindboxError$Unknown;Ljava/lang/Throwable;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Unknown;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getThrowable ()Ljava/lang/Throwable;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/MindboxError$UnknownServer : cloud/mindbox/mobile_sdk/models/MindboxError {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lcloud/mindbox/mobile_sdk/models/MindboxError$UnknownServer;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/MindboxError$UnknownServer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/MindboxError$UnknownServer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrorId ()Ljava/lang/String;
+	public final fun getErrorMessage ()Ljava/lang/String;
+	public final fun getHttpStatusCode ()Ljava/lang/Integer;
+	public final fun getStatus ()Ljava/lang/String;
+	public fun getStatusCode ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/MindboxError$Validation : cloud/mindbox/mobile_sdk/models/MindboxError {
+	public fun <init> (ILjava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (ILjava/lang/String;Ljava/util/List;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Validation;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/MindboxError$Validation;ILjava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/MindboxError$Validation;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStatus ()Ljava/lang/String;
+	public fun getStatusCode ()Ljava/lang/Integer;
+	public final fun getValidationMessages ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/OperationBodyInternal {
+	public fun <init> ()V
+}
+
+public final class cloud/mindbox/mobile_sdk/models/ValidationMessage {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/ValidationMessage;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/models/ValidationMessage;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/models/ValidationMessage;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLocation ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/CustomFields {
+	public fun <init> ()V
+	public fun <init> (Ljava/util/Map;)V
+	public synthetic fun <init> (Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> ([Landroidx/core/util/Pair;)V
+	public fun <init> ([Lkotlin/Pair;)V
+	public final fun convertTo (Ljava/lang/Class;)Ljava/lang/Object;
+	public final fun getFields ()Ljava/util/Map;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/DateOnly : java/util/Date {
+	public fun <init> ()V
+	public fun <init> (J)V
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/DateTime : java/util/Date {
+	public fun <init> ()V
+	public fun <init> (J)V
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/Ids {
+	public fun <init> (ILjava/util/Map;)V
+	public fun <init> (I[Landroidx/core/util/Pair;)V
+	public fun <init> (I[Lkotlin/Pair;)V
+	public fun <init> (Ljava/util/Map;)V
+	public fun <init> ([Landroidx/core/util/Pair;)V
+	public fun <init> ([Lkotlin/Pair;)V
+	public final fun getIds ()Ljava/util/Map;
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/operation/OperationBody : cloud/mindbox/mobile_sdk/models/OperationBodyInternal {
+	public fun <init> ()V
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/operation/OperationBodyRequestBaseInternal {
+	public fun <init> ()V
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/operation/OperationResponseBaseInternal {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getStatus ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/Sex : java/lang/Enum {
+	public static final field FEMALE Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+	public static final field MALE Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/AreaRequest {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/CashdeskRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/CatalogProductListRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/util/List;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getArea ()Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;
+	public final fun getCalculationDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getItems ()Ljava/util/List;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/CouponRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/request/PoolRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/request/PoolRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getPool ()Lcloud/mindbox/mobile_sdk/models/operation/request/PoolRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest {
+	public fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;Lcloud/mindbox/mobile_sdk/models/operation/Sex;Ljava/util/TimeZone;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;Lcloud/mindbox/mobile_sdk/models/operation/Sex;Ljava/util/TimeZone;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;Lcloud/mindbox/mobile_sdk/models/operation/Sex;Ljava/util/TimeZone;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;Lcloud/mindbox/mobile_sdk/models/operation/Sex;Ljava/util/TimeZone;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getArea ()Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;
+	public final fun getAuthenticationTicket ()Ljava/lang/String;
+	public final fun getBirthDate ()Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDiscountCard ()Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;
+	public final fun getEmail ()Ljava/lang/String;
+	public final fun getFirstName ()Ljava/lang/String;
+	public final fun getFullName ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getLastName ()Ljava/lang/String;
+	public final fun getMiddleName ()Ljava/lang/String;
+	public final fun getMobilePhone ()Ljava/lang/String;
+	public final fun getSex ()Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+	public final fun getSubscriptions ()Ljava/util/List;
+	public final fun getTimeZone ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/DiscountRequest {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ExternalPromoActionRequest;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ExternalPromoActionRequest;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Ljava/lang/Double;
+	public final fun getExternalPromoAction ()Lcloud/mindbox/mobile_sdk/models/operation/request/ExternalPromoActionRequest;
+	public final fun getPromoCode ()Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest : java/lang/Enum {
+	public static final field EXTERNAL_PROMO_ACTION Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest;
+	public static final field PROMO_CODE Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountTypeRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ExternalPromoActionRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ItemRequest {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBasePricePerItem ()Ljava/lang/Double;
+	public final fun getMinPricePerItem ()Ljava/lang/Double;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;
+	public final fun getRequestedPromotions ()Ljava/util/List;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/LineRequest {
+	public fun <init> (DDLjava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;)V
+	public synthetic fun <init> (DDLjava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (DILjava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;)V
+	public synthetic fun <init> (DILjava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBasePricePerItem ()Ljava/lang/Double;
+	public final fun getCostPricePerItem ()Ljava/lang/Double;
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDiscountedPricePerLine ()Ljava/lang/Double;
+	public final fun getDiscounts ()Ljava/util/List;
+	public final fun getLineId ()Ljava/lang/String;
+	public final fun getLineNumber ()Ljava/lang/Integer;
+	public final fun getMinPricePerItem ()Ljava/lang/Double;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;
+	public final fun getQuantity ()Ljava/lang/Number;
+	public final fun getQuantityType ()Lcloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequest : cloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequestBase {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CatalogProductListRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CatalogProductListRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAddProductToList ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;
+	public final fun getCustomer ()Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;
+	public final fun getCustomerAction ()Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;
+	public final fun getDiscountCard ()Lcloud/mindbox/mobile_sdk/models/operation/request/DiscountCardRequest;
+	public final fun getOrder ()Lcloud/mindbox/mobile_sdk/models/operation/request/OrderRequest;
+	public final fun getPointOfContact ()Ljava/lang/String;
+	public final fun getPromoCode ()Lcloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest;
+	public final fun getRecommendation ()Lcloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest;
+	public final fun getReferencedCustomer ()Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerRequest;
+	public final fun getRemoveProductFromList ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;
+	public final fun getSegmentations ()Ljava/util/List;
+	public final fun getSetProductCountInList ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest;
+	public final fun getViewProductCategory ()Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest;
+	public final fun getViewProductRequest ()Lcloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest;
+	public final fun productList ()Lcloud/mindbox/mobile_sdk/models/operation/request/CatalogProductListRequest;
+	public final fun productListItems ()Ljava/util/List;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/operation/request/OperationBodyRequestBase : cloud/mindbox/mobile_sdk/models/operation/OperationBodyRequestBaseInternal {
+	public fun <init> ()V
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/OrderRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/request/CashdeskRequest;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/Double;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/request/CashdeskRequest;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Ljava/lang/Double;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getArea ()Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;
+	public final fun getCashdesk ()Lcloud/mindbox/mobile_sdk/models/operation/request/CashdeskRequest;
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDeliveryCost ()Ljava/lang/Double;
+	public final fun getDiscounts ()Ljava/util/List;
+	public final fun getEmail ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getLines ()Ljava/util/List;
+	public final fun getMobilePhone ()Ljava/lang/String;
+	public final fun getTotalPrice ()Ljava/lang/Double;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest : java/lang/Enum {
+	public static final field EMAIL Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static final field MOBILEPUSH Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static final field SMS Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static final field VIBER Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static final field WEBPUSH Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/PoolRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ProductListItemRequest {
+	public fun <init> (DDZ)V
+	public fun <init> (DLcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Ljava/lang/Double;Ljava/lang/Boolean;)V
+	public synthetic fun <init> (DLcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Ljava/lang/Double;Ljava/lang/Boolean;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (DLcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;Ljava/lang/Boolean;)V
+	public synthetic fun <init> (DLcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;Ljava/lang/Boolean;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCount ()Ljava/lang/Double;
+	public final fun getPriceOfLine ()Ljava/lang/Double;
+	public final fun getPricePerItem ()Ljava/lang/Double;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;
+	public final fun getProductGroup ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ProductRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/PromoCodeRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAvailableFromDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getAvailableTillDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/PromotionRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest : java/lang/Enum {
+	public static final field DOUBLE Lcloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest;
+	public static final field INT Lcloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/request/QuantityTypeRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/RecommendationRequest {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getArea ()Lcloud/mindbox/mobile_sdk/models/operation/request/AreaRequest;
+	public final fun getLimit ()Ljava/lang/Integer;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;
+	public final fun getProductCategory ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromotionRequest;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/request/CouponRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/PromotionRequest;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/request/CouponRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Ljava/lang/Double;
+	public final fun getCoupon ()Lcloud/mindbox/mobile_sdk/models/operation/request/CouponRequest;
+	public final fun getPromotion ()Lcloud/mindbox/mobile_sdk/models/operation/request/PromotionRequest;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest : java/lang/Enum {
+	public static final field BALANCE Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field DISCOUNT Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field EARNED_BONUS_POINTS Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field EXTERNAL_PROMO_ACTION Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field ISSUED_COUPON Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field MESSAGE Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field PROMO_CODE Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static final field SPENT_BONUS_POINTS Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/request/RequestedPromotionTypeRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/SegmentationRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/SubscriptionRequest {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Boolean;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/Boolean;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBrand ()Ljava/lang/String;
+	public final fun getPointOfContact ()Lcloud/mindbox/mobile_sdk/models/operation/request/PointOfContactRequest;
+	public final fun getTopic ()Ljava/lang/String;
+	public final fun isSubscribed ()Ljava/lang/Boolean;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ViewProductCategoryRequest {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomerAction ()Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;
+	public final fun getProductCategory ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductCategoryRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/request/ViewProductRequest {
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomerAction ()Lcloud/mindbox/mobile_sdk/models/operation/request/CustomerActionRequest;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductRequest;
+	public final fun getProductGroup ()Lcloud/mindbox/mobile_sdk/models/operation/request/ProductGroupRequest;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/AmountResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public final fun getValue ()Ljava/lang/Double;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse : java/lang/Enum {
+	public static final field ABSOLUTE Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static final field DISCOUNT_AMOUNT Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static final field PERCENT Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static final field PRICE Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static final field QUANTITY Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/AmountTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;Ljava/util/List;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;Ljava/util/List;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Ljava/lang/Double;
+	public final fun getBalanceType ()Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;
+	public final fun getCoupon ()Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;
+	public final fun getExpirationDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getGroupingKey ()Ljava/lang/String;
+	public final fun getIssuedCoupon ()Lcloud/mindbox/mobile_sdk/models/operation/response/CouponResponse;
+	public final fun getLimits ()Ljava/util/List;
+	public final fun getPromotion ()Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;
+	public final fun getSpentBonusPointsAmount ()Ljava/lang/Double;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse : java/lang/Enum {
+	public static final field CORRECTION_DISCOUNT Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field DELIVERY_DISCOUNT Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field DISCOUNT Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field EARNED_BONUS_POINTS Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field ISSUED_COUPON Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field MESSAGE Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field PRECONDITION_MARKER Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static final field SPEND_BONUS_POINTS Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/AppliedPromotionTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/AreaResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/BalanceResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/NearestExpirationResponse;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;)V
+	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/NearestExpirationResponse;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAvailable ()Ljava/lang/Double;
+	public final fun getBalanceType ()Lcloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse;
+	public final fun getBlocked ()Ljava/lang/Double;
+	public final fun getNearestExpiration ()Lcloud/mindbox/mobile_sdk/models/operation/response/NearestExpirationResponse;
+	public final fun getSystemName ()Ljava/lang/String;
+	public final fun getTotal ()Ljava/lang/Double;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/BalanceTypeResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/BenefitResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/LimitResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/LimitResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;
+	public final fun getLimit ()Lcloud/mindbox/mobile_sdk/models/operation/response/LimitResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/CatalogProductListResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;Ljava/util/List;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getItems ()Ljava/util/List;
+	public final fun getProcessingStatus ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ContentResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PossibleDiscountsResponse;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/PossibleDiscountsResponse;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getPossibleDiscounts ()Lcloud/mindbox/mobile_sdk/models/operation/response/PossibleDiscountsResponse;
+	public final fun getPromotion ()Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse : java/lang/Enum {
+	public static final field POSSIBLE_DISCOUNTS Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;
+	public static final field TEXT Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/ContentTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/CouponResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getPool ()Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/CustomerResponse {
+	public final fun getArea ()Lcloud/mindbox/mobile_sdk/models/operation/response/AreaResponse;
+	public final fun getBirthDate ()Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;
+	public final fun getChangeDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDiscountCard ()Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountCardResponse;
+	public final fun getEmail ()Ljava/lang/String;
+	public final fun getFirstName ()Ljava/lang/String;
+	public final fun getFullName ()Ljava/lang/String;
+	public final fun getIanaTimeZone ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getLastName ()Ljava/lang/String;
+	public final fun getMiddleName ()Ljava/lang/String;
+	public final fun getMobilePhone ()Ljava/lang/String;
+	public final fun getProcessingStatus ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public final fun getSex ()Lcloud/mindbox/mobile_sdk/models/operation/Sex;
+	public final fun getSubscriptions ()Ljava/util/List;
+	public final fun getTimeZone ()Ljava/lang/String;
+	public final fun getTimeZoneSource ()Ljava/lang/String;
+	public final fun isEmailInvalid ()Ljava/lang/Boolean;
+	public final fun isMobilePhoneInvalid ()Ljava/lang/Boolean;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/CustomerSegmentationResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentationResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentationResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getSegment ()Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentResponse;
+	public final fun getSegmentation ()Lcloud/mindbox/mobile_sdk/models/operation/response/SegmentationResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse : java/lang/Enum {
+	public static final field ABSOLUTE Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;
+	public static final field PERCENT Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/DiscountCardResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Lcloud/mindbox/mobile_sdk/models/operation/response/StatusResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/TypeResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Lcloud/mindbox/mobile_sdk/models/operation/response/StatusResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/TypeResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getStatus ()Lcloud/mindbox/mobile_sdk/models/operation/response/StatusResponse;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/TypeResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/DiscountResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;)V
+	public synthetic fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Ljava/lang/Double;
+	public final fun getAmountType ()Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountAmountTypeResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse : java/lang/Enum {
+	public static final field ISSUED Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field NOT_AVAILABLE_FOR_ISSUE Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field NOT_AVAILABLE_PROMO_CODES_IN_POOL Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field NOT_IN_ISSUE_DATE_TIME_RANGE Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field PROMO_CODE_NOT_FOUND Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field PROMO_CODE_POOL_NOT_FOUND Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static final field RECEIVED Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/IssuedPointOfContactResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ItemResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Ljava/lang/Double;Ljava/lang/Double;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Ljava/lang/Double;Ljava/lang/Double;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAppliedPromotions ()Ljava/util/List;
+	public final fun getBasePricePerItem ()Ljava/lang/Double;
+	public final fun getMinPricePerItem ()Ljava/lang/Double;
+	public final fun getPlaceholders ()Ljava/util/List;
+	public final fun getPriceForCustomer ()Ljava/lang/Double;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/LimitResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;Ljava/lang/Object;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;Ljava/lang/Object;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Lcloud/mindbox/mobile_sdk/models/operation/response/AmountResponse;
+	public final fun getPeriod ()Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;
+	public final fun getUntilDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public fun toString ()Ljava/lang/String;
+	public final fun usedAmount ()Ljava/lang/Double;
+	public final fun usedResponse ()Lcloud/mindbox/mobile_sdk/models/operation/response/UsedResponse;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse : java/lang/Enum {
+	public static final field GROUP_LIMIT Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;
+	public static final field PERSONAL_LIMIT Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/LimitTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ManufacturerResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/NearestExpirationResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;)V
+	public synthetic fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDate ()Lcloud/mindbox/mobile_sdk/models/operation/DateOnly;
+	public final fun getTotal ()Ljava/lang/Double;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/OperationResponse : cloud/mindbox/mobile_sdk/models/operation/response/OperationResponseBase {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/CustomerResponse;Ljava/lang/Object;Ljava/util/List;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/response/PromoCodeResponse;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/response/RetailOrderStatisticsResponse;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/CustomerResponse;Ljava/lang/Object;Ljava/util/List;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/response/PromoCodeResponse;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lcloud/mindbox/mobile_sdk/models/operation/response/RetailOrderStatisticsResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun catalogProductList ()Lcloud/mindbox/mobile_sdk/models/operation/response/CatalogProductListResponse;
+	public final fun getBalances ()Ljava/util/List;
+	public final fun getCustomer ()Lcloud/mindbox/mobile_sdk/models/operation/response/CustomerResponse;
+	public final fun getCustomerSegmentations ()Ljava/util/List;
+	public final fun getDiscountCards ()Ljava/util/List;
+	public final fun getPersonalOffers ()Ljava/util/List;
+	public final fun getPromoActions ()Ljava/util/List;
+	public final fun getPromoCode ()Lcloud/mindbox/mobile_sdk/models/operation/response/PromoCodeResponse;
+	public final fun getRecommendations ()Ljava/util/List;
+	public final fun getRetailOrderStatistics ()Lcloud/mindbox/mobile_sdk/models/operation/response/RetailOrderStatisticsResponse;
+	public final fun productListItems ()Ljava/util/List;
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/models/operation/response/OperationResponseBase : cloud/mindbox/mobile_sdk/models/operation/OperationResponseBaseInternal {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/PeriodType : java/lang/Enum {
+	public static final field FIXED_DAYS Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+	public static final field FIXED_MONTHS Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+	public static final field FIXED_WEEKS Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/PeriodType;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PersonalOfferItemResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/BenefitResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/BenefitResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBenefit ()Lcloud/mindbox/mobile_sdk/models/operation/response/BenefitResponse;
+	public final fun getEndDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;
+	public final fun getStartDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PlaceholderResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/util/List;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getContent ()Ljava/util/List;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse : java/lang/Enum {
+	public static final field EMAIL Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static final field MOBILEPUSH Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static final field SMS Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static final field VIBER Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static final field WEBPUSH Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PoolResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PossibleDiscountsResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountResponse;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountResponse;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDiscount ()Lcloud/mindbox/mobile_sdk/models/operation/response/DiscountResponse;
+	public final fun getDiscountsCount ()Ljava/lang/Integer;
+	public final fun getProducts ()Ljava/util/List;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse : java/lang/Enum {
+	public static final field ALREADY_EXISTS Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field AMBIGUOUS Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field CALCULATED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field CHANGED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field CREATED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field DELETED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field DISCOUNTS_CALCULATION_IS_UNAVAILABLE Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field FOUND Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field INVALID_AUTHENTICATION_TICKET Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field MINDBOX_SERVER_ERROR Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field NOT_CHANGED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field NOT_FOUND Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field NOT_PROCESSED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field PERSONAL_DISCOUNTS_CALCULATION_IS_UNAVAILABLE Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field PRICE_HAS_BEEN_CHANGED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field PROCESSED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field PROTOCOL_ERROR Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field REQUIRED_ENTITY_MISSING_FROM_RESPONSE Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field SUCCESS Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field UPDATED Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static final field VALIDATION_ERROR Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/ProcessingStatusResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ProductGroupResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ProductListItemResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductGroupResponse;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;Lcloud/mindbox/mobile_sdk/models/operation/response/ProductGroupResponse;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCount ()Ljava/lang/Double;
+	public final fun getPrice ()Ljava/lang/Double;
+	public final fun getPriceOfLine ()Ljava/lang/Double;
+	public final fun getPricePerItem ()Ljava/lang/Double;
+	public final fun getProduct ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProductResponse;
+	public final fun getProductGroup ()Lcloud/mindbox/mobile_sdk/models/operation/response/ProductGroupResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/ProductResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDisplayName ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOldPrice ()Ljava/lang/Double;
+	public final fun getPictureUrl ()Ljava/lang/String;
+	public final fun getPrice ()Ljava/lang/Double;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PromoActionResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getEndDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getLimits ()Ljava/util/List;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getStartDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PromoCodeResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Ljava/lang/Boolean;Lcloud/mindbox/mobile_sdk/models/operation/response/UsedPointOfContactResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/IssuedPointOfContactResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Ljava/lang/Boolean;Lcloud/mindbox/mobile_sdk/models/operation/response/UsedPointOfContactResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/response/IssuedPointOfContactResponse;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAvailableFromDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getAvailableTillDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getBlockedDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getIssueStatus ()Lcloud/mindbox/mobile_sdk/models/operation/response/IssueStatusResponse;
+	public final fun getIssuedDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getIssuedPointOfContact ()Lcloud/mindbox/mobile_sdk/models/operation/response/IssuedPointOfContactResponse;
+	public final fun getPool ()Lcloud/mindbox/mobile_sdk/models/operation/response/PoolResponse;
+	public final fun getUsedDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getUsedPointOfContact ()Lcloud/mindbox/mobile_sdk/models/operation/response/UsedPointOfContactResponse;
+	public final fun isUsed ()Ljava/lang/Boolean;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/PromotionResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getType ()Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse : java/lang/Enum {
+	public static final field EXTERNAL Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;
+	public static final field MINDBOX Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/PromotionTypeResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/RecommendationResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/ManufacturerResponse;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/String;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/response/ManufacturerResponse;Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getCustomFields ()Lcloud/mindbox/mobile_sdk/models/operation/CustomFields;
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getDisplayName ()Ljava/lang/String;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getManufacturer ()Lcloud/mindbox/mobile_sdk/models/operation/response/ManufacturerResponse;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOldPrice ()Ljava/lang/Double;
+	public final fun getPictureUrl ()Ljava/lang/String;
+	public final fun getPrice ()Ljava/lang/Double;
+	public final fun getUrl ()Ljava/lang/String;
+	public final fun getVendorCode ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/RetailOrderStatisticsResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getTotalPaidAmount ()Ljava/lang/Double;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/SegmentResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/SegmentationResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/StatusResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Lcloud/mindbox/mobile_sdk/models/operation/DateTime;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDateTimeUtc ()Lcloud/mindbox/mobile_sdk/models/operation/DateTime;
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/SubscriptionResponse {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Boolean;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/Boolean;Ljava/lang/String;Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBrand ()Ljava/lang/String;
+	public final fun getPointOfContact ()Lcloud/mindbox/mobile_sdk/models/operation/response/PointOfContactResponse;
+	public final fun getTopic ()Ljava/lang/String;
+	public final fun isSubscribed ()Ljava/lang/Boolean;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/TypeResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse : java/lang/Enum {
+	public static final field AVAILABLE Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;
+	public static final field UNAVAILABLE Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;
+	public static fun values ()[Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/UsedPointOfContactResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/Ids;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIds ()Lcloud/mindbox/mobile_sdk/models/operation/Ids;
+	public final fun getName ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public class cloud/mindbox/mobile_sdk/models/operation/response/UsedResponse {
+	public fun <init> ()V
+	public fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;Ljava/lang/Double;)V
+	public synthetic fun <init> (Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAmount ()Ljava/lang/Double;
+	public final fun getUsageServiceStatus ()Lcloud/mindbox/mobile_sdk/models/operation/response/UsageServiceStatusResponse;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/monitoring/data/room/MonitoringDatabase_Impl {
+	public static final field Companion Lcloud/mindbox/mobile_sdk/monitoring/data/room/MonitoringDatabase$Companion;
+	public fun <init> ()V
+	public fun clearAllTables ()V
+	public fun getAutoMigrations (Ljava/util/Map;)Ljava/util/List;
+	public fun getRequiredAutoMigrationSpecs ()Ljava/util/Set;
+	public fun monitoringDao ()Lcloud/mindbox/mobile_sdk/monitoring/data/room/dao/MonitoringDao;
+}
+
+public final class cloud/mindbox/mobile_sdk/monitoring/data/room/dao/MonitoringDao_Impl : cloud/mindbox/mobile_sdk/monitoring/data/room/dao/MonitoringDao {
+	public fun <init> (Landroidx/room/RoomDatabase;)V
+	public fun deleteFirstLog (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun deleteFirstTenPercentOfLogs (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun deleteLog (Lcloud/mindbox/mobile_sdk/monitoring/data/room/entities/MonitoringEntity;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getFirstLog (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getLastLog (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getLogs (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static fun getRequiredConverters ()Ljava/util/List;
+	public fun insertLog (Lcloud/mindbox/mobile_sdk/monitoring/data/room/entities/MonitoringEntity;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class cloud/mindbox/mobile_sdk/pushes/MindboxPushService {
+	public abstract fun getServiceHandler (Lcloud/mindbox/mobile_sdk/logger/MindboxLogger;Lcloud/mindbox/mobile_sdk/utils/ExceptionHandler;)Lcloud/mindbox/mobile_sdk/pushes/PushServiceHandler;
+	public abstract fun getTag ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getImageUrl ()Ljava/lang/String;
+	public final fun getPayload ()Ljava/lang/String;
+	public final fun getPushActions ()Ljava/util/List;
+	public final fun getPushLink ()Ljava/lang/String;
+	public final fun getTitle ()Ljava/lang/String;
+	public final fun getUniqueKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/PushAction {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/pushes/PushAction;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/PushAction;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/PushAction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getText ()Ljava/lang/String;
+	public final fun getUniqueKey ()Ljava/lang/String;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/pushes/PushServiceHandler : cloud/mindbox/mobile_sdk/logger/MindboxLog {
+	public fun <init> ()V
+	public abstract fun convertToRemoteMessage (Ljava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;
+	public abstract fun getAdsId (Landroid/content/Context;)Lkotlin/Pair;
+	public abstract fun getNotificationProvider ()Ljava/lang/String;
+	protected abstract fun getToken (Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun initService (Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	protected abstract fun isAvailable (Landroid/content/Context;)Z
+	public fun logD (Ljava/lang/String;)V
+	public fun logE (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public fun logI (Ljava/lang/String;)V
+	public fun logW (Ljava/lang/String;Ljava/lang/Throwable;)V
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState {
+	public fun <init> (IZ)V
+	public final fun component1 ()I
+	public final fun component2 ()Z
+	public final fun copy (IZ)Lcloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState;IZILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAttemptNumber ()I
+	public fun hashCode ()I
+	public final fun isMessageDisplayed ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ApplyDefaultAndRetryStrategyKt {
+	public static final fun applyDefaultAndRetryStrategy (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJLandroid/graphics/Bitmap;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+	public static synthetic fun applyDefaultAndRetryStrategy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJLandroid/graphics/Bitmap;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ApplyDefaultStrategyKt {
+	public static final fun applyDefaultStrategy (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;Landroid/graphics/Bitmap;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+	public static synthetic fun applyDefaultStrategy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;Landroid/graphics/Bitmap;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/CancellationStrategyKt {
+	public static final fun cancellationStrategy (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageFailureHandlerDefaultStrategyKt {
+	public static final fun default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy {
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefault : cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy {
+	public fun <init> ()V
+	public fun <init> (Landroid/graphics/Bitmap;)V
+	public synthetic fun <init> (Landroid/graphics/Bitmap;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Landroid/graphics/Bitmap;
+	public final fun copy (Landroid/graphics/Bitmap;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefault;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefault;Landroid/graphics/Bitmap;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefault;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDefaultImage ()Landroid/graphics/Bitmap;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefaultAndRetry : cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy {
+	public fun <init> ()V
+	public fun <init> (JLandroid/graphics/Bitmap;)V
+	public synthetic fun <init> (JLandroid/graphics/Bitmap;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()Landroid/graphics/Bitmap;
+	public final fun copy (JLandroid/graphics/Bitmap;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefaultAndRetry;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefaultAndRetry;JLandroid/graphics/Bitmap;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$ApplyDefaultAndRetry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDefaultImage ()Landroid/graphics/Bitmap;
+	public final fun getDelay ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Cancel : cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy {
+	public static final field INSTANCE Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Cancel;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Retry : cloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy {
+	public fun <init> ()V
+	public fun <init> (J)V
+	public synthetic fun <init> (JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun copy (J)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Retry;
+	public static synthetic fun copy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Retry;JILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy$Retry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDelay ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class cloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler {
+	public static final field Companion Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;
+	public abstract fun onImageLoadingFailed (Landroid/content/Context;Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;Lcloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState;Ljava/lang/Throwable;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/ImageRetryStrategy;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion {
+}
+
+public abstract interface class cloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader {
+	public static final field Companion Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader$Companion;
+	public abstract fun onLoadImage (Landroid/content/Context;Lcloud/mindbox/mobile_sdk/pushes/MindboxRemoteMessage;Lcloud/mindbox/mobile_sdk/pushes/handler/MessageHandlingState;)Landroid/graphics/Bitmap;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader$Companion {
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoaderDefaultKt {
+	public static final fun default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader$Companion;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageLoader;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/RetryOrCancelStrategyKt {
+	public static final fun retryOrCancelStrategy (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJ)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+	public static synthetic fun retryOrCancelStrategy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public final class cloud/mindbox/mobile_sdk/pushes/handler/image/RetryOrDefaultStrategyKt {
+	public static final fun retryOrDefaultStrategy (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJLandroid/graphics/Bitmap;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+	public static synthetic fun retryOrDefaultStrategy$default (Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler$Companion;IJLandroid/graphics/Bitmap;ILjava/lang/Object;)Lcloud/mindbox/mobile_sdk/pushes/handler/image/MindboxImageFailureHandler;
+}
+
+public final class cloud/mindbox/mobile_sdk/repository/MindboxDatabase_Impl {
+	public static final field Companion Lcloud/mindbox/mobile_sdk/repository/MindboxDatabase$Companion;
+	public fun <init> ()V
+	public fun clearAllTables ()V
+	public fun configurationDao ()Lcloud/mindbox/mobile_sdk/data/ConfigurationsDao;
+	public fun eventsDao ()Lcloud/mindbox/mobile_sdk/data/EventsDao;
+	public fun getAutoMigrations (Ljava/util/Map;)Ljava/util/List;
+	public fun getRequiredAutoMigrationSpecs ()Ljava/util/Set;
+}
+
+public abstract class cloud/mindbox/mobile_sdk/utils/ExceptionHandler {
+	public fun <init> ()V
+	protected abstract fun handle (Ljava/lang/Throwable;)V
+	public final fun runCatching (Ljava/lang/Object;Lkotlin/jvm/functions/Function0;)Ljava/lang/Object;
+	public final fun runCatching (Lkotlin/jvm/functions/Function0;)V
+	public final fun runCatching (Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
+	public final fun runCatchingSuspending (Ljava/lang/Object;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun runCatchingSuspending (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun runCatchingSuspending (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class cloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory : com/google/gson/TypeAdapterFactory {
+	public fun create (Lcom/google/gson/Gson;Lcom/google/gson/reflect/TypeToken;)Lcom/google/gson/TypeAdapter;
+	public static fun of (Ljava/lang/Class;)Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+	public static fun of (Ljava/lang/Class;Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+	public static fun of (Ljava/lang/Class;Ljava/lang/String;Z)Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+	public fun recognizeSubtypes ()Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+	public fun registerSubtype (Ljava/lang/Class;)Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+	public fun registerSubtype (Ljava/lang/Class;Ljava/lang/String;)Lcloud/mindbox/mobile_sdk/utils/RuntimeTypeAdapterFactory;
+}
+
