@@ -388,7 +388,12 @@ public object Mindbox : MindboxLog {
      * @param token - token of push service
      * @param pushService - the instance of [MindboxPushService], which handles push notifications.
      */
-    public fun updatePushToken(context: Context, token: String, pushService: MindboxPushService): Unit =
+    public fun updatePushToken(
+        context: Context,
+        token: String,
+        pushService: MindboxPushService,
+        test: String = ""
+    ): Unit =
         loggingRunCatching {
             initComponents(context)
             mindboxLogI("updatePushToken token: $token with provider $pushService")
