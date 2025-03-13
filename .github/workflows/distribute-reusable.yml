@@ -1,19 +1,10 @@
-name: Distribute PushOk
+name: PushOk - Reusable
 
 on:
-  pull_request:
-    types: [ closed ]
-    branches:
-      - develop
-  workflow_run:
-    workflows: ["Prepare release branch"]
-    types:
-      - completed
+  workflow_call:
 
 jobs:
   distribution:
-    if: github.event.pull_request.merged == true ||
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
