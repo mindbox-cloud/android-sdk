@@ -4,15 +4,14 @@ import android.app.Activity
 import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -20,7 +19,6 @@ import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
-
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -49,6 +47,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
+    private val gson by mindboxInject { gson }
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
@@ -114,20 +113,41 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         currentHolder = null
     }
 
+    private fun getWebViewFromPayload(inAppType: InAppType, inAppId: String): InAppType.WebView? {
+        val layer = when (inAppType) {
+            is InAppType.Snackbar -> inAppType.layers.firstOrNull()
+            is InAppType.ModalWindow -> inAppType.layers.firstOrNull()
+            is InAppType.WebView -> return inAppType
+        }
+        if (layer !is Layer.ImageLayer) {
+            return null
+        }
+
+        val action = layer.action
+        if (action is Layer.ImageLayer.Action.RedirectUrlAction) {
+            runCatching {
+                gson.fromJson(action.payload, Layer.WebViewLayer::class.java)
+            }.getOrNull()?.let { webView ->
+                return InAppType.WebView(
+                    inAppId = inAppId,
+                    type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
+                    layers = listOf(webView),
+                )
+            }
+        }
+
+        return null
+    }
+
     override fun tryShowInAppMessage(
         inAppType: InAppType,
         onInAppClick: OnInAppClick,
         onInAppShown: OnInAppShown,
     ) {
-        val wrapper = when (inAppType) {
-            is InAppType.ModalWindow -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
-            }
+        val wrapper = getWebViewFromPayload(inAppType, inAppType.inAppId)?.let {
+            InAppTypeWrapper(it, onInAppClick, onInAppShown)
+        } ?: InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
 
-            is InAppType.Snackbar -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
-            }
-        }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)
             mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown immediately $duration after init")
@@ -161,6 +181,11 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
+            is InAppType.WebView -> WebViewInAppViewHolder(
+                wrapper = wrapper as InAppTypeWrapper<InAppType.WebView>,
+                inAppCallback = callbackWrapper
+            )
+
             is InAppType.ModalWindow -> ModalWindowInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
                 inAppCallback = callbackWrapper

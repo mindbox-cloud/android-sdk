@@ -27,6 +27,7 @@ internal class ModalWindowValidator(
                     mindboxLogI("Finish checking image layer and it's validity = $rez")
                     !rez
                 }
+                else -> false
             }
         }
         if (invalidLayer != null) {

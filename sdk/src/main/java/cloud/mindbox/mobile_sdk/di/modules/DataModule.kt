@@ -276,6 +276,9 @@ internal fun DataModule(
                     ).registerSubtype(
                         PayloadBlankDto.SnackBarBlankDto::class.java,
                         PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                    ).registerSubtype(
+                        PayloadBlankDto.WebViewBlankDto::class.java,
+                        PayloadDto.WebViewDto.WEBVIEW_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
@@ -318,6 +321,9 @@ internal fun DataModule(
                     ).registerSubtype(
                         BackgroundDto.LayerDto.ImageLayerDto::class.java,
                         BackgroundDto.LayerDto.ImageLayerDto.IMAGE_TYPE_JSON_NAME
+                    ).registerSubtype(
+                        BackgroundDto.LayerDto.WebViewLayerDto::class.java,
+                        BackgroundDto.LayerDto.WebViewLayerDto.WEBVIEW_TYPE_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
