@@ -168,6 +168,15 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
+    private fun prepareLayoutForWebView() {
+        updateLayoutParams<MarginLayoutParams> {
+            setMargins(0, 0, 0, 0)
+        }
+        updateLayoutParams<FrameLayout.LayoutParams> {
+            gravity = Gravity.CENTER
+        }
+    }
+
     private fun prepareLayoutForModalWindow() {
         updateLayoutParams<MarginLayoutParams> {
             setMargins(
@@ -184,6 +193,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     fun prepareLayoutForInApp(inAppType: InAppType) {
         when (inAppType) {
+            is InAppType.WebView -> prepareLayoutForWebView()
             is InAppType.ModalWindow -> prepareLayoutForModalWindow()
             is InAppType.Snackbar -> prepareLayoutForSnackbar(inAppType)
         }
