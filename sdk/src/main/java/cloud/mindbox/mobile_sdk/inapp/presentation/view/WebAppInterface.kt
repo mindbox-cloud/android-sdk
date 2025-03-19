@@ -1,0 +1,24 @@
+package cloud.mindbox.mobile_sdk.inapp.presentation.view
+
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+
+@SuppressLint("JavascriptInterface", "UNUSED")
+internal class WebAppInterface(val onAction: (String, String) -> Unit) {
+
+    @JavascriptInterface
+    fun sdkVersion(): String = Mindbox.getSdkVersion()
+
+    @JavascriptInterface
+    fun endpointId(): String = "Test-staging.mobile-sdk-test-staging.mindbox.ru"
+
+    @JavascriptInterface
+    fun deviceUuid(): String = MindboxPreferences.deviceUuid
+
+    @JavascriptInterface
+    fun postMessage(action: String, data: String) {
+        onAction(action, data)
+    }
+}

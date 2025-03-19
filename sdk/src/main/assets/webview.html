@@ -1,0 +1,64 @@
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Сайт для тестирования квизов</title>
+</head>
+<body color="transparent">
+<div id="qz-target"></div>
+</body>
+<script>
+    function deviceUuid() {
+        if (!window.webkit) { return SDK.deviceUuid(); } else { return deviceUuidIos(); }
+    };
+
+    function endpointId() {
+        if (!window.webkit) { return SDK.endpointId(); } else { return endpointIdIos(); }
+    };
+
+    function sdkVersion() {
+        if (!window.webkit) { return SDK.sdkVersion(); } else { return sdkVersionIos(); }
+    };
+
+    function sendToSdk(action, data) {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mindbox) {
+
+            let message = {
+                "data":data,
+                "action":action
+            };
+            window.webkit.messageHandlers.mindbox.postMessage(message);
+        } else {
+            SDK.postMessage(action, data);
+        }
+    };
+
+    console.log("Mobile SDK version:" + sdkVersion());
+    window.mindbox = (method, callback) => {
+         switch (method) {
+           case 'helpers.getEndpointId':
+             return callback(endpointId());
+           case 'helpers.getDeviceUUID':
+             return callback(deviceUuid());
+           default:;
+         }
+       };
+       window.mindbox.quizzes = {queue:[]};
+       (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static-staging.mindbox.ru/quizzes/quizzes.js","752","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-staging.mindbox.ru"});
+     })();
+
+    (function() {
+        var oldFetch = window.fetch;
+        window.fetch = function(input, init) {
+            if (input == 'https://quizzes-staging.mindbox.ru/api/v0/actions'
+                    && init && init.method === 'POST' && init.body) {
+                console.log('action ' + input + ' ' + init.body);
+                data = JSON.parse(init.body)
+                sendToSdk(data.action, data.screen);
+            }
+            return oldFetch.apply(this, arguments);
+        };
+    })();
+</script>
+</html>
