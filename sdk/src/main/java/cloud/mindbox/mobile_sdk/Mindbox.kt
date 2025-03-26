@@ -424,6 +424,7 @@ public object Mindbox : MindboxLog {
     public fun updateNotificationPermissionStatus(context: Context): Unit = LoggingExceptionHandler.runCatching {
         mindboxLogI("updateNotificationPermissionStatus was called")
         mindboxScope.launch {
+            InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             updateAppInfo(context)
         }
     }
