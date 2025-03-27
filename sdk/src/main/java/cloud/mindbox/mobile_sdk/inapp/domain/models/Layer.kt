@@ -26,6 +26,7 @@ internal sealed class Layer {
     internal data class WebViewLayer(
         val baseUrl: String?,
         val contentUrl: String?,
-        val additionalScripts: String?
+        val additionalScripts: String?,
+        val actionUrl: String? = null,
     ) : Layer()
 }

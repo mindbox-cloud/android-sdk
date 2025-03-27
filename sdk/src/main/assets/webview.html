@@ -23,7 +23,6 @@
 
     function sendToSdk(action, data) {
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mindbox) {
-
             let message = {
                 "data":data,
                 "action":action
@@ -57,6 +56,26 @@
                 data = JSON.parse(init.body)
                 sendToSdk(data.action, data.screen);
             }
+            if (input == 'https://quizzes-staging.mindbox.ru/api/v0/init'
+                    && init && init.method === 'POST' && init.body) {
+                return oldFetch.apply(this, arguments)
+                        .then(response => {
+                    var responseClone = response.clone();
+                    responseClone.json().then(data => {
+                        console.log('Response data:', data.action);
+                        if (data.action === 'quiz') {
+                            sendToSdk('init', data.action);
+                        } else {
+                            sendToSdk('error', 'empty');
+                        }
+                    }).catch(error => {
+                        console.error('Error reading response body:', error);
+                    });
+                    return response;
+                });
+
+            }
+
             return oldFetch.apply(this, arguments);
         };
     })();
