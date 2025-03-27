@@ -127,6 +127,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         if (action is Layer.ImageLayer.Action.RedirectUrlAction) {
             runCatching {
                 gson.fromJson(action.payload, Layer.WebViewLayer::class.java)
+                    .copy(actionUrl = action.url)
             }.getOrNull()?.let { webView ->
                 return InAppType.WebView(
                     inAppId = inAppId,
