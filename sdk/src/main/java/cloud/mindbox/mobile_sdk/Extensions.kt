@@ -257,14 +257,14 @@ internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? 
 }
 
 /**
- * Adds Mindbox push button unique keys extras to the Intent.
+ * Adds Mindbox push button unique keys extras to the [Intent].
  *
  * This extension function adds both the unique push key and the unique push button key
  * to the Intent extras. These extras are used by the Mindbox SDK to properly identify
  * and handle push notification button clicks.
  *
  * Note: If your push notification contains multiple buttons, you must call this method
- * for each button with its corresponding unique button key.
+ * for each button with its corresponding unique button key and use intent into addAction.
  *
  * @param pushUniqKey the unique identifier for the push notification.
  * @param pushButtonKey the unique identifier for the push button.
@@ -277,12 +277,13 @@ public fun Intent.putMindboxPushButtonExtras(pushUniqKey: String, pushButtonKey:
 }
 
 /**
- * Adds Mindbox push extras to the Intent.
+ * Adds Mindbox push extras to the [Intent].
  *
  * This extension function adds the unique push key to the Intent extras. This extra is
  * used by the Mindbox SDK to properly identify and handle a push notification clicks that does not
  * include any push buttons.
  *
+ * Note: Use this method before calling setContentIntent.
  * @param pushUniqKey the unique identifier for the push notification.
  */
 public fun Intent.putMindboxPushExtras(pushUniqKey: String) {
