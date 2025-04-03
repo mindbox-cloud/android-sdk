@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk
 
 import android.content.Context
+import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
@@ -177,5 +178,70 @@ internal class ExtensionsTest {
     fun `isUuid returns false when UUID string is too long`() {
         val longUuid = "123e4567-e89b-12d3-a456-426614174000-extra-uuid"
         assertFalse(longUuid.isUuid())
+    }
+
+    @Test
+    fun `putMindboxPushButtonExtras sets both push key and button key`() {
+        val intent = Intent()
+        val pushUniqKey = "testPushKey"
+        val pushButtonKey = "testButtonKey"
+
+        intent.putMindboxPushButtonExtras(pushUniqKey, pushButtonKey)
+
+        assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
+        assertEquals(pushButtonKey, intent.getStringExtra("uniq_push_button_key"))
+    }
+
+    @Test
+    fun `putMindboxPushExtras sets only push key and does not set button key`() {
+        val intent = Intent()
+        val pushUniqKey = "testPushKey"
+
+        intent.putMindboxPushExtras(pushUniqKey)
+
+        assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
+        assertNull("Button key should not be set", intent.getStringExtra("uniq_push_button_key"))
+    }
+
+    @Test
+    fun `getMindboxUniqKeyFromPushIntent returns correct key when present`() {
+        val expectedKey = "testPushKey"
+        val intent = Intent().apply {
+            putExtra("uniq_push_key", expectedKey)
+        }
+
+        val result = getMindboxUniqKeyFromPushIntent(intent)
+
+        assertEquals(expectedKey, result)
+    }
+
+    @Test
+    fun `getMindboxUniqKeyFromPushIntent returns null when key not present`() {
+        val intent = Intent()
+
+        val result = getMindboxUniqKeyFromPushIntent(intent)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `getMindboxUniqPushButtonKeyFromPushIntent returns correct button key when present`() {
+        val expectedButtonKey = "testButtonKey"
+        val intent = Intent().apply {
+            putExtra("uniq_push_button_key", expectedButtonKey)
+        }
+
+        val result = getMindboxUniqPushButtonKeyFromPushIntent(intent)
+
+        assertEquals(expectedButtonKey, result)
+    }
+
+    @Test
+    fun `getMindboxUniqPushButtonKeyFromPushIntent returns null when button key not present`() {
+        val intent = Intent()
+
+        val result = getMindboxUniqPushButtonKeyFromPushIntent(intent)
+
+        assertNull(result)
     }
 }

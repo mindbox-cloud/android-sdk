@@ -491,10 +491,9 @@ public object Mindbox : MindboxLog {
         intent: Intent,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
         MindboxLoggerImpl.d(this, "onPushClicked with intent")
-        PushNotificationManager.getUniqKeyFromPushIntent(intent)
+        getMindboxUniqKeyFromPushIntent(intent)
             ?.let { uniqKey ->
-                val pushButtonUniqKey = PushNotificationManager
-                    .getUniqPushButtonKeyFromPushIntent(intent)
+                val pushButtonUniqKey = getMindboxUniqPushButtonKeyFromPushIntent(intent)
                 onPushClicked(context, uniqKey, pushButtonUniqKey)
                 true
             }

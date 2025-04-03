@@ -509,14 +509,6 @@ internal object PushNotificationManager {
             .build()
     }
 
-    internal fun getUniqKeyFromPushIntent(
-        intent: Intent,
-    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
-
-    internal fun getUniqPushButtonKeyFromPushIntent(
-        intent: Intent,
-    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
-
     internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
 
     internal fun getPayloadFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_PAYLOAD)
