@@ -33,11 +33,11 @@ internal object PushNotificationManager {
 
     private const val EXTRA_NOTIFICATION_ID = "notification_id"
     private const val EXTRA_URL = "push_url"
-    private const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
-    private const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
     private const val EXTRA_PAYLOAD = "push_payload"
-
     private const val MAX_ACTIONS_COUNT = 3
+
+    internal const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
+    internal const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
