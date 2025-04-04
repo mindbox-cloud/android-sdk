@@ -271,7 +271,7 @@ internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? 
  * @param pushUniqKey the unique identifier for the push notification.
  * @param pushButtonKey the unique identifier for the push button.
  */
-public fun Intent.putMindboxPushButtonExtras(pushUniqKey: String, pushButtonKey: String) {
+public fun Intent.putMindboxPushButtonExtras(pushUniqKey: String, pushButtonKey: String?) {
     this.apply {
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushUniqKey)
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
@@ -294,6 +294,6 @@ public fun Intent.putMindboxPushExtras(pushUniqKey: String) {
     }
 }
 
-public fun getMindboxUniqKeyFromPushIntent(intent: Intent): String? = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
+public fun Intent.getMindboxUniqKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
 
-public fun getMindboxUniqPushButtonKeyFromPushIntent(intent: Intent): String? = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
+public fun Intent.getMindboxUniqPushButtonKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)

@@ -193,6 +193,17 @@ internal class ExtensionsTest {
     }
 
     @Test
+    fun `putMindboxPushButtonExtras sets both push key and button key is null`() {
+        val intent = Intent()
+        val pushUniqKey = "testPushKey"
+
+        intent.putMindboxPushButtonExtras(pushUniqKey, null)
+
+        assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
+        assertEquals(null, intent.getStringExtra("uniq_push_button_key"))
+    }
+
+    @Test
     fun `putMindboxPushExtras sets only push key and does not set button key`() {
         val intent = Intent()
         val pushUniqKey = "testPushKey"
@@ -210,7 +221,7 @@ internal class ExtensionsTest {
             putExtra("uniq_push_key", expectedKey)
         }
 
-        val result = getMindboxUniqKeyFromPushIntent(intent)
+        val result = intent.getMindboxUniqKeyFromPushIntent()
 
         assertEquals(expectedKey, result)
     }
@@ -219,7 +230,7 @@ internal class ExtensionsTest {
     fun `getMindboxUniqKeyFromPushIntent returns null when key not present`() {
         val intent = Intent()
 
-        val result = getMindboxUniqKeyFromPushIntent(intent)
+        val result = intent.getMindboxUniqKeyFromPushIntent()
 
         assertNull(result)
     }
@@ -231,7 +242,7 @@ internal class ExtensionsTest {
             putExtra("uniq_push_button_key", expectedButtonKey)
         }
 
-        val result = getMindboxUniqPushButtonKeyFromPushIntent(intent)
+        val result = intent.getMindboxUniqPushButtonKeyFromPushIntent()
 
         assertEquals(expectedButtonKey, result)
     }
@@ -240,7 +251,7 @@ internal class ExtensionsTest {
     fun `getMindboxUniqPushButtonKeyFromPushIntent returns null when button key not present`() {
         val intent = Intent()
 
-        val result = getMindboxUniqPushButtonKeyFromPushIntent(intent)
+        val result = intent.getMindboxUniqPushButtonKeyFromPushIntent()
 
         assertNull(result)
     }

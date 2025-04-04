@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
+import cloud.mindbox.mobile_sdk.putMindboxPushButtonExtras
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.*
 import kotlinx.coroutines.Dispatchers
@@ -688,6 +689,7 @@ internal object PushNotificationManager {
         putExtra(EXTRA_NOTIFICATION_ID, id)
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+        putMindboxPushButtonExtras(pushKey, pushButtonKey)
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
     }
