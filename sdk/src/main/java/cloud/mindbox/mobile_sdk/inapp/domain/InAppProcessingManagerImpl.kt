@@ -124,17 +124,20 @@ internal class InAppProcessingManagerImpl(
     }
 
     override suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType) {
+        var isTargetingErrorOccurred = false
         val data = getTargetingData(triggerEvent)
         runCatching {
             inApp.targeting.fetchTargetingInfo(data)
         }.onFailure { throwable ->
             when (throwable) {
                 is GeoError -> {
+                    isTargetingErrorOccurred = true
                     inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
                     InAppProcessingManagerImpl.mindboxLogE("Error fetching geo", throwable)
                 }
 
                 is CustomerSegmentationError -> {
+                    isTargetingErrorOccurred = true
                     inAppSegmentationRepository.setCustomerSegmentationStatus(
                         CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                     )
@@ -144,6 +147,7 @@ internal class InAppProcessingManagerImpl(
                 else -> InAppProcessingManagerImpl.mindboxLogE("Error fetching segmentation", throwable)
             }
         }
+        if (isTargetingErrorOccurred) return sendTargetedInApp(inApp, triggerEvent)
         if (inApp.targeting.checkTargeting(data)) {
             logI("InApp with id = ${inApp.id} sends targeting by event $triggerEvent")
             inAppRepository.sendUserTargeted(inAppId = inApp.id)
