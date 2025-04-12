@@ -33,7 +33,9 @@
         }
     };
 
-    console.log("Mobile SDK version:" + sdkVersion());
+    console.log("Mobile SDK version: " + sdkVersion());
+    console.log("Mobile UUID: " + deviceUuid());
+    console.log("Mobile endpointId: " + endpointId());
     window.mindbox = (method, callback) => {
          switch (method) {
            case 'helpers.getEndpointId':
@@ -44,19 +46,19 @@
          }
        };
        window.mindbox.quizzes = {queue:[]};
-       (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static-staging.mindbox.ru/quizzes/quizzes.js","752","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-staging.mindbox.ru"});
+       (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static.mindbox.ru/quizzes/stable/quizzes.js","898","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-stable.mindbox.ru"});
      })();
 
     (function() {
         var oldFetch = window.fetch;
         window.fetch = function(input, init) {
-            if (input == 'https://quizzes-staging.mindbox.ru/api/v0/actions'
+            if (input == 'https://quizzes-stable.mindbox.ru/api/v0/actions'
                     && init && init.method === 'POST' && init.body) {
                 console.log('action ' + input + ' ' + init.body);
                 data = JSON.parse(init.body)
                 sendToSdk(data.action, data.screen);
             }
-            if (input == 'https://quizzes-staging.mindbox.ru/api/v0/init'
+            if (input == 'https://quizzes-stable.mindbox.ru/api/v0/init'
                     && init && init.method === 'POST' && init.body) {
                 return oldFetch.apply(this, arguments)
                         .then(response => {

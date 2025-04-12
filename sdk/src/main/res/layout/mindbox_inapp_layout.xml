@@ -6,4 +6,5 @@
     android:layout_height="match_parent"
     android:clipChildren="false"
     android:focusable="true"
+    android:fitsSystemWindows="true"
     android:focusableInTouchMode="true"/>

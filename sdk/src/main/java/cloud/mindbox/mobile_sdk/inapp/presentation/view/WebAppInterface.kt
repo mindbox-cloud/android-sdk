@@ -12,7 +12,7 @@ internal class WebAppInterface(val onAction: (String, String) -> Unit) {
     fun sdkVersion(): String = Mindbox.getSdkVersion()
 
     @JavascriptInterface
-    fun endpointId(): String = "Test-staging.mobile-sdk-test-staging.mindbox.ru"
+    fun endpointId(): String = "holodilnik-android"
 
     @JavascriptInterface
     fun deviceUuid(): String = MindboxPreferences.deviceUuid

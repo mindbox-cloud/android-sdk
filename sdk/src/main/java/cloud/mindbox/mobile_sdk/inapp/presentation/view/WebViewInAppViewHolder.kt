@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -15,7 +14,6 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.Request
 import com.android.volley.RequestQueue
@@ -93,6 +91,7 @@ internal class WebViewInAppViewHolder(
             settings.displayZoomControls = false
             settings.defaultTextEncodingName = "utf-8"
             settings.cacheMode = WebSettings.LOAD_DEFAULT
+            settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
             setBackgroundColor(Color.TRANSPARENT)
         }
     }
@@ -155,13 +154,23 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun initView(currentRoot: ViewGroup) {
-        currentRoot.removeChildById(R.id.inapp_background_layout)
+        // currentRoot.removeChildById(R.id.inapp_background_layout)
         super.initView(currentRoot)
     }
 
     override fun hide() {
         currentDialog.removeView(webView)
         super.hide()
+    }
+
+    private fun onDestroy() {
+        // Clean up WebView resources
+        webView?.apply {
+            stopLoading()
+            removeAllViews()
+            destroy()
+            webView = null
+        }
     }
 
     private interface WebViewAction {
@@ -195,7 +204,7 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    internal class InAppWebClient() : WebViewClient() {
+    internal class InAppWebClient : WebViewClient() {
         override fun onReceivedError(
             view: WebView?,
             request: WebResourceRequest?,

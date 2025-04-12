@@ -65,8 +65,6 @@ internal data class BackgroundDto(
             val baseUrl: String?,
             @SerializedName("contentUrl")
             val contentUrl: String?,
-            @SerializedName("additionalScripts")
-            val additionalScripts: String,
             @SerializedName("${"$"}type")
             val type: String?
         ) : LayerDto() {
