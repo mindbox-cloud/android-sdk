@@ -114,7 +114,6 @@ internal class InAppMapper {
                     Layer.WebViewLayer(
                         baseUrl = layerDto.baseUrl,
                         contentUrl = layerDto.contentUrl,
-                        additionalScripts = layerDto.additionalScripts
                     )
                 }
 
