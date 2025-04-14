@@ -59,9 +59,8 @@ internal class InAppSegmentationRepositoryImpl(
             configuration,
             segmentationCheckRequest
         )
-        val productId = "${product.first}:${product.second}"
-        sessionStorageManager.inAppProductSegmentations[productId] =
-            sessionStorageManager.inAppProductSegmentations.getOrElse(productId) {
+        sessionStorageManager.inAppProductSegmentations[product] =
+            sessionStorageManager.inAppProductSegmentations.getOrElse(product) {
                 mutableSetOf<ProductSegmentationResponseWrapper>().apply {
                     add(
                         inAppMapper.mapToProductSegmentationResponse(
@@ -70,12 +69,12 @@ internal class InAppSegmentationRepositoryImpl(
                     )
                 }
             }
-        sessionStorageManager.processedProductSegmentations[productId] =
+        sessionStorageManager.processedProductSegmentations[product] =
             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
     override fun getProductSegmentations(
-        productId: String,
+        productId: Pair<String, String>,
     ): Set<ProductSegmentationResponseWrapper?> {
         return LoggingExceptionHandler.runCatching(emptySet()) {
             sessionStorageManager.inAppProductSegmentations[productId] ?: emptySet()
@@ -92,7 +91,7 @@ internal class InAppSegmentationRepositoryImpl(
         }
     }
 
-    override fun getProductSegmentationFetched(productId: String): ProductSegmentationFetchStatus {
+    override fun getProductSegmentationFetched(productId: Pair<String, String>): ProductSegmentationFetchStatus {
         return LoggingExceptionHandler.runCatching(ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR) {
             sessionStorageManager.processedProductSegmentations[productId] ?: ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         }

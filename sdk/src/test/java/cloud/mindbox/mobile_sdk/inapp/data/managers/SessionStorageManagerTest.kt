@@ -108,8 +108,8 @@ class SessionStorageManagerTest {
             isInAppMessageShown = true
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
-            processedProductSegmentations["test"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-            inAppProductSegmentations["test"] = setOf(mockk())
+            processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            inAppProductSegmentations["testSystem" to "testValue"] = setOf(mockk())
             currentSessionInApps = listOf(mockk())
             shownInAppIdsWithEvents["event"] = mutableSetOf(1, 2, 3)
             configFetchingError = true

@@ -18,9 +18,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-    var inAppProductSegmentations: HashMap<String, Set<ProductSegmentationResponseWrapper>> =
+    var inAppProductSegmentations: HashMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
-    var processedProductSegmentations: HashMap<String, ProductSegmentationFetchStatus> = HashMap()
+    var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = mutableMapOf()
     var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false

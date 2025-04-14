@@ -160,11 +160,11 @@ class InAppSegmentationRepositoryTest {
             )
         )
         every {
-            sessionStorageManager.inAppProductSegmentations["testId"]
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
         } answers {
             expectedResult
         }
-        assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testId"))
+        assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue"))
     }
 
     @Test
@@ -176,7 +176,7 @@ class InAppSegmentationRepositoryTest {
         }
         assertEquals(
             emptySet<Set<ProductSegmentationResponseWrapper>>(),
-            inAppSegmentationRepository.getProductSegmentations("testId1")
+            inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue")
         )
     }
 
@@ -204,15 +204,15 @@ class InAppSegmentationRepositoryTest {
         }
         val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
         every {
-            inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+            inAppMapper.mapToProductSegmentationCheckRequest("testSystem" to "testValue", listOf())
         } returns dtoResult
         every {
-            sessionStorageManager.processedProductSegmentations["test1:test2"]
+            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"]
         } answers {
             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         }
         every {
-            sessionStorageManager.processedProductSegmentations["test1:test2"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         } just runs
         coEvery {
             gatewayManager.checkProductSegmentation(any(), any())
@@ -224,22 +224,22 @@ class InAppSegmentationRepositoryTest {
             sessionStorageManager.inAppProductSegmentations = any()
         } just runs
         every {
-            sessionStorageManager.inAppProductSegmentations["test1:test2"]
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
         } answers {
             setOf(expectedResult)
         }
         every {
-            sessionStorageManager.inAppProductSegmentations["test1:test2"] = setOf(expectedResult)
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"] = setOf(expectedResult)
         } just runs
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
                 emit(configuration)
             }
         }
-        inAppSegmentationRepository.fetchProductSegmentation("test1" to "test2")
+        inAppSegmentationRepository.fetchProductSegmentation("testSystem" to "testValue")
         assertEquals(
             expectedResult,
-            sessionStorageManager.inAppProductSegmentations["test1:test2"]?.firstOrNull()
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]?.firstOrNull()
         )
     }
 

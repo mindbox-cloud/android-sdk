@@ -96,7 +96,7 @@ class ViewProductSegmentNodeTest {
             }""".trimIndent()
 
         every {
-            mockkInAppSegmentationRepository.getProductSegmentations("website:ProductRandomName")
+            mockkInAppSegmentationRepository.getProductSegmentations("website" to "ProductRandomName")
         } returns productSegmentation
 
         val stub = InAppStub.viewProductSegmentNode.copy(
@@ -141,7 +141,7 @@ class ViewProductSegmentNodeTest {
             }""".trimIndent()
 
         every {
-            mockkInAppSegmentationRepository.getProductSegmentations("website:ProductRandomName")
+            mockkInAppSegmentationRepository.getProductSegmentations("website" to "ProductRandomName")
         } returns productSegmentation
 
         val stub = InAppStub.viewProductSegmentNode.copy(
@@ -186,7 +186,7 @@ class ViewProductSegmentNodeTest {
             }""".trimIndent()
 
         every {
-            mockkInAppSegmentationRepository.getProductSegmentations("website:ProductRandomName")
+            mockkInAppSegmentationRepository.getProductSegmentations("website" to "ProductRandomName")
         } returns productSegmentation
 
         val stub = InAppStub.viewProductSegmentNode.copy(
@@ -231,7 +231,7 @@ class ViewProductSegmentNodeTest {
             }""".trimIndent()
 
         every {
-            mockkInAppSegmentationRepository.getProductSegmentations("website:ProductRandomName")
+            mockkInAppSegmentationRepository.getProductSegmentations("website" to "ProductRandomName")
         } returns productSegmentation
 
         val stub = InAppStub.viewProductSegmentNode.copy(
@@ -255,14 +255,14 @@ class ViewProductSegmentNodeTest {
 
     @Test
     fun `fetchTargetingInfo should only fetch segmentation for unprocessed or error products`() = runTest {
-        val processedProducts = hashMapOf(
-            "website:successProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
-            "website:errorProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        val processedProducts = mutableMapOf(
+            "website" to "successProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
+            "website" to "errorProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         )
         every { sessionStorageManager.processedProductSegmentations } returns processedProducts
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website:successProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website:errorProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website:newProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "successProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "errorProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "newProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
 
         val successProductBody = """{
             "viewProduct": {

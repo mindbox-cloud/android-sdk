@@ -20,18 +20,18 @@ internal data class ViewProductSegmentNode(
         if (data !is TargetingData.OperationBody) return
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
         body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.also { entry ->
-            if (entry.value.isNullOrBlank()) return
-            val productId = "${entry.key}:${entry.value!!}"
-            if (inAppSegmentationRepository.getProductSegmentationFetched(productId) != ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) {
+            val value = entry.value?.takeIf { it.isNotBlank() } ?: return
+            val product = entry.key to value
+            if (inAppSegmentationRepository.getProductSegmentationFetched(product) != ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) {
                 runCatching {
                     inAppSegmentationRepository.fetchProductSegmentation(
-                        entry.key to entry.value!!
+                        product
                     )
                 }.onFailure { error ->
                     if (error is ProductSegmentationError) {
-                        sessionStorageManager.processedProductSegmentations[productId] =
+                        sessionStorageManager.processedProductSegmentations[product] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-                        mindboxLogE("Error fetching product segmentations for product $productId")
+                        mindboxLogE("Error fetching product segmentations for product $product")
                     }
                 }
             }
@@ -43,8 +43,9 @@ internal data class ViewProductSegmentNode(
 
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
         val entry = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull() ?: return false
-        val productId = "${entry.key}:${entry.value}"
-        val segmentationsResult = inAppSegmentationRepository.getProductSegmentations(productId).flatMap {
+        val value = entry.value?.takeIf { it.isNotBlank() } ?: return false
+        val product = entry.key to value
+        val segmentationsResult = inAppSegmentationRepository.getProductSegmentations(product).flatMap {
             it?.productSegmentations?.firstOrNull()?.productList ?: emptyList()
         }
         if (segmentationsResult.isEmpty()) return false
