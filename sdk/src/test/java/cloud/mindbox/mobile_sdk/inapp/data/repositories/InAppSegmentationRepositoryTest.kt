@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckWrapper
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -14,17 +15,14 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class InAppSegmentationRepositoryTest {
 
     @get:Rule
@@ -209,7 +207,12 @@ class InAppSegmentationRepositoryTest {
             inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
         } returns dtoResult
         every {
-            sessionStorageManager.productSegmentationFetchStatus = any()
+            sessionStorageManager.processedProductSegmentations["test1:test2"]
+        } answers {
+            ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        every {
+            sessionStorageManager.processedProductSegmentations["test1:test2"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         } just runs
         coEvery {
             gatewayManager.checkProductSegmentation(any(), any())
@@ -221,12 +224,12 @@ class InAppSegmentationRepositoryTest {
             sessionStorageManager.inAppProductSegmentations = any()
         } just runs
         every {
-            sessionStorageManager.inAppProductSegmentations["test2"]
+            sessionStorageManager.inAppProductSegmentations["test1:test2"]
         } answers {
             setOf(expectedResult)
         }
         every {
-            sessionStorageManager.inAppProductSegmentations["test2"] = setOf(expectedResult)
+            sessionStorageManager.inAppProductSegmentations["test1:test2"] = setOf(expectedResult)
         } just runs
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
@@ -236,7 +239,7 @@ class InAppSegmentationRepositoryTest {
         inAppSegmentationRepository.fetchProductSegmentation("test1" to "test2")
         assertEquals(
             expectedResult,
-            sessionStorageManager.inAppProductSegmentations["test2"]?.firstOrNull()
+            sessionStorageManager.inAppProductSegmentations["test1:test2"]?.firstOrNull()
         )
     }
 

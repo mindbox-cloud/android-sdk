@@ -24,7 +24,6 @@ internal fun DomainModule(
         InAppInteractorImpl(
             mobileConfigRepository = mobileConfigRepository,
             inAppRepository = inAppRepository,
-            inAppSegmentationRepository = inAppSegmentationRepository,
             inAppFilteringManager = inAppFilteringManager,
             inAppEventManager = inAppEventManager,
             inAppProcessingManager = inAppProcessingManager,

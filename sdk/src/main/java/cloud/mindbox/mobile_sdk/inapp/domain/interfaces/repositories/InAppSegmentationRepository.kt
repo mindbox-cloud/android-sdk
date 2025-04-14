@@ -17,9 +17,7 @@ internal interface InAppSegmentationRepository {
 
     fun getCustomerSegmentationFetched(): CustomerSegmentationFetchStatus
 
-    fun getProductSegmentationFetched(): ProductSegmentationFetchStatus
-
-    fun setProductSegmentationFetchStatus(status: ProductSegmentationFetchStatus)
+    fun getProductSegmentationFetched(productId: String): ProductSegmentationFetchStatus
 
     fun getCustomerSegmentations(): List<CustomerSegmentationInApp>
 }

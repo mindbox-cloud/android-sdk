@@ -14,23 +14,24 @@ internal data class ViewProductSegmentNode(
     private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
     private val inAppSegmentationRepository by mindboxInject { inAppSegmentationRepository }
     private val gson by mindboxInject { gson }
+    private val sessionStorageManager by mindboxInject { sessionStorageManager }
 
     override suspend fun fetchTargetingInfo(data: TargetingData) {
         if (data !is TargetingData.OperationBody) return
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
         body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.also { entry ->
             if (entry.value.isNullOrBlank()) return
-            if (inAppSegmentationRepository.getProductSegmentationFetched() == ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
+            val productId = "${entry.key}:${entry.value!!}"
+            if (inAppSegmentationRepository.getProductSegmentationFetched(productId) != ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS) {
                 runCatching {
                     inAppSegmentationRepository.fetchProductSegmentation(
                         entry.key to entry.value!!
                     )
                 }.onFailure { error ->
                     if (error is ProductSegmentationError) {
-                        inAppSegmentationRepository.setProductSegmentationFetchStatus(
+                        sessionStorageManager.processedProductSegmentations[productId] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-                        )
-                        mindboxLogE("Error fetching product segmentations")
+                        mindboxLogE("Error fetching product segmentations for product $productId")
                     }
                 }
             }
@@ -41,9 +42,9 @@ internal data class ViewProductSegmentNode(
         if (data !is TargetingData.OperationBody) return false
 
         val body = gson.fromJson(data.operationBody, OperationBodyRequest::class.java)
-        val id = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull()?.value
-            ?: return false
-        val segmentationsResult = inAppSegmentationRepository.getProductSegmentations(id).flatMap {
+        val entry = body?.viewProductRequest?.product?.ids?.ids?.entries?.firstOrNull() ?: return false
+        val productId = "${entry.key}:${entry.value}"
+        val segmentationsResult = inAppSegmentationRepository.getProductSegmentations(productId).flatMap {
             it?.productSegmentations?.firstOrNull()?.productList ?: emptyList()
         }
         if (segmentationsResult.isEmpty()) return false

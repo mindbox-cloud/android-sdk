@@ -18,10 +18,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-    var productSegmentationFetchStatus: ProductSegmentationFetchStatus =
-        ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var inAppProductSegmentations: HashMap<String, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
+    var processedProductSegmentations: HashMap<String, ProductSegmentationFetchStatus> = HashMap()
     var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
@@ -65,8 +64,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         isInAppMessageShown = false
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-        productSegmentationFetchStatus = ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         inAppProductSegmentations.clear()
+        processedProductSegmentations.clear()
         currentSessionInApps = emptyList()
         shownInAppIdsWithEvents.clear()
         configFetchingError = false
