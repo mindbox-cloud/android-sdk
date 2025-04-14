@@ -408,7 +408,7 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `send inapptargeting for or node when product segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
@@ -452,7 +452,7 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `not send inapptargeting when product segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = spyk(InAppStub.getTargetingViewProductSegmentNode().copy(kind = Kind.NEGATIVE)) {

@@ -59,8 +59,8 @@ internal class InAppSegmentationRepositoryImpl(
             configuration,
             segmentationCheckRequest
         )
-        sessionStorageManager.inAppProductSegmentations[product.second] =
-            sessionStorageManager.inAppProductSegmentations.getOrElse(product.second) {
+        sessionStorageManager.inAppProductSegmentations[product] =
+            sessionStorageManager.inAppProductSegmentations.getOrElse(product) {
                 mutableSetOf<ProductSegmentationResponseWrapper>().apply {
                     add(
                         inAppMapper.mapToProductSegmentationResponse(
@@ -69,12 +69,12 @@ internal class InAppSegmentationRepositoryImpl(
                     )
                 }
             }
-        sessionStorageManager.productSegmentationFetchStatus =
+        sessionStorageManager.processedProductSegmentations[product] =
             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
     override fun getProductSegmentations(
-        productId: String,
+        productId: Pair<String, String>,
     ): Set<ProductSegmentationResponseWrapper?> {
         return LoggingExceptionHandler.runCatching(emptySet()) {
             sessionStorageManager.inAppProductSegmentations[productId] ?: emptySet()
@@ -91,14 +91,10 @@ internal class InAppSegmentationRepositoryImpl(
         }
     }
 
-    override fun getProductSegmentationFetched(): ProductSegmentationFetchStatus {
+    override fun getProductSegmentationFetched(productId: Pair<String, String>): ProductSegmentationFetchStatus {
         return LoggingExceptionHandler.runCatching(ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR) {
-            sessionStorageManager.productSegmentationFetchStatus
+            sessionStorageManager.processedProductSegmentations[productId] ?: ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         }
-    }
-
-    override fun setProductSegmentationFetchStatus(status: ProductSegmentationFetchStatus) {
-        sessionStorageManager.productSegmentationFetchStatus = status
     }
 
     override fun getCustomerSegmentations(): List<CustomerSegmentationInApp> {

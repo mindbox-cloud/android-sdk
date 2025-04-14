@@ -11,15 +11,13 @@ internal interface InAppSegmentationRepository {
 
     suspend fun fetchProductSegmentation(product: Pair<String, String>)
 
-    fun getProductSegmentations(productId: String): Set<ProductSegmentationResponseWrapper?>
+    fun getProductSegmentations(productId: Pair<String, String>): Set<ProductSegmentationResponseWrapper?>
 
     fun setCustomerSegmentationStatus(status: CustomerSegmentationFetchStatus)
 
     fun getCustomerSegmentationFetched(): CustomerSegmentationFetchStatus
 
-    fun getProductSegmentationFetched(): ProductSegmentationFetchStatus
-
-    fun setProductSegmentationFetchStatus(status: ProductSegmentationFetchStatus)
+    fun getProductSegmentationFetched(productId: Pair<String, String>): ProductSegmentationFetchStatus
 
     fun getCustomerSegmentations(): List<CustomerSegmentationInApp>
 }
