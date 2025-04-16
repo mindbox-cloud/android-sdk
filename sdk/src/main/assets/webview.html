@@ -1,13 +1,13 @@
 <html lang="ru">
 <head>
-    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Сайт для тестирования квизов</title>
+    <title>Mobile quizzes page</title>
+    <link rel="icon" href="data:,">
 </head>
 <body color="transparent">
 <div id="qz-target"></div>
-</body>
 <script>
     function deviceUuid() {
         if (!window.webkit) { return SDK.deviceUuid(); } else { return deviceUuidIos(); }
@@ -33,9 +33,7 @@
         }
     };
 
-    console.log("Mobile SDK version: " + sdkVersion());
-    console.log("Mobile UUID: " + deviceUuid());
-    console.log("Mobile endpointId: " + endpointId());
+    console.log("Mobile SDK version:" + sdkVersion());
     window.mindbox = (method, callback) => {
          switch (method) {
            case 'helpers.getEndpointId':
@@ -49,6 +47,7 @@
        (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static.mindbox.ru/quizzes/stable/quizzes.js","898","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-stable.mindbox.ru"});
      })();
 
+     // catch quizzes events
     (function() {
         var oldFetch = window.fetch;
         window.fetch = function(input, init) {
@@ -81,5 +80,11 @@
             return oldFetch.apply(this, arguments);
         };
     })();
+
+    // fix scroll
+    document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+    }, { passive: false });
 </script>
+</body>
 </html>
