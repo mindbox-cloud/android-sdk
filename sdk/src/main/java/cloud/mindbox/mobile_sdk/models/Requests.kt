@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.models
 
-import android.os.Build
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -34,7 +33,7 @@ internal data class MindboxRequest(
         private const val HEADER_ACCEPT = "Accept"
 
         private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
-        private const val VALUE_USER_AGENT =
+        internal const val VALUE_USER_AGENT =
             "mindbox.sdk/%1$1s (Android %2$1s; %3$1s; %4$1s) %5$1s/%6$1s(%7$1s)" // format: mindbox.sdk/{sdk.version} (Android {os_version}; {vendor}; {model}) {host_app_name}/{host_app_version}
         private const val VALUE_INTEGRATION = "Android-SDK"
         private const val VALUE_ACCEPT = "application/json"
@@ -48,16 +47,7 @@ internal data class MindboxRequest(
 
         LoggingExceptionHandler.runCatching {
             params[HEADER_CONTENT_TYPE] = VALUE_CONTENT_TYPE
-            params[HEADER_USER_AGENT] = String.format(
-                VALUE_USER_AGENT,
-                BuildConfig.VERSION_NAME,
-                Build.VERSION.RELEASE,
-                Build.MANUFACTURER,
-                Build.MODEL,
-                configuration.packageName,
-                configuration.versionName,
-                configuration.versionCode,
-            )
+            params[HEADER_USER_AGENT] = configuration.getUserAgent()
             params[HEADER_INTEGRATION] = VALUE_INTEGRATION
             params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
             params[HEADER_ACCEPT] = VALUE_ACCEPT
