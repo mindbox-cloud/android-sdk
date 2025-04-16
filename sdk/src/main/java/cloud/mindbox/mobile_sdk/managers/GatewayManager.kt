@@ -409,59 +409,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     configuration = configuration,
                     jsonRequest = null,
                     listener = { response ->
-                        continuation.resume(
-                            """
-                               {
-                                 "inapps": [
-                                   {
-                                     "id": "fb007071-44a0-4957-99c4-88f01f549aff",
-                                     "sdkVersion": {
-                                       "min": 8,
-                                       "max": null
-                                     },
-                                     "frequency": {
-                                       "kind": "session",
-                                       "${'$'}type": "once"
-                                     },
-                                     "targeting": {
-                                       "nodes": [
-                                         {
-                                           "${'$'}type": "true"
-                                         }
-                                       ],
-                                       "${'$'}type": "and"
-                                     },
-                                     "form": {
-                                       "variants": [
-                                         {
-                                           "content": {
-                                             "background": {
-                                               "layers": [
-                                                 {
-                                                   "baseUrl": "https://inapp.local/quiz_app_csat/",
-                                                   "contentUrl": "https://api-staging.mindbox.ru/mobile/byendpoint/webview.html",
-                                                   "${'$'}type": "webview"
-                                                 }
-                                               ]
-                                             }
-                                           },
-                                           "${'$'}type": "webview"
-                                         }
-                                       ]
-                                     }
-                                   }
-                                 ],
-                                 "settings": {
-                                   "ttl": {
-                                     "inapps": "1.00:00:00"
-                                   },
-                                   "slidingExpiration": {
-                                     "config": "00:30:00"
-                                   }
-                                 }
-                               }
-                            """.trimIndent()
-                        )
+                        continuation.resume(response.toString())
                     },
                     errorsListener = { error ->
                         continuation.resumeWithException(error)
