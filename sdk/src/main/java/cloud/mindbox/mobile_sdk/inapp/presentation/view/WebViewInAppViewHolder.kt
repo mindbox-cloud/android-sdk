@@ -17,14 +17,17 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import java.util.Timer
 import kotlin.concurrent.timer
@@ -54,13 +57,10 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun createWebView(layer: Layer.WebViewLayer): WebView {
-        mindboxLogI("WEBVIEW Create webview")
-        return WebView(currentDialog.context).apply {
-            webViewClient = InAppWebClient()
+    private fun addJavascriptInterface(layer: Layer.WebViewLayer, configuration: Configuration) {
+        webView.get()?.apply {
             addJavascriptInterface(
-                WebAppInterface { action, data ->
+                WebAppInterface(configuration = configuration) { action, data ->
                     handleWebViewAction(action, data, object : WebViewAction {
 
                         override fun onInit() {
@@ -87,6 +87,15 @@ internal class WebViewInAppViewHolder(
                 },
                 "SDK"
             )
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun createWebView(layer: Layer.WebViewLayer): WebView {
+        mindboxLogI("WEBVIEW Create webview")
+        return WebView(currentDialog.context).apply {
+            webViewClient = InAppWebClient()
+
             layoutParams = RelativeLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -111,6 +120,9 @@ internal class WebViewInAppViewHolder(
             })
             Mindbox.mindboxScope.launch {
                 val configuration = DbManager.listenConfigurations().first()
+                withContext(Dispatchers.Main) {
+                    addJavascriptInterface(layer, configuration)
+                }
 
                 webView.get()?.post({
                     webView.get()?.settings?.userAgentString += " " + configuration.getShortUserAgent()
