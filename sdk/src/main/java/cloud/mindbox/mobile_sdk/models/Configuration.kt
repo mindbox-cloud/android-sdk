@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk.models
 
+import android.os.Build
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.MindboxConfiguration
 import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
 
@@ -30,4 +32,21 @@ internal data class Configuration(
         subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated,
         shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer
     )
+}
+
+internal fun Configuration.getUserAgent(): String {
+    return String.format(
+        MindboxRequest.VALUE_USER_AGENT,
+        BuildConfig.VERSION_NAME,
+        Build.VERSION.RELEASE,
+        Build.MANUFACTURER,
+        Build.MODEL,
+        packageName,
+        versionName,
+        versionCode,
+    )
+}
+
+internal fun Configuration.getShortUserAgent(): String {
+    return "$packageName/$versionName($versionCode) mindbox.sdk/${BuildConfig.VERSION_NAME} "
 }
