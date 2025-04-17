@@ -59,5 +59,18 @@ internal data class BackgroundDto(
                 }
             }
         }
+
+        internal data class WebViewLayerDto(
+            @SerializedName("baseUrl")
+            val baseUrl: String?,
+            @SerializedName("contentUrl")
+            val contentUrl: String?,
+            @SerializedName("${"$"}type")
+            val type: String?
+        ) : LayerDto() {
+            internal companion object {
+                const val WEBVIEW_TYPE_JSON_NAME = "webview"
+            }
+        }
     }
 }
