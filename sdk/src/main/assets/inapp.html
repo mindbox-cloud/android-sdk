@@ -11,29 +11,59 @@
 <script>
     const p=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);class l{constructor(s){this.transport=s}onMessage(s,r){const a=t=>{if("command"in t&&t.command===s){const d={resolve:n=>{const e={id:t.id,ts:Date.now(),status:"success",data:n};this.transport.postMessage(e)},reject:n=>{const e={id:t.id,ts:Date.now(),status:"error",error:n};this.transport.postMessage(e)}};r(t.payload,d)}},i=this.transport.addListener(a);return{remove:()=>i.remove()}}sendMessage(s,r,a){const{needResponse:i=!1}=a,t={id:p(),ts:Date.now(),command:s,payload:r};if(!i){this.transport.postMessage(t);return}return new Promise((d,n)=>{let e;const h=o=>{!("command"in o)&&o.id===t.id&&(o.status==="success"?d(o.data):n(o.error),e==null||e.remove())};e=this.transport.addListener(h),this.transport.postMessage(t)})}}class u{constructor(){this.handlers=[]}postMessage(s){this.handlers.forEach(r=>{r(s)})}addListener(s){return this.handlers.push(s),{remove:()=>{this.handlers=this.handlers.filter(r=>r!==s)}}}}const m=new u;window.sdkBridge=new l(m);
 
+    function deviceUuid() {
+        if (!window.webkit) { return SdkBridge.receiveParam('deviceUuid'); } else { return deviceUuidIos(); }
+    };
+
+    function endpointId() {
+        if (!window.webkit) { return SdkBridge.receiveParam('endpointId'); } else { return endpointIdIos(); }
+    };
+
+    function sdkVersion() {
+        if (!window.webkit) { return SdkBridge.receiveParam('sdkVersion'); } else { return sdkVersionIos(); }
+    };
+
+    function wizardId() {
+        if (!window.webkit) { return SdkBridge.receiveParam('wizardId'); } else { return wizardIdIos(); }
+    };
+
+    function sendToSdk(action, data) {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.SdkBridge) {
+            let message = {
+                "data":data,
+                "action":action
+            };
+            window.webkit.messageHandlers.SdkBridge.postMessage(message);
+        } else {
+            SdkBridge.postMessage(action, data);
+        }
+    };
+
+    console.log("Mobile SDK version:" + sdkVersion());
     window.sdkBridge.onMessage('quizzes.ready', () => {
       window.sdkBridge.sendMessage('quizzes.init', {
-        wizardId: '1000d843-2cd4-48f6-9743-64e6617b7a95',
-        endpointId: 'test-site-staging.mindbox.ru',
-        deviceUUID: 'a66a7e95-a22c-4edc-8a30-c4cd3249cb53',
+        wizardId: wizardId(),
+        endpointId: endpointId(),
+        deviceUUID: deviceUuid()
       }, { needResponse: false });
 
       window.sdkBridge.onMessage('quizzes.closed', () => {
         console.log('quizzes.closed called!')
-        SDK.postMessage('close', 'final');
+        sendToSdk('close', 'final');
       });
 
       const checkReadyToShow = async () => window.sdkBridge.sendMessage('quizzes.checkReadyToShow', {}, { needResponse: true });
       checkReadyToShow().then((data) => {
-        SDK.postMessage('init', 'quiz');
+        sendToSdk('init', 'quiz');
         console.log('quizzes.checkReadyToShow respond received!')
       }).catch((error) => {
+        sendToSdk('close', 'init');
         console.log('quizzes.checkReadyToShow respond error!', error)
       })
     });
 </script>
 <script>
-    (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static-staging.mindbox.ru/quizzes/quizzes.js","dummy","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-staging.mindbox.ru"});})();
+    (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static.mindbox.ru/quizzes/stable/quizzes.js","dummy","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-stable.mindbox.ru"});})();
 </script>
 </body>
 </html>
