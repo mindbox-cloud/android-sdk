@@ -48,5 +48,5 @@ internal fun Configuration.getUserAgent(): String {
 }
 
 internal fun Configuration.getShortUserAgent(): String {
-    return "$packageName/$versionName($versionCode) mindbox.sdk/${BuildConfig.VERSION_NAME} "
+    return "$packageName/$versionName-$versionCode mindbox.sdk/${BuildConfig.VERSION_NAME} "
 }
