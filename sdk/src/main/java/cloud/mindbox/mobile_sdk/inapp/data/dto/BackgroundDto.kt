@@ -65,8 +65,14 @@ internal data class BackgroundDto(
             val baseUrl: String?,
             @SerializedName("contentUrl")
             val contentUrl: String?,
+            @SerializedName("redirectUrl")
+            val redirectUrl: String?,
+            @SerializedName("wizardId")
+            val wizardId: String?,
+            @SerializedName("payload")
+            val payload: String?,
             @SerializedName("${"$"}type")
-            val type: String?
+            val type: String?,
         ) : LayerDto() {
             internal companion object {
                 const val WEBVIEW_TYPE_JSON_NAME = "webview"
