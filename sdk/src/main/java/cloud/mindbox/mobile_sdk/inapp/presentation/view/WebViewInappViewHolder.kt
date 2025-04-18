@@ -171,11 +171,16 @@ internal class WebViewInAppViewHolder(
             }
         }
         webView.get()?.let { webView ->
+            // Remove the old webview if it not hidden on previous activity
+            if (webView.isAttachedToWindow) {
+                (webView.parent as ViewGroup).removeView(webView)
+            }
             currentDialog.addView(webView)
         } ?: onDestroy()
     }
 
     override fun show(currentRoot: MindboxView) {
+        mindboxLogI("MYDEBUG show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         super.show(currentRoot)
         mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
@@ -194,6 +199,7 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun hide() {
+        mindboxLogI("MYDEBUG hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         // Clean up timeout when hiding
         closeInappTimer?.cancel()
         closeInappTimer = null
