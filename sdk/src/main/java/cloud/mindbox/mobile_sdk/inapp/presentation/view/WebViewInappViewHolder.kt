@@ -41,7 +41,7 @@ internal class WebViewInAppViewHolder(
     companion object {
         @SuppressLint("StaticFieldLeak")
         private var webView: WeakReference<WebView> = WeakReference(null)
-        private const val INIT_TIMEOUT_MS = 7000L
+        private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
     }
 
