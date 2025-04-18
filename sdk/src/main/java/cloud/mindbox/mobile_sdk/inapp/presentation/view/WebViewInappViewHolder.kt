@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -156,13 +157,13 @@ internal class WebViewInAppViewHolder(
                             action = {
                                 webView.get()?.post {
                                     mindboxLogI("WebView time out to init " + Stopwatch.stop(TIMER))
-                                    hide()
+                                    onDestroy()
                                 }
                             },
                         )
                     },
                     { _ ->
-                        hide()
+                        onDestroy()
                     }
                 )
 
@@ -171,7 +172,7 @@ internal class WebViewInAppViewHolder(
         }
         webView.get()?.let { webView ->
             currentDialog.addView(webView)
-        } ?: hide()
+        } ?: onDestroy()
     }
 
     override fun show(currentRoot: MindboxView) {
@@ -210,6 +211,7 @@ internal class WebViewInAppViewHolder(
             destroy()
             webView.clear()
         }
+        MindboxDI.appModule.inAppMessageViewDisplayer.hideCurrentInApp()
     }
 
     private interface WebViewAction {
