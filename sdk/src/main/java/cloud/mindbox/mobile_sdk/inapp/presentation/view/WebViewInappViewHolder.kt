@@ -41,7 +41,7 @@ internal class WebViewInAppViewHolder(
     companion object {
         @SuppressLint("StaticFieldLeak")
         private var webView: WeakReference<WebView> = WeakReference(null)
-        private const val INIT_TIMEOUT_MS = 7000L
+        private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
     }
 
@@ -171,6 +171,10 @@ internal class WebViewInAppViewHolder(
             }
         }
         webView.get()?.let { webView ->
+            // Remove the old webview if it not hidden on previous activity
+            if (webView.isAttachedToWindow) {
+                (webView.parent as ViewGroup).removeView(webView)
+            }
             currentDialog.addView(webView)
         } ?: onDestroy()
     }
