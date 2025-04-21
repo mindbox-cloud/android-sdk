@@ -8,7 +8,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
-internal class IdsAdapter : TypeAdapter<Ids?>() {
+class IdsAdapter : TypeAdapter<Ids?>() {
 
     private val gson by lazy { Gson() }
 

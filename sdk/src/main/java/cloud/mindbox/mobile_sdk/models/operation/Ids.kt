@@ -5,30 +5,30 @@ import com.google.gson.annotations.JsonAdapter
 import androidx.core.util.Pair as AndroidXPair
 
 @JsonAdapter(IdsAdapter::class)
-public class Ids(public val ids: Map<String, String?>) {
+class Ids(val ids: Map<String, String?>) {
 
-    private companion object {
+    companion object {
 
         private const val MINDBOX_ID_KEY = "mindboxId"
     }
 
-    public constructor(vararg pairs: Pair<String, String?>) : this(pairs.toMap())
+    constructor(vararg pairs: Pair<String, String?>) : this(pairs.toMap())
 
-    public constructor(
+    constructor(
         vararg pairs: AndroidXPair<String, String?>
     ) : this(*pairs.mapNotNull { pair -> pair.first?.let { Pair(it, pair.second) } }.toTypedArray())
 
-    public constructor(
+    constructor(
         mindboxId: Int,
         ids: Map<String, String?>
     ) : this(HashMap<String, String?>(ids).apply { this[MINDBOX_ID_KEY] = "$mindboxId" })
 
-    public constructor(
+    constructor(
         mindboxId: Int,
         vararg pairs: Pair<String, String?>
     ) : this(HashMap<String, String?>(pairs.toMap()).apply { this[MINDBOX_ID_KEY] = "$mindboxId" })
 
-    public constructor(
+    constructor(
         mindboxId: Int,
         vararg pairs: AndroidXPair<String, String?>
     ) : this(
@@ -36,5 +36,5 @@ public class Ids(public val ids: Map<String, String?>) {
         *pairs.mapNotNull { pair -> pair.first?.let { Pair(it, pair.second) } }.toTypedArray()
     )
 
-    override fun toString(): String = "Ids(ids=$ids)"
+    override fun toString() = "Ids(ids=$ids)"
 }

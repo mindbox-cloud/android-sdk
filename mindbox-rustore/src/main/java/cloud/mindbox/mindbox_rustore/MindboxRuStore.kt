@@ -11,14 +11,14 @@ import com.google.gson.reflect.TypeToken
 import ru.rustore.sdk.pushclient.messaging.model.RemoteMessage
 
 @Suppress("unused")
-public fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStore.apply {
+fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStore.apply {
     this.projectId = projectId
 }
 
 /***
  * Use factory function MindboxRuStore(projectId) to set up RuStore projectId.
  */
-public object MindboxRuStore : MindboxPushService {
+object MindboxRuStore : MindboxPushService {
 
     internal var projectId: String = ""
         internal set(value) = run { field = value }
@@ -37,7 +37,7 @@ public object MindboxRuStore : MindboxPushService {
      * Checks if [RemoteMessage] is sent with Mindbox
      * Returns true if it is or false otherwise
      **/
-    public fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
+    fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
         return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
     }
 
@@ -47,7 +47,7 @@ public object MindboxRuStore : MindboxPushService {
      * It is encouraged to use this method inside try/catch block
      * @throws JsonSyntaxException – if remote message can't be parsed
      **/
-    public fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
+    fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
         val data = remoteMessage?.data ?: return null
         val uniqueKey = data[RuStoreMessage.DATA_UNIQUE_KEY] ?: return null
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type

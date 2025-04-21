@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.dto
 
 import com.google.gson.annotations.SerializedName
 
-internal data class GeoTargetingDto(
+data class GeoTargetingDto(
     @SerializedName("city_id")
     val cityId: String?,
     @SerializedName("region_id")

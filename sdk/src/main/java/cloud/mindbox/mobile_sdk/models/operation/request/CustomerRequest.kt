@@ -9,26 +9,26 @@ import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 import java.util.TimeZone
 
-public open class CustomerRequest private constructor(
-    @SerializedName("authenticationTicket") public val authenticationTicket: String? = null,
-    @SerializedName("discountCard") public val discountCard: DiscountCardRequest? = null,
+open class CustomerRequest private constructor(
+    @SerializedName("authenticationTicket") val authenticationTicket: String? = null,
+    @SerializedName("discountCard") val discountCard: DiscountCardRequest? = null,
     @JsonAdapter(DateOnlyAdapter::class)
-    @SerializedName("birthDate") public val birthDate: DateOnly? = null,
-    @SerializedName("sex") public val sex: Sex? = null,
-    @SerializedName("timeZone") public val timeZone: String? = null,
-    @SerializedName("lastName") public val lastName: String? = null,
-    @SerializedName("firstName") public val firstName: String? = null,
-    @SerializedName("middleName") public val middleName: String? = null,
-    @SerializedName("fullName") public val fullName: String? = null,
-    @SerializedName("area") public val area: AreaRequest? = null,
-    @SerializedName("email") public val email: String? = null,
-    @SerializedName("mobilePhone") public val mobilePhone: String? = null,
-    @SerializedName("ids") public val ids: Ids? = null,
-    @SerializedName("customFields") public val customFields: CustomFields? = null,
-    @SerializedName("subscriptions") public val subscriptions: List<SubscriptionRequest>? = null
+    @SerializedName("birthDate") val birthDate: DateOnly? = null,
+    @SerializedName("sex") val sex: Sex? = null,
+    @SerializedName("timeZone") val timeZone: String? = null,
+    @SerializedName("lastName") val lastName: String? = null,
+    @SerializedName("firstName") val firstName: String? = null,
+    @SerializedName("middleName") val middleName: String? = null,
+    @SerializedName("fullName") val fullName: String? = null,
+    @SerializedName("area") val area: AreaRequest? = null,
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("mobilePhone") val mobilePhone: String? = null,
+    @SerializedName("ids") val ids: Ids? = null,
+    @SerializedName("customFields") val customFields: CustomFields? = null,
+    @SerializedName("subscriptions") val subscriptions: List<SubscriptionRequest>? = null
 ) {
 
-    public constructor(
+    constructor(
         authenticationTicket: String? = null,
         discountCard: DiscountCardRequest? = null,
         birthDate: DateOnly? = null,
@@ -60,7 +60,7 @@ public open class CustomerRequest private constructor(
         subscriptions = subscriptions
     )
 
-    public constructor(
+    constructor(
         authenticationTicket: String? = null,
         discountCard: DiscountCardRequest? = null,
         birthDate: DateOnly? = null,

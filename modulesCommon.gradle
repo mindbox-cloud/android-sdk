@@ -47,10 +47,6 @@ android {
             withSourcesJar()
         }
     }
-
-    kotlin {
-        explicitApi()
-    }
 }
 
 afterEvaluate {

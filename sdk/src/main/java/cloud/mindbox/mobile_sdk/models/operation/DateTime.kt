@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.models.operation
 
 import java.util.Date
 
-public class DateTime : Date {
+class DateTime : Date {
 
-    public constructor() : super()
+    constructor() : super()
 
-    public constructor(date: Long) : super(date)
+    constructor(date: Long) : super(date)
 }

@@ -43,12 +43,12 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @SuppressWarnings("deprecated")
-public object Mindbox : MindboxLog {
+object Mindbox : MindboxLog {
 
     /**
      * Used for determination app open from push
      */
-    internal const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
+    const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
 
     /**
      * Factory for custom initialisation of WorkManager
@@ -69,13 +69,13 @@ public object Mindbox : MindboxLog {
      *      )
      *     .build()
      */
-    public val mindboxWorkerFactory: WorkerFactory by lazy { MindboxWorkerFactory }
+    val mindboxWorkerFactory: WorkerFactory by lazy { MindboxWorkerFactory }
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
     private const val INIT_PUSH_SERVICES_TIMEOUT = 5000L
 
-    public val coroutineExceptionHandler: CoroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+    val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
     }
     private val initScope = createMindboxScope()
@@ -143,7 +143,7 @@ public object Mindbox : MindboxLog {
      * @see MindboxImageFailureHandler
      * @see handleRemoteMessage
      */
-    public fun setMessageHandling(
+    fun setMessageHandling(
         imageFailureHandler: MindboxImageFailureHandler = PushNotificationManager.messageHandler.imageFailureHandler,
         imageLoader: MindboxImageLoader = PushNotificationManager.messageHandler.imageLoader,
     ) {
@@ -170,7 +170,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("subscribePushTokens"),
     )
-    public fun subscribeFmsToken(subscription: (String?) -> Unit): String {
+    fun subscribeFmsToken(subscription: (String?) -> Unit): String {
         logW("Called subscribeFmsToken")
         return subscribePushToken(subscription)
     }
@@ -187,7 +187,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.WARNING,
         replaceWith = ReplaceWith("subscribePushTokens"),
     )
-    public fun subscribePushToken(subscription: (String?) -> Unit): String {
+    fun subscribePushToken(subscription: (String?) -> Unit): String {
         logW("Called subscribePushToken")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
             "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
@@ -217,7 +217,7 @@ public object Mindbox : MindboxLog {
      * @return String identifier of subscription
      * @see disposePushTokenSubscription
      */
-    public fun subscribePushTokens(subscription: (String?) -> Unit): String {
+    fun subscribePushTokens(subscription: (String?) -> Unit): String {
         logI("Called subscribePushTokens")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
             "(USE THIS ONLY TO UNSUBSCRIBE FROM 'PushToken' " +
@@ -250,7 +250,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("disposePushTokenSubscription"),
     )
-    public fun disposeFmsTokenSubscription(
+    fun disposeFmsTokenSubscription(
         subscriptionId: String,
     ) {
         MindboxLoggerImpl.d(this, "disposeFmsTokenSubscription")
@@ -262,7 +262,7 @@ public object Mindbox : MindboxLog {
      *
      * @param subscriptionId - identifier of the subscription to remove
      */
-    public fun disposePushTokenSubscription(subscriptionId: String) {
+    fun disposePushTokenSubscription(subscriptionId: String) {
         MindboxLoggerImpl.d(this, "disposePushTokenSubscription")
         tokenCallbacks.remove(subscriptionId)
     }
@@ -275,7 +275,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("getPushTokenSaveDate"),
     )
-    public fun getFmsTokenSaveDate(): String {
+    fun getFmsTokenSaveDate(): String {
         logW("Used deprecated getFmsTokenSaveDate")
 
         @Suppress("DEPRECATION_ERROR")
@@ -290,7 +290,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("getPushTokenSaveDate"),
     )
-    public fun getPushTokenSaveDate(): String = loggingRunCatching(defaultValue = "") {
+    fun getPushTokenSaveDate(): String = loggingRunCatching(defaultValue = "") {
         logW("Called getPushTokenSaveDate")
         MindboxPreferences.pushTokens
             .entries
@@ -301,7 +301,7 @@ public object Mindbox : MindboxLog {
     /**
      * Returns map of push tokens with providers and save dates
      */
-    public fun getPushTokensSaveDate(): Map<String, Long> = loggingRunCatching(defaultValue = emptyMap()) {
+    fun getPushTokensSaveDate(): Map<String, Long> = loggingRunCatching(defaultValue = emptyMap()) {
         logI("Called getPushTokensSaveDate")
         MindboxPreferences.pushTokens.map { (provider, token) ->
             provider to token.updateDate
@@ -311,7 +311,7 @@ public object Mindbox : MindboxLog {
     /**
      * Returns SDK version
      */
-    public fun getSdkVersion(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
+    fun getSdkVersion(): String = LoggingExceptionHandler.runCatching(defaultValue = "") {
         MindboxLoggerImpl.d(this, "getSdkVersion")
         BuildConfig.VERSION_NAME
     }
@@ -323,7 +323,7 @@ public object Mindbox : MindboxLog {
      * @return String identifier of subscription
      * @see disposeDeviceUuidSubscription
      */
-    public fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
+    fun subscribeDeviceUuid(subscription: (String) -> Unit): String {
         MindboxLoggerImpl.d(this, "subscribeDeviceUuid")
         val subscriptionId = "Subscription-${UUID.randomUUID()} " +
             "(USE THIS ONLY TO UNSUBSCRIBE FROM DeviceUuid " +
@@ -343,7 +343,7 @@ public object Mindbox : MindboxLog {
      *
      * @param subscriptionId - identifier of the subscription to remove
      */
-    public fun disposeDeviceUuidSubscription(subscriptionId: String) {
+    fun disposeDeviceUuidSubscription(subscriptionId: String) {
         MindboxLoggerImpl.d(this, "disposeDeviceUuidSubscription")
         deviceUuidCallbacks.remove(subscriptionId)
     }
@@ -360,7 +360,7 @@ public object Mindbox : MindboxLog {
         level = DeprecationLevel.ERROR,
         replaceWith = ReplaceWith("this.updatePushToken(context, token, pushService)")
     )
-    public fun updatePushToken(context: Context, token: String): Unit = LoggingExceptionHandler.runCatching {
+    fun updatePushToken(context: Context, token: String) = LoggingExceptionHandler.runCatching {
         initComponents(context)
         mindboxLogW("Used deprecated updatePushToken. token: $token")
         if (token.trim().isNotEmpty()) {
@@ -388,7 +388,7 @@ public object Mindbox : MindboxLog {
      * @param token - token of push service
      * @param pushService - the instance of [MindboxPushService], which handles push notifications.
      */
-    public fun updatePushToken(context: Context, token: String, pushService: MindboxPushService): Unit =
+    fun updatePushToken(context: Context, token: String, pushService: MindboxPushService) =
         loggingRunCatching {
             initComponents(context)
             mindboxLogI("updatePushToken token: $token with provider $pushService")
@@ -421,7 +421,7 @@ public object Mindbox : MindboxLog {
      * This method is used to inform when the notification permission status changed to "allowed"
      * @param context current context is used
      **/
-    public fun updateNotificationPermissionStatus(context: Context): Unit = LoggingExceptionHandler.runCatching {
+    fun updateNotificationPermissionStatus(context: Context) = LoggingExceptionHandler.runCatching {
         mindboxLogI("updateNotificationPermissionStatus was called")
         mindboxScope.launch {
             updateAppInfo(context)
@@ -438,7 +438,7 @@ public object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
      */
-    public fun onPushReceived(context: Context, uniqKey: String): Unit = LoggingExceptionHandler.runCatching {
+    fun onPushReceived(context: Context, uniqKey: String) = LoggingExceptionHandler.runCatching {
         initComponents(context)
         MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey")
 
@@ -457,11 +457,11 @@ public object Mindbox : MindboxLog {
      * @param uniqKey - unique identifier of push notification
      * @param buttonUniqKey - unique identifier of push notification button
      */
-    public fun onPushClicked(
+    fun onPushClicked(
         context: Context,
         uniqKey: String,
         buttonUniqKey: String?,
-    ): Unit = LoggingExceptionHandler.runCatching {
+    ) = LoggingExceptionHandler.runCatching {
         initComponents(context)
         MindboxLoggerImpl.d(this, "onPushClicked. uniqKey: $uniqKey, buttonUniqKey: $buttonUniqKey")
         MindboxEventManager.pushClicked(context, TrackClickData(uniqKey, buttonUniqKey))
@@ -485,7 +485,7 @@ public object Mindbox : MindboxLog {
      * @return true if Mindbox SDK recognises push intent as Mindbox SDK push intent
      *         false if Mindbox SDK cannot find critical information in intent
      */
-    public fun onPushClicked(
+    fun onPushClicked(
         context: Context,
         intent: Intent,
     ): Boolean = LoggingExceptionHandler.runCatching(defaultValue = false) {
@@ -515,7 +515,7 @@ public object Mindbox : MindboxLog {
      * ```
      */
     @MainThread
-    public fun init(
+    fun init(
         application: Application,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
@@ -540,7 +540,7 @@ public object Mindbox : MindboxLog {
      * ```
      */
     @MainThread
-    public fun init(
+    fun init(
         activity: Activity,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
@@ -718,7 +718,7 @@ public object Mindbox : MindboxLog {
     @Deprecated(
         "Use either Mindbox.init with application parameter or Mindbox.init with activity parameter"
     )
-    public fun init(
+    fun init(
         context: Context,
         configuration: MindboxConfiguration,
         pushServices: List<MindboxPushService>,
@@ -735,7 +735,7 @@ public object Mindbox : MindboxLog {
      *  @param inAppCallback used to provide required callback implementation
      **/
 
-    public fun registerInAppCallback(inAppCallback: InAppCallback) {
+    fun registerInAppCallback(inAppCallback: InAppCallback) {
         MindboxLoggerImpl.d(this, "registerInAppCallback")
         inAppMessageManager.registerInAppCallback(inAppCallback)
     }
@@ -752,7 +752,7 @@ public object Mindbox : MindboxLog {
      * ```
      */
     @MainThread
-    public fun initPushServices(
+    fun initPushServices(
         context: Context,
         pushServices: List<MindboxPushService>,
     ) {
@@ -829,7 +829,7 @@ public object Mindbox : MindboxLog {
      *
      * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
      */
-    public fun onNewIntent(intent: Intent?): Unit = LoggingExceptionHandler.runCatching {
+    fun onNewIntent(intent: Intent?) = LoggingExceptionHandler.runCatching {
         MindboxLoggerImpl.d(this, "onNewIntent. intent: $intent")
         if (Mindbox::lifecycleManager.isInitialized) {
             lifecycleManager.onNewIntent(intent)
@@ -844,7 +844,7 @@ public object Mindbox : MindboxLog {
      * @param level - is used for showing Mindbox logs starts from [Level]. Default
      * is [Level.WARN]. [Level.NONE] turns off all logs.
      */
-    public fun setLogLevel(level: Level) {
+    fun setLogLevel(level: Level) {
         MindboxLoggerImpl.level = level
     }
 
@@ -857,7 +857,7 @@ public object Mindbox : MindboxLog {
      * @param operationBody [T] which extends [OperationBody] and will be send as event json body of operation.
      */
     @Deprecated("Used Mindbox.executeAsyncOperation with OperationBodyRequestBase")
-    public fun <T : OperationBody> executeAsyncOperation(
+    fun <T : OperationBody> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
@@ -878,7 +878,7 @@ public object Mindbox : MindboxLog {
      * @param operationSystemName the name of asynchronous operation
      * @param operationBody [T] which extends [OperationBodyRequestBase] and will be send as event json body of operation.
      */
-    public fun <T : OperationBodyRequestBase> executeAsyncOperation(
+    fun <T : OperationBodyRequestBase> executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
@@ -899,7 +899,7 @@ public object Mindbox : MindboxLog {
      * @param operationSystemName the name of asynchronous operation
      * @param operationBodyJson event json body of operation.
      */
-    public fun executeAsyncOperation(
+    fun executeAsyncOperation(
         context: Context,
         operationSystemName: String,
         operationBodyJson: String,
@@ -921,7 +921,7 @@ public object Mindbox : MindboxLog {
      * @param onSuccess Callback for response typed [OperationResponse] that will be invoked for success response to a given request.
      * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
      */
-    public fun <T : OperationBodyRequestBase> executeSyncOperation(
+    fun <T : OperationBodyRequestBase> executeSyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
@@ -946,7 +946,7 @@ public object Mindbox : MindboxLog {
      * @param onSuccess Callback for response typed [V] which extends [OperationResponseBase] that will be invoked for success response to a given request.
      * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
      */
-    public fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
+    fun <T : OperationBodyRequestBase, V : OperationResponseBase> executeSyncOperation(
         context: Context,
         operationSystemName: String,
         operationBody: T,
@@ -983,7 +983,7 @@ public object Mindbox : MindboxLog {
      * @param onSuccess Callback that will be invoked for success response to a given request.
      * @param onError Callback for response typed [MindboxError] and will be invoked for error response to a given request.
      */
-    public fun executeSyncOperation(
+    fun executeSyncOperation(
         context: Context,
         operationSystemName: String,
         operationBodyJson: String,
@@ -1027,7 +1027,7 @@ public object Mindbox : MindboxLog {
      * @return true if notification is Mindbox push and it's successfully handled, false otherwise.
      */
     @WorkerThread
-    public fun handleRemoteMessage(
+    fun handleRemoteMessage(
         context: Context,
         message: Any?,
         channelId: String,
@@ -1088,7 +1088,7 @@ public object Mindbox : MindboxLog {
      * @param intent an intent sent by SDK and received in activity
      * @return url associated with the push intent or null if there is none
      */
-    public fun getUrlFromPushIntent(
+    fun getUrlFromPushIntent(
         intent: Intent?,
     ): String? {
         MindboxLoggerImpl.d(this, "getUrlFromPushIntent. intent: $intent")
@@ -1101,7 +1101,7 @@ public object Mindbox : MindboxLog {
      * @param intent an intent sent by SDK and received in activity
      * @return payload delivered in push or null if there is none
      */
-    public fun getPayloadFromPushIntent(
+    fun getPayloadFromPushIntent(
         intent: Intent?,
     ): String? {
         MindboxLoggerImpl.d(this, "getPayloadFromPushIntent. intent: $intent")
@@ -1116,7 +1116,7 @@ public object Mindbox : MindboxLog {
      * @param message The message to be logged.
      * @param logLevel The severity level of the log message. See [Level].
      */
-    public fun writeLog(message: String, logLevel: Level) {
+    fun writeLog(message: String, logLevel: Level) {
         when (logLevel) {
             Level.VERBOSE -> mindboxLogD(message = message)
             Level.DEBUG -> mindboxLogD(message = message)

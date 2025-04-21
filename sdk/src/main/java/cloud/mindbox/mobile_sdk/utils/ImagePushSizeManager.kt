@@ -24,7 +24,7 @@ internal val imageWidthInPixels: Int
         }.getOrElse { 0 }
     }
 
-internal fun getImageHeightWithoutButtonIxPixels(charCountInTitle: Int): Int =
+fun getImageHeightWithoutButtonIxPixels(charCountInTitle: Int): Int =
     when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING) {
@@ -37,7 +37,7 @@ internal fun getImageHeightWithoutButtonIxPixels(charCountInTitle: Int): Int =
         else -> EXPANDED_PUSH_IMAGE_HEIGHT_23_AND_LESS
     }.px
 
-internal fun getImageHeightWithButtonIxPixels(charCountInTitle: Int): Int =
+fun getImageHeightWithButtonIxPixels(charCountInTitle: Int): Int =
     when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (charCountInTitle <= CHAR_COUNT_WHEN_TITLE_2_STRING) {

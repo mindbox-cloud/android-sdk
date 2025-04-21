@@ -14,7 +14,7 @@ import com.google.gson.reflect.TypeToken
  * An object to use when choosing push provider in Mindbox.initPushServices or Mindbox.init.
  * Represents FCM
  * */
-public object MindboxFirebase : MindboxPushService {
+object MindboxFirebase : MindboxPushService {
 
     override val tag: String = "FCM"
 
@@ -31,7 +31,7 @@ public object MindboxFirebase : MindboxPushService {
      * Checks if [RemoteMessage] is sent with Mindbox
      * Returns true if it is or false otherwise
      **/
-    public fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
+    fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
         return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
     }
 
@@ -41,7 +41,7 @@ public object MindboxFirebase : MindboxPushService {
      * It is encouraged to use this method inside try/catch block
      * @throws JsonSyntaxException – if remote message can't be parsed
      **/
-    public fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
+    fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
         val data = remoteMessage?.data ?: return null
         val uniqueKey = data[FirebaseMessage.DATA_UNIQUE_KEY] ?: return null
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type

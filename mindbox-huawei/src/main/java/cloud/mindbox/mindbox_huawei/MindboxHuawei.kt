@@ -14,7 +14,7 @@ private typealias MindboxPushAction = cloud.mindbox.mobile_sdk.pushes.PushAction
  * An object to use when choosing push provider in Mindbox.initPushServices or Mindbox.init.
  * Represents HCM
  * */
-public object MindboxHuawei : MindboxPushService {
+object MindboxHuawei : MindboxPushService {
 
     private val gson by lazy { Gson() }
 
@@ -29,7 +29,7 @@ public object MindboxHuawei : MindboxPushService {
      * Checks if [RemoteMessage] is sent with Mindbox
      * Returns true if it is or false otherwise
      **/
-    public fun isMindboxPush(remoteMessage: RemoteMessage?): Boolean {
+    fun isMindboxPush(remoteMessage: RemoteMessage?): Boolean {
         return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
     }
 
@@ -39,7 +39,7 @@ public object MindboxHuawei : MindboxPushService {
      * It is encouraged to use this method inside try/catch block
      * @throws JsonSyntaxException – if remote message can't be parsed
      **/
-    public fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
+    fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
         val data = remoteMessage?.data ?: return null
         val parsedMessage = gson.fromJson(data, HuaweiMessage::class.java) ?: return null
         return MindboxRemoteMessage(

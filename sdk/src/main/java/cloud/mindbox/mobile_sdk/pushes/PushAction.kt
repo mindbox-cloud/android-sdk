@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName
  *  * You can use it as a model to store data from mindbox
  *  * with your custom push notification implementation.
  * */
-public data class PushAction(
+data class PushAction(
     @SerializedName("uniqueKey") val uniqueKey: String?,
     @SerializedName("text") val text: String?,
     @SerializedName("url") val url: String?,

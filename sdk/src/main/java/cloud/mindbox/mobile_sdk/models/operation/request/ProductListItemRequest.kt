@@ -2,15 +2,15 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 
 import com.google.gson.annotations.SerializedName
 
-public open class ProductListItemRequest private constructor(
-    @SerializedName("count") public val count: Double? = null,
-    @SerializedName("product") public val product: ProductRequest? = null,
-    @SerializedName("productGroup") public val productGroup: ProductGroupRequest? = null,
-    @SerializedName("pricePerItem") public val pricePerItem: Double? = null,
-    @SerializedName("priceOfLine") public val priceOfLine: Double? = null
+open class ProductListItemRequest private constructor(
+    @SerializedName("count") val count: Double? = null,
+    @SerializedName("product") val product: ProductRequest? = null,
+    @SerializedName("productGroup") val productGroup: ProductGroupRequest? = null,
+    @SerializedName("pricePerItem") val pricePerItem: Double? = null,
+    @SerializedName("priceOfLine") val priceOfLine: Double? = null
 ) {
 
-    public constructor(count: Double? = null) : this(
+    constructor(count: Double? = null) : this(
         count = count,
         product = null,
         productGroup = null,
@@ -18,7 +18,7 @@ public open class ProductListItemRequest private constructor(
         priceOfLine = null
     )
 
-    public constructor(
+    constructor(
         count: Double,
         price: Double,
         isPricePerItem: Boolean
@@ -28,7 +28,7 @@ public open class ProductListItemRequest private constructor(
         priceOfLine = if (!isPricePerItem) price else null
     )
 
-    public constructor(
+    constructor(
         count: Double,
         product: ProductRequest,
         price: Double? = null,
@@ -40,7 +40,7 @@ public open class ProductListItemRequest private constructor(
         priceOfLine = if (isPricePerItem == false) price else null
     )
 
-    public constructor(
+    constructor(
         count: Double,
         productGroup: ProductGroupRequest,
         price: Double? = null,
@@ -52,7 +52,7 @@ public open class ProductListItemRequest private constructor(
         priceOfLine = if (isPricePerItem == false) price else null
     )
 
-    public constructor(
+    constructor(
         product: ProductRequest,
         pricePerItem: Double? = null
     ) : this(
@@ -61,7 +61,7 @@ public open class ProductListItemRequest private constructor(
         pricePerItem = pricePerItem
     )
 
-    public constructor(
+    constructor(
         productGroup: ProductGroupRequest,
         pricePerItem: Double? = null
     ) : this(

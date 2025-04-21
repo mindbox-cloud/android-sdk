@@ -10,7 +10,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  *
  * @param defaultImage Optional image
  */
-public fun MindboxImageFailureHandler.Companion.applyDefaultStrategy(
+fun MindboxImageFailureHandler.Companion.applyDefaultStrategy(
     defaultImage: Bitmap? = null,
 ): MindboxImageFailureHandler = ApplyDefaultStrategyImpl(defaultImage = defaultImage)
 

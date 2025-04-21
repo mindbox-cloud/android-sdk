@@ -12,19 +12,19 @@ import org.threeten.bp.Instant
 /**
  * An interface for internal sdk work only. Do not implement or use it.
  * */
-public interface MindboxLogger {
+interface MindboxLogger {
 
-    public fun i(parent: Any, message: String)
+    fun i(parent: Any, message: String)
 
-    public fun d(parent: Any, message: String)
+    fun d(parent: Any, message: String)
 
-    public fun e(parent: Any, message: String)
+    fun e(parent: Any, message: String)
 
-    public fun e(parent: Any, message: String, exception: Throwable)
+    fun e(parent: Any, message: String, exception: Throwable)
 
-    public fun w(parent: Any, message: String)
+    fun w(parent: Any, message: String)
 
-    public fun w(parent: Any, message: String, exception: Throwable)
+    fun w(parent: Any, message: String, exception: Throwable)
 }
 
 internal object MindboxLoggerImpl : MindboxLogger {

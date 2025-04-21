@@ -5,16 +5,16 @@ import cloud.mindbox.mobile_sdk.models.operation.adapters.DateTimeAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
-public open class PersonalOfferItemResponse(
-    @SerializedName("product") public val product: ProductResponse? = null,
-    @SerializedName("benefit") public val benefit: BenefitResponse? = null,
+open class PersonalOfferItemResponse(
+    @SerializedName("product") val product: ProductResponse? = null,
+    @SerializedName("benefit") val benefit: BenefitResponse? = null,
     @JsonAdapter(DateTimeAdapter::class)
-    @SerializedName("startDateTimeUtc") public val startDateTimeUtc: DateTime? = null,
+    @SerializedName("startDateTimeUtc") val startDateTimeUtc: DateTime? = null,
     @JsonAdapter(DateTimeAdapter::class)
-    @SerializedName("endDateTimeUtc") public val endDateTimeUtc: DateTime? = null
+    @SerializedName("endDateTimeUtc") val endDateTimeUtc: DateTime? = null
 ) {
 
-    override fun toString(): String =
+    override fun toString() =
         "PersonalOfferItemResponse(product=$product, benefit=$benefit, " +
             "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc)"
 }
