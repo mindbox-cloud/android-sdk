@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-public enum class UsageServiceStatusResponse {
+enum class UsageServiceStatusResponse {
 
     @SerializedName("available")
     AVAILABLE,

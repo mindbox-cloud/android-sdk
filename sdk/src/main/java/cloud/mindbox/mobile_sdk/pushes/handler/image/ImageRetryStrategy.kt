@@ -8,13 +8,13 @@ import androidx.annotation.RequiresApi
 /**
  * Solution for failed image downloading
  */
-public sealed class ImageRetryStrategy {
+sealed class ImageRetryStrategy {
 
     /**
      * Cancel the process that needed the image
      */
-    public object Cancel : ImageRetryStrategy() {
-        override fun toString(): String = "Cancel"
+    object Cancel : ImageRetryStrategy() {
+        override fun toString() = "Cancel"
     }
 
     /**
@@ -25,7 +25,7 @@ public sealed class ImageRetryStrategy {
      * @see BitmapFactory.decodeResource
      * @see androidx.core.graphics.drawable.toBitmap
      */
-    public data class ApplyDefault(
+    data class ApplyDefault(
         val defaultImage: Bitmap? = null,
     ) : ImageRetryStrategy()
 
@@ -34,7 +34,7 @@ public sealed class ImageRetryStrategy {
      *
      * @param delay Delay before retry in milliseconds
      */
-    public data class Retry(
+    data class Retry(
         val delay: Long = 0L,
     ) : ImageRetryStrategy()
 
@@ -49,7 +49,7 @@ public sealed class ImageRetryStrategy {
      * @see androidx.core.graphics.drawable.toBitmap
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    public data class ApplyDefaultAndRetry(
+    data class ApplyDefaultAndRetry(
         val delay: Long = 0L,
         val defaultImage: Bitmap? = null,
     ) : ImageRetryStrategy()

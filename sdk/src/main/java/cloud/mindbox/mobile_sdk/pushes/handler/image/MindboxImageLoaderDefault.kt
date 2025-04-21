@@ -11,7 +11,7 @@ import java.net.URL
 /**
  * Default image loading implementation
  */
-public fun MindboxImageLoader.Companion.default(): MindboxImageLoader = DefaultLoader
+fun MindboxImageLoader.Companion.default(): MindboxImageLoader = DefaultLoader
 
 private val DefaultLoader: MindboxImageLoader = MindboxImageLoaderDefault()
 

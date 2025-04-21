@@ -8,7 +8,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
-internal class CustomerFieldsAdapter : TypeAdapter<CustomFields?>() {
+class CustomerFieldsAdapter : TypeAdapter<CustomFields?>() {
 
     private val gson by lazy { Gson() }
 

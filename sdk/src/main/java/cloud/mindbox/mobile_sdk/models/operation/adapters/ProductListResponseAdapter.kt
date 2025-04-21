@@ -10,7 +10,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
-internal class ProductListResponseAdapter : TypeAdapter<Any>() {
+class ProductListResponseAdapter : TypeAdapter<Any>() {
 
     private val gson by lazy { Gson() }
 

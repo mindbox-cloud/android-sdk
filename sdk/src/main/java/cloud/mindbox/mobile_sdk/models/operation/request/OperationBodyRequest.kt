@@ -2,60 +2,60 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 
 import com.google.gson.annotations.SerializedName
 
-public open class OperationBodyRequest : OperationBodyRequestBase {
+open class OperationBodyRequest : OperationBodyRequestBase {
 
     @SerializedName("customerAction")
-    public val customerAction: CustomerActionRequest?
+    val customerAction: CustomerActionRequest?
 
     @SerializedName("pointOfContact")
-    public val pointOfContact: String?
+    val pointOfContact: String?
 
     @SerializedName("addProductToList")
-    public val addProductToList: ProductListItemRequest?
+    val addProductToList: ProductListItemRequest?
 
     @SerializedName("productList")
     internal val productList: Any?
 
     @SerializedName("segmentations")
-    public val segmentations: List<SegmentationRequest>?
+    val segmentations: List<SegmentationRequest>?
 
     @SerializedName("customer")
-    public val customer: CustomerRequest?
+    val customer: CustomerRequest?
 
     @SerializedName("order")
-    public val order: OrderRequest?
+    val order: OrderRequest?
 
     @SerializedName("discountCard")
-    public val discountCard: DiscountCardRequest?
+    val discountCard: DiscountCardRequest?
 
     @SerializedName("referencedCustomer")
-    public val referencedCustomer: CustomerRequest?
+    val referencedCustomer: CustomerRequest?
 
     @SerializedName("removeProductFromList")
-    public val removeProductFromList: ProductListItemRequest?
+    val removeProductFromList: ProductListItemRequest?
 
     @SerializedName("setProductCountInList")
-    public val setProductCountInList: ProductListItemRequest?
+    val setProductCountInList: ProductListItemRequest?
 
     @SerializedName("promoCode")
-    public val promoCode: PromoCodeRequest?
+    val promoCode: PromoCodeRequest?
 
     @SerializedName("viewProductCategory")
-    public val viewProductCategory: ViewProductCategoryRequest?
+    val viewProductCategory: ViewProductCategoryRequest?
 
     @SerializedName("viewProduct")
-    public val viewProductRequest: ViewProductRequest?
+    val viewProductRequest: ViewProductRequest?
 
     @SerializedName("recommendation")
-    public val recommendation: RecommendationRequest?
+    val recommendation: RecommendationRequest?
 
     /** Used for catalog with name productList and its type is [CatalogProductListRequest] **/
-    public fun productList(): CatalogProductListRequest? = productList as? CatalogProductListRequest
+    fun productList(): CatalogProductListRequest? = productList as? CatalogProductListRequest
 
     /** Used for product with name productList and its is array of [ProductListItemRequest] **/
-    public fun productListItems(): List<ProductListItemRequest>? = (productList as? List<*>)?.mapNotNull { it as? ProductListItemRequest }
+    fun productListItems() = (productList as? List<*>)?.mapNotNull { it as? ProductListItemRequest }
 
-    public constructor(
+    constructor(
         customerAction: CustomerActionRequest? = null,
         pointOfContact: String? = null,
         addProductToList: ProductListItemRequest? = null,
@@ -89,7 +89,7 @@ public open class OperationBodyRequest : OperationBodyRequestBase {
         this.recommendation = recommendation
     }
 
-    public constructor(
+    constructor(
         customerAction: CustomerActionRequest? = null,
         pointOfContact: String? = null,
         addProductToList: ProductListItemRequest? = null,
@@ -123,7 +123,7 @@ public open class OperationBodyRequest : OperationBodyRequestBase {
         this.recommendation = recommendation
     }
 
-    public constructor(
+    constructor(
         customerAction: CustomerActionRequest? = null,
         pointOfContact: String? = null,
         addProductToList: ProductListItemRequest? = null,

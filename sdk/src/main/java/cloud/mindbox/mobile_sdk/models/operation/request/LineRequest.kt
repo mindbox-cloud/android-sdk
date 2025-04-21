@@ -3,21 +3,21 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 import cloud.mindbox.mobile_sdk.models.operation.CustomFields
 import com.google.gson.annotations.SerializedName
 
-public open class LineRequest private constructor(
-    @SerializedName("basePricePerItem") public val basePricePerItem: Double? = null,
-    @SerializedName("quantity") public val quantity: Number? = null,
-    @SerializedName("quantityType") public val quantityType: QuantityTypeRequest? = null,
-    @SerializedName("minPricePerItem") public val minPricePerItem: Double? = null,
-    @SerializedName("costPricePerItem") public val costPricePerItem: Double? = null,
-    @SerializedName("customFields") public val customFields: CustomFields? = null,
-    @SerializedName("discountedPricePerLine") public val discountedPricePerLine: Double? = null,
-    @SerializedName("lineId") public val lineId: String? = null,
-    @SerializedName("lineNumber") public val lineNumber: Int? = null,
-    @SerializedName("discounts") public val discounts: List<DiscountRequest>? = null,
-    @SerializedName("product") public val product: ProductRequest? = null
+open class LineRequest private constructor(
+    @SerializedName("basePricePerItem") val basePricePerItem: Double? = null,
+    @SerializedName("quantity") val quantity: Number? = null,
+    @SerializedName("quantityType") val quantityType: QuantityTypeRequest? = null,
+    @SerializedName("minPricePerItem") val minPricePerItem: Double? = null,
+    @SerializedName("costPricePerItem") val costPricePerItem: Double? = null,
+    @SerializedName("customFields") val customFields: CustomFields? = null,
+    @SerializedName("discountedPricePerLine") val discountedPricePerLine: Double? = null,
+    @SerializedName("lineId") val lineId: String? = null,
+    @SerializedName("lineNumber") val lineNumber: Int? = null,
+    @SerializedName("discounts") val discounts: List<DiscountRequest>? = null,
+    @SerializedName("product") val product: ProductRequest? = null
 ) {
 
-    public constructor(
+    constructor(
         basePricePerItem: Double,
         quantity: Double,
         minPricePerItem: Double? = null,
@@ -42,7 +42,7 @@ public open class LineRequest private constructor(
         product = product
     )
 
-    public constructor(
+    constructor(
         basePricePerItem: Double,
         quantity: Int,
         minPricePerItem: Double? = null,

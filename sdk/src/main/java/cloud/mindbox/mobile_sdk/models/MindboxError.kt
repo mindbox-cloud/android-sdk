@@ -7,24 +7,24 @@ import com.google.gson.annotations.JsonAdapter
  * A class for representing Mindbox error.
  * Used in operations.
  * */
-public sealed class MindboxError(public open val statusCode: Int?) {
+sealed class MindboxError(open val statusCode: Int?) {
 
-    private companion object {
+    companion object {
 
         private val gson by lazy { Gson() }
     }
 
-    public fun toJson(): String = gson.toJson(this)
+    fun toJson(): String = gson.toJson(this)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    public data class Validation(
+    data class Validation(
         override val statusCode: Int,
         val status: String,
         val validationMessages: List<ValidationMessage>,
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    public data class Protocol(
+    data class Protocol(
         override val statusCode: Int,
         val status: String,
         val errorMessage: String?,
@@ -33,7 +33,7 @@ public sealed class MindboxError(public open val statusCode: Int?) {
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    public data class InternalServer(
+    data class InternalServer(
         override val statusCode: Int,
         val status: String,
         val errorMessage: String?,
@@ -42,7 +42,7 @@ public sealed class MindboxError(public open val statusCode: Int?) {
     ) : MindboxError(statusCode)
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    public data class UnknownServer(
+    data class UnknownServer(
         override val statusCode: Int? = null,
         val status: String? = null,
         val errorMessage: String? = null,
@@ -50,9 +50,9 @@ public sealed class MindboxError(public open val statusCode: Int?) {
         val httpStatusCode: Int? = null,
     ) : MindboxError(statusCode) {
 
-        public constructor() : this(errorMessage = "Cannot reach server")
+        constructor() : this(errorMessage = "Cannot reach server")
     }
 
     @JsonAdapter(MindboxErrorAdapter::class)
-    public data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
+    data class Unknown(val throwable: Throwable? = null) : MindboxError(null)
 }

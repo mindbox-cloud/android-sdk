@@ -10,7 +10,9 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  *
  * @see MindboxImageLoader.Companion.default
  */
-public interface MindboxImageLoader {
+interface MindboxImageLoader {
+
+    companion object
 
     /**
      * Loading an image from a message
@@ -24,11 +26,9 @@ public interface MindboxImageLoader {
      *
      * @throws Throwable If an exception is thrown, it will be passed to [MindboxImageFailureHandler]
      */
-    public fun onLoadImage(
+    fun onLoadImage(
         context: Context,
         message: MindboxRemoteMessage,
         state: MessageHandlingState,
     ): Bitmap?
-
-    public companion object
 }

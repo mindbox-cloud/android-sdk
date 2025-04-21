@@ -10,19 +10,19 @@ import java.util.UUID
 /**
 * A class for internal sdk work only. Do not extend or use it
 * */
-public abstract class PushServiceHandler : MindboxLog {
+abstract class PushServiceHandler : MindboxLog {
 
-    internal companion object {
+    companion object {
         private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
     }
 
-    public abstract val notificationProvider: String
+    abstract val notificationProvider: String
 
-    public abstract suspend fun initService(context: Context)
+    abstract suspend fun initService(context: Context)
 
-    public abstract fun convertToRemoteMessage(message: Any): MindboxRemoteMessage?
+    abstract fun convertToRemoteMessage(message: Any): MindboxRemoteMessage?
 
-    internal fun getAdsIdentification(context: Context): String = LoggingExceptionHandler.runCatching(
+    fun getAdsIdentification(context: Context): String = LoggingExceptionHandler.runCatching(
         block = {
             val (id, isLimitAdTrackingEnabled) = getAdsId(context)
 
@@ -45,9 +45,9 @@ public abstract class PushServiceHandler : MindboxLog {
         defaultValue = onAdsIdAcquisitionFailure(),
     )
 
-    public abstract fun getAdsId(context: Context): Pair<String?, Boolean>
+    abstract fun getAdsId(context: Context): Pair<String?, Boolean>
 
-    internal fun isServiceAvailable(context: Context): Boolean = try {
+    fun isServiceAvailable(context: Context): Boolean = try {
         val isAvailable = isAvailable(context)
         if (!isAvailable) {
             MindboxLoggerImpl.w(this, "$notificationProvider services are not available")
@@ -61,7 +61,7 @@ public abstract class PushServiceHandler : MindboxLog {
         false
     }
 
-    internal suspend fun registerToken(
+    suspend fun registerToken(
         context: Context,
         previousToken: String?,
     ): String? = loggingRunCatchingSuspending(null) {

@@ -4,12 +4,12 @@ import cloud.mindbox.mobile_sdk.models.operation.CustomFields
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import com.google.gson.annotations.SerializedName
 
-public open class DiscountCardResponse(
-    @SerializedName("ids") public val ids: Ids? = null,
-    @SerializedName("customFields") public val customFields: CustomFields? = null,
-    @SerializedName("status") public val status: StatusResponse? = null,
-    @SerializedName("type") public val type: TypeResponse? = null
+open class DiscountCardResponse(
+    @SerializedName("ids") val ids: Ids? = null,
+    @SerializedName("customFields") val customFields: CustomFields? = null,
+    @SerializedName("status") val status: StatusResponse? = null,
+    @SerializedName("type") val type: TypeResponse? = null
 ) {
 
-    override fun toString(): String = "DiscountCardResponse(ids=$ids, customFields=$customFields, status=$status, type=$type)"
+    override fun toString() = "DiscountCardResponse(ids=$ids, customFields=$customFields, status=$status, type=$type)"
 }

@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-public open class ManufacturerResponse(
-    @SerializedName("name") public val name: String? = null
+open class ManufacturerResponse(
+    @SerializedName("name") val name: String? = null
 ) {
 
-    override fun toString(): String = "ManufacturerResponse(name=$name)"
+    override fun toString() = "ManufacturerResponse(name=$name)"
 }

@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 /**
  * Interface for InApp message callbacks
  **/
-public interface InAppCallback {
+interface InAppCallback {
 
     /**
      * Method that triggers when user clicks on InApp message
@@ -14,7 +14,7 @@ public interface InAppCallback {
      *
      * @param payload - additional data for InApp
      **/
-    public fun onInAppClick(id: String, redirectUrl: String, payload: String)
+    fun onInAppClick(id: String, redirectUrl: String, payload: String)
 
     /**
      * Method that triggers when InApp message is dismissed by user
@@ -22,5 +22,5 @@ public interface InAppCallback {
      * @param id - InApp message id
      *
      **/
-    public fun onInAppDismissed(id: String)
+    fun onInAppDismissed(id: String)
 }

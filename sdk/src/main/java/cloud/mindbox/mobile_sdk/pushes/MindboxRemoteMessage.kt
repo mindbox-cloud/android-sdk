@@ -5,7 +5,7 @@ package cloud.mindbox.mobile_sdk.pushes
  * You can use it as a model to store data from mindbox
  * with your custom push notification implementation.
  * */
-public data class MindboxRemoteMessage(
+data class MindboxRemoteMessage(
     val uniqueKey: String,
     val title: String,
     val description: String,

@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-public enum class ProcessingStatusResponse {
+enum class ProcessingStatusResponse {
 
     @SerializedName("Success")
     SUCCESS,
