@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quizzes Demo Stand</title>
 </head>
 <body>
@@ -65,5 +64,11 @@
 <script>
     (function () {(function(t,e,E,I,c,i){var p=t[i]=t[i]||function(...r){(p.q=p.q||[]).push(r)},n=e.createElement(E);n.src=`${I}?v=${c}`,n.type="module",n.async=!0,e.body.appendChild(n)})(window,document,"script","https://web-static.mindbox.ru/quizzes/stable/quizzes.js","dummy","mqzzs");mqzzs("init",{apiEndpoint:"https://quizzes-stable.mindbox.ru"});})();
 </script>
-</body>
-</html>
+<script src="./inapp_files/quizzes.js" type="module" async=""></script>
+<script>
+    document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+</script>
+
+</body></html>
