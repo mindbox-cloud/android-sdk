@@ -22,4 +22,12 @@ internal sealed class Layer {
             ) : Source()
         }
     }
+
+    internal data class WebViewLayer(
+        val baseUrl: String?,
+        val contentUrl: String?,
+        val redirectUrl: String? = null,
+        val payload: String? = null,
+        val wizardId: String? = null,
+    ) : Layer()
 }

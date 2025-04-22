@@ -9,10 +9,7 @@ import android.view.MotionEvent
 import android.view.animation.TranslateAnimation
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.doOnLayout
-import androidx.core.view.marginBottom
-import androidx.core.view.marginTop
-import androidx.core.view.updateLayoutParams
+import androidx.core.view.*
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -168,6 +165,22 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
+    private fun prepareLayoutForWebView() {
+        updateLayoutParams<MarginLayoutParams> {
+            setMargins(0, 0, 0, 0)
+        }
+        updateLayoutParams<FrameLayout.LayoutParams> {
+            gravity = Gravity.CENTER
+            height = FrameLayout.LayoutParams.MATCH_PARENT
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+            view.updatePadding(
+                bottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            )
+            insets
+        }
+    }
+
     private fun prepareLayoutForModalWindow() {
         updateLayoutParams<MarginLayoutParams> {
             setMargins(
@@ -184,6 +197,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
     fun prepareLayoutForInApp(inAppType: InAppType) {
         when (inAppType) {
+            is InAppType.WebView -> prepareLayoutForWebView()
             is InAppType.ModalWindow -> prepareLayoutForModalWindow()
             is InAppType.Snackbar -> prepareLayoutForSnackbar(inAppType)
         }
