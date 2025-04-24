@@ -1,0 +1,54 @@
+name: SDK publish RC mission
+
+on:
+  issue_comment:
+    types: [created]
+    branches:
+      - 'mission/*'
+
+jobs:
+  get-branch:
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.get-branch.outputs.branch }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.branch }}
+
+      - name: Get PR branch
+        id: get-branch
+        run: |
+          branch=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq -r '.headRefName')
+          echo "Branch value: $branch"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  call-publish-reusable:
+    needs: get-branch
+    if: |
+      github.event.issue.pull_request != null &&
+      contains(fromJson('["OWNER", "MEMBER"]'), github.event.comment.author_association) &&
+      github.event.comment.body == '/release-sdk' &&
+      contains(needs.get-branch.outputs.branch, 'release/')
+    uses: ./.github/workflows/publish-reusable.yml
+    with:
+      branch: ${{ needs.get-branch.outputs.branch }}
+
+  close-pr:
+    needs: [call-publish-reusable, get-branch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.get-branch.outputs.branch }}
+
+      - name: Close PR
+        run: |
+          gh pr close ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
