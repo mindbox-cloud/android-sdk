@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.abtests
 
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -530,7 +531,7 @@ class CustomerAbMixerTest(
 
     @Test
     fun `check mixer result`() {
-        val mixer = CustomerAbMixerImpl()
+        val mixer = CustomerAbMixer.impl()
         assertEquals(
             "For uuid $uuid with salt $salt",
             hash,

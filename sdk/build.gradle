@@ -43,6 +43,7 @@ android {
 }
 
 dependencies {
+    implementation "cloud.mindbox:abmixer-android:1.0.0"
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib

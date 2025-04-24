@@ -1,18 +1,17 @@
 package cloud.mindbox.mobile_sdk.abtests
 
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(BlockJUnit4ClassRunner::class)
 internal class InAppABTestLogicTest {
 
