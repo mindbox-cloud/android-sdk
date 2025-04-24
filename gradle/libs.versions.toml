@@ -7,7 +7,7 @@ target_sdk = "35"
 firebase_bom = "32.7.2"
 hms_push = "6.11.0.300"
 room = "2.6.1"
-kotlin = "1.9.22"
+kotlin = "2.0.0"
 gradle_plugin = "8.6.0"
 gms_play_services_basement = "18.1.0"
 gms_play_services_base = "18.0.1"
@@ -38,6 +38,8 @@ ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 
 pushclient = "6.5.1"
+
+agp = "8.8.2"
 
 [bundles]
 buildscript-plugins = [
@@ -111,3 +113,14 @@ google_services = { module = "com.google.gms:google-services", version.ref = "go
 agcp = { module = "com.huawei.agconnect:agcp", version.ref = "agcp" }
 ktlint_gradle_plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
 ksp_gradle_plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+
+[plugins]
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android_tools_build_gradle = { id = "com.android.tools.build.gradle", version.ref = "gradle_plugin" }
+kotlin_gradle_plugin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+google_services = { id = "com.google.gms.google-services", version.ref = "google_services" }
+agcp = { id = "com.huawei.agconnect", version.ref = "agcp" }
+ktlint_gradle_plugin = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
+ksp_gradle_plugin = { id = "com.google.devtools.ksp", version.ref = "ksp" }
