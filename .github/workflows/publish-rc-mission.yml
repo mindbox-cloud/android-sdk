@@ -14,14 +14,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ inputs.branch }}
 
       - name: Get PR branch
         id: get-branch
         run: |
-          branch=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq -r '.headRefName')
+          pr_info=$(gh pr view ${{ github.event.issue.number }} --json headRefName,state)
+          branch=$(echo "$pr_info" | jq -r '.headRefName')
+          state=$(echo "$pr_info" | jq -r '.state')
+
+          if [ "$state" != "OPEN" ]; then
+            echo "PR is not in OPEN state (current state: $state)"
+            exit 1
+          fi
+
           echo "Branch value: $branch"
           echo "branch=$branch" >> $GITHUB_OUTPUT
         env:
@@ -49,6 +54,6 @@ jobs:
 
       - name: Close PR
         run: |
-          gh pr close ${{ github.event.issue.number }}
+          gh pr merge ${{ github.event.issue.number }} --merge
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
