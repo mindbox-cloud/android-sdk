@@ -123,7 +123,7 @@ jobs:
   merge:
     needs: [publish]
     if: |
-      contains(github.head_ref, 'release') && 
+      startsWith(github.head_ref, 'release') && 
       github.base_ref == 'master'
     runs-on: ubuntu-latest
     steps:

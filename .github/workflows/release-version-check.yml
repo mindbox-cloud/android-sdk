@@ -10,7 +10,7 @@ on:
 jobs:
   check-rc-pattern:
     runs-on: ubuntu-latest
-    if: contains(github.head_ref, 'release')
+    if: startsWith(github.head_ref, 'release')
     steps:
       - name: Check RC pattern
         run: |
@@ -24,7 +24,7 @@ jobs:
   check-master-version:
     needs: check-rc-pattern
     runs-on: ubuntu-latest
-    if: github.base_ref == 'master' && contains(github.head_ref, 'release')
+    if: github.base_ref == 'master' && startsWith(github.head_ref, 'release')
     steps:
       - name: Checkout master branch
         uses: actions/checkout@v4
