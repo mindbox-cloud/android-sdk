@@ -32,17 +32,25 @@ public object MindboxFirebase : MindboxPushService {
      * Returns true if it is or false otherwise
      **/
     public fun isMindboxPush(remoteMessage: RemoteMessage): Boolean {
-        return runCatching { convertToMindboxRemoteMessage(remoteMessage) }.getOrNull() != null
+        return isMindboxPush(remoteMessage.data)
     }
 
     /**
-     * Converts [RemoteMessage] to [MindboxRemoteMessage]
+     * Checks if [RemoteMessage.data] is sent with Mindbox
+     * Returns true if it is or false otherwise
+     **/
+    public fun isMindboxPush(data: Map<String, String>): Boolean {
+        return runCatching { convertToMindboxRemoteMessage(data) }.getOrNull() != null
+    }
+
+    /**
+     * Converts [RemoteMessage.data] to [MindboxRemoteMessage]
      * Use this method to get mindbox push-notification data
      * It is encouraged to use this method inside try/catch block
      * @throws JsonSyntaxException – if remote message can't be parsed
      **/
-    public fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
-        val data = remoteMessage?.data ?: return null
+
+    public fun convertToMindboxRemoteMessage(data: Map<String, String>): MindboxRemoteMessage? {
         val uniqueKey = data[FirebaseMessage.DATA_UNIQUE_KEY] ?: return null
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
         return MindboxRemoteMessage(
@@ -62,4 +70,17 @@ public object MindboxFirebase : MindboxPushService {
             payload = data[FirebaseMessage.DATA_PAYLOAD],
         )
     }
+
+    /**
+     * Converts [RemoteMessage] to [MindboxRemoteMessage]
+     * Use this method to get mindbox push-notification data
+     * It is encouraged to use this method inside try/catch block
+     * @throws JsonSyntaxException – if remote message can't be parsed
+     **/
+
+    public fun convertToMindboxRemoteMessage(remoteMessage: RemoteMessage?): MindboxRemoteMessage? {
+        val data = remoteMessage?.data ?: return null
+        return convertToMindboxRemoteMessage(data)
+    }
+
 }
