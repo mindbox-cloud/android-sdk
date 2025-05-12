@@ -1,4 +1,4 @@
-name: PushOk (Release/Support PR)
+name: Distribute PushOk (Release/Support PR)
 
 on:
   pull_request:
@@ -17,4 +17,3 @@ jobs:
     secrets: inherit
     with:
       branch: ${{ github.event.pull_request.head.ref }}
- 
