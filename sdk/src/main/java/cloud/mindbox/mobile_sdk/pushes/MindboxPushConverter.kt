@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.pushes
 
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -48,17 +49,21 @@ public abstract class MindboxPushConverter<in RemoteMessage> {
      * @throws JsonSyntaxException – if remote message can't be parsed
      **/
     public fun convertToMindboxRemoteMessage(data: Map<String, String>): MindboxRemoteMessage? {
-        val uniqueKey = data[MindboxRemoteMessage.DATA_UNIQUE_KEY] ?: return null
+        val uniqueKey = data[MindboxRemoteMessage.DATA_UNIQUE_KEY]
+        if (uniqueKey.isNullOrEmpty()) {
+            mindboxLogI("Unique key is empty")
+            return null
+        }
         val pushActionsType = object : TypeToken<List<PushAction>>() {}.type
         return MindboxRemoteMessage(
             uniqueKey = uniqueKey,
             title = data[MindboxRemoteMessage.DATA_TITLE] ?: "",
             description = data[MindboxRemoteMessage.DATA_MESSAGE] ?: "",
             pushActions = runCatching {
-                gson.fromJson<List<PushAction>?>(
+                gson.fromJson<List<PushAction>>(
                     data[MindboxRemoteMessage.DATA_BUTTONS],
                     pushActionsType
-                )
+                ) ?: emptyList()
             }.getOrDefault(
                 emptyList()
             ),
