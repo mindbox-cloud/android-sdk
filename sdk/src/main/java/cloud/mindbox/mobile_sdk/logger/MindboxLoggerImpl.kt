@@ -41,8 +41,9 @@ internal object MindboxLoggerImpl : MindboxLogger {
         })
 
     init {
-
-        VolleyLog.DEBUG = false
+        runCatching {
+            VolleyLog.DEBUG = false
+        }
     }
 
     @Volatile
