@@ -84,7 +84,7 @@ jobs:
           git checkout -b "$REL"
 
           echo "→ Running bump script on $REL"
-          ./.github/prepare_release_branch.yml "$VERSION"
+          ./.github/bump_versions_in_release_branch.sh "$VERSION"
 
           echo "release_branch=$REL" >> $GITHUB_OUTPUT
 
