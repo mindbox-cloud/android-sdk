@@ -21,7 +21,10 @@ import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -87,8 +90,9 @@ internal class MobileConfigRepositoryImpl(
                 },
             )
 
-            var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+            val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
             mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
+            mobileConfigSettingsManager.checkPushTokenKeepALive(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -11,7 +12,7 @@ import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -33,28 +34,42 @@ internal object MindboxEventManager {
     val eventFlow = MutableSharedFlow<InAppEventType>(replay = 20)
 
     private val poolDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    private val timeProvider by mindboxInject { timeProvider }
 
     fun appInstalled(
         context: Context,
         initData: InitData,
         shouldCreateCustomer: Boolean,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         val eventType = if (shouldCreateCustomer) {
             EventType.AppInstalled
         } else {
             EventType.AppInstalledWithoutCustomer
         }
         asyncOperation(context, Event(eventType = eventType, body = gson.toJson(initData)))
+        updateLastInfoUpdateTime()
     }
 
     fun appInfoUpdate(
         context: Context,
         initData: UpdateData,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         asyncOperation(
             context,
             Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
+        updateLastInfoUpdateTime()
+    }
+
+    fun appKeepAlive(
+        context: Context,
+        initData: UpdateData,
+    ): Unit = loggingRunCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.AppKeepALive, body = gson.toJson(initData)),
+        )
+        updateLastInfoUpdateTime()
     }
 
     fun inAppShown(context: Context, body: String) {
@@ -72,7 +87,7 @@ internal object MindboxEventManager {
     fun pushClicked(
         context: Context,
         clickData: TrackClickData,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         asyncOperation(
             context,
             Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
@@ -82,7 +97,7 @@ internal object MindboxEventManager {
     fun appStarted(
         context: Context,
         trackVisitData: TrackVisitData,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         asyncOperation(
             context,
             Event(eventType = EventType.TrackVisit, body = gson.toJson(trackVisitData)),
@@ -105,23 +120,27 @@ internal object MindboxEventManager {
     private fun asyncOperation(
         context: Context,
         event: Event,
-    ) = LoggingExceptionHandler.runCatching {
+    ): Unit = loggingRunCatching {
         Mindbox.mindboxScope.launch(poolDispatcher) {
             InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             DbManager.addEventToQueue(context, event)
 
             eventFlow.emit(InAppEventType.OrdinalEvent(event.eventType, event.body))
-            LoggingExceptionHandler.runCatching {
+            loggingRunCatching {
                 val configuration = DbManager.getConfigurations()
                 val deviceUuid = MindboxPreferences.deviceUuid
                 val isInstallEvent = event.eventType is EventType.AppInstalled ||
                     event.eventType is EventType.AppInstalledWithoutCustomer
                 val isInitialized = !MindboxPreferences.isFirstInitialize || isInstallEvent
                 if (!isInitialized || configuration == null) {
-                    this@MindboxEventManager.mindboxLogW("Event ${event.eventType.operation} will be sent later, " +
-                        "because configuration was not initialized")
-                    this@MindboxEventManager.mindboxLogI("isFirstInitialize: ${MindboxPreferences.isFirstInitialize}, " +
-                        "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}")
+                    this@MindboxEventManager.mindboxLogW(
+                        "Event ${event.eventType.operation} will be sent later, " +
+                            "because configuration was not initialized"
+                    )
+                    this@MindboxEventManager.mindboxLogI(
+                        "isFirstInitialize: ${MindboxPreferences.isFirstInitialize}, " +
+                            "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}"
+                    )
                 } else {
                     WorkerDelegate().sendEvent(
                         context = context,
@@ -144,8 +163,8 @@ internal object MindboxEventManager {
         classOfV: Class<V>,
         onSuccess: (V) -> Unit,
         onError: (MindboxError) -> Unit,
-    ) = LoggingExceptionHandler.runCatching {
-        val configuration = checkConfiguration(onError) ?: return@runCatching
+    ): Unit = loggingRunCatching {
+        val configuration = checkConfiguration(onError) ?: return@loggingRunCatching
 
         val json = gson.toJson(body)
         MindboxLoggerImpl.d(this, "syncOperation. json: $json")
@@ -168,8 +187,8 @@ internal object MindboxEventManager {
         bodyJson: String,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
-    ) = LoggingExceptionHandler.runCatching {
-        val configuration = checkConfiguration(onError) ?: return@runCatching
+    ): Unit = loggingRunCatching {
+        val configuration = checkConfiguration(onError) ?: return@loggingRunCatching
 
         val event = createSyncEvent(name, bodyJson)
         val deviceUuid = MindboxPreferences.deviceUuid
@@ -205,7 +224,7 @@ internal object MindboxEventManager {
         return configuration
     }
 
-    fun sendEventsIfExist(context: Context) = LoggingExceptionHandler.runCatching {
+    fun sendEventsIfExist(context: Context): Unit = loggingRunCatching {
         if (DbManager.getFilteredEventsForBackgroundSend().isNotEmpty()) {
             BackgroundWorkManager.startOneTimeService(context)
         }
@@ -216,5 +235,9 @@ internal object MindboxEventManager {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun resetEventFlowCache() {
         eventFlow.resetReplayCache()
+    }
+
+    private fun updateLastInfoUpdateTime() {
+        MindboxPreferences.lastInfoUpdateTime = timeProvider.currentTimeMillis()
     }
 }

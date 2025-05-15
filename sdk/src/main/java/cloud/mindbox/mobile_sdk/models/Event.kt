@@ -32,11 +32,13 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         private const val ASYNC_OPERATION_ORDINAL = 5
         private const val SYNC_OPERATION_ORDINAL = 6
         private const val APP_INSTALLED_WITHOUT_CUSTOMER = 7
+        private const val APP_KEEP_A_LIVE = 8
 
         fun typeToken(ordinal: Int) = when (ordinal) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
             APP_INSTALLED_WITHOUT_CUSTOMER -> object : TypeToken<AppInstalledWithoutCustomer>() {}
             APP_INFO_UPDATED_ORDINAL -> object : TypeToken<AppInfoUpdated>() {}
+            APP_KEEP_A_LIVE -> object : TypeToken<AppKeepALive>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
@@ -45,16 +47,18 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         }
     }
 
-    object AppInstalled : EventType("MobilePush.ApplicationInstalled", "/v3/operations/async")
+    data object AppInstalled : EventType("MobilePush.ApplicationInstalled", "/v3/operations/async")
 
-    object AppInstalledWithoutCustomer :
+    data object AppInstalledWithoutCustomer :
         EventType("MobilePush.ApplicationInstalledWithoutCustomer", "/v3/operations/async")
 
-    object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
+    data object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
 
-    object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
+    data object AppKeepALive : EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async")
 
-    object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
+    data object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
+
+    data object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
 
     internal class AsyncOperation(operation: String) : EventType(operation, "/v3/operations/async")
 
@@ -64,6 +68,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         is AppInstalled -> APP_INSTALLED_ORDINAL
         is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
         is AppInfoUpdated -> APP_INFO_UPDATED_ORDINAL
+        is AppKeepALive -> APP_KEEP_A_LIVE
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
@@ -72,7 +77,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 }
 
 internal sealed class InAppEventType(val name: String) {
-    object AppStartup : InAppEventType("appStartup")
+    data object AppStartup : InAppEventType("appStartup")
 
     class OrdinalEvent(val eventType: EventType, val body: String? = null) : InAppEventType(eventType.operation)
 }
