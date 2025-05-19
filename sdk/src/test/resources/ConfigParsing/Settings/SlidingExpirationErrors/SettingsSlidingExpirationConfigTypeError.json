@@ -14,6 +14,7 @@
     "inapps": "1.00:00:00"
   },
   "slidingExpiration": {
-    "config": 1
+    "config": 1,
+    "pushTokenKeepalive": 2
   }
 }
