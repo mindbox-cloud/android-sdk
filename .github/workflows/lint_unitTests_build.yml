@@ -9,7 +9,13 @@ on:
       - '**.md'
     tags-ignore:
       - '**'
-      
+  pull_request:
+    branches:
+      - master
+      - mission/*
+    types:
+      - opened
+
 jobs:
   lint:
     runs-on: ubuntu-latest
