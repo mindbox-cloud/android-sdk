@@ -8,7 +8,7 @@ internal class SettingsStub {
     companion object {
         fun getSlidingExpiration(
             timeSpan: String = "",
-            pushTokenKeepALive: String? = null
+            pushTokenKeepalive: String? = null
         ): InAppConfigResponse =
             InAppConfigResponse(
                 inApps = null,
@@ -18,7 +18,7 @@ internal class SettingsStub {
                     ttl = null,
                     slidingExpiration = SlidingExpirationDto(
                         config = timeSpan,
-                        pushTokenKeepALive = pushTokenKeepALive
+                        pushTokenKeepalive = pushTokenKeepalive
                     )
                 ),
                 abtests = null

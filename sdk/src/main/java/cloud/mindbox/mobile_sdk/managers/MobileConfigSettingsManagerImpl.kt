@@ -30,30 +30,30 @@ internal class MobileConfigSettingsManagerImpl(
         }
     }
 
-    override fun checkPushTokenKeepALive(config: InAppConfigResponse): Unit = loggingRunCatching {
-        config.settings?.slidingExpiration?.pushTokenKeepALive?.parseTimeSpanToMillis()
+    override fun checkPushTokenKeepalive(config: InAppConfigResponse): Unit = loggingRunCatching {
+        config.settings?.slidingExpiration?.pushTokenKeepalive?.parseTimeSpanToMillis()
             ?.takeIf { it > 0 }
-            ?.let { pushTokenKeepALive ->
+            ?.let { pushTokenKeepalive ->
                 val lastInfoUpdateTime = MindboxPreferences.lastInfoUpdateTime
                 val currentTime = timeProvider.currentTimeMillis()
 
                 if (lastInfoUpdateTime == null) {
                     mindboxLogI("LastInfoUpdateTime is not set")
-                } else if (lastInfoUpdateTime + pushTokenKeepALive > currentTime) {
+                } else if (lastInfoUpdateTime + pushTokenKeepalive > currentTime) {
                     mindboxLogI(
-                        "Next ApplicationKeepalive = ${Date(lastInfoUpdateTime + pushTokenKeepALive)}, " +
+                        "Next ApplicationKeepalive = ${Date(lastInfoUpdateTime + pushTokenKeepalive)}, " +
                             "lastInfoUpdateTime = ${Date(lastInfoUpdateTime)}, " +
-                            "pushTokenKeepALive = ${pushTokenKeepALive.milliseconds}"
+                            "pushTokenKeepalive = ${pushTokenKeepalive.milliseconds}"
                     )
                     return@loggingRunCatching
                 }
 
-                sendAppKeepAlive(pushTokenKeepALive)
-            } ?: mindboxLogI("PushTokenKeepALive is not set")
+                sendAppKeepalive(pushTokenKeepalive)
+            } ?: mindboxLogI("PushTokenKeepalive is not set")
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal fun sendAppKeepAlive(pushTokenKeepALive: Long) {
+    internal fun sendAppKeepalive(pushTokenKeepalive: Long) {
         val pushTokens = MindboxPreferences.pushTokens
         val savedPushTokens = pushTokens.mapValues { it.value.token }
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(appContext)
@@ -65,15 +65,15 @@ internal class MobileConfigSettingsManagerImpl(
             version = infoUpdatedVersion,
             tokens = savedPushTokens.toTokenData(),
         )
-        MindboxEventManager.appKeepAlive(appContext, updateData)
+        MindboxEventManager.appKeepalive(appContext, updateData)
 
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
 
-        val nextSendTime = Date(timeProvider.currentTimeMillis() + pushTokenKeepALive)
+        val nextSendTime = Date(timeProvider.currentTimeMillis() + pushTokenKeepalive)
         mindboxLogI(
             "Send ApplicationKeepalive: " +
                 "next ApplicationKeepalive = $nextSendTime, " +
-                "current pushTokenKeepALive = ${pushTokenKeepALive.milliseconds}"
+                "current pushTokenKeepalive = ${pushTokenKeepalive.milliseconds}"
         )
     }
 }

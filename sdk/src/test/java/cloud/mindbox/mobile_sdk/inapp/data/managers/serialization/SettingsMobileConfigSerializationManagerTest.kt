@@ -99,7 +99,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertEquals(3, config.settings!!.operations!!.size)
         assertNotNull(config.settings.ttl?.inApps)
         assertNotNull(config.settings.slidingExpiration?.config)
-        assertNotNull(config.settings.slidingExpiration?.pushTokenKeepALive)
+        assertNotNull(config.settings.slidingExpiration?.pushTokenKeepalive)
 
         assertNotNull(config.abtests)
         assertEquals(2, config.abtests!!.size)
@@ -120,7 +120,7 @@ class SettingsMobileConfigSerializationManagerTest {
 
         assertNotNull(config.slidingExpiration)
         assertNotNull(config.slidingExpiration?.config)
-        assertNotNull(config.slidingExpiration?.pushTokenKeepALive)
+        assertNotNull(config.slidingExpiration?.pushTokenKeepalive)
     }
 
     // MARK: - Operations
@@ -466,7 +466,7 @@ class SettingsMobileConfigSerializationManagerTest {
 
         assertNull("SlidingExpiration must be `null` if the key `slidingExpiration` is not found", config.slidingExpiration)
         assertNull("Config session time must be `null`", config.slidingExpiration?.config)
-        assertNull("pushTokenKeepALive must be `null`", config.slidingExpiration?.pushTokenKeepALive)
+        assertNull("pushTokenKeepalive must be `null`", config.slidingExpiration?.pushTokenKeepalive)
     }
 
     @Test
@@ -487,7 +487,7 @@ class SettingsMobileConfigSerializationManagerTest {
             config.slidingExpiration,
         )
         assertNull("Config session time must be `null`", config.slidingExpiration?.config)
-        assertNull("pushTokenKeepALive must be `null`", config.slidingExpiration?.pushTokenKeepALive)
+        assertNull("pushTokenKeepalive must be `null`", config.slidingExpiration?.pushTokenKeepalive)
     }
 
     @Test
@@ -505,7 +505,7 @@ class SettingsMobileConfigSerializationManagerTest {
 
         assertNotNull("SlidingExpiration must be `null` if the key `config` is not found", config.slidingExpiration)
         assertNull("Config session time must be `null`", config.slidingExpiration?.config)
-        assertNull("PushTokenKeepALive time must be `null`", config.slidingExpiration?.pushTokenKeepALive)
+        assertNull("PushTokenKeepalive time must be `null`", config.slidingExpiration?.pushTokenKeepalive)
     }
 
     @Test
@@ -527,8 +527,8 @@ class SettingsMobileConfigSerializationManagerTest {
             config.slidingExpiration?.config,
         )
         assertNull(
-            "pushTokenKeepALive must be `null` if the key `config` is not a `String`",
-            config.slidingExpiration?.pushTokenKeepALive,
+            "pushTokenKeepalive must be `null` if the key `config` is not a `String`",
+            config.slidingExpiration?.pushTokenKeepalive,
         )
     }
 }

@@ -33,7 +33,7 @@ class MobileConfigSettingsManagerImplTest {
         mockkObject(MindboxPreferences)
         mockkObject(MindboxEventManager)
         mockkObject(PushNotificationManager)
-        every { MindboxEventManager.appKeepAlive(any(), any()) } just runs
+        every { MindboxEventManager.appKeepalive(any(), any()) } just runs
     }
 
     @After
@@ -73,87 +73,87 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepALive sends keepAlive when lastInfoUpdateTime is null`() = runTest {
+    fun `checkPushTokenKeepalive sends keepAlive when lastInfoUpdateTime is null`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns null
         every { Mindbox.mindboxScope } returns backgroundScope
 
-        val config = getSlidingExpiration(pushTokenKeepALive = "0:0:10.0")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         Thread.sleep(1000L)
-        verify(exactly = 1) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive does not send appKeepAlive when not expired`() {
+    fun `checkPushTokenKeepalive does not send appKeepalive when not expired`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns (now - 5_000L)
-        val config = getSlidingExpiration(pushTokenKeepALive = "0:0:10.0")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive sends keepAlive when expired`() = runTest {
+    fun `checkPushTokenKeepalive sends keepAlive when expired`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns (now - 20_000L)
         every { Mindbox.mindboxScope } returns backgroundScope
-        val config = getSlidingExpiration(pushTokenKeepALive = "0:0:10.0")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 1) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when pushTokenKeepALive is not set`() {
-        val config = getSlidingExpiration(pushTokenKeepALive = null)
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is not set`() {
+        val config = getSlidingExpiration(pushTokenKeepalive = null)
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when pushTokenKeepALive is invalid`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is invalid`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepALive = "now")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "now")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when pushTokenKeepALive is less zero`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is less zero`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepALive = "-0:0:10.0")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "-0:0:10.0")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when pushTokenKeepALive is zero`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is zero`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepALive = "0:0:0.0")
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:0.0")
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when settings is null`() {
+    fun `checkPushTokenKeepalive not sends when settings is null`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = InAppConfigResponse(null, null, null, null)
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 
     @Test
-    fun `checkPushTokenKeepALive not sends when SlidingExpiration is null`() {
+    fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = InAppConfigResponse(null, null, SettingsDto(null, null, null), null)
-        mobileConfigSettingsManager.checkPushTokenKeepALive(config)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
-        verify(exactly = 0) { MindboxEventManager.appKeepAlive(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
 }

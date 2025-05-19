@@ -38,7 +38,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
             APP_INSTALLED_WITHOUT_CUSTOMER -> object : TypeToken<AppInstalledWithoutCustomer>() {}
             APP_INFO_UPDATED_ORDINAL -> object : TypeToken<AppInfoUpdated>() {}
-            APP_KEEP_A_LIVE -> object : TypeToken<AppKeepALive>() {}
+            APP_KEEP_A_LIVE -> object : TypeToken<AppKeepalive>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
@@ -54,7 +54,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
 
     data object AppInfoUpdated : EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async")
 
-    data object AppKeepALive : EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async")
+    data object AppKeepalive : EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async")
 
     data object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
 
@@ -68,7 +68,7 @@ internal sealed class EventType(val operation: String, val endpoint: String) {
         is AppInstalled -> APP_INSTALLED_ORDINAL
         is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
         is AppInfoUpdated -> APP_INFO_UPDATED_ORDINAL
-        is AppKeepALive -> APP_KEEP_A_LIVE
+        is AppKeepalive -> APP_KEEP_A_LIVE
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL

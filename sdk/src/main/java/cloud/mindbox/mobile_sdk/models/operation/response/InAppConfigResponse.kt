@@ -36,11 +36,14 @@ internal data class SettingsDtoBlank(
 
     internal data class SlidingExpirationDtoBlank(
         @SerializedName("config")
-        val config: String?,
+        val config: SlidingExpirationConfig?,
         @SerializedName("pushTokenKeepalive")
-        val pushTokenKeepALive: String?,
+        val pushTokenKeepalive: PushTokenKeepalive?,
     )
 }
+
+internal typealias SlidingExpirationConfig = String
+internal typealias PushTokenKeepalive = String
 
 internal data class SettingsDto(
     @SerializedName("operations")
@@ -65,7 +68,7 @@ internal data class SlidingExpirationDto(
     @SerializedName("config")
     val config: String?,
     @SerializedName("pushTokenKeepalive")
-    val pushTokenKeepALive: String?,
+    val pushTokenKeepalive: String?,
 )
 
 internal data class LogRequestDto(

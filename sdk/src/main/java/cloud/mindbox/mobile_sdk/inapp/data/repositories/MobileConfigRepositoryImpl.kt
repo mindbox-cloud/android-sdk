@@ -42,7 +42,7 @@ internal class MobileConfigRepositoryImpl(
     private val ttlParametersValidator: TtlParametersValidator,
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
     private val sessionStorageManager: SessionStorageManager,
-    private val slidingExpirationValidator: SlidingExpirationParametersValidator,
+    private val timeSpanPositiveValidator: TimeSpanPositiveValidator,
     private val mobileConfigSettingsManager: MobileConfigSettingsManager
 ) : MobileConfigRepository {
 
@@ -92,7 +92,7 @@ internal class MobileConfigRepositoryImpl(
 
             val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
             mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
-            mobileConfigSettingsManager.checkPushTokenKeepALive(config = filteredConfig)
+            mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -185,11 +185,16 @@ internal class MobileConfigRepositoryImpl(
 
     private fun getConfigSession(configBlank: InAppConfigResponseBlank?): SlidingExpirationDto? =
         try {
-            configBlank?.settings?.slidingExpiration?.takeIf { slidingExpirationDtoBlank ->
-                slidingExpirationValidator.isValid(slidingExpirationDtoBlank)
-            }?.let { slidingExpirationDtoBlank ->
-                inAppMapper.mapToSlidingExpiration(slidingExpirationDtoBlank)
-            }
+            SlidingExpirationDto(
+                config = configBlank?.settings?.slidingExpiration?.config
+                    ?.takeIf { slidingExpirationConfig ->
+                        timeSpanPositiveValidator.isValid(slidingExpirationConfig)
+                    },
+                pushTokenKeepalive = configBlank?.settings?.slidingExpiration?.pushTokenKeepalive
+                    ?.takeIf { pushTokenKeepaliveDtoBlank ->
+                        timeSpanPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
+                    }
+            )
         } catch (e: Exception) {
             mindboxLogE("Error parse config session time", e)
             null
