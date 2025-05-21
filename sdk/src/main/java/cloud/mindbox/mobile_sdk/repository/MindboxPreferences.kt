@@ -33,6 +33,7 @@ internal object MindboxPreferences {
     private const val IN_APPS_METADATA = "key_inapp_metadata"
     private const val KEY_CONFIG_UPDATE_DATE = "key_config_update_date"
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
+    private const val KEY_LAST_INFO_UPDATE_TIME = "key_last_info_update_time"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -227,6 +228,16 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_SDK_VERSION_CODE, value ?: Constants.SDK_VERSION_CODE)
+            }
+        }
+
+    var lastInfoUpdateTime: Long?
+        get() = loggingRunCatching(defaultValue = null) {
+            SharedPreferencesManager.getLong(KEY_LAST_INFO_UPDATE_TIME)
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_LAST_INFO_UPDATE_TIME, value ?: 0)
             }
         }
 }

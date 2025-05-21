@@ -1,4 +1,4 @@
-name: PushOk Distribute  manual
+name: Distribute PushOk (manual)
 
 on:
   workflow_dispatch:
