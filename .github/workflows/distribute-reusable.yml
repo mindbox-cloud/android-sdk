@@ -1,22 +1,20 @@
-name: Distribute PushOk
+name: PushOk - Reusable
 
 on:
-  pull_request:
-    types: [ closed ]
-    branches:
-      - develop
-  push:
-    branches:
-      - 'release/*'
-      - 'support/*'
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
 
 jobs:
   distribution:
-    if: github.event.pull_request.merged == true || (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/support/')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Get last 3 commit messages
         run: |
@@ -28,5 +26,5 @@ jobs:
           curl --location 'https://mindbox.gitlab.yandexcloud.net/api/v4/projects/900/trigger/pipeline' \
             --form 'token="${{ secrets.GITLAB_TRIGGER_TOKEN }}"' \
             --form 'ref="develop"' \
-            --form "variables[INPUT_BRANCH]=\"${{ github.head_ref || github.ref_name }}\"" \
+            --form "variables[INPUT_BRANCH]=\"${{ inputs.branch }}\"" \
             --form "variables[INPUT_COMMITS]=\"${{ env.commits }}\""

@@ -12,19 +12,19 @@ import org.threeten.bp.Instant
 /**
  * An interface for internal sdk work only. Do not implement or use it.
  * */
-interface MindboxLogger {
+public interface MindboxLogger {
 
-    fun i(parent: Any, message: String)
+    public fun i(parent: Any, message: String)
 
-    fun d(parent: Any, message: String)
+    public fun d(parent: Any, message: String)
 
-    fun e(parent: Any, message: String)
+    public fun e(parent: Any, message: String)
 
-    fun e(parent: Any, message: String, exception: Throwable)
+    public fun e(parent: Any, message: String, exception: Throwable)
 
-    fun w(parent: Any, message: String)
+    public fun w(parent: Any, message: String)
 
-    fun w(parent: Any, message: String, exception: Throwable)
+    public fun w(parent: Any, message: String, exception: Throwable)
 }
 
 internal object MindboxLoggerImpl : MindboxLogger {
@@ -41,8 +41,9 @@ internal object MindboxLoggerImpl : MindboxLogger {
         })
 
     init {
-
-        VolleyLog.DEBUG = false
+        runCatching {
+            VolleyLog.DEBUG = false
+        }
     }
 
     @Volatile

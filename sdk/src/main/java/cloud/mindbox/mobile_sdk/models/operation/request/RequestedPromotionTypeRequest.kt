@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 
 import com.google.gson.annotations.SerializedName
 
-enum class RequestedPromotionTypeRequest {
+public enum class RequestedPromotionTypeRequest {
 
     @SerializedName("balance")
     BALANCE,

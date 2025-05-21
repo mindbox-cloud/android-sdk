@@ -9,7 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
  * Ready-to-use implementation of InAppCallback that handles copying non json/xml/url string
  * to clipboard
  **/
-open class CopyPayloadInAppCallback : InAppCallback {
+public open class CopyPayloadInAppCallback : InAppCallback {
 
     private val callbackInteractor: CallbackInteractor by mindboxInject {
         callbackInteractor

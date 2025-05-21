@@ -3,7 +3,7 @@ package cloud.mindbox.mindbox_firebase
 import com.google.firebase.messaging.RemoteMessage
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Assert
+import org.junit.Assert.*
 import org.junit.Test
 
 class MindboxFirebaseTest {
@@ -36,35 +36,35 @@ class MindboxFirebaseTest {
     @Test
     fun `isMindboxPush returns true when remote message contains mindbox data`() {
         val isMindboxPush = MindboxFirebase.isMindboxPush(remoteMessageWithData)
-        Assert.assertTrue(isMindboxPush)
+        assertTrue(isMindboxPush)
     }
 
     @Test
     fun `isMindboxPush returns false when remote message does not contain mindbox data`() {
         val isMindboxPush = MindboxFirebase.isMindboxPush(remoteMessageWithoutData)
-        Assert.assertFalse(isMindboxPush)
+        assertFalse(isMindboxPush)
     }
 
     @Test
     fun `convertToMindboxRemoteMessage returns non-null MindboxRemoteMessage for valid data`() {
         val mindboxRemoteMessage =
             MindboxFirebase.convertToMindboxRemoteMessage(remoteMessageWithData)
-        Assert.assertNotNull(mindboxRemoteMessage)
-        Assert.assertEquals("any-value1", mindboxRemoteMessage?.uniqueKey)
+        assertNotNull(mindboxRemoteMessage)
+        assertEquals("any-value1", mindboxRemoteMessage?.uniqueKey)
     }
 
     @Test
     fun `convertToMindboxRemoteMessage returns null for invalid or no data`() {
         val mindboxRemoteMessage =
             MindboxFirebase.convertToMindboxRemoteMessage(remoteMessageWithoutData)
-        Assert.assertNull(mindboxRemoteMessage)
+        assertNull(mindboxRemoteMessage)
     }
 
     @Test
     fun `convertToMindboxRemoteMessage returns non null for remote message without title`() {
         val mindboxRemoteMessage =
             MindboxFirebase.convertToMindboxRemoteMessage(remoteMessageWithoutTitle)
-        Assert.assertNotNull(mindboxRemoteMessage)
-        Assert.assertEquals("", mindboxRemoteMessage?.title)
+        assertNotNull(mindboxRemoteMessage)
+        assertEquals("", mindboxRemoteMessage?.title)
     }
 }

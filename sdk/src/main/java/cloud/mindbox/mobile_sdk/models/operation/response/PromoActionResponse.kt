@@ -7,19 +7,19 @@ import cloud.mindbox.mobile_sdk.models.operation.adapters.DateTimeAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
-open class PromoActionResponse(
-    @SerializedName("ids") val ids: Ids? = null,
-    @SerializedName("name") val name: String? = null,
-    @SerializedName("description") val description: String? = null,
+public open class PromoActionResponse(
+    @SerializedName("ids") public val ids: Ids? = null,
+    @SerializedName("name") public val name: String? = null,
+    @SerializedName("description") public val description: String? = null,
     @JsonAdapter(DateTimeAdapter::class)
-    @SerializedName("startDateTimeUtc") val startDateTimeUtc: DateTime? = null,
+    @SerializedName("startDateTimeUtc") public val startDateTimeUtc: DateTime? = null,
     @JsonAdapter(DateTimeAdapter::class)
-    @SerializedName("endDateTimeUtc") val endDateTimeUtc: DateTime? = null,
-    @SerializedName("customFields") val customFields: CustomFields? = null,
-    @SerializedName("limits") val limits: List<LimitResponse>? = null
+    @SerializedName("endDateTimeUtc") public val endDateTimeUtc: DateTime? = null,
+    @SerializedName("customFields") public val customFields: CustomFields? = null,
+    @SerializedName("limits") public val limits: List<LimitResponse>? = null
 ) {
 
-    override fun toString() =
+    override fun toString(): String =
         "PromoActionResponse(ids=$ids, name=$name, description=$description, " +
             "startDateTimeUtc=$startDateTimeUtc, endDateTimeUtc=$endDateTimeUtc, " +
             "customFields=$customFields, limits=$limits)"

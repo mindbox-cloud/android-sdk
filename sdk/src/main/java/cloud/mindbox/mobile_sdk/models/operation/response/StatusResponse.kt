@@ -6,11 +6,11 @@ import cloud.mindbox.mobile_sdk.models.operation.adapters.DateTimeAdapter
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
-open class StatusResponse(
-    @SerializedName("ids") val ids: Ids? = null,
+public open class StatusResponse(
+    @SerializedName("ids") public val ids: Ids? = null,
     @JsonAdapter(DateTimeAdapter::class)
-    @SerializedName("dateTimeUtc") val dateTimeUtc: DateTime? = null
+    @SerializedName("dateTimeUtc") public val dateTimeUtc: DateTime? = null
 ) {
 
-    override fun toString() = "StatusResponse(ids=$ids, dateTimeUtc=$dateTimeUtc)"
+    override fun toString(): String = "StatusResponse(ids=$ids, dateTimeUtc=$dateTimeUtc)"
 }

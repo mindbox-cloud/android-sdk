@@ -1,3 +1,3 @@
 package cloud.mindbox.mobile_sdk.models.operation
 
-abstract class OperationBodyRequestBaseInternal
+public abstract class OperationBodyRequestBaseInternal

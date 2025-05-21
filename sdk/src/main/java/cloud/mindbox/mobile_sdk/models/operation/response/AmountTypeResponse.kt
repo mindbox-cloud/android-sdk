@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-enum class AmountTypeResponse {
+public enum class AmountTypeResponse {
 
     @SerializedName("quantity")
     QUANTITY,

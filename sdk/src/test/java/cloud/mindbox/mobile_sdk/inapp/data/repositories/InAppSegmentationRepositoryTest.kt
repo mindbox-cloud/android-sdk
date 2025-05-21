@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckWrapper
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -14,17 +15,14 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class InAppSegmentationRepositoryTest {
 
     @get:Rule
@@ -162,11 +160,11 @@ class InAppSegmentationRepositoryTest {
             )
         )
         every {
-            sessionStorageManager.inAppProductSegmentations["testId"]
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
         } answers {
             expectedResult
         }
-        assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testId"))
+        assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue"))
     }
 
     @Test
@@ -178,7 +176,7 @@ class InAppSegmentationRepositoryTest {
         }
         assertEquals(
             emptySet<Set<ProductSegmentationResponseWrapper>>(),
-            inAppSegmentationRepository.getProductSegmentations("testId1")
+            inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue")
         )
     }
 
@@ -206,10 +204,15 @@ class InAppSegmentationRepositoryTest {
         }
         val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
         every {
-            inAppMapper.mapToProductSegmentationCheckRequest("test1" to "test2", listOf())
+            inAppMapper.mapToProductSegmentationCheckRequest("testSystem" to "testValue", listOf())
         } returns dtoResult
         every {
-            sessionStorageManager.productSegmentationFetchStatus = any()
+            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"]
+        } answers {
+            ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        every {
+            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         } just runs
         coEvery {
             gatewayManager.checkProductSegmentation(any(), any())
@@ -221,22 +224,22 @@ class InAppSegmentationRepositoryTest {
             sessionStorageManager.inAppProductSegmentations = any()
         } just runs
         every {
-            sessionStorageManager.inAppProductSegmentations["test2"]
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
         } answers {
             setOf(expectedResult)
         }
         every {
-            sessionStorageManager.inAppProductSegmentations["test2"] = setOf(expectedResult)
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"] = setOf(expectedResult)
         } just runs
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
                 emit(configuration)
             }
         }
-        inAppSegmentationRepository.fetchProductSegmentation("test1" to "test2")
+        inAppSegmentationRepository.fetchProductSegmentation("testSystem" to "testValue")
         assertEquals(
             expectedResult,
-            sessionStorageManager.inAppProductSegmentations["test2"]?.firstOrNull()
+            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]?.firstOrNull()
         )
     }
 
