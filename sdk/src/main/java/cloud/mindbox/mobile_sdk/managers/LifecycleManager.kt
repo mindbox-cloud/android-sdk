@@ -123,7 +123,7 @@ internal class LifecycleManager(
     private fun onAppMovedToBackground(): Unit = loggingRunCatching {
         mindboxLogI("onAppMovedToBackground")
         isAppInBackground = true
-        cancelKeepaliveTimer()
+        cancelKeepAliveTimer()
     }
 
     private fun onAppMovedToForeground(): Unit = loggingRunCatching {
@@ -149,7 +149,7 @@ internal class LifecycleManager(
         if (areActivitiesEqual || source != DIRECT) {
             val requestUrl = if (source == LINK) intent.data?.toString() else null
             onTrackVisitReady.invoke(source, requestUrl)
-            startKeepaliveTimer()
+            startKeepAliveTimer()
 
             mindboxLogI("Track visit event with source $source and url $requestUrl")
         }
@@ -175,8 +175,8 @@ internal class LifecycleManager(
         }
     }
 
-    private fun startKeepaliveTimer(): Unit = loggingRunCatching {
-        cancelKeepaliveTimer()
+    private fun startKeepAliveTimer(): Unit = loggingRunCatching {
+        cancelKeepAliveTimer()
         timer = timer(
             initialDelay = TIMER_PERIOD,
             period = TIMER_PERIOD,
@@ -184,7 +184,7 @@ internal class LifecycleManager(
         )
     }
 
-    private fun cancelKeepaliveTimer(): Unit = loggingRunCatching {
+    private fun cancelKeepAliveTimer(): Unit = loggingRunCatching {
         timer?.cancel()
         timer = null
     }

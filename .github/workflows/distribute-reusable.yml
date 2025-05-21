@@ -1,4 +1,4 @@
-name: Distribute PushOk - Reusable
+name: PushOk - Reusable
 
 on:
   workflow_call:

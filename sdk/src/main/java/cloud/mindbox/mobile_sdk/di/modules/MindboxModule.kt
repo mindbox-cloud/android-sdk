@@ -108,7 +108,7 @@ internal interface DataModule : MindboxModule {
     val frequencyValidator: FrequencyValidator
     val migrationManager: MigrationManager
     val timeProvider: SystemTimeProvider
-    val slidingExpirationParametersValidator: TimeSpanPositiveValidator
+    val slidingExpirationParametersValidator: SlidingExpirationParametersValidator
     val mobileConfigSettingsManager: MobileConfigSettingsManager
 }
 

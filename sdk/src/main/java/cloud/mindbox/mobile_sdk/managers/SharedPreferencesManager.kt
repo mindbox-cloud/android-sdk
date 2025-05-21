@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
 internal object SharedPreferencesManager {
 
@@ -136,7 +135,7 @@ internal object SharedPreferencesManager {
         preferences.edit().clear().apply()
     }.exceptionOrNull()
 
-    internal fun remove(key: String): Unit = loggingRunCatching {
+    internal fun remove(key: String) = runCatching {
         preferences.edit { remove(key) }
     }
 }

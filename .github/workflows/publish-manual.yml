@@ -1,5 +1,4 @@
-name: SDK publish RC manual
-
+name: SDK publish manual
 
 on:
   workflow_dispatch:

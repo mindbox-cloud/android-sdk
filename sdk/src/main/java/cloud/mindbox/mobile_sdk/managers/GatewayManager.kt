@@ -62,7 +62,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             is EventType.AppInstalled,
             is EventType.AppInstalledWithoutCustomer,
             is EventType.AppInfoUpdated,
-            is EventType.AppKeepalive,
             is EventType.PushClicked,
             is EventType.AsyncOperation,
             -> {
@@ -160,7 +159,6 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         is EventType.AppInstalled,
         is EventType.AppInstalledWithoutCustomer,
         is EventType.AppInfoUpdated,
-        is EventType.AppKeepalive,
         is EventType.PushClicked,
         is EventType.TrackVisit,
         is EventType.AsyncOperation,

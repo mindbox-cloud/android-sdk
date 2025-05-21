@@ -21,10 +21,7 @@ import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -42,7 +39,7 @@ internal class MobileConfigRepositoryImpl(
     private val ttlParametersValidator: TtlParametersValidator,
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
     private val sessionStorageManager: SessionStorageManager,
-    private val timeSpanPositiveValidator: TimeSpanPositiveValidator,
+    private val slidingExpirationValidator: SlidingExpirationParametersValidator,
     private val mobileConfigSettingsManager: MobileConfigSettingsManager
 ) : MobileConfigRepository {
 
@@ -90,9 +87,8 @@ internal class MobileConfigRepositoryImpl(
                 },
             )
 
-            val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+            var updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
             mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
-            mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -185,16 +181,11 @@ internal class MobileConfigRepositoryImpl(
 
     private fun getConfigSession(configBlank: InAppConfigResponseBlank?): SlidingExpirationDto? =
         try {
-            SlidingExpirationDto(
-                config = configBlank?.settings?.slidingExpiration?.config
-                    ?.takeIf { slidingExpirationConfig ->
-                        timeSpanPositiveValidator.isValid(slidingExpirationConfig)
-                    },
-                pushTokenKeepalive = configBlank?.settings?.slidingExpiration?.pushTokenKeepalive
-                    ?.takeIf { pushTokenKeepaliveDtoBlank ->
-                        timeSpanPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
-                    }
-            )
+            configBlank?.settings?.slidingExpiration?.takeIf { slidingExpirationDtoBlank ->
+                slidingExpirationValidator.isValid(slidingExpirationDtoBlank)
+            }?.let { slidingExpirationDtoBlank ->
+                inAppMapper.mapToSlidingExpiration(slidingExpirationDtoBlank)
+            }
         } catch (e: Exception) {
             mindboxLogE("Error parse config session time", e)
             null
