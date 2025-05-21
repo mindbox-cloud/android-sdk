@@ -2,6 +2,8 @@
 
 # Mindbox SDK for Android
 
+Some new text
+
 The Mindbox SDK allows you to integrate mobile push-notifications, in-app messages and client events into your Android projects.
 
 ## Getting Started
