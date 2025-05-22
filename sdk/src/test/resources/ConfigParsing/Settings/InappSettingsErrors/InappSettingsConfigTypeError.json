@@ -14,12 +14,12 @@
     "inapps": "1.00:00:00"
   },
   "slidingExpiration": {
-    "config": "0.00:30:00",
-    "pushTokenKeepalive": "0.00:40:00"
+    "config": "00:30:00",
+    "pushTokenKeepalive": "14.00:00:00"
   },
   "inapp": {
-    "maxInappsPerSession": "2147483647",
-    "maxInappsPerDay": "33",
-    "minIntervalBetweenShows": "00:30:00"
+    "maxInappsPerSession": "invalid",
+    "maxInappsPerDay": "not a number",
+    "minIntervalBetweenShows": 42
   }
-}
+} 

@@ -151,7 +151,7 @@ class MobileConfigSettingsManagerImplTest {
     @Test
     fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null), null)
+        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null, null), null)
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }

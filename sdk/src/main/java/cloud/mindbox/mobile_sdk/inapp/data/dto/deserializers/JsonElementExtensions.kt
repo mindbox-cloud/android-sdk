@@ -7,7 +7,7 @@ internal fun JsonObject.getAsIntOrNull(key: String): Int? {
         when {
             element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> {
                 val number = element.asNumber
-                if (number.toLong() <= Int.MAX_VALUE) number.toInt() else null
+                if (number.toLong() in Int.MIN_VALUE..Int.MAX_VALUE) number.toInt() else null
             }
             element.isJsonPrimitive && element.asJsonPrimitive.isString -> element.asString.toIntOrNull()
             else -> null
