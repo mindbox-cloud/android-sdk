@@ -15,8 +15,8 @@ class IntegerPositiveValidatorTest {
     }
 
     @Test
-    fun `zero should be valid`() {
-        assertTrue("Zero should be invalid", validator.isValid(0))
+    fun `zero should be invalid`() {
+        assertFalse("Zero should be invalid", validator.isValid(0))
     }
 
     @Test
