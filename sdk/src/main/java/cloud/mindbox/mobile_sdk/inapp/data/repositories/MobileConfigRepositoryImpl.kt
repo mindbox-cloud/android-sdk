@@ -17,9 +17,11 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
+import cloud.mindbox.mobile_sdk.parseTimeSpanToMillis
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -43,7 +45,9 @@ internal class MobileConfigRepositoryImpl(
     private val inAppConfigTtlValidator: InAppConfigTtlValidator,
     private val sessionStorageManager: SessionStorageManager,
     private val timeSpanPositiveValidator: TimeSpanPositiveValidator,
-    private val mobileConfigSettingsManager: MobileConfigSettingsManager
+    private val mobileConfigSettingsManager: MobileConfigSettingsManager,
+    private val integerPositiveValidator: IntegerPositiveValidator,
+    private val inappSettingsManager: InappSettingsManager
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -93,6 +97,7 @@ internal class MobileConfigRepositoryImpl(
             val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
             mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
             mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
+            inappSettingsManager.applySettings(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -168,7 +173,10 @@ internal class MobileConfigRepositoryImpl(
             mindboxLogW("Unable to get slidingExpiration settings $it")
         }
 
-        return SettingsDto(operations, ttl, slidingExpiration)
+        val inappSettings = runCatching { getInappSettings(configBlank) }.getOrNull {
+            mindboxLogW("Unable to get inapp settings $it")
+        }
+        return SettingsDto(operations, ttl, slidingExpiration, inappSettings)
     }
 
     private fun getInAppTtl(configBlank: InAppConfigResponseBlank?): TtlDto? =
@@ -197,6 +205,27 @@ internal class MobileConfigRepositoryImpl(
             )
         } catch (e: Exception) {
             mindboxLogE("Error parse config session time", e)
+            null
+        }
+
+    private fun getInappSettings(configBlank: InAppConfigResponseBlank?): InappSettingsDto? =
+        try {
+            InappSettingsDto(
+                maxInappsPerSession = configBlank?.settings?.inappSettings?.maxInappsPerSession
+                    ?.takeIf { maxInappsPerSession ->
+                        integerPositiveValidator.isValid(maxInappsPerSession)
+                    },
+                maxInappsPerDay = configBlank?.settings?.inappSettings?.maxInappsPerDay
+                    ?.takeIf { pushTokenKeepaliveDtoBlank ->
+                        integerPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
+                    },
+                minIntervalBetweenShows = configBlank?.settings?.inappSettings?.minIntervalBetweenShows
+                    ?.takeIf { minIntervalBetweenShows ->
+                        timeSpanPositiveValidator.isValid(minIntervalBetweenShows)
+                    }?.parseTimeSpanToMillis()
+            )
+        } catch (e: Exception) {
+            mindboxLogE("Error parse config inapp settings", e)
             null
         }
 

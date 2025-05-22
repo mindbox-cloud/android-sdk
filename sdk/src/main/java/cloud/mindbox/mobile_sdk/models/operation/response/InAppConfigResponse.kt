@@ -22,7 +22,9 @@ internal data class SettingsDtoBlank(
     @SerializedName("ttl")
     val ttl: TtlDtoBlank?,
     @SerializedName("slidingExpiration")
-    val slidingExpiration: SlidingExpirationDtoBlank?
+    val slidingExpiration: SlidingExpirationDtoBlank?,
+    @SerializedName("inapp")
+    val inappSettings: InappSettingsDtoBlank?
 ) {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
@@ -36,14 +38,20 @@ internal data class SettingsDtoBlank(
 
     internal data class SlidingExpirationDtoBlank(
         @SerializedName("config")
-        val config: SlidingExpirationConfig?,
+        val config: String?,
         @SerializedName("pushTokenKeepalive")
-        val pushTokenKeepalive: PushTokenKeepalive?,
+        val pushTokenKeepalive: String?,
+    )
+
+    internal data class InappSettingsDtoBlank(
+        @SerializedName("maxInappsPerSession")
+        val maxInappsPerSession: Int?,
+        @SerializedName("maxInappsPerDay")
+        val maxInappsPerDay: Int?,
+        @SerializedName("minIntervalBetweenShows")
+        val minIntervalBetweenShows: String?,
     )
 }
-
-internal typealias SlidingExpirationConfig = String
-internal typealias PushTokenKeepalive = String
 
 internal data class SettingsDto(
     @SerializedName("operations")
@@ -51,7 +59,9 @@ internal data class SettingsDto(
     @SerializedName("ttl")
     val ttl: TtlDto?,
     @SerializedName("slidingExpiration")
-    val slidingExpiration: SlidingExpirationDto?
+    val slidingExpiration: SlidingExpirationDto?,
+    @SerializedName("inapp")
+    val inapp: InappSettingsDto?
 )
 
 internal data class OperationDto(
@@ -69,6 +79,15 @@ internal data class SlidingExpirationDto(
     val config: String?,
     @SerializedName("pushTokenKeepalive")
     val pushTokenKeepalive: String?,
+)
+
+internal data class InappSettingsDto(
+    @SerializedName("maxInappsPerSession")
+    val maxInappsPerSession: Int?,
+    @SerializedName("maxInappsPerDay")
+    val maxInappsPerDay: Int?,
+    @SerializedName("minIntervalBetweenShows")
+    val minIntervalBetweenShows: Long?,
 )
 
 internal data class LogRequestDto(
