@@ -13,30 +13,13 @@ internal class InappSettingsDtoBlankDeserializer : JsonDeserializer<InappSetting
         json: JsonElement,
         typeOfT: Type,
         context: JsonDeserializationContext
-    ): SettingsDtoBlank.InappSettingsDtoBlank {
+    ): InappSettingsDtoBlank {
         val jsonObject = json.asJsonObject
 
         return InappSettingsDtoBlank(
-            maxInappsPerSession = jsonObject.get(MAX_INAPPS_PER_SESSION)?.let { element ->
-                when {
-                    element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asInt
-                    element.isJsonPrimitive && element.asJsonPrimitive.isString -> element.asString.toIntOrNull()
-                    else -> null
-                }
-            },
-            maxInappsPerDay = jsonObject.get(MAX_INAPPS_PER_DAY)?.let { element ->
-                when {
-                    element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asInt
-                    element.isJsonPrimitive && element.asJsonPrimitive.isString -> element.asString.toIntOrNull()
-                    else -> null
-                }
-            },
-            minIntervalBetweenShows = jsonObject.get(MIN_INTERVAL_BETWEEN_SHOWS)?.let { element ->
-                when {
-                    element.isJsonPrimitive && element.asJsonPrimitive.isString -> element.asString
-                    else -> null
-                }
-            }
+            maxInappsPerSession = jsonObject.getAsIntOrNull(MAX_INAPPS_PER_SESSION),
+            maxInappsPerDay = jsonObject.getAsIntOrNull(MAX_INAPPS_PER_DAY),
+            minIntervalBetweenShows = jsonObject.getAsTimeSpan(MIN_INTERVAL_BETWEEN_SHOWS)
         )
     }
 
