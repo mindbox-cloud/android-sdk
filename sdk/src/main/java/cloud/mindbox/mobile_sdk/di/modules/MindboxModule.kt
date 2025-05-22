@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
 import android.app.Application
-import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
@@ -27,8 +27,8 @@ import cloud.mindbox.mobile_sdk.monitoring.data.room.dao.MonitoringDao
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.*
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
-import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.MigrationManager
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.android.volley.RequestQueue
 import com.google.gson.Gson
 
