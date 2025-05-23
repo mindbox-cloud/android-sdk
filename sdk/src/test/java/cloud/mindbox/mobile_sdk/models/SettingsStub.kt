@@ -30,7 +30,7 @@ internal class SettingsStub {
     fun getInappSettings(
         maxInappsPerSession: Int? = null,
         maxInappsPerDay: Int? = null,
-        minIntervalBetweenShows: Long? = null
+        minIntervalBetweenShows: Milliseconds? = null
     ): InAppConfigResponse =
         InAppConfigResponse(
             inApps = null,

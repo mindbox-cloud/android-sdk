@@ -9,7 +9,7 @@ internal class InappSettingsManagerImpl : InappSettingsManager {
             Settings for inapp from config:
             maxInappsPerSession = ${config.settings?.inapp?.maxInappsPerSession}
             maxInappsPerDay = ${config.settings?.inapp?.maxInappsPerDay}
-            minIntervalBetweenShows = ${config.settings?.inapp?.minIntervalBetweenShows} ms
+            minIntervalBetweenShows = ${config.settings?.inapp?.minIntervalBetweenShows?.interval} ms
         """.trimIndent())
     }
 }

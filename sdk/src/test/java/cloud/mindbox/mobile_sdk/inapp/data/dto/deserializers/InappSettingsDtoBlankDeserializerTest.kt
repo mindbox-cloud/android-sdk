@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers
 
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -34,7 +35,7 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertEquals(2, result.maxInappsPerSession)
         assertEquals(1, result.maxInappsPerDay)
-        assertEquals("0.00:00:10", result.minIntervalBetweenShows)
+        assertEquals(TimeSpan.fromStringOrNull("0.00:00:10"), result.minIntervalBetweenShows)
     }
 
     @Test
@@ -49,7 +50,7 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertEquals(2, result.maxInappsPerSession)
         assertEquals(1, result.maxInappsPerDay)
-        assertEquals("0.00:00:10", result.minIntervalBetweenShows)
+        assertEquals(TimeSpan.fromStringOrNull("0.00:00:10"), result.minIntervalBetweenShows)
     }
 
     @Test
@@ -79,7 +80,7 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertNull(result.maxInappsPerSession)
         assertNull(result.maxInappsPerDay)
-        assertEquals("0.00:00:10", result.minIntervalBetweenShows)
+        assertEquals(TimeSpan.fromStringOrNull("0.00:00:10"), result.minIntervalBetweenShows)
     }
 
     @Test
@@ -115,7 +116,7 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertNull(result.maxInappsPerSession)
         assertNull(result.maxInappsPerDay)
-        assertEquals("0.00:00:10", result.minIntervalBetweenShows)
+        assertEquals(TimeSpan.fromStringOrNull("0.00:00:10"), result.minIntervalBetweenShows)
     }
 
     @Test
@@ -130,7 +131,7 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertNull(result.maxInappsPerSession)
         assertNull(result.maxInappsPerDay)
-        assertEquals("0.00:00:10", result.minIntervalBetweenShows)
+        assertEquals(TimeSpan.fromStringOrNull("0.00:00:10"), result.minIntervalBetweenShows)
     }
 
     @Test
@@ -145,6 +146,6 @@ internal class InappSettingsDtoBlankDeserializerTest {
 
         assertNull(result.maxInappsPerSession)
         assertNull(result.maxInappsPerDay)
-        assertEquals("", result.minIntervalBetweenShows)
+        assertNull(result.minIntervalBetweenShows)
     }
 }

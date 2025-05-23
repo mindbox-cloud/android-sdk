@@ -19,9 +19,10 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
-import cloud.mindbox.mobile_sdk.parseTimeSpanToMillis
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -196,11 +197,11 @@ internal class MobileConfigRepositoryImpl(
             SlidingExpirationDto(
                 config = configBlank?.settings?.slidingExpiration?.config
                     ?.takeIf { slidingExpirationConfig ->
-                        timeSpanPositiveValidator.isValid(slidingExpirationConfig)
+                        timeSpanPositiveValidator.isValid(TimeSpan.fromStringOrNull(slidingExpirationConfig))
                     },
                 pushTokenKeepalive = configBlank?.settings?.slidingExpiration?.pushTokenKeepalive
                     ?.takeIf { pushTokenKeepaliveDtoBlank ->
-                        timeSpanPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
+                        timeSpanPositiveValidator.isValid(TimeSpan.fromStringOrNull(pushTokenKeepaliveDtoBlank))
                     }
             )
         } catch (e: Exception) {
@@ -216,13 +217,15 @@ internal class MobileConfigRepositoryImpl(
                         integerPositiveValidator.isValid(maxInappsPerSession)
                     },
                 maxInappsPerDay = configBlank?.settings?.inappSettings?.maxInappsPerDay
-                    ?.takeIf { pushTokenKeepaliveDtoBlank ->
-                        integerPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
+                    ?.takeIf { maxInappsPerDay ->
+                        integerPositiveValidator.isValid(maxInappsPerDay)
                     },
                 minIntervalBetweenShows = configBlank?.settings?.inappSettings?.minIntervalBetweenShows
                     ?.takeIf { minIntervalBetweenShows ->
                         timeSpanPositiveValidator.isValid(minIntervalBetweenShows)
-                    }?.parseTimeSpanToMillis()
+                    }
+                    ?.toMillis()
+                    ?.let { Milliseconds(it) }
             )
         } catch (e: Exception) {
             mindboxLogE("Error parse config inapp settings", e)

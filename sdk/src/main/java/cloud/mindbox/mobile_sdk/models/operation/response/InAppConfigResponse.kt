@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
@@ -49,7 +51,7 @@ internal data class SettingsDtoBlank(
         @SerializedName("maxInappsPerDay")
         val maxInappsPerDay: Int?,
         @SerializedName("minIntervalBetweenShows")
-        val minIntervalBetweenShows: String?,
+        val minIntervalBetweenShows: TimeSpan?,
     )
 }
 
@@ -87,7 +89,7 @@ internal data class InappSettingsDto(
     @SerializedName("maxInappsPerDay")
     val maxInappsPerDay: Int?,
     @SerializedName("minIntervalBetweenShows")
-    val minIntervalBetweenShows: Long?,
+    val minIntervalBetweenShows: Milliseconds?,
 )
 
 internal data class LogRequestDto(

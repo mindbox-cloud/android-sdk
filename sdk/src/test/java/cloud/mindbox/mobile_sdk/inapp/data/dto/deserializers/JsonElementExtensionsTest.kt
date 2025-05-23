@@ -108,10 +108,20 @@ internal class JsonElementExtensionsTest {
     }
 
     @Test
-    fun `getAsTimeSpan returns string for valid string value`() {
+    fun `getAsTimeSpan returns TimeSpan for valid string value`() {
         val json = JsonObject().apply {
             addProperty("key", "0.00:00:10")
         }
-        assertEquals("0.00:00:10", json.getAsTimeSpan("key"))
+        val timeSpan = json.getAsTimeSpan("key")
+        assertEquals("0.00:00:10", timeSpan?.value)
+    }
+
+    @Test
+    fun `getAsTimeSpan returns null for not pattern string value`() {
+        val json = JsonObject().apply {
+            addProperty("key", "0.00:00:99")
+        }
+        val timeSpan = json.getAsTimeSpan("key")
+        assertNull(timeSpan?.value)
     }
 }

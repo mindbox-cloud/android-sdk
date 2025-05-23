@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers
 
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import com.google.gson.JsonObject
 
 internal fun JsonObject.getAsIntOrNull(key: String): Int? {
@@ -15,10 +16,10 @@ internal fun JsonObject.getAsIntOrNull(key: String): Int? {
     }
 }
 
-internal fun JsonObject.getAsTimeSpan(key: String): String? {
+internal fun JsonObject.getAsTimeSpan(key: String): TimeSpan? {
     return get(key)?.let { element ->
         when {
-            element.isJsonPrimitive && element.asJsonPrimitive.isString -> element.asString
+            element.isJsonPrimitive && element.asJsonPrimitive.isString -> TimeSpan.fromStringOrNull(element.asString)
             else -> null
         }
     }
