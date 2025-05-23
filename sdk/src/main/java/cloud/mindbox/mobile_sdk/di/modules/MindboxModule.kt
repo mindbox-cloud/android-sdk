@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
@@ -110,6 +111,8 @@ internal interface DataModule : MindboxModule {
     val timeProvider: SystemTimeProvider
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator
     val mobileConfigSettingsManager: MobileConfigSettingsManager
+    val integerPositiveValidator: IntegerPositiveValidator
+    val inappSettingsManager: InappSettingsManager
 }
 
 internal interface MonitoringModule : MindboxModule {

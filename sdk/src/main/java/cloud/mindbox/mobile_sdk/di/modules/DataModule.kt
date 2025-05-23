@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -20,11 +21,13 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
+import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.*
 import com.google.gson.Gson
@@ -145,7 +148,9 @@ internal fun DataModule(
             inAppConfigTtlValidator = inAppConfigTtlValidator,
             sessionStorageManager = sessionStorageManager,
             timeSpanPositiveValidator = slidingExpirationParametersValidator,
-            mobileConfigSettingsManager = mobileConfigSettingsManager
+            mobileConfigSettingsManager = mobileConfigSettingsManager,
+            integerPositiveValidator = integerPositiveValidator,
+            inappSettingsManager = inappSettingsManager
         )
     }
 
@@ -226,6 +231,10 @@ internal fun DataModule(
     override val slidingExpirationParametersValidator: TimeSpanPositiveValidator by lazy { TimeSpanPositiveValidator() }
     override val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl by lazy {
         MobileConfigSettingsManagerImpl(appContext, sessionStorageManager, timeProvider)
+    }
+    override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
+    override val inappSettingsManager: InappSettingsManagerImpl by lazy {
+        InappSettingsManagerImpl()
     }
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
@@ -380,6 +389,10 @@ internal fun DataModule(
                         TreeTargetingDto.PushPermissionDto::class.java,
                         TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
                     )
+            )
+            .registerTypeAdapter(
+                SettingsDtoBlank.InappSettingsDtoBlank::class.java,
+                InappSettingsDtoBlankDeserializer()
             ).create()
     }
 }

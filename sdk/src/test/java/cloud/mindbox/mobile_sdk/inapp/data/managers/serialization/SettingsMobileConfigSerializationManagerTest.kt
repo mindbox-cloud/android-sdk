@@ -121,6 +121,11 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull(config.slidingExpiration)
         assertNotNull(config.slidingExpiration?.config)
         assertNotNull(config.slidingExpiration?.pushTokenKeepalive)
+
+        assertNotNull(config.inappSettings)
+        assertNotNull(config.inappSettings?.maxInappsPerDay)
+        assertNotNull(config.inappSettings?.maxInappsPerSession)
+        assertNotNull(config.inappSettings?.minIntervalBetweenShows)
     }
 
     // MARK: - Operations
@@ -530,5 +535,102 @@ class SettingsMobileConfigSerializationManagerTest {
             "pushTokenKeepalive must be `null` if the key `config` is not a `String`",
             config.slidingExpiration?.pushTokenKeepalive,
         )
+    }
+
+    // MARK: - InappSettings
+
+    @Test
+    fun settings_config_withInappSettingsError_shouldSetAllInappSettingsToNull() {
+        val json = getJson("ConfigParsing/Settings/InappSettingsErrors/InappSettingsError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("SlidingExpiration must be successfully parsed", config.slidingExpiration)
+        assertNotNull("Config session time must be successfully parsed", config.slidingExpiration?.config)
+        assertNotNull("PushTokenKeepalive time must be successfully parsed", config.slidingExpiration?.pushTokenKeepalive)
+
+        assertNull("InappSettings must be `null` if the key `inapp` is not found", config.inappSettings)
+        assertNull("maxInappsPerSession must be `null`", config.inappSettings?.maxInappsPerSession)
+        assertNull("maxInappsPerDay must be `null`", config.inappSettings?.maxInappsPerDay)
+        assertNull("minIntervalBetweenShows must be `null`", config.inappSettings?.minIntervalBetweenShows)
+    }
+
+    @Test
+    fun settings_config_withInappSettingsTypeError_shouldSetInappToNull() {
+        val json = getJson("ConfigParsing/Settings/InappSettingsErrors/InappSettingsTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("SlidingExpiration must be successfully parsed", config.slidingExpiration)
+        assertNotNull("Config session time must be successfully parsed", config.slidingExpiration?.config)
+        assertNotNull("PushTokenKeepalive time must be successfully parsed", config.slidingExpiration?.pushTokenKeepalive)
+
+        assertNull(
+            "InappSettings must be `null` if the type of `inapp` is not an object",
+            config.inappSettings
+        )
+        assertNull("maxInappsPerSession must be `null`", config.inappSettings?.maxInappsPerSession)
+        assertNull("maxInappsPerDay must be `null`", config.inappSettings?.maxInappsPerDay)
+        assertNull("minIntervalBetweenShows must be `null`", config.inappSettings?.minIntervalBetweenShows)
+    }
+
+    @Test
+    fun settings_config_withInappSettingsConfigError_shouldSetInappToNull() {
+        val json = getJson("ConfigParsing/Settings/InappSettingsErrors/InappSettingsConfigsError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("SlidingExpiration must be successfully parsed", config.slidingExpiration)
+        assertNotNull("Config session time must be successfully parsed", config.slidingExpiration?.config)
+        assertNotNull("PushTokenKeepalive time must be successfully parsed", config.slidingExpiration?.pushTokenKeepalive)
+
+        assertNotNull("InappSettings must be parsed if the object exists", config.inappSettings)
+        assertNull("maxInappsPerSession must be `null` if the key is not found", config.inappSettings?.maxInappsPerSession)
+        assertNull("maxInappsPerDay must be `null` if the key is not found", config.inappSettings?.maxInappsPerDay)
+        assertNull("minIntervalBetweenShows must be `null` if the key is not found", config.inappSettings?.minIntervalBetweenShows)
+    }
+
+    @Test
+    fun settings_config_withInappSettingsConfigTypeError_shouldSetInappToNull() {
+        val json = getJson("ConfigParsing/Settings/InappSettingsErrors/InappSettingsConfigTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("SlidingExpiration must be successfully parsed", config.slidingExpiration)
+        assertNotNull("Config session time must be successfully parsed", config.slidingExpiration?.config)
+        assertNotNull("PushTokenKeepalive time must be successfully parsed", config.slidingExpiration?.pushTokenKeepalive)
+
+        assertNotNull("InappSettings must be parsed if the object exists", config.inappSettings)
+        assertNull("maxInappsPerSession must be `null` if the value is not a number", config.inappSettings?.maxInappsPerSession)
+        assertNull("maxInappsPerDay must be `null` if the value is not a number", config.inappSettings?.maxInappsPerDay)
+        assertNull("minIntervalBetweenShows must be `null` if the value is not a string", config.inappSettings?.minIntervalBetweenShows)
     }
 }
