@@ -2,11 +2,9 @@ name: Lint + UnitTests + Build
 
 on:
   pull_request:
-    branches:
-      - master
-      - mission/*
     types:
       - opened
+      - reopened
       - synchronize
 
 jobs:
