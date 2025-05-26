@@ -1,0 +1,9 @@
+[submodule "kmp-common-sdk"]
+	path = kmp-common-sdk
+	url = git@github.com:mindbox-cloud/kmp-common-sdk.git
+	ignore = dirty
+	branch = master
+
+[submodule "common-sdk"]
+	path = common-sdk
+	url = git@github.com:mindbox-cloud/kmp-common-sdk.git
