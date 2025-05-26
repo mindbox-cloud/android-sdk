@@ -1,9 +1,10 @@
-name: PushOk (Develop PR Merge)
+name: PushOk (Develop / Mission PR Merge)
 
 on:
   pull_request:
     branches:
       - develop
+      - mission/*
     types:
       - closed
 
