@@ -1,4 +1,4 @@
-name: PushOk (Develop / Mission PR Merge)
+name: Distribute PushOk (Develop / Mission PR Merge)
 
 on:
   pull_request:
