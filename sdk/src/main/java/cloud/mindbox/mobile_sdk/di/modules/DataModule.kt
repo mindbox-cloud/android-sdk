@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -393,6 +394,10 @@ internal fun DataModule(
             .registerTypeAdapter(
                 SettingsDtoBlank.InappSettingsDtoBlank::class.java,
                 InappSettingsDtoBlankDeserializer()
-            ).create()
+            )
+            .registerTypeAdapter(
+                SettingsDtoBlank.SlidingExpirationDtoBlank::class.java,
+                SlidingExpirationDtoBlankDeserializer())
+            .create()
     }
 }

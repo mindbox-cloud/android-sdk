@@ -40,9 +40,9 @@ internal data class SettingsDtoBlank(
 
     internal data class SlidingExpirationDtoBlank(
         @SerializedName("config")
-        val config: String?,
+        val config: TimeSpan?,
         @SerializedName("pushTokenKeepalive")
-        val pushTokenKeepalive: String?,
+        val pushTokenKeepalive: TimeSpan?,
     )
 
     internal data class InappSettingsDtoBlank(
@@ -78,9 +78,9 @@ internal data class TtlDto(
 
 internal data class SlidingExpirationDto(
     @SerializedName("config")
-    val config: String?,
+    val config: Milliseconds?,
     @SerializedName("pushTokenKeepalive")
-    val pushTokenKeepalive: String?,
+    val pushTokenKeepalive: Milliseconds?,
 )
 
 internal data class InappSettingsDto(

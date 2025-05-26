@@ -457,7 +457,7 @@ class SettingsMobileConfigSerializationManagerTest {
     // MARK: - SlidingExpiration
 
     @Test
-    fun settings_config_withSlidingExpirationError_shouldSetTtlToNull() {
+    fun settings_config_withSlidingExpirationError_shouldSetSlidingExpirationToNull() {
         val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationError.json")
         val config = manager.deserializeSettings(json)!!
 
@@ -475,7 +475,7 @@ class SettingsMobileConfigSerializationManagerTest {
     }
 
     @Test
-    fun settings_config_withSlidingExpirationTypeError_shouldSetTtlToNull() {
+    fun settings_config_withSlidingExpirationTypeError_shouldSetSlidingExpirationToNull() {
         val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationTypeError.json")
         val config = manager.deserializeSettings(json)!!
 
@@ -496,7 +496,7 @@ class SettingsMobileConfigSerializationManagerTest {
     }
 
     @Test
-    fun settings_config_withSlidingExpirationConfigError_shouldSetTtlToNull() {
+    fun settings_config_withSlidingExpirationConfigError_shouldSetConfigAndPushTokenKeepAliveToNull() {
         val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationConfigsError.json")
         val config = manager.deserializeSettings(json)!!
 
@@ -508,13 +508,13 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl)
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
-        assertNotNull("SlidingExpiration must be `null` if the key `config` is not found", config.slidingExpiration)
+        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config` and `pushtokenkeepalive` is not found", config.slidingExpiration)
         assertNull("Config session time must be `null`", config.slidingExpiration?.config)
         assertNull("PushTokenKeepalive time must be `null`", config.slidingExpiration?.pushTokenKeepalive)
     }
 
     @Test
-    fun settings_config_withSlidingExpirationConfigTypeError_shouldSetTtlToNull() {
+    fun settings_config_withSlidingExpirationConfigTypeError_shouldSetConfigAndPushTokenKeepAliveToNull() {
         val json = getJson("ConfigParsing/Settings/SlidingExpirationErrors/SettingsSlidingExpirationConfigTypeError.json")
         val config = manager.deserializeSettings(json)!!
 
@@ -526,7 +526,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl)
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
-        assertNull("SlidingExpiration must be `null` if the key `config` is not a `String`", config.slidingExpiration)
+        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config`  and 'sis not a `String`", config.slidingExpiration)
         assertNull(
             "Config session time must be `null` if the key `config` is not a `String`",
             config.slidingExpiration?.config,

@@ -20,7 +20,6 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
-import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -197,12 +196,16 @@ internal class MobileConfigRepositoryImpl(
             SlidingExpirationDto(
                 config = configBlank?.settings?.slidingExpiration?.config
                     ?.takeIf { slidingExpirationConfig ->
-                        timeSpanPositiveValidator.isValid(TimeSpan.fromStringOrNull(slidingExpirationConfig))
-                    },
+                        timeSpanPositiveValidator.isValid(slidingExpirationConfig)
+                    }
+                    ?.toMillis()
+                    ?.let { Milliseconds(it) },
                 pushTokenKeepalive = configBlank?.settings?.slidingExpiration?.pushTokenKeepalive
                     ?.takeIf { pushTokenKeepaliveDtoBlank ->
-                        timeSpanPositiveValidator.isValid(TimeSpan.fromStringOrNull(pushTokenKeepaliveDtoBlank))
+                        timeSpanPositiveValidator.isValid(pushTokenKeepaliveDtoBlank)
                     }
+                    ?.toMillis()
+                    ?.let { Milliseconds(it) }
             )
         } catch (e: Exception) {
             mindboxLogE("Error parse config session time", e)
