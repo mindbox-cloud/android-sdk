@@ -508,7 +508,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl)
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
-        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config` and `pushtokenkeepalive` is not found", config.slidingExpiration)
+        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config` and `pushtokenkeepalive` is not found, config.slidingExpiration", config.slidingExpiration)
         assertNull("Config session time must be `null`", config.slidingExpiration?.config)
         assertNull("PushTokenKeepalive time must be `null`", config.slidingExpiration?.pushTokenKeepalive)
     }
