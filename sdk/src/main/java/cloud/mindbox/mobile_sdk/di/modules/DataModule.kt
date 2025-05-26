@@ -4,7 +4,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.ElementDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.managers.*
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
@@ -27,7 +26,6 @@ import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
-import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.*
 import com.google.gson.Gson
@@ -390,9 +388,6 @@ internal fun DataModule(
                         TreeTargetingDto.PushPermissionDto.PUSH_PERMISSION_JSON_NAME
                     )
             )
-            .registerTypeAdapter(
-                SettingsDtoBlank.InappSettingsDtoBlank::class.java,
-                InappSettingsDtoBlankDeserializer()
-            ).create()
+            .create()
     }
 }

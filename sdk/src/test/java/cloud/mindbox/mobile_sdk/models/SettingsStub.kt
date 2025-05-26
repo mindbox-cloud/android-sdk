@@ -8,8 +8,8 @@ import cloud.mindbox.mobile_sdk.models.operation.response.SlidingExpirationDto
 internal class SettingsStub {
     companion object {
         fun getSlidingExpiration(
-            timeSpan: String = "",
-            pushTokenKeepalive: String? = null
+            config: Milliseconds? = null,
+            pushTokenKeepalive: Milliseconds? = null
         ): InAppConfigResponse =
             InAppConfigResponse(
                 inApps = null,
@@ -18,7 +18,7 @@ internal class SettingsStub {
                     operations = emptyMap(),
                     ttl = null,
                     slidingExpiration = SlidingExpirationDto(
-                        config = timeSpan,
+                        config = config,
                         pushTokenKeepalive = pushTokenKeepalive
                     ),
                     inapp = null

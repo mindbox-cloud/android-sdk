@@ -6,6 +6,9 @@ import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDtoBlankDeserializer
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
+import com.google.gson.annotations.JsonAdapter
 
 internal data class InAppConfigResponse(
     @SerializedName("inapps")
@@ -38,19 +41,21 @@ internal data class SettingsDtoBlank(
         val inApps: String
     )
 
+    @JsonAdapter(SlidingExpirationDtoBlankDeserializer::class)
     internal data class SlidingExpirationDtoBlank(
-        @SerializedName("config")
-        val config: String?,
-        @SerializedName("pushTokenKeepalive")
-        val pushTokenKeepalive: String?,
+        @SerializedName(SlidingExpirationDtoBlankDeserializer.CONFIG)
+        val config: TimeSpan?,
+        @SerializedName(SlidingExpirationDtoBlankDeserializer.PUSH_TOKEN_KEEP_ALIVE)
+        val pushTokenKeepalive: TimeSpan?,
     )
 
+    @JsonAdapter(InappSettingsDtoBlankDeserializer::class)
     internal data class InappSettingsDtoBlank(
-        @SerializedName("maxInappsPerSession")
+        @SerializedName(InappSettingsDtoBlankDeserializer.MAX_INAPPS_PER_SESSION)
         val maxInappsPerSession: Int?,
-        @SerializedName("maxInappsPerDay")
+        @SerializedName(InappSettingsDtoBlankDeserializer.MAX_INAPPS_PER_DAY)
         val maxInappsPerDay: Int?,
-        @SerializedName("minIntervalBetweenShows")
+        @SerializedName(InappSettingsDtoBlankDeserializer.MIN_INTERVAL_BETWEEN_SHOWS)
         val minIntervalBetweenShows: TimeSpan?,
     )
 }
@@ -77,18 +82,13 @@ internal data class TtlDto(
 )
 
 internal data class SlidingExpirationDto(
-    @SerializedName("config")
-    val config: String?,
-    @SerializedName("pushTokenKeepalive")
-    val pushTokenKeepalive: String?,
+    val config: Milliseconds?,
+    val pushTokenKeepalive: Milliseconds?,
 )
 
 internal data class InappSettingsDto(
-    @SerializedName("maxInappsPerSession")
     val maxInappsPerSession: Int?,
-    @SerializedName("maxInappsPerDay")
     val maxInappsPerDay: Int?,
-    @SerializedName("minIntervalBetweenShows")
     val minIntervalBetweenShows: Milliseconds?,
 )
 
