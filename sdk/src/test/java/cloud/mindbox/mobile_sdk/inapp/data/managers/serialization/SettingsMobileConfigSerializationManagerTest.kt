@@ -526,7 +526,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl)
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
-        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config`  and 'sis not a `String`", config.slidingExpiration)
+        assertNotNull("SlidingExpiration doesn't must be `null` if the key `config` and `pushtokenkeepalive` has invalid format", config.slidingExpiration)
         assertNull(
             "Config session time must be `null` if the key `config` is not a `String`",
             config.slidingExpiration?.config,
