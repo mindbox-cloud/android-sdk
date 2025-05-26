@@ -16,10 +16,6 @@ internal class InappSettingsDtoBlankDeserializerTest {
     @Before
     fun setup() {
         gson = GsonBuilder()
-            .registerTypeAdapter(
-                SettingsDtoBlank.InappSettingsDtoBlank::class.java,
-                InappSettingsDtoBlankDeserializer()
-            )
             .create()
     }
 

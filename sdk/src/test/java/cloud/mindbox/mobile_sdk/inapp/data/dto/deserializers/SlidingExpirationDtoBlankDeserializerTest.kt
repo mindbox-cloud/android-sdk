@@ -16,10 +16,6 @@ class SlidingExpirationDtoBlankDeserializerTest {
     @Before
     fun setup() {
         gson = GsonBuilder()
-            .registerTypeAdapter(
-                SettingsDtoBlank.SlidingExpirationDtoBlank::class.java,
-                SlidingExpirationDtoBlankDeserializer()
-            )
             .create()
     }
 
