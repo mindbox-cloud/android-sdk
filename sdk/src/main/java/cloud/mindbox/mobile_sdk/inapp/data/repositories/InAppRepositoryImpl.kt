@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
-import cloud.mindbox.mobile_sdk.Mindbox.logI
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
@@ -11,10 +10,6 @@ import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.flow.Flow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 internal class InAppRepositoryImpl(
     private val context: Context,
@@ -119,7 +114,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun isInAppShown(inAppId: String): Boolean {
-        return sessionStorageManager.inAppMessageShownInSession.any { it.first == inAppId }
+        return sessionStorageManager.inAppMessageShownInSession.any { it == inAppId }
     }
 
     override fun clearInAppEvents() {
@@ -128,16 +123,9 @@ internal class InAppRepositoryImpl(
 
     override fun isTimeDelayInapp(inAppId: String): Boolean =
         sessionStorageManager.currentSessionInApps
-            .firstOrNull { it.id == inAppId }
-            ?.let { it.frequency.delay is Frequency.Delay.TimeDelay }
-            ?: false
+            .any { it.id == inAppId && it.frequency.delay is Frequency.Delay.TimeDelay }
 
     override fun setInAppShown(inAppId: String) {
-        val currentTime = System.currentTimeMillis()
-        val readableDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            .apply { timeZone = TimeZone.getTimeZone("UTC") }
-            .format(Date(currentTime))
-        logI("Save in-app with id $inAppId and currentTime ${readableDate}Z in inAppShownInSession")
-        sessionStorageManager.inAppMessageShownInSession.add(inAppId to currentTime)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId)
     }
 }

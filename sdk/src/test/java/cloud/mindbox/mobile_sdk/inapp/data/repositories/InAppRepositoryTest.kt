@@ -230,8 +230,7 @@ class InAppRepositoryTest {
     @Test
     fun `isInAppShown returns true when in-app was shown`() {
         val inAppId = "testId"
-        val timestamp = 1000L
-        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(inAppId to timestamp)
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(inAppId)
 
         val result = inAppRepository.isInAppShown(inAppId)
 
@@ -242,8 +241,7 @@ class InAppRepositoryTest {
     fun `isInAppShown returns false when in-app was not shown`() {
         val inAppId = "testId"
         val otherInAppId = "otherId"
-        val timestamp = 1000L
-        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(otherInAppId to timestamp)
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(otherInAppId)
 
         val result = inAppRepository.isInAppShown(inAppId)
 

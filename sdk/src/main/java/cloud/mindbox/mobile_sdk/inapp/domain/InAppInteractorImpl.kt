@@ -55,9 +55,6 @@ internal class InAppInteractorImpl(
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
             .onEach {
                 mindboxLogD("Event triggered: ${it.name}")
-           /* }.filter { event ->
-                if (isInAppShown()) inAppTargetingChannel.send(event)
-                !isInAppShown().also { mindboxLogD("InApp shown: $it") }*/
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
