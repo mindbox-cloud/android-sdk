@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
-import cloud.mindbox.mobile_sdk.SessionDelay
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -176,7 +175,7 @@ internal class InAppMapper {
                     item.kind.equals(
                         other = FREQUENCY_KIND_SESSION,
                         ignoreCase = true
-                    ) -> SessionDelay()
+                    ) -> Frequency.Delay.OneTimePerSession
 
                     else -> error("Unknown kind cannot be mapped. Should never happen because of validators")
                 }

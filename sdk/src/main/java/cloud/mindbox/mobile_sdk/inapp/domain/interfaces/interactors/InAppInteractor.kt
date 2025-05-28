@@ -7,9 +7,9 @@ internal interface InAppInteractor {
 
     suspend fun listenToTargetingEvents()
 
-    fun isInAppShown(): Boolean
+    fun isInAppShown(inAppId: String): Boolean
 
-    fun setInAppShown()
+    fun setInAppShown(inAppId: String)
 
     suspend fun processEventAndConfig(): Flow<InAppType>
 
@@ -20,4 +20,6 @@ internal interface InAppInteractor {
     suspend fun fetchMobileConfig()
 
     fun resetInAppConfigAndEvents()
+
+    fun isTimeDelayInapp(inAppId: String): Boolean
 }

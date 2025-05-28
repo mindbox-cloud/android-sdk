@@ -27,11 +27,11 @@ internal data class InApp(
     val form: Form,
 )
 
-internal typealias SessionDelay = Frequency.Delay.TimeDelay
-
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
-        object LifetimeDelay : Delay()
+        data object LifetimeDelay : Delay()
+
+        data object OneTimePerSession : Delay()
 
         data class TimeDelay(val time: Long, val unit: InAppTime) : Delay()
     }

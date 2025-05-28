@@ -55,9 +55,6 @@ internal class InAppInteractorImpl(
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
             .onEach {
                 mindboxLogD("Event triggered: ${it.name}")
-            }.filter { event ->
-                if (isInAppShown()) inAppTargetingChannel.send(event)
-                !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
@@ -68,7 +65,7 @@ internal class InAppInteractorImpl(
                     event
                 ).also { inAppType ->
                     inAppType ?: mindboxLogD("No innaps to show found")
-                    if (!isInAppShown()) inAppTargetingChannel.send(event)
+                    inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
@@ -77,7 +74,7 @@ internal class InAppInteractorImpl(
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
-        inAppRepository.setInAppShown()
+        inAppRepository.setInAppShown(id)
         inAppRepository.sendInAppShown(id)
         inAppRepository.saveShownInApp(id, timeStamp)
     }
@@ -102,12 +99,12 @@ internal class InAppInteractorImpl(
         }
     }
 
-    override fun isInAppShown(): Boolean {
-        return inAppRepository.isInAppShown()
+    override fun isInAppShown(inAppId: String): Boolean {
+        return inAppRepository.isInAppShown(inAppId)
     }
 
-    override fun setInAppShown() {
-        inAppRepository.setInAppShown()
+    override fun setInAppShown(inAppId: String) {
+        inAppRepository.setInAppShown(inAppId)
     }
 
     override suspend fun fetchMobileConfig() {
@@ -117,5 +114,9 @@ internal class InAppInteractorImpl(
     override fun resetInAppConfigAndEvents() {
         mobileConfigRepository.resetCurrentConfig()
         inAppRepository.clearInAppEvents()
+    }
+
+    override fun isTimeDelayInapp(inAppId: String): Boolean {
+        return inAppRepository.isTimeDelayInapp(inAppId)
     }
 }

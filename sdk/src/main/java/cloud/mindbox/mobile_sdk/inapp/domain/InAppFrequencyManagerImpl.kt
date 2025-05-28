@@ -36,6 +36,13 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                     }
                     delay < currentTime
                 }
+
+                Frequency.Delay.OneTimePerSession -> !inAppRepository.isInAppShown(inApp.id).also { result ->
+                    mindboxLogI(
+                        "InApp with id = ${inApp.id} has settings one time per session. " +
+                            "Result of checking whether we can show inapp ${inApp.id} in the current session = ${!result} "
+                    )
+                }
             }
         }
     }

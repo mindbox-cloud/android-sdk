@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -112,15 +113,19 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override fun setInAppShown() {
-        sessionStorageManager.isInAppMessageShown = true
-    }
-
-    override fun isInAppShown(): Boolean {
-        return sessionStorageManager.isInAppMessageShown
+    override fun isInAppShown(inAppId: String): Boolean {
+        return sessionStorageManager.inAppMessageShownInSession.any { it == inAppId }
     }
 
     override fun clearInAppEvents() {
         MindboxEventManager.resetEventFlowCache()
+    }
+
+    override fun isTimeDelayInapp(inAppId: String): Boolean =
+        sessionStorageManager.currentSessionInApps
+            .any { it.id == inAppId && it.frequency.delay is Frequency.Delay.TimeDelay }
+
+    override fun setInAppShown(inAppId: String) {
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId)
     }
 }

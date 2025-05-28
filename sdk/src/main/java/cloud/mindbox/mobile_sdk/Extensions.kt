@@ -20,10 +20,7 @@ import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
@@ -48,10 +45,6 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-
-internal fun SessionDelay(): SessionDelay {
-    return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
-}
 
 internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
     defaultValue = ""

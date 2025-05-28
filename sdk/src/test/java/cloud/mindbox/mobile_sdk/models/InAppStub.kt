@@ -39,6 +39,8 @@ internal class InAppStub {
 
         fun getFrequency(): Frequency = Frequency(Frequency.Delay.LifetimeDelay)
 
+        fun getFrequencyOneTimePerSession(): Frequency = Frequency(Frequency.Delay.OneTimePerSession)
+
         fun getSnackbarContentDto(): PayloadDto.SnackbarDto.ContentDto =
             PayloadDto.SnackbarDto.ContentDto(
                 background = getBackgroundDto(),

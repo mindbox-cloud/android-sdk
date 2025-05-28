@@ -15,6 +15,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
 
 class InAppRepositoryTest {
 
@@ -177,5 +181,80 @@ class InAppRepositoryTest {
         verify(exactly = 0) {
             MindboxEventManager.inAppClicked(context, serializedString)
         }
+    }
+
+    @Test
+    fun `isTimeDelayInapp returns true when in-app exists and has TimeDelay`() {
+        val inAppId = "testId"
+        val inApp = InAppStub.getInApp().copy(
+            id = "testId", frequency = Frequency(
+                Frequency.Delay.TimeDelay(
+                    time = 1,
+                    unit = InAppTime.DAYS
+                )
+            )
+        )
+        every { sessionStorageManager.currentSessionInApps } returns listOf(inApp)
+
+        val result = inAppRepository.isTimeDelayInapp(inAppId)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `isTimeDelayInapp returns false when in-app exists but has different delay type`() {
+        val inAppId = "testId"
+        val inApp = InAppStub.getInApp().copy(
+            id = inAppId,
+            frequency = InAppStub.getFrequency().copy(
+                delay = Frequency.Delay.OneTimePerSession
+            )
+        )
+        every { sessionStorageManager.currentSessionInApps } returns listOf(inApp)
+
+        val result = inAppRepository.isTimeDelayInapp(inAppId)
+
+        assertFalse(result)
+    }
+
+    @Test
+    fun `isTimeDelayInapp returns false when in-app does not exist`() {
+        val inAppId = "nonExistentId"
+        every { sessionStorageManager.currentSessionInApps } returns emptyList()
+
+        val result = inAppRepository.isTimeDelayInapp(inAppId)
+
+        assertFalse(result)
+    }
+
+    @Test
+    fun `isInAppShown returns true when in-app was shown`() {
+        val inAppId = "testId"
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(inAppId)
+
+        val result = inAppRepository.isInAppShown(inAppId)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `isInAppShown returns false when in-app was not shown`() {
+        val inAppId = "testId"
+        val otherInAppId = "otherId"
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf(otherInAppId)
+
+        val result = inAppRepository.isInAppShown(inAppId)
+
+        assertFalse(result)
+    }
+
+    @Test
+    fun `isInAppShown returns false when no in-apps were shown`() {
+        val inAppId = "testId"
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf()
+
+        val result = inAppRepository.isInAppShown(inAppId)
+
+        assertFalse(result)
     }
 }

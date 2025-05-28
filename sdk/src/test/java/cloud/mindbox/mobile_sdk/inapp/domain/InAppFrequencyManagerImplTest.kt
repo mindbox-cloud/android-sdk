@@ -75,4 +75,30 @@ class InAppFrequencyManagerImplTest {
 
         assertEquals(listOf(inAppWithTimeDelay), result)
     }
+
+    @Test
+    fun `filterInAppsFrequency returns empty list for inApps with once per session delay when inapp was show in current session`() {
+        val currentTime = System.currentTimeMillis()
+        val inApp = InAppStub.getInApp().copy(id = "1", frequency = InAppStub.getFrequencyOneTimePerSession())
+
+        val inApps = listOf(inApp)
+        every { inAppRepository.getShownInApps() } returns mapOf(inApp.id to currentTime)
+        every { inAppRepository.isInAppShown(any()) } returns true
+        val result = inAppFrequencyManager.filterInAppsFrequency(inApps)
+
+        assertEquals(emptyList<InApp>(), result)
+    }
+
+    @Test
+    fun `filterInAppsFrequency returns inApp list for inApps with once per session delay when inapp wasn't show in current session`() {
+        val currentTime = System.currentTimeMillis()
+        val inApp = InAppStub.getInApp().copy(id = "1", frequency = InAppStub.getFrequencyOneTimePerSession())
+
+        val inApps = listOf(inApp)
+        every { inAppRepository.getShownInApps() } returns mapOf(inApp.id to currentTime)
+        every { inAppRepository.isInAppShown(any()) } returns false
+        val result = inAppFrequencyManager.filterInAppsFrequency(inApps)
+
+        assertEquals(listOf(inApp), result)
+    }
 }

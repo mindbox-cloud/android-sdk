@@ -105,7 +105,8 @@ class SessionStorageManagerTest {
             inAppCustomerSegmentations = mockk()
             unShownOperationalInApps["test"] = mutableListOf(mockk())
             operationalInApps["test"] = mutableListOf(mockk())
-            isInAppMessageShown = true
+            inAppMessageShownInSession.add("test1")
+            inAppMessageShownInSession.add("test2")
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
@@ -121,7 +122,7 @@ class SessionStorageManagerTest {
         assertNull(sessionStorageManager.inAppCustomerSegmentations)
         assertTrue(sessionStorageManager.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.operationalInApps.isEmpty())
-        assertFalse(sessionStorageManager.isInAppMessageShown)
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
         assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
         assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())
@@ -130,5 +131,19 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+    }
+
+    @Test
+    fun `check inAppMessageShownInSession elements count`() {
+        val inAppId1 = "inApp1"
+        val inAppId2 = "inApp2"
+        val expectedResult = 3
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId2)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
+
+        assertEquals(expectedResult, sessionStorageManager.inAppMessageShownInSession.size)
     }
 }
