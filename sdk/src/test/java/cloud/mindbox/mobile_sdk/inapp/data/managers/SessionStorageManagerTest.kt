@@ -105,7 +105,8 @@ class SessionStorageManagerTest {
             inAppCustomerSegmentations = mockk()
             unShownOperationalInApps["test"] = mutableListOf(mockk())
             operationalInApps["test"] = mutableListOf(mockk())
-            isInAppMessageShown = true
+            inAppMessageShownInSession.add("test1" to 1000L)
+            inAppMessageShownInSession.add("test2" to 2000L)
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
@@ -121,7 +122,7 @@ class SessionStorageManagerTest {
         assertNull(sessionStorageManager.inAppCustomerSegmentations)
         assertTrue(sessionStorageManager.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.operationalInApps.isEmpty())
-        assertFalse(sessionStorageManager.isInAppMessageShown)
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
         assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
         assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())
@@ -130,5 +131,46 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+    }
+
+    @Test
+    fun `test inAppMessageShownInSession list operations`() {
+        val inAppId1 = "inApp1"
+        val inAppId2 = "inApp2"
+        val time1 = 1000L
+        val time2 = 2000L
+        val time3 = 3000L
+
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1 to time1)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId2 to time2)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1 to time3)
+
+        assertEquals(3, sessionStorageManager.inAppMessageShownInSession.size)
+
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.contains(inAppId1 to time1))
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.contains(inAppId2 to time2))
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.contains(inAppId1 to time3))
+    }
+
+    @Test
+    fun `test get last shown in-app time`() {
+        val inAppId1 = "inApp1"
+        val inAppId2 = "inApp2"
+        val time1 = 1000L
+        val time2 = 2000L
+        val time3 = 3000L
+
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1 to time1)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId2 to time2)
+
+        assertEquals(time2, sessionStorageManager.inAppMessageShownInSession.maxOfOrNull { it.second })
+
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1 to time3)
+        assertEquals(time3, sessionStorageManager.inAppMessageShownInSession.maxOfOrNull { it.second })
+
+        sessionStorageManager.clearSessionData()
+        assertNull(sessionStorageManager.inAppMessageShownInSession.maxOfOrNull { it.second })
     }
 }

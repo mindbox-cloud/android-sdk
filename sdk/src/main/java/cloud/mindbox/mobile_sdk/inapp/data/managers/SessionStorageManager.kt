@@ -14,7 +14,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
     var unShownOperationalInApps: HashMap<String, MutableList<InApp>> = HashMap()
     var operationalInApps: HashMap<String, MutableList<InApp>> = hashMapOf()
-    var isInAppMessageShown: Boolean = false
+    var inAppMessageShownInSession: MutableList<Pair<String, Long>> = mutableListOf()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -61,7 +61,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         inAppCustomerSegmentations = null
         unShownOperationalInApps.clear()
         operationalInApps.clear()
-        isInAppMessageShown = false
+        inAppMessageShownInSession.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

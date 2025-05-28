@@ -153,6 +153,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
+        if (!isRestored) isActionExecuted = false
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             pausedHolder?.hide()
             pausedHolder = null

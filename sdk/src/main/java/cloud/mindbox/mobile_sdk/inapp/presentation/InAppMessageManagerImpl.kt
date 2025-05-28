@@ -57,7 +57,7 @@ internal class InAppMessageManagerImpl(
                                 return@withContext
                             }
 
-                            if (inAppInteractor.isInAppShown()) {
+                            if (inAppInteractor.isInAppShown(inAppMessage.inAppId) && !inAppInteractor.isTimeDelayInapp(inAppMessage.inAppId)) {
                                 this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
                                 return@withContext
                             }

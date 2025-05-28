@@ -33,9 +33,11 @@ internal interface InAppRepository {
 
     fun sendUserTargeted(inAppId: String)
 
-    fun setInAppShown()
+    fun setInAppShown(inAppId: String)
 
-    fun isInAppShown(): Boolean
+    fun isInAppShown(inAppId: String): Boolean
 
     fun clearInAppEvents()
+
+    fun isTimeDelayInapp(inAppId: String): Boolean
 }
