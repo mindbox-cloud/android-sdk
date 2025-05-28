@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -24,8 +25,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
-    var lastTrackVisitSendTime: Long = 0L
     var sessionTime: Duration = 0L.milliseconds
+
+    val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
     private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
 
@@ -35,10 +37,11 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     fun hasSessionExpired() {
         val currentTime = timeProvider.currentTimeMillis()
-        val timeBetweenVisits = currentTime - lastTrackVisitSendTime
+        val oldLastTrackVisitSendTime = lastTrackVisitSendTime.getAndSet(currentTime)
+        val timeBetweenVisits = currentTime - oldLastTrackVisitSendTime
         val currentSessionTime = sessionTime.inWholeMilliseconds
         val checkingSessionResultLog = when {
-            lastTrackVisitSendTime == 0L -> "First track visit on sdk init"
+            oldLastTrackVisitSendTime == 0L -> "First track visit on sdk init"
 
             currentSessionTime < 0L -> "Session time is incorrect. Session time is $currentSessionTime ms. Skip checking session expiration"
 
@@ -53,7 +56,6 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
                 "Session active. Updating lastTrackVisitSendTime. Time between trackVisits is $timeBetweenVisits ms. Session time is $currentSessionTime ms"
             }
         }
-        lastTrackVisitSendTime = currentTime
         mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
     }
 
