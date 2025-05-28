@@ -6,11 +6,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import io.mockk.*
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Duration.Companion.milliseconds
@@ -24,7 +23,7 @@ class SessionStorageManagerTest {
         sessionTime: Long,
         currentTime: Long
     ) {
-        sessionStorageManager.lastTrackVisitSendTime = lastTrackTime
+        sessionStorageManager.lastTrackVisitSendTime.set(lastTrackTime)
         sessionStorageManager.sessionTime = sessionTime.milliseconds
         every { mockTimeProvider.currentTimeMillis() } returns currentTime
     }
@@ -39,9 +38,9 @@ class SessionStorageManagerTest {
     fun `hasSessionExpired should initialize lastTrackVisitSendTime on first call`() {
         every { mockTimeProvider.currentTimeMillis() } returns 1000L
 
-        assertEquals(0L, sessionStorageManager.lastTrackVisitSendTime)
+        assertEquals(0L, sessionStorageManager.lastTrackVisitSendTime.get())
         sessionStorageManager.hasSessionExpired()
-        assertEquals(1000L, sessionStorageManager.lastTrackVisitSendTime)
+        assertEquals(1000L, sessionStorageManager.lastTrackVisitSendTime.get())
     }
 
     @Test
@@ -53,7 +52,7 @@ class SessionStorageManagerTest {
         sessionStorageManager.hasSessionExpired()
 
         verify(exactly = 0) { listener.invoke() }
-        assertEquals(2000L, sessionStorageManager.lastTrackVisitSendTime)
+        assertEquals(2000L, sessionStorageManager.lastTrackVisitSendTime.get())
     }
 
     @Test
@@ -97,7 +96,7 @@ class SessionStorageManagerTest {
 
         sessionStorageManager.hasSessionExpired()
 
-        assertEquals(sessionStorageManager.lastTrackVisitSendTime, 1500L)
+        assertEquals(sessionStorageManager.lastTrackVisitSendTime.get(), 1500L)
         verify(exactly = 0) { listener.invoke() }
     }
 
@@ -149,5 +148,24 @@ class SessionStorageManagerTest {
         sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
 
         assertEquals(expectedResult, sessionStorageManager.inAppMessageShownInSession.size)
+    }
+
+    @Test
+    fun `hasSessionExpired should not have race conditions on lastTrackVisitSendTime`() {
+        val listener = mockk<() -> Unit>()
+        val threads = mutableListOf<Thread>()
+        sessionStorageManager.addSessionExpirationListener(listener)
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 999L, currentTime = 2000L)
+
+        repeat(5) {
+            threads.add(Thread {
+                sessionStorageManager.hasSessionExpired()
+            })
+        }
+
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+
+        verify(exactly = 1) { listener.invoke() }
     }
 }
