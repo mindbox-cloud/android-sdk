@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
-import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixerImpl
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.domain.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
@@ -65,5 +64,5 @@ internal fun DomainModule(
         get() = InAppFrequencyManagerImpl(inAppRepository)
 
     override val customerAbMixer: CustomerAbMixer
-        get() = CustomerAbMixerImpl()
+        get() = CustomerAbMixer.impl()
 }

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.abtests
 
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.logger.MindboxLog

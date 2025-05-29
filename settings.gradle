@@ -2,4 +2,6 @@ include ':sdk'
 include ':mindbox-huawei'
 include ':mindbox-firebase'
 include ':mindbox-rustore'
+include ':abmixer'
 rootProject.name = "AndroidSdk"
+project(':abmixer').projectDir = new File(rootDir, 'abmixer/abmixer/')
