@@ -26,6 +26,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var configFetchingError: Boolean = false
     var lastTrackVisitSendTime: Long = 0L
     var sessionTime: Duration = 0L.milliseconds
+    var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
 
     private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
 
@@ -70,6 +71,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         shownInAppIdsWithEvents.clear()
         configFetchingError = false
         sessionTime = 0L.milliseconds
+        inAppShowLimitsSettings = InAppShowLimitsSettings()
     }
 
     private fun notifySessionExpired() {

@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.InAppShowLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
@@ -113,6 +114,10 @@ internal interface DataModule : MindboxModule {
     val mobileConfigSettingsManager: MobileConfigSettingsManager
     val integerPositiveValidator: IntegerPositiveValidator
     val inappSettingsManager: InappSettingsManager
+    val maxInappsPerSessionLimitChecker: InAppShowLimitChecker
+    val maxInappsPerDayLimitChecker: InAppShowLimitChecker
+    val minIntervalBetweenShowsLimitChecker: InAppShowLimitChecker
+    val allAllowInAppShowLimitChecker: InAppShowLimitChecker
 }
 
 internal interface MonitoringModule : MindboxModule {
