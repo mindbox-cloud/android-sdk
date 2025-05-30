@@ -134,7 +134,7 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
-        assertEquals(sessionStorageManager.inAppShowLimitsSettings, InAppShowLimitsSettings())
+        assertEquals(InAppShowLimitsSettings(), sessionStorageManager.inAppShowLimitsSettings)
     }
 
     @Test

@@ -75,7 +75,7 @@ internal class InAppInteractorImpl(
                             mindboxLogI("In-app show limits check failed.In-app will not be shown")
                             return@map null
                         }
-                    } ?: mindboxLogD("No innaps to show found")
+                    } ?: mindboxLogD("No inapps to show found")
                 }
             }
             .filterNotNull()
