@@ -3,18 +3,13 @@ name: Lint + UnitTests + Build
 on:
   push:
     branches:
-      - '**'
-      - '!master'
-    paths-ignore:
-      - '**.md'
-    tags-ignore:
-      - '**'
-  pull_request:
-    branches:
-      - master
+      - develop
       - mission/*
+  pull_request:
     types:
       - opened
+      - reopened
+      - synchronize
 
 jobs:
   lint:
