@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.*
 import org.junit.Assert.assertEquals
@@ -115,6 +117,7 @@ class SessionStorageManagerTest {
             shownInAppIdsWithEvents["event"] = mutableSetOf(1, 2, 3)
             configFetchingError = true
             sessionTime = 1000L.milliseconds
+            inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 20, maxInappsPerDay = 20, minIntervalBetweenShows = Milliseconds(100))
         }
 
         sessionStorageManager.clearSessionData()
@@ -131,6 +134,7 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+        assertEquals(sessionStorageManager.inAppShowLimitsSettings, InAppShowLimitsSettings())
     }
 
     @Test

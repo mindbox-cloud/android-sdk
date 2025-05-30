@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.InAppShowLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -25,7 +26,8 @@ internal class InAppInteractorImpl(
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
-    private val inAppFrequencyManager: InAppFrequencyManager
+    private val inAppFrequencyManager: InAppFrequencyManager,
+    private val allAllowInAppShowLimitChecker: InAppShowLimitChecker
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
@@ -64,13 +66,19 @@ internal class InAppInteractorImpl(
                     filteredInApps,
                     event
                 ).also { inAppType ->
-                    inAppType ?: mindboxLogD("No innaps to show found")
                     inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
+                    inAppType?.let {
+                        if (!allAllowInAppShowLimitChecker.check()) {
+                            mindboxLogI("In-app show limits check failed.In-app will not be shown")
+                            return@map null
+                        }
+                    } ?: mindboxLogD("No innaps to show found")
                 }
-            }.filterNotNull()
+            }
+            .filterNotNull()
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
