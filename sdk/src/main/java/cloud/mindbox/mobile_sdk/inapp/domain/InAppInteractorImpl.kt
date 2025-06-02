@@ -68,25 +68,24 @@ internal class InAppInteractorImpl(
                 inAppProcessingManager.chooseInAppToShow(
                     filteredInApps,
                     event
-                ).also { inAppType ->
+                ).also {
                     inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
-                    inAppType?.let {
-                        if (!allAllow(
-                                maxInappsPerSessionLimitChecker,
-                                maxInappsPerDayLimitChecker,
-                                minIntervalBetweenShowsLimitChecker
-                            )
-                        ) {
-                            mindboxLogI("In-app show limits check failed.In-app will not be shown")
-                            return@map null
-                        }
-                    } ?: mindboxLogD("No inapps to show found")
                 }
             }
+            .onEach { inAppType ->
+                if (inAppType == null) mindboxLogI("No inapps to show found")
+            }
             .filterNotNull()
+            .filter {
+                allAllow(
+                    maxInappsPerSessionLimitChecker,
+                    maxInappsPerDayLimitChecker,
+                    minIntervalBetweenShowsLimitChecker
+                )
+            }
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
