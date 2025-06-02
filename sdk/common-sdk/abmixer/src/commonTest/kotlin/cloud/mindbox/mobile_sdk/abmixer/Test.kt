@@ -1,16 +1,11 @@
-package cloud.mindbox.mobile_sdk.abtests
+package cloud.mindbox.mobile_sdk.abmixer
 
-import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
-import org.junit.Assert.assertEquals
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
+import kotlin.test.DefaultAsserter.assertEquals
+import kotlin.test.Test
 
-@RunWith(Parameterized::class)
-class CustomerAbMixerTest(
-    private val uuid: String,
-    private val hash: Int
-) {
+
+class CustomerAbMixerTest {
+
     private val salt = "BBBC2BA1-0B5B-4C9E-AB0E-95C54775B4F1"
 
     companion object {
@@ -516,26 +511,28 @@ class CustomerAbMixerTest(
     F24651C4-E5EB-C21C-1847-6A9AFB065035 56, 5E670791-06A1-A721-8245-44B113519BF3 51,
     1BBC07EB-2342-56D4-B65B-893360651BF2 83, 9F733844-67FA-855E-1E79-B44A56562A58 1"""
 
-        @JvmStatic
-        @Parameterized.Parameters(name = "{index}: uuid({0}) to hash {1}")
-        fun data(): Iterable<Array<Any>> {
+        fun data(): Iterable<Pair<String, Int>> {
             return REFERENCE_INTEGER_MODULUS_VALUES.split(",", "\r", "\n")
                 .filter { it.isNotBlank() }
                 .map { str ->
                     str.trim().split(' ')
                 }.map { items ->
-                    arrayOf(items.first(), items.last().toInt())
+                    items.first() to items.last().toInt()
                 }
         }
     }
 
     @Test
     fun `check mixer result`() {
-        val mixer = CustomerAbMixer.impl()
-        assertEquals(
-            "For uuid $uuid with salt $salt",
-            hash,
-            mixer.stringModulusHash(uuid, salt)
-        )
+        val mixer = CustomerAbMixerImpl()
+
+        data().forEach { (uuid, hash) ->
+            assertEquals(
+                "For uuid $uuid with salt $salt",
+                hash,
+                mixer.stringModulusHash(uuid, salt)
+            )
+        }
     }
 }
+

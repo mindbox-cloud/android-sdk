@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
 import android.app.Application
-import cloud.mindbox.mobile_sdk.abtests.CustomerAbMixer
+import cloud.mindbox.mobile_sdk.abmixer.CustomerAbMixer
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.*
