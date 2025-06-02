@@ -2,7 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.InAppShowLimitChecker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import cloud.mindbox.mobile_sdk.utils.allAllow
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -27,7 +28,9 @@ internal class InAppInteractorImpl(
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
     private val inAppFrequencyManager: InAppFrequencyManager,
-    private val allAllowInAppShowLimitChecker: InAppShowLimitChecker
+    private val maxInappsPerSessionLimitChecker: Checker,
+    private val maxInappsPerDayLimitChecker: Checker,
+    private val minIntervalBetweenShowsLimitChecker: Checker
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
@@ -71,7 +74,12 @@ internal class InAppInteractorImpl(
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
                     inAppType?.let {
-                        if (!allAllowInAppShowLimitChecker.check()) {
+                        if (!allAllow(
+                                maxInappsPerSessionLimitChecker,
+                                maxInappsPerDayLimitChecker,
+                                minIntervalBetweenShowsLimitChecker
+                            )
+                        ) {
                             mindboxLogI("In-app show limits check failed.In-app will not be shown")
                             return@map null
                         }

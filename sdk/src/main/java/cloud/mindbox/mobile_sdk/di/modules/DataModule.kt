@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
-import cloud.mindbox.mobile_sdk.inapp.data.checkers.AllAllowInAppShowLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerDayLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerSessionLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MinIntervalBetweenShowsLimitChecker
@@ -17,7 +16,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.InAppShowLimitChecker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
@@ -237,12 +236,10 @@ internal fun DataModule(
     }
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }
-    override val maxInappsPerSessionLimitChecker: InAppShowLimitChecker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
-    override val maxInappsPerDayLimitChecker: InAppShowLimitChecker by lazy { MaxInappsPerDayLimitChecker() }
-    override val minIntervalBetweenShowsLimitChecker: InAppShowLimitChecker by lazy { MinIntervalBetweenShowsLimitChecker() }
-    override val allAllowInAppShowLimitChecker: InAppShowLimitChecker by lazy {
-        AllAllowInAppShowLimitChecker(listOf(maxInappsPerSessionLimitChecker, maxInappsPerDayLimitChecker, minIntervalBetweenShowsLimitChecker))
-    }
+    override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
+    override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker() }
+    override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker() }
+
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {
