@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -17,6 +18,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import cloud.mindbox.mobile_sdk.utils.allAllow
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -25,7 +27,10 @@ internal class InAppInteractorImpl(
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
-    private val inAppFrequencyManager: InAppFrequencyManager
+    private val inAppFrequencyManager: InAppFrequencyManager,
+    private val maxInappsPerSessionLimitChecker: Checker,
+    private val maxInappsPerDayLimitChecker: Checker,
+    private val minIntervalBetweenShowsLimitChecker: Checker
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
@@ -63,14 +68,24 @@ internal class InAppInteractorImpl(
                 inAppProcessingManager.chooseInAppToShow(
                     filteredInApps,
                     event
-                ).also { inAppType ->
-                    inAppType ?: mindboxLogD("No innaps to show found")
+                ).also {
                     inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
                 }
-            }.filterNotNull()
+            }
+            .onEach { inAppType ->
+                if (inAppType == null) mindboxLogI("No inapps to show found")
+            }
+            .filterNotNull()
+            .filter {
+                allAllow(
+                    maxInappsPerSessionLimitChecker,
+                    maxInappsPerDayLimitChecker,
+                    minIntervalBetweenShowsLimitChecker
+                )
+            }
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
