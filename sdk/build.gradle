@@ -43,6 +43,7 @@ android {
 }
 
 dependencies {
+    implementation project(path: ':mindbox-common')
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib

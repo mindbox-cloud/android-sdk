@@ -57,7 +57,7 @@ afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                from components.release
+                //from components.release
                 groupId = 'cloud.mindbox'
                 artifactId = ARTIFACT_ID
                 version = SDK_VERSION_NAME
