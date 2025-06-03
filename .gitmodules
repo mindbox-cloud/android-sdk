@@ -2,3 +2,4 @@
 	path = common-sdk
 	url = git@github.com:mindbox-cloud/kmp-common-sdk.git
 	branch = master
+	dirty = true
