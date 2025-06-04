@@ -9,13 +9,19 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
 
 internal class InAppRepositoryImpl(
     private val context: Context,
     private val sessionStorageManager: SessionStorageManager,
     private val inAppSerializationManager: InAppSerializationManager,
+    private val timeProvider: SystemTimeProvider
 ) : InAppRepository {
+    companion object {
+        private const val MILLISECONDS_IN_TWO_DAY = 2 * 24 * 60 * 60 * 1000L
+    }
+
     override fun saveCurrentSessionInApps(inApps: List<InApp>) {
         sessionStorageManager.currentSessionInApps = inApps
     }
@@ -63,7 +69,7 @@ internal class InAppRepositoryImpl(
         return sessionStorageManager.operationalInApps[operation.lowercase()] ?: emptyList()
     }
 
-    override fun getShownInApps(): Map<String, Long> {
+    override fun getShownInApps(): Map<String, List<Long>> {
         return inAppSerializationManager.deserializeToShownInAppsMap(MindboxPreferences.shownInApps)
     }
 
@@ -72,8 +78,14 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
-        val newMap = getShownInApps() + hashMapOf(id to timeStamp)
-        inAppSerializationManager.serializeToShownInAppsString(newMap).also {
+        val shownInApps = getShownInApps().toMutableMap()
+        val currentTime = timeProvider.currentTimeMillis()
+
+        shownInApps[id] = (shownInApps[id] ?: emptyList())
+            .filter { currentTime - it <= MILLISECONDS_IN_TWO_DAY }
+            .plus(timeStamp)
+
+        inAppSerializationManager.serializeToShownInAppsString(shownInApps).also {
             if (it.isNotBlank()) {
                 MindboxPreferences.shownInApps = it
             }

@@ -19,6 +19,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 
 class InAppRepositoryTest {
 
@@ -33,6 +34,9 @@ class InAppRepositoryTest {
 
     @MockK
     private lateinit var inAppSerializationManager: InAppSerializationManager
+
+    @MockK
+    private lateinit var timeProvider: SystemTimeProvider
 
     @OverrideMockKs
     private lateinit var inAppRepository: InAppRepositoryImpl
@@ -103,7 +107,8 @@ class InAppRepositoryTest {
         val timeStamp = System.currentTimeMillis()
         val serializedData = "serializedData"
 
-        every { inAppSerializationManager.serializeToShownInAppsString(any<Map<String, Long>>()) } returns serializedData
+        every { timeProvider.currentTimeMillis() } returns timeStamp
+        every { inAppSerializationManager.serializeToShownInAppsString(any<Map<String, List<Long>>>()) } returns serializedData
         every { MindboxPreferences.shownInApps = any() } just runs
         every {
             inAppSerializationManager.deserializeToShownInAppsMap(any())
@@ -113,7 +118,7 @@ class InAppRepositoryTest {
         inAppRepository.saveShownInApp(id, timeStamp)
 
         // Verify that the correct methods were called with the expected arguments
-        verify { inAppSerializationManager.serializeToShownInAppsString(match<Map<String, Long>> { it[id] == timeStamp }) }
+        verify { inAppSerializationManager.serializeToShownInAppsString(match<Map<String, List<Long>>> { it[id] == listOf(timeStamp) }) }
         verify { MindboxPreferences.shownInApps = serializedData }
     }
 
@@ -256,5 +261,32 @@ class InAppRepositoryTest {
         val result = inAppRepository.isInAppShown(inAppId)
 
         assertFalse(result)
+    }
+
+    @Test
+    fun `saveShownInApp filters timestamps older than two days and adds new timestamp`() {
+        val currentTime = System.currentTimeMillis()
+        val twoDaysAgo = currentTime - (2 * 24 * 60 * 60 * 1000)
+        val twoDaysAndOneMsSecondAgo = currentTime - (2 * 24 * 60 * 60 * 1000) - 1
+        val threeDaysAgo = currentTime - (3 * 24 * 60 * 60 * 1000)
+        val oneDayAgo = currentTime - (24 * 60 * 60 * 1000)
+
+        val inAppId = "testId"
+        val timestamps = listOf(threeDaysAgo, twoDaysAndOneMsSecondAgo, twoDaysAgo, oneDayAgo)
+        val expectedTimestamps = listOf(twoDaysAgo, oneDayAgo, currentTime)
+
+        every { timeProvider.currentTimeMillis() } returns currentTime
+        every { MindboxPreferences.shownInApps } returns "oldData"
+        every { inAppSerializationManager.deserializeToShownInAppsMap("oldData") } returns hashMapOf(
+            inAppId to timestamps
+        )
+        every { inAppSerializationManager.serializeToShownInAppsString(match { it[inAppId] == expectedTimestamps }) } returns "newData"
+        every { MindboxPreferences.shownInApps = "newData" } just runs
+
+        inAppRepository.saveShownInApp(inAppId, currentTime)
+
+        verify(exactly = 1) {
+            inAppSerializationManager.serializeToShownInAppsString(match { it[inAppId] == expectedTimestamps })
+        }
     }
 }

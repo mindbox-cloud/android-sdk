@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 internal interface InAppRepository {
     fun saveCurrentSessionInApps(inApps: List<InApp>)
 
-    fun getShownInApps(): Map<String, Long>
+    fun getShownInApps(): Map<String, List<Long>>
 
     fun getCurrentSessionInApps(): List<InApp>
 
