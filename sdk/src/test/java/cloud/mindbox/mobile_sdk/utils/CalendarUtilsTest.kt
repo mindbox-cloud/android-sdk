@@ -1,9 +1,16 @@
 package cloud.mindbox.mobile_sdk.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
+import java.util.TimeZone
 
 class CalendarUtilsTest {
+
+    @Before
+    fun setUp() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Moscow"))
+    }
 
     @Test
     fun `getDayBounds returns correct bounds for middle of day`() {
