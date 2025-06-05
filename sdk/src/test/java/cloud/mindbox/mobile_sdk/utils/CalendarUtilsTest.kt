@@ -24,8 +24,8 @@ class CalendarUtilsTest {
         // June 4, 2024, 21:00:00.000 GMT (June 5, 2024, 00:00:00.000 UTC+3)
         val expectedEndOfDay = 1717534800000L
 
-        assertEquals(expectedStartOfDay, startOfDay.value)
-        assertEquals(expectedEndOfDay, endOfDay.value)
+        assertEquals(expectedStartOfDay, startOfDay.ms)
+        assertEquals(expectedEndOfDay, endOfDay.ms)
     }
 
     @Test
@@ -39,8 +39,8 @@ class CalendarUtilsTest {
         // June 4, 2024, 21:00:00.000 GMT (June 5, 2024, 00:00:00.000 UTC+3)
         val expectedEndOfDay = 1717534800000L
 
-        assertEquals(expectedStartOfDay, startOfDay.value)
-        assertEquals(expectedEndOfDay, endOfDay.value)
+        assertEquals(expectedStartOfDay, startOfDay.ms)
+        assertEquals(expectedEndOfDay, endOfDay.ms)
     }
 
     @Test
@@ -54,7 +54,7 @@ class CalendarUtilsTest {
         // June 4, 2024, 21:00:00.000 GMT (June 5, 2024, 00:00:00.000 UTC+3)
         val expectedEndOfDay = 1717534800000L
 
-        assertEquals(expectedStartOfDay, startOfDay.value)
-        assertEquals(expectedEndOfDay, endOfDay.value)
+        assertEquals(expectedStartOfDay, startOfDay.ms)
+        assertEquals(expectedEndOfDay, endOfDay.ms)
     }
 }

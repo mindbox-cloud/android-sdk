@@ -83,7 +83,7 @@ internal class InAppRepositoryImpl(
         val shownInApps = getShownInApps().toMutableMap()
         val currentTime = timeProvider.currentTimeMillis()
 
-        shownInApps[id] = (shownInApps[id] ?: emptyList())
+        shownInApps[id] = shownInApps.getOrElse(id) { emptyList() }
             .filter { currentTime - it <= TimeUnit.DAYS.toMillis(IN_APP_SHOWN_EXPIRATION_DAYS) }
             .plus(timeStamp)
 

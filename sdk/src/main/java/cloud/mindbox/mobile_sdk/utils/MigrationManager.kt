@@ -4,11 +4,13 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.toJsonTyped
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -123,11 +125,10 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
 
         override suspend fun run() {
-            val oldShownInApps = loggingRunCatching<Map<String, Long>>(emptyMap()) {
-                gson.fromJson(
-                    MindboxPreferences.shownInApps,
-                    object : TypeToken<HashMap<String, Long>>() {}.type
-                )
+            val oldShownInApps = loggingRunCatching(emptyMap()) {
+                gson.fromJsonTyped<Map<String, Long>>(
+                    MindboxPreferences.shownInApps
+                ) ?: emptyMap()
             }
 
             val newShownInApps = oldShownInApps.mapValues { (_, timestamp) ->
@@ -135,7 +136,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             }
 
             val newMapString = LoggingExceptionHandler.runCatching("") {
-                gson.toJson(newShownInApps, object : TypeToken<HashMap<String, List<Long>>>() {}.type)
+                gson.toJsonTyped<Map<String, List<Long>>>(newShownInApps)
             }
 
             MindboxPreferences.shownInApps = newMapString

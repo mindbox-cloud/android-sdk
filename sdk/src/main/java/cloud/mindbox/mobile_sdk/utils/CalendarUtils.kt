@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 
 internal fun getDayBounds(timestamp: Timestamp): Pair<Timestamp, Timestamp> {
     val calendar = Calendar.getInstance().apply {
-        timeInMillis = timestamp.value
+        timeInMillis = timestamp.ms
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
         set(Calendar.SECOND, 0)

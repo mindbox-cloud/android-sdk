@@ -27,7 +27,7 @@ internal class MaxInappsPerDayLimitChecker(
                     .values
                     .flatten()
                     .count { timestamp ->
-                        timestamp in startOfDay.value until endOfDay.value
+                        timestamp in startOfDay.ms until endOfDay.ms
                     }
                 val isAllowed = maxInappsPerSessionCount > shownInAppsToday
                 mindboxLogI("Shows today: $shownInAppsToday, limit per day: $maxInappsPerSessionCount isAllowed = $isAllowed")
