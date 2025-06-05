@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
+import java.util.concurrent.TimeUnit
 
 internal class InAppRepositoryImpl(
     private val context: Context,
@@ -18,8 +19,9 @@ internal class InAppRepositoryImpl(
     private val inAppSerializationManager: InAppSerializationManager,
     private val timeProvider: SystemTimeProvider
 ) : InAppRepository {
+
     companion object {
-        private const val MILLISECONDS_IN_TWO_DAY = 2 * 24 * 60 * 60 * 1000L
+        private const val IN_APP_SHOWN_EXPIRATION_DAYS = 2L
     }
 
     override fun saveCurrentSessionInApps(inApps: List<InApp>) {
@@ -82,7 +84,7 @@ internal class InAppRepositoryImpl(
         val currentTime = timeProvider.currentTimeMillis()
 
         shownInApps[id] = (shownInApps[id] ?: emptyList())
-            .filter { currentTime - it <= MILLISECONDS_IN_TWO_DAY }
+            .filter { currentTime - it <= TimeUnit.DAYS.toMillis(IN_APP_SHOWN_EXPIRATION_DAYS) }
             .plus(timeStamp)
 
         inAppSerializationManager.serializeToShownInAppsString(shownInApps).also {

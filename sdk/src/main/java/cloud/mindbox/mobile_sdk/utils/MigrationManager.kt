@@ -81,7 +81,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
                 gson.toJson(newShownInApps, object : TypeToken<HashMap<String, Long>>() {}.type)
             }
             MindboxPreferences.shownInApps = newMapString
-            SharedPreferencesManager.remove("SHOWN_IDS")
+            MindboxPreferences.shownInAppIds = ""
         }
     }
 
@@ -123,11 +123,11 @@ internal class MigrationManager(val context: Context) : MindboxLog {
 
         override suspend fun run() {
             val gson = Gson()
-            val oldShownInApps = LoggingExceptionHandler.runCatching<Map<String, Long>>(emptyMap()) {
+            val oldShownInApps = loggingRunCatching<Map<String, Long>>(emptyMap()) {
                 gson.fromJson(
                     MindboxPreferences.shownInApps,
                     object : TypeToken<HashMap<String, Long>>() {}.type
-                ) ?: emptyMap()
+                )
             }
 
             val newShownInApps = oldShownInApps.mapValues { (_, timestamp) ->
@@ -139,6 +139,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             }
 
             MindboxPreferences.shownInApps = newMapString
+            SharedPreferencesManager.remove("SHOWN_IDS")
             MindboxPreferences.versionCode = VERSION_CODE
         }
     }
