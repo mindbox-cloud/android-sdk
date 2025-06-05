@@ -3,12 +3,12 @@ package cloud.mindbox.mobile_sdk.utils
 import android.content.Context
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -19,6 +19,8 @@ internal class MigrationManager(val context: Context) : MindboxLog {
 
     @Volatile
     private var isMigrating = false
+
+    private val gson by mindboxInject { gson }
 
     suspend fun migrateAll() {
         if (isMigrating) return
@@ -67,7 +69,6 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             get() = MindboxPreferences.shownInAppIds != ""
 
         override suspend fun run() {
-            val gson = Gson()
             val oldShownInApps = LoggingExceptionHandler.runCatching<Set<String>>(HashSet()) {
                 gson.fromJson(
                     MindboxPreferences.shownInAppIds,
@@ -122,7 +123,6 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
 
         override suspend fun run() {
-            val gson = Gson()
             val oldShownInApps = loggingRunCatching<Map<String, Long>>(emptyMap()) {
                 gson.fromJson(
                     MindboxPreferences.shownInApps,

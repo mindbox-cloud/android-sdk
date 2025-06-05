@@ -13,7 +13,7 @@ internal fun getDayBounds(timestamp: Timestamp): Pair<Timestamp, Timestamp> {
         set(Calendar.MILLISECOND, 0)
     }
     val startOfDay = Timestamp(calendar.timeInMillis)
-    val endOfDay = Timestamp(startOfDay.value + TimeUnit.DAYS.toMillis(1))
+    val endOfDay = startOfDay + TimeUnit.DAYS.toMillis(1)
 
     return startOfDay to endOfDay
 }
