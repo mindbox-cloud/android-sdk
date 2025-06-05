@@ -135,7 +135,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
                 listOf(timestamp)
             }
 
-            val newMapString = LoggingExceptionHandler.runCatching("") {
+            val newMapString = loggingRunCatching("") {
                 gson.toJsonTyped<Map<String, List<Long>>>(newShownInApps)
             }
 

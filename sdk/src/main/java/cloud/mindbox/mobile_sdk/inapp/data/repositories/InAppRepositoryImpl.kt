@@ -80,13 +80,13 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
-        val shownInApps = getShownInApps().toMutableMap()
+        val currentShownInApps = getShownInApps()
         val currentTime = timeProvider.currentTimeMillis()
 
-        shownInApps[id] = shownInApps.getOrElse(id) { emptyList() }
+        val newShownInAppsById = currentShownInApps.getOrElse(id) { emptyList() }
             .filter { currentTime - it <= TimeUnit.DAYS.toMillis(IN_APP_SHOWN_EXPIRATION_DAYS) }
             .plus(timeStamp)
-
+        val shownInApps = currentShownInApps + (id to newShownInAppsById)
         inAppSerializationManager.serializeToShownInAppsString(shownInApps).also {
             if (it.isNotBlank()) {
                 MindboxPreferences.shownInApps = it
