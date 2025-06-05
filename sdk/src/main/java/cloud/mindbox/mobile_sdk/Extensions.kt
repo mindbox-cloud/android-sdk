@@ -290,3 +290,9 @@ public fun Intent.putMindboxPushExtras(pushUniqKey: String) {
 public fun Intent.getMindboxUniqKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
 
 public fun Intent.getMindboxUniqPushButtonKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
+
+internal inline fun <reified T> Gson.toJsonTyped(src: T): String =
+    toJson(src, object : TypeToken<T>() {}.type)
+
+internal inline fun <reified T> Gson.fromJsonTyped(json: String): T? =
+    fromJson(json, object : TypeToken<T>() {}.type)

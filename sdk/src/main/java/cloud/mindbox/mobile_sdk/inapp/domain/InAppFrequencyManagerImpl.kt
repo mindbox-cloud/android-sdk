@@ -9,9 +9,10 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepository) :
     InAppFrequencyManager {
     override fun filterInAppsFrequency(inApps: List<InApp>): List<InApp> {
+        val shownInApps = inAppRepository.getShownInApps()
         return inApps.filter { inApp ->
             val lastShownTimeStamp =
-                inAppRepository.getShownInApps()[inApp.id] ?: run {
+                shownInApps[inApp.id]?.maxOrNull() ?: run {
                     mindboxLogI("InApp with id = ${inApp.id} was never shown before. Frequency filter won't be applied")
                     return@filter true
                 }

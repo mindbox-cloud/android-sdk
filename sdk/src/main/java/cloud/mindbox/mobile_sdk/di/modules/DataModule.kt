@@ -178,6 +178,7 @@ internal fun DataModule(
             context = appContext,
             sessionStorageManager = sessionStorageManager,
             inAppSerializationManager = inAppSerializationManager,
+            timeProvider = timeProvider
         )
     }
     override val callbackRepository: CallbackRepository by lazy {
@@ -237,7 +238,7 @@ internal fun DataModule(
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }
     override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
-    override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker() }
+    override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker() }
 
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
