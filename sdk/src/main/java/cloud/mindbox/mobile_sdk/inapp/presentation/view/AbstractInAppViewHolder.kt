@@ -75,7 +75,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                 shouldDismiss = this.shouldDismiss
             }
 
-            wrapper.onInAppClick.onClick()
+            wrapper.inAppLifecycleCallbacks.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
                 redirectUrl,
@@ -135,7 +135,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                         preparedImages[imageView] = true
                         if (!preparedImages.values.contains(false)) {
                             mindboxLogI("In-app shown")
-                            wrapper.onInAppShown.onShown()
+                            wrapper.inAppLifecycleCallbacks.onInAppShown.onShown()
                             for (image in preparedImages.keys) {
                                 image.visibility = View.VISIBLE
                             }

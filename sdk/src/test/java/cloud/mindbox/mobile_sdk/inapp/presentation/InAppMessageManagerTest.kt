@@ -150,10 +150,10 @@ internal class InAppMessageManagerTest {
             awaitComplete()
         }
         verify(exactly = 1) {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any())
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
         }
         every {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any())
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
         } just runs
         coVerify(exactly = 1) {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -190,10 +190,10 @@ internal class InAppMessageManagerTest {
             awaitComplete()
         }
         every {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any())
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
         } just runs
         verify(exactly = 0) {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any())
+            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
         }
         coVerify(exactly = 1) {
             inAppMessageInteractor.listenToTargetingEvents()
