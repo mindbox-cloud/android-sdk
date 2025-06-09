@@ -4,6 +4,7 @@ internal data class InAppTypeWrapper<out T : InAppType>(
     val inAppType: T,
     val onInAppClick: OnInAppClick,
     val onInAppShown: OnInAppShown,
+    val onInAppDismiss: OnInAppDismiss
 )
 
 internal fun interface OnInAppClick {
@@ -12,4 +13,8 @@ internal fun interface OnInAppClick {
 
 internal fun interface OnInAppShown {
     fun onShown()
+}
+
+internal fun interface OnInAppDismiss {
+    fun onDismiss()
 }

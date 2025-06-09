@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
@@ -40,4 +41,8 @@ internal interface InAppRepository {
     fun clearInAppEvents()
 
     fun isTimeDelayInapp(inAppId: String): Boolean
+
+    fun getLastInappShowTime(): Timestamp
+
+    fun saveLastInappShowTime(timeStamp: Timestamp)
 }

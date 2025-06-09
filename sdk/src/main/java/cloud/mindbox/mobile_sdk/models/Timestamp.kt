@@ -7,3 +7,5 @@ package cloud.mindbox.mobile_sdk.models
 internal value class Timestamp(val ms: Long) {
     operator fun plus(milliseconds: Long): Timestamp = Timestamp(ms + milliseconds)
 }
+
+internal fun Long.toTimestamp(): Timestamp = Timestamp(this)

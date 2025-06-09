@@ -22,4 +22,6 @@ internal interface InAppInteractor {
     fun resetInAppConfigAndEvents()
 
     fun isTimeDelayInapp(inAppId: String): Boolean
+
+    fun saveLastShowInAppTime()
 }

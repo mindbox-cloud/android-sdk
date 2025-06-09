@@ -6,8 +6,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializat
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
@@ -141,5 +143,12 @@ internal class InAppRepositoryImpl(
 
     override fun setInAppShown(inAppId: String) {
         sessionStorageManager.inAppMessageShownInSession.add(inAppId)
+    }
+
+    override fun getLastInappShowTime(): Timestamp = MindboxPreferences.lastInappShowTime
+
+    override fun saveLastInappShowTime(timeStamp: Timestamp) {
+        mindboxLogI("Save last inapp show with timestamp $timeStamp")
+        MindboxPreferences.lastInappShowTime = timeStamp
     }
 }

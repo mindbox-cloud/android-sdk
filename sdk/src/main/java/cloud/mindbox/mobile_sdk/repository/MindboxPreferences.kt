@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.pushes.PrefPushTokenMap
 import cloud.mindbox.mobile_sdk.pushes.toPreferences
 import cloud.mindbox.mobile_sdk.pushes.toTokensMap
@@ -34,6 +35,7 @@ internal object MindboxPreferences {
     private const val KEY_CONFIG_UPDATE_DATE = "key_config_update_date"
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
     private const val KEY_LAST_INFO_UPDATE_TIME = "key_last_info_update_time"
+    private const val KEY_LAST_INAPP_SHOW_TIME = "key_last_inapp_show_time"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -238,6 +240,16 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_LAST_INFO_UPDATE_TIME, value ?: 0)
+            }
+        }
+
+    var lastInappShowTime: Timestamp
+        get() = loggingRunCatching(defaultValue = Timestamp(0)) {
+            Timestamp(SharedPreferencesManager.getLong(KEY_LAST_INAPP_SHOW_TIME))
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_LAST_INAPP_SHOW_TIME, value.ms)
             }
         }
 }

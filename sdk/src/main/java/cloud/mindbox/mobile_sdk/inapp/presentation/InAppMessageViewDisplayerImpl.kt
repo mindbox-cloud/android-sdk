@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
@@ -118,14 +119,15 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         inAppType: InAppType,
         onInAppClick: OnInAppClick,
         onInAppShown: OnInAppShown,
+        onInAppDismiss: OnInAppDismiss
     ) {
         val wrapper = when (inAppType) {
             is InAppType.ModalWindow -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown, onInAppDismiss)
             }
 
             is InAppType.Snackbar -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown, onInAppDismiss)
             }
         }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
@@ -193,6 +195,9 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     override fun hideCurrentInApp() {
         loggingRunCatching {
+            if (isInAppActive()) {
+                currentHolder?.wrapper?.onInAppDismiss?.onDismiss()
+            }
             currentHolder?.hide()
             currentHolder = null
             pausedHolder?.hide()

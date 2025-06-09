@@ -69,6 +69,9 @@ internal class InAppMessageManagerImpl(
                                 },
                                 onInAppShown = {
                                     inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                                },
+                                onInAppDismiss = {
+                                    inAppInteractor.saveLastShowInAppTime()
                                 }
                             )
                         }
