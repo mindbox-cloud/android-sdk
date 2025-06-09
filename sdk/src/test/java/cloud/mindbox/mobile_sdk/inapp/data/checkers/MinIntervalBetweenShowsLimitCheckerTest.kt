@@ -52,7 +52,7 @@ class MinIntervalBetweenShowsLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             minIntervalBetweenShows = interval
         )
-        every { inAppRepository.getLastInappShowTime() } returns Timestamp(lastShowTime)
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
         every { timeProvider.currentTimeMillis() } returns currentTime
 
         val result = minIntervalBetweenShowsLimitChecker.check()
@@ -69,7 +69,7 @@ class MinIntervalBetweenShowsLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             minIntervalBetweenShows = interval
         )
-        every { inAppRepository.getLastInappShowTime() } returns Timestamp(lastShowTime)
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
         every { timeProvider.currentTimeMillis() } returns currentTime
 
         val result = minIntervalBetweenShowsLimitChecker.check()
@@ -86,7 +86,7 @@ class MinIntervalBetweenShowsLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             minIntervalBetweenShows = interval
         )
-        every { inAppRepository.getLastInappShowTime() } returns Timestamp(lastShowTime)
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
         every { timeProvider.currentTimeMillis() } returns currentTime
 
         val result = minIntervalBetweenShowsLimitChecker.check()

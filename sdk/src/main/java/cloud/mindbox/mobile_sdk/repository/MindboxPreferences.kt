@@ -35,7 +35,7 @@ internal object MindboxPreferences {
     private const val KEY_CONFIG_UPDATE_DATE = "key_config_update_date"
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
     private const val KEY_LAST_INFO_UPDATE_TIME = "key_last_info_update_time"
-    private const val KEY_LAST_INAPP_SHOW_TIME = "key_last_inapp_show_time"
+    private const val KEY_LAST_INAPP_DISMISS_TIME = "key_last_inapp_dismiss_time"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -243,13 +243,13 @@ internal object MindboxPreferences {
             }
         }
 
-    var lastInappShowTime: Timestamp
+    var lastInappDismissTime: Timestamp
         get() = loggingRunCatching(defaultValue = Timestamp(0)) {
-            Timestamp(SharedPreferencesManager.getLong(KEY_LAST_INAPP_SHOW_TIME))
+            Timestamp(SharedPreferencesManager.getLong(KEY_LAST_INAPP_DISMISS_TIME))
         }
         set(value) {
             loggingRunCatching {
-                SharedPreferencesManager.put(KEY_LAST_INAPP_SHOW_TIME, value.ms)
+                SharedPreferencesManager.put(KEY_LAST_INAPP_DISMISS_TIME, value.ms)
             }
         }
 }

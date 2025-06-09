@@ -42,7 +42,7 @@ internal interface InAppRepository {
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
-    fun getLastInappShowTime(): Timestamp
+    fun getLastInappDismissTime(): Timestamp
 
-    fun saveLastInappShowTime(timeStamp: Timestamp)
+    fun saveLastInappDismissTime(timeStamp: Timestamp)
 }

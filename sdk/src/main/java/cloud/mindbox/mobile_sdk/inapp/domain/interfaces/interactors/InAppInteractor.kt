@@ -23,5 +23,5 @@ internal interface InAppInteractor {
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
-    fun saveLastShowInAppTime()
+    fun saveLastDismissInAppTime()
 }

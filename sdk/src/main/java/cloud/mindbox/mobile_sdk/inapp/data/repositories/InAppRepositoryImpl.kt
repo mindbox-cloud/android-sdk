@@ -145,10 +145,10 @@ internal class InAppRepositoryImpl(
         sessionStorageManager.inAppMessageShownInSession.add(inAppId)
     }
 
-    override fun getLastInappShowTime(): Timestamp = MindboxPreferences.lastInappShowTime
+    override fun getLastInappDismissTime(): Timestamp = MindboxPreferences.lastInappDismissTime
 
-    override fun saveLastInappShowTime(timeStamp: Timestamp) {
-        mindboxLogI("Save last inapp show with timestamp $timeStamp")
-        MindboxPreferences.lastInappShowTime = timeStamp
+    override fun saveLastInappDismissTime(timeStamp: Timestamp) {
+        mindboxLogI("Save last inapp dismiss with timestamp $timeStamp")
+        MindboxPreferences.lastInappDismissTime = timeStamp
     }
 }

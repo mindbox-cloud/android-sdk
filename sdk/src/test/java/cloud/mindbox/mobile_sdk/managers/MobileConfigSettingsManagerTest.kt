@@ -4,8 +4,10 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.SettingsStub.Companion.getSlidingExpiration
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
+import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -29,6 +31,10 @@ class MobileConfigSettingsManagerImplTest {
         sessionStorageManager = spyk(realSessionStorageManager)
         mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(mockk(), sessionStorageManager, object : TimeProvider {
             override fun currentTimeMillis(): Long = now
+
+            override fun currentTimestamp(): Timestamp {
+                return now.toTimestamp()
+            }
         })
         mockkObject(Mindbox)
         mockkObject(MindboxPreferences)

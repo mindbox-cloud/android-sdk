@@ -16,7 +16,6 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -138,7 +137,7 @@ internal class InAppInteractorImpl(
         return inAppRepository.isTimeDelayInapp(inAppId)
     }
 
-    override fun saveLastShowInAppTime() {
-        inAppRepository.saveLastInappShowTime(timeStamp = timeProvider.currentTimeMillis().toTimestamp())
+    override fun saveLastDismissInAppTime() {
+        inAppRepository.saveLastInappDismissTime(timeStamp = timeProvider.currentTimestamp())
     }
 }
