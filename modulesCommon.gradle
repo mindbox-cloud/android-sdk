@@ -60,7 +60,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'cloud.mindbox'
                 artifactId = ARTIFACT_ID
-                version = SDK_VERSION_NAME
+                version = "1.0.0-SNAPSHOT"
                 pom {
                     name = ARTIFACT_NAME
                     description = 'Android Mindbox SDK'
@@ -90,18 +90,12 @@ afterEvaluate {
         }
 
         repositories {
-            if (!project.hasProperty("sonatypeUsername")) {
-                ext.sonatypeUsername = "sonatypeUsername"
-            }
-            if (!project.hasProperty("sonatypePassword")) {
-                ext.sonatypePassword = "sonatypePassword"
-            }
             maven {
-                name = "OSSRH"
-                url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2")
+                name = "Central Portal Snapshots"
+                url = uri("https://central.sonatype.com/repository/maven-snapshots/")
                 credentials {
-                    username = sonatypeUsername
-                    password = sonatypePassword
+                    username = findProperty("centralPortalUsername") ?: ""
+                    password = findProperty("centralPortalPassword") ?: ""
                 }
             }
         }

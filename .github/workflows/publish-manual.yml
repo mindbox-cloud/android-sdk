@@ -5,15 +5,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-branch:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if branch matches pattern
-        run: |
-          if ! echo "${{ github.ref_name }}" | grep -q "release/.*-rc"; then
-            echo "Branch name must match pattern 'release/*-rc' (e.g. release/2.13.2-rc)"
-            exit 1
-          fi
+#  check-branch:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check if branch matches pattern
+#        run: |
+#          if ! echo "${{ github.ref_name }}" | grep -q "release/.*-rc"; then
+#            echo "Branch name must match pattern 'release/*-rc' (e.g. release/2.13.2-rc)"
+#            exit 1
+#          fi
 
   call-publish-reusable:
     needs: check-branch
