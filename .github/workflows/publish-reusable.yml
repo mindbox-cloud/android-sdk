@@ -101,14 +101,19 @@ jobs:
           echo -e "\nsigning.password=$signingpassword" >> gradle.properties
           echo -e "\nsigning.keyId=$signingkeyId" >> gradle.properties
           echo -e "\nsigning.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
+          echo -e "\nSONATYPE_CONNECT_TIMEOUT_SECONDS=60" >> gradle.properties
+          echo -e "\nSONATYPE_CLOSE_TIMEOUT_SECONDS=900" >> gradle.properties
         env:
-          signingpassword: ${{secrets.signingpassword}}
-          signingkeyId: ${{secrets.signingkeyId}}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{secrets.signingpassword}}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.signingkeyId}}
           SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
-          GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.GPGKEYCONTENTS}}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{secrets.CENTER_PORTAL_USERNAME}}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{secrets.CENTER_PORTAL_PASSWORD}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
       - name: Publish to Central Portal
-        run: ./gradlew --no-daemon publish -PcentralPortalUsername=${{secrets.CENTER_PORTAL_USERNAME}} -PcentralPortalPassword=${{secrets.CENTER_PORTAL_PASSWORD}}
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
   release-github:
     needs: [publish]
