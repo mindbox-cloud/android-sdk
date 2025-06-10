@@ -11,6 +11,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      - name: Log
+        run: echo "SNAPSHOT release"
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
@@ -106,7 +108,7 @@ jobs:
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
       - name: Publish to Central Portal
-        run: ./gradlew --no-daemon publish -PsonatypeUsername=${{secrets.CENTER_PORTAL_USERNAME}} -PsonatypePassword=${{secrets.CENTER_PORTAL_PASSWORD}}
+        run: ./gradlew --no-daemon publish -PcentralPortalUsername=${{secrets.CENTER_PORTAL_USERNAME}} -PcentralPortalPassword=${{secrets.CENTER_PORTAL_PASSWORD}}
 
   release-github:
     needs: [publish]
