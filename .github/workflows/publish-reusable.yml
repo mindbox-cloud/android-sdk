@@ -94,13 +94,22 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - name: Prepare to publish
-        run: echo 'Prepare to publish'
+        run: |
+          echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
+          gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
+            --output /tmp/secret.gpg /tmp/publish_key.gpg
+          echo "signing.password=${{secrets.signingpassword}}" >> gradle.properties
+          echo "signing.keyId=${{secrets.signingkeyId}}" >> gradle.properties
+          echo "signing.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
+          echo "mavenCentralUsername=${{secrets.CENTER_PORTAL_USERNAME}}" >> gradle.properties
+          echo "mavenCentralPassword=${{secrets.CENTER_PORTAL_PASSWORD}}" >> gradle.properties
+          echo "SONATYPE_CONNECT_TIMEOUT_SECONDS=60" >> gradle.properties
+          echo "SONATYPE_CLOSE_TIMEOUT_SECONDS=900" >> gradle.properties
         env:
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.GPGKEYCONTENTS}}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.SIGNINGKEYID}}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{secrets.SIGNINGPASSWORD}}
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{secrets.CENTER_PORTAL_USERNAME}}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{secrets.CENTER_PORTAL_PASSWORD}}
+          signingpassword: ${{secrets.signingpassword}}
+          signingkeyId: ${{secrets.signingkeyId}}
+          SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
+          GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           SONATYPE_CONNECT_TIMEOUT_SECONDS: 60
           SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
