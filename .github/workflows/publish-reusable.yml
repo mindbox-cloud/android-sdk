@@ -94,6 +94,7 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - name: Prepare to publish
+        run: echo 'Prepare to publish'
         env:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.GPGKEYCONTENTS}}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.SIGNINGKEYID}}
@@ -105,7 +106,7 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
       - name: Publish to Central Portal
-        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache --stacktrace
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
   release-github:
     needs: [publish]
