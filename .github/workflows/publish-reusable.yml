@@ -94,13 +94,6 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - name: Prepare to publish
-        run: |
-          echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
-          gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
-          --output /tmp/secret.gpg /tmp/publish_key.gpg
-          echo -e "\nsigning.password=$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" >> gradle.properties
-          echo -e "\nsigning.keyId=$ORG_GRADLE_PROJECT_signingInMemoryKeyId" >> gradle.properties
-          echo -e "\nsigning.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
         env:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.GPGKEYCONTENTS}}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.SIGNINGKEYID}}
@@ -112,7 +105,7 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
       - name: Publish to Central Portal
-        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache --stacktrace
 
   release-github:
     needs: [publish]
