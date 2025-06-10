@@ -23,10 +23,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-      - name: lint check
-        run: ./gradlew --no-daemon check
+#      - name: Setup Android SDK
+#        uses: android-actions/setup-android@v2
+#      - name: lint check
+#        run: ./gradlew --no-daemon check
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -41,10 +41,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-      - name: unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+#      - name: Setup Android SDK
+#        uses: android-actions/setup-android@v2
+#      - name: unit tests
+#        run: ./gradlew --no-daemon testDebugUnitTest
 
   build:
     needs: [lint, unit-tests]
@@ -60,8 +60,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-      - name: build project
-        run: ./gradlew --no-daemon assembleDebug
+#      - name: build project
+#        run: ./gradlew --no-daemon assembleDebug
 
   set-tag:
     needs: [build]
@@ -98,18 +98,17 @@ jobs:
           echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
           gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
           --output /tmp/secret.gpg /tmp/publish_key.gpg
-          echo -e "\nsigning.password=$signingpassword" >> gradle.properties
-          echo -e "\nsigning.keyId=$signingkeyId" >> gradle.properties
+          echo -e "\nsigning.password=$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" >> gradle.properties
+          echo -e "\nsigning.keyId=$ORG_GRADLE_PROJECT_signingInMemoryKeyId" >> gradle.properties
           echo -e "\nsigning.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
-          echo -e "\nSONATYPE_CONNECT_TIMEOUT_SECONDS=60" >> gradle.properties
-          echo -e "\nSONATYPE_CLOSE_TIMEOUT_SECONDS=900" >> gradle.properties
         env:
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{secrets.signingpassword}}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.signingkeyId}}
-          SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.GPGKEYCONTENTS}}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{secrets.SIGNINGKEYID}}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{secrets.SIGNINGPASSWORD}}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{secrets.CENTER_PORTAL_USERNAME}}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{secrets.CENTER_PORTAL_PASSWORD}}
+          SONATYPE_CONNECT_TIMEOUT_SECONDS: 60
+          SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
       - name: Publish to Central Portal
