@@ -44,5 +44,5 @@ internal interface InAppRepository {
 
     fun getLastInappDismissTime(): Timestamp
 
-    fun saveLastInappDismissTime(timeStamp: Timestamp)
+    fun saveInAppStateChangeTime(timeStamp: Timestamp)
 }

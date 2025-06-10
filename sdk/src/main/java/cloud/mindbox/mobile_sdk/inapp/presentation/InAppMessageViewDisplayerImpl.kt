@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppLifecycleCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
@@ -61,7 +61,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                 mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
                 showInAppMessage(
                     wrapper = wrapper.copy(
-                        inAppLifecycleCallbacks = wrapper.inAppLifecycleCallbacks.copy {
+                        inAppActionCallbacks = wrapper.inAppActionCallbacks.copy {
                             mindboxLogI("Skip InApp.Show for restored inApp")
                             currentActivity?.postDelayedAnimation {
                                 pausedHolder?.hide()
@@ -115,15 +115,15 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     override fun tryShowInAppMessage(
         inAppType: InAppType,
-        inAppLifecycleCallbacks: InAppLifecycleCallbacks
+        inAppActionCallbacks: InAppActionCallbacks
     ) {
         val wrapper = when (inAppType) {
             is InAppType.ModalWindow -> {
-                InAppTypeWrapper(inAppType, inAppLifecycleCallbacks)
+                InAppTypeWrapper(inAppType, inAppActionCallbacks)
             }
 
             is InAppType.Snackbar -> {
-                InAppTypeWrapper(inAppType, inAppLifecycleCallbacks)
+                InAppTypeWrapper(inAppType, inAppActionCallbacks)
             }
         }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
@@ -153,6 +153,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     ) {
         if (!isRestored) isActionExecuted = false
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
+            wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
             pausedHolder?.hide()
             pausedHolder = null
             currentHolder = null
@@ -192,7 +193,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     override fun hideCurrentInApp() {
         loggingRunCatching {
             if (isInAppActive()) {
-                currentHolder?.wrapper?.inAppLifecycleCallbacks?.onInAppDismiss?.onDismiss()
+                currentHolder?.wrapper?.inAppActionCallbacks?.onInAppDismiss?.onDismiss()
             }
             currentHolder?.hide()
             currentHolder = null

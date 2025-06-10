@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppLifecycleCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
@@ -68,7 +68,7 @@ internal class InAppMessageManagerImpl(
 
                             inAppMessageViewDisplayer.tryShowInAppMessage(
                                 inAppType = inAppMessage,
-                                inAppLifecycleCallbacks = object : InAppLifecycleCallbacks {
+                                inAppActionCallbacks = object : InAppActionCallbacks {
                                     override val onInAppClick = OnInAppClick {
                                         inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                                     }
@@ -76,7 +76,7 @@ internal class InAppMessageManagerImpl(
                                         inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
                                     }
                                     override val onInAppDismiss = OnInAppDismiss {
-                                        inAppInteractor.saveLastDismissInAppTime()
+                                        inAppInteractor.saveInAppDismissTime()
                                     }
                                 }
                             )
