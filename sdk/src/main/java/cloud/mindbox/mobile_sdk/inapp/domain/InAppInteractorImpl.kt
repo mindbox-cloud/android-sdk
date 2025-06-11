@@ -16,6 +16,8 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import cloud.mindbox.mobile_sdk.utils.allAllow
@@ -30,7 +32,8 @@ internal class InAppInteractorImpl(
     private val inAppFrequencyManager: InAppFrequencyManager,
     private val maxInappsPerSessionLimitChecker: Checker,
     private val maxInappsPerDayLimitChecker: Checker,
-    private val minIntervalBetweenShowsLimitChecker: Checker
+    private val minIntervalBetweenShowsLimitChecker: Checker,
+    private val timeProvider: TimeProvider
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
@@ -92,6 +95,7 @@ internal class InAppInteractorImpl(
         inAppRepository.setInAppShown(id)
         inAppRepository.sendInAppShown(id)
         inAppRepository.saveShownInApp(id, timeStamp)
+        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }
 
     override fun sendInAppClicked(inAppId: String) {
@@ -133,5 +137,11 @@ internal class InAppInteractorImpl(
 
     override fun isTimeDelayInapp(inAppId: String): Boolean {
         return inAppRepository.isTimeDelayInapp(inAppId)
+    }
+
+    override fun saveInAppDismissTime() {
+        val timeStamp = timeProvider.currentTimestamp()
+        mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
+        inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
     }
 }

@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.checkers
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -60,7 +61,7 @@ class MaxInappsPerDayLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
-        every { timeProvider.currentTimeMillis() } returns TEST_TIME
+        every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
         every { inAppRepository.getShownInApps() } returns mapOf(
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS),
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
@@ -78,7 +79,7 @@ class MaxInappsPerDayLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
-        every { timeProvider.currentTimeMillis() } returns TEST_TIME
+        every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
         every { inAppRepository.getShownInApps() } returns mapOf(
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS),
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
@@ -96,7 +97,7 @@ class MaxInappsPerDayLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
-        every { timeProvider.currentTimeMillis() } returns TEST_TIME
+        every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
         every { inAppRepository.getShownInApps() } returns mapOf(
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS),
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
@@ -114,7 +115,7 @@ class MaxInappsPerDayLimitCheckerTest {
         every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
-        every { timeProvider.currentTimeMillis() } returns TEST_TIME
+        every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
         every { inAppRepository.getShownInApps() } returns mapOf(
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS),
             "inapp2" to listOf(TEST_TIME - ONE_DAY_MS)

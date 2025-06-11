@@ -5,6 +5,10 @@ import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -64,11 +68,16 @@ internal class InAppMessageManagerImpl(
 
                             inAppMessageViewDisplayer.tryShowInAppMessage(
                                 inAppType = inAppMessage,
-                                onInAppClick = {
-                                    inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
-                                },
-                                onInAppShown = {
-                                    inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                                inAppActionCallbacks = object : InAppActionCallbacks {
+                                    override val onInAppClick = OnInAppClick {
+                                        inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
+                                    }
+                                    override val onInAppShown = OnInAppShown {
+                                        inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                                    }
+                                    override val onInAppDismiss = OnInAppDismiss {
+                                        inAppInteractor.saveInAppDismissTime()
+                                    }
                                 }
                             )
                         }

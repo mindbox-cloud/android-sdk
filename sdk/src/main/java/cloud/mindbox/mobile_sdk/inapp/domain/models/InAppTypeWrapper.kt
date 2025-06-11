@@ -1,9 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+
 internal data class InAppTypeWrapper<out T : InAppType>(
     val inAppType: T,
-    val onInAppClick: OnInAppClick,
-    val onInAppShown: OnInAppShown,
+    val inAppActionCallbacks: InAppActionCallbacks
 )
 
 internal fun interface OnInAppClick {
@@ -12,4 +13,8 @@ internal fun interface OnInAppClick {
 
 internal fun interface OnInAppShown {
     fun onShown()
+}
+
+internal fun interface OnInAppDismiss {
+    fun onDismiss()
 }

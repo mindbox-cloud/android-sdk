@@ -4,7 +4,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.getDayStartTimestamp
 import java.util.concurrent.TimeUnit
@@ -23,7 +22,7 @@ internal class MaxInappsPerDayLimitChecker(
             }
 
             else -> {
-                val startOfDay = getDayStartTimestamp(Timestamp(timeProvider.currentTimeMillis()))
+                val startOfDay = getDayStartTimestamp(timeProvider.currentTimestamp())
                 val shownInAppsToday = inAppRepository.getShownInApps()
                     .values
                     .flatten()
