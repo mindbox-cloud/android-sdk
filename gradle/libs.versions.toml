@@ -36,6 +36,7 @@ turbine = "0.12.1"
 agcp = "1.6.0.300"
 ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
+maven_publish = "0.32.0"
 
 pushclient = "6.5.1"
 
@@ -46,7 +47,8 @@ buildscript-plugins = [
     "google_services",
     "agcp",
     "ktlint_gradle_plugin",
-    "ksp_gradle_plugin"
+    "ksp_gradle_plugin",
+    "maven_publish_plugin",
 ]
 
 test = [
@@ -111,3 +113,4 @@ google_services = { module = "com.google.gms:google-services", version.ref = "go
 agcp = { module = "com.huawei.agconnect:agcp", version.ref = "agcp" }
 ktlint_gradle_plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
 ksp_gradle_plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+maven_publish_plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven_publish" }
