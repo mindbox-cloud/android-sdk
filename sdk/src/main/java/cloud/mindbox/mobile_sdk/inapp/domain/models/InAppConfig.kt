@@ -42,16 +42,15 @@ internal data class Form(
     val variants: List<InAppType>,
 )
 
-internal sealed class InAppType(open val inAppId: String, open val isPriority: Boolean) {
+internal sealed class InAppType(open val inAppId: String) {
 
     internal data class Snackbar(
         override val inAppId: String,
-        override val isPriority: Boolean,
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>,
         val position: Position
-    ) : InAppType(inAppId, isPriority) {
+    ) : InAppType(inAppId) {
         internal data class Position(val gravity: Gravity, val margin: Margin) {
 
             internal data class Margin(
@@ -84,11 +83,10 @@ internal sealed class InAppType(open val inAppId: String, open val isPriority: B
 
     internal data class ModalWindow(
         override val inAppId: String,
-        override val isPriority: Boolean,
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>
-    ) : InAppType(inAppId, isPriority)
+    ) : InAppType(inAppId)
 }
 
 internal data class ABTest(

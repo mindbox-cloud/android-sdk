@@ -78,17 +78,20 @@ internal class InAppInteractorImpl(
                     }
                 }
             }
-            .onEach { inAppType ->
-                if (inAppType == null) mindboxLogI("No inapps to show found")
+            .onEach { inApp ->
+                if (inApp == null) mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
-            .filter { inAppType ->
-                logI("Inapp ${inAppType.inAppId} is Priority: ${inAppType.isPriority}")
+            .filter { inApp ->
+                logI("Inapp ${inApp.id} is Priority: ${inApp.isPriority}")
                 allAllow(
                     maxInappsPerSessionLimitChecker,
                     maxInappsPerDayLimitChecker,
                     minIntervalBetweenShowsLimitChecker
                 )
+            }
+            .mapNotNull { inApp ->
+                inApp.form.variants.firstOrNull()
             }
     }
 

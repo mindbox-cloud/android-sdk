@@ -236,15 +236,13 @@ internal class InAppMapper {
                                             type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
                                             layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             inAppId = inAppDto.id,
-                                            elements = mapElements(payloadDto.content?.elements),
-                                            isPriority = inAppDto.isPriority
+                                            elements = mapElements(payloadDto.content?.elements)
                                         )
                                     }
 
                                     is PayloadDto.SnackbarDto -> {
                                         InAppType.Snackbar(
                                             inAppId = inAppDto.id,
-                                            isPriority = inAppDto.isPriority,
                                             type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME,
                                             layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             elements = mapElements(payloadDto.content?.elements),

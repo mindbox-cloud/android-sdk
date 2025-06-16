@@ -305,7 +305,7 @@ internal class InAppStub {
         }
 
         fun getModalWindow() = InAppType.ModalWindow(
-            type = "", inAppId = "", layers = listOf(), elements = listOf(), isPriority = false
+            type = "", inAppId = "", layers = listOf(), elements = listOf()
         )
 
         val viewProductNode: ViewProductNode = ViewProductNode(
