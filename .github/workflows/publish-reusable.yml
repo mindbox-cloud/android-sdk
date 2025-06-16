@@ -110,6 +110,7 @@ jobs:
           SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
           ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
       - name: Publish to Central Portal
+        # Change github variable CENTER_PORTAL_AUTO_RELEASE to set up auto release Maven Central
         run: |
           if [ "${{ vars.CENTER_PORTAL_AUTO_RELEASE }}" = "true" ]; then
           ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
