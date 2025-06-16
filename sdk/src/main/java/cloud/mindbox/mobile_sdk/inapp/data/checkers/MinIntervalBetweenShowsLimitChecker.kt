@@ -22,8 +22,9 @@ internal class MinIntervalBetweenShowsLimitChecker(
             else -> {
                 val lastDismissInappTime = inAppRepository.getLastInappDismissTime().ms
                 val currentTime = timeProvider.currentTimeMillis()
+                val timeDiff = currentTime - lastDismissInappTime
                 val isAllowed = minIntervalBetweenShowDuration.interval + lastDismissInappTime < currentTime
-                mindboxLogI("Min interval between inapp show: $minIntervalBetweenShowDuration, last inapp dismiss time: $lastDismissInappTime, current time $currentTime. Show allowed: $isAllowed")
+                mindboxLogI("Min interval between inapp show: $minIntervalBetweenShowDuration, last inapp dismiss time: $lastDismissInappTime, current time: $currentTime, time since last dismiss: ${timeDiff}ms. Show allowed: $isAllowed")
                 isAllowed
             }
         }
