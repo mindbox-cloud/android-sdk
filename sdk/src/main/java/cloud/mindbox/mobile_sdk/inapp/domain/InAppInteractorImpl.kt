@@ -82,7 +82,8 @@ internal class InAppInteractorImpl(
                 if (inAppType == null) mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
-            .filter {
+            .filter { inAppType ->
+                logI("Inapp ${inAppType.inAppId} is Priority: ${inAppType.isPriority}")
                 allAllow(
                     maxInappsPerSessionLimitChecker,
                     maxInappsPerDayLimitChecker,

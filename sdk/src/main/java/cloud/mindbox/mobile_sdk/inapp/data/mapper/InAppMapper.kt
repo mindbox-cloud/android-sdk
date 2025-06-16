@@ -54,6 +54,7 @@ internal class InAppMapper {
         return inAppDtoBlank.let { inApp ->
             InAppDto(
                 id = inApp.id,
+                isPriority = inApp.isPriority,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
                 frequency = frequencyDto,
@@ -225,6 +226,7 @@ internal class InAppMapper {
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
+                        isPriority = inAppDto.isPriority,
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
@@ -234,13 +236,15 @@ internal class InAppMapper {
                                             type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
                                             layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             inAppId = inAppDto.id,
-                                            elements = mapElements(payloadDto.content?.elements)
+                                            elements = mapElements(payloadDto.content?.elements),
+                                            isPriority = inAppDto.isPriority
                                         )
                                     }
 
                                     is PayloadDto.SnackbarDto -> {
                                         InAppType.Snackbar(
                                             inAppId = inAppDto.id,
+                                            isPriority = inAppDto.isPriority,
                                             type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME,
                                             layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
                                             elements = mapElements(payloadDto.content?.elements),

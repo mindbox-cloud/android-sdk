@@ -20,7 +20,8 @@ internal class InAppStub {
                     getTargetingTrueNode(), getTargetingSegmentNode()
                 )
             ),
-            form = Form(variants = listOf(getModalWindow()))
+            form = Form(variants = listOf(getModalWindow())),
+            isPriority = false
         )
 
         fun getInAppDto(): InAppDto = InAppDto(
@@ -28,7 +29,8 @@ internal class InAppStub {
             frequency = getFrequencyOnceDto(),
             sdkVersion = SdkVersion(minVersion = null, maxVersion = null),
             targeting = (TreeTargetingDto.TrueNodeDto("")),
-            form = FormDto(variants = listOf(getModalWindowDto()))
+            form = FormDto(variants = listOf(getModalWindowDto())),
+            isPriority = false
         )
 
         fun getFrequencyOnceDto(): FrequencyDto.FrequencyOnceDto = FrequencyDto.FrequencyOnceDto(
@@ -148,6 +150,7 @@ internal class InAppStub {
         fun getInAppDtoBlank(): InAppConfigResponseBlank.InAppDtoBlank {
             return InAppConfigResponseBlank.InAppDtoBlank(
                 id = "",
+                isPriority = false,
                 sdkVersion = null,
                 targeting = null,
                 frequency = null,
@@ -302,7 +305,7 @@ internal class InAppStub {
         }
 
         fun getModalWindow() = InAppType.ModalWindow(
-            type = "", inAppId = "", layers = listOf(), elements = listOf(),
+            type = "", inAppId = "", layers = listOf(), elements = listOf(), isPriority = false
         )
 
         val viewProductNode: ViewProductNode = ViewProductNode(

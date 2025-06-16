@@ -20,6 +20,7 @@ internal value class OperationSystemName(val systemName: String)
 
 internal data class InApp(
     val id: String,
+    val isPriority: Boolean,
     val minVersion: Int?,
     val maxVersion: Int?,
     val frequency: Frequency,
@@ -41,15 +42,16 @@ internal data class Form(
     val variants: List<InAppType>,
 )
 
-internal sealed class InAppType(open val inAppId: String) {
+internal sealed class InAppType(open val inAppId: String, open val isPriority: Boolean) {
 
     internal data class Snackbar(
         override val inAppId: String,
+        override val isPriority: Boolean,
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>,
         val position: Position
-    ) : InAppType(inAppId) {
+    ) : InAppType(inAppId, isPriority) {
         internal data class Position(val gravity: Gravity, val margin: Margin) {
 
             internal data class Margin(
@@ -82,10 +84,11 @@ internal sealed class InAppType(open val inAppId: String) {
 
     internal data class ModalWindow(
         override val inAppId: String,
+        override val isPriority: Boolean,
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>
-    ) : InAppType(inAppId)
+    ) : InAppType(inAppId, isPriority)
 }
 
 internal data class ABTest(
