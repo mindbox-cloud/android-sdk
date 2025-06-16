@@ -197,7 +197,19 @@ internal class InAppProcessingManagerTest {
     @Test
     fun `choose inApp to show chooses first correct inApp`() = runTest {
         val validId = "validId"
-        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
+        val expectedResult = InAppStub
+            .getInApp()
+            .copy(
+                id = validId,
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    listOf(
+                        InAppStub.getModalWindow().copy(
+                            inAppId = validId
+                        )
+                    )
+                )
+            )
 
         val actualResult = inAppProcessingManager.chooseInAppToShow(
             listOf(
@@ -316,7 +328,17 @@ internal class InAppProcessingManagerTest {
         every {
             mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any())
         } just runs
-        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
+        val expectedResult = InAppStub.getInApp().copy(
+            id = validId,
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                listOf(
+                    InAppStub.getModalWindow().copy(
+                        inAppId = validId
+                    )
+                )
+            )
+        )
         val actualResult = inAppProcessingManager.chooseInAppToShow(
             testInAppList, event
         )
@@ -361,7 +383,17 @@ internal class InAppProcessingManagerTest {
             inAppRepository = mockInAppRepository
         )
 
-        val expectedResult = InAppStub.getModalWindow().copy(inAppId = validId)
+        val expectedResult = InAppStub.getInApp().copy(
+            id = validId,
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                listOf(
+                    InAppStub.getModalWindow().copy(
+                        inAppId = validId
+                    )
+                )
+            )
+        )
         val actualResult = inAppProcessingManager.chooseInAppToShow(
             testInAppList, event
         )

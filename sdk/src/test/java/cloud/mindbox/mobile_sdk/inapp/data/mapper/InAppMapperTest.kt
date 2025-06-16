@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class InAppMapperTest {
@@ -19,6 +20,7 @@ class InAppMapperTest {
                 inApps = listOf(
                     InAppDto(
                         id = "id",
+                        isPriority = false,
                         frequency = FrequencyDto.FrequencyOnceDto(
                             type = "once",
                             kind = "lifetime",
@@ -69,5 +71,73 @@ class InAppMapperTest {
         assertTrue(city.ids.contains("7"))
         assertTrue(city.ids.contains("8"))
         assertTrue(city.ids.contains("9"))
+    }
+
+    @Test
+    fun `mapToInAppConfig handles isPriority correctly when isPriority true`() {
+        val mapper = InAppMapper()
+
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "id",
+                        isPriority = true,
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.UnionNodeDto(
+                            type = "or",
+                            nodes = listOf(
+                                TreeTargetingDto.TrueNodeDto(
+                                    type = ""
+                                )
+                            ),
+                        ),
+                        form = null,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertTrue(result.inApps.first().isPriority)
+    }
+
+    @Test
+    fun `mapToInAppConfig handles isPriority correctly when isPriority false`() {
+        val mapper = InAppMapper()
+
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "id",
+                        isPriority = false,
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.UnionNodeDto(
+                            type = "or",
+                            nodes = listOf(
+                                TreeTargetingDto.TrueNodeDto(
+                                    type = ""
+                                )
+                            ),
+                        ),
+                        form = null,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertFalse(result.inApps.first().isPriority)
     }
 }

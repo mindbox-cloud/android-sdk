@@ -54,6 +54,7 @@ internal class InAppMapper {
         return inAppDtoBlank.let { inApp ->
             InAppDto(
                 id = inApp.id,
+                isPriority = inApp.isPriority,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
                 frequency = frequencyDto,
@@ -225,6 +226,7 @@ internal class InAppMapper {
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
+                        isPriority = inAppDto.isPriority,
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->

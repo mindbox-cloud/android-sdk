@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppIsPriorityDeserializer
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -106,6 +107,8 @@ internal data class LogRequestDto(
 internal data class InAppDto(
     @SerializedName("id")
     val id: String,
+    @SerializedName("isPriority")
+    val isPriority: Boolean,
     @SerializedName("frequency")
     val frequency: FrequencyDto,
     @SerializedName("sdkVersion")
@@ -192,6 +195,9 @@ internal data class InAppConfigResponseBlank(
     internal data class InAppDtoBlank(
         @SerializedName("id")
         val id: String,
+        @SerializedName("isPriority")
+        @JsonAdapter(InAppIsPriorityDeserializer::class)
+        val isPriority: Boolean,
         @SerializedName("frequency")
         val frequency: JsonObject?,
         @SerializedName("sdkVersion")

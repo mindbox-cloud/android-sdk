@@ -20,6 +20,7 @@ internal value class OperationSystemName(val systemName: String)
 
 internal data class InApp(
     val id: String,
+    val isPriority: Boolean,
     val minVersion: Int?,
     val maxVersion: Int?,
     val frequency: Frequency,

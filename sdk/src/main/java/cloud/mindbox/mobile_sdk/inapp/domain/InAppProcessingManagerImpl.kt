@@ -28,7 +28,7 @@ internal class InAppProcessingManagerImpl(
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
-    ): InAppType? {
+    ): InApp? {
         for (inApp in inApps) {
             val data = getTargetingData(triggerEvent)
             var isTargetingErrorOccurred = false
@@ -117,7 +117,7 @@ internal class InAppProcessingManagerImpl(
                     inAppId = inApp.id,
                     triggerEvent.hashCode()
                 )
-                return inApp.form.variants.firstOrNull()
+                return inApp
             }
         }
         return null
