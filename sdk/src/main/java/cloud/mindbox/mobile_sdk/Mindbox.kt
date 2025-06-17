@@ -41,6 +41,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 @SuppressWarnings("deprecated")
 public object Mindbox : MindboxLog {
@@ -101,7 +102,7 @@ public object Mindbox : MindboxLog {
     private val mutexUpdateAppInfo: Mutex = Mutex()
     private val pushServiceMutex = Mutex()
 
-    private var firstInitCall: Boolean = true
+    private val firstInitCall: AtomicBoolean = AtomicBoolean(true)
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
@@ -562,11 +563,11 @@ public object Mindbox : MindboxLog {
             Stopwatch.start(Stopwatch.INIT_SDK)
 
             initComponents(context.applicationContext)
-            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
+            logI("init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
                 pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
 
-            if (!firstInitCall) {
+            if (!firstInitCall.get()) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             } else {
                 userVisitManager.saveUserVisit()
@@ -603,13 +604,14 @@ public object Mindbox : MindboxLog {
             }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                 .invokeOnCompletion { throwable ->
                     if (throwable == null) {
-                        if (firstInitCall) {
+                        if (firstInitCall.get()) {
                             val activity = context as? Activity
                             if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
                                     inAppMutex.withLock {
-                                        firstInitCall = false
+                                        mindboxLogI("Start inapp manager after init. firstInitCall: ${firstInitCall.get()}")
+                                        if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
                                         MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
@@ -659,12 +661,12 @@ public object Mindbox : MindboxLog {
                                 resumedActivity,
                                 true
                             )
-                            if (firstInitCall) {
+                            if (firstInitCall.get()) {
                                 mindboxScope.launch {
                                     InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                     inAppMutex.withLock {
-                                        if (!firstInitCall) return@launch
-                                        firstInitCall = false
+                                        mindboxLogI("Start inapp manager after resume activity. firstInitCall: ${firstInitCall.get()}")
+                                        if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
                                         MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
