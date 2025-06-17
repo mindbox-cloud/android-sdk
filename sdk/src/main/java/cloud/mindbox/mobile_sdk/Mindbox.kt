@@ -610,7 +610,7 @@ public object Mindbox : MindboxLog {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
                                     inAppMutex.withLock {
-                                        mindboxLogI("Start inapp manager after init. firstInitCall: ${firstInitCall.get()}")
+                                        logI("Start inapp manager after init. firstInitCall: ${firstInitCall.get()}")
                                         if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
@@ -665,7 +665,7 @@ public object Mindbox : MindboxLog {
                                 mindboxScope.launch {
                                     InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                     inAppMutex.withLock {
-                                        mindboxLogI("Start inapp manager after resume activity. firstInitCall: ${firstInitCall.get()}")
+                                        logI("Start inapp manager after resume activity. firstInitCall: ${firstInitCall.get()}")
                                         if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
