@@ -68,8 +68,9 @@ internal class InAppInteractorImpl(
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
+                val prioritySortedInApps = filteredInApps.sortedByDescending { it.isPriority }
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInApps,
+                    prioritySortedInApps,
                     event
                 ).also {
                     inAppTargetingChannel.send(event)
@@ -79,12 +80,12 @@ internal class InAppInteractorImpl(
                 }
             }
             .onEach { inApp ->
-                if (inApp == null) mindboxLogI("No inapps to show found")
+                inApp?.let { mindboxLogI("InApp isPriority: ${inApp.isPriority}. Skip limit checks: ${inApp.isPriority}") }
+                    ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
             .filter { inApp ->
-                logI("Inapp ${inApp.id} is Priority: ${inApp.isPriority}")
-                allAllow(
+                inApp.isPriority || allAllow(
                     maxInappsPerSessionLimitChecker,
                     maxInappsPerDayLimitChecker,
                     minIntervalBetweenShowsLimitChecker

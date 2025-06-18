@@ -20,6 +20,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.*
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -295,5 +296,21 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }
+    }
+
+    @Test
+    fun `sorting by priority save order of inapps from config`() {
+        val inApp1 = InAppStub.getInApp().copy(id = "inApp1_priority_false", isPriority = false)
+        val inApp2 = InAppStub.getInApp().copy(id = "inApp2_priority_true", isPriority = true)
+        val inApp3 = InAppStub.getInApp().copy(id = "inApp3_priority_false", isPriority = false)
+        val inApp4 = InAppStub.getInApp().copy(id = "inApp4_priority_true", isPriority = true)
+        val inApp5 = InAppStub.getInApp().copy(id = "inApp5_priority_false", isPriority = false)
+        val inApp6 = InAppStub.getInApp().copy(id = "inApp6_priority_true", isPriority = true)
+        val inappsFromConfig = listOf(inApp1, inApp2, inApp3, inApp4, inApp5, inApp6)
+        val expectedInappList = listOf(inApp2, inApp4, inApp6, inApp1, inApp3, inApp5)
+
+        val resultInappList = inappsFromConfig.sortedByDescending { it.isPriority }
+
+        assertEquals(expectedInappList, resultInappList)
     }
 }
