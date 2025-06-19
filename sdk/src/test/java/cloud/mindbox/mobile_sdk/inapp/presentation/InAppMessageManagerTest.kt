@@ -24,6 +24,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import cloud.mindbox.mobile_sdk.sortByPriority
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppMessageManagerTest {
@@ -309,7 +310,7 @@ internal class InAppMessageManagerTest {
         val inappsFromConfig = listOf(inApp1, inApp2, inApp3, inApp4, inApp5, inApp6)
         val expectedInappList = listOf(inApp2, inApp4, inApp6, inApp1, inApp3, inApp5)
 
-        val resultInappList = inappsFromConfig.sortedByDescending { it.isPriority }
+        val resultInappList = inappsFromConfig.sortByPriority()
 
         assertEquals(expectedInappList, resultInappList)
     }

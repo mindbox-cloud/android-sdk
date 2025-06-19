@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -68,7 +69,7 @@ internal class InAppInteractorImpl(
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
-                val prioritySortedInApps = filteredInApps.sortedByDescending { it.isPriority }
+                val prioritySortedInApps = filteredInApps.sortByPriority()
                 inAppProcessingManager.chooseInAppToShow(
                     prioritySortedInApps,
                     event
@@ -80,7 +81,7 @@ internal class InAppInteractorImpl(
                 }
             }
             .onEach { inApp ->
-                inApp?.let { mindboxLogI("InApp isPriority: ${inApp.isPriority}. Skip limit checks: ${inApp.isPriority}") }
+                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, skipLimitChecks=${inApp.isPriority}") }
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
