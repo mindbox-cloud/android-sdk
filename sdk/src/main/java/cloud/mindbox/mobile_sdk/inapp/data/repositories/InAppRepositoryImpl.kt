@@ -94,6 +94,7 @@ internal class InAppRepositoryImpl(
                 MindboxPreferences.shownInApps = it
             }
         }
+        mindboxLogI("Increase count of shown inapp per day")
     }
 
     override fun sendInAppShown(inAppId: String) {
@@ -142,6 +143,7 @@ internal class InAppRepositoryImpl(
             .any { it.id == inAppId && it.frequency.delay is Frequency.Delay.TimeDelay }
 
     override fun setInAppShown(inAppId: String) {
+        mindboxLogI("Increase count of shown inapp per session, previous count ${sessionStorageManager.inAppMessageShownInSession.size}")
         sessionStorageManager.inAppMessageShownInSession.add(inAppId)
     }
 
