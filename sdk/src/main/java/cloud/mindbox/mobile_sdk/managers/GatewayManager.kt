@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -20,7 +21,6 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -31,17 +31,49 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         private const val TIMEOUT_DELAY = 60000
         private const val MAX_RETRIES = 0
         private const val MONITORING_DELAY = 5000
+
+        private const val OPERATION_MOBILE_SDK_LOGS = "MobileSdk.Logs"
+        private const val OPERATION_CHECK_PRODUCT_SEGMENTS = "Tracker.CheckProductSegments"
+        private const val OPERATION_CHECK_CUSTOMER_SEGMENTS = "Tracker.CheckCustomerSegments"
     }
 
     private val gson by lazy { Gson() }
     private val gatewayScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main + Job()) }
 
-    private fun getCustomerSegmentationsUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckCustomerSegments&deviceUUID=${MindboxPreferences.deviceUuid}"
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getCustomerSegmentationsUrl(configuration: Configuration): String {
+        return buildEventUrl(
+            configuration = configuration,
+            deviceUuid = MindboxPreferences.deviceUuid,
+            shouldCountOffset = false,
+            event = Event(
+                eventType = EventType.SyncOperation(OPERATION_CHECK_CUSTOMER_SEGMENTS)
+            )
+        )
     }
 
-    private fun getProductSegmentationUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/v3/operations/sync?endpointId=${configuration.endpointId}&operation=Tracker.CheckProductSegments&transactionId=${UUID.randomUUID()}"
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getProductSegmentationUrl(configuration: Configuration): String {
+        return buildEventUrl(
+            configuration = configuration,
+            deviceUuid = MindboxPreferences.deviceUuid,
+            shouldCountOffset = false,
+            event = Event(
+                eventType = EventType.SyncOperation(OPERATION_CHECK_PRODUCT_SEGMENTS)
+            )
+        )
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getLogsUrl(configuration: Configuration): String {
+        return buildEventUrl(
+            configuration = configuration,
+            deviceUuid = MindboxPreferences.deviceUuid,
+            shouldCountOffset = false,
+            event = Event(
+                eventType = EventType.AsyncOperation(OPERATION_MOBILE_SDK_LOGS)
+            )
+        )
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
@@ -54,7 +86,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         shouldCountOffset: Boolean,
         event: Event,
     ): String {
-        val urlQueries: HashMap<String, String> = hashMapOf(
+        val urlQueries: LinkedHashMap<String, String> = linkedMapOf(
             UrlQuery.DEVICE_UUID.value to deviceUuid,
         )
 
@@ -375,10 +407,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
 
     fun sendLogEvent(logs: LogResponseDto, configuration: Configuration) {
         try {
-            val url =
-                "https://${configuration.domain}/v3/operations/async?endpointId=${configuration.endpointId}&operation=MobileSdk.Logs&deviceUUID=${MindboxPreferences.deviceUuid}&transactionId=${
-                    UUID.randomUUID()
-                }"
+            val url = getLogsUrl(configuration)
             val jsonRequest: JSONObject? = convertBodyToJson(gson.toJson(logs))
             val request = MindboxRequest(
                 methodType = Request.Method.POST,

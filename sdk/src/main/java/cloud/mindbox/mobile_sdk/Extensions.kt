@@ -27,7 +27,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
@@ -40,6 +39,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Queue
 import java.util.UUID
@@ -53,12 +53,14 @@ internal fun SessionDelay(): SessionDelay {
     return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
 }
 
-internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
+internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingRunCatching(
     defaultValue = ""
 ) {
-    this.map { (k, v) -> "$k=$v" }
+    this.map { (k, v) -> "${k.encode()}=${v.encode()}" }
         .joinToString(prefix = "?", separator = "&")
 }
+
+internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
 
 internal fun ZonedDateTime.convertToString() = runCatching {
     this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
