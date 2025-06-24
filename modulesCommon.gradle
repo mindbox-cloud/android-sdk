@@ -50,7 +50,9 @@ android {
 mavenPublishing {
     publishToMavenCentral("CENTRAL_PORTAL")
 
-    signAllPublications()
+    if ((System.getenv("CI") == "true")) {
+        signAllPublications()
+    }
 
     coordinates('cloud.mindbox', ARTIFACT_ID, SDK_VERSION_NAME)
 
