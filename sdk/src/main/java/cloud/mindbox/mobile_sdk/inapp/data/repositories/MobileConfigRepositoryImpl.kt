@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -20,6 +21,7 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -115,7 +117,8 @@ internal class MobileConfigRepositoryImpl(
         configState.value = null
     }
 
-    private fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getInApps(configBlank: InAppConfigResponseBlank?): List<InAppDto>? {
         val isValidConfig = inAppConfigTtlValidator.isValid(
             InAppTtlData(
                 ttl = getInAppTtl(configBlank),
@@ -132,6 +135,9 @@ internal class MobileConfigRepositoryImpl(
             ?.map { inAppDtoBlank ->
                 inAppMapper.mapToInAppDto(
                     inAppDtoBlank = inAppDtoBlank,
+                    delayTime = inAppDtoBlank.delayTime
+                        ?.let { TimeSpan.fromStringOrNull(it) }
+                        ?.takeIf { timeSpanPositiveValidator.isValid(it) },
                     formDto = defaultDataManager.fillFormData(
                         mobileConfigSerializationManager.deserializeToInAppFormDto(
                             inAppDtoBlank.form

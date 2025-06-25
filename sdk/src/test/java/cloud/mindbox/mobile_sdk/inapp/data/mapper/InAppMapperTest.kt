@@ -1,12 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
-import org.junit.Assert.assertTrue
-import org.junit.Assert.assertFalse
+import org.junit.Assert.*
 import org.junit.Test
 
 class InAppMapperTest {
@@ -21,6 +21,7 @@ class InAppMapperTest {
                     InAppDto(
                         id = "id",
                         isPriority = false,
+                        delayTime = null,
                         frequency = FrequencyDto.FrequencyOnceDto(
                             type = "once",
                             kind = "lifetime",
@@ -83,6 +84,7 @@ class InAppMapperTest {
                     InAppDto(
                         id = "id",
                         isPriority = true,
+                        delayTime = null,
                         frequency = FrequencyDto.FrequencyOnceDto(
                             type = "once",
                             kind = "lifetime",
@@ -117,6 +119,7 @@ class InAppMapperTest {
                     InAppDto(
                         id = "id",
                         isPriority = false,
+                        delayTime = null,
                         frequency = FrequencyDto.FrequencyOnceDto(
                             type = "once",
                             kind = "lifetime",
@@ -139,5 +142,75 @@ class InAppMapperTest {
             )
         )
         assertFalse(result.inApps.first().isPriority)
+    }
+
+    @Test
+    fun `mapToInAppConfig handles delayTime correctly when delayTime not null`() {
+        val mapper = InAppMapper()
+
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "id",
+                        isPriority = false,
+                        delayTime = TimeSpan.fromStringOrNull("00:00:30"),
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.UnionNodeDto(
+                            type = "or",
+                            nodes = listOf(
+                                TreeTargetingDto.TrueNodeDto(
+                                    type = ""
+                                )
+                            ),
+                        ),
+                        form = null,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertEquals(result.inApps.first().delayTime?.interval, 30000L)
+    }
+
+    @Test
+    fun `mapToInAppConfig handles delayTime correctly when delayTime is null`() {
+        val mapper = InAppMapper()
+
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "id",
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.UnionNodeDto(
+                            type = "or",
+                            nodes = listOf(
+                                TreeTargetingDto.TrueNodeDto(
+                                    type = ""
+                                )
+                            ),
+                        ),
+                        form = null,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertNull(result.inApps.first().delayTime)
     }
 }

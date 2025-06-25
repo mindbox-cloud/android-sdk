@@ -81,7 +81,7 @@ internal class InAppInteractorImpl(
                 }
             }
             .onEach { inApp ->
-                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, skipLimitChecks=${inApp.isPriority}") }
+                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}") }
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()

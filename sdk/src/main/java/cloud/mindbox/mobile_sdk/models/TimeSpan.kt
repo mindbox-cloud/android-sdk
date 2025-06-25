@@ -40,3 +40,5 @@ internal value class TimeSpan private constructor(val value: String) {
                 ?.let { TimeSpan(value) }
     }
 }
+
+internal fun TimeSpan?.toMilliseconds(): Milliseconds? = this?.toMillis().toMilliseconds()
