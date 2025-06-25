@@ -8,4 +8,8 @@ import java.lang.reflect.Type
 internal class InAppIsPriorityDeserializer : JsonDeserializer<Boolean> {
     override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): Boolean =
         json?.getBoolean() ?: false
+
+    companion object {
+        const val IS_PRIORITY_INAPP = "isPriority"
+    }
 }

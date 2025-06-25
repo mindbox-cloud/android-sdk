@@ -10,6 +10,7 @@ import com.google.gson.annotations.SerializedName
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
 import com.google.gson.annotations.JsonAdapter
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppDelayTimeDeserializer
 
 internal data class InAppConfigResponse(
     @SerializedName("inapps")
@@ -107,8 +108,10 @@ internal data class LogRequestDto(
 internal data class InAppDto(
     @SerializedName("id")
     val id: String,
-    @SerializedName("isPriority")
+    @SerializedName(InAppIsPriorityDeserializer.IS_PRIORITY_INAPP)
     val isPriority: Boolean,
+    @SerializedName(InAppDelayTimeDeserializer.INAPP_DELAY_TIME)
+    val delayTime: TimeSpan?,
     @SerializedName("frequency")
     val frequency: FrequencyDto,
     @SerializedName("sdkVersion")
@@ -195,9 +198,12 @@ internal data class InAppConfigResponseBlank(
     internal data class InAppDtoBlank(
         @SerializedName("id")
         val id: String,
-        @SerializedName("isPriority")
+        @SerializedName(InAppIsPriorityDeserializer.IS_PRIORITY_INAPP)
         @JsonAdapter(InAppIsPriorityDeserializer::class)
         val isPriority: Boolean,
+        @SerializedName(InAppDelayTimeDeserializer.INAPP_DELAY_TIME)
+        @JsonAdapter(InAppDelayTimeDeserializer::class)
+        val delayTime: String?,
         @SerializedName("frequency")
         val frequency: JsonObject?,
         @SerializedName("sdkVersion")

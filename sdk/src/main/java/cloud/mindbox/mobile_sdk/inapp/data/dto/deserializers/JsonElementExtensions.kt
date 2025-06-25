@@ -32,3 +32,10 @@ internal fun JsonElement.getBoolean(): Boolean {
         else -> false
     }
 }
+
+internal fun JsonElement.getString(): String? {
+    return when {
+        isJsonPrimitive && asJsonPrimitive.isString -> asJsonPrimitive.asString
+        else -> null
+    }
+}

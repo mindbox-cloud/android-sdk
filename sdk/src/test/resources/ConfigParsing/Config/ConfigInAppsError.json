@@ -3,6 +3,7 @@
     {
       "id": "12345678-c777-4ac9-86b3-722c3e998cb6",
       "isPriority" : true,
+      "delayTime" : "00:00:30",
       "sdkVersion": {
         "min": 8,
         "max": null

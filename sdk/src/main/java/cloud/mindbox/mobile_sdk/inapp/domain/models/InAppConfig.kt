@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal data class InAppConfig(
@@ -21,6 +22,7 @@ internal value class OperationSystemName(val systemName: String)
 internal data class InApp(
     val id: String,
     val isPriority: Boolean,
+    val delayTime: Milliseconds?,
     val minVersion: Int?,
     val maxVersion: Int?,
     val frequency: Frequency,
