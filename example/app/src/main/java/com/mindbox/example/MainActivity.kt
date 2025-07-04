@@ -1,16 +1,27 @@
 package com.mindbox.example
 
 import android.Manifest
+import android.app.Dialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.DialogFragment
 import cloud.mindbox.mobile_sdk.Mindbox
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.mindbox.example.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -19,10 +30,22 @@ class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding
         get() = _binding!!
 
+    private var inAppLayoutView: View? = null
+    private var inAppBackgroundView: View? = null
+    private var inAppOriginalParent: ViewGroup? = null
+    private var inAppLayoutOriginalIndex: Int = -1
+    private var inAppBackgroundOriginalIndex: Int = -1
+    private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        globalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            repositionInApp()
+        }
+        window.decorView.viewTreeObserver.addOnGlobalLayoutListener(globalLayoutListener)
 
         showSdkDataOnScreen()
 
@@ -54,6 +77,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnOpenPushList.setOnClickListener {
             startActivity(Intent(this, NotificationHistoryActivity::class.java))
         }
+
+        val bottomSheet = DemoBottomSheet()
+        bottomSheet.show(supportFragmentManager, "BottomSheetDialogFragment")
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -67,6 +93,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        window.decorView.viewTreeObserver.removeOnGlobalLayoutListener(globalLayoutListener)
         super.onDestroy()
         _binding = null
     }
@@ -128,5 +155,126 @@ class MainActivity : AppCompatActivity() {
 
         //https://developers.mindbox.ru/docs/android-sdk-methods#getsdkversion
         binding.tvSdkVersionResult.text = Mindbox.getSdkVersion()
+    }
+
+    class DemoBottomSheet : BottomSheetDialogFragment() {
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+        }
+
+        override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?
+        ): View? {
+            return inflater.inflate(
+                R.layout.activity_test,
+                container,
+                false
+            )
+        }
+
+        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+            super.onViewCreated(view, savedInstanceState)
+            view.post {
+                val parent = view.parent as View
+                val params = parent.layoutParams
+                val behavior = (params as ViewGroup.LayoutParams).apply {
+                    height = (resources.displayMetrics.heightPixels * 0.5).toInt()
+                }
+                parent.layoutParams = behavior
+            }
+        }
+
+        override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+            val bottomSheetDialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
+            bottomSheetDialog.setOnShowListener { dialog: DialogInterface? ->
+                val bottomSheet = (dialog as BottomSheetDialog)
+                    .findViewById<FrameLayout?>(com.google.android.material.R.id.design_bottom_sheet)
+                if (bottomSheet != null) BottomSheetBehavior
+                    .from<FrameLayout?>(bottomSheet)
+                    .setState(BottomSheetBehavior.STATE_EXPANDED)
+            }
+            return bottomSheetDialog
+        }
+    }
+
+    private fun repositionInApp() {
+        val rootView = window.decorView.rootView
+        // Always re-scan for the views
+        inAppLayoutView = findViewInHierarchy(rootView, R.id.inapp_layout)
+        inAppBackgroundView = findViewInHierarchy(rootView, R.id.inapp_background_layout)
+
+        if (inAppLayoutView == null && inAppBackgroundView == null) {
+            inAppOriginalParent = null
+            return
+        }
+
+        // Step 2: Find the top-most visible DialogFragment.
+        val topDialog = supportFragmentManager.fragments
+            .filterIsInstance<DialogFragment>()
+            .lastOrNull { it.isAdded && it.dialog?.isShowing == true }
+
+        // Step 3: Determine the target parent for the In-App view.
+        val targetParent = topDialog?.dialog?.window?.decorView as? ViewGroup
+
+        // Case 1: No dialog is visible. The target is the original parent.
+        if (targetParent == null) {
+            if (inAppOriginalParent != null) {
+                // The views should be moved back to where they came from.
+                inAppBackgroundView?.let {
+                    if (it.parent != inAppOriginalParent) {
+                        (it.parent as? ViewGroup)?.removeView(it)
+                        inAppOriginalParent?.addView(it, inAppBackgroundOriginalIndex)
+                    }
+                }
+                inAppLayoutView?.let {
+                    if (it.parent != inAppOriginalParent) {
+                        (it.parent as? ViewGroup)?.removeView(it)
+                        inAppOriginalParent?.addView(it, inAppLayoutOriginalIndex)
+                    }
+                }
+                // Reset the state now that they are home.
+                inAppOriginalParent = null
+            }
+            return
+        }
+
+        // Case 2: A dialog is visible. This is our target.
+        // We assume both views share the same parent.
+        val currentParent = (inAppLayoutView?.parent ?: inAppBackgroundView?.parent) as? ViewGroup
+        if (currentParent != targetParent) {
+            // If this is the first time we're moving the views, save their original parent and position.
+            if (inAppOriginalParent == null && currentParent != null) {
+                inAppOriginalParent = currentParent
+                inAppLayoutOriginalIndex = inAppLayoutView?.let(currentParent::indexOfChild) ?: -1
+                inAppBackgroundOriginalIndex = inAppBackgroundView?.let(currentParent::indexOfChild) ?: -1
+            }
+
+            // Move the views to the target parent.
+            inAppBackgroundView?.let {
+                (it.parent as? ViewGroup)?.removeView(it)
+                targetParent.addView(it)
+            }
+            inAppLayoutView?.let {
+                (it.parent as? ViewGroup)?.removeView(it)
+                targetParent.addView(it)
+            }
+        }
+    }
+
+    private fun findViewInHierarchy(parent: View, id: Int): View? {
+        if (parent.id == id) {
+            return parent
+        }
+        if (parent is ViewGroup) {
+            for (i in 0 until parent.childCount) {
+                val found = findViewInHierarchy(parent.getChildAt(i), id)
+                if (found != null) {
+                    return found
+                }
+            }
+        }
+        return null
     }
 }
