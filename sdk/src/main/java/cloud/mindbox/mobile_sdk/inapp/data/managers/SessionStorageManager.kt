@@ -39,7 +39,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     }
 
     fun hasSessionExpired() {
-        this.wasSessionExpiredOnLastCheck = false
+        wasSessionExpiredOnLastCheck = false
         val currentTime = timeProvider.currentTimeMillis()
         val oldLastTrackVisitSendTime = lastTrackVisitSendTime.getAndSet(currentTime)
         val timeBetweenVisits = currentTime - oldLastTrackVisitSendTime
@@ -52,6 +52,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
             currentSessionTime == 0L -> "Session time is not set. Skip checking session expiration"
 
             timeBetweenVisits > currentSessionTime -> {
+                wasSessionExpiredOnLastCheck = true
                 notifySessionExpired()
                 "Session expired. Needs to open a new session. Time between trackVisits is $timeBetweenVisits ms. Session time is $currentSessionTime ms"
             }
