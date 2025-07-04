@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializat
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
 import cloud.mindbox.mobile_sdk.managers.*
@@ -34,6 +35,7 @@ import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import kotlinx.coroutines.Dispatchers
 
 internal fun DataModule(
     appContextModule: AppContextModule,
@@ -240,6 +242,9 @@ internal fun DataModule(
     override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
     override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker(sessionStorageManager, inAppRepository, timeProvider) }
+    override val inAppMessageDelayedManager: InAppMessageDelayedManager by lazy {
+        InAppMessageDelayedManager(timeProvider = timeProvider, delayedManagerDispatcher = Dispatchers.Default)
+    }
 
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 

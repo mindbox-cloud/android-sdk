@@ -11,7 +11,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessing
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -39,7 +38,7 @@ internal class InAppInteractorImpl(
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override suspend fun processEventAndConfig(): Flow<InAppType> {
+    override suspend fun processEventAndConfig(): Flow<InApp> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
@@ -85,16 +84,18 @@ internal class InAppInteractorImpl(
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
-            .filter { inApp ->
-                inApp.isPriority || allAllow(
-                    maxInappsPerSessionLimitChecker,
-                    maxInappsPerDayLimitChecker,
-                    minIntervalBetweenShowsLimitChecker
-                )
-            }
-            .mapNotNull { inApp ->
-                inApp.form.variants.firstOrNull()
-            }
+    }
+
+    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean {
+        val isAllowedByFrequency = inAppFrequencyManager.filterInAppsFrequency(listOf(inApp)).isNotEmpty()
+        if (!isAllowedByFrequency) {
+            return false
+        }
+        return inApp.isPriority || allAllow(
+            maxInappsPerSessionLimitChecker,
+            maxInappsPerDayLimitChecker,
+            minIntervalBetweenShowsLimitChecker
+        )
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {

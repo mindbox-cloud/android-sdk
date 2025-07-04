@@ -32,11 +32,14 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
 
+    private var wasSessionExpiredOnLastCheck: Boolean = false
+
     fun addSessionExpirationListener(listener: SessionExpirationListener) {
         sessionExpirationListeners.add(listener)
     }
 
     fun hasSessionExpired() {
+        this.wasSessionExpiredOnLastCheck = false
         val currentTime = timeProvider.currentTimeMillis()
         val oldLastTrackVisitSendTime = lastTrackVisitSendTime.getAndSet(currentTime)
         val timeBetweenVisits = currentTime - oldLastTrackVisitSendTime
@@ -59,6 +62,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         }
         mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
     }
+
+    fun isSessionActive() = !wasSessionExpiredOnLastCheck
 
     fun clearSessionData() {
         inAppCustomerSegmentations = null

@@ -19,6 +19,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
 
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
@@ -26,7 +28,8 @@ internal class InAppMessageManagerImpl(
     private val defaultDispatcher: CoroutineDispatcher,
     private val monitoringInteractor: MonitoringInteractor,
     private val sessionStorageManager: SessionStorageManager,
-    private val userVisitManager: UserVisitManager
+    private val userVisitManager: UserVisitManager,
+    private val inAppMessageDelayedManager: InAppMessageDelayedManager
 ) : InAppMessageManager {
 
     init {
@@ -40,7 +43,7 @@ internal class InAppMessageManagerImpl(
 
     override fun registerCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.registerCurrentActivity(activity, true)
+            inAppMessageViewDisplayer.registerCurrentActivity(activity)
         }
     }
 
@@ -53,35 +56,57 @@ internal class InAppMessageManagerImpl(
                 inAppInteractor.listenToTargetingEvents()
             }
             launch {
-                inAppInteractor.processEventAndConfig()
-                    .collect { inAppMessage ->
-                        withContext(Dispatchers.Main) {
-                            if (inAppMessageViewDisplayer.isInAppActive()) {
-                                this@InAppMessageManagerImpl.mindboxLogD("Inapp is active. Skip ${inAppMessage.inAppId}")
-                                return@withContext
-                            }
+                handleInAppFromInteractor()
+            }
+            launch {
+                handleInAppFromDelayedManager()
+            }
+        }
+    }
 
-                            if (inAppInteractor.isInAppShown(inAppMessage.inAppId) && !inAppInteractor.isTimeDelayInapp(inAppMessage.inAppId)) {
-                                this@InAppMessageManagerImpl.mindboxLogD("Inapp already shown. Skip ${inAppMessage.inAppId}")
-                                return@withContext
-                            }
+    private suspend fun handleInAppFromInteractor() {
+        inAppInteractor.processEventAndConfig()
+            .onEach { inApp ->
+                mindboxLogI("Got in-app from interactor: ${inApp.id}. Processing with DelayedManager.")
+                inAppMessageDelayedManager.process(inApp)
+            }
+            .collect()
+    }
 
-                            inAppMessageViewDisplayer.tryShowInAppMessage(
-                                inAppType = inAppMessage,
-                                inAppActionCallbacks = object : InAppActionCallbacks {
-                                    override val onInAppClick = OnInAppClick {
-                                        inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
-                                    }
-                                    override val onInAppShown = OnInAppShown {
-                                        inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
-                                    }
-                                    override val onInAppDismiss = OnInAppDismiss {
-                                        inAppInteractor.saveInAppDismissTime()
-                                    }
-                                }
-                            )
+    private suspend fun handleInAppFromDelayedManager() {
+        inAppMessageDelayedManager.inAppToShowFlow.collect { inApp ->
+            mindboxLogI("Got in-app from DelayedManager: ${inApp.id}")
+            withContext(Dispatchers.Main) {
+                if (inAppMessageViewDisplayer.isInAppActive()) {
+                    mindboxLogD("InApp is active. Skip ${inApp.id}")
+                    return@withContext
+                }
+
+                if (!inAppInteractor.areShowAndFrequencyLimitsAllowed(inApp)) {
+                    mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
+                    return@withContext
+                }
+
+                val inAppMessage = inApp.form.variants.firstOrNull()
+                if (inAppMessage == null) {
+                    mindboxLogI("InApp ${inApp.id} has no variants to show. Skipping.")
+                    return@withContext
+                }
+
+                inAppMessageViewDisplayer.tryShowInAppMessage(
+                    inAppType = inAppMessage,
+                    inAppActionCallbacks = object : InAppActionCallbacks {
+                        override val onInAppClick = OnInAppClick {
+                            inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
+                        }
+                        override val onInAppShown = OnInAppShown {
+                            inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                        }
+                        override val onInAppDismiss = OnInAppDismiss {
+                            inAppInteractor.saveInAppDismissTime()
                         }
                     }
+                )
             }
         }
     }
@@ -142,9 +167,13 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun onResumeCurrentActivity(activity: Activity) {
         LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.onResumeCurrentActivity(activity, shouldUseBlur)
+            inAppMessageViewDisplayer.onResumeCurrentActivity(
+                activity = activity,
+                isSessionActive = { sessionStorageManager.isSessionActive() },
+                onAppResumed = { inAppMessageDelayedManager.onAppResumed() }
+            )
         }
     }
 
@@ -157,6 +186,7 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.resetInAppConfigAndEvents()
             sessionStorageManager.clearSessionData()
             userVisitManager.saveUserVisit()
+            inAppMessageDelayedManager.clearSession()
             InitializeLock.reset(InitializeLock.State.APP_STARTED)
             listenEventAndInApp()
             initLogs()

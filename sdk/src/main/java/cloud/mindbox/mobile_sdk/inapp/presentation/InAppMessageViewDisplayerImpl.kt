@@ -51,7 +51,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
-    override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun onResumeCurrentActivity(activity: Activity, isSessionActive: () -> Boolean, onAppResumed: () -> Unit) {
         mindboxLogI("onResumeCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
 
@@ -73,25 +73,26 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                 )
             }
         } else {
-            tryShowInAppFromQueue()
+            tryShowInAppFromQueue(isSessionActive)
         }
+        onAppResumed()
     }
 
-    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun registerCurrentActivity(activity: Activity) {
         mindboxLogI("registerCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
-
-        tryShowInAppFromQueue()
+        tryShowInAppFromQueue { true }
     }
 
-    private fun tryShowInAppFromQueue() {
-        if (inAppQueue.isNotEmpty() && !isInAppActive()) {
+    private fun tryShowInAppFromQueue(isSessionActive: () -> Boolean) {
+        if (inAppQueue.isNotEmpty() && !isInAppActive() && isSessionActive()) {
             inAppQueue.pop().let {
                 val duration = Stopwatch.track(Stopwatch.INIT_SDK)
                 mindboxLogI("trying to show in-app with id ${it.inAppType.inAppId} from queue $duration after init")
                 showInAppMessage(it)
             }
         }
+        inAppQueue.clear()
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -194,7 +195,10 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     override fun hideCurrentInApp() {
         loggingRunCatching {
             if (isInAppActive()) {
-                currentHolder?.wrapper?.inAppActionCallbacks?.onInAppDismiss?.onDismiss()
+                currentHolder?.wrapper?.inAppActionCallbacks
+                    ?.copy(onInAppDismiss = { mindboxLogI("Do not save the closing timestamp for in-app as it's restored automatically when the session is reopened") })
+                    ?.onInAppDismiss
+                    ?.onDismiss()
             }
             currentHolder?.hide()
             currentHolder = null
