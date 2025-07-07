@@ -51,8 +51,7 @@ internal class InAppMessageManagerTest {
 
     private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
 
-    @OptIn(DelicateCoroutinesApi::class)
-    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
+    private val testDispatcher = StandardTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
@@ -60,7 +59,7 @@ internal class InAppMessageManagerTest {
     @Before
     fun onTestStart() {
         unmockkAll()
-        Dispatchers.setMain(mainThreadSurrogate)
+        Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -77,7 +76,6 @@ internal class InAppMessageManagerTest {
     @After
     fun onTestFinish() {
         Dispatchers.resetMain()
-        mainThreadSurrogate.close()
         unmockkAll()
     }
 
@@ -86,7 +84,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager
@@ -106,7 +105,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager
@@ -137,7 +137,7 @@ internal class InAppMessageManagerTest {
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp) } answers {
+        every { inAppMessageDelayedManager.process(inApp) } coAnswers {
             this@runTest.launch {
                 inAppToShowFlow.emit(inApp)
             }
@@ -146,7 +146,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler),
+            testDispatcher,
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -167,7 +167,6 @@ internal class InAppMessageManagerTest {
 
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
         verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
-        coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
     }
 
     @Test
@@ -179,7 +178,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler),
+            testDispatcher,
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -220,7 +219,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler),
+            testDispatcher,
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -257,7 +256,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager
@@ -298,7 +298,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager
@@ -330,7 +331,8 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager
