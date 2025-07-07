@@ -17,7 +17,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  * @param defaultImage Optional image
  */
 @RequiresApi(Build.VERSION_CODES.M)
-fun MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy(
+public fun MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy(
     maxAttempts: Int,
     delay: Long = 0L,
     defaultImage: Bitmap? = null,

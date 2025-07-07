@@ -11,7 +11,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
  * The configuration object used to initialize Mindbox SDK
  * The parameters are taken into account only during first initialization
  */
-class MindboxConfiguration private constructor(
+public class MindboxConfiguration private constructor(
     internal val previousInstallationId: String,
     internal val previousDeviceUUID: String,
     internal val endpointId: String,
@@ -24,7 +24,7 @@ class MindboxConfiguration private constructor(
     internal val uuidDebugEnabled: Boolean,
 ) {
 
-    constructor(builder: Builder) : this(
+    public constructor(builder: Builder) : this(
         previousInstallationId = builder.previousInstallationId,
         previousDeviceUUID = builder.previousDeviceUUID,
         endpointId = builder.endpointId,
@@ -77,9 +77,9 @@ class MindboxConfiguration private constructor(
     /**
      * A Builder for MindboxConfiguration
      */
-    class Builder(private val context: Context, val domain: String, val endpointId: String) {
+    public class Builder(private val context: Context, public val domain: String, public val endpointId: String) {
 
-        companion object {
+        internal companion object {
 
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
             private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
@@ -100,7 +100,7 @@ class MindboxConfiguration private constructor(
          *
          * @param previousDeviceUUID - deprecate - old device id which was used to find a customer by the device in our DB
          */
-        fun setPreviousDeviceUuid(previousDeviceUUID: String): Builder {
+        public fun setPreviousDeviceUuid(previousDeviceUUID: String): Builder {
             this.previousDeviceUUID = previousDeviceUUID
             return this
         }
@@ -110,7 +110,7 @@ class MindboxConfiguration private constructor(
          *
          * @param previousInstallationId - deprecate - old id which was used to send mobile push
          */
-        fun setPreviousInstallationId(previousInstallationId: String): Builder {
+        public fun setPreviousInstallationId(previousInstallationId: String): Builder {
             this.previousInstallationId = previousInstallationId
             return this
         }
@@ -120,7 +120,7 @@ class MindboxConfiguration private constructor(
          *
          * @param subscribe - flag which determines subscription status of the user
          */
-        fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
+        public fun subscribeCustomerIfCreated(subscribe: Boolean): Builder {
             this.subscribeCustomerIfCreated = subscribe
             return this
         }
@@ -131,7 +131,7 @@ class MindboxConfiguration private constructor(
          * @param shouldCreateCustomer - flag which determines create or not anonymous users.
          * Default value is true.
          */
-        fun shouldCreateCustomer(shouldCreateCustomer: Boolean): Builder {
+        public fun shouldCreateCustomer(shouldCreateCustomer: Boolean): Builder {
             this.shouldCreateCustomer = shouldCreateCustomer
             return this
         }
@@ -144,7 +144,7 @@ class MindboxConfiguration private constructor(
          * functionality is enabled.
          * Default value is true.
          */
-        fun uuidDebugEnabled(uuidDebugEnabled: Boolean): Builder {
+        public fun uuidDebugEnabled(uuidDebugEnabled: Boolean): Builder {
             this.uuidDebugEnabled = uuidDebugEnabled
             return this
         }
@@ -152,7 +152,7 @@ class MindboxConfiguration private constructor(
         /**
          * Creates a new MindboxConfiguration.Builder.
          */
-        fun build(): MindboxConfiguration {
+        public fun build(): MindboxConfiguration {
             generateAppInfo(context)
             return MindboxConfiguration(this)
         }

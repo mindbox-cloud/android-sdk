@@ -16,7 +16,7 @@ import ru.rustore.sdk.pushclient.messaging.model.RemoteMessage
 import java.util.UUID
 import kotlin.coroutines.resumeWithException
 
-class RuStoreServiceHandler(
+internal class RuStoreServiceHandler(
     private val logger: MindboxLogger,
     private val exceptionHandler: ExceptionHandler,
     private val projectId: String,

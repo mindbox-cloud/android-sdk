@@ -144,7 +144,7 @@ internal fun DataModule(
             ttlParametersValidator = ttlParametersValidator,
             inAppConfigTtlValidator = inAppConfigTtlValidator,
             sessionStorageManager = sessionStorageManager,
-            slidingExpirationValidator = slidingExpirationParametersValidator,
+            timeSpanPositiveValidator = slidingExpirationParametersValidator,
             mobileConfigSettingsManager = mobileConfigSettingsManager
         )
     }
@@ -223,8 +223,10 @@ internal fun DataModule(
 
     override val inAppConfigTtlValidator: InAppConfigTtlValidator by lazy { InAppConfigTtlValidator() }
 
-    override val slidingExpirationParametersValidator: SlidingExpirationParametersValidator by lazy { SlidingExpirationParametersValidator() }
-    override val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl by lazy { MobileConfigSettingsManagerImpl(sessionStorageManager) }
+    override val slidingExpirationParametersValidator: TimeSpanPositiveValidator by lazy { TimeSpanPositiveValidator() }
+    override val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl by lazy {
+        MobileConfigSettingsManagerImpl(appContext, sessionStorageManager, timeProvider)
+    }
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }
 
     override val mindboxNotificationManager: MindboxNotificationManager by lazy {

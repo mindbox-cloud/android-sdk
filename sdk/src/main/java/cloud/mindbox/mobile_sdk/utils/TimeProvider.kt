@@ -1,9 +1,9 @@
 package cloud.mindbox.mobile_sdk.utils
 
-interface TimeProvider {
+internal interface TimeProvider {
     fun currentTimeMillis(): Long
 }
 
-class SystemTimeProvider : TimeProvider {
+internal class SystemTimeProvider : TimeProvider {
     override fun currentTimeMillis() = System.currentTimeMillis()
 }

@@ -3,13 +3,14 @@ name: Lint + UnitTests + Build
 on:
   push:
     branches:
-      - '**'
-      - '!master'
-    paths-ignore:
-      - '**.md'
-    tags-ignore:
-      - '**'
-      
+      - develop
+      - mission/*
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
 jobs:
   lint:
     runs-on: ubuntu-latest

@@ -9,7 +9,7 @@ import com.google.gson.stream.JsonWriter
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class DateOnlyAdapter : TypeAdapter<DateOnly>() {
+internal class DateOnlyAdapter : TypeAdapter<DateOnly>() {
 
     private val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 

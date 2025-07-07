@@ -108,8 +108,8 @@ class SessionStorageManagerTest {
             isInAppMessageShown = true
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
-            productSegmentationFetchStatus = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-            inAppProductSegmentations["test"] = setOf(mockk())
+            processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            inAppProductSegmentations["testSystem" to "testValue"] = setOf(mockk())
             currentSessionInApps = listOf(mockk())
             shownInAppIdsWithEvents["event"] = mutableSetOf(1, 2, 3)
             configFetchingError = true
@@ -124,7 +124,7 @@ class SessionStorageManagerTest {
         assertFalse(sessionStorageManager.isInAppMessageShown)
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
         assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
-        assertEquals(ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.productSegmentationFetchStatus)
+        assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())
         assertTrue(sessionStorageManager.inAppProductSegmentations.isEmpty())
         assertTrue(sessionStorageManager.currentSessionInApps.isEmpty())
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())

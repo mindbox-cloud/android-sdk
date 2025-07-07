@@ -2,14 +2,14 @@ package cloud.mindbox.mobile_sdk.models.operation.request
 
 import com.google.gson.annotations.SerializedName
 
-open class DiscountRequest private constructor(
-    @SerializedName("type") val type: DiscountTypeRequest? = null,
-    @SerializedName("promoCode") val promoCode: PromoCodeRequest? = null,
-    @SerializedName("externalPromoAction") val externalPromoAction: ExternalPromoActionRequest? = null,
-    @SerializedName("amount") val amount: Double? = null
+public open class DiscountRequest private constructor(
+    @SerializedName("type") public val type: DiscountTypeRequest? = null,
+    @SerializedName("promoCode") public val promoCode: PromoCodeRequest? = null,
+    @SerializedName("externalPromoAction") public val externalPromoAction: ExternalPromoActionRequest? = null,
+    @SerializedName("amount") public val amount: Double? = null
 ) {
 
-    constructor(
+    public constructor(
         promoCode: PromoCodeRequest? = null,
         amount: Double? = null
     ) : this(
@@ -18,7 +18,7 @@ open class DiscountRequest private constructor(
         amount = amount
     )
 
-    constructor(
+    public constructor(
         externalPromoAction: ExternalPromoActionRequest? = null,
         amount: Double? = null
     ) : this(

@@ -1,0 +1,17 @@
+name: Distribute PushOk (Develop / Mission PR Merge)
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - mission/*
+    types:
+      - closed
+
+jobs:
+  call-reusable:
+    if: ${{ github.event.pull_request.merged == true }}
+    uses: ./.github/workflows/distribute-reusable.yml
+    with:
+      branch: ${{ github.base_ref }}
+    secrets: inherit 

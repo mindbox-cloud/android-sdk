@@ -2,9 +2,9 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 
 import com.google.gson.annotations.SerializedName
 
-open class RetailOrderStatisticsResponse(
-    @SerializedName("totalPaidAmount") val totalPaidAmount: Double? = null
+public open class RetailOrderStatisticsResponse(
+    @SerializedName("totalPaidAmount") public val totalPaidAmount: Double? = null
 ) {
 
-    override fun toString() = "RetailOrderStatistics(totalPaidAmount=$totalPaidAmount)"
+    override fun toString(): String = "RetailOrderStatistics(totalPaidAmount=$totalPaidAmount)"
 }

@@ -1,12 +1,20 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.*
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import com.android.volley.VolleyError
 import com.google.gson.Gson
 import io.mockk.*
@@ -43,7 +51,7 @@ internal class InAppProcessingManagerTest {
         coEvery { fetchGeo() } just runs
         every { setGeoStatus(any()) } just runs
         every { getGeo() } returns GeoTargetingStub.getGeoTargeting().copy(
-            cityId = "", regionId = "regionId", countryId = ""
+            cityId = "234", regionId = "regionId", countryId = "123"
         )
     }
 
@@ -63,16 +71,52 @@ internal class InAppProcessingManagerTest {
         )
     }
 
+    private val mockTimeProvider: TimeProvider = mockk()
+
+    private val sessionStorageManager = spyk(SessionStorageManager(mockTimeProvider))
+
+    private val context: Context = mockk(relaxed = true)
+    private val inAppMapper: InAppMapper = mockk(relaxed = true)
+    private val geoSerializationManager: GeoSerializationManager = mockk(relaxed = true)
+    private val gatewayManager: GatewayManager = mockk(relaxed = true)
+
+    private val inAppGeoRepositoryTestImpl: InAppGeoRepositoryImpl =
+        spyk(
+            InAppGeoRepositoryImpl(
+                context = context,
+                inAppMapper = inAppMapper,
+                geoSerializationManager = geoSerializationManager,
+                sessionStorageManager = sessionStorageManager,
+                gatewayManager = gatewayManager
+            )
+        )
+
+    private val inAppSegmentationRepositoryTestImpl: InAppSegmentationRepository =
+        spyk(
+            InAppSegmentationRepositoryImpl(
+                inAppMapper = inAppMapper,
+                sessionStorageManager = sessionStorageManager,
+                gatewayManager = gatewayManager
+            )
+        )
+
+    private fun setDIModule(
+        geoRepository: InAppGeoRepository,
+        segmentationRepository: InAppSegmentationRepository
+    ) {
+        every { MindboxDI.appModule } returns mockk {
+            every { inAppGeoRepository } returns geoRepository
+            every { inAppSegmentationRepository } returns segmentationRepository
+            every { inAppRepository } returns mockInAppRepository
+            every { gson } returns Gson()
+        }
+    }
+
     @Before
     fun onTestStart() {
         // mockk 'by mindboxInject { }'
         mockkObject(MindboxDI)
-        every { MindboxDI.appModule } returns mockk {
-            every { inAppGeoRepository } returns mockkInAppGeoRepository
-            every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
-            every { inAppRepository } returns mockInAppRepository
-            every { gson } returns Gson()
-        }
+        setDIModule(mockkInAppGeoRepository, mockkInAppSegmentationRepository)
     }
 
     private val inAppProcessingManager = InAppProcessingManagerImpl(
@@ -81,6 +125,27 @@ internal class InAppProcessingManagerTest {
         inAppContentFetcher = mockkInAppContentFetcher,
         inAppRepository = mockInAppRepository
     )
+
+    private val inAppProcessingManagerTestImpl = InAppProcessingManagerImpl(
+        inAppGeoRepository = inAppGeoRepositoryTestImpl,
+        inAppSegmentationRepository = inAppSegmentationRepositoryTestImpl,
+        inAppContentFetcher = mockkInAppContentFetcher,
+        inAppRepository = mockInAppRepository
+    )
+
+    private fun setupTestGeoRepositoryForErrorScenario() {
+        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
+        every { inAppGeoRepositoryTestImpl.getGeoFetchedStatus() } answers { callOriginal() }
+        coEvery { inAppGeoRepositoryTestImpl.fetchGeo() } throws GeoError(VolleyError())
+        every { inAppGeoRepositoryTestImpl.setGeoStatus(any()) } answers { callOriginal() }
+    }
+
+    private fun setupTestSegmentationRepositoryForErrorScenario() {
+        sessionStorageManager.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
+        coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+        coEvery { inAppSegmentationRepositoryTestImpl.setCustomerSegmentationStatus(any()) } answers { callOriginal() }
+    }
 
     @Test
     fun `check targeting returns false sends 0 targeted requests`() = runTest {
@@ -305,9 +370,8 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `send inapptargeting for or node when geo return 500`() = runTest {
-        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
-        coEvery { mockkInAppGeoRepository.fetchGeo() } throws GeoError(VolleyError())
-
+        setDIModule(inAppGeoRepositoryTestImpl, mockkInAppSegmentationRepository)
+        setupTestGeoRepositoryForErrorScenario()
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
                 type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
@@ -317,16 +381,17 @@ internal class InAppProcessingManagerTest {
                 )
             )
         )
-        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
     }
 
     @Test
     fun `send inapptargeting for or node when customer segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
-        coEvery { mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any()) } just runs
-
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+        setupTestSegmentationRepositoryForErrorScenario()
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
                 type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
@@ -336,13 +401,14 @@ internal class InAppProcessingManagerTest {
                 )
             )
         )
-        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
     }
 
     @Test
     fun `send inapptargeting for or node when product segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
@@ -361,32 +427,32 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `not send inapptargeting when geo return 500`() = runTest {
-        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
-        coEvery { mockkInAppGeoRepository.fetchGeo() } throws GeoError(VolleyError())
+        setDIModule(inAppGeoRepositoryTestImpl, mockkInAppSegmentationRepository)
+        setupTestGeoRepositoryForErrorScenario()
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = InAppStub.getTargetingCountryNode().copy(kind = Kind.NEGATIVE)
         )
-        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
     }
 
     @Test
     fun `not send inapptargeting when customer segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
-        coEvery { mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any()) } just runs
-
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+        setupTestSegmentationRepositoryForErrorScenario()
         val testInApp = InAppStub.getInApp().copy(
             targeting = InAppStub.getTargetingSegmentNode().copy(kind = Kind.NEGATIVE)
         )
-        inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
     }
 
     @Test
     fun `not send inapptargeting when product segment return 500`() = runTest {
-        every { mockkInAppSegmentationRepository.getProductSegmentationFetched() } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+        every { mockkInAppSegmentationRepository.getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = spyk(InAppStub.getTargetingViewProductSegmentNode().copy(kind = Kind.NEGATIVE)) {
@@ -394,6 +460,67 @@ internal class InAppProcessingManagerTest {
             }
         )
         inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `send inapptargeting in union node when customer segment return 500 but geo success`() = runTest {
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+        setupTestSegmentationRepositoryForErrorScenario()
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingUnionNode().copy(
+                nodes = listOf(
+                    InAppStub.getTargetingSegmentNode(),
+                    InAppStub.getTargetingCityNode().copy(kind = Kind.POSITIVE, ids = listOf("234"))
+                )
+            )
+        )
+
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `send inapptargeting in union node when geo return 500 but customer segment success`() = runTest {
+        setDIModule(inAppGeoRepositoryTestImpl, mockkInAppSegmentationRepository)
+        setupTestGeoRepositoryForErrorScenario()
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingUnionNode().copy(
+                nodes = listOf(
+                    InAppStub.getTargetingCityNode()
+                        .copy(kind = Kind.POSITIVE, ids = listOf()),
+                    InAppStub.getTargetingSegmentNode().copy(
+                        kind = Kind.POSITIVE,
+                        segmentationExternalId = "segmentationEI",
+                        segmentExternalId = "segmentEI"
+                    )
+                )
+            )
+        )
+
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+    }
+
+    @Test
+    fun `not send inapptargeting with union node with 2 geo when geo return 500`() = runTest {
+        setDIModule(inAppGeoRepositoryTestImpl, mockkInAppSegmentationRepository)
+        setupTestGeoRepositoryForErrorScenario()
+        val testInApp = InAppStub.getInApp().copy(
+            targeting = InAppStub.getTargetingUnionNode().copy(
+                nodes = listOf(
+                    InAppStub.getTargetingCityNode()
+                        .copy(kind = Kind.POSITIVE, ids = listOf("234")),
+                    InAppStub.getTargetingCountryNode()
+                        .copy(kind = Kind.POSITIVE, ids = listOf("123"))
+                )
+            )
+        )
+
+        inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
+
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
     }
 }

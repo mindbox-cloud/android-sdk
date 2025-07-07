@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
+import cloud.mindbox.mobile_sdk.putMindboxPushButtonExtras
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.*
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +34,11 @@ internal object PushNotificationManager {
 
     private const val EXTRA_NOTIFICATION_ID = "notification_id"
     private const val EXTRA_URL = "push_url"
-    private const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
-    private const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
     private const val EXTRA_PAYLOAD = "push_payload"
-
     private const val MAX_ACTIONS_COUNT = 3
+
+    internal const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
+    internal const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
@@ -509,14 +510,6 @@ internal object PushNotificationManager {
             .build()
     }
 
-    internal fun getUniqKeyFromPushIntent(
-        intent: Intent,
-    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
-
-    internal fun getUniqPushButtonKeyFromPushIntent(
-        intent: Intent,
-    ) = intent.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
-
     internal fun getUrlFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_URL)
 
     internal fun getPayloadFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_PAYLOAD)
@@ -694,8 +687,7 @@ internal object PushNotificationManager {
         putExtra(EXTRA_PAYLOAD, payload)
         putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
         putExtra(EXTRA_NOTIFICATION_ID, id)
-        putExtra(EXTRA_UNIQ_PUSH_KEY, pushKey)
-        putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+        putMindboxPushButtonExtras(pushKey, pushButtonKey)
         url?.let { url -> putExtra(EXTRA_URL, url) }
         `package` = context.packageName
     }

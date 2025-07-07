@@ -8,11 +8,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringM
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -23,7 +21,6 @@ import kotlinx.coroutines.flow.*
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
     private val inAppRepository: InAppRepository,
-    private val inAppSegmentationRepository: InAppSegmentationRepository,
     private val inAppFilteringManager: InAppFilteringManager,
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
@@ -75,9 +72,6 @@ internal class InAppInteractorImpl(
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
-                    inAppSegmentationRepository.setProductSegmentationFetchStatus(
-                        ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-                    )
                 }
             }.filterNotNull()
     }

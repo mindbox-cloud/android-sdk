@@ -11,9 +11,9 @@ import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class DateTimeAdapter : TypeAdapter<DateTime>() {
+internal class DateTimeAdapter : TypeAdapter<DateTime>() {
 
-    companion object {
+    private companion object {
 
         private const val WRITE_DATA_FORMAT = "dd.MM.yyyy HH:mm:ss.FFF"
     }

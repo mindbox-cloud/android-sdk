@@ -7,7 +7,7 @@ import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.io.IOException
 
-class StrictStringAdapter : TypeAdapter<String?>() {
+internal class StrictStringAdapter : TypeAdapter<String?>() {
     @Throws(IOException::class)
     override fun read(reader: JsonReader): String? {
         return when (reader.peek()) {
