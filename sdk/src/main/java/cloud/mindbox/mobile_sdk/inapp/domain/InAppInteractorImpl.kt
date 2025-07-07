@@ -125,10 +125,6 @@ internal class InAppInteractorImpl(
         }
     }
 
-    override fun isInAppShown(inAppId: String): Boolean {
-        return inAppRepository.isInAppShown(inAppId)
-    }
-
     override fun setInAppShown(inAppId: String) {
         inAppRepository.setInAppShown(inAppId)
     }

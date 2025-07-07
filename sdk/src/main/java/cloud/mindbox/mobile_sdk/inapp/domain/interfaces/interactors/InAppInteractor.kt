@@ -7,8 +7,6 @@ internal interface InAppInteractor {
 
     suspend fun listenToTargetingEvents()
 
-    fun isInAppShown(inAppId: String): Boolean
-
     fun setInAppShown(inAppId: String)
 
     suspend fun processEventAndConfig(): Flow<InApp>
