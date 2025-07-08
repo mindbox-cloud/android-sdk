@@ -117,6 +117,7 @@ internal interface DataModule : MindboxModule {
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker
+    val inAppMessageDelayedManager: InAppMessageDelayedManager
 }
 
 internal interface MonitoringModule : MindboxModule {

@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -25,6 +26,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import cloud.mindbox.mobile_sdk.sortByPriority
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppMessageManagerTest {
@@ -47,15 +49,17 @@ internal class InAppMessageManagerTest {
 
     private val userVisitManager = mockk<UserVisitManager>()
 
-    @OptIn(DelicateCoroutinesApi::class)
-    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
+    private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
+
+    private val testDispatcher = StandardTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
      * **/
     @Before
     fun onTestStart() {
-        Dispatchers.setMain(mainThreadSurrogate)
+        unmockkAll()
+        Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -72,7 +76,7 @@ internal class InAppMessageManagerTest {
     @After
     fun onTestFinish() {
         Dispatchers.resetMain()
-        mainThreadSurrogate.close()
+        unmockkAll()
     }
 
     @Test
@@ -80,9 +84,11 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
@@ -99,9 +105,11 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         mockkObject(LoggingExceptionHandler)
         every { MindboxPreferences.inAppConfig } returns "test"
@@ -123,55 +131,99 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message not shown`() = runTest {
-        every { inAppMessageInteractor.isInAppShown(any()) } returns false
+    fun `in app messages success message shown`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inApp = InAppStub.getInApp()
+        every { inAppMessageViewDisplayer.isInAppActive() } returns false
+        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp) } coAnswers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
+
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager
+        )
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
+        }.answers {
+            flow {
+                emit(
+                    inApp
+                )
+            }
+        }
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+
+        verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
+        verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+    }
+
+    @Test
+    fun `in app messages success message not shown when inApp already active`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inApp = InAppStub.getInApp()
+        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageViewDisplayer.isInAppActive() } returns true
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager
+        )
+        coEvery {
+            inAppMessageInteractor.listenToTargetingEvents()
+        } just runs
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
+        }.answers {
+            flow {
+                emit(
+                    inApp
+                )
+            }
+        }
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp) } answers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+        verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
+        coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
+        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+    }
+
+    @Test
+    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inApp = InAppStub.getInApp()
+        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler),
+            testDispatcher,
             monitoringRepository,
             sessionStorageManager,
-            userVisitManager
-        )
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        }.answers {
-            flow {
-                emit(
-                    InAppStub.getModalWindow()
-                )
-            }
-        }
-
-        inAppMessageManager.listenEventAndInApp()
-        advanceUntilIdle()
-
-        inAppMessageInteractor.processEventAndConfig().test {
-            awaitItem()
-            awaitComplete()
-        }
-        verify(exactly = 1) {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
-        }
-        every {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
-        } just runs
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
-        }
-    }
-
-    @Test
-    fun `in app messages success message shown`() = runTest {
-        every { inAppMessageInteractor.isInAppShown(any()) } returns true
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler),
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -181,25 +233,22 @@ internal class InAppMessageManagerTest {
         }.answers {
             flow {
                 emit(
-                    InAppStub.getModalWindow()
+                    inApp
                 )
             }
         }
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp) } answers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
+
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-        inAppMessageInteractor.processEventAndConfig().test {
-            awaitItem()
-            awaitComplete()
-        }
-        every {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
-        } just runs
-        verify(exactly = 0) {
-            inAppMessageViewDisplayer.tryShowInAppMessage(any(), any())
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
-        }
+        verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
+        coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
+        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
     }
 
     @Test
@@ -207,9 +256,11 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         every {
             runBlocking {
@@ -247,9 +298,11 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -278,9 +331,11 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            StandardTestDispatcher(testScheduler), monitoringRepository,
+            testDispatcher,
+            monitoringRepository,
             sessionStorageManager,
-            userVisitManager
+            userVisitManager,
+            inAppMessageDelayedManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()

@@ -1,17 +1,15 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors
 
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppInteractor {
 
     suspend fun listenToTargetingEvents()
 
-    fun isInAppShown(inAppId: String): Boolean
-
     fun setInAppShown(inAppId: String)
 
-    suspend fun processEventAndConfig(): Flow<InAppType>
+    suspend fun processEventAndConfig(): Flow<InApp>
 
     fun saveShownInApp(id: String, timeStamp: Long)
 
@@ -24,4 +22,6 @@ internal interface InAppInteractor {
     fun isTimeDelayInapp(inAppId: String): Boolean
 
     fun saveInAppDismissTime()
+
+    fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean
 }

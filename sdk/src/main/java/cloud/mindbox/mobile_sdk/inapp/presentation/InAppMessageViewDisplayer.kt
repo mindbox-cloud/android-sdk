@@ -6,7 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 
 internal interface InAppMessageViewDisplayer {
 
-    fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+    fun onResumeCurrentActivity(activity: Activity, isNeedToShow: () -> Boolean, onAppResumed: () -> Unit)
 
     fun onPauseCurrentActivity(activity: Activity)
 
@@ -17,7 +17,7 @@ internal interface InAppMessageViewDisplayer {
         inAppActionCallbacks: InAppActionCallbacks
     )
 
-    fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+    fun registerCurrentActivity(activity: Activity)
 
     fun registerInAppCallback(inAppCallback: InAppCallback)
 

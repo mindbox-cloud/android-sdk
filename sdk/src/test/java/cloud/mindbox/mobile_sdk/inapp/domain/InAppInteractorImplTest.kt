@@ -101,85 +101,6 @@ class InAppInteractorImplTest {
     }
 
     @Test
-    fun `priority in-app should pass filter when limits are exceeded`() = runTest {
-        val priorityInApp = InAppStub
-            .getInApp()
-            .copy(
-                id = "priorityId",
-                isPriority = true,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = "priorityId"
-                        )
-                    )
-                )
-            )
-        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any()) } returns priorityInApp
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-
-        interactor.processEventAndConfig().test {
-            val item = awaitItem()
-            assertEquals(priorityInApp.form.variants.first(), item)
-            awaitComplete()
-        }
-
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `non-priority in-app should pass filter when limits are not exceeded`() = runTest {
-        val nonPriorityInApp = InAppStub
-            .getInApp()
-            .copy(
-                id = "nonPriorityId",
-                isPriority = false,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = "nonPriorityId"
-                        )
-                    )
-                )
-            )
-        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any()) } returns nonPriorityInApp
-        every { maxInappsPerSessionLimitChecker.check() } returns true
-        every { maxInappsPerDayLimitChecker.check() } returns true
-        every { minIntervalBetweenShowsLimitChecker.check() } returns true
-
-        interactor.processEventAndConfig().test {
-            val item = awaitItem()
-            assertEquals(nonPriorityInApp.form.variants.first(), item)
-            awaitComplete()
-        }
-
-        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 1) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 1) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `non-priority in-app should be filtered out when limits are exceeded`() = runTest {
-        val nonPriorityInApp = InAppStub.getInApp().copy(isPriority = false)
-        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any()) } returns nonPriorityInApp
-        every { maxInappsPerSessionLimitChecker.check() } returns true
-        every { maxInappsPerDayLimitChecker.check() } returns false
-        every { minIntervalBetweenShowsLimitChecker.check() } returns true
-
-        interactor.processEventAndConfig().test {
-            expectNoEvents()
-        }
-
-        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 1) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
     fun `processEventAndConfig returns correct inapp for several events`() = runTest {
         val eventFlow = MutableSharedFlow<InAppEventType>()
 
@@ -276,21 +197,133 @@ class InAppInteractorImplTest {
         interactor.processEventAndConfig().test {
             eventFlow.emit(InAppEventType.AppStartup)
             val firstItem = awaitItem()
-            assertEquals(priorityInApp.form.variants.first(), firstItem)
+            assertEquals(priorityInApp, firstItem)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val secondItem = awaitItem()
-            assertEquals(priorityInAppTwo.form.variants.first(), secondItem)
+            assertEquals(priorityInAppTwo, secondItem)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val thirdItem = awaitItem()
-            assertEquals(nonPriorityInApp.form.variants.first(), thirdItem)
+            assertEquals(nonPriorityInApp, thirdItem)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val fourthItem = awaitItem()
-            assertEquals(nonPriorityInAppTwo.form.variants.first(), fourthItem)
+            assertEquals(nonPriorityInAppTwo, fourthItem)
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns true when all checks pass for non-priority in-app`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = false)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns true
+        every { maxInappsPerDayLimitChecker.check() } returns true
+        every { minIntervalBetweenShowsLimitChecker.check() } returns true
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(true, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 1) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 1) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns true for priority in-app when frequency allowed`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = true)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { maxInappsPerDayLimitChecker.check() } returns false
+        every { minIntervalBetweenShowsLimitChecker.check() } returns false
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(true, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns false when at least one check not pass for non-priority in-app`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = false)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { maxInappsPerDayLimitChecker.check() } returns true
+        every { minIntervalBetweenShowsLimitChecker.check() } returns true
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(false, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns false when all checks not pass for priority in-app`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = true)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { maxInappsPerDayLimitChecker.check() } returns false
+        every { minIntervalBetweenShowsLimitChecker.check() } returns false
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(true, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns false for non priority inapp when frequency manager forbids it`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = false)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns emptyList()
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(false, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed returns false for priority inapp when frequency forbids it`() {
+        val testInApp = InAppStub.getInApp().copy(isPriority = true)
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns emptyList()
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(false, result)
+
+        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
     }
 }
