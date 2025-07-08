@@ -65,24 +65,23 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
     }
 
     private fun processQueue() {
-        if (pendingInApps.isNotEmpty()) {
-            coroutineScope.launchWithLock(processingMutex) {
-                nextProcessQueueJob?.cancel()
+        if (pendingInApps.isEmpty()) return
+        coroutineScope.launchWithLock(processingMutex) {
+            nextProcessQueueJob?.cancel()
 
-                val now = timeProvider.currentTimeMillis()
+            val now = timeProvider.currentTimeMillis()
 
-                pendingInApps.pollIf { it.showTimeMillis <= now }?.let { showCandidate ->
-                    mindboxLogI("Winner found: ${showCandidate.inApp.id}. Emitting to show.")
-                    _inAppToShowFlow.emit(showCandidate.inApp)
+            pendingInApps.pollIf { it.showTimeMillis <= now }?.let { showCandidate ->
+                mindboxLogI("Winner found: ${showCandidate.inApp.id}. Emitting to show.")
+                _inAppToShowFlow.emit(showCandidate.inApp)
 
-                    do {
-                        val inApp = pendingInApps.pollIf { it.showTimeMillis <= now }.also { discarded ->
-                            mindboxLogI("Discarding other ready In-App: ${discarded?.inApp?.id}")
-                        }
-                    } while (inApp != null)
-                }
-                scheduleNextProcess()
+                do {
+                    val inApp = pendingInApps.pollIf { it.showTimeMillis <= now }.also { discarded ->
+                        mindboxLogI("Discarding other ready In-App: ${discarded?.inApp?.id}")
+                    }
+                } while (inApp != null)
             }
+            scheduleNextProcess()
         }
     }
 
