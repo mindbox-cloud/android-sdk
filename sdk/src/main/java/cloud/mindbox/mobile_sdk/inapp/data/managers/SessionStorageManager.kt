@@ -64,7 +64,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
     }
 
-    fun isSessionActive() = !wasSessionExpiredOnLastCheck
+    fun isSessionExpiredOnLastCheck() = wasSessionExpiredOnLastCheck
 
     fun clearSessionData() {
         inAppCustomerSegmentations = null

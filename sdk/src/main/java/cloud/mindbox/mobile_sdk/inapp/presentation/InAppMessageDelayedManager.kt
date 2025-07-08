@@ -1,29 +1,29 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
-import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.pollIf
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.launchWithLock
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 
-internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider, delayedManagerDispatcher: CoroutineDispatcher) {
+internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider, dispatcher: CoroutineDispatcher) {
 
     companion object {
-        private const val DEFAULT_INITIAL_CAPACITY = 11
+        private const val DEFAULT_INITIAL_CAPACITY = 2
     }
 
     private val sequenceNumber = AtomicLong(0)
-    private val delayedManagerCoroutineScope = CoroutineScope(delayedManagerDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
+    private val coroutineScope = CoroutineScope(dispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
     private var nextProcessQueueJob: Job? = null
-    private val delayedInAppProcessingMutex = Mutex()
+    private val processingMutex = Mutex()
     private val pendingInAppComparator = compareBy<PendingInApp> { it.showTimeMillis }
         .thenByDescending { it.inApp.isPriority }
         .thenBy { it.sequenceNumber }
@@ -43,7 +43,7 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
     )
 
     internal fun process(inApp: InApp) {
-        delayedManagerCoroutineScope.launch {
+        coroutineScope.launchWithLock(processingMutex) {
             mindboxLogD("Processing In-App: ${inApp.id}, Priority: ${inApp.isPriority}, Delay: ${inApp.delayTime}")
             val delay = inApp.delayTime?.interval ?: 0L
             val showTime = timeProvider.currentTimeMillis() + delay
@@ -61,43 +61,37 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
 
     internal fun onAppResumed() {
         mindboxLogI("App resumed, re-evaluating scheduled In-Apps.")
-        if (pendingInApps.isNotEmpty()) {
-            processQueue()
-        }
+        processQueue()
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal fun processQueue() {
-        delayedManagerCoroutineScope.launch {
-            delayedInAppProcessingMutex.withLock {
+    private fun processQueue() {
+        if (pendingInApps.isNotEmpty()) {
+            coroutineScope.launchWithLock(processingMutex) {
                 nextProcessQueueJob?.cancel()
 
                 val now = timeProvider.currentTimeMillis()
-                val winnerCandidate = pendingInApps.peek()
 
-                if (winnerCandidate != null && winnerCandidate.showTimeMillis <= now) {
-                    pendingInApps.poll()?.let { winner ->
-                        mindboxLogI("Winner found: ${winner.inApp.id}. Emitting to show.")
-                        _inAppToShowFlow.emit(winner.inApp)
-                    }
+                pendingInApps.pollIf { it.showTimeMillis <= now }?.let { showCandidate ->
+                    mindboxLogI("Winner found: ${showCandidate.inApp.id}. Emitting to show.")
+                    _inAppToShowFlow.emit(showCandidate.inApp)
 
-                    while (pendingInApps.peek()?.showTimeMillis?.let { it <= now } == true) {
-                        pendingInApps.poll()?.let { discarded ->
-                            mindboxLogI("Discarding other ready In-App: ${discarded.inApp.id}")
+                    do {
+                        val inApp = pendingInApps.pollIf { it.showTimeMillis <= now }.also { discarded ->
+                            mindboxLogI("Discarding other ready In-App: ${discarded?.inApp?.id}")
                         }
-                    }
+                    } while (inApp != null)
                 }
-                scheduleJob()
+                scheduleNextProcess()
             }
         }
     }
 
-    private fun scheduleJob() {
+    private fun scheduleNextProcess() {
         pendingInApps.peek()?.let { nextInApp ->
             val now = timeProvider.currentTimeMillis()
             val delay = (nextInApp.showTimeMillis - now).coerceAtLeast(0)
             mindboxLogI("Scheduling next In-App ${nextInApp.inApp.id} with delay: $delay ms.")
-            nextProcessQueueJob = delayedManagerCoroutineScope.launch {
+            nextProcessQueueJob = coroutineScope.launch {
                 delay(delay)
                 processQueue()
             }
@@ -105,11 +99,9 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
     }
 
     internal fun clearSession() {
-        delayedManagerCoroutineScope.launch {
-            delayedInAppProcessingMutex.withLock {
-                nextProcessQueueJob?.cancel()
-                pendingInApps.clear()
-            }
+        coroutineScope.launchWithLock(processingMutex) {
+            nextProcessQueueJob?.cancel()
+            pendingInApps.clear()
         }
     }
 }

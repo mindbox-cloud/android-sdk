@@ -301,3 +301,7 @@ internal inline fun <reified T> Gson.fromJsonTyped(json: String): T? =
 internal fun List<InApp>.sortByPriority(): List<InApp> {
     return this.sortedByDescending { it.isPriority }
 }
+
+internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
+    return peek()?.takeIf(predicate)?.let { poll() }
+}

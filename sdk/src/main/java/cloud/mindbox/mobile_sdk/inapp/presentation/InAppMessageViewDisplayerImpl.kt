@@ -51,7 +51,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
-    override fun onResumeCurrentActivity(activity: Activity, isSessionActive: () -> Boolean, onAppResumed: () -> Unit) {
+    override fun onResumeCurrentActivity(activity: Activity, isNeedToShow: () -> Boolean, onAppResumed: () -> Unit) {
         mindboxLogI("onResumeCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
 
@@ -73,7 +73,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                 )
             }
         } else {
-            tryShowInAppFromQueue(isSessionActive)
+            tryShowInAppFromQueue(isNeedToShow)
         }
         onAppResumed()
     }

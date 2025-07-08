@@ -243,7 +243,7 @@ internal fun DataModule(
     override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker(sessionStorageManager, inAppRepository, timeProvider) }
     override val inAppMessageDelayedManager: InAppMessageDelayedManager by lazy {
-        InAppMessageDelayedManager(timeProvider = timeProvider, delayedManagerDispatcher = Dispatchers.Default)
+        InAppMessageDelayedManager(timeProvider = timeProvider, dispatcher = Dispatchers.Default)
     }
 
     override val inAppMapper: InAppMapper by lazy { InAppMapper() }

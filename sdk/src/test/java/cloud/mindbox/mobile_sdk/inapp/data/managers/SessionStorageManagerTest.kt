@@ -168,4 +168,54 @@ class SessionStorageManagerTest {
 
         verify(exactly = 1) { listener.invoke() }
     }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns true when session has expired`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L) // 1000 > 500
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false when session is active`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 2000L, currentTime = 1500L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false on first sdk track visit`() {
+        setupSessionState(lastTrackTime = 0L, sessionTime = 1000L, currentTime = 2000L)
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false when sessionTime is zero`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 0L, currentTime = 2000L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck should be reset to true on a subsequent valid check`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L)
+        sessionStorageManager.hasSessionExpired()
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+
+        every { mockTimeProvider.currentTimeMillis() } returns 2500L
+        sessionStorageManager.hasSessionExpired()
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+
+        every { mockTimeProvider.currentTimeMillis() } returns 3001L
+        sessionStorageManager.hasSessionExpired()
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
 }

@@ -10,7 +10,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
@@ -78,7 +77,7 @@ internal class InAppMessageManagerImpl(
             mindboxLogI("Got in-app from DelayedManager: ${inApp.id}")
             withContext(Dispatchers.Main) {
                 if (inAppMessageViewDisplayer.isInAppActive()) {
-                    mindboxLogD("InApp is active. Skip ${inApp.id}")
+                    mindboxLogI("InApp is active. Skip ${inApp.id}")
                     return@withContext
                 }
 
@@ -171,7 +170,7 @@ internal class InAppMessageManagerImpl(
         LoggingExceptionHandler.runCatching {
             inAppMessageViewDisplayer.onResumeCurrentActivity(
                 activity = activity,
-                isSessionActive = { sessionStorageManager.isSessionActive() },
+                isNeedToShow = { !sessionStorageManager.isSessionExpiredOnLastCheck() },
                 onAppResumed = { inAppMessageDelayedManager.onAppResumed() }
             )
         }
