@@ -4,6 +4,8 @@ import android.app.Activity
 import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -123,18 +125,24 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             return null
         }
 
-        val action = layer.action
-        if (action is Layer.ImageLayer.Action.RedirectUrlAction) {
-            runCatching {
-                gson.fromJson(action.payload, Layer.WebViewLayer::class.java)
-                    .copy(redirectUrl = action.url)
-            }.getOrNull()?.let { webView ->
-                return InAppType.WebView(
-                    inAppId = inAppId,
-                    type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
-                    layers = listOf(webView),
-                )
-            }
+        val payload = when (layer.action) {
+            is Layer.ImageLayer.Action.RedirectUrlAction -> layer.action.payload
+            is Layer.ImageLayer.Action.PushPermissionAction -> layer.action.payload
+        }
+        runCatching {
+            val layerDto = gson.fromJson<BackgroundDto.LayerDto.WebViewLayerDto>(payload).getOrThrow()
+            Layer.WebViewLayer(
+                baseUrl = layerDto.baseUrl,
+                contentUrl = layerDto.contentUrl,
+                type = layerDto.type,
+                params = layerDto.params ?: emptyMap()
+            )
+        }.getOrNull()?.let { webView ->
+            return InAppType.WebView(
+                inAppId = inAppId,
+                type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
+                layers = listOf(webView),
+            )
         }
 
         return null

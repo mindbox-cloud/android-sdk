@@ -7,8 +7,12 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
+import androidx.core.view.isInvisible
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -21,6 +25,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import com.android.volley.Request
 import com.android.volley.RequestQueue
@@ -32,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import java.util.Timer
+import java.util.TreeMap
 import kotlin.concurrent.timer
 
 internal class WebViewInAppViewHolder(
@@ -48,6 +54,8 @@ internal class WebViewInAppViewHolder(
 
     private var closeInappTimer: Timer? = null
 
+    private val gson by mindboxInject { gson }
+
     override val isActive: Boolean
         get() = isInAppMessageActive
 
@@ -61,36 +69,48 @@ internal class WebViewInAppViewHolder(
 
     private fun addJavascriptInterface(layer: Layer.WebViewLayer, configuration: Configuration) {
         webView.get()?.apply {
+            val params = TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER).apply {
+                put("sdkVersion", Mindbox.getSdkVersion())
+                put("endpointId", configuration.endpointId)
+                put("deviceUuid", MindboxPreferences.deviceUuid)
+                put("sdkVersionNumeric", Constants.SDK_VERSION_NUMERIC.toString())
+                putAll(layer.params)
+            }
             val provider = ParamProvider { key ->
-                val params = listOf(
-                    "deviceUuid" to MindboxPreferences.deviceUuid,
-                    "wizardId" to layer.wizardId,
-                    "endpointId" to configuration.endpointId,
-                    "sdkVersion" to Mindbox.getSdkVersion(),
-                    "baseUrl" to layer.baseUrl,
-                    "contentUrl" to layer.contentUrl,
-                    "payload" to layer.payload,
-                    "redirectUrl" to layer.redirectUrl,
-                ).associate { (name, value) -> name.lowercase() to value }
-                params.get(key.lowercase())
+                params.getOrDefault(key, null)
             }
             addJavascriptInterface(
                 WebAppInterface(provider) { action, data ->
                     handleWebViewAction(action, data, object : WebViewAction {
 
                         override fun onInit() {
+                            // Cancel timeout when init is received
+                            mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
+                            closeInappTimer?.cancel()
+                            closeInappTimer = null
+
                             wrapper.onInAppShown.onShown()
                             webView.get()?.visibility = ViewGroup.VISIBLE
                         }
 
-                        override fun onCompleted() {
-                            inAppCallback.onInAppClick(
-                                wrapper.inAppType.inAppId,
-                                layer.redirectUrl ?: "",
-                                ""
-                            )
-                            mindboxLogI("In-app dismissed by webview action")
-                            hide()
+                        override fun onCompleted(data: String) {
+                            runCatching {
+                                val actionDto = gson.fromJson<BackgroundDto.LayerDto.ImageLayerDto.ActionDto>(data).getOrThrow()
+                                val (url, payload) = when (actionDto) {
+                                    is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto ->
+                                        actionDto.value to actionDto.intentPayload
+                                    is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto ->
+                                        "" to actionDto.intentPayload
+                                }
+
+                                wrapper.onInAppClick.onClick()
+                                inAppCallback.onInAppClick(
+                                    wrapper.inAppType.inAppId,
+                                    url ?: "",
+                                    payload ?: ""
+                                )
+                            }
+                            mindboxLogI("In-app completed by webview action with data: $data")
                         }
 
                         override fun onClose() {
@@ -98,6 +118,10 @@ internal class WebViewInAppViewHolder(
                             mindboxLogI("In-app dismissed by webview action")
                             hide()
                             onDestroy()
+                        }
+
+                        override fun onHide() {
+                            webView.get()?.isInvisible = true
                         }
                     })
                 },
@@ -108,9 +132,14 @@ internal class WebViewInAppViewHolder(
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun createWebView(layer: Layer.WebViewLayer): WebView {
-        mindboxLogI("WEBVIEW Create webview")
+        mindboxLogI("Creating WebView for In-App: ${wrapper.inAppType.inAppId} with layer ${layer.type}")
         return WebView(currentDialog.context).apply {
-            webViewClient = InAppWebClient()
+            webViewClient = InAppWebClient(
+                onCriticalError = {
+                    mindboxLogE("WebView critical error. Destroying In-App.")
+                    onDestroy()
+                }
+            )
 
             layoutParams = RelativeLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -122,7 +151,8 @@ internal class WebViewInAppViewHolder(
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
             settings.defaultTextEncodingName = "utf-8"
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
+            settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            settings.allowContentAccess = true
             setBackgroundColor(Color.TRANSPARENT)
         }
     }
@@ -140,9 +170,9 @@ internal class WebViewInAppViewHolder(
                     addJavascriptInterface(layer, configuration)
                 }
 
-                webView.get()?.post({
+                webView.get()?.post {
                     webView.get()?.settings?.userAgentString += " " + configuration.getShortUserAgent()
-                })
+                }
                 val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
                 val stringRequest = StringRequest(
                     Request.Method.GET,
@@ -170,13 +200,16 @@ internal class WebViewInAppViewHolder(
                             period = INIT_TIMEOUT_MS,
                             action = {
                                 webView.get()?.post {
-                                    mindboxLogI("WebView time out to init " + Stopwatch.stop(TIMER))
-                                    onDestroy()
+                                    if (closeInappTimer != null) {
+                                        mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
+                                        onDestroy()
+                                    }
                                 }
-                            },
+                            }
                         )
                     },
-                    { _ ->
+                    { error ->
+                        mindboxLogE("Failed to fetch HTML content for In-App: $error. Destroying.")
                         onDestroy()
                     }
                 )
@@ -207,7 +240,7 @@ internal class WebViewInAppViewHolder(
                 }
             }
         }
-        mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+        mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
         currentDialog.requestFocus()
     }
 
@@ -225,40 +258,36 @@ internal class WebViewInAppViewHolder(
         // Clean up WebView resources
         webView.get()?.apply {
             stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
             removeAllViews()
             destroy()
-            webView.clear()
         }
+        webView.clear()
         MindboxDI.appModule.inAppMessageViewDisplayer.hideCurrentInApp()
     }
 
     private interface WebViewAction {
         fun onInit()
 
-        fun onCompleted()
+        fun onCompleted(data: String)
 
         fun onClose()
+
+        fun onHide()
     }
 
     private fun WebView.handleWebViewAction(action: String, data: String, actions: WebViewAction) {
         this.post {
             mindboxLogI("handleWebViewAction: Action $action with $data")
             when (action) {
-                "collapse", "close" -> {
-                    actions.onClose()
-                }
+                "collapse", "close" -> actions.onClose()
 
-                "init" -> {
-                    // Cancel timeout when init is received
-                    mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-                    closeInappTimer?.cancel()
+                "init" -> actions.onInit()
 
-                    if (data == "quiz") {
-                        actions.onInit()
-                    } else {
-                        actions.onClose()
-                    }
-                }
+                "hide" -> actions.onHide()
+
+                "click" -> actions.onCompleted(data)
 
                 "expand", "show", "go-item" -> {
                 }
@@ -266,18 +295,37 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    internal class InAppWebClient : WebViewClient() {
+    internal class InAppWebClient(private val onCriticalError: () -> Unit) : WebViewClient() {
         override fun onReceivedError(
             view: WebView?,
             request: WebResourceRequest?,
             error: WebResourceError?
         ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                mindboxLogE("onReceivedError: ${error?.description}")
-            } else {
-                mindboxLogE("onReceivedError: $error")
-            }
             super.onReceivedError(view, request, error)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val message = "WebView error: code=${error?.errorCode}, description=${error?.description}, url=${request?.url}"
+                mindboxLogE(message)
+                if (request?.isForMainFrame == true) {
+                    onCriticalError()
+                }
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onReceivedError(
+            view: WebView?,
+            errorCode: Int,
+            description: String?,
+            failingUrl: String?
+        ) {
+            super.onReceivedError(view, errorCode, description, failingUrl)
+            val message = "WebView error (legacy): code=$errorCode, description=$description, url=$failingUrl"
+            mindboxLogE(message)
+            // In the old API, we can't be sure if it's the main frame,
+            // but any error is likely critical. The timeout will still act as a fallback.
+            if (failingUrl == view?.originalUrl) {
+                onCriticalError()
+            }
         }
 
         override fun shouldOverrideUrlLoading(

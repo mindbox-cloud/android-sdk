@@ -14,6 +14,7 @@ import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.isTop
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
 import cloud.mindbox.mobile_sdk.setOnAnimationEnd
 import kotlin.math.abs
@@ -41,18 +42,9 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         private const val CLICK_THRESHOLD = 100
     }
 
-    @SuppressLint("ClickableViewAccessibility", "InternalInsetResource", "DiscouragedApi")
     private fun prepareLayoutForSnackbar(snackBarInAppType: InAppType.Snackbar) {
-        var statusBarHeight = 0
-        val statusBarResourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (statusBarResourceId > 0) {
-            statusBarHeight = resources.getDimensionPixelSize(statusBarResourceId)
-        }
-        var navigationBarHeight = 0
-        val navBarResourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
-        if (navBarResourceId > 0) {
-            navigationBarHeight = resources.getDimensionPixelSize(navBarResourceId)
-        }
+        val statusBarHeight = getStatusBarHeight()
+        val navigationBarHeight = getNavigationBarHeight()
         updateLayoutParams<FrameLayout.LayoutParams> {
             when (snackBarInAppType.position.margin.kind) {
                 InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
@@ -128,6 +120,26 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility", "InternalInsetResource", "DiscouragedApi")
+    private fun getNavigationBarHeight(): Int {
+        var navigationBarHeight = 0
+        val navBarResourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        if (navBarResourceId > 0) {
+            navigationBarHeight = resources.getDimensionPixelSize(navBarResourceId)
+        }
+        return navigationBarHeight
+    }
+
+    @SuppressLint("ClickableViewAccessibility", "InternalInsetResource", "DiscouragedApi")
+    private fun getStatusBarHeight(): Int {
+        var statusBarHeight = 0
+        val statusBarResourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (statusBarResourceId > 0) {
+            statusBarHeight = resources.getDimensionPixelSize(statusBarResourceId)
+        }
+        return statusBarHeight
+    }
+
     fun slideUp(
         isReverse: Boolean = false,
         onAnimationEnd: Runnable = Runnable { }
@@ -173,11 +185,18 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             gravity = Gravity.CENTER
             height = FrameLayout.LayoutParams.MATCH_PARENT
         }
-        ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
-            view.updatePadding(
-                bottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+        ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInset ->
+            val inset = windowInset.getInsets(
+                WindowInsetsCompat.Type.systemBars()
+                    or WindowInsetsCompat.Type.displayCutout()
+                    or WindowInsetsCompat.Type.ime()
             )
-            insets
+
+            view.updatePadding(
+                bottom = maxOf(inset.bottom, getNavigationBarHeight())
+            )
+            mindboxLogI("Webview Insets: $inset")
+            WindowInsetsCompat.CONSUMED
         }
     }
 
