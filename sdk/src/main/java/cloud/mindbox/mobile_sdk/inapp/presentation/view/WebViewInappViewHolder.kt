@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
 import androidx.core.view.isInvisible
+import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -123,6 +124,10 @@ internal class WebViewInAppViewHolder(
                         override fun onHide() {
                             webView.get()?.isInvisible = true
                         }
+
+                        override fun onLog(message: String) {
+                            webView.get()?.mindboxLogI("JS: $message")
+                        }
                     })
                 },
                 "SdkBridge"
@@ -160,7 +165,7 @@ internal class WebViewInAppViewHolder(
     @SuppressLint("SetJavaScriptEnabled")
     fun addUrlSource(layer: Layer.WebViewLayer) {
         if (webView.get() == null) {
-            WebView.setWebContentsDebuggingEnabled(true)
+            WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
             webView = WeakReference(createWebView(layer).also {
                 it.visibility = ViewGroup.INVISIBLE
             })
@@ -275,6 +280,8 @@ internal class WebViewInAppViewHolder(
         fun onClose()
 
         fun onHide()
+
+        fun onLog(message: String)
     }
 
     private fun WebView.handleWebViewAction(action: String, data: String, actions: WebViewAction) {
@@ -289,8 +296,7 @@ internal class WebViewInAppViewHolder(
 
                 "click" -> actions.onCompleted(data)
 
-                "expand", "show", "go-item" -> {
-                }
+                "log" -> actions.onLog(data)
             }
         }
     }
