@@ -78,7 +78,7 @@ internal class WebViewInAppViewHolder(
                 putAll(layer.params)
             }
             val provider = ParamProvider { key ->
-                params.getOrDefault(key, null)
+                params[key]
             }
             addJavascriptInterface(
                 WebAppInterface(provider) { action, data ->
@@ -310,6 +310,7 @@ internal class WebViewInAppViewHolder(
             }
         }
 
+        @Suppress("DEPRECATION")
         @Deprecated("Deprecated in Java")
         override fun onReceivedError(
             view: WebView?,
