@@ -183,16 +183,9 @@ internal class WebViewInAppViewHolder(
                     Request.Method.GET,
                     layer.contentUrl,
                     { response ->
-//                        val unEncodedHtml = currentDialog.context.assets
-//                            .open("inapp.html")
-//                            .bufferedReader()
-//                            .use { it.readText() }
-
-                        val unEncodedHtml = response
-
                         webView.get()?.loadDataWithBaseURL(
                             layer.baseUrl,
-                            unEncodedHtml,
+                            response,
                             "text/html",
                             "UTF-8",
                             null
