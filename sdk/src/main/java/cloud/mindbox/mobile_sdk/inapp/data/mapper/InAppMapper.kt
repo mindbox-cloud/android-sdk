@@ -114,9 +114,8 @@ internal class InAppMapper {
                     Layer.WebViewLayer(
                         baseUrl = layerDto.baseUrl,
                         contentUrl = layerDto.contentUrl,
-                        redirectUrl = layerDto.redirectUrl,
-                        payload = layerDto.payload,
-                        wizardId = layerDto.wizardId,
+                        params = layerDto.params ?: emptyMap(),
+                        type = layerDto.type
                     )
                 }
 

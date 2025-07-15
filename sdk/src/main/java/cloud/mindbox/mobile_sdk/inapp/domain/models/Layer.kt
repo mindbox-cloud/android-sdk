@@ -26,8 +26,7 @@ internal sealed class Layer {
     internal data class WebViewLayer(
         val baseUrl: String?,
         val contentUrl: String?,
-        val redirectUrl: String? = null,
-        val payload: String? = null,
-        val wizardId: String? = null,
+        val type: String?,
+        val params: Map<String, String> = emptyMap()
     ) : Layer()
 }

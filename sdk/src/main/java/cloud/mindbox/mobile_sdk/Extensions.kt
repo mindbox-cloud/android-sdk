@@ -249,6 +249,10 @@ internal inline fun <reified T> Gson.fromJson(json: JsonElement?): Result<T> = r
     fromJson(json, object : TypeToken<T>() {}.type)
 }
 
+internal inline fun <reified T> Gson.fromJson(json: String?): Result<T> = runCatching {
+    fromJson(json, object : TypeToken<T>() {}.type)
+}
+
 internal fun JsonObject.getOrNull(memberName: String?): JsonElement? = runCatching {
     this.get(memberName)
 }.getOrNull()
