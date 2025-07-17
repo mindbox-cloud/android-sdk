@@ -29,6 +29,8 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     protected open var isInAppMessageActive = false
 
+    private var positionController: InAppPositionController? = null
+
     private var _currentDialog: InAppConstraintLayout? = null
     protected val currentDialog: InAppConstraintLayout
         get() = _currentDialog!!
@@ -174,13 +176,17 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     }
 
     override fun show(currentRoot: MindboxView) {
-        isInAppMessageActive = true
         initView(currentRoot.container)
+        positionController = InAppPositionController().also {
+            it.start(currentDialog)
+        }
         hideKeyboard(currentRoot.container)
         inAppActionHandler.mindboxView = currentRoot
     }
 
     override fun hide() {
+        positionController?.stop()
+        positionController = null
         (currentDialog.parent as? ViewGroup?)?.apply {
             removeView(_currentDialog)
         }

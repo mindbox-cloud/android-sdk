@@ -24,6 +24,7 @@ androidx_annotations = "1.3.0"
 constraint_layout = "2.1.4"
 threetenapb = "1.4.6"
 glide = "4.15.1"
+app_compat = "1.7.1"
 
 junit = "4.13.2"
 androidx_junit = "1.1.3"
@@ -90,6 +91,7 @@ constraint_layout = { group = "androidx.constraintlayout", name = "constraintlay
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenapb" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide_compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "app_compat" }
 
 # RuStore libraries
 rustore_pushclient = { module = "ru.rustore.sdk:pushclient", version.ref = "pushclient" }
