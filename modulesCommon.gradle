@@ -1,8 +1,8 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'signing'
-apply plugin: 'maven-publish'
 apply plugin: 'org.jlleitschuh.gradle.ktlint'
+apply plugin: 'com.vanniktech.maven.publish'
 
 group = 'com.github.mindbox-cloud'
 
@@ -42,80 +42,43 @@ android {
         jvmTarget = '1.8'
     }
 
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
-
     kotlin {
         explicitApi()
     }
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
-                groupId = 'cloud.mindbox'
-                artifactId = ARTIFACT_ID
-                version = SDK_VERSION_NAME
-                pom {
-                    name = ARTIFACT_NAME
-                    description = 'Android Mindbox SDK'
-                    url = 'https://github.com/mindbox-cloud/android-sdk'
-                    licenses {
-                        license {
-                            name = 'The Mindbox License'
-                            url = 'https://github.com/mindbox-cloud/android-sdk/blob/master/LICENSE.md'
-                        }
-                    }
+mavenPublishing {
+    publishToMavenCentral("CENTRAL_PORTAL")
 
-                    developers {
-                        developer {
-                            id = 'Mindbox'
-                            name = 'Mindbox'
-                            email = 'android-sdk@mindbox.ru'
-                        }
-                    }
-
-                    scm {
-                        connection = 'scm:https://github.com/mindbox-cloud/android-sdk.git'
-                        developerConnection = 'scm:git://github.com/mindbox-cloud/android-sdk.git'
-                        url = 'https://github.com/mindbox-cloud/android-sdk'
-                    }
-                }
-            }
-        }
-
-        repositories {
-            if (!project.hasProperty("sonatypeUsername")) {
-                ext.sonatypeUsername = "sonatypeUsername"
-            }
-            if (!project.hasProperty("sonatypePassword")) {
-                ext.sonatypePassword = "sonatypePassword"
-            }
-            maven {
-                name = "OSSRH"
-                url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2")
-                credentials {
-                    username = sonatypeUsername
-                    password = sonatypePassword
-                }
-            }
-        }
+    if ((System.getenv("CI") == "true")) {
+        signAllPublications()
     }
 
-    signing {
-        def signingKeyId = findProperty("signing.keyId")
-        def signingKey = findProperty("signing.secretKeyRingFile")
-        def signingPassword = findProperty("signing.password")
-        if (signingKeyId && signingKey && signingPassword) {
-            println("Signing applied")
-            sign publishing.publications.release
-        } else {
-            println("Signing not applied")
+    coordinates('cloud.mindbox', ARTIFACT_ID, SDK_VERSION_NAME)
+
+    pom {
+        name = ARTIFACT_NAME
+        description = 'Android Mindbox SDK'
+        url = 'https://github.com/mindbox-cloud/android-sdk'
+        licenses {
+            license {
+                name = 'The Mindbox License'
+                url = 'https://github.com/mindbox-cloud/android-sdk/blob/master/LICENSE.md'
+            }
+        }
+
+        developers {
+            developer {
+                id = 'Mindbox'
+                name = 'Mindbox'
+                email = 'android-sdk@mindbox.ru'
+            }
+        }
+
+        scm {
+            connection = 'scm:https://github.com/mindbox-cloud/android-sdk.git'
+            developerConnection = 'scm:git://github.com/mindbox-cloud/android-sdk.git'
+            url = 'https://github.com/mindbox-cloud/android-sdk'
         }
     }
 }
