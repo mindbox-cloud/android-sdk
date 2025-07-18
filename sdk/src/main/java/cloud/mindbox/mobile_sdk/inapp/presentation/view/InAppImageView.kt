@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
-import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.updateLayoutParams
@@ -9,7 +9,7 @@ import cloud.mindbox.mobile_sdk.dp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Size
 import kotlin.math.roundToInt
 
-internal class InAppImageView(context: Context) : ImageView(context) {
+internal class InAppImageView(context: Context) : AppCompatImageView(context) {
 
     companion object {
         private const val MODAL_WINDOW_ASPECT_RATIO = "H,3:4"
