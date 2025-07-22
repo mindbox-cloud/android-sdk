@@ -6,14 +6,10 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.doOnLayout
-import androidx.core.view.marginBottom
-import androidx.core.view.marginTop
-import androidx.core.view.updateLayoutParams
-import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
+import androidx.core.view.*
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.isTop
@@ -135,15 +131,15 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         if (isReverse) {
             animate().translationY(travelDistance)
                 .setDuration(ANIM_DURATION)
-                .setInterpolator(LinearOutSlowInInterpolator())
+                .setInterpolator(AccelerateDecelerateInterpolator())
                 .withEndAction(onAnimationEnd)
                 .start()
         } else {
             translationY = travelDistance
-            visibility = View.VISIBLE
+            isVisible = true
             animate().translationY(0f)
                 .setDuration(ANIM_DURATION)
-                .setInterpolator(LinearOutSlowInInterpolator())
+                .setInterpolator(AccelerateDecelerateInterpolator())
                 .withEndAction(onAnimationEnd)
                 .start()
         }
@@ -154,15 +150,15 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         if (isReverse) {
             animate().translationY(travelDistance)
                 .setDuration(ANIM_DURATION)
-                .setInterpolator(LinearOutSlowInInterpolator())
+                .setInterpolator(AccelerateDecelerateInterpolator())
                 .withEndAction(onAnimationEnd)
                 .start()
         } else {
             translationY = travelDistance
-            visibility = View.VISIBLE
+            isVisible = true
             animate().translationY(0f)
                 .setDuration(ANIM_DURATION)
-                .setInterpolator(LinearOutSlowInInterpolator())
+                .setInterpolator(AccelerateDecelerateInterpolator())
                 .withEndAction(onAnimationEnd)
                 .start()
         }

@@ -10,11 +10,10 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import cloud.mindbox.mobile_sdk.R
+import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
 internal class InAppPositionController {
-
-    private var activity: Activity? = null
     private var inAppView: View? = null
     private var backgroundView: View? = null
     private var originalParent: ViewGroup? = null
@@ -22,26 +21,22 @@ internal class InAppPositionController {
     private var backgroundOriginalIndex: Int = -1
 
     private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
-        override fun onFragmentStarted(fm: FragmentManager, f: Fragment) {
+        override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
             if (f is DialogFragment) {
-                repositionToTop()
+                repositionInApp()
             }
         }
 
         override fun onFragmentStopped(fm: FragmentManager, f: Fragment) {
             if (f is DialogFragment) {
-                repositionToTop()
+                repositionInApp()
             }
         }
     }
 
     fun start(entryView: View): Unit =
         loggingRunCatching {
-            this.activity = entryView.context.findActivity()
-            if (activity == null) {
-                return@loggingRunCatching
-            }
-            (entryView.parent as? ViewGroup)?.let { parent ->
+            entryView.parent.safeAs<ViewGroup>()?.let { parent ->
                 this.originalParent = parent
                 this.inAppView = parent.findViewById(R.id.inapp_layout)
                 this.backgroundView = parent.findViewById(R.id.inapp_background_layout)
@@ -49,64 +44,57 @@ internal class InAppPositionController {
                 this.backgroundOriginalIndex = backgroundView?.let { parent.indexOfChild(it) } ?: -1
             }
 
-            (activity as? FragmentActivity)?.supportFragmentManager?.registerFragmentLifecycleCallbacks(
-                fragmentLifecycleCallbacks,
-                true
-            )
-            repositionToTop()
+            entryView.context.findActivity().safeAs<FragmentActivity>()
+                ?.supportFragmentManager
+                ?.registerFragmentLifecycleCallbacks(
+                    fragmentLifecycleCallbacks,
+                    true
+                )
+            repositionInApp()
         }
 
     fun stop(): Unit = loggingRunCatching {
-        if (activity == null) return@loggingRunCatching
-
-        (activity as? FragmentActivity)?.supportFragmentManager?.unregisterFragmentLifecycleCallbacks(
-            fragmentLifecycleCallbacks
-        )
-        activity = null
+        originalParent?.context?.findActivity().safeAs<FragmentActivity>()
+            ?.supportFragmentManager
+            ?.unregisterFragmentLifecycleCallbacks(
+                fragmentLifecycleCallbacks
+            )
         inAppView = null
         backgroundView = null
         originalParent = null
     }
 
-    private fun repositionToTop() {
-        val (inApp, background, _) = retrieveViews() ?: return
-        inApp?.post {
-            val topDialog = findTopDialogFragment()
-            val targetParent = topDialog?.dialog?.window?.decorView as? ViewGroup
-            if (targetParent != null) {
-                if (inApp.parent != targetParent) {
-                    moveViewToTarget(background, targetParent)
-                    moveViewToTarget(inApp, targetParent)
-                    val currentFocus = activity?.currentFocus
-                    if (currentFocus != null && currentFocus != inApp) {
-                        currentFocus.clearFocus()
-                    }
-                    inApp.requestFocus()
+    private fun repositionInApp(): Unit = loggingRunCatching {
+        val activity = inAppView?.context?.findActivity().safeAs<FragmentActivity>() ?: return@loggingRunCatching
+        val topDialog = findTopDialogFragment(activity.supportFragmentManager)
+        val targetParent = topDialog?.dialog?.window?.decorView.safeAs<ViewGroup>()
+        if (targetParent != null) {
+            if (inAppView?.parent != targetParent) {
+                moveViewToTarget(backgroundView, targetParent)
+                moveViewToTarget(inAppView, targetParent)
+                val currentFocus = (originalParent?.context?.findActivity())?.currentFocus
+                if (currentFocus != null && currentFocus != inAppView) {
+                    currentFocus.clearFocus()
                 }
-            } else {
-                repositionToOriginal()
+                inAppView?.requestFocus()
             }
+        } else {
+            repositionInappToOriginal()
         }
     }
 
-    private fun repositionToOriginal() {
-        val (inApp, background, original) = retrieveViews() ?: return
-
-        if (original != null && inApp?.parent != original) {
-            background?.let { moveViewToTarget(background, original, backgroundOriginalIndex) }
-            moveViewToTarget(inApp, original, inAppOriginalIndex)
-            inApp?.requestFocus()
+    private fun repositionInappToOriginal() {
+        val original = originalParent ?: return
+        if (inAppView?.parent != original) {
+            backgroundView?.let { moveViewToTarget(it, original, backgroundOriginalIndex) }
+            moveViewToTarget(inAppView, original, inAppOriginalIndex)
+            inAppView?.requestFocus()
         }
-    }
-
-    private fun retrieveViews(): Triple<View?, View?, ViewGroup?>? {
-        val parent = originalParent ?: return null
-        return Triple(inAppView, backgroundView, parent)
     }
 
     private fun moveViewToTarget(view: View?, target: ViewGroup, index: Int = -1) {
         if (view == null) return
-        (view.parent as? ViewGroup)?.removeView(view)
+        view.parent.safeAs<ViewGroup>()?.removeView(view)
         if (index != -1) {
             target.addView(view, index)
         } else {
@@ -114,8 +102,7 @@ internal class InAppPositionController {
         }
     }
 
-    private fun findTopDialogFragment(): DialogFragment? {
-        val fragmentManager = (activity as? FragmentActivity)?.supportFragmentManager ?: return null
+    private fun findTopDialogFragment(fragmentManager: FragmentManager): DialogFragment? {
         return fragmentManager.fragments.filterIsInstance<DialogFragment>().lastOrNull { it.isAdded }
     }
 

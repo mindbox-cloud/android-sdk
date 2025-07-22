@@ -258,6 +258,10 @@ internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? 
     null
 }
 
+internal inline fun <reified T> Any?.safeAs(): T? {
+    return this as? T
+}
+
 /**
  * Adds Mindbox push button unique keys extras to the [Intent].
  *
