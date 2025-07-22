@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.app.Activity
-import android.content.Context
 import android.content.ContextWrapper
 import android.view.View
 import android.view.ViewGroup
@@ -44,7 +43,7 @@ internal class InAppPositionController {
                 this.backgroundOriginalIndex = backgroundView?.let { parent.indexOfChild(it) } ?: -1
             }
 
-            entryView.context.findActivity().safeAs<FragmentActivity>()
+            entryView.findActivity().safeAs<FragmentActivity>()
                 ?.supportFragmentManager
                 ?.registerFragmentLifecycleCallbacks(
                     fragmentLifecycleCallbacks,
@@ -54,7 +53,7 @@ internal class InAppPositionController {
         }
 
     fun stop(): Unit = loggingRunCatching {
-        originalParent?.context?.findActivity().safeAs<FragmentActivity>()
+        originalParent?.findActivity().safeAs<FragmentActivity>()
             ?.supportFragmentManager
             ?.unregisterFragmentLifecycleCallbacks(
                 fragmentLifecycleCallbacks
@@ -65,14 +64,14 @@ internal class InAppPositionController {
     }
 
     private fun repositionInApp(): Unit = loggingRunCatching {
-        val activity = inAppView?.context?.findActivity().safeAs<FragmentActivity>() ?: return@loggingRunCatching
+        val activity = inAppView?.findActivity().safeAs<FragmentActivity>() ?: return@loggingRunCatching
         val topDialog = findTopDialogFragment(activity.supportFragmentManager)
         val targetParent = topDialog?.dialog?.window?.decorView.safeAs<ViewGroup>()
         if (targetParent != null) {
             if (inAppView?.parent != targetParent) {
                 moveViewToTarget(backgroundView, targetParent)
                 moveViewToTarget(inAppView, targetParent)
-                val currentFocus = (originalParent?.context?.findActivity())?.currentFocus
+                val currentFocus = originalParent?.findActivity()?.currentFocus
                 if (currentFocus != null && currentFocus != inAppView) {
                     currentFocus.clearFocus()
                 }
@@ -85,11 +84,10 @@ internal class InAppPositionController {
 
     private fun repositionInappToOriginal() {
         val original = originalParent ?: return
-        if (inAppView?.parent != original) {
-            backgroundView?.let { moveViewToTarget(it, original, backgroundOriginalIndex) }
-            moveViewToTarget(inAppView, original, inAppOriginalIndex)
-            inAppView?.requestFocus()
-        }
+        if (inAppView?.parent == original) return
+        backgroundView?.let { moveViewToTarget(it, original, backgroundOriginalIndex) }
+        moveViewToTarget(inAppView, original, inAppOriginalIndex)
+        inAppView?.requestFocus()
     }
 
     private fun moveViewToTarget(view: View?, target: ViewGroup, index: Int = -1) {
@@ -106,8 +104,8 @@ internal class InAppPositionController {
         return fragmentManager.fragments.filterIsInstance<DialogFragment>().lastOrNull { it.isAdded }
     }
 
-    private fun Context.findActivity(): Activity? {
-        var context = this
+    private fun View.findActivity(): Activity? {
+        var context = this.context
         while (context is ContextWrapper) {
             if (context is Activity) return context
             context = context.baseContext
