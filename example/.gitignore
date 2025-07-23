@@ -16,3 +16,16 @@
 local.properties
 /app/agconnect-services.json
 /app/google-services.json
+*.apk
+*.aab
+*.ap_
+*.a_
+*.apks
+*.dex
+*.class
+*.jar
+*.so
+*.zip
+*.keystore
+keystore.properties
+*.jks
