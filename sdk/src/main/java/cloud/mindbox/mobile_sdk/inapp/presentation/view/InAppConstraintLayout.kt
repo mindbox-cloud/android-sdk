@@ -6,19 +6,14 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.animation.TranslateAnimation
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.doOnLayout
-import androidx.core.view.marginBottom
-import androidx.core.view.marginTop
-import androidx.core.view.updateLayoutParams
-import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
+import androidx.core.view.*
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.isTop
 import cloud.mindbox.mobile_sdk.px
-import cloud.mindbox.mobile_sdk.setOnAnimationEnd
 import kotlin.math.abs
 
 internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
@@ -131,40 +126,41 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         }
     }
 
-    fun slideUp(
-        isReverse: Boolean = false,
-        onAnimationEnd: Runnable = Runnable { }
-    ) {
-        animateY(
-            if (!isReverse) height.toFloat() else 0f,
-            if (!isReverse) 0f else height.toFloat() + marginBottom,
-            onAnimationEnd
-        )
+    fun slideUp(isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }) {
+        val travelDistance = (height + marginBottom).toFloat()
+        if (isReverse) {
+            animate().translationY(travelDistance)
+                .setDuration(ANIM_DURATION)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction(onAnimationEnd)
+                .start()
+        } else {
+            translationY = travelDistance
+            isVisible = true
+            animate().translationY(0f)
+                .setDuration(ANIM_DURATION)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction(onAnimationEnd)
+                .start()
+        }
     }
 
-    fun slideDown(
-        isReverse: Boolean = false,
-        onAnimationEnd: Runnable = Runnable { }
-    ) {
-        animateY(
-            if (!isReverse) -height.toFloat() else 0f,
-            if (!isReverse) 0f else -height.toFloat() - marginTop,
-            onAnimationEnd
-        )
-    }
-
-    private fun animateY(
-        from: Float,
-        to: Float,
-        onAnimationEnd: Runnable
-    ) {
-        TranslateAnimation(0f, 0f, from, to).apply {
-            duration = ANIM_DURATION
-            fillAfter = true
-            interpolator = LinearOutSlowInInterpolator()
-            setOnAnimationEnd(onAnimationEnd)
-        }.also {
-            startAnimation(it)
+    fun slideDown(isReverse: Boolean = false, onAnimationEnd: Runnable = Runnable { }) {
+        val travelDistance = -(height + marginTop).toFloat()
+        if (isReverse) {
+            animate().translationY(travelDistance)
+                .setDuration(ANIM_DURATION)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction(onAnimationEnd)
+                .start()
+        } else {
+            translationY = travelDistance
+            isVisible = true
+            animate().translationY(0f)
+                .setDuration(ANIM_DURATION)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction(onAnimationEnd)
+                .start()
         }
     }
 
