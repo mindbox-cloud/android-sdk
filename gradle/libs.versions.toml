@@ -4,7 +4,7 @@ build_tools = "34.0.0"
 min_sdk = "21"
 target_sdk = "35"
 
-mindbox_common = "1.0.1-SNAPSHOT"
+mindbox_common = "1.0.2"
 
 firebase_bom = "32.7.2"
 hms_push = "6.11.0.300"
