@@ -24,7 +24,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
       - name: lint check
-        run: ./gradlew --no-daemon check
+        run: ./gradlew --no-daemon lintDebug
 
   unit-tests:
     runs-on: ubuntu-latest
