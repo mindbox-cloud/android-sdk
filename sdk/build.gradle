@@ -43,6 +43,9 @@ android {
 }
 
 dependencies {
+    // Internal dependencies
+
+    implementation(libs.mindbox.common)
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib
