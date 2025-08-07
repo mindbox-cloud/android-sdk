@@ -14,10 +14,8 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
 internal class InAppPositionController {
     private var inAppView: View? = null
-    private var backgroundView: View? = null
     private var originalParent: ViewGroup? = null
     private var inAppOriginalIndex: Int = -1
-    private var backgroundOriginalIndex: Int = -1
 
     private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
         override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
@@ -37,10 +35,8 @@ internal class InAppPositionController {
         loggingRunCatching {
             entryView.parent.safeAs<ViewGroup>()?.let { parent ->
                 this.originalParent = parent
-                this.inAppView = parent.findViewById(R.id.inapp_layout)
-                this.backgroundView = parent.findViewById(R.id.inapp_background_layout)
+                this.inAppView = parent.findViewById(R.id.inapp_layout_container)
                 this.inAppOriginalIndex = parent.indexOfChild(inAppView)
-                this.backgroundOriginalIndex = backgroundView?.let { parent.indexOfChild(it) } ?: -1
             }
 
             entryView.findActivity().safeAs<FragmentActivity>()
@@ -59,7 +55,6 @@ internal class InAppPositionController {
                 fragmentLifecycleCallbacks
             )
         inAppView = null
-        backgroundView = null
         originalParent = null
     }
 
@@ -69,7 +64,6 @@ internal class InAppPositionController {
         val targetParent = topDialog?.dialog?.window?.decorView.safeAs<ViewGroup>()
         if (targetParent != null) {
             if (inAppView?.parent != targetParent) {
-                moveViewToTarget(backgroundView, targetParent)
                 moveViewToTarget(inAppView, targetParent)
                 val currentFocus = originalParent?.findActivity()?.currentFocus
                 if (currentFocus != null && currentFocus != inAppView) {
@@ -85,7 +79,6 @@ internal class InAppPositionController {
     private fun repositionInappToOriginal() {
         val original = originalParent ?: return
         if (inAppView?.parent == original) return
-        backgroundView?.let { moveViewToTarget(it, original, backgroundOriginalIndex) }
         moveViewToTarget(inAppView, original, inAppOriginalIndex)
         inAppView?.requestFocus()
     }

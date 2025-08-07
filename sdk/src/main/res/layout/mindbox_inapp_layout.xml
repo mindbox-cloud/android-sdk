@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/inapp_layout"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/inapp_layout_container"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:clipChildren="false"
-    android:focusable="true"
-    android:focusableInTouchMode="true"/>
+    android:layout_height="match_parent">
+
+    <cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppConstraintLayout
+        android:id="@+id/inapp_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+</FrameLayout>
