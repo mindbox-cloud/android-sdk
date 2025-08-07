@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="mindbox_default_notification_color">@android:color/transparent</color>
+    <color name="mindbox_default_inapp_background_color">#80000000</color>
 </resources>

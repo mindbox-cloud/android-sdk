@@ -26,7 +26,7 @@ internal class ModalWindowInAppViewHolder(
         get() = isInAppMessageActive
 
     override fun bind() {
-        currentDialog.setDismissListener {
+        inAppLayout.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed by dialog click")
             hide()
@@ -44,17 +44,20 @@ internal class ModalWindowInAppViewHolder(
                             hide()
                         }
                     }
-                    currentDialog.addView(inAppCrossView)
-                    inAppCrossView.prepareViewForModalWindow(currentDialog)
+                    inAppLayout.addView(inAppCrossView)
+                    inAppCrossView.prepareViewForModalWindow(inAppLayout)
                 }
             }
         }
-        currentBackground?.setOnClickListener {
-            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogI("In-app dismissed by background click")
-            hide()
+        currentBackground?.apply {
+            setOnClickListener {
+                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                mindboxLogI("In-app dismissed by background click")
+                hide()
+            }
+
+            isVisible = true
         }
-        currentBackground?.isVisible = true
     }
 
     override fun addUrlSource(layer: Layer.ImageLayer, inAppCallback: InAppCallback) {
@@ -63,8 +66,8 @@ internal class ModalWindowInAppViewHolder(
             is Layer.ImageLayer.Source.UrlSource -> {
                 InAppImageView(currentDialog.context).also { inAppImageView ->
                     inAppImageView.visibility = View.INVISIBLE
-                    currentDialog.addView(inAppImageView)
-                    inAppImageView.prepareViewForModalWindow(currentDialog)
+                    inAppLayout.addView(inAppImageView)
+                    inAppImageView.prepareViewForModalWindow(inAppLayout)
                     preparedImages[inAppImageView] = false
                     getImageFromCache(layer.source.url, inAppImageView)
                 }
@@ -74,7 +77,7 @@ internal class ModalWindowInAppViewHolder(
 
     override fun show(currentRoot: MindboxView) {
         super.show(currentRoot)
-        mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+        mindboxLogI("Try to show in-app with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is Layer.ImageLayer -> {
@@ -86,18 +89,11 @@ internal class ModalWindowInAppViewHolder(
         currentDialog.requestFocus()
     }
 
-    override fun hide() {
-        (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(currentBackground)
-        }
-        super.hide()
-    }
-
     override fun initView(currentRoot: ViewGroup) {
-        currentRoot.removeChildById(R.id.inapp_background_layout)
+        super.initView(currentRoot)
+        currentDialog.removeChildById(R.id.inapp_background_layout)
         currentBackground = LayoutInflater.from(currentRoot.context)
             .inflate(R.layout.mindbox_blur_layout, currentRoot, false) as FrameLayout
-        currentRoot.addView(currentBackground)
-        super.initView(currentRoot)
+        currentDialog.addView(currentBackground, 0)
     }
 }
