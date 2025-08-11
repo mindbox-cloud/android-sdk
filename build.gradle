@@ -2,8 +2,8 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url("https://plugins.gradle.org/m2/") }
-        maven { url("https://developer.huawei.com/repo/") }
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://developer.huawei.com/repo/" }
         maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
     }
     dependencies {
@@ -15,8 +15,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://developer.huawei.com/repo/' }
+        maven { url "https://developer.huawei.com/repo/" }
         maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
+        maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
         mavenLocal()
     }
 }

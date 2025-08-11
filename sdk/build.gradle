@@ -43,10 +43,14 @@ android {
 }
 
 dependencies {
+    // Internal dependencies
+
+    implementation(libs.mindbox.common)
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib
     implementation libs.androidx.core.ktx
+    implementation libs.appcompat
 
     // ConstraintLayout
     implementation libs.constraint.layout

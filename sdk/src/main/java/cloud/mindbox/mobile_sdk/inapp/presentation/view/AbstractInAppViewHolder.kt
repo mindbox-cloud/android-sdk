@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -18,6 +19,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
+import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -30,9 +32,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     protected open var isInAppMessageActive = false
 
-    private var _currentDialog: InAppConstraintLayout? = null
-    protected val currentDialog: InAppConstraintLayout
+    private var positionController: InAppPositionController? = null
+
+    private var _currentDialog: FrameLayout? = null
+    protected val currentDialog: FrameLayout
         get() = _currentDialog!!
+
+    protected val inAppLayout: InAppConstraintLayout by lazy {
+        currentDialog.findViewById(R.id.inapp_layout)!!
+    }
 
     private var typingView: View? = null
 
@@ -64,7 +72,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
         var payload: String
         var shouldDismiss: Boolean
 
-        currentDialog.setSingleClickListener {
+        inAppLayout.setSingleClickListener {
             val inAppData = inAppActionHandler.handle(
                 layer.action,
                 inAppActionHandler.mindboxView
@@ -109,9 +117,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                 ): Boolean {
                     return runCatching {
                         this.mindboxLogE(
-                            message = "Failed to load inapp image with url = $url",
+                            message = "Failed to load in-app image with url = $url",
                             exception = e
-                                ?: RuntimeException("Failed to load inapp image with url = $url")
+                                ?: RuntimeException("Failed to load in-app image with url = $url")
                         )
                         hide()
                         false
@@ -135,7 +143,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                         bind()
                         preparedImages[imageView] = true
                         if (!preparedImages.values.contains(false)) {
-                            mindboxLogI("In-app shown")
+                            this@AbstractInAppViewHolder.mindboxLogI("In-app shown")
                             wrapper.inAppActionCallbacks.onInAppShown.onShown()
                             for (image in preparedImages.keys) {
                                 image.visibility = View.VISIBLE
@@ -155,11 +163,11 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     }
 
     protected open fun initView(currentRoot: ViewGroup) {
-        currentRoot.removeChildById(R.id.inapp_layout)
+        currentRoot.removeChildById(R.id.inapp_layout_container)
         _currentDialog = LayoutInflater.from(currentRoot.context)
-            .inflate(R.layout.mindbox_inapp_layout, currentRoot, false) as InAppConstraintLayout
+            .inflate(R.layout.mindbox_inapp_layout, currentRoot, false) as FrameLayout
         currentRoot.addView(currentDialog)
-        currentDialog.prepareLayoutForInApp(wrapper.inAppType)
+        inAppLayout.prepareLayoutForInApp(wrapper.inAppType)
     }
 
     private fun restoreKeyboard() {
@@ -175,16 +183,19 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     }
 
     override fun show(currentRoot: MindboxView) {
-        isInAppMessageActive = true
         initView(currentRoot.container)
+        val isRepositioningEnabled = currentRoot.container.context.resources.getBoolean(R.bool.mindbox_support_inapp_on_fragment)
+        positionController = isRepositioningEnabled.takeIf { it }?.run {
+            InAppPositionController().apply { start(currentDialog) }
+        }
         hideKeyboard(currentRoot.container)
         inAppActionHandler.mindboxView = currentRoot
     }
 
     override fun hide() {
-        (currentDialog.parent as? ViewGroup?)?.apply {
-            removeView(_currentDialog)
-        }
+        positionController?.stop()
+        positionController = null
+        currentDialog.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)
         mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
     }

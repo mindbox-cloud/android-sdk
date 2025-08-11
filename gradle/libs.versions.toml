@@ -4,6 +4,8 @@ build_tools = "34.0.0"
 min_sdk = "21"
 target_sdk = "35"
 
+mindbox_common = "1.0.2"
+
 firebase_bom = "32.7.2"
 hms_push = "6.11.0.300"
 room = "2.6.1"
@@ -24,6 +26,7 @@ androidx_annotations = "1.3.0"
 constraint_layout = "2.1.4"
 threetenapb = "1.4.6"
 glide = "4.15.1"
+app_compat = "1.7.1"
 
 junit = "4.13.2"
 androidx_junit = "1.1.3"
@@ -66,6 +69,7 @@ androidTest = [
 ]
 
 [libraries]
+mindbox_common = { group = "cloud.mindbox", name = "mindbox-common", version.ref = "mindbox_common" }
 kotlin_stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx_core_ktx" }
 androidx_annotations = { group = "androidx.annotation", name = "annotation", version.ref = "androidx_annotations" }
@@ -90,6 +94,7 @@ constraint_layout = { group = "androidx.constraintlayout", name = "constraintlay
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenapb" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide_compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "app_compat" }
 
 # RuStore libraries
 rustore_pushclient = { module = "ru.rustore.sdk:pushclient", version.ref = "pushclient" }

@@ -25,7 +25,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
@@ -38,21 +37,20 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Queue
 import java.util.UUID
 import kotlin.math.roundToInt
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
-internal fun Map<String, String>.toUrlQueryString() = LoggingExceptionHandler.runCatching(
+internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingRunCatching(
     defaultValue = ""
 ) {
-    this.map { (k, v) -> "$k=$v" }
+    this.map { (k, v) -> "${k.encode()}=${v.encode()}" }
         .joinToString(prefix = "?", separator = "&")
 }
+
+internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
 
 internal fun ZonedDateTime.convertToString() = runCatching {
     this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
@@ -217,21 +215,6 @@ internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boole
     }
 }
 
-internal fun String.parseTimeSpanToMillis(): Long {
-    val regex = """(-)?(\d+\.)?([01]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)(\.\d{1,7})?""".toRegex()
-    val matchResult = regex.matchEntire(this)
-        ?: throw IllegalArgumentException("Invalid timeSpan format")
-    val (sign, days, hours, minutes, seconds, fraction) = matchResult.destructured
-    val daysCorrected = if (days.isBlank()) "0" else days.dropLast(1)
-
-    val duration = daysCorrected.toLong().days +
-        hours.toLong().hours +
-        minutes.toLong().minutes +
-        (seconds + fraction).toDouble().seconds
-
-    return if (sign == "-") duration.inWholeMilliseconds * -1 else duration.inWholeMilliseconds
-}
-
 internal fun String.isUuid(): Boolean {
     return loggingRunCatching(false) {
         UUID.fromString(this)
@@ -250,6 +233,10 @@ internal fun JsonObject.getOrNull(memberName: String?): JsonElement? = runCatchi
 internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? = getOrElse {
     runIfNull(it)
     null
+}
+
+internal inline fun <reified T> Any?.safeAs(): T? {
+    return this as? T
 }
 
 /**

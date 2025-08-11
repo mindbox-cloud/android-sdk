@@ -151,25 +151,6 @@ class SessionStorageManagerTest {
     }
 
     @Test
-    fun `hasSessionExpired should not have race conditions on lastTrackVisitSendTime`() {
-        val listener = mockk<() -> Unit>()
-        val threads = mutableListOf<Thread>()
-        sessionStorageManager.addSessionExpirationListener(listener)
-        setupSessionState(lastTrackTime = 1000L, sessionTime = 999L, currentTime = 2000L)
-
-        repeat(5) {
-            threads.add(Thread {
-                sessionStorageManager.hasSessionExpired()
-            })
-        }
-
-        threads.forEach { it.start() }
-        threads.forEach { it.join() }
-
-        verify(exactly = 1) { listener.invoke() }
-    }
-
-    @Test
     fun `isSessionExpiredOnLastCheck returns true when session has expired`() {
         setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L) // 1000 > 500
 
@@ -217,5 +198,24 @@ class SessionStorageManagerTest {
         every { mockTimeProvider.currentTimeMillis() } returns 3001L
         sessionStorageManager.hasSessionExpired()
         assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `hasSessionExpired should not have race conditions on lastTrackVisitSendTime`() {
+        val listener = mockk<() -> Unit>()
+        val threads = mutableListOf<Thread>()
+        sessionStorageManager.addSessionExpirationListener(listener)
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 999L, currentTime = 2000L)
+
+        repeat(5) {
+            threads.add(Thread {
+                sessionStorageManager.hasSessionExpired()
+            })
+        }
+
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+
+        verify(exactly = 1) { listener.invoke() }
     }
 }

@@ -24,7 +24,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
       - name: lint check
-        run: ./gradlew --no-daemon check
+        run: ./gradlew --no-daemon lintDebug
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -114,9 +114,9 @@ jobs:
         # Change github variable CENTER_PORTAL_AUTO_RELEASE to set up auto release Maven Central
         run: |
           if [ "${{ vars.CENTER_PORTAL_AUTO_RELEASE }}" = "true" ]; then
-          ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache --stacktrace --debug
+          ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
           else
-          ./gradlew publishToMavenCentral --no-configuration-cache --stacktrace --debug
+          ./gradlew publishToMavenCentral --no-configuration-cache
           fi
 
   release-github:
@@ -146,11 +146,10 @@ jobs:
           ref: develop
       - name: Create Pull Request
         run: gh pr create --base develop --head master --title "Merge 'master' into 'develop' after release" --body "Automated Pull Request to merge 'master' into 'develop' after release"
-
       - name: Merge Pull Request
         run: |
           pr_number=$(gh pr list --base develop --head master --json number --jq '.[0].number')
-          gh pr merge $pr_number --merge
+          gh pr merge $pr_number --merge --auto
 
   message-to-loop-if-success:
     needs: [release-github]
