@@ -662,8 +662,7 @@ public object Mindbox : MindboxLog {
                         },
                         onActivityResumed = { resumedActivity ->
                             inAppMessageManager.onResumeCurrentActivity(
-                                resumedActivity,
-                                true
+                                resumedActivity
                             )
                             if (firstInitCall.get()) {
                                 mindboxScope.launch {
@@ -683,6 +682,7 @@ public object Mindbox : MindboxLog {
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
                         },
                         onTrackVisitReady = { source, requestUrl ->
+                            sessionStorageManager.hasSessionExpired()
                             eventScope.launch {
                                 sendTrackVisitEvent(
                                     MindboxDI.appModule.appContext,
@@ -1347,7 +1347,6 @@ public object Mindbox : MindboxLog {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
     ) = LoggingExceptionHandler.runCatching {
-        sessionStorageManager.hasSessionExpired()
         DbManager.getConfigurations()?.endpointId?.let { endpointId ->
             val applicationContext = context.applicationContext
             val trackVisitData = TrackVisitData(

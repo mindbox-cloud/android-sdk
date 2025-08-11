@@ -23,21 +23,20 @@ internal class InAppSerializationManagerTest {
 
     @Test
     fun `deserializeToShownInAppsMap returns valid map`() {
-        val json = "{\"app1\":100,\"app2\":200}"
-        val expectedMap = mapOf("app1" to 100L, "app2" to 200L)
+        val json = "{\"app1\":[100, 120],\"app2\":[200, 220]}"
+        val expectedMap = mapOf("app1" to listOf(100L, 120L), "app2" to listOf(200L, 220L))
 
         val actualMap = inAppSerializationManager.deserializeToShownInAppsMap(json)
-
         assertEquals(expectedMap, actualMap)
     }
 
     @Test
     fun `deserializeToShownInAppsMap returns empty map when exception occurs`() {
-        val json = "{\"app1\":100,\"app2\":200}"
+        val json = "{\"app1\":[100, 120]\"app2\":[200, 220]}"
         val gson: Gson = mockk()
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
         // Mocking runCatching to throw an exception
-        every { gson.fromJson<String>(json, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
+        every { gson.fromJson<String>(json, object : TypeToken<HashMap<String, List<Long>>>() {}.type) } throws RuntimeException("Some exception")
 
         val actualMap = inAppSerializationManager.deserializeToShownInAppsMap(json)
 
@@ -46,8 +45,8 @@ internal class InAppSerializationManagerTest {
 
     @Test
     fun `serializeToShownInAppsString returns valid JSON string`() {
-        val shownInApps = mapOf("app1" to 100L, "app2" to 200L)
-        val expectedJson = "{\"app1\":100,\"app2\":200}"
+        val shownInApps = mapOf("app1" to listOf(100L, 120L), "app2" to listOf(200L, 220L))
+        val expectedJson = "{\"app1\":[100,120],\"app2\":[200,220]}"
 
         val actualJson = inAppSerializationManager.serializeToShownInAppsString(shownInApps)
 
@@ -58,7 +57,7 @@ internal class InAppSerializationManagerTest {
     fun `serializeToShownInAppsString returns empty string when exception occurs`() {
         val gson: Gson = mockk()
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
-        val shownInApps = mapOf("app1" to 100L, "app2" to 200L)
+        val shownInApps = mapOf("app1" to listOf(100L), "app2" to listOf(200L))
         every { gson.toJson(shownInApps, object : TypeToken<HashMap<String, Long>>() {}.type) } throws RuntimeException("Some exception")
 
         val actualJson = inAppSerializationManager.serializeToShownInAppsString(shownInApps)
@@ -82,27 +81,6 @@ internal class InAppSerializationManagerTest {
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
         val expectedResult = ""
         val actualResult = inAppSerializationManager.serializeToInAppHandledString(inAppId)
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `serialize to shown inApps string success`() {
-        val testHashset = hashSetOf(inAppId, otherInAppId)
-        val expectedResult = "[\"${otherInAppId}\",\"$inAppId\"]"
-        val actualResult = inAppSerializationManager.serializeToShownInAppsString(testHashset)
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `serialize to shown inApps string error`() {
-        val gson: Gson = mockk()
-        val testHashset = hashSetOf(inAppId, otherInAppId)
-        every {
-            gson.toJson(any())
-        } throws Error("errorMessage")
-        inAppSerializationManager = InAppSerializationManagerImpl(gson)
-        val expectedResult = ""
-        val actualResult = inAppSerializationManager.serializeToShownInAppsString(testHashset)
         assertEquals(expectedResult, actualResult)
     }
 

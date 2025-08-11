@@ -5,10 +5,9 @@ import android.view.ViewGroup
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
-import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
@@ -52,7 +51,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
-    override fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun onResumeCurrentActivity(activity: Activity, isNeedToShow: () -> Boolean, onAppResumed: () -> Unit) {
         mindboxLogI("onResumeCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
 
@@ -61,37 +60,39 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             pausedHolder?.wrapper?.let { wrapper ->
                 mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
                 showInAppMessage(
-                    wrapper.copy(
-                        onInAppShown = {
+                    wrapper = wrapper.copy(
+                        inAppActionCallbacks = wrapper.inAppActionCallbacks.copy(onInAppShown = {
                             mindboxLogI("Skip InApp.Show for restored inApp")
                             currentActivity?.postDelayedAnimation {
                                 pausedHolder?.hide()
                             }
-                        },
+                        }
+                        )
                     ),
                     isRestored = true
                 )
             }
         } else {
-            tryShowInAppFromQueue()
+            tryShowInAppFromQueue(isNeedToShow)
         }
+        onAppResumed()
     }
 
-    override fun registerCurrentActivity(activity: Activity, shouldUseBlur: Boolean) {
+    override fun registerCurrentActivity(activity: Activity) {
         mindboxLogI("registerCurrentActivity: ${activity.hashCode()}")
         currentActivity = activity
-
-        tryShowInAppFromQueue()
+        tryShowInAppFromQueue { true }
     }
 
-    private fun tryShowInAppFromQueue() {
-        if (inAppQueue.isNotEmpty() && !isInAppActive()) {
+    private fun tryShowInAppFromQueue(isSessionActive: () -> Boolean) {
+        if (inAppQueue.isNotEmpty() && !isInAppActive() && isSessionActive()) {
             inAppQueue.pop().let {
                 val duration = Stopwatch.track(Stopwatch.INIT_SDK)
                 mindboxLogI("trying to show in-app with id ${it.inAppType.inAppId} from queue $duration after init")
                 showInAppMessage(it)
             }
         }
+        inAppQueue.clear()
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -116,16 +117,15 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     override fun tryShowInAppMessage(
         inAppType: InAppType,
-        onInAppClick: OnInAppClick,
-        onInAppShown: OnInAppShown,
+        inAppActionCallbacks: InAppActionCallbacks
     ) {
         val wrapper = when (inAppType) {
             is InAppType.ModalWindow -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                InAppTypeWrapper(inAppType, inAppActionCallbacks)
             }
 
             is InAppType.Snackbar -> {
-                InAppTypeWrapper(inAppType, onInAppClick, onInAppShown)
+                InAppTypeWrapper(inAppType, inAppActionCallbacks)
             }
         }
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
@@ -153,7 +153,9 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
+        if (!isRestored) isActionExecuted = false
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
+            wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
             pausedHolder?.hide()
             pausedHolder = null
             currentHolder = null
@@ -192,6 +194,12 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     override fun hideCurrentInApp() {
         loggingRunCatching {
+            if (isInAppActive()) {
+                currentHolder?.wrapper?.inAppActionCallbacks
+                    ?.copy(onInAppDismiss = { mindboxLogI("Do not save the closing timestamp for in-app as it's restored automatically when the session is reopened") })
+                    ?.onInAppDismiss
+                    ?.onDismiss()
+            }
             currentHolder?.hide()
             currentHolder = null
             pausedHolder?.hide()

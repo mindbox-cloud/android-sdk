@@ -257,6 +257,77 @@ internal class ExtensionsTest {
     }
 
     @Test
+    fun `pollIf should return and remove element when predicate is true`() {
+        val queue: Queue<Int> = LinkedList(listOf(1, 2, 3))
+        val initialSize = queue.size
+
+        val result = queue.pollIf { it == 1 }
+
+        assertEquals(1, result)
+        assertEquals(2, queue.peek())
+        assertEquals(initialSize - 1, queue.size)
+    }
+
+    @Test
+    fun `pollIf should return null and not remove element when predicate is false`() {
+        val queue: Queue<Int> = LinkedList(listOf(1, 2, 3))
+        val initialSize = queue.size
+
+        val result = queue.pollIf { it == 2 }
+
+        assertNull(result)
+        assertEquals(initialSize, queue.size)
+        assertEquals(1, queue.peek())
+    }
+
+    @Test
+    fun `pollIf should return null for an empty queue`() {
+        val queue: Queue<Int> = LinkedList()
+
+        val result = queue.pollIf { true }
+
+        assertNull(result)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `pollIf on queue with one element when predicate is true`() {
+        val queue: Queue<Int> = LinkedList(listOf(5))
+
+        val result = queue.pollIf { it == 5 }
+
+        assertEquals(5, result)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `pollIf on queue with one element when predicate is false`() {
+        val queue: Queue<Int> = LinkedList(listOf(5))
+
+        val result = queue.pollIf { it != 5 }
+
+        assertNull(result)
+        assertEquals(1, queue.size)
+    }
+
+    @Test
+    fun `pollIf with multiple calls`() {
+        val queue: Queue<String> = LinkedList(listOf("apple", "banana", "cherry"))
+
+        val appleResult = queue.pollIf { it.startsWith("a") }
+        assertEquals("apple", appleResult)
+        assertEquals(2, queue.size)
+
+        val nonBBfruitResult = queue.pollIf { it.startsWith("b") }
+        assertEquals("banana", nonBBfruitResult)
+        assertEquals(1, queue.size)
+
+        val cherryResult = queue.pollIf { it.length == 6 }
+        assertEquals("cherry", cherryResult)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
     fun `toUrlQueryString should return empty string for empty map`() {
         val emptyMap = linkedMapOf<String, String>()
         val result = emptyMap.toUrlQueryString()

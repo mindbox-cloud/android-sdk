@@ -27,7 +27,8 @@ internal fun PresentationModule(
             defaultDispatcher = Dispatchers.IO,
             monitoringInteractor = monitoringInteractor,
             sessionStorageManager = sessionStorageManager,
-            userVisitManager = userVisitManager
+            userVisitManager = userVisitManager,
+            inAppMessageDelayedManager = inAppMessageDelayedManager
         )
     }
     override val clipboardManager: ClipboardManager by lazy {

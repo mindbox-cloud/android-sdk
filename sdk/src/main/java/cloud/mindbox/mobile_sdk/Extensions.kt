@@ -20,10 +20,8 @@ import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTime
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.SessionDelay
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
@@ -44,10 +42,6 @@ import java.nio.charset.Charset
 import java.util.Queue
 import java.util.UUID
 import kotlin.math.roundToInt
-
-internal fun SessionDelay(): SessionDelay {
-    return Frequency.Delay.TimeDelay(0, InAppTime.SECONDS)
-}
 
 internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingRunCatching(
     defaultValue = ""
@@ -284,3 +278,17 @@ public fun Intent.putMindboxPushExtras(pushUniqKey: String) {
 public fun Intent.getMindboxUniqKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_KEY)
 
 public fun Intent.getMindboxUniqPushButtonKeyFromPushIntent(): String? = this.getStringExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY)
+
+internal inline fun <reified T> Gson.toJsonTyped(src: T): String =
+    toJson(src, object : TypeToken<T>() {}.type)
+
+internal inline fun <reified T> Gson.fromJsonTyped(json: String): T? =
+    fromJson(json, object : TypeToken<T>() {}.type)
+
+internal fun List<InApp>.sortByPriority(): List<InApp> {
+    return this.sortedByDescending { it.isPriority }
+}
+
+internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
+    return peek()?.takeIf(predicate)?.let { poll() }
+}

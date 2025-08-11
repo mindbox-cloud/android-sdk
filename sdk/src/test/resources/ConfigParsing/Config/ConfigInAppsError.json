@@ -2,6 +2,8 @@
   "inappsTest": [
     {
       "id": "12345678-c777-4ac9-86b3-722c3e998cb6",
+      "isPriority" : true,
+      "delayTime" : "00:00:30",
       "sdkVersion": {
         "min": 8,
         "max": null
@@ -83,6 +85,7 @@
     },
     {
       "id": "283d926e-7609-493b-8d1d-67e9a909847e",
+      "isPriority" : false,
       "sdkVersion": {
         "min": 9,
         "max": null

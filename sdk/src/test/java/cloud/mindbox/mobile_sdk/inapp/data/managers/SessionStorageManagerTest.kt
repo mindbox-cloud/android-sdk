@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -104,7 +106,8 @@ class SessionStorageManagerTest {
             inAppCustomerSegmentations = mockk()
             unShownOperationalInApps["test"] = mutableListOf(mockk())
             operationalInApps["test"] = mutableListOf(mockk())
-            isInAppMessageShown = true
+            inAppMessageShownInSession.add("test1")
+            inAppMessageShownInSession.add("test2")
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
@@ -113,6 +116,7 @@ class SessionStorageManagerTest {
             shownInAppIdsWithEvents["event"] = mutableSetOf(1, 2, 3)
             configFetchingError = true
             sessionTime = 1000L.milliseconds
+            inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 20, maxInappsPerDay = 20, minIntervalBetweenShows = Milliseconds(100))
         }
 
         sessionStorageManager.clearSessionData()
@@ -120,7 +124,7 @@ class SessionStorageManagerTest {
         assertNull(sessionStorageManager.inAppCustomerSegmentations)
         assertTrue(sessionStorageManager.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.operationalInApps.isEmpty())
-        assertFalse(sessionStorageManager.isInAppMessageShown)
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
         assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
         assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())
@@ -129,6 +133,71 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+        assertEquals(InAppShowLimitsSettings(), sessionStorageManager.inAppShowLimitsSettings)
+    }
+
+    @Test
+    fun `check inAppMessageShownInSession elements count`() {
+        val inAppId1 = "inApp1"
+        val inAppId2 = "inApp2"
+        val expectedResult = 3
+        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId2)
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
+
+        assertEquals(expectedResult, sessionStorageManager.inAppMessageShownInSession.size)
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns true when session has expired`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L) // 1000 > 500
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false when session is active`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 2000L, currentTime = 1500L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false on first sdk track visit`() {
+        setupSessionState(lastTrackTime = 0L, sessionTime = 1000L, currentTime = 2000L)
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck returns false when sessionTime is zero`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 0L, currentTime = 2000L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+    }
+
+    @Test
+    fun `isSessionExpiredOnLastCheck should be reset to true on a subsequent valid check`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L)
+        sessionStorageManager.hasSessionExpired()
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
+
+        every { mockTimeProvider.currentTimeMillis() } returns 2500L
+        sessionStorageManager.hasSessionExpired()
+        assertFalse(sessionStorageManager.isSessionExpiredOnLastCheck())
+
+        every { mockTimeProvider.currentTimeMillis() } returns 3001L
+        sessionStorageManager.hasSessionExpired()
+        assertTrue(sessionStorageManager.isSessionExpiredOnLastCheck())
     }
 
     @Test

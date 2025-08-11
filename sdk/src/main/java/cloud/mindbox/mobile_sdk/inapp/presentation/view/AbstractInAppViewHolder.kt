@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.setSingleClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
@@ -83,7 +84,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                 shouldDismiss = this.shouldDismiss
             }
 
-            wrapper.onInAppClick.onClick()
+            wrapper.inAppActionCallbacks.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
                 redirectUrl,
@@ -106,7 +107,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
         Glide
             .with(currentDialog.context)
             .load(url)
-            .onlyRetrieveFromCache(true)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(
                     e: GlideException?,
@@ -143,7 +144,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                         preparedImages[imageView] = true
                         if (!preparedImages.values.contains(false)) {
                             this@AbstractInAppViewHolder.mindboxLogI("In-app shown")
-                            wrapper.onInAppShown.onShown()
+                            wrapper.inAppActionCallbacks.onInAppShown.onShown()
                             for (image in preparedImages.keys) {
                                 image.visibility = View.VISIBLE
                             }

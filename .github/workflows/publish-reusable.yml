@@ -96,14 +96,15 @@ jobs:
           echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
           gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
           --output /tmp/secret.gpg /tmp/publish_key.gpg
-          echo "signing.password=${{secrets.signingpassword}}" >> gradle.properties
-          echo "signing.keyId=${{secrets.signingkeyId}}" >> gradle.properties
+          echo "" >> gradle.properties
+          echo "signing.password=${{secrets.SIGNINGPASSWORD}}" >> gradle.properties
+          echo "signing.keyId=${{secrets.SIGNINGKEYID}}" >> gradle.properties
           echo "signing.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
           echo "mavenCentralUsername=${{secrets.CENTER_PORTAL_USERNAME}}" >> gradle.properties
           echo "mavenCentralPassword=${{secrets.CENTER_PORTAL_PASSWORD}}" >> gradle.properties
         env:
-          signingpassword: ${{secrets.signingpassword}}
-          signingkeyId: ${{secrets.signingkeyId}}
+          signingpassword: ${{secrets.SIGNINGPASSWORD}}
+          signingkeyId: ${{secrets.SIGNINGKEYID}}
           SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           SONATYPE_CONNECT_TIMEOUT_SECONDS: 60

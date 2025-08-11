@@ -15,7 +15,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
     var unShownOperationalInApps: HashMap<String, MutableList<InApp>> = HashMap()
     var operationalInApps: HashMap<String, MutableList<InApp>> = hashMapOf()
-    var isInAppMessageShown: Boolean = false
+    var inAppMessageShownInSession: MutableList<String> = mutableListOf()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -26,16 +26,20 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
     var sessionTime: Duration = 0L.milliseconds
+    var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
     private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
+
+    private var wasSessionExpiredOnLastCheck: Boolean = false
 
     fun addSessionExpirationListener(listener: SessionExpirationListener) {
         sessionExpirationListeners.add(listener)
     }
 
     fun hasSessionExpired() {
+        wasSessionExpiredOnLastCheck = false
         val currentTime = timeProvider.currentTimeMillis()
         val oldLastTrackVisitSendTime = lastTrackVisitSendTime.getAndSet(currentTime)
         val timeBetweenVisits = currentTime - oldLastTrackVisitSendTime
@@ -48,6 +52,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
             currentSessionTime == 0L -> "Session time is not set. Skip checking session expiration"
 
             timeBetweenVisits > currentSessionTime -> {
+                wasSessionExpiredOnLastCheck = true
                 notifySessionExpired()
                 "Session expired. Needs to open a new session. Time between trackVisits is $timeBetweenVisits ms. Session time is $currentSessionTime ms"
             }
@@ -59,11 +64,13 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         mindboxLogI("$checkingSessionResultLog. New lastTrackVisitSendTime = $currentTime")
     }
 
+    fun isSessionExpiredOnLastCheck() = wasSessionExpiredOnLastCheck
+
     fun clearSessionData() {
         inAppCustomerSegmentations = null
         unShownOperationalInApps.clear()
         operationalInApps.clear()
-        isInAppMessageShown = false
+        inAppMessageShownInSession.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()
@@ -72,6 +79,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         shownInAppIdsWithEvents.clear()
         configFetchingError = false
         sessionTime = 0L.milliseconds
+        inAppShowLimitsSettings = InAppShowLimitsSettings()
     }
 
     private fun notifySessionExpired() {
