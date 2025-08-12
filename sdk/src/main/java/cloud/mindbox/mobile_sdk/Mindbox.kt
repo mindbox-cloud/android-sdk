@@ -14,6 +14,9 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.common.MindboxCommon
+import cloud.mindbox.mobile_sdk.Mindbox.disposeDeviceUuidSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.disposePushTokenSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.handleRemoteMessage
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -97,6 +100,8 @@ public object Mindbox : MindboxLog {
     private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
+
+    private var pushConverters: List<PushConverter> by SingleInitDelegate()
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
@@ -566,6 +571,7 @@ public object Mindbox : MindboxLog {
             Stopwatch.start(Stopwatch.INIT_SDK)
 
             initComponents(context.applicationContext)
+            pushConverters = selectPushServiceHandler(pushServices)
             logI("init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
                 pushServices.joinToString(", ") { it.javaClass.simpleName } +
@@ -762,6 +768,7 @@ public object Mindbox : MindboxLog {
     ) {
         verifyThreadExecution(methodName = "initPushServices")
         initComponents(context)
+        pushConverters = selectPushServiceHandler(pushServices)
         mindboxScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
             setPushServiceHandler(context, pushServices)
@@ -791,7 +798,8 @@ public object Mindbox : MindboxLog {
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
             Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
 
-            pushServiceHandlers = selectPushServiceHandler(context, pushServices)
+            pushServiceHandlers = selectPushServiceHandler(pushServices)
+                .filter { it.isServiceAvailable(context) }
 
             pushServiceHandlers.map { handler ->
                 mindboxScope.async {
@@ -818,12 +826,10 @@ public object Mindbox : MindboxLog {
         )
 
     private fun selectPushServiceHandler(
-        context: Context,
         pushServices: List<MindboxPushService>,
     ): List<PushServiceHandler> =
         pushServices
             .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
-            .filter { it.isServiceAvailable(context) }
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -1056,12 +1062,12 @@ public object Mindbox : MindboxLog {
             logI("Cannot handle null message")
             return@loggingRunCatching false
         }
-        if (pushServiceHandlers.isEmpty()) {
-            logW("No push service handlers found.")
+        if (pushConverters.isEmpty()) {
+            logW("No push converters found")
         }
         val convertedMessage = when (message) {
             is MindboxRemoteMessage -> message
-            else -> pushServiceHandlers.firstNotNullOfOrNull { handler ->
+            else -> pushConverters.firstNotNullOfOrNull { handler ->
                 handler.convertToRemoteMessage(message)
             }
         }
