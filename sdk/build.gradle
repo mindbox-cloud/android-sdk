@@ -86,4 +86,5 @@ dependencies {
     // Android Test dependencies
     androidTestImplementation libs.bundles.androidTest
 
+    implementation project(path: ':mindbox-annotations')
 }

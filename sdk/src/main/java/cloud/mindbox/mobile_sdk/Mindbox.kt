@@ -1048,12 +1048,21 @@ public object Mindbox : MindboxLog {
         activities: Map<String, Class<out Activity>>? = null,
     ): Boolean = loggingRunCatching(defaultValue = false) {
         verifyThreadExecution(methodName = "handleRemoteMessage", shouldBeMainThread = false)
+        val resolvedActivities = activities ?: try {
+            val generatedMapper = Class.forName("cloud.mindbox.mobile_sdk.MindboxUrlMapper")
+            val urlMapField = generatedMapper.getField("urlMap")
+            @Suppress("UNCHECKED_CAST")
+            urlMapField.get(null) as? Map<String, Class<out Activity>>
+        } catch (e: ClassNotFoundException) {
+            null
+        }
+
         mindboxLogI(
             "handleRemoteMessage. channelId: $channelId, " +
                 "channelName: $channelName, channelDescription: $channelDescription, " +
                 "defaultActivity: ${defaultActivity.simpleName}, " +
                 "activities: ${
-                    activities?.map {
+                    resolvedActivities?.map {
                         "${it.key}: ${it.value.simpleName}"
                     }?.joinToString(", ")
                 }"
@@ -1086,7 +1095,7 @@ public object Mindbox : MindboxLog {
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,
                 channelDescription = channelDescription,
-                activities = activities,
+                activities = resolvedActivities,
                 defaultActivity = defaultActivity,
             )
         }
