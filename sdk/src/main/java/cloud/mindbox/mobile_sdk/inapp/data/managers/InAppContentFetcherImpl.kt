@@ -17,7 +17,7 @@ internal class InAppContentFetcherImpl(
         val inAppImageStorage: MutableList<Deferred<Boolean>> = mutableListOf()
         when (formVariant) {
             is InAppType.WebView -> {
-                // TODO("load scripts")
+                // do nothing
             }
 
             is InAppType.ModalWindow -> {
