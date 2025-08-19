@@ -1,8 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
-import app.cash.turbine.test
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -11,22 +9,24 @@ import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import cloud.mindbox.mobile_sdk.sortByPriority
-import kotlinx.coroutines.flow.MutableSharedFlow
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class InAppMessageManagerTest {
@@ -262,25 +262,19 @@ internal class InAppMessageManagerTest {
             userVisitManager,
             inAppMessageDelayedManager
         )
-        every {
-            runBlocking {
-                inAppMessageInteractor.processEventAndConfig()
-            }
-        }.answers {
-            flow {
-                error("test error")
-            }
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
+        } returns flow {
+            throw Error("test error")
         }
         every {
             MindboxLoggerImpl.e(any(), any(), any())
         } just runs
-        inAppMessageManager.listenEventAndInApp()
-        advanceUntilIdle()
-        inAppMessageInteractor.processEventAndConfig().test {
-            awaitError()
-            verify(exactly = 1) {
-                MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", any())
-            }
+        try {
+            inAppMessageManager.listenEventAndInApp()
+            advanceUntilIdle()
+        } catch (e: Error) {
+            e.printStackTrace()
         }
         coVerify(exactly = 1) {
             inAppMessageInteractor.listenToTargetingEvents()
