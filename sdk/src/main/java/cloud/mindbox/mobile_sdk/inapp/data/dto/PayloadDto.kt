@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto.SnackbarDto.ContentDto
 import cloud.mindbox.mobile_sdk.isInRange
 import com.google.gson.annotations.SerializedName
 
@@ -7,6 +8,17 @@ import com.google.gson.annotations.SerializedName
  * In-app types
  **/
 internal sealed class PayloadDto {
+
+    data class WebViewDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+        @SerializedName("content")
+        val content: ModalWindowDto.ContentDto?,
+    ) : PayloadDto() {
+        internal companion object {
+            const val WEBVIEW_JSON_NAME = "webview"
+        }
+    }
 
     data class SnackbarDto(
         @SerializedName("content")

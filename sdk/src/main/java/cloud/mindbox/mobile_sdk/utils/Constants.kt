@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.utils
 
 internal object Constants {
-    internal const val SDK_VERSION_NUMERIC = 9
+    internal const val SDK_VERSION_NUMERIC = 11
     internal const val TYPE_JSON_NAME = "\$type"
     internal const val POST_NOTIFICATION = "android.permission.POST_NOTIFICATIONS"
     internal const val NOTIFICATION_SETTINGS = "android.settings.APP_NOTIFICATION_SETTINGS"

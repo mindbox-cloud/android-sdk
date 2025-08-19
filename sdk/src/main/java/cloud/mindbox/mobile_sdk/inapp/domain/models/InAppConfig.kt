@@ -46,6 +46,12 @@ internal data class Form(
 
 internal sealed class InAppType(open val inAppId: String) {
 
+    internal data class WebView(
+        override val inAppId: String,
+        val type: String,
+        val layers: List<Layer>,
+    ) : InAppType(inAppId)
+
     internal data class Snackbar(
         override val inAppId: String,
         val type: String,

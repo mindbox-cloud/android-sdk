@@ -22,4 +22,11 @@ internal sealed class Layer {
             ) : Source()
         }
     }
+
+    internal data class WebViewLayer(
+        val baseUrl: String?,
+        val contentUrl: String?,
+        val type: String?,
+        val params: Map<String, String> = emptyMap()
+    ) : Layer()
 }
