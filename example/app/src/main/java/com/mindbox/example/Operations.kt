@@ -107,8 +107,8 @@ private fun getProductRecoSyncWithCustomClassOnResponse(context: Context) {
             )
         ),
         classOfV = OperationResponse::class.java,
-        onSuccess = { response -> handleSuccess(context, response, null) },
-        onError = { error -> handleError(context, error) }
+        onSuccess = { },
+        onError = { }
     )
 }
 

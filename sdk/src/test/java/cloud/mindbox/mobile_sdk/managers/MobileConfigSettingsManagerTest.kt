@@ -2,9 +2,12 @@ package cloud.mindbox.mobile_sdk.managers
 
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.SettingsStub.Companion.getSlidingExpiration
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
+import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -28,6 +31,10 @@ class MobileConfigSettingsManagerImplTest {
         sessionStorageManager = spyk(realSessionStorageManager)
         mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(mockk(), sessionStorageManager, object : TimeProvider {
             override fun currentTimeMillis(): Long = now
+
+            override fun currentTimestamp(): Timestamp {
+                return now.toTimestamp()
+            }
         })
         mockkObject(Mindbox)
         mockkObject(MindboxPreferences)
@@ -45,7 +52,7 @@ class MobileConfigSettingsManagerImplTest {
 
     @Test
     fun `saveSessionTime set sessionTime when slidingExpiration config is valid`() {
-        val config = getSlidingExpiration(timeSpan = "0:0:0.1")
+        val config = getSlidingExpiration(config = Milliseconds(100L))
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
@@ -54,7 +61,7 @@ class MobileConfigSettingsManagerImplTest {
 
     @Test
     fun `saveSessionTime doesn't set sessionTime when sessionTime is zero`() {
-        val config = getSlidingExpiration(timeSpan = "0:0:0.0")
+        val config = getSlidingExpiration(config = Milliseconds(0L))
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
@@ -64,7 +71,7 @@ class MobileConfigSettingsManagerImplTest {
 
     @Test
     fun `saveSessionTime doesn't set sessionTime when sessionTime is negative`() {
-        val config = getSlidingExpiration(timeSpan = "-0:0:0.001")
+        val config = getSlidingExpiration(Milliseconds(-1L))
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
@@ -77,9 +84,8 @@ class MobileConfigSettingsManagerImplTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns null
         every { Mindbox.mindboxScope } returns backgroundScope
 
-        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(10000L))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
-
         Thread.sleep(1000L)
         verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), any()) }
     }
@@ -87,7 +93,7 @@ class MobileConfigSettingsManagerImplTest {
     @Test
     fun `checkPushTokenKeepalive does not send appKeepalive when not expired`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns (now - 5_000L)
-        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(10000L))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
@@ -97,7 +103,7 @@ class MobileConfigSettingsManagerImplTest {
     fun `checkPushTokenKeepalive sends keepAlive when expired`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns (now - 20_000L)
         every { Mindbox.mindboxScope } returns backgroundScope
-        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:10.0")
+        val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(10000L))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), any()) }
@@ -113,18 +119,9 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is invalid`() {
-        every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepalive = "now")
-        mobileConfigSettingsManager.checkPushTokenKeepalive(config)
-
-        verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
-    }
-
-    @Test
     fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is less zero`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepalive = "-0:0:10.0")
+        val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(-5))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
@@ -133,7 +130,7 @@ class MobileConfigSettingsManagerImplTest {
     @Test
     fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is zero`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = getSlidingExpiration(pushTokenKeepalive = "0:0:0.0")
+        val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(0))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
@@ -151,7 +148,7 @@ class MobileConfigSettingsManagerImplTest {
     @Test
     fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null), null)
+        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null, null), null)
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }

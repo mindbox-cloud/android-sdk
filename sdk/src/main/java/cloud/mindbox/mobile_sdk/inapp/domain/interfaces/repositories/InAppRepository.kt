@@ -2,12 +2,13 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
     fun saveCurrentSessionInApps(inApps: List<InApp>)
 
-    fun getShownInApps(): Map<String, Long>
+    fun getShownInApps(): Map<String, List<Long>>
 
     fun getCurrentSessionInApps(): List<InApp>
 
@@ -33,9 +34,15 @@ internal interface InAppRepository {
 
     fun sendUserTargeted(inAppId: String)
 
-    fun setInAppShown()
+    fun setInAppShown(inAppId: String)
 
-    fun isInAppShown(): Boolean
+    fun isInAppShown(inAppId: String): Boolean
 
     fun clearInAppEvents()
+
+    fun isTimeDelayInapp(inAppId: String): Boolean
+
+    fun getLastInappDismissTime(): Timestamp
+
+    fun saveInAppStateChangeTime(timeStamp: Timestamp)
 }

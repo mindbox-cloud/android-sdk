@@ -4,17 +4,28 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
+import java.util.concurrent.TimeUnit
 
 internal class InAppRepositoryImpl(
     private val context: Context,
     private val sessionStorageManager: SessionStorageManager,
     private val inAppSerializationManager: InAppSerializationManager,
+    private val timeProvider: SystemTimeProvider
 ) : InAppRepository {
+
+    companion object {
+        private const val IN_APP_SHOWN_EXPIRATION_DAYS = 2L
+    }
+
     override fun saveCurrentSessionInApps(inApps: List<InApp>) {
         sessionStorageManager.currentSessionInApps = inApps
     }
@@ -62,7 +73,7 @@ internal class InAppRepositoryImpl(
         return sessionStorageManager.operationalInApps[operation.lowercase()] ?: emptyList()
     }
 
-    override fun getShownInApps(): Map<String, Long> {
+    override fun getShownInApps(): Map<String, List<Long>> {
         return inAppSerializationManager.deserializeToShownInAppsMap(MindboxPreferences.shownInApps)
     }
 
@@ -71,12 +82,19 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
-        val newMap = getShownInApps() + hashMapOf(id to timeStamp)
-        inAppSerializationManager.serializeToShownInAppsString(newMap).also {
+        val currentShownInApps = getShownInApps()
+        val currentTime = timeProvider.currentTimeMillis()
+
+        val newShownInAppsById = currentShownInApps.getOrElse(id) { emptyList() }
+            .filter { currentTime - it <= TimeUnit.DAYS.toMillis(IN_APP_SHOWN_EXPIRATION_DAYS) }
+            .plus(timeStamp)
+        val shownInApps = currentShownInApps + (id to newShownInAppsById)
+        inAppSerializationManager.serializeToShownInAppsString(shownInApps).also {
             if (it.isNotBlank()) {
                 MindboxPreferences.shownInApps = it
             }
         }
+        mindboxLogI("Increase count of shown inapp per day")
     }
 
     override fun sendInAppShown(inAppId: String) {
@@ -112,15 +130,27 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override fun setInAppShown() {
-        sessionStorageManager.isInAppMessageShown = true
-    }
-
-    override fun isInAppShown(): Boolean {
-        return sessionStorageManager.isInAppMessageShown
+    override fun isInAppShown(inAppId: String): Boolean {
+        return sessionStorageManager.inAppMessageShownInSession.any { it == inAppId }
     }
 
     override fun clearInAppEvents() {
         MindboxEventManager.resetEventFlowCache()
+    }
+
+    override fun isTimeDelayInapp(inAppId: String): Boolean =
+        sessionStorageManager.currentSessionInApps
+            .any { it.id == inAppId && it.frequency.delay is Frequency.Delay.TimeDelay }
+
+    override fun setInAppShown(inAppId: String) {
+        mindboxLogI("Increase count of shown inapp per session, previous count ${sessionStorageManager.inAppMessageShownInSession.size}")
+        sessionStorageManager.inAppMessageShownInSession.add(inAppId)
+    }
+
+    override fun getLastInappDismissTime(): Timestamp = MindboxPreferences.lastInappChangeStateTime
+
+    override fun saveInAppStateChangeTime(timeStamp: Timestamp) {
+        mindboxLogI("Save last inapp state changed with timestamp $timeStamp")
+        MindboxPreferences.lastInappChangeStateTime = timeStamp
     }
 }

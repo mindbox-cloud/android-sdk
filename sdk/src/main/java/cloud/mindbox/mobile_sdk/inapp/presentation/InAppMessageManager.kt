@@ -18,7 +18,7 @@ internal interface InAppMessageManager {
 
     fun initLogs()
 
-    fun onResumeCurrentActivity(activity: Activity, shouldUseBlur: Boolean)
+    fun onResumeCurrentActivity(activity: Activity)
 
     fun handleSessionExpiration()
 }

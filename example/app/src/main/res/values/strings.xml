@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Mindbox Android Sdk Example</string>
+    <string name="app_name">Example SDK</string>
     <string name="device_uuid">Device UUID:</string>
     <string name="transit_push">The second activity</string>
     <string name="transit_push_fragment">This Fragment was opening after click on push</string>

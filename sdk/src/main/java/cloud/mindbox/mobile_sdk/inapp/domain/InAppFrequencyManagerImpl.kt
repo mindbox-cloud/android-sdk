@@ -9,9 +9,10 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepository) :
     InAppFrequencyManager {
     override fun filterInAppsFrequency(inApps: List<InApp>): List<InApp> {
+        val shownInApps = inAppRepository.getShownInApps()
         return inApps.filter { inApp ->
             val lastShownTimeStamp =
-                inAppRepository.getShownInApps()[inApp.id] ?: run {
+                shownInApps[inApp.id]?.maxOrNull() ?: run {
                     mindboxLogI("InApp with id = ${inApp.id} was never shown before. Frequency filter won't be applied")
                     return@filter true
                 }
@@ -35,6 +36,13 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                         mindboxLogI("Difference is non positive for inApp with id = ${inApp.id}. Keeping inApp")
                     }
                     delay < currentTime
+                }
+
+                Frequency.Delay.OneTimePerSession -> !inAppRepository.isInAppShown(inApp.id).also { result ->
+                    mindboxLogI(
+                        "InApp with id = ${inApp.id} has settings one time per session. " +
+                            "Result of checking whether we can show inapp ${inApp.id} in the current session = ${!result} "
+                    )
                 }
             }
         }

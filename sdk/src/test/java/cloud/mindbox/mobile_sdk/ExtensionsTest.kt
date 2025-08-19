@@ -255,4 +255,154 @@ internal class ExtensionsTest {
 
         assertNull(result)
     }
+
+    @Test
+    fun `pollIf should return and remove element when predicate is true`() {
+        val queue: Queue<Int> = LinkedList(listOf(1, 2, 3))
+        val initialSize = queue.size
+
+        val result = queue.pollIf { it == 1 }
+
+        assertEquals(1, result)
+        assertEquals(2, queue.peek())
+        assertEquals(initialSize - 1, queue.size)
+    }
+
+    @Test
+    fun `pollIf should return null and not remove element when predicate is false`() {
+        val queue: Queue<Int> = LinkedList(listOf(1, 2, 3))
+        val initialSize = queue.size
+
+        val result = queue.pollIf { it == 2 }
+
+        assertNull(result)
+        assertEquals(initialSize, queue.size)
+        assertEquals(1, queue.peek())
+    }
+
+    @Test
+    fun `pollIf should return null for an empty queue`() {
+        val queue: Queue<Int> = LinkedList()
+
+        val result = queue.pollIf { true }
+
+        assertNull(result)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `pollIf on queue with one element when predicate is true`() {
+        val queue: Queue<Int> = LinkedList(listOf(5))
+
+        val result = queue.pollIf { it == 5 }
+
+        assertEquals(5, result)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `pollIf on queue with one element when predicate is false`() {
+        val queue: Queue<Int> = LinkedList(listOf(5))
+
+        val result = queue.pollIf { it != 5 }
+
+        assertNull(result)
+        assertEquals(1, queue.size)
+    }
+
+    @Test
+    fun `pollIf with multiple calls`() {
+        val queue: Queue<String> = LinkedList(listOf("apple", "banana", "cherry"))
+
+        val appleResult = queue.pollIf { it.startsWith("a") }
+        assertEquals("apple", appleResult)
+        assertEquals(2, queue.size)
+
+        val nonBBfruitResult = queue.pollIf { it.startsWith("b") }
+        assertEquals("banana", nonBBfruitResult)
+        assertEquals(1, queue.size)
+
+        val cherryResult = queue.pollIf { it.length == 6 }
+        assertEquals("cherry", cherryResult)
+        assertEquals(0, queue.size)
+    }
+
+    @Test
+    fun `toUrlQueryString should return empty string for empty map`() {
+        val emptyMap = linkedMapOf<String, String>()
+        val result = emptyMap.toUrlQueryString()
+        assertEquals("?", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should return correct query string for single key-value pair`() {
+        val map = linkedMapOf("key" to "value")
+        val result = map.toUrlQueryString()
+        assertEquals("?key=value", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should return correct query string for multiple key-value pairs`() {
+        val map = linkedMapOf(
+            "key1" to "value1",
+            "key2" to "value2",
+            "key3" to "value3"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?key1=value1&key2=value2&key3=value3", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should handle special characters in keys and values`() {
+        val map = linkedMapOf(
+            "key with spaces" to "value with spaces",
+            "key-with-dashes" to "value-with-dashes",
+            "key_with_underscores" to "value_with_underscores"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?key+with+spaces=value+with+spaces&key-with-dashes=value-with-dashes&key_with_underscores=value_with_underscores", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should handle empty values`() {
+        val map = linkedMapOf(
+            "key1" to "",
+            "key2" to "value2"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?key1=&key2=value2", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should handle special URL characters`() {
+        val map = linkedMapOf(
+            "param1" to "value=with=equals",
+            "param2" to "value&with&ampersands",
+            "param3" to "value?with?question?marks"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?param1=value%3Dwith%3Dequals&param2=value%26with%26ampersands&param3=value%3Fwith%3Fquestion%3Fmarks", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should handle numeric values as strings`() {
+        val map = linkedMapOf(
+            "number" to "123",
+            "decimal" to "123.45",
+            "negative" to "-123"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?number=123&decimal=123.45&negative=-123", result)
+    }
+
+    @Test
+    fun `toUrlQueryString should handle unicode characters`() {
+        val map = linkedMapOf(
+            "russian" to "привет",
+            "chinese" to "你好",
+            "emoji" to "🚀"
+        )
+        val result = map.toUrlQueryString()
+        assertEquals("?russian=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82&chinese=%E4%BD%A0%E5%A5%BD&emoji=%F0%9F%9A%80", result)
+    }
 }

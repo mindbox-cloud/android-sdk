@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnSyncOperation.setOnClickListener {
             //https://developers.mindbox.ru/docs/android-integration-of-actions
             sendSync(type = SyncOperationType.OPERATION_BODY_WITH_CUSTOM_RESPONSE, context = this)
+            showToast(context = this, message = "Sync operation was sent")
         }
         binding.btnOpenActivity.setOnClickListener {
             val intent = Intent(this, ActivityTransitionByPush::class.java)

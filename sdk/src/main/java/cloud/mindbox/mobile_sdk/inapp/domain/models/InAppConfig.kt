@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal data class InAppConfig(
@@ -20,6 +21,8 @@ internal value class OperationSystemName(val systemName: String)
 
 internal data class InApp(
     val id: String,
+    val isPriority: Boolean,
+    val delayTime: Milliseconds?,
     val minVersion: Int?,
     val maxVersion: Int?,
     val frequency: Frequency,
@@ -27,11 +30,11 @@ internal data class InApp(
     val form: Form,
 )
 
-internal typealias SessionDelay = Frequency.Delay.TimeDelay
-
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
-        object LifetimeDelay : Delay()
+        data object LifetimeDelay : Delay()
+
+        data object OneTimePerSession : Delay()
 
         data class TimeDelay(val time: Long, val unit: InAppTime) : Delay()
     }

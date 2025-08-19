@@ -7,7 +7,6 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.toTokenData
-import cloud.mindbox.mobile_sdk.parseTimeSpanToMillis
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -22,16 +21,16 @@ internal class MobileConfigSettingsManagerImpl(
 ) : MobileConfigSettingsManager {
 
     override fun saveSessionTime(config: InAppConfigResponse) {
-        config.settings?.slidingExpiration?.config?.parseTimeSpanToMillis()?.let { sessionTime ->
-            if (sessionTime > 0) {
+        config.settings?.slidingExpiration?.config?.interval
+            ?.takeIf { it > 0 }
+            ?.let { sessionTime ->
                 sessionStorageManager.sessionTime = sessionTime.milliseconds
                 mindboxLogI("Session time set to ${sessionStorageManager.sessionTime.inWholeMilliseconds} ms")
-            }
-        }
+            } ?: mindboxLogI("SessionTime is not set")
     }
 
     override fun checkPushTokenKeepalive(config: InAppConfigResponse): Unit = loggingRunCatching {
-        config.settings?.slidingExpiration?.pushTokenKeepalive?.parseTimeSpanToMillis()
+        config.settings?.slidingExpiration?.pushTokenKeepalive?.interval
             ?.takeIf { it > 0 }
             ?.let { pushTokenKeepalive ->
                 val lastInfoUpdateTime = MindboxPreferences.lastInfoUpdateTime

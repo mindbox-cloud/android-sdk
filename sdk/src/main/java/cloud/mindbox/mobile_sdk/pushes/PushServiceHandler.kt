@@ -10,7 +10,7 @@ import java.util.UUID
 /**
 * A class for internal sdk work only. Do not extend or use it
 * */
-public abstract class PushServiceHandler : MindboxLog {
+public abstract class PushServiceHandler : PushConverter, MindboxLog {
 
     internal companion object {
         private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
@@ -19,8 +19,6 @@ public abstract class PushServiceHandler : MindboxLog {
     public abstract val notificationProvider: String
 
     public abstract suspend fun initService(context: Context)
-
-    public abstract fun convertToRemoteMessage(message: Any): MindboxRemoteMessage?
 
     internal fun getAdsIdentification(context: Context): String = LoggingExceptionHandler.runCatching(
         block = {

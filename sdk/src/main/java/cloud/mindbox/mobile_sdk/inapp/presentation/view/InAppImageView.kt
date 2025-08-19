@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
+import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -23,7 +24,7 @@ internal class InAppImageView(context: Context) : AppCompatImageView(context) {
         val oneThirdScreenHeight = resources.displayMetrics.heightPixels / 3
         val desiredHeight =
             (((resources.displayMetrics.widthPixels.toDouble() - marginStart.toDouble() - marginEnd.toDouble()) / (size.width.toDouble())) * size.height).roundToInt()
-        layoutParams = ConstraintLayout.LayoutParams(
+        layoutParams = FrameLayout.LayoutParams(
             ConstraintLayout.LayoutParams.MATCH_PARENT,
             if (desiredHeight > oneThirdScreenHeight) oneThirdScreenHeight else desiredHeight
         )
