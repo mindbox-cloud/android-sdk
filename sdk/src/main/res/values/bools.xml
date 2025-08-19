@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <bool name="mindbox_use_central_inside_notification_scale">true</bool>
+    <bool name="mindbox_support_inapp_on_fragment">false</bool>
 </resources>

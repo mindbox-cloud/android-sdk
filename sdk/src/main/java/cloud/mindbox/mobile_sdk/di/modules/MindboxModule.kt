@@ -11,12 +11,14 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
@@ -110,6 +112,12 @@ internal interface DataModule : MindboxModule {
     val timeProvider: SystemTimeProvider
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator
     val mobileConfigSettingsManager: MobileConfigSettingsManager
+    val integerPositiveValidator: IntegerPositiveValidator
+    val inappSettingsManager: InappSettingsManager
+    val maxInappsPerSessionLimitChecker: Checker
+    val maxInappsPerDayLimitChecker: Checker
+    val minIntervalBetweenShowsLimitChecker: Checker
+    val inAppMessageDelayedManager: InAppMessageDelayedManager
 }
 
 internal interface MonitoringModule : MindboxModule {

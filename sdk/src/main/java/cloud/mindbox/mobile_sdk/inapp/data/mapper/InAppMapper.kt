@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
-import cloud.mindbox.mobile_sdk.SessionDelay
 import cloud.mindbox.mobile_sdk.convertToZonedDateTime
 import cloud.mindbox.mobile_sdk.enumValue
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -9,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
+import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
 import cloud.mindbox.mobile_sdk.models.operation.request.IdsRequest
@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationDataRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_LIFETIME
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_SESSION
+import cloud.mindbox.mobile_sdk.models.toMilliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlin.math.roundToInt
 
@@ -48,6 +49,7 @@ internal class InAppMapper {
 
     fun mapToInAppDto(
         inAppDtoBlank: InAppConfigResponseBlank.InAppDtoBlank,
+        delayTime: TimeSpan?,
         formDto: FormDto?,
         frequencyDto: FrequencyDto,
         targetingDto: TreeTargetingDto?,
@@ -55,6 +57,8 @@ internal class InAppMapper {
         return inAppDtoBlank.let { inApp ->
             InAppDto(
                 id = inApp.id,
+                isPriority = inApp.isPriority,
+                delayTime = delayTime,
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
                 frequency = frequencyDto,
@@ -184,7 +188,7 @@ internal class InAppMapper {
                     item.kind.equals(
                         other = FREQUENCY_KIND_SESSION,
                         ignoreCase = true
-                    ) -> SessionDelay()
+                    ) -> Frequency.Delay.OneTimePerSession
 
                     else -> error("Unknown kind cannot be mapped. Should never happen because of validators")
                 }
@@ -234,6 +238,8 @@ internal class InAppMapper {
                 inApps = inAppConfigResponse.inApps?.map { inAppDto ->
                     InApp(
                         id = inAppDto.id,
+                        isPriority = inAppDto.isPriority,
+                        delayTime = inAppDto.delayTime.toMilliseconds(),
                         targeting = mapNodesDtoToNodes(listOf(inAppDto.targeting!!)).first(),
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->

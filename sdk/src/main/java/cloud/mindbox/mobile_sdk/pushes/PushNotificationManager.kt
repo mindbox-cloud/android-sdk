@@ -648,7 +648,7 @@ internal object PushNotificationManager {
         setLargeIcon(imageBitmap)
         val style = NotificationCompat.BigPictureStyle()
             .bigPicture(bigPicture)
-            .bigLargeIcon(null)
+            .bigLargeIcon(null as Bitmap?)
             .setBigContentTitle(title)
         text?.let(style::setSummaryText)
 

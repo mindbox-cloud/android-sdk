@@ -109,7 +109,13 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 mindboxLogE("Failed to parse slidingExpiration block")
             }
 
-            SettingsDtoBlank(operations, ttl, slidingExpiration)
+            val inappSettings = runCatching {
+                gson.fromJson(json.asJsonObject.get("inapp"), SettingsDtoBlank.InappSettingsDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse inapp block in settings section ")
+            }
+
+            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings)
         }
     }.getOrNull {
         mindboxLogE("Failed to parse settings block", it)

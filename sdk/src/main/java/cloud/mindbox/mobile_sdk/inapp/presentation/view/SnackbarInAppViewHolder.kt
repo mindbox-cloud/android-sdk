@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
-import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isInvisible
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -24,7 +24,7 @@ internal class SnackbarInAppViewHolder(
 
     override fun show(currentRoot: MindboxView) {
         super.show(currentRoot)
-        mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
+        mindboxLogI("Try to show in-app with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is Layer.ImageLayer -> {
@@ -40,7 +40,7 @@ internal class SnackbarInAppViewHolder(
 
     override fun initView(currentRoot: ViewGroup) {
         super.initView(currentRoot)
-        currentDialog.setSwipeToDismissCallback {
+        inAppLayout.setSwipeToDismissCallback {
             mindboxLogI("In-app dismissed by swipe")
             hideWithAnimation()
         }
@@ -54,8 +54,8 @@ internal class SnackbarInAppViewHolder(
         when (layer.source) {
             is Layer.ImageLayer.Source.UrlSource -> {
                 InAppImageView(currentDialog.context).also { inAppImageView ->
-                    inAppImageView.visibility = View.INVISIBLE
-                    currentDialog.addView(inAppImageView)
+                    inAppImageView.isInvisible = true
+                    inAppLayout.addView(inAppImageView)
                     when (wrapper.inAppType.position.margin.kind) {
                         InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
                             if (!requiredSizes.containsKey(wrapper.inAppType.inAppId)) {
@@ -88,15 +88,15 @@ internal class SnackbarInAppViewHolder(
                             hideWithAnimation()
                         }
                     }
-                    currentDialog.addView(inAppCrossView)
-                    inAppCrossView.prepareViewForSnackbar(currentDialog)
+                    inAppLayout.addView(inAppCrossView)
+                    inAppCrossView.prepareViewForSnackbar(inAppLayout)
                 }
             }
         }
         if (isFirstShow) {
             when (wrapper.inAppType.position.gravity.vertical) {
-                SnackbarPosition.TOP -> currentDialog.slideDown()
-                SnackbarPosition.BOTTOM -> currentDialog.slideUp()
+                SnackbarPosition.TOP -> inAppLayout.slideDown()
+                SnackbarPosition.BOTTOM -> inAppLayout.slideUp()
             }
         }
     }
@@ -104,12 +104,12 @@ internal class SnackbarInAppViewHolder(
     private fun hideWithAnimation() {
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         when (wrapper.inAppType.position.gravity.vertical) {
-            SnackbarPosition.TOP -> currentDialog.slideDown(
+            SnackbarPosition.TOP -> inAppLayout.slideDown(
                 isReverse = true,
                 onAnimationEnd = ::hide
             )
 
-            SnackbarPosition.BOTTOM -> currentDialog.slideUp(
+            SnackbarPosition.BOTTOM -> inAppLayout.slideUp(
                 isReverse = true,
                 onAnimationEnd = ::hide
             )

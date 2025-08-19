@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -10,13 +11,16 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessing
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.sortByPriority
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import cloud.mindbox.mobile_sdk.utils.allAllow
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -25,12 +29,16 @@ internal class InAppInteractorImpl(
     private val inAppEventManager: InAppEventManager,
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
-    private val inAppFrequencyManager: InAppFrequencyManager
+    private val inAppFrequencyManager: InAppFrequencyManager,
+    private val maxInappsPerSessionLimitChecker: Checker,
+    private val maxInappsPerDayLimitChecker: Checker,
+    private val minIntervalBetweenShowsLimitChecker: Checker,
+    private val timeProvider: TimeProvider
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override suspend fun processEventAndConfig(): Flow<InAppType> {
+    override suspend fun processEventAndConfig(): Flow<InApp> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
@@ -55,31 +63,46 @@ internal class InAppInteractorImpl(
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
             .onEach {
                 mindboxLogD("Event triggered: ${it.name}")
-            }.filter { event ->
-                if (isInAppShown()) inAppTargetingChannel.send(event)
-                !isInAppShown().also { mindboxLogD("InApp shown: $it") }
             }.map { event ->
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
+                val prioritySortedInApps = filteredInApps.sortByPriority()
                 inAppProcessingManager.chooseInAppToShow(
-                    filteredInApps,
+                    prioritySortedInApps,
                     event
-                ).also { inAppType ->
-                    inAppType ?: mindboxLogD("No innaps to show found")
-                    if (!isInAppShown()) inAppTargetingChannel.send(event)
+                ).also {
+                    inAppTargetingChannel.send(event)
                     if (event == InAppEventType.AppStartup) {
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
                 }
-            }.filterNotNull()
+            }
+            .onEach { inApp ->
+                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}") }
+                    ?: mindboxLogI("No inapps to show found")
+            }
+            .filterNotNull()
+    }
+
+    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean {
+        val isAllowedByFrequency = inAppFrequencyManager.filterInAppsFrequency(listOf(inApp)).isNotEmpty()
+        if (!isAllowedByFrequency) {
+            return false
+        }
+        return inApp.isPriority || allAllow(
+            maxInappsPerSessionLimitChecker,
+            maxInappsPerDayLimitChecker,
+            minIntervalBetweenShowsLimitChecker
+        )
     }
 
     override fun saveShownInApp(id: String, timeStamp: Long) {
-        inAppRepository.setInAppShown()
+        inAppRepository.setInAppShown(id)
         inAppRepository.sendInAppShown(id)
         inAppRepository.saveShownInApp(id, timeStamp)
+        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }
 
     override fun sendInAppClicked(inAppId: String) {
@@ -102,12 +125,8 @@ internal class InAppInteractorImpl(
         }
     }
 
-    override fun isInAppShown(): Boolean {
-        return inAppRepository.isInAppShown()
-    }
-
-    override fun setInAppShown() {
-        inAppRepository.setInAppShown()
+    override fun setInAppShown(inAppId: String) {
+        inAppRepository.setInAppShown(inAppId)
     }
 
     override suspend fun fetchMobileConfig() {
@@ -117,5 +136,15 @@ internal class InAppInteractorImpl(
     override fun resetInAppConfigAndEvents() {
         mobileConfigRepository.resetCurrentConfig()
         inAppRepository.clearInAppEvents()
+    }
+
+    override fun isTimeDelayInapp(inAppId: String): Boolean {
+        return inAppRepository.isTimeDelayInapp(inAppId)
+    }
+
+    override fun saveInAppDismissTime() {
+        val timeStamp = timeProvider.currentTimestamp()
+        mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
+        inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
     }
 }

@@ -1,29 +1,32 @@
 [versions]
 compile_sdk = "35"
-build_tools = "34.0.0"
+build_tools = "35.0.0"
 min_sdk = "21"
 target_sdk = "35"
 
-firebase_bom = "32.7.2"
-hms_push = "6.11.0.300"
+mindbox_common = "1.0.2"
+
+firebase_bom = "33.7.0"
+hms_push = "6.13.0.300"
 room = "2.6.1"
 kotlin = "1.9.22"
-gradle_plugin = "8.6.0"
-gms_play_services_basement = "18.1.0"
+gradle_plugin = "8.8.0"
+gms_play_services_basement = "18.3.0"
 gms_play_services_base = "18.0.1"
 gms_play_services_ads_identifier = "18.0.1"
-google_services = "4.3.10"
-hms_ads_identifier = "3.4.39.302"
+google_services = "4.4.0"
+hms_ads_identifier = "3.4.62.300"
 kotlinx_coroutines_bom = "1.6.4"
 volley = "1.2.1"
 gson = "2.8.9"
 work_manager = "2.7.1"
 androidx_lifecycle = "2.8.7"
-androidx_core_ktx = "1.7.0"
+androidx_core_ktx = "1.13.0"
 androidx_annotations = "1.3.0"
 constraint_layout = "2.1.4"
 threetenapb = "1.4.6"
 glide = "4.15.1"
+app_compat = "1.7.1"
 
 junit = "4.13.2"
 androidx_junit = "1.1.3"
@@ -33,12 +36,12 @@ robolectric = "4.14"
 test_core = "1.5.0"
 turbine = "0.12.1"
 
-agcp = "1.6.0.300"
+agcp = "1.9.1.300"
 ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 maven_publish = "0.32.0"
 
-pushclient = "6.5.1"
+pushclient = "6.10.0"
 
 [bundles]
 buildscript-plugins = [
@@ -66,6 +69,7 @@ androidTest = [
 ]
 
 [libraries]
+mindbox_common = { group = "cloud.mindbox", name = "mindbox-common", version.ref = "mindbox_common" }
 kotlin_stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx_core_ktx" }
 androidx_annotations = { group = "androidx.annotation", name = "annotation", version.ref = "androidx_annotations" }
@@ -90,6 +94,7 @@ constraint_layout = { group = "androidx.constraintlayout", name = "constraintlay
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenapb" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide_compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "app_compat" }
 
 # RuStore libraries
 rustore_pushclient = { module = "ru.rustore.sdk:pushclient", version.ref = "pushclient" }

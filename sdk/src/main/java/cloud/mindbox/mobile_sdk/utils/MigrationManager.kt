@@ -3,28 +3,26 @@ package cloud.mindbox.mobile_sdk.utils
 import android.content.Context
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import com.google.gson.Gson
+import cloud.mindbox.mobile_sdk.toJsonTyped
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 internal class MigrationManager(val context: Context) : MindboxLog {
 
-    private val migrationMutex = Mutex()
-    private val migrationJobs = mutableListOf<Job>()
-
     @Volatile
     private var isMigrating = false
+
+    private val gson by mindboxInject { gson }
 
     suspend fun migrateAll() {
         if (isMigrating) return
@@ -38,19 +36,17 @@ internal class MigrationManager(val context: Context) : MindboxLog {
         listOf(
             version290(),
             version2120(),
+            version2140()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 val job = Mindbox.mindboxScope.launch {
-                    migrationMutex.withLock {
-                        if (migration.isNeeded) {
-                            logI("Run migration '${migration.description}'")
-                            migration.run()
-                        }
+                    if (migration.isNeeded) {
+                        logI("Run migration '${migration.description}'")
+                        migration.run()
                     }
                 }
-                migrationJobs.add(job)
+                job.join()
             }.also {
-                migrationJobs.forEach { it.join() }
                 if (MindboxPreferences.versionCode != Constants.SDK_VERSION_CODE) {
                     logE("Migrations failed, reset memory")
                     MindboxPreferences.softReset()
@@ -75,7 +71,6 @@ internal class MigrationManager(val context: Context) : MindboxLog {
             get() = MindboxPreferences.shownInAppIds != ""
 
         override suspend fun run() {
-            val gson = Gson()
             val oldShownInApps = LoggingExceptionHandler.runCatching<Set<String>>(HashSet()) {
                 gson.fromJson(
                     MindboxPreferences.shownInAppIds,
@@ -117,6 +112,35 @@ internal class MigrationManager(val context: Context) : MindboxLog {
                 MindboxPreferences.pushTokens = mapOf(provider to PrefPushToken(token, timestamp ?: Date().time))
             }
 
+            MindboxPreferences.versionCode = VERSION_CODE
+        }
+    }
+
+    private fun version2140() = object : Migration {
+        val VERSION_CODE = 3
+
+        override val description: String
+            get() = "Changes the format of shown in-app messages from Map<String, Long> to Map<String, List<Long>>"
+        override val isNeeded: Boolean
+            get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
+
+        override suspend fun run() {
+            val oldShownInApps = loggingRunCatching(emptyMap()) {
+                gson.fromJsonTyped<Map<String, Long>>(
+                    MindboxPreferences.shownInApps
+                ) ?: emptyMap()
+            }
+
+            val newShownInApps = oldShownInApps.mapValues { (_, timestamp) ->
+                listOf(timestamp)
+            }
+
+            val newMapString = loggingRunCatching("") {
+                gson.toJsonTyped<Map<String, List<Long>>>(newShownInApps)
+            }
+
+            MindboxPreferences.shownInApps = newMapString
+            SharedPreferencesManager.remove("SHOWN_IDS")
             MindboxPreferences.versionCode = VERSION_CODE
         }
     }

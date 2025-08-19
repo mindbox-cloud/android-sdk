@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.widget.RelativeLayout
 import androidx.core.view.isInvisible
+import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
@@ -61,7 +62,7 @@ internal class WebViewInAppViewHolder(
         get() = isInAppMessageActive
 
     override fun bind() {
-        currentDialog.setDismissListener {
+        inAppLayout.setDismissListener {
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
             mindboxLogI("In-app dismissed by dialog click")
             hide()
@@ -90,8 +91,8 @@ internal class WebViewInAppViewHolder(
                             closeInappTimer?.cancel()
                             closeInappTimer = null
 
-                            wrapper.onInAppShown.onShown()
-                            webView.get()?.visibility = ViewGroup.VISIBLE
+                            wrapper.inAppActionCallbacks.onInAppShown.onShown()
+                            webView.get()?.isVisible = true
                         }
 
                         override fun onCompleted(data: String) {
@@ -104,7 +105,7 @@ internal class WebViewInAppViewHolder(
                                         "" to actionDto.intentPayload
                                 }
 
-                                wrapper.onInAppClick.onClick()
+                                wrapper.inAppActionCallbacks.onInAppClick.onClick()
                                 inAppCallback.onInAppClick(
                                     wrapper.inAppType.inAppId,
                                     url ?: "",
@@ -220,7 +221,7 @@ internal class WebViewInAppViewHolder(
             if (webView.isAttachedToWindow) {
                 (webView.parent as ViewGroup).removeView(webView)
             }
-            currentDialog.addView(webView)
+            inAppLayout.addView(webView)
         } ?: onDestroy()
     }
 
@@ -239,7 +240,7 @@ internal class WebViewInAppViewHolder(
             }
         }
         mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
-        currentDialog.requestFocus()
+        inAppLayout.requestFocus()
     }
 
     override fun hide() {
@@ -247,7 +248,7 @@ internal class WebViewInAppViewHolder(
         closeInappTimer?.cancel()
         closeInappTimer = null
         webView.get()?.let {
-            currentDialog.removeView(it)
+            inAppLayout.removeView(it)
         }
         super.hide()
     }

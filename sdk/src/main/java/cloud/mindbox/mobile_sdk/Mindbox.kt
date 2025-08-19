@@ -13,6 +13,10 @@ import androidx.annotation.WorkerThread
 import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
+import cloud.mindbox.common.MindboxCommon
+import cloud.mindbox.mobile_sdk.Mindbox.disposeDeviceUuidSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.disposePushTokenSubscription
+import cloud.mindbox.mobile_sdk.Mindbox.handleRemoteMessage
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -37,10 +41,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.*
+import java.util.Date
+import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 @SuppressWarnings("deprecated")
 public object Mindbox : MindboxLog {
@@ -94,6 +101,8 @@ public object Mindbox : MindboxLog {
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
+    private var pushConverters: List<PushConverter> by SingleInitDelegate()
+
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val getDeviceIdMutex = Mutex()
@@ -101,7 +110,7 @@ public object Mindbox : MindboxLog {
     private val mutexUpdateAppInfo: Mutex = Mutex()
     private val pushServiceMutex = Mutex()
 
-    private var firstInitCall: Boolean = true
+    private val firstInitCall: AtomicBoolean = AtomicBoolean(true)
 
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
@@ -562,11 +571,13 @@ public object Mindbox : MindboxLog {
             Stopwatch.start(Stopwatch.INIT_SDK)
 
             initComponents(context.applicationContext)
-            logI("init in $currentProcessName. firstInitCall: $firstInitCall, " +
+            pushConverters = selectPushServiceHandler(pushServices)
+            logI("init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
-                pushServices.joinToString(", ") { it.javaClass.simpleName } + ", SdkVersion:${getSdkVersion()}")
+                pushServices.joinToString(", ") { it.javaClass.simpleName } +
+                ", SdkVersion:${getSdkVersion()}, CommonSdkVersion:${MindboxCommon.VERSION_NAME}")
 
-            if (!firstInitCall) {
+            if (!firstInitCall.get()) {
                 InitializeLock.reset(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             } else {
                 userVisitManager.saveUserVisit()
@@ -603,13 +614,14 @@ public object Mindbox : MindboxLog {
             }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                 .invokeOnCompletion { throwable ->
                     if (throwable == null) {
-                        if (firstInitCall) {
+                        if (firstInitCall.get()) {
                             val activity = context as? Activity
                             if (activity != null && lifecycleManager.isCurrentActivityResumed) {
                                 inAppMessageManager.registerCurrentActivity(activity)
                                 mindboxScope.launch {
                                     inAppMutex.withLock {
-                                        firstInitCall = false
+                                        logI("Start inapp manager after init. firstInitCall: ${firstInitCall.get()}")
+                                        if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
                                         MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
@@ -656,15 +668,14 @@ public object Mindbox : MindboxLog {
                         },
                         onActivityResumed = { resumedActivity ->
                             inAppMessageManager.onResumeCurrentActivity(
-                                resumedActivity,
-                                true
+                                resumedActivity
                             )
-                            if (firstInitCall) {
+                            if (firstInitCall.get()) {
                                 mindboxScope.launch {
                                     InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                                     inAppMutex.withLock {
-                                        if (!firstInitCall) return@launch
-                                        firstInitCall = false
+                                        logI("Start inapp manager after resume activity. firstInitCall: ${firstInitCall.get()}")
+                                        if (!firstInitCall.getAndSet(false)) return@launch
                                         inAppMessageManager.listenEventAndInApp()
                                         inAppMessageManager.initLogs()
                                         MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
@@ -677,6 +688,7 @@ public object Mindbox : MindboxLog {
                             inAppMessageManager.onStopCurrentActivity(resumedActivity)
                         },
                         onTrackVisitReady = { source, requestUrl ->
+                            sessionStorageManager.hasSessionExpired()
                             eventScope.launch {
                                 sendTrackVisitEvent(
                                     MindboxDI.appModule.appContext,
@@ -756,6 +768,7 @@ public object Mindbox : MindboxLog {
     ) {
         verifyThreadExecution(methodName = "initPushServices")
         initComponents(context)
+        pushConverters = selectPushServiceHandler(pushServices)
         mindboxScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
             setPushServiceHandler(context, pushServices)
@@ -785,7 +798,8 @@ public object Mindbox : MindboxLog {
             mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
             Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
 
-            pushServiceHandlers = selectPushServiceHandler(context, pushServices)
+            pushServiceHandlers = selectPushServiceHandler(pushServices)
+                .filter { it.isServiceAvailable(context) }
 
             pushServiceHandlers.map { handler ->
                 mindboxScope.async {
@@ -812,12 +826,10 @@ public object Mindbox : MindboxLog {
         )
 
     private fun selectPushServiceHandler(
-        context: Context,
         pushServices: List<MindboxPushService>,
     ): List<PushServiceHandler> =
         pushServices
             .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
-            .filter { it.isServiceAvailable(context) }
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -1050,12 +1062,12 @@ public object Mindbox : MindboxLog {
             logI("Cannot handle null message")
             return@loggingRunCatching false
         }
-        if (pushServiceHandlers.isEmpty()) {
-            logW("No push service handlers found.")
+        if (pushConverters.isEmpty()) {
+            logW("No push converters found")
         }
         val convertedMessage = when (message) {
             is MindboxRemoteMessage -> message
-            else -> pushServiceHandlers.firstNotNullOfOrNull { handler ->
+            else -> pushConverters.firstNotNullOfOrNull { handler ->
                 handler.convertToRemoteMessage(message)
             }
         }
@@ -1341,7 +1353,6 @@ public object Mindbox : MindboxLog {
         @TrackVisitSource source: String? = null,
         requestUrl: String? = null,
     ) = LoggingExceptionHandler.runCatching {
-        sessionStorageManager.hasSessionExpired()
         DbManager.getConfigurations()?.endpointId?.let { endpointId ->
             val applicationContext = context.applicationContext
             val trackVisitData = TrackVisitData(
