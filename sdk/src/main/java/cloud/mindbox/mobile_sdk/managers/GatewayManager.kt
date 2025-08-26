@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
 import androidx.annotation.VisibleForTesting
+import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -13,14 +14,17 @@ import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckRespo
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+import com.android.volley.ParseError
 import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -325,12 +329,9 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     "https://${configuration.domain}/geo",
                     configuration,
                     null,
-                    { jsonObject ->
-                        continuation.resume(
-                            gson.fromJson(
-                                jsonObject.toString(),
-                                GeoTargetingDto::class.java
-                            )
+                    { response ->
+                        continuation.resumeFromJson<GeoTargetingDto>(
+                            json = response.toString()
                         )
                     },
                     { error ->
@@ -358,11 +359,8 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         )
                     )!!,
                     { response ->
-                        continuation.resume(
-                            gson.fromJson(
-                                response.toString(),
-                                ProductSegmentationResponseDto::class.java
-                            )
+                        continuation.resumeFromJson<ProductSegmentationResponseDto>(
+                            json = response.toString()
                         )
                     },
                     { error ->
@@ -390,11 +388,8 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         )
                     )!!,
                     { response ->
-                        continuation.resume(
-                            gson.fromJson(
-                                response.toString(),
-                                SegmentationCheckResponse::class.java
-                            )
+                        continuation.resumeFromJson<SegmentationCheckResponse>(
+                            json = response.toString()
                         )
                     },
                     { error ->
@@ -446,6 +441,18 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                         continuation.resumeWithException(error)
                     },
                 )
+            )
+        }
+    }
+
+    private inline fun <reified T> Continuation<T>.resumeFromJson(json: String) {
+        loggingRunCatching(null) {
+            gson.fromJsonTyped<T>(json)
+        }?.let { dto ->
+            resume(dto)
+        } ?: run {
+            resumeWithException(
+                ParseError(JSONException("Could not parse JSON: $json"))
             )
         }
     }

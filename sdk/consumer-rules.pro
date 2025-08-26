@@ -4,5 +4,6 @@
 -keep class cloud.mindbox.mobile_sdk.MindboxConfiguration { *; }
 -keep class cloud.mindbox.mobile_sdk.pushes.PushAction { *; }
 -keep class cloud.mindbox.mobile_sdk.inapp.data** { *; }
+-keep class cloud.mindbox.mobile_sdk.inapp.domain.models** { *; }
 
 -keep public class * extends android.preference.Preference
