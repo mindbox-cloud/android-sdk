@@ -183,6 +183,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     }
 
     override fun show(currentRoot: MindboxView) {
+        isInAppMessageActive = true
         initView(currentRoot.container)
         val isRepositioningEnabled = currentRoot.container.context.resources.getBoolean(R.bool.mindbox_support_inapp_on_fragment)
         positionController = isRepositioningEnabled.takeIf { it }?.run {
