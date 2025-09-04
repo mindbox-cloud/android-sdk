@@ -27,6 +27,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.Stopwatch
 import com.android.volley.Request
@@ -216,12 +217,11 @@ internal class WebViewInAppViewHolder(
                 requestQueue.add(stringRequest)
             }
         }
-        webView.get()?.let { webView ->
-            // Remove the old webview if it not hidden on previous activity
-            if (webView.isAttachedToWindow) {
-                (webView.parent as ViewGroup).removeView(webView)
+        webView.get()?.let { view ->
+            if (view.parent !== inAppLayout) {
+                view.parent.safeAs<ViewGroup>()?.removeView(view)
+                inAppLayout.addView(view)
             }
-            inAppLayout.addView(webView)
         } ?: onDestroy()
     }
 
