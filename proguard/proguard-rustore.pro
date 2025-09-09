@@ -1,1 +1,2 @@
 -keep public class com.vk.push.** extends android.os.Parcelable
+-keep class cloud.mindbox.mindbox_rustore.MindboxRuStore { *; }
