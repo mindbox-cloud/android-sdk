@@ -9,5 +9,8 @@
             android:enabled="@bool/mindbox_enable_rustore_push_client_init_provider"
             android:exported="false"
             tools:node="mergeOnlyAttributes" />
+        <meta-data
+            android:name="cloud.mindbox.push.provider.rustore"
+            android:value="cloud.mindbox.mindbox_rustore.MindboxRuStore" />
     </application>
 </manifest>
