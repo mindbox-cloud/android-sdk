@@ -16,6 +16,10 @@ internal class InAppContentFetcherImpl(
     override suspend fun fetchContent(inAppId: String, formVariant: InAppType): Boolean {
         val inAppImageStorage: MutableList<Deferred<Boolean>> = mutableListOf()
         when (formVariant) {
+            is InAppType.WebView -> {
+                // do nothing
+            }
+
             is InAppType.ModalWindow -> {
                 formVariant.layers.filterIsInstance<Layer.ImageLayer>()
                     .forEach { layer ->

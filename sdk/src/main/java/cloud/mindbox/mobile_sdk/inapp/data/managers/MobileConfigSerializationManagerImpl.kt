@@ -9,9 +9,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank.InAppDtoBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.OperationDtoBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.SlidingExpirationDtoBlank
-import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.TtlDtoBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.*
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -147,6 +145,19 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 variants = blankResult.getOrNull()?.variants?.filterNotNull()
                     ?.map { payloadBlankDto ->
                         when (payloadBlankDto) {
+                            is PayloadBlankDto.WebViewBlankDto -> {
+                                PayloadDto.WebViewDto(
+                                    content = PayloadDto.ModalWindowDto.ContentDto(
+                                        background = BackgroundDto(
+                                            layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
+                                                deserializeToBackgroundLayersDto(it as JsonObject)
+                                            }),
+                                        elements = payloadBlankDto.content?.elements?.mapNotNull {
+                                            deserializeToElementDto(it)
+                                        }
+                                    ), type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME
+                                )
+                            }
                             is PayloadBlankDto.ModalWindowBlankDto -> {
                                 PayloadDto.ModalWindowDto(
                                     content = PayloadDto.ModalWindowDto.ContentDto(

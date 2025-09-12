@@ -30,6 +30,8 @@ internal class SnackbarInAppViewHolder(
                 is Layer.ImageLayer -> {
                     addUrlSource(layer, inAppCallback)
                 }
+
+                else -> {}
             }
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
