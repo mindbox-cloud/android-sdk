@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.utils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken

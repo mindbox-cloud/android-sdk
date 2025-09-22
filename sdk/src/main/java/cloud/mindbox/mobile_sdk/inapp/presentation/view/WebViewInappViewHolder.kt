@@ -29,7 +29,7 @@ import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.Constants
-import cloud.mindbox.mobile_sdk.utils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.StringRequest
