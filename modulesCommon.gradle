@@ -82,5 +82,3 @@ mavenPublishing {
         }
     }
 }
-
-// Publishing extension is configured only when ENABLE_MAVEN_PUBLISH=true above
