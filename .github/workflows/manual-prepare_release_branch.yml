@@ -38,6 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Validate source branch exists
         run: |
@@ -67,6 +68,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_branch }}
           fetch-depth: 0
+          submodules: recursive
 
       - name: Configure Git identity for GitHub Action Bot
         run: |
@@ -102,6 +104,7 @@ jobs:
         with:
           ref: ${{ needs.bump_and_branch.outputs.release_branch }}
           fetch-depth: 0
+          submodules: recursive
 
       - name: Pull latest changes
         run: git pull
