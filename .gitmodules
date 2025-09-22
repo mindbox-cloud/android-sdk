@@ -1,0 +1,4 @@
+[submodule "kmp-common-sdk"]
+    path = kmp-common-sdk
+    url = https://github.com/mindbox-cloud/kmp-common-sdk.git
+    branch = develop

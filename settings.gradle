@@ -5,4 +5,4 @@ include ':mindbox-rustore'
 include ':mindbox-common'
 rootProject.name = "AndroidSdk"
 
-project(':mindbox-common').projectDir = new File(rootDir, '../kmp-common-sdk/mindbox-common/')
+project(':mindbox-common').projectDir = new File(rootDir, 'kmp-common-sdk/mindbox-common/')
