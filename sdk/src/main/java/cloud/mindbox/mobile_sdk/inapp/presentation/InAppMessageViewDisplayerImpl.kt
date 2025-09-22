@@ -22,7 +22,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
-import cloud.mindbox.mobile_sdk.utils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.LinkedList
 

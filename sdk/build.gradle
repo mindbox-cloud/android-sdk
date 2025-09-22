@@ -39,13 +39,12 @@ android {
             freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
         }
     }
-
 }
 
 dependencies {
     // Internal dependencies
 
-    implementation(libs.mindbox.common)
+    implementation(project(":mindbox-common"))
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib
