@@ -1,0 +1,2 @@
+-keepnames class cloud.mindbox.mindbox_sdk_starter_core.MindboxNotificationConfig
+-keep class cloud.mindbox.mindbox_sdk_starter_core.MindboxCoreStarter { public *; }

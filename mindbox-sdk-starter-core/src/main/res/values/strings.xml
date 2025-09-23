@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+        <string name="mindbox_default_channel_id">default_channel_id</string>
+        <string name="mindbox_default_channel_name">Notifications</string>
+        <string name="mindbox_default_channel_description">Push notifications</string>
+</resources>

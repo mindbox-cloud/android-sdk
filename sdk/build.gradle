@@ -11,6 +11,10 @@ dependencies {
         api("cloud.mindbox:mindbox-firebase:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-huawei:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-rustore:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-firebase-starter:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-huawei-starter:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-rustore-starter:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-sdk-starter-core:$SDK_VERSION_NAME")
     }
 }
 android {
