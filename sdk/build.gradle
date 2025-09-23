@@ -43,13 +43,18 @@ android {
             freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
         }
     }
-
 }
+
+def useLocalMindboxCommon = providers.gradleProperty("USE_LOCAL_MINDBOX_COMMON").map { it.toBoolean() }.getOrElse(false)
+println("USE_LOCAL_MINDBOX_COMMON: $useLocalMindboxCommon")
 
 dependencies {
     // Internal dependencies
-
-    implementation(libs.mindbox.common)
+    if (useLocalMindboxCommon) {
+        implementation project(path: ":mindbox-common")
+    } else {
+        implementation libs.mindbox.common
+    }
 
     // Implementation dependencies
     implementation libs.kotlin.stdlib

@@ -15,6 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+          submodules: recursive
 
       - name: Get last 3 commit messages
         run: |

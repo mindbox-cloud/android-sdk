@@ -31,11 +31,13 @@ jobs:
         with:
           ref: master
           path: master
+          submodules: recursive
       - name: Checkout release branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
           path: release
+          submodules: recursive
       - name: Extract versions
         run: |
           MASTER_VERSION=$(grep '^SDK_VERSION_NAME=' master/gradle.properties | cut -d '=' -f2)
