@@ -22,4 +22,5 @@ android {
 dependencies {
     // Implementation dependencies
     implementation(libs.androidx.core.ktx)
+    implementation(project(path = ":sdk"))
 }

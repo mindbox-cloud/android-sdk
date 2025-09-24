@@ -3,13 +3,12 @@ package cloud.mindbox.mindbox_sdk_starter_core
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.Level
 
 public object MindboxCoreStarter {
 
-    /**
-     * A method for internal sdk work only. Do not use it
-     * */
-    public fun getNotificationData(application: Application): MindboxNotificationConfig =
+    private fun getNotificationData(application: Application): MindboxNotificationConfig =
         application.applicationContext.let { context ->
             MindboxNotificationConfig(
                 channelId = context.getDefaultChannelId(),
@@ -19,6 +18,28 @@ public object MindboxCoreStarter {
                 defaultActivity = getLauncherActivity(application)
             )
         }
+
+    /**
+     * A method for internal sdk work only. Do not use it
+     * */
+    public fun handleMindboxRemoteMessage(application: Application, remoteMessage: Any?) {
+        val notificationConfig = runCatching { getNotificationData(application) }.getOrElse { exception ->
+            Mindbox.writeLog(exception.message.toString(), Level.ERROR)
+            return
+        }
+        notificationConfig.defaultActivity?.let { defaultActivity ->
+            Mindbox.handleRemoteMessage(
+                context = application.applicationContext,
+                activities = notificationConfig.activities,
+                message = remoteMessage,
+                channelId = notificationConfig.channelId,
+                channelName = notificationConfig.channelName,
+                pushSmallIcon = notificationConfig.smallIcon,
+                defaultActivity = defaultActivity,
+                channelDescription = notificationConfig.channelDescription
+            )
+        }
+    }
 
     private fun getLauncherActivity(application: Application): Class<out Activity>? =
         application.packageManager
