@@ -5,7 +5,11 @@ import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.Level
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 
+/**
+ * A object for internal sdk work only. Do not use it
+ * */
 public object MindboxCoreStarter {
 
     private fun getNotificationData(application: Application): MindboxNotificationConfig =
@@ -22,7 +26,7 @@ public object MindboxCoreStarter {
     /**
      * A method for internal sdk work only. Do not use it
      * */
-    public fun handleMindboxRemoteMessage(application: Application, remoteMessage: Any?) {
+    public fun onMessageReceived(application: Application, remoteMessage: Any?) {
         val notificationConfig = runCatching { getNotificationData(application) }.getOrElse { exception ->
             Mindbox.writeLog(exception.message.toString(), Level.ERROR)
             return
@@ -38,7 +42,14 @@ public object MindboxCoreStarter {
                 defaultActivity = defaultActivity,
                 channelDescription = notificationConfig.channelDescription
             )
-        }
+        } ?: Mindbox.writeLog("defaultActivity is null when try show notification in core starter", Level.ERROR)
+    }
+
+    /**
+     * A method for internal sdk work only. Do not use it
+     * */
+    public fun onNewToken(context: Context, token: String, provider: MindboxPushService) {
+        Mindbox.updatePushToken(context, token, provider)
     }
 
     private fun getLauncherActivity(application: Application): Class<out Activity>? =
