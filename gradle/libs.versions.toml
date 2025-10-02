@@ -35,6 +35,7 @@ mockk = "1.13.13"
 robolectric = "4.14"
 test_core = "1.5.0"
 turbine = "0.12.1"
+kotlinx_coroutines_test = "1.8.1"
 
 agcp = "1.9.1.300"
 ktlint-plugin = "12.1.1"
@@ -109,7 +110,7 @@ mockk_agent = { group = "io.mockk", name = "mockk-agent", version.ref = "mockk" 
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 test_core = { group = "androidx.test", name = "core", version.ref = "test_core" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
-kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test" }
+kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx_coroutines_test" }
 
 # Buildscript plugins
 android_tools_build_gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle_plugin" }
