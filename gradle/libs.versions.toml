@@ -68,7 +68,6 @@ androidTest = [
 ]
 
 [libraries]
-mindbox_common = { group = "cloud.mindbox", name = "mindbox-common" }
 kotlin_stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx_core_ktx" }
 androidx_annotations = { group = "androidx.annotation", name = "annotation", version.ref = "androidx_annotations" }
