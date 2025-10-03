@@ -15,7 +15,6 @@ dependencies {
         api("cloud.mindbox:mindbox-huawei-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-rustore-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-sdk-starter-core:$SDK_VERSION_NAME")
-        api("cloud.mindbox:mindbox-common:$SDK_VERSION_NAME")
     }
 }
 android {
@@ -54,7 +53,7 @@ dependencies {
     if (useLocalMindboxCommon) {
         implementation project(path: ":mindbox-common")
     } else {
-        implementation libs.mindbox.common
+        implementation("cloud.mindbox:mindbox-common:$SDK_VERSION_NAME")
     }
 
     // Implementation dependencies
