@@ -9,3 +9,4 @@
     java.lang.String getId();
     boolean isLimitAdTrackingEnabled();
 }
+-keep class cloud.mindbox.mindbox_firebase.MindboxFirebase { *; }

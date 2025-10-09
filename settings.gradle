@@ -2,4 +2,11 @@ include ':sdk'
 include ':mindbox-huawei'
 include ':mindbox-firebase'
 include ':mindbox-rustore'
+include ':mindbox-firebase-starter'
+include ':mindbox-huawei-starter'
+include ':mindbox-rustore-starter'
+include ':mindbox-sdk-starter-core'
+include ':mindbox-common'
 rootProject.name = "AndroidSdk"
+
+project(':mindbox-common').projectDir = new File(rootDir, 'kmp-common-sdk/mindbox-common/')

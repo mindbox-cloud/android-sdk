@@ -1,3 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <meta-data
+            android:name="cloud.mindbox.push.provider.huawei"
+            android:value="cloud.mindbox.mindbox_huawei.MindboxHuawei" />
+    </application>
 </manifest>

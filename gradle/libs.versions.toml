@@ -4,13 +4,11 @@ build_tools = "35.0.0"
 min_sdk = "21"
 target_sdk = "35"
 
-mindbox_common = "1.0.2"
-
 firebase_bom = "33.7.0"
 hms_push = "6.13.0.300"
 room = "2.6.1"
 kotlin = "1.9.22"
-gradle_plugin = "8.8.0"
+gradle_plugin = "8.9.1"
 gms_play_services_basement = "18.3.0"
 gms_play_services_base = "18.0.1"
 gms_play_services_ads_identifier = "18.0.1"
@@ -35,6 +33,7 @@ mockk = "1.13.13"
 robolectric = "4.14"
 test_core = "1.5.0"
 turbine = "0.12.1"
+kotlinx_coroutines_test = "1.8.1"
 
 agcp = "1.9.1.300"
 ktlint-plugin = "12.1.1"
@@ -69,7 +68,6 @@ androidTest = [
 ]
 
 [libraries]
-mindbox_common = { group = "cloud.mindbox", name = "mindbox-common", version.ref = "mindbox_common" }
 kotlin_stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx_core_ktx" }
 androidx_annotations = { group = "androidx.annotation", name = "annotation", version.ref = "androidx_annotations" }
@@ -109,7 +107,7 @@ mockk_agent = { group = "io.mockk", name = "mockk-agent", version.ref = "mockk" 
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 test_core = { group = "androidx.test", name = "core", version.ref = "test_core" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
-kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test" }
+kotlinx_coroutines_test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx_coroutines_test" }
 
 # Buildscript plugins
 android_tools_build_gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle_plugin" }
