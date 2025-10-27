@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
+import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
@@ -120,7 +121,8 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         currentHolder = null
     }
 
-    private fun getWebViewFromPayload(inAppType: InAppType, inAppId: String): InAppType.WebView? {
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun getWebViewFromPayload(inAppType: InAppType, inAppId: String): InAppType.WebView? {
         val layer = when (inAppType) {
             is InAppType.Snackbar -> inAppType.layers.firstOrNull()
             is InAppType.ModalWindow -> inAppType.layers.firstOrNull()
@@ -136,6 +138,9 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         }
         runCatching {
             val layerDto = gson.fromJson<BackgroundDto.LayerDto.WebViewLayerDto>(payload).getOrThrow()
+            requireNotNull(layerDto.type)
+            requireNotNull(layerDto.contentUrl)
+            requireNotNull(layerDto.baseUrl)
             Layer.WebViewLayer(
                 baseUrl = layerDto.baseUrl,
                 contentUrl = layerDto.contentUrl,
