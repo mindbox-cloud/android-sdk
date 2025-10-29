@@ -49,4 +49,4 @@ jobs:
         with:
           head: ${{ env.RELEASE_VERSION }}
           base: ${{ env.MASTER_VERSION }}
-          operator: '>' 
+          operator: '>='
