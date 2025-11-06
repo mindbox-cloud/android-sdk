@@ -3,12 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
-import android.view.GestureDetector
-import android.view.Gravity
-import android.view.KeyEvent
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewConfiguration
+import android.view.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -17,7 +12,6 @@ import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.isTop
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.abs
 
@@ -41,7 +35,6 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         private const val ANIM_DURATION = 500L
         private const val ANIM_SWIPE_DURATION = 100L
         private const val MODAL_WINDOW_MARGIN = 40
-        private const val CLICK_THRESHOLD = 100
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -76,13 +69,14 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             }
         }
 
-        var rightDY = 0f
         var startingY = 0f
         doOnLayout { startingY = this.y }
 
         val self: View = this
         val gestureDetector =
             GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+
+                var rightDY = 0f
 
                 override fun onDown(e: MotionEvent): Boolean {
                     rightDY = self.y - e.rawY
@@ -91,13 +85,16 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                 }
 
                 override fun onSingleTapUp(e: MotionEvent): Boolean {
-                    self.performClick()
-                    val viewConfiguration: ViewConfiguration = ViewConfiguration.get(context)
-                    val scaledTouchSlop: Int = viewConfiguration.scaledTouchSlop
                     val tapTimeout: Int = ViewConfiguration.getLongPressTimeout()
-                    mindboxLogW("ViewConfiguration.getScaledTouchSlop() = $scaledTouchSlop")
-                    mindboxLogW("ViewConfiguration.getLongTapTimeout = $tapTimeout")
-                    return true
+                    val clickTime = e.eventTime - e.downTime
+                    if (clickTime <= tapTimeout) {
+                        this@InAppConstraintLayout.mindboxLogI("Click performed with duration = ${clickTime}ms.")
+                        self.performClick()
+                        return true
+                    } else {
+                        this@InAppConstraintLayout.mindboxLogI("Ignore long click with duration = ${clickTime}ms. Timeout = ${tapTimeout}ms.")
+                        return false
+                    }
                 }
 
                 override fun onScroll(
@@ -111,10 +108,13 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
                     } else {
                         maxOf(e2.rawY + rightDY, startingY)
                     }
-                    self.animate().y(displacement).setDuration(0).start()
+                    self.y = displacement
                     return true
                 }
-            })
+            }).apply {
+                @Suppress("UsePropertyAccessSyntax")
+                setIsLongpressEnabled(false)
+            }
 
         setOnTouchListener { _, event ->
             gestureDetector.onTouchEvent(event)
