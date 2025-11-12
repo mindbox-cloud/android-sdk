@@ -51,9 +51,13 @@ println("USE_LOCAL_MINDBOX_COMMON: $useLocalMindboxCommon")
 dependencies {
     // Internal dependencies
     if (useLocalMindboxCommon) {
-        implementation project(path: ":mindbox-common")
+        implementation(project(path: ":mindbox-common")) {
+            exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib"
+        }
     } else {
-        implementation("cloud.mindbox:mindbox-common:$SDK_VERSION_NAME")
+        implementation("cloud.mindbox:mindbox-common:$SDK_VERSION_NAME") {
+            exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib"
+        }
     }
 
     // Implementation dependencies
