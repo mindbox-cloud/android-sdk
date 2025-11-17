@@ -92,7 +92,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
 
     //Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.14.3'
+    implementation 'cloud.mindbox:mobile-sdk:2.14.4'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
     implementation 'cloud.mindbox:mindbox-rustore'
