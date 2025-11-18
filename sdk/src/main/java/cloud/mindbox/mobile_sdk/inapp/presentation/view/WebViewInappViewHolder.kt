@@ -120,7 +120,7 @@ internal class WebViewInAppViewHolder(
                             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                             mindboxLogI("In-app dismissed by webview action")
                             hide()
-                            onDestroy()
+                            release()
                         }
 
                         override fun onHide() {
@@ -144,7 +144,7 @@ internal class WebViewInAppViewHolder(
             webViewClient = InAppWebClient(
                 onCriticalError = {
                     mindboxLogE("WebView critical error. Destroying In-App.")
-                    onDestroy()
+                    release()
                 }
             )
 
@@ -202,7 +202,7 @@ internal class WebViewInAppViewHolder(
                                 webView.get()?.post {
                                     if (closeInappTimer != null) {
                                         mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
-                                        onDestroy()
+                                        release()
                                     }
                                 }
                             }
@@ -210,7 +210,7 @@ internal class WebViewInAppViewHolder(
                     },
                     { error ->
                         mindboxLogE("Failed to fetch HTML content for In-App: $error. Destroying.")
-                        onDestroy()
+                        release()
                     }
                 )
 
@@ -222,7 +222,7 @@ internal class WebViewInAppViewHolder(
                 view.parent.safeAs<ViewGroup>()?.removeView(view)
                 inAppLayout.addView(view)
             }
-        } ?: onDestroy()
+        } ?: release()
     }
 
     override fun show(currentRoot: MindboxView) {
@@ -253,7 +253,8 @@ internal class WebViewInAppViewHolder(
         super.hide()
     }
 
-    private fun onDestroy() {
+    override fun release() {
+        super.release()
         // Clean up WebView resources
         webView.get()?.apply {
             stopLoading()
