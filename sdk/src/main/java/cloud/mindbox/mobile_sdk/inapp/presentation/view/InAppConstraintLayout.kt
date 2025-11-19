@@ -3,9 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
-import android.view.Gravity
-import android.view.KeyEvent
-import android.view.MotionEvent
+import android.view.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -37,12 +35,13 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
         private const val ANIM_DURATION = 500L
         private const val ANIM_SWIPE_DURATION = 100L
         private const val MODAL_WINDOW_MARGIN = 40
-        private const val CLICK_THRESHOLD = 100
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun prepareLayoutForSnackbar(snackBarInAppType: InAppType.Snackbar) {
         val statusBarHeight = getStatusBarHeight()
         val navigationBarHeight = getNavigationBarHeight()
+
         updateLayoutParams<FrameLayout.LayoutParams> {
             when (snackBarInAppType.position.margin.kind) {
                 InAppType.Snackbar.Position.Margin.MarginKind.DP -> {
@@ -70,48 +69,65 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             }
         }
 
-        var rightDY = 0f
         var startingY = 0f
         doOnLayout { startingY = this.y }
-        setOnTouchListener { view, event ->
-            when (event?.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    rightDY = view.y - event.rawY
+
+        val self: View = this
+        val gestureDetector =
+            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+
+                var rightDY = 0f
+
+                override fun onDown(e: MotionEvent): Boolean {
+                    rightDY = self.y - e.rawY
+                    self.parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
                 }
 
-                MotionEvent.ACTION_MOVE -> {
-                    if (snackBarInAppType.isTop()) {
-                        val displacement = minOf(event.rawY + rightDY, startingY)
-                        view!!.animate()
-                            .y(displacement)
-                            .setDuration(0)
-                            .start()
-                    } else if (!snackBarInAppType.isTop()) {
-                        val displacement = maxOf(event.rawY + rightDY, startingY)
-                        view!!.animate()
-                            .y(displacement)
-                            .setDuration(0)
-                            .start()
-                    }
-                }
-
-                MotionEvent.ACTION_UP -> {
-                    if (event.eventTime - event.downTime < CLICK_THRESHOLD) {
-                        return@setOnTouchListener this.performClick() // click
-                    }
-
-                    if (abs(view.translationY) > (height / 2)) {
-                        swipeToDismissCallback?.invoke()
+                override fun onSingleTapUp(e: MotionEvent): Boolean {
+                    val tapTimeout: Int = ViewConfiguration.getLongPressTimeout()
+                    val clickTime = e.eventTime - e.downTime
+                    if (clickTime <= tapTimeout) {
+                        this@InAppConstraintLayout.mindboxLogI("Click performed with duration = ${clickTime}ms.")
+                        self.performClick()
+                        return true
                     } else {
-                        view!!.animate()
-                            .y(startingY)
-                            .setDuration(ANIM_SWIPE_DURATION)
-                            .start()
+                        this@InAppConstraintLayout.mindboxLogI("Ignore long click with duration = ${clickTime}ms. Timeout = ${tapTimeout}ms.")
+                        return false
                     }
                 }
 
-                else -> { // Note the block
-                    return@setOnTouchListener false
+                override fun onScroll(
+                    e1: MotionEvent?,
+                    e2: MotionEvent,
+                    distanceX: Float,
+                    distanceY: Float
+                ): Boolean {
+                    val displacement: Float = if (snackBarInAppType.isTop()) {
+                        minOf(e2.rawY + rightDY, startingY)
+                    } else {
+                        maxOf(e2.rawY + rightDY, startingY)
+                    }
+                    self.y = displacement
+                    return true
+                }
+            }).apply {
+                @Suppress("UsePropertyAccessSyntax")
+                setIsLongpressEnabled(false)
+            }
+
+        setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                self.parent?.requestDisallowInterceptTouchEvent(false)
+                if (abs(self.translationY) > (height / 2)) {
+                    swipeToDismissCallback?.invoke()
+                } else {
+                    self.animate()
+                        .y(startingY)
+                        .setDuration(ANIM_SWIPE_DURATION)
+                        .start()
                 }
             }
             true
