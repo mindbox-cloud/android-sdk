@@ -272,8 +272,10 @@ internal class InAppMessageManagerTest {
         every {
             MindboxLoggerImpl.e(any(), any(), any())
         } just runs
+
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
+
         verify(exactly = 1) {
             MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", exception)
         }
