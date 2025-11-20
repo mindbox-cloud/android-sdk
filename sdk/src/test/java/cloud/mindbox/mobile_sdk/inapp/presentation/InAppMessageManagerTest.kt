@@ -95,10 +95,8 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor.fetchMobileConfig()
         } just runs
         inAppMessageManager.requestConfig()
-        advanceUntilIdle();
-        {
-            coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
-        }.shouldNotThrow()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
     }
 
     @Test
@@ -263,28 +261,20 @@ internal class InAppMessageManagerTest {
             userVisitManager,
             inAppMessageDelayedManager
         )
-        val exception = Exception()
+        val exception = RuntimeException("test error")
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
         } returns flow {
             throw exception
         }
-        every {
-            MindboxLoggerImpl.e(any(), any(), any())
-        } just runs
 
         inAppMessageManager.listenEventAndInApp()
+        testScheduler.advanceTimeBy(200)
         advanceUntilIdle()
 
         verify(exactly = 1) {
             MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", exception)
         }
-    }
-
-    private fun (() -> Any?).shouldNotThrow() = try {
-        invoke()
-    } catch (ex: Exception) {
-        throw Error("expected not to throw!", ex)
     }
 
     @Test
