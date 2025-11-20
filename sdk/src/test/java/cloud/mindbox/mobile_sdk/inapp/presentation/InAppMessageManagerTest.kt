@@ -22,6 +22,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -52,7 +53,7 @@ internal class InAppMessageManagerTest {
 
     private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
@@ -76,6 +77,11 @@ internal class InAppMessageManagerTest {
 
     @After
     fun onTestFinish() {
+        if (::inAppMessageManager.isInitialized) {
+            runBlocking {
+                inAppMessageManager.handleSessionExpiration()
+            }
+        }
         Dispatchers.resetMain()
         unmockkAll()
     }
@@ -269,6 +275,7 @@ internal class InAppMessageManagerTest {
         }
 
         inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
 
         verify(exactly = 1) {
             MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", exception)
