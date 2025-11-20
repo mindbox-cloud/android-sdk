@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -116,7 +117,7 @@ internal class InAppMessageManagerTest {
         coEvery {
             MindboxLoggerImpl.e(any(), any())
         } just runs
-        val error = Error()
+        val error = RuntimeException()
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
         }.throws(error)
@@ -262,22 +263,19 @@ internal class InAppMessageManagerTest {
             userVisitManager,
             inAppMessageDelayedManager
         )
+        val exception = Exception()
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
         } returns flow {
-            throw Error("test error")
+            throw exception
         }
         every {
             MindboxLoggerImpl.e(any(), any(), any())
         } just runs
-        try {
-            inAppMessageManager.listenEventAndInApp()
-            advanceUntilIdle()
-        } catch (e: Error) {
-            e.printStackTrace()
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", exception)
         }
     }
 
