@@ -50,7 +50,7 @@ internal class InAppMessageManagerTest {
 
     private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
