@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
-import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -62,26 +61,15 @@ internal class InAppMessageManagerTest {
         Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
-        mockkStatic(Log::class)
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
         } just runs
-        every {
-            Log.isLoggable(any(), any())
-        }.answers {
-            true
-        }
-        every { Log.isLoggable(any(), any()) } answers { true }
-        every { Log.d(any(), any()) } returns 0
-        every { Log.i(any(), any()) } returns 0
-        every { Log.w(any(), any(), any()) } returns 0
-        every { Log.e(any(), any()) } returns 0
-        every { Log.e(any(), any(), any()) } returns 0
-
-        every { MindboxLoggerImpl.e(any(), any(), any()) } just runs
-        every { MindboxLoggerImpl.w(any(), any(), any()) } just runs
-        every { MindboxLoggerImpl.i(any(), any()) } just runs
-        every { MindboxLoggerImpl.d(any(), any()) } just runs
+        every { MindboxLoggerImpl.e(any<Any>(), any<String>()) } just runs
+        every { MindboxLoggerImpl.e(any<Any>(), any<String>(), any<Throwable>()) } just runs
+        every { MindboxLoggerImpl.w(any<Any>(), any<String>()) } just runs
+        every { MindboxLoggerImpl.w(any<Any>(), any<String>(), any<Throwable>()) } just runs
+        every { MindboxLoggerImpl.i(any<Any>(), any<String>()) } just runs
+        every { MindboxLoggerImpl.d(any<Any>(), any<String>()) } just runs
     }
 
     @After
