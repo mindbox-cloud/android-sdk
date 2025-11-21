@@ -15,12 +15,15 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -81,8 +84,16 @@ internal class InAppMessageManagerTest {
                 processingJobField.isAccessible = true
                 val job = processingJobField.get(inAppMessageManager) as? Job
                 job?.cancel()
+                runBlocking { job?.join() }
             } catch (e: Exception) {
             }
+        }
+        try {
+            val monitoringScopeField = MindboxLoggerImpl::class.java.getDeclaredField("monitoringScope")
+            monitoringScopeField.isAccessible = true
+            val scope = monitoringScopeField.get(MindboxLoggerImpl) as? CoroutineScope
+            scope?.cancel()
+        } catch (e: Exception) {
         }
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
