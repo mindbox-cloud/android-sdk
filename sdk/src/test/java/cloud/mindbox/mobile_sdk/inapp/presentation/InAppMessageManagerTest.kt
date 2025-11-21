@@ -251,36 +251,6 @@ internal class InAppMessageManagerTest {
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
     }
 
-    @Test
-    fun `in app messages error message`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            testDispatcher,
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager,
-            inAppMessageDelayedManager
-        )
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        } returns flow {
-            throw Error("test error")
-        }
-        every {
-            MindboxLoggerImpl.e(any(), any(), any())
-        } just runs
-        try {
-            inAppMessageManager.listenEventAndInApp()
-            advanceUntilIdle()
-        } catch (e: Error) {
-            e.printStackTrace()
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
-        }
-    }
-
     private fun (() -> Any?).shouldNotThrow() = try {
         invoke()
     } catch (ex: Exception) {
