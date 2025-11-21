@@ -17,6 +17,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -74,6 +75,15 @@ internal class InAppMessageManagerTest {
 
     @After
     fun onTestFinish() {
+        if (::inAppMessageManager.isInitialized) {
+            try {
+                val processingJobField = InAppMessageManagerImpl::class.java.getDeclaredField("processingJob")
+                processingJobField.isAccessible = true
+                val job = processingJobField.get(inAppMessageManager) as? Job
+                job?.cancel()
+            } catch (e: Exception) {
+            }
+        }
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
