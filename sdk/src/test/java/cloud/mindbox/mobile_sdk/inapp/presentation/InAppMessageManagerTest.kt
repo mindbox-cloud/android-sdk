@@ -34,22 +34,22 @@ internal class InAppMessageManagerTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    @MockK
+    @MockK(relaxed = true)
     private lateinit var inAppMessageInteractor: InAppInteractor
 
-    @MockK
+    @MockK(relaxed = true)
     private lateinit var inAppMessageViewDisplayer: InAppMessageViewDisplayer
 
     private lateinit var inAppMessageManager: InAppMessageManagerImpl
 
-    @MockK
+    @MockK(relaxed = true)
     private lateinit var monitoringRepository: MonitoringInteractor
 
     private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
 
-    private val userVisitManager = mockk<UserVisitManager>()
+    private val userVisitManager = mockk<UserVisitManager>(relaxed = true)
 
-    private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
+    private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>(relaxed = true)
 
     private val testDispatcher = StandardTestDispatcher()
 
