@@ -71,6 +71,17 @@ internal class InAppMessageManagerTest {
         }.answers {
             true
         }
+        every { Log.isLoggable(any(), any()) } answers { true }
+        every { Log.d(any(), any()) } returns 0
+        every { Log.i(any(), any()) } returns 0
+        every { Log.w(any(), any(), any()) } returns 0
+        every { Log.e(any(), any()) } returns 0
+        every { Log.e(any(), any(), any()) } returns 0
+
+        every { MindboxLoggerImpl.e(any(), any(), any()) } just runs
+        every { MindboxLoggerImpl.w(any(), any(), any()) } just runs
+        every { MindboxLoggerImpl.i(any(), any()) } just runs
+        every { MindboxLoggerImpl.d(any(), any()) } just runs
     }
 
     @After
