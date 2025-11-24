@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -60,6 +61,7 @@ internal class InAppMessageManagerTest {
     fun onTestStart() {
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
+        mockkObject(Mindbox)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -262,22 +264,21 @@ internal class InAppMessageManagerTest {
             userVisitManager,
             inAppMessageDelayedManager
         )
+        val error = Error("test error")
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
         } returns flow {
-            throw Error("test error")
+            throw error
         }
         every {
             MindboxLoggerImpl.e(any(), any(), any())
         } just runs
-        try {
-            inAppMessageManager.listenEventAndInApp()
-            advanceUntilIdle()
-        } catch (e: Error) {
-            e.printStackTrace()
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+
+        verify(exactly = 1) {
+            MindboxLoggerImpl.e(any(), any(), error)
         }
     }
 
