@@ -22,6 +22,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -77,6 +78,10 @@ internal class InAppMessageManagerTest {
 
     @After
     fun onTestFinish() {
+        if (::inAppMessageManager.isInitialized) {
+            inAppMessageManager.cancelScope()
+        }
+        testDispatcher.cancel()
         Dispatchers.resetMain()
         unmockkAll()
     }

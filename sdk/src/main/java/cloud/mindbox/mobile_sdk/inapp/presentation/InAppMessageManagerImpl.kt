@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
+import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -192,6 +193,11 @@ internal class InAppMessageManagerImpl(
             MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
             requestConfig().join()
         }
+    }
+
+    @VisibleForTesting
+    internal fun cancelScope() {
+        inAppScope.cancel()
     }
 
     companion object {
