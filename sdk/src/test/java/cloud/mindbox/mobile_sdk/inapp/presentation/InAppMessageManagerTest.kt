@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -16,11 +17,11 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -60,6 +61,8 @@ internal class InAppMessageManagerTest {
     fun onTestStart() {
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
+        mockkObject(Mindbox)
+        every { Mindbox.coroutineExceptionHandler } returns CoroutineExceptionHandler { _, _ -> }
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -135,16 +138,12 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app messages success message shown`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp) } coAnswers {
-            this@runTest.launch {
-                inAppToShowFlow.emit(inApp)
-            }
-        }
+        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
 
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -169,12 +168,16 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
+
+        inAppToShowFlow.emit(inApp)
+        advanceUntilIdle()
+
         verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
     }
 
     @Test
     fun `in app messages success message not shown when inApp already active`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageViewDisplayer.isInAppActive() } returns true
@@ -200,22 +203,23 @@ internal class InAppMessageManagerTest {
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp) } answers {
-            this@runTest.launch {
-                inAppToShowFlow.emit(inApp)
-            }
-        }
+        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
 
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
+
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
+
+        inAppToShowFlow.emit(inApp)
+        advanceUntilIdle()
+
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
     }
 
     @Test
     fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>()
+        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
@@ -241,16 +245,17 @@ internal class InAppMessageManagerTest {
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp) } answers {
-            this@runTest.launch {
-                inAppToShowFlow.emit(inApp)
-            }
-        }
+        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
 
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
+
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
+
+        inAppToShowFlow.emit(inApp)
+        advanceUntilIdle()
+
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
     }
 
