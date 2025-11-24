@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -22,7 +21,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -62,7 +60,6 @@ internal class InAppMessageManagerTest {
     fun onTestStart() {
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
-        mockkObject(Mindbox)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
@@ -81,7 +78,6 @@ internal class InAppMessageManagerTest {
         if (::inAppMessageManager.isInitialized) {
             inAppMessageManager.cancelScope()
         }
-        testDispatcher.cancel()
         Dispatchers.resetMain()
         unmockkAll()
     }
