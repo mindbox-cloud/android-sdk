@@ -1,7 +1,10 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 internal fun PresentationModule(
     domainModule: DomainModule,
@@ -24,7 +27,7 @@ internal fun PresentationModule(
         InAppMessageManagerImpl(
             inAppMessageViewDisplayer = inAppMessageViewDisplayer,
             inAppInteractor = inAppInteractor,
-            defaultDispatcher = Dispatchers.IO,
+            inAppScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringInteractor = monitoringInteractor,
             sessionStorageManager = sessionStorageManager,
             userVisitManager = userVisitManager,

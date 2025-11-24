@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -16,8 +17,10 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -84,7 +87,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob()),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -105,7 +108,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob()),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -146,7 +149,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -178,7 +181,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -219,7 +222,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -256,7 +259,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -292,7 +295,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,
@@ -325,7 +328,7 @@ internal class InAppMessageManagerTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
-            testDispatcher,
+            CoroutineScope(testDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler),
             monitoringRepository,
             sessionStorageManager,
             userVisitManager,

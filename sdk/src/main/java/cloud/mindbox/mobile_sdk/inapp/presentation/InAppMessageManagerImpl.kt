@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.InitializeLock
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
@@ -24,7 +23,7 @@ import kotlinx.coroutines.flow.onEach
 internal class InAppMessageManagerImpl(
     private val inAppMessageViewDisplayer: InAppMessageViewDisplayer,
     private val inAppInteractor: InAppInteractor,
-    private val defaultDispatcher: CoroutineDispatcher,
+    private val inAppScope: CoroutineScope,
     private val monitoringInteractor: MonitoringInteractor,
     private val sessionStorageManager: SessionStorageManager,
     private val userVisitManager: UserVisitManager,
@@ -45,9 +44,6 @@ internal class InAppMessageManagerImpl(
             inAppMessageViewDisplayer.registerCurrentActivity(activity)
         }
     }
-
-    private val inAppScope =
-        CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
     override fun listenEventAndInApp() {
         processingJob = inAppScope.launch {
