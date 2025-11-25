@@ -101,6 +101,7 @@ internal class InAppMessageManagerTest {
         {
             coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
         }.shouldNotThrow()
+        inAppMessageManager.cancelScope()
     }
 
     @Test
@@ -131,6 +132,7 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
+        inAppMessageManager.cancelScope()
     }
 
     @Test
@@ -170,6 +172,8 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+
+        inAppMessageManager.cancelScope()
     }
 
     @Test
@@ -212,6 +216,8 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+
+        inAppMessageManager.cancelScope()
     }
 
     @Test
@@ -254,6 +260,8 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+
+        inAppMessageManager.cancelScope()
     }
 
     private fun (() -> Any?).shouldNotThrow() = try {
@@ -293,6 +301,7 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
+        inAppMessageManager.cancelScope()
     }
 
     @Test
@@ -321,6 +330,7 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }
+        inAppMessageManager.cancelScope()
     }
 
     @Test
