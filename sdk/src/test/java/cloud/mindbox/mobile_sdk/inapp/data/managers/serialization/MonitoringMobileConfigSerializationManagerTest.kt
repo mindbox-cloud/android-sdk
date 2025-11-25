@@ -8,7 +8,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.mockk.verify
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -27,6 +29,11 @@ class MonitoringMobileConfigSerializationManagerTest {
     @Before
     fun onTestStart() {
         MindboxDI.init(context)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

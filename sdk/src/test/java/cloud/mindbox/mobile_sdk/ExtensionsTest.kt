@@ -9,6 +9,8 @@ import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkAll
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -28,6 +30,11 @@ internal class ExtensionsTest {
     @Before
     fun onTestStart() {
         AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

@@ -18,13 +18,13 @@ import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 class InAppSegmentationRepositoryTest {
-
     @get:Rule
     val mockkRule = MockKRule(this)
 
@@ -53,6 +53,11 @@ class InAppSegmentationRepositoryTest {
     fun onTestStart() {
         mockkObject(DbManager)
         mockkObject(MindboxPreferences)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

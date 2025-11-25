@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.*
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -13,6 +14,11 @@ class MigrationManagerTest {
     @Before
     fun setUp() {
         mockkObject(MindboxPreferences)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

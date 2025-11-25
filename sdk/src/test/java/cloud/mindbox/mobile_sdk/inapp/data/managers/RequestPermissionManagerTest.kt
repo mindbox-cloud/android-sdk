@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.*
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -12,6 +13,11 @@ class RequestPermissionManagerTest {
     @Before
     fun setUp() {
         mockkObject(MindboxPreferences)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     private val requestPermissionManager = RequestPermissionManagerImpl()

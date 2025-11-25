@@ -9,7 +9,9 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit4.MockKRule
 import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import org.junit.Assert.*
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +34,11 @@ internal class LogRequestDataManagerImplTest {
             MindboxPreferences.deviceUuid
         } returns "456"
         AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

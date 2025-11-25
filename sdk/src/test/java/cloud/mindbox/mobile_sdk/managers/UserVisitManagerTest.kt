@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.*
 import io.mockk.junit4.MockKRule
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 
@@ -16,6 +17,11 @@ internal class UserVisitManagerTest {
     @Before
     fun onTestStart() {
         mockkObject(MindboxPreferences)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     private val userVisitManager = UserVisitManagerImpl()

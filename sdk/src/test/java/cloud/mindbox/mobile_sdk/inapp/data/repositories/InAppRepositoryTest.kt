@@ -11,6 +11,7 @@ import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -45,6 +46,11 @@ class InAppRepositoryTest {
     fun onTestStart() {
         mockkObject(MindboxPreferences)
         mockkObject(MindboxEventManager)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

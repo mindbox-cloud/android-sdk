@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkAll
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -37,6 +39,11 @@ class GatewayManagerTest {
 
         mockkObject(MindboxPreferences)
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid-123"
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test

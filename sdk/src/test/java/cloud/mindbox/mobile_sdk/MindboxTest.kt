@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.*
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -58,6 +59,11 @@ class MindboxTest {
         every { MindboxPreferences.infoUpdatedVersion } returns 1
 
         Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test
