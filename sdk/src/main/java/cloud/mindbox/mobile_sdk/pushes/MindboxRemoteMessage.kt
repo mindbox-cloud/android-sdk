@@ -30,6 +30,20 @@ public data class MindboxRemoteMessage(
     }
 }
 
+/**
+ * Creates a [PendingIntent] for the push notification content.
+ *
+ * This method creates a PendingIntent with the unique push key in the extras.
+ * This is used by the Mindbox SDK to properly identify and handle a push notification clicks that does not include any push buttons.
+ *
+ * Note: Use this method to get the PendingIntent for [androidx.core.app.NotificationCompat.Builder.setContentIntent].
+ *
+ * @param context The context used to create the PendingIntent.
+ * @param activity The activity class to be launched when the notification is clicked.
+ * @param notificationId The unique ID of the notification.
+ * @param extras Additional data to be included in the intent.
+ * @return A [PendingIntent] to be used with [androidx.core.app.NotificationCompat.Builder.setContentIntent].
+ */
 public fun MindboxRemoteMessage.getPushContentIntent(
     context: Context,
     activity: Class<out Activity>,
@@ -47,6 +61,21 @@ public fun MindboxRemoteMessage.getPushContentIntent(
         extras = extras,
     )
 
+/**
+ * Creates a [PendingIntent] for the push notification action button.
+ *
+ * This method creates a PendingIntent with both the unique push key and the unique push button key in the extras.
+ * These are used by the Mindbox SDK to properly identify and handle push notification button clicks.
+ *
+ * Note: Use this method to get the PendingIntent for [androidx.core.app.NotificationCompat.Builder.addAction].
+ *
+ * @param context The context used to create the PendingIntent.
+ * @param activity The activity class to be launched when the action is clicked.
+ * @param notificationId The unique ID of the notification.
+ * @param pushAction The action object containing the button's unique key and other details.
+ * @param extras Additional data to be included in the intent.
+ * @return A [PendingIntent] to be used with [androidx.core.app.NotificationCompat.Builder.addAction].
+ */
 public fun MindboxRemoteMessage.getPushActionIntent(
     context: Context,
     activity: Class<out Activity>,

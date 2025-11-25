@@ -4,9 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -45,7 +43,7 @@ class MindboxRemoteMessageTest {
         assertNotNull(pendingIntent)
         val intent = Shadows.shadowOf(pendingIntent).savedIntent
         assertNotNull(intent)
-        
+
         assertEquals(activityClass.name, intent.component?.className)
         assertEquals(payload, intent.getStringExtra("push_payload"))
         assertEquals(notificationId, intent.getIntExtra("notification_id", -1))
@@ -88,7 +86,7 @@ class MindboxRemoteMessageTest {
         assertNotNull(pendingIntent)
         val intent = Shadows.shadowOf(pendingIntent).savedIntent
         assertNotNull(intent)
-        
+
         assertEquals(activityClass.name, intent.component?.className)
         assertEquals(payload, intent.getStringExtra("push_payload"))
         assertEquals(notificationId, intent.getIntExtra("notification_id", -1))
@@ -100,4 +98,3 @@ class MindboxRemoteMessageTest {
 }
 
 class TestActivity : Activity()
-
