@@ -190,6 +190,7 @@ internal class ExtensionsTest {
 
         assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
         assertEquals(pushButtonKey, intent.getStringExtra("uniq_push_button_key"))
+        assertTrue(intent.getBooleanExtra("isOpenedFromPush", false))
     }
 
     @Test
@@ -201,6 +202,7 @@ internal class ExtensionsTest {
 
         assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
         assertEquals(null, intent.getStringExtra("uniq_push_button_key"))
+        assertTrue(intent.getBooleanExtra("isOpenedFromPush", false))
     }
 
     @Test
@@ -212,6 +214,7 @@ internal class ExtensionsTest {
 
         assertEquals(pushUniqKey, intent.getStringExtra("uniq_push_key"))
         assertNull("Button key should not be set", intent.getStringExtra("uniq_push_button_key"))
+        assertTrue(intent.getBooleanExtra("isOpenedFromPush", false))
     }
 
     @Test

@@ -1,5 +1,10 @@
 package cloud.mindbox.mobile_sdk.pushes
 
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.Context
+import android.os.Bundle
+
 /**
  * A class representing mindbox remote message
  * You can use it as a model to store data from mindbox
@@ -24,3 +29,38 @@ public data class MindboxRemoteMessage(
         public const val DATA_PAYLOAD: String = "payload"
     }
 }
+
+public fun MindboxRemoteMessage.getPushContentIntent(
+    context: Context,
+    activity: Class<out Activity>,
+    notificationId: Int,
+    extras: Bundle? = null,
+): PendingIntent? =
+    PushNotificationManager.createPendingIntent(
+        context = context,
+        activity = activity,
+        id = notificationId,
+        payload = payload,
+        pushKey = uniqueKey,
+        url = pushLink,
+        pushButtonKey = null,
+        extras = extras,
+    )
+
+public fun MindboxRemoteMessage.getPushActionIntent(
+    context: Context,
+    activity: Class<out Activity>,
+    notificationId: Int,
+    pushAction: PushAction,
+    extras: Bundle? = null,
+): PendingIntent? =
+    PushNotificationManager.createPendingIntent(
+        context = context,
+        activity = activity,
+        id = notificationId,
+        payload = payload,
+        pushKey = uniqueKey,
+        url = pushAction.url,
+        pushButtonKey = pushAction.uniqueKey,
+        extras = extras,
+    )
