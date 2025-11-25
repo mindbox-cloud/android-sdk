@@ -81,6 +81,7 @@ internal class InAppMessageManagerTest {
         if (::inAppMessageManager.isInitialized) {
             inAppMessageManager.cancelScope()
         }
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
