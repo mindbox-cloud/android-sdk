@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -17,7 +16,6 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -52,7 +50,7 @@ internal class InAppMessageManagerTest {
 
     private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
@@ -61,8 +59,6 @@ internal class InAppMessageManagerTest {
     fun onTestStart() {
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
-        mockkObject(Mindbox)
-        every { Mindbox.coroutineExceptionHandler } returns CoroutineExceptionHandler { _, _ -> }
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
