@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -74,16 +75,12 @@ internal class InAppMessageManagerTest {
 
     @After
     fun onTestFinish() {
-        if (::inAppMessageManager.isInitialized) {
-            inAppMessageManager.cancelScope()
-        }
-        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
 
     @Test
-    fun `in app config is being fetched`() = runTest(testDispatcher) {
+    fun `in app config is being fetched`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -101,11 +98,10 @@ internal class InAppMessageManagerTest {
         {
             coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
         }.shouldNotThrow()
-        inAppMessageManager.cancelScope()
     }
 
     @Test
-    fun `in-app config throws non network error`() = runTest(testDispatcher) {
+    fun `in-app config throws non network error`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -132,17 +128,20 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
-        inAppMessageManager.cancelScope()
     }
 
     @Test
-    fun `in app messages success message shown`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
+    fun `in app messages success message shown`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
+        every { inAppMessageDelayedManager.process(inApp) } coAnswers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
 
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -167,18 +166,12 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
-
-        inAppToShowFlow.emit(inApp)
-        advanceUntilIdle()
-
         verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
-
-        inAppMessageManager.cancelScope()
     }
 
     @Test
-    fun `in app messages success message not shown when inApp already active`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
+    fun `in app messages success message not shown when inApp already active`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageViewDisplayer.isInAppActive() } returns true
@@ -204,25 +197,22 @@ internal class InAppMessageManagerTest {
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
+        every { inAppMessageDelayedManager.process(inApp) } answers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
 
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-
-        inAppToShowFlow.emit(inApp)
-        advanceUntilIdle()
-
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
-
-        inAppMessageManager.cancelScope()
     }
 
     @Test
-    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest(testDispatcher) {
-        val inAppToShowFlow = MutableSharedFlow<InApp>(replay = 1)
+    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
@@ -248,20 +238,47 @@ internal class InAppMessageManagerTest {
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        coEvery { inAppMessageDelayedManager.process(inApp) } just runs
+        every { inAppMessageDelayedManager.process(inApp) } answers {
+            this@runTest.launch {
+                inAppToShowFlow.emit(inApp)
+            }
+        }
 
         inAppMessageManager.listenEventAndInApp()
         advanceUntilIdle()
-
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-
-        inAppToShowFlow.emit(inApp)
-        advanceUntilIdle()
-
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any()) }
+    }
 
-        inAppMessageManager.cancelScope()
+    @Test
+    fun `in app messages error message`() = runTest {
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager
+        )
+        coEvery {
+            inAppMessageInteractor.processEventAndConfig()
+        } returns flow {
+            throw Error("test error")
+        }
+        every {
+            MindboxLoggerImpl.e(any(), any(), any())
+        } just runs
+        try {
+            inAppMessageManager.listenEventAndInApp()
+            advanceUntilIdle()
+        } catch (e: Error) {
+            e.printStackTrace()
+        }
+        coVerify(exactly = 1) {
+            inAppMessageInteractor.listenToTargetingEvents()
+        }
     }
 
     private fun (() -> Any?).shouldNotThrow() = try {
@@ -271,7 +288,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws network error non 404`() = runTest(testDispatcher) {
+    fun `in-app config throws network error non 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -301,11 +318,10 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
-        inAppMessageManager.cancelScope()
     }
 
     @Test
-    fun `in app config throws network error 404`() = runTest(testDispatcher) {
+    fun `in app config throws network error 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -330,7 +346,6 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }
-        inAppMessageManager.cancelScope()
     }
 
     @Test
