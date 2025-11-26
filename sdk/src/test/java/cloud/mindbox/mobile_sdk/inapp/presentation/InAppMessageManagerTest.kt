@@ -84,7 +84,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app config is being fetched`() = runTest {
+    fun `in app config is being fetched`() = runTest(testDispatcher.scheduler) {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -105,7 +105,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws non network error`() = runTest {
+    fun `in-app config throws non network error`() = runTest(testDispatcher.scheduler) {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -135,7 +135,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message shown`() = runTest {
+    fun `in app messages success message shown`() = runTest(testDispatcher.scheduler) {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
@@ -174,7 +174,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message not shown when inApp already active`() = runTest {
+    fun `in app messages success message not shown when inApp already active`() = runTest(testDispatcher.scheduler) {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
@@ -215,7 +215,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
+    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest(testDispatcher.scheduler) {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
@@ -256,7 +256,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages error message`() = runTest {
+    fun `in app messages error message`() = runTest(testDispatcher.scheduler) {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -292,7 +292,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws network error non 404`() = runTest {
+    fun `in-app config throws network error non 404`() = runTest(testDispatcher.scheduler) {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -325,7 +325,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app config throws network error 404`() = runTest {
+    fun `in app config throws network error 404`() = runTest(testDispatcher.scheduler) {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
