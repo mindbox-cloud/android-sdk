@@ -25,7 +25,6 @@ import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -50,9 +49,9 @@ internal class InAppMessageManagerTest {
 
     private val userVisitManager = mockk<UserVisitManager>()
 
-    private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>()
+    private val inAppMessageDelayedManager = mockk<InAppMessageDelayedManager>(relaxUnitFun = true)
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     /**
      * sets a thread to be used as main dispatcher for running on JVM
@@ -63,6 +62,9 @@ internal class InAppMessageManagerTest {
         Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
+        every { MindboxLoggerImpl.e(any(), any(), any()) } just runs
+        every { MindboxLoggerImpl.e(any(), any()) } just runs
+        every { MindboxLoggerImpl.w(any(), any(), any()) } just runs
         mockkStatic(Log::class)
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -79,13 +81,12 @@ internal class InAppMessageManagerTest {
         if (::inAppMessageManager.isInitialized) {
             inAppMessageManager.cancelScope()
         }
-        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
 
     @Test
-    fun `in app config is being fetched`() = runTest(testDispatcher.scheduler) {
+    fun `in app config is being fetched`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -106,7 +107,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws non network error`() = runTest(testDispatcher.scheduler) {
+    fun `in-app config throws non network error`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -136,7 +137,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message shown`() = runTest(testDispatcher.scheduler) {
+    fun `in app messages success message shown`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
@@ -175,7 +176,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message not shown when inApp already active`() = runTest(testDispatcher.scheduler) {
+    fun `in app messages success message not shown when inApp already active`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
@@ -216,7 +217,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest(testDispatcher.scheduler) {
+    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
@@ -257,7 +258,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app messages error message`() = runTest(testDispatcher.scheduler) {
+    fun `in app messages error message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -293,8 +294,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
-    fun `in-app config throws network error non 404`() = runTest(testDispatcher.scheduler) {
+    fun `in-app config throws network error non 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -327,7 +327,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in app config throws network error 404`() = runTest(testDispatcher.scheduler) {
+    fun `in app config throws network error 404`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
