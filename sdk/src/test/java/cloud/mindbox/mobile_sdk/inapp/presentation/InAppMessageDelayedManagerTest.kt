@@ -24,6 +24,7 @@ class InAppMessageDelayedManagerTest {
     @After
     fun tearDown() {
         inAppMessageDelayedManager.clearSession()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
