@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
@@ -102,5 +103,10 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
             nextProcessQueueJob?.cancel()
             pendingInApps.clear()
         }
+    }
+
+    @VisibleForTesting
+    internal fun cancelScope() {
+        coroutineScope.cancel()
     }
 }

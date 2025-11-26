@@ -58,13 +58,14 @@ internal class InAppMessageManagerTest {
      * **/
     @Before
     fun onTestStart() {
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            println("🔥 UNCAUGHT EXCEPTION in Thread ${t.name}: $e")
+            e.printStackTrace()
+        }
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxLoggerImpl)
-        every { MindboxLoggerImpl.e(any(), any(), any()) } just runs
-        every { MindboxLoggerImpl.e(any(), any()) } just runs
-        every { MindboxLoggerImpl.w(any(), any(), any()) } just runs
         mockkStatic(Log::class)
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
