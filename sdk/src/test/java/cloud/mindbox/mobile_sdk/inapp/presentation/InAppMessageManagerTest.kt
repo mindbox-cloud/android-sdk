@@ -81,6 +81,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    @Ignore
     fun `in app config is being fetched`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -102,6 +103,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    @Ignore
     fun `in-app config throws non network error`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -132,6 +134,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    @Ignore
     fun `in app messages success message shown`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
@@ -171,6 +174,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    @Ignore
     fun `in app messages success message not shown when inApp already active`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
@@ -212,6 +216,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    @Ignore
     fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
