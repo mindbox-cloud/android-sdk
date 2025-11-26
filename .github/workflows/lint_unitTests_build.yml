@@ -65,7 +65,7 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: unit tests
-        run: ./gradlew --no-daemon --stacktrace :sdk:testDebugUnitTest --tests "cloud.mindbox.mobile_sdk.inapp.presentation.*"
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
 
       - name: test report
         uses: asadmansr/android-test-report-action@v1.2.0
