@@ -58,10 +58,6 @@ internal class InAppMessageManagerTest {
      * **/
     @Before
     fun onTestStart() {
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            println("🔥 UNCAUGHT EXCEPTION in Thread ${t.name}: $e")
-            e.printStackTrace()
-        }
         unmockkAll()
         Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
@@ -75,6 +71,15 @@ internal class InAppMessageManagerTest {
         }.answers {
             true
         }
+        every {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
+        } just runs
+        every { MindboxLoggerImpl.w(any(), any()) } just runs
+        every { MindboxLoggerImpl.w(any(), any(), any()) } just runs
+        every { MindboxLoggerImpl.e(any(), any()) } just runs
+        every { MindboxLoggerImpl.e(any(), any(), any()) } just runs
+        every { MindboxLoggerImpl.d(any(), any()) } just runs
+        every { MindboxLoggerImpl.i(any(), any()) } just runs
     }
 
     @After
