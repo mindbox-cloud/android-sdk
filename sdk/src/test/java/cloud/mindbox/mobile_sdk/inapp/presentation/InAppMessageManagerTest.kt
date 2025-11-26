@@ -25,12 +25,10 @@ import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@Ignore("Ignored entirely to check if it affects other tests.")
 internal class InAppMessageManagerTest {
 
     @get:Rule
@@ -77,6 +75,9 @@ internal class InAppMessageManagerTest {
 
     @After
     fun onTestFinish() {
+        if (::inAppMessageManager.isInitialized) {
+            inAppMessageManager.cancelScope()
+        }
         Dispatchers.resetMain()
         unmockkAll()
     }
