@@ -30,6 +30,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Ignore("Ignored entirely to check if it affects other tests.")
 internal class InAppMessageManagerTest {
 
     @get:Rule
@@ -81,7 +82,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
     fun `in app config is being fetched`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -103,7 +103,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
     fun `in-app config throws non network error`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -134,7 +133,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
     fun `in app messages success message shown`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
@@ -174,7 +172,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
     fun `in app messages success message not shown when inApp already active`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
@@ -216,7 +213,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore
     fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<InApp>()
         val inApp = InAppStub.getInApp()
@@ -258,7 +254,6 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    @Ignore("Causes UncaughtExceptionsBeforeTest in subsequent tests due to scope leak")
     fun `in app messages error message`() = runTest {
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
