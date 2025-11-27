@@ -11,6 +11,8 @@ import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteracto
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.mockLogger
+import cloud.mindbox.mobile_sdk.utils.mockPreferencesConfigSetter
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
 import io.mockk.*
@@ -58,11 +60,10 @@ internal class InAppMessageManagerTest {
      * **/
     @Before
     fun onTestStart() {
-        unmockkAll()
         Dispatchers.setMain(testDispatcher)
         mockkObject(MindboxPreferences)
-        mockkObject(MindboxLoggerImpl)
         mockkStatic(Log::class)
+        mockLogger()
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
         } just runs
@@ -81,6 +82,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app config is being fetched`() = runTest {
+        mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -102,6 +104,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in-app config throws non network error`() = runTest {
+        mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -113,9 +116,6 @@ internal class InAppMessageManagerTest {
         )
         mockkObject(LoggingExceptionHandler)
         every { MindboxPreferences.inAppConfig } returns "test"
-        coEvery {
-            MindboxLoggerImpl.e(any(), any())
-        } just runs
         val error = Error()
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
@@ -267,9 +267,6 @@ internal class InAppMessageManagerTest {
         } returns flow {
             throw Error("test error")
         }
-        every {
-            MindboxLoggerImpl.e(any(), any(), any())
-        } just runs
         try {
             inAppMessageManager.listenEventAndInApp()
             advanceUntilIdle()
@@ -289,6 +286,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in-app config throws network error non 404`() = runTest {
+        mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
@@ -322,6 +320,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app config throws network error 404`() = runTest {
+        mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
             inAppMessageInteractor,
