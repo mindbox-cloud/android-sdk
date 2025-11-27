@@ -45,4 +45,8 @@ internal class MindboxImageLoaderDefault : MindboxImageLoader {
         MindboxLoggerImpl.d(this, "Image successfully decoded, bitmap=$bitmap")
         return bitmap
     }
+
+    override fun toString(): String {
+        return "DefaultLoader"
+    }
 }

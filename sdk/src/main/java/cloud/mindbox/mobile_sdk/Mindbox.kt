@@ -54,11 +54,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 public object Mindbox : MindboxLog {
 
     /**
-     * Used for determination app open from push
-     */
-    internal const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
-
-    /**
      * Factory for custom initialisation of WorkManager
      *
      * You don't need this if you are using default WorkManager initialisation
