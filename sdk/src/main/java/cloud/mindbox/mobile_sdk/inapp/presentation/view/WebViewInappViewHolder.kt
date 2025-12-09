@@ -11,7 +11,6 @@ import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -264,7 +263,6 @@ internal class WebViewInAppViewHolder(
             destroy()
         }
         webView.clear()
-        MindboxDI.appModule.inAppMessageViewDisplayer.hideCurrentInApp()
     }
 
     private interface WebViewAction {
