@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
+import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
@@ -260,6 +261,7 @@ public fun Intent.putMindboxPushButtonExtras(pushUniqKey: String, pushButtonKey:
     this.apply {
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushUniqKey)
         putExtra(EXTRA_UNIQ_PUSH_BUTTON_KEY, pushButtonKey)
+        putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
     }
 }
 
@@ -276,6 +278,7 @@ public fun Intent.putMindboxPushButtonExtras(pushUniqKey: String, pushButtonKey:
 public fun Intent.putMindboxPushExtras(pushUniqKey: String) {
     this.apply {
         putExtra(EXTRA_UNIQ_PUSH_KEY, pushUniqKey)
+        putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
     }
 }
 

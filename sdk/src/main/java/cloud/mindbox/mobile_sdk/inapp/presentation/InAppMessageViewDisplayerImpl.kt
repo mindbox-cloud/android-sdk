@@ -243,9 +243,15 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                     ?.onInAppDismiss
                     ?.onDismiss()
             }
-            currentHolder?.hide()
+            currentHolder?.apply {
+                hide()
+                release()
+            }
             currentHolder = null
-            pausedHolder?.hide()
+            pausedHolder?.apply {
+                hide()
+                release()
+            }
             pausedHolder = null
             inAppQueue.clear()
             isActionExecuted = false

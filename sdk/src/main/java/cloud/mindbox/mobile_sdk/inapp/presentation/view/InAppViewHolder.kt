@@ -13,4 +13,6 @@ internal interface InAppViewHolder<T : InAppType> {
     fun show(currentRoot: MindboxView)
 
     fun hide()
+
+    fun release() {}
 }

@@ -1,22 +1,26 @@
 package cloud.mindbox.mobile_sdk.pushes
 
-import android.app.*
+import android.app.Activity
+import android.app.Notification
 import android.app.Notification.DEFAULT_ALL
-import android.app.Notification.VISIBILITY_PRIVATE
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
+import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
@@ -39,6 +43,7 @@ internal object PushNotificationManager {
 
     internal const val EXTRA_UNIQ_PUSH_KEY = "uniq_push_key"
     internal const val EXTRA_UNIQ_PUSH_BUTTON_KEY = "uniq_push_button_key"
+    internal const val IS_OPENED_FROM_PUSH_BUNDLE_KEY = "isOpenedFromPush"
 
     internal var messageHandler: MindboxMessageHandler = MindboxMessageHandler()
 
@@ -93,7 +98,7 @@ internal object PushNotificationManager {
                 isMessageDisplayed = false,
             ),
         )
-        MindboxLoggerImpl.d(this, "handleRemoteMessage success")
+        mindboxLogI("handleRemoteMessage success")
         true
     }
 
@@ -109,8 +114,7 @@ internal object PushNotificationManager {
         defaultActivity: Class<out Activity>,
         state: MessageHandlingState,
     ) {
-        MindboxLoggerImpl.d(
-            parent = this,
+        mindboxLogI(
             message = buildLogMessage(
                 message = remoteMessage,
                 log = "Started with state - $state",
@@ -122,8 +126,7 @@ internal object PushNotificationManager {
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (isNotificationCancelled(notificationManager, notificationId, state)) {
-            MindboxLoggerImpl.d(
-                parent = this,
+            mindboxLogI(
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
@@ -136,8 +139,7 @@ internal object PushNotificationManager {
         val image = withContext(Dispatchers.IO) {
             runCatching {
                 val imageLoader = messageHandler.imageLoader
-                MindboxLoggerImpl.d(
-                    parent = PushNotificationManager,
+                this@PushNotificationManager.mindboxLogI(
                     message = buildLogMessage(
                         message = remoteMessage,
                         log = "Image loading started, imageLoader=$imageLoader",
@@ -148,11 +150,10 @@ internal object PushNotificationManager {
                     message = remoteMessage,
                     state = state,
                 )
-                MindboxLoggerImpl.d(
-                    parent = PushNotificationManager,
+                this@PushNotificationManager.mindboxLogI(
                     message = buildLogMessage(
                         message = remoteMessage,
-                        log = "Image loading complete, bitmap=$bitmap",
+                        log = "Image loading complete, bitmap=${bitmap?.byteCount} bytes",
                     ),
                 )
                 bitmap
@@ -160,8 +161,7 @@ internal object PushNotificationManager {
         }
 
         if (isNotificationCancelled(notificationManager, notificationId, state)) {
-            MindboxLoggerImpl.d(
-                parent = this,
+            mindboxLogI(
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "An attempt to update the notification was canceled " +
@@ -173,16 +173,14 @@ internal object PushNotificationManager {
 
         val fallback = image.exceptionOrNull()?.let { error ->
             if (error is UnknownHostException) {
-                MindboxLoggerImpl.e(
-                    parent = this,
+                mindboxLogE(
                     message = buildLogMessage(
                         message = remoteMessage,
                         log = "Image loading failed:\n${error.stackTraceToString()}",
                     ),
                 )
             } else {
-                MindboxLoggerImpl.e(
-                    parent = this,
+                mindboxLogE(
                     message = buildLogMessage(
                         message = remoteMessage,
                         log = "Image loading failed:",
@@ -191,8 +189,7 @@ internal object PushNotificationManager {
                 )
             }
             val imageFailureHandler = messageHandler.imageFailureHandler
-            MindboxLoggerImpl.d(
-                parent = this,
+            mindboxLogI(
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "Image loading error will be handled in $imageFailureHandler",
@@ -204,8 +201,7 @@ internal object PushNotificationManager {
                 state = state,
                 error = error,
             ).also {
-                MindboxLoggerImpl.d(
-                    parent = this,
+                mindboxLogI(
                     message = buildLogMessage(
                         message = remoteMessage,
                         log = "Solution for failed image loading - $it",
@@ -215,8 +211,7 @@ internal object PushNotificationManager {
         }
 
         if (fallback is ImageRetryStrategy.ApplyDefaultAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            MindboxLoggerImpl.e(
-                parent = this,
+            mindboxLogE(
                 message = buildLogMessage(
                     message = remoteMessage,
                     log = "ApplyDefaultAndRetry works correctly only on SDK >= 23",
@@ -238,6 +233,7 @@ internal object PushNotificationManager {
                 state = state,
                 delay = fallback.delay,
             )
+
             is ImageRetryStrategy.Cancel -> {}
             is ImageRetryStrategy.ApplyDefaultAndRetry -> applyDefaultAndRetryNotifyRemoteMessage(
                 context = applicationContext,
@@ -254,6 +250,7 @@ internal object PushNotificationManager {
                 imagePlaceholder = fallback.defaultImage,
                 currentState = state,
             )
+
             is ImageRetryStrategy.ApplyDefault -> applyDefaultNotifyRemoteMessage(
                 context = applicationContext,
                 notificationManager = notificationManager,
@@ -267,6 +264,7 @@ internal object PushNotificationManager {
                 defaultActivity = defaultActivity,
                 imagePlaceholder = fallback.defaultImage,
             )
+
             null -> {
                 notifyRemoteMessage(
                     context = applicationContext,
@@ -281,8 +279,7 @@ internal object PushNotificationManager {
                     defaultActivity = defaultActivity,
                     image = image.getOrNull(),
                 )
-                MindboxLoggerImpl.d(
-                    parent = this,
+                mindboxLogI(
                     message = buildLogMessage(
                         message = remoteMessage,
                         log = "Successfully notified!",
@@ -343,7 +340,7 @@ internal object PushNotificationManager {
         currentState: MessageHandlingState,
     ) {
         createNotificationChannel(
-            notificationManager = notificationManager,
+            context = context,
             channelId = channelId,
             channelName = channelName,
             channelDescription = channelDescription,
@@ -393,7 +390,7 @@ internal object PushNotificationManager {
         imagePlaceholder: Bitmap?,
     ) {
         createNotificationChannel(
-            notificationManager = notificationManager,
+            context = context,
             channelId = channelId,
             channelName = channelName,
             channelDescription = channelDescription,
@@ -430,7 +427,7 @@ internal object PushNotificationManager {
         image: Bitmap?,
     ) {
         createNotificationChannel(
-            notificationManager = notificationManager,
+            context = context,
             channelId = channelId,
             channelName = channelName,
             channelDescription = channelDescription,
@@ -515,23 +512,20 @@ internal object PushNotificationManager {
     internal fun getPayloadFromPushIntent(intent: Intent) = intent.getStringExtra(EXTRA_PAYLOAD)
 
     private fun createNotificationChannel(
-        notificationManager: NotificationManager,
+        context: Context,
         channelId: String,
         channelName: String,
         channelDescription: String?,
-    ) = LoggingExceptionHandler.runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(channelId, channelName, importance).apply {
-                channelDescription.let { description = it }
-                lockscreenVisibility = VISIBILITY_PRIVATE
-            }
-
-            notificationManager.createNotificationChannel(channel)
-        }
+    ) = loggingRunCatching {
+        NotificationManagerCompat.from(context).createNotificationChannel(
+            NotificationChannelCompat.Builder(channelId, NotificationManagerCompat.IMPORTANCE_HIGH)
+                .setName(channelName)
+                .setDescription(channelDescription)
+                .build()
+        )
     }
 
-    private fun createPendingIntent(
+    internal fun createPendingIntent(
         context: Context,
         activity: Class<out Activity>,
         id: Int,
@@ -539,28 +533,23 @@ internal object PushNotificationManager {
         pushKey: String,
         url: String?,
         pushButtonKey: String? = null,
-    ): PendingIntent? = LoggingExceptionHandler.runCatching(defaultValue = null) {
-        val intent = getIntent(
-            context = context,
-            activity = activity,
-            id = id,
-            payload = payload,
-            pushKey = pushKey,
-            url = url,
-            pushButtonKey = pushButtonKey,
-        )
-
-        val flags = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
+        extras: Bundle? = null,
+    ): PendingIntent? = loggingRunCatching(defaultValue = null) {
+        val intent = Intent(context, activity).apply {
+            putExtra(EXTRA_PAYLOAD, payload)
+            putExtra(EXTRA_NOTIFICATION_ID, id)
+            putMindboxPushButtonExtras(pushKey, pushButtonKey)
+            url?.let { url -> putExtra(EXTRA_URL, url) }
+            `package` = context.packageName
+            extras?.let { putExtras(extras) }
         }
 
-        PendingIntent.getActivity(
+        PendingIntentCompat.getActivity(
             context,
             Random.nextInt(),
             intent,
-            flags,
+            PendingIntent.FLAG_UPDATE_CURRENT,
+            false,
         )
     }
 
@@ -673,23 +662,6 @@ internal object PushNotificationManager {
                 mindboxLogI("Notification color overridden to ${Integer.toHexString(defaultColor)}")
             }
         }
-    }
-
-    private fun getIntent(
-        context: Context,
-        activity: Class<*>,
-        id: Int,
-        payload: String?,
-        pushKey: String,
-        url: String?,
-        pushButtonKey: String?,
-    ) = Intent(context, activity).apply {
-        putExtra(EXTRA_PAYLOAD, payload)
-        putExtra(Mindbox.IS_OPENED_FROM_PUSH_BUNDLE_KEY, true)
-        putExtra(EXTRA_NOTIFICATION_ID, id)
-        putMindboxPushButtonExtras(pushKey, pushButtonKey)
-        url?.let { url -> putExtra(EXTRA_URL, url) }
-        `package` = context.packageName
     }
 
     private fun createCenterInsideBitmap(src: Bitmap, hasButtons: Boolean, charCountInTitle: Int): Bitmap {
