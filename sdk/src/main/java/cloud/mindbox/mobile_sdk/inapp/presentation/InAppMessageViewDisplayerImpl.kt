@@ -192,6 +192,28 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         isRestored: Boolean = false,
     ) {
         if (!isRestored) isActionExecuted = false
+        if (isRestored) {
+            val restoredHolder: InAppViewHolder<*>? = pausedHolder
+                ?.takeIf { it.canReuseOnRestore(wrapper.inAppType.inAppId) }
+            if (restoredHolder != null) {
+                currentHolder = restoredHolder
+                pausedHolder = null
+                currentActivity?.root?.let { root ->
+                    restoredHolder.reattach(object : MindboxView {
+                        override val container: ViewGroup = root
+
+                        override fun requestPermission() {
+                            currentActivity?.let { activity ->
+                                mindboxNotificationManager.requestPermission(activity = activity)
+                            }
+                        }
+                    })
+                } ?: run {
+                    mindboxLogE("failed to reattach inApp: currentRoot is null")
+                }
+                return
+            }
+        }
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
             pausedHolder?.hide()

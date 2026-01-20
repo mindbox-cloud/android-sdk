@@ -12,6 +12,12 @@ internal interface InAppViewHolder<T : InAppType> {
 
     fun show(currentRoot: MindboxView)
 
+    fun reattach(currentRoot: MindboxView) {
+        show(currentRoot)
+    }
+
+    fun canReuseOnRestore(inAppId: String): Boolean = false
+
     fun hide()
 
     fun release() {}
