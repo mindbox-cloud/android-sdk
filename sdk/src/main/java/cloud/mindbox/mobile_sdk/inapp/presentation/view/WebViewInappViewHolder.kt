@@ -53,7 +53,7 @@ internal class WebViewInAppViewHolder(
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
 
-    private val gson: Gson by mindboxInject { gson }
+    private val gson: Gson by mindboxInject { this.gson }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
