@@ -170,6 +170,25 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
         inAppLayout.prepareLayoutForInApp(wrapper.inAppType)
     }
 
+    private fun attachToRoot(currentRoot: ViewGroup) {
+        if (_currentDialog == null) {
+            initView(currentRoot)
+            return
+        }
+        currentRoot.removeChildById(R.id.inapp_layout_container)
+        _currentDialog?.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)
+        currentRoot.addView(currentDialog)
+    }
+
+    private fun startPositionController(currentRoot: ViewGroup) {
+        positionController?.stop()
+        positionController = null
+        val isRepositioningEnabled = currentRoot.context.resources.getBoolean(R.bool.mindbox_support_inapp_on_fragment)
+        positionController = isRepositioningEnabled.takeIf { it }?.run {
+            InAppPositionController().apply { start(currentDialog) }
+        }
+    }
+
     private fun restoreKeyboard() {
         typingView?.let { view ->
             view.requestFocus()
@@ -184,11 +203,16 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     override fun show(currentRoot: MindboxView) {
         isInAppMessageActive = true
-        initView(currentRoot.container)
-        val isRepositioningEnabled = currentRoot.container.context.resources.getBoolean(R.bool.mindbox_support_inapp_on_fragment)
-        positionController = isRepositioningEnabled.takeIf { it }?.run {
-            InAppPositionController().apply { start(currentDialog) }
-        }
+        attachToRoot(currentRoot.container)
+        startPositionController(currentRoot.container)
+        hideKeyboard(currentRoot.container)
+        inAppActionHandler.mindboxView = currentRoot
+    }
+
+    override fun reattach(currentRoot: MindboxView) {
+        isInAppMessageActive = true
+        attachToRoot(currentRoot.container)
+        startPositionController(currentRoot.container)
         hideKeyboard(currentRoot.container)
         inAppActionHandler.mindboxView = currentRoot
     }

@@ -1,16 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
-import android.annotation.SuppressLint
-import android.graphics.Color
-import android.os.Build
-import android.view.KeyEvent
 import android.view.ViewGroup
-import android.webkit.*
 import android.widget.RelativeLayout
-import androidx.core.view.isInvisible
-import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -19,9 +13,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import cloud.mindbox.mobile_sdk.inapp.webview.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
@@ -31,32 +27,33 @@ import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.android.volley.Request
 import com.android.volley.RequestQueue
+import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.ref.WeakReference
 import java.util.Timer
 import java.util.TreeMap
 import kotlin.concurrent.timer
 
+@OptIn(InternalMindboxApi::class)
 internal class WebViewInAppViewHolder(
     override val wrapper: InAppTypeWrapper<InAppType.WebView>,
     private val inAppCallback: InAppCallback,
 ) : AbstractInAppViewHolder<InAppType.WebView>() {
 
     companion object {
-        @SuppressLint("StaticFieldLeak")
-        private var webView: WeakReference<WebView> = WeakReference(null)
         private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
     }
 
     private var closeInappTimer: Timer? = null
+    private var webViewController: WebViewController? = null
 
-    private val gson by mindboxInject { gson }
+    private val gson: Gson by mindboxInject { this.gson }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -70,153 +67,144 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun addJavascriptInterface(layer: Layer.WebViewLayer, configuration: Configuration) {
-        webView.get()?.apply {
-            val params = TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER).apply {
-                put("sdkVersion", Mindbox.getSdkVersion())
-                put("endpointId", configuration.endpointId)
-                put("deviceUuid", MindboxPreferences.deviceUuid)
-                put("sdkVersionNumeric", Constants.SDK_VERSION_NUMERIC.toString())
-                putAll(layer.params)
-            }
-            val provider = ParamProvider { key ->
-                params[key]
-            }
-            addJavascriptInterface(
-                WebAppInterface(provider) { action, data ->
-                    handleWebViewAction(action, data, object : WebViewAction {
-
-                        override fun onInit() {
-                            // Cancel timeout when init is received
-                            mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-                            closeInappTimer?.cancel()
-                            closeInappTimer = null
-
-                            wrapper.inAppActionCallbacks.onInAppShown.onShown()
-                            webView.get()?.isVisible = true
-                        }
-
-                        override fun onCompleted(data: String) {
-                            runCatching {
-                                val actionDto = gson.fromJson<BackgroundDto.LayerDto.ImageLayerDto.ActionDto>(data).getOrThrow()
-                                val (url, payload) = when (actionDto) {
-                                    is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto ->
-                                        actionDto.value to actionDto.intentPayload
-                                    is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto ->
-                                        "" to actionDto.intentPayload
-                                }
-
-                                wrapper.inAppActionCallbacks.onInAppClick.onClick()
-                                inAppCallback.onInAppClick(
-                                    wrapper.inAppType.inAppId,
-                                    url ?: "",
-                                    payload ?: ""
-                                )
-                            }
-                            mindboxLogI("In-app completed by webview action with data: $data")
-                        }
-
-                        override fun onClose() {
-                            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                            mindboxLogI("In-app dismissed by webview action")
-                            hide()
-                            release()
-                        }
-
-                        override fun onHide() {
-                            webView.get()?.isInvisible = true
-                        }
-
-                        override fun onLog(message: String) {
-                            webView.get()?.mindboxLogI("JS: $message")
-                        }
-                    })
-                },
-                "SdkBridge"
-            )
+        val controller: WebViewController = webViewController ?: return
+        val params: TreeMap<String, String> = TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER).apply {
+            put("sdkVersion", Mindbox.getSdkVersion())
+            put("endpointId", configuration.endpointId)
+            put("deviceUuid", MindboxPreferences.deviceUuid)
+            put("sdkVersionNumeric", Constants.SDK_VERSION_NUMERIC.toString())
+            putAll(layer.params)
         }
+        val bridge: WebViewJsBridge = object : WebViewJsBridge {
+            override fun getParam(key: String): String? {
+                return params[key]
+            }
+
+            override fun onAction(action: String, data: String) {
+                handleWebViewAction(action, data, object : WebViewAction {
+                    override fun onInit() {
+                        mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
+                        closeInappTimer?.cancel()
+                        closeInappTimer = null
+                        wrapper.inAppActionCallbacks.onInAppShown.onShown()
+                        controller.setVisibility(true)
+                    }
+
+                    override fun onCompleted(data: String) {
+                        runCatching {
+                            val actionDto: BackgroundDto.LayerDto.ImageLayerDto.ActionDto =
+                                gson.fromJson<BackgroundDto.LayerDto.ImageLayerDto.ActionDto>(data).getOrThrow()
+                            val actionResult: Pair<String?, String?> = when (actionDto) {
+                                is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.RedirectUrlActionDto ->
+                                    actionDto.value to actionDto.intentPayload
+
+                                is BackgroundDto.LayerDto.ImageLayerDto.ActionDto.PushPermissionActionDto ->
+                                    "" to actionDto.intentPayload
+                            }
+                            val url: String? = actionResult.first
+                            val payload: String? = actionResult.second
+                            wrapper.inAppActionCallbacks.onInAppClick.onClick()
+                            inAppCallback.onInAppClick(
+                                wrapper.inAppType.inAppId,
+                                url ?: "",
+                                payload ?: ""
+                            )
+                        }
+                        mindboxLogI("In-app completed by webview action with data: $data")
+                    }
+
+                    override fun onClose() {
+                        inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                        mindboxLogI("In-app dismissed by webview action")
+                        hide()
+                        release()
+                    }
+
+                    override fun onHide() {
+                        controller.setVisibility(false)
+                    }
+
+                    override fun onLog(message: String) {
+                        mindboxLogI("JS: $message")
+                    }
+                })
+            }
+        }
+        controller.setJsBridge(bridge)
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun createWebView(layer: Layer.WebViewLayer): WebView {
+    private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
         mindboxLogI("Creating WebView for In-App: ${wrapper.inAppType.inAppId} with layer ${layer.type}")
-        return WebView(currentDialog.context).apply {
-            webViewClient = InAppWebClient(
-                onCriticalError = {
+        val controller: WebViewController = WebViewController.create(currentDialog.context, BuildConfig.DEBUG)
+        val view: WebViewPlatformView = controller.view
+        view.layoutParams = RelativeLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        controller.setEventListener(object : WebViewEventListener {
+            override fun onPageFinished(url: String?) {
+                mindboxLogD("onPageFinished: $url")
+            }
+
+            override fun onError(error: WebViewError) {
+                val message = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
+                mindboxLogE(message)
+                if (error.isForMainFrame == true) {
                     mindboxLogE("WebView critical error. Destroying In-App.")
                     release()
                 }
-            )
-
-            layoutParams = RelativeLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.loadWithOverviewMode = true
-            settings.builtInZoomControls = true
-            settings.displayZoomControls = false
-            settings.defaultTextEncodingName = "utf-8"
-            settings.cacheMode = WebSettings.LOAD_NO_CACHE
-            settings.allowContentAccess = true
-            setBackgroundColor(Color.TRANSPARENT)
-        }
+            }
+        })
+        return controller
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     fun addUrlSource(layer: Layer.WebViewLayer) {
-        if (webView.get() == null) {
-            WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
-            webView = WeakReference(createWebView(layer).also {
-                it.visibility = ViewGroup.INVISIBLE
-            })
+        if (webViewController == null) {
+            val controller: WebViewController = createWebViewController(layer)
+            controller.setVisibility(false)
+            webViewController = controller
             Mindbox.mindboxScope.launch {
-                val configuration = DbManager.listenConfigurations().first()
+                val configuration: Configuration = DbManager.listenConfigurations().first()
                 withContext(Dispatchers.Main) {
                     addJavascriptInterface(layer, configuration)
-                }
-
-                webView.get()?.post {
-                    webView.get()?.settings?.userAgentString += " " + configuration.getShortUserAgent()
+                    controller.setUserAgentSuffix(configuration.getShortUserAgent())
                 }
                 val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
                 val stringRequest = StringRequest(
                     Request.Method.GET,
                     layer.contentUrl,
-                    { response ->
-                        webView.get()?.loadDataWithBaseURL(
-                            layer.baseUrl,
-                            response,
-                            "text/html",
-                            "UTF-8",
-                            null
+                    { response: String ->
+                        val content = WebViewHtmlContent(
+                            baseUrl = layer.baseUrl ?: "",
+                            html = response
                         )
-
-                        Stopwatch.start(TIMER)
-                        // Start timeout after loading the page
-                        closeInappTimer = timer(
-                            initialDelay = INIT_TIMEOUT_MS,
-                            period = INIT_TIMEOUT_MS,
-                            action = {
-                                webView.get()?.post {
-                                    if (closeInappTimer != null) {
-                                        mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
-                                        release()
+                        controller.executeOnViewThread {
+                            controller.loadContent(content)
+                            Stopwatch.start(TIMER)
+                            closeInappTimer = timer(
+                                initialDelay = INIT_TIMEOUT_MS,
+                                period = INIT_TIMEOUT_MS,
+                                action = {
+                                    controller.executeOnViewThread {
+                                        if (closeInappTimer != null) {
+                                            mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
+                                            release()
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     },
-                    { error ->
+                    { error: VolleyError ->
                         mindboxLogE("Failed to fetch HTML content for In-App: $error. Destroying.")
                         release()
                     }
                 )
-
                 requestQueue.add(stringRequest)
             }
         }
-        webView.get()?.let { view ->
+        webViewController?.let { controller ->
+            val view: WebViewPlatformView = controller.view
             if (view.parent !== inAppLayout) {
                 view.parent.safeAs<ViewGroup>()?.removeView(view)
                 inAppLayout.addView(view)
@@ -242,12 +230,26 @@ internal class WebViewInAppViewHolder(
         inAppLayout.requestFocus()
     }
 
+    override fun reattach(currentRoot: MindboxView) {
+        super.reattach(currentRoot)
+        wrapper.inAppType.layers.forEach { layer ->
+            when (layer) {
+                is Layer.WebViewLayer -> addUrlSource(layer)
+                else -> mindboxLogW("Layer is not supported")
+            }
+        }
+        inAppLayout.requestFocus()
+    }
+
+    override fun canReuseOnRestore(inAppId: String): Boolean = wrapper.inAppType.inAppId == inAppId
+
     override fun hide() {
         // Clean up timeout when hiding
         closeInappTimer?.cancel()
         closeInappTimer = null
-        webView.get()?.let {
-            inAppLayout.removeView(it)
+        webViewController?.let { controller ->
+            val view: WebViewPlatformView = controller.view
+            inAppLayout.removeView(view)
         }
         super.hide()
     }
@@ -255,14 +257,10 @@ internal class WebViewInAppViewHolder(
     override fun release() {
         super.release()
         // Clean up WebView resources
-        webView.get()?.apply {
-            stopLoading()
-            loadUrl("about:blank")
-            clearHistory()
-            removeAllViews()
-            destroy()
-        }
-        webView.clear()
+        closeInappTimer?.cancel()
+        closeInappTimer = null
+        webViewController?.destroy()
+        webViewController = null
     }
 
     private interface WebViewAction {
@@ -277,73 +275,18 @@ internal class WebViewInAppViewHolder(
         fun onLog(message: String)
     }
 
-    private fun WebView.handleWebViewAction(action: String, data: String, actions: WebViewAction) {
-        this.post {
-            mindboxLogI("handleWebViewAction: Action $action with $data")
-            when (action) {
-                "collapse", "close" -> actions.onClose()
-
-                "init" -> actions.onInit()
-
-                "hide" -> actions.onHide()
-
-                "click" -> actions.onCompleted(data)
-
-                "log" -> actions.onLog(data)
-            }
-        }
-    }
-
-    internal class InAppWebClient(private val onCriticalError: () -> Unit) : WebViewClient() {
-        override fun onReceivedError(
-            view: WebView?,
-            request: WebResourceRequest?,
-            error: WebResourceError?
-        ) {
-            super.onReceivedError(view, request, error)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val message = "WebView error: code=${error?.errorCode}, description=${error?.description}, url=${request?.url}"
-                mindboxLogE(message)
-                if (request?.isForMainFrame == true) {
-                    onCriticalError()
+    private fun handleWebViewAction(action: String, data: String, actions: WebViewAction) {
+        webViewController?.let { controller ->
+            controller.executeOnViewThread {
+                mindboxLogI("handleWebViewAction: Action $action with $data")
+                when (action) {
+                    "collapse", "close" -> actions.onClose()
+                    "init" -> actions.onInit()
+                    "hide" -> actions.onHide()
+                    "click" -> actions.onCompleted(data)
+                    "log" -> actions.onLog(data)
                 }
             }
-        }
-
-        @Suppress("DEPRECATION")
-        @Deprecated("Deprecated in Java")
-        override fun onReceivedError(
-            view: WebView?,
-            errorCode: Int,
-            description: String?,
-            failingUrl: String?
-        ) {
-            super.onReceivedError(view, errorCode, description, failingUrl)
-            val message = "WebView error (legacy): code=$errorCode, description=$description, url=$failingUrl"
-            mindboxLogE(message)
-            // In the old API, we can't be sure if it's the main frame,
-            // but any error is likely critical. The timeout will still act as a fallback.
-            if (failingUrl == view?.originalUrl) {
-                onCriticalError()
-            }
-        }
-
-        override fun shouldOverrideUrlLoading(
-            view: WebView?,
-            request: WebResourceRequest?
-        ): Boolean {
-            mindboxLogD("shouldOverrideUrlLoading: ${request?.url}")
-            return super.shouldOverrideUrlLoading(view, request)
-        }
-
-        override fun onPageFinished(view: WebView?, url: String?) {
-            mindboxLogD("onPageFinished: $url")
-            super.onPageFinished(view, url)
-        }
-
-        override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean {
-            mindboxLogD("shouldOverrideKeyEvent: $event")
-            return super.shouldOverrideKeyEvent(view, event)
         }
     }
 }
