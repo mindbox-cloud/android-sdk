@@ -257,6 +257,8 @@ internal class WebViewInAppViewHolder(
     override fun release() {
         super.release()
         // Clean up WebView resources
+        closeInappTimer?.cancel()
+        closeInappTimer = null
         webViewController?.destroy()
         webViewController = null
     }
@@ -274,15 +276,16 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleWebViewAction(action: String, data: String, actions: WebViewAction) {
-        val controller: WebViewController = webViewController ?: return
-        controller.executeOnViewThread {
-            mindboxLogI("handleWebViewAction: Action $action with $data")
-            when (action) {
-                "collapse", "close" -> actions.onClose()
-                "init" -> actions.onInit()
-                "hide" -> actions.onHide()
-                "click" -> actions.onCompleted(data)
-                "log" -> actions.onLog(data)
+        webViewController?.let { controller ->
+            controller.executeOnViewThread {
+                mindboxLogI("handleWebViewAction: Action $action with $data")
+                when (action) {
+                    "collapse", "close" -> actions.onClose()
+                    "init" -> actions.onInit()
+                    "hide" -> actions.onHide()
+                    "click" -> actions.onCompleted(data)
+                    "log" -> actions.onLog(data)
+                }
             }
         }
     }
