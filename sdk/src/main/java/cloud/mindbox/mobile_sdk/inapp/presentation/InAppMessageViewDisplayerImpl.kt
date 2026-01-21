@@ -192,28 +192,8 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         isRestored: Boolean = false,
     ) {
         if (!isRestored) isActionExecuted = false
-        if (isRestored) {
-            val restoredHolder: InAppViewHolder<*>? = pausedHolder
-                ?.takeIf { it.canReuseOnRestore(wrapper.inAppType.inAppId) }
-            if (restoredHolder != null) {
-                currentHolder = restoredHolder
-                pausedHolder = null
-                currentActivity?.root?.let { root ->
-                    restoredHolder.reattach(object : MindboxView {
-                        override val container: ViewGroup = root
+        if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
 
-                        override fun requestPermission() {
-                            currentActivity?.let { activity ->
-                                mindboxNotificationManager.requestPermission(activity = activity)
-                            }
-                        }
-                    })
-                } ?: run {
-                    mindboxLogE("failed to reattach inApp: currentRoot is null")
-                }
-                return
-            }
-        }
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
             pausedHolder?.hide()
@@ -254,6 +234,32 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
             })
         } ?: run {
             mindboxLogE("failed to show inApp: currentRoot is null")
+        }
+    }
+
+    private fun tryReattachRestoredInApp(inAppId: String): Boolean {
+        val restoredHolder: InAppViewHolder<*> = pausedHolder
+            ?.takeIf { it.canReuseOnRestore(inAppId) }
+            ?: return false
+        currentHolder = restoredHolder
+        pausedHolder = null
+        val root: ViewGroup = currentActivity?.root ?: run {
+            mindboxLogE("failed to reattach inApp: currentRoot is null")
+            return true
+        }
+        restoredHolder.reattach(createMindboxView(root))
+        return true
+    }
+
+    private fun createMindboxView(root: ViewGroup): MindboxView {
+        return object : MindboxView {
+            override val container: ViewGroup = root
+
+            override fun requestPermission() {
+                currentActivity?.let { activity ->
+                    mindboxNotificationManager.requestPermission(activity = activity)
+                }
+            }
         }
     }
 
