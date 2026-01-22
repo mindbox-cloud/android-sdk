@@ -23,7 +23,6 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
-          fetch-depth: 0
 
       - name: Get last 3 commit messages
         shell: bash
@@ -113,7 +112,7 @@ jobs:
           echo "Manual App ref override: ${APP_REF_OVERRIDE:-<empty>}"
           echo "Default App ref: $DEFAULT_APP_REF"
 
-          # If override is provided: try ONLY override; if missing ref -> fail (red)
+          # If override is provided: try ONLY override; if missing ref -> fail
           if [[ -n "$APP_REF_OVERRIDE" ]]; then
             echo "Override provided -> trying ONLY App ref: $APP_REF_OVERRIDE"
             trigger_pipeline "$APP_REF_OVERRIDE" || rc=$?
