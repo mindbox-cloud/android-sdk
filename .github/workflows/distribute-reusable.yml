@@ -6,6 +6,10 @@ on:
       branch:
         required: true
         type: string
+      app_ref:
+        required: false
+        type: string
+        default: ""
     secrets:
       GITLAB_TRIGGER_TOKEN:
         required: true
@@ -30,13 +34,15 @@ jobs:
           echo "$commits"     >> "$GITHUB_ENV"
           echo "EOF"          >> "$GITHUB_ENV"
 
-      - name: Trigger build & send to FAD (try same branch, fallback to develop)
+      - name: Trigger build & send to FAD (override strict; else same->develop)
         env:
           GITLAB_HOST: mindbox.gitlab.yandexcloud.net
           APP_PROJECT_ID: "900"
           DEFAULT_APP_REF: develop
 
           SOURCE_BRANCH: ${{ inputs.branch }}
+          APP_REF_OVERRIDE: ${{ inputs.app_ref }}
+
           GITLAB_TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
           INPUT_COMMITS: ${{ env.commits }}
         shell: bash
@@ -59,6 +65,7 @@ jobs:
 
             local body
             body="$(cat "$tmp_body" 2>/dev/null || true)"
+            rm -f "$tmp_body"
 
             echo "Trigger HTTP: $code (ref=$ref)"
             echo "Response body:"
@@ -67,58 +74,80 @@ jobs:
             if [[ "$code" == "200" || "$code" == "201" ]]; then
               local web_url
               web_url="$(printf '%s\n' "$body" | sed -n 's/.*"web_url":"\([^"]*\)".*/\1/p')"
-              if [[ -n "$web_url" ]]; then
+              if [[ -n "${web_url:-}" ]]; then
                 echo "Pipeline URL: $web_url"
               fi
-              rm -f "$tmp_body"
               return 0
             fi
 
             if [[ "$code" == "401" || "$code" == "403" ]]; then
               echo "Auth error (HTTP $code). Check that GITLAB_TRIGGER_TOKEN is valid and has access to project ${APP_PROJECT_ID}."
-              rm -f "$tmp_body"
               return 1
             fi
 
-            # Fallback ONLY when ref is missing.
+            # Missing ref: GitLab returns 400 + "Reference not found"
             if [[ "$code" == "400" || "$code" == "404" ]]; then
               if [[ "$body" == *"Reference not found"* ]]; then
-                rm -f "$tmp_body"
                 return 2
               fi
 
               echo "Got HTTP $code but it's NOT 'Reference not found'."
               echo "This can happen if pipelines are blocked for triggers by workflow:rules or job rules when CI_PIPELINE_SOURCE == 'trigger'."
               echo "Check the target repo .gitlab-ci.yml rules/workflow:rules."
-              rm -f "$tmp_body"
               return 1
             fi
 
             if [[ "$code" =~ ^5[0-9][0-9]$ ]]; then
               echo "Server error (HTTP $code). GitLab/proxy might be temporarily unavailable."
-              rm -f "$tmp_body"
               return 1
             fi
 
             echo "Unexpected HTTP status: $code"
-            rm -f "$tmp_body"
             return 1
           }
 
+          echo "SDK branch (INPUT_BRANCH): $SOURCE_BRANCH"
+
+          # Trim override so "   " becomes empty
+          APP_REF_OVERRIDE="$(printf '%s' "${APP_REF_OVERRIDE:-}" | xargs)"
+          echo "Manual App ref override: ${APP_REF_OVERRIDE:-<empty>}"
+          echo "Default App ref: $DEFAULT_APP_REF"
+
+          # If override is provided: try ONLY override; if missing ref -> fail (red)
+          if [[ -n "$APP_REF_OVERRIDE" ]]; then
+            echo "Override provided -> trying ONLY App ref: $APP_REF_OVERRIDE"
+            trigger_pipeline "$APP_REF_OVERRIDE" || rc=$?
+            rc="${rc:-0}"
+
+            if [[ "$rc" == "0" ]]; then
+              echo "Triggered on override ref."
+              exit 0
+            fi
+
+            if [[ "$rc" == "2" ]]; then
+              echo "ERROR: App ref not found: $APP_REF_OVERRIDE (GitLab returned 'Reference not found')"
+              exit 1
+            fi
+
+            echo "Trigger failed for reasons other than missing ref."
+            exit 1
+          fi
+
+          # No override: same branch -> fallback develop
           desired_ref="$SOURCE_BRANCH"
           fallback_ref="$DEFAULT_APP_REF"
 
-          echo "Trying to trigger pipeline on ref: $desired_ref"
+          echo "No override -> trying App ref: $desired_ref"
           trigger_pipeline "$desired_ref" || rc=$?
           rc="${rc:-0}"
 
           if [[ "$rc" == "0" ]]; then
-            echo "Triggered on desired ref."
+            echo "Triggered on same branch."
             exit 0
           fi
 
           if [[ "$rc" == "2" ]]; then
-            echo "Desired ref not found. Falling back to: $fallback_ref"
+            echo "Same branch not found. Falling back to: $fallback_ref"
             trigger_pipeline "$fallback_ref"
             echo "Triggered on fallback ref."
             exit 0
