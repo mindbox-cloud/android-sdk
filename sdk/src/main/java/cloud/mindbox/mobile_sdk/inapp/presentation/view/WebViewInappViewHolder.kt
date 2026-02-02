@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -61,6 +62,7 @@ internal class WebViewInAppViewHolder(
         ConcurrentHashMap()
 
     private val gson: Gson by mindboxInject { this.gson }
+    private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -130,9 +132,6 @@ internal class WebViewInAppViewHolder(
             }
             register(WebViewAction.ALERT) {
                 executeAlertAction(it)
-            }
-            register(WebViewAction.UNKNOWN) {
-                executeLogAction(it)
             }
         }
     }
@@ -344,11 +343,16 @@ internal class WebViewInAppViewHolder(
 
             controller.setVisibility(false)
             controller.setJsBridge(bridge = { json ->
-                when (val message: BridgeMessage? = gson.fromJson<BridgeMessage>(json).getOrNull()) {
+                val message = gson.fromJson<BridgeMessage>(json).getOrNull()
+                if (!messageValidator.isValid(message)) {
+                    return@setJsBridge
+                }
+
+                when (message) {
                     is BridgeMessage.Request -> handleRequest(message, controller, handlers)
                     is BridgeMessage.Response -> handleResponse(message)
                     is BridgeMessage.Error -> handleError(message)
-                    else -> mindboxLogW("Unknown message type: $json")
+                    else -> mindboxLogW("Unknown message type: $message")
                 }
             })
 

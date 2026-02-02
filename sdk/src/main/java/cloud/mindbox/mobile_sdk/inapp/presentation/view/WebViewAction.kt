@@ -31,7 +31,6 @@ internal enum class WebViewAction(val value: String) {
 
     @SerializedName("toast")
     TOAST("toast"),
-    UNKNOWN("unknown"),
 }
 
 internal sealed class BridgeMessage {
