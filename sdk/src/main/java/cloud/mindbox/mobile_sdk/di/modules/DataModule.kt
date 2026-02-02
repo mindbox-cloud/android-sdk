@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerDayLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerSessionLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MinIntervalBetweenShowsLimitChecker
@@ -38,6 +39,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 
+@OptIn(InternalMindboxApi::class)
 internal fun DataModule(
     appContextModule: AppContextModule,
     apiModule: ApiModule

@@ -1,47 +1,47 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
-internal enum class WebViewAction(val value: String) {
+@InternalMindboxApi
+public enum class WebViewAction {
     @SerializedName("init")
-    INIT("init"),
+    INIT,
 
     @SerializedName("ready")
-    READY("ready"),
+    READY,
 
     @SerializedName("click")
-    CLICK("click"),
+    CLICK,
 
     @SerializedName("close")
-    CLOSE("close"),
+    CLOSE,
 
     @SerializedName("hide")
-    HIDE("hide"),
-
-    @SerializedName("show")
-    SHOW("show"),
+    HIDE,
 
     @SerializedName("log")
-    LOG("log"),
+    LOG,
 
     @SerializedName("alert")
-    ALERT("alert"),
+    ALERT,
 
     @SerializedName("toast")
-    TOAST("toast"),
+    TOAST,
 }
 
-internal sealed class BridgeMessage {
-    abstract val version: Int
-    abstract val type: String
-    abstract val action: WebViewAction
-    abstract val payload: String?
-    abstract val id: String
-    abstract val timestamp: Long
+@InternalMindboxApi
+public sealed class BridgeMessage {
+    public abstract val version: Int
+    public abstract val type: String
+    public abstract val action: WebViewAction
+    public abstract val payload: String?
+    public abstract val id: String
+    public abstract val timestamp: Long
 
-    internal data class Request(
+    public data class Request(
         override val version: Int,
         override val action: WebViewAction,
         override val payload: String?,
@@ -50,7 +50,7 @@ internal sealed class BridgeMessage {
         override val type: String = TYPE_REQUEST,
     ) : BridgeMessage()
 
-    internal data class Response(
+    public data class Response(
         override val version: Int,
         override val action: WebViewAction,
         override val payload: String?,
@@ -59,7 +59,7 @@ internal sealed class BridgeMessage {
         override val type: String = TYPE_RESPONSE,
     ) : BridgeMessage()
 
-    internal data class Error(
+    public data class Error(
         override val version: Int,
         override val action: WebViewAction,
         override val payload: String?,
@@ -68,15 +68,15 @@ internal sealed class BridgeMessage {
         override val type: String = TYPE_ERROR,
     ) : BridgeMessage()
 
-    companion object {
-        const val VERSION = 1
-        const val EMPTY_PAYLOAD = "{}"
-        const val TYPE_FIELD_NAME = "type"
-        const val TYPE_REQUEST = "request"
-        const val TYPE_RESPONSE = "response"
-        const val TYPE_ERROR = "error"
+    public companion object {
+        public const val VERSION: Int = 1
+        public const val EMPTY_PAYLOAD: String = "{}"
+        public const val TYPE_FIELD_NAME: String = "type"
+        public const val TYPE_REQUEST: String = "request"
+        public const val TYPE_RESPONSE: String = "response"
+        public const val TYPE_ERROR: String = "error"
 
-        fun createAction(action: WebViewAction, payload: String): Request =
+        public fun createAction(action: WebViewAction, payload: String): Request =
             Request(
                 id = UUID.randomUUID().toString(),
                 version = VERSION,
@@ -85,7 +85,7 @@ internal sealed class BridgeMessage {
                 timestamp = System.currentTimeMillis(),
             )
 
-        fun createResponseAction(message: Request, payload: String?): Response =
+        public fun createResponseAction(message: Request, payload: String?): Response =
             Response(
                 id = message.id,
                 version = message.version,
@@ -94,7 +94,7 @@ internal sealed class BridgeMessage {
                 timestamp = System.currentTimeMillis(),
             )
 
-        fun createErrorAction(message: Request, payload: String?): Error =
+        public fun createErrorAction(message: Request, payload: String?): Error =
             Error(
                 id = message.id,
                 version = message.version,
@@ -105,22 +105,26 @@ internal sealed class BridgeMessage {
     }
 }
 
-internal typealias WebViewActionHandler = (BridgeMessage.Request) -> String
-internal typealias WebViewSuspendActionHandler = suspend (BridgeMessage.Request) -> String
+@InternalMindboxApi
+internal typealias BridgeMessageHandler = (BridgeMessage.Request) -> String
 
+@InternalMindboxApi
+internal typealias BridgeSuspendMessageHandler = suspend (BridgeMessage.Request) -> String
+
+@InternalMindboxApi
 internal class WebViewActionHandlers {
 
-    private val handlersByActionValue: MutableMap<WebViewAction, WebViewActionHandler> = mutableMapOf()
-    private val suspendHandlersByActionValue: MutableMap<WebViewAction, WebViewSuspendActionHandler> = mutableMapOf()
+    private val handlersByActionValue: MutableMap<WebViewAction, BridgeMessageHandler> = mutableMapOf()
+    private val suspendHandlersByActionValue: MutableMap<WebViewAction, BridgeSuspendMessageHandler> = mutableMapOf()
 
-    fun register(actionValue: WebViewAction, handler: WebViewActionHandler) {
+    fun register(actionValue: WebViewAction, handler: BridgeMessageHandler) {
         if (handlersByActionValue.containsKey(actionValue)) {
             mindboxLogW("Handler for action $actionValue already registered")
         }
         handlersByActionValue[actionValue] = handler
     }
 
-    fun registerSuspend(actionValue: WebViewAction, handler: WebViewSuspendActionHandler) {
+    fun registerSuspend(actionValue: WebViewAction, handler: BridgeSuspendMessageHandler) {
         if (suspendHandlersByActionValue.containsKey(actionValue)) {
             mindboxLogW("Suspend handler for action $actionValue already registered")
         }

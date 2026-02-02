@@ -34,8 +34,11 @@ import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.google.gson.Gson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
@@ -106,39 +109,28 @@ internal class WebViewInAppViewHolder(
 
     private fun createWebViewActionHandlers(
         controller: WebViewController,
-        layer: Layer.WebViewLayer
+        layer: Layer.WebViewLayer,
+        configuration: Configuration
     ): WebViewActionHandlers {
         return WebViewActionHandlers().apply {
-            registerSuspend(WebViewAction.READY) {
-                executeReadyAction(layer)
+            register(WebViewAction.CLICK, ::handleClickAction)
+            register(WebViewAction.CLOSE, ::handleCloseAction)
+            register(WebViewAction.LOG, ::handleLogAction)
+            register(WebViewAction.TOAST, ::handleToastAction)
+            register(WebViewAction.ALERT, ::handleAlertAction)
+            register(WebViewAction.READY) {
+                handleReadyAction(layer, configuration)
             }
             register(WebViewAction.INIT) {
-                executeInitAction(controller)
-            }
-            register(WebViewAction.CLICK) {
-                executeCompletedAction(it)
-            }
-            register(WebViewAction.CLOSE) {
-                executeCloseAction()
+                handleInitAction(controller)
             }
             register(WebViewAction.HIDE) {
-                executeHideAction(controller)
-            }
-            register(WebViewAction.LOG) {
-                executeLogAction(it)
-            }
-            register(WebViewAction.TOAST) {
-                executeToastAction(it)
-            }
-            register(WebViewAction.ALERT) {
-                executeAlertAction(it)
+                handleHideAction(controller)
             }
         }
     }
 
-    private suspend fun executeReadyAction(layer: Layer.WebViewLayer): String {
-        val configuration: Configuration = DbManager.listenConfigurations().first()
-
+    private fun handleReadyAction(layer: Layer.WebViewLayer, configuration: Configuration): String {
         val params: TreeMap<String, String> = TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER).apply {
             put("sdkVersion", Mindbox.getSdkVersion())
             put("endpointId", configuration.endpointId)
@@ -150,7 +142,7 @@ internal class WebViewInAppViewHolder(
         return gson.toJson(params)
     }
 
-    private fun executeInitAction(controller: WebViewController): String {
+    private fun handleInitAction(controller: WebViewController): String {
         mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
         closeInappTimer?.cancel()
         closeInappTimer = null
@@ -159,7 +151,7 @@ internal class WebViewInAppViewHolder(
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeCompletedAction(message: BridgeMessage.Request): String {
+    private fun handleClickAction(message: BridgeMessage.Request): String {
         runCatching {
             val actionDto: BackgroundDto.LayerDto.ImageLayerDto.ActionDto =
                 gson.fromJson<BackgroundDto.LayerDto.ImageLayerDto.ActionDto>(message.payload).getOrThrow()
@@ -183,32 +175,32 @@ internal class WebViewInAppViewHolder(
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeCloseAction(): String {
+    private fun handleCloseAction(message: BridgeMessage): String {
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-        mindboxLogI("In-app dismissed by webview action")
+        mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         hide()
         release()
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeHideAction(controller: WebViewController): String {
+    private fun handleHideAction(controller: WebViewController): String {
         controller.setVisibility(false)
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeLogAction(message: BridgeMessage.Request): String {
+    private fun handleLogAction(message: BridgeMessage.Request): String {
         mindboxLogI("JS: ${message.payload}")
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeToastAction(message: BridgeMessage.Request): String {
+    private fun handleToastAction(message: BridgeMessage.Request): String {
         webViewController?.view?.context?.let { context ->
             Toast.makeText(context, message.payload, Toast.LENGTH_LONG).show()
         }
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
-    private fun executeAlertAction(message: BridgeMessage.Request): String {
+    private fun handleAlertAction(message: BridgeMessage.Request): String {
         webViewController?.view?.context?.let { context ->
             AlertDialog.Builder(context)
                 .setMessage(message.payload)
@@ -229,11 +221,11 @@ internal class WebViewInAppViewHolder(
         controller.setEventListener(object : WebViewEventListener {
             override fun onPageFinished(url: String?) {
                 mindboxLogD("onPageFinished: $url")
+                webViewController?.evaluateJavaScript(JS_CHECK_BRIDGE, ::checkEvaluateJavaScript)
             }
 
             override fun onError(error: WebViewError) {
-                val message = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
-                mindboxLogE(message)
+                mindboxLogE("WebView error: code=${error.code}, description=${error.description}, url=${error.url}")
                 if (error.isForMainFrame == true) {
                     mindboxLogE("WebView critical error. Destroying In-App.")
                     release()
@@ -255,11 +247,6 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleRequest(message: BridgeMessage.Request, controller: WebViewController, handlers: WebViewActionHandlers) {
-        val messageId: String = message.id
-        if (messageId.isBlank()) {
-            mindboxLogW("WebView request without id for action ${message.action}")
-            return
-        }
         if (handlers.hasSuspendHandler(message.action)) {
             Mindbox.mindboxScope.launch {
                 val responsePayload: String = handlers.handleRequestSuspend(message)
@@ -294,18 +281,14 @@ internal class WebViewInAppViewHolder(
         controller: WebViewController,
     ) {
         val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, error.message)
+        mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")
         sendActionInternal(controller, errorMessage)
     }
 
     private fun handleResponse(message: BridgeMessage.Response) {
-        val messageId: String = message.id
-        if (messageId.isBlank()) {
-            mindboxLogW("WebView response without id for action ${message.action}")
-            return
-        }
-        val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(messageId)
+        val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(message.id)
         if (responseDeferred == null) {
-            mindboxLogW("No pending response for id $messageId")
+            mindboxLogW("No pending response for id $message.id")
             return
         }
         if (!responseDeferred.isCompleted) {
@@ -315,12 +298,7 @@ internal class WebViewInAppViewHolder(
 
     private fun handleError(message: BridgeMessage.Error) {
         mindboxLogW("WebView error: ${message.payload}")
-        val messageId: String = message.id
-        if (messageId.isBlank()) {
-            mindboxLogW("WebView error without id for action ${message.action}")
-            return
-        }
-        val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(messageId)
+        val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(message.id)
         responseDeferred?.cancel("WebView error: ${message.payload}")
         hide()
     }
@@ -335,43 +313,31 @@ internal class WebViewInAppViewHolder(
         pendingResponsesById.clear()
     }
 
-    private fun addUrlSource(layer: Layer.WebViewLayer) {
+    private fun renderLayer(layer: Layer.WebViewLayer) {
         if (webViewController == null) {
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
-            val handlers: WebViewActionHandlers = createWebViewActionHandlers(controller, layer)
-
-            controller.setVisibility(false)
-            controller.setJsBridge(bridge = { json ->
-                val message = gson.fromJson<BridgeMessage>(json).getOrNull()
-                if (!messageValidator.isValid(message)) {
-                    return@setJsBridge
-                }
-
-                when (message) {
-                    is BridgeMessage.Request -> handleRequest(message, controller, handlers)
-                    is BridgeMessage.Response -> handleResponse(message)
-                    is BridgeMessage.Error -> handleError(message)
-                    else -> mindboxLogW("Unknown message type: $message")
-                }
-            })
 
             Mindbox.mindboxScope.launch {
                 val configuration: Configuration = DbManager.listenConfigurations().first()
-                withContext(Dispatchers.Main) {
-                    controller.setUserAgentSuffix(configuration.getShortUserAgent())
-                }
-                controller.setEventListener(object : WebViewEventListener {
-                    override fun onPageFinished(url: String?) {
-                        webViewController?.evaluateJavaScript(JS_CHECK_BRIDGE, ::checkEvaluateJavaScript)
+                val handlers: WebViewActionHandlers = createWebViewActionHandlers(controller, layer, configuration)
+
+                controller.setVisibility(false)
+                controller.setJsBridge(bridge = { json ->
+                    val message = gson.fromJson<BridgeMessage>(json).getOrNull()
+                    if (!messageValidator.isValid(message)) {
+                        return@setJsBridge
                     }
 
-                    override fun onError(error: WebViewError) {
-                        super.onError(error)
-                        mindboxLogE("WebView error: $error")
-                        hide()
+                    when (message) {
+                        is BridgeMessage.Request -> handleRequest(message, controller, handlers)
+                        is BridgeMessage.Response -> handleResponse(message)
+                        is BridgeMessage.Error -> handleError(message)
+                        else -> mindboxLogW("Unknown message type: $message")
                     }
                 })
+
+                controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
                 val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
                 val stringRequest = StringRequest(
@@ -420,6 +386,7 @@ internal class WebViewInAppViewHolder(
                 controller.executeOnViewThread {
                     if (closeInappTimer != null) {
                         mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
+                        hide()
                         release()
                     }
                 }
@@ -433,7 +400,7 @@ internal class WebViewInAppViewHolder(
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
                 is Layer.WebViewLayer -> {
-                    addUrlSource(layer)
+                    renderLayer(layer)
                 }
 
                 else -> {
@@ -449,7 +416,7 @@ internal class WebViewInAppViewHolder(
         super.reattach(currentRoot)
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
-                is Layer.WebViewLayer -> addUrlSource(layer)
+                is Layer.WebViewLayer -> renderLayer(layer)
                 else -> mindboxLogW("Layer is not supported")
             }
         }

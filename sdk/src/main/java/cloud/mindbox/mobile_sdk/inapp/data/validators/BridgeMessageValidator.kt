@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 
+@OptIn(InternalMindboxApi::class)
 internal class BridgeMessageValidator : Validator<BridgeMessage?> {
     override fun isValid(item: BridgeMessage?): Boolean {
         item ?: return false
@@ -23,13 +25,13 @@ internal class BridgeMessageValidator : Validator<BridgeMessage?> {
                 return false
             }
 
-            if (item.action.value.isBlank()) {
+            if (item.action.name.isEmpty()) {
                 mindboxLogW("BridgeMessage action is empty")
                 return false
             }
 
             if (item.timestamp <= 0L) {
-                mindboxLogW("BridgeMessage timestamp is negative")
+                mindboxLogW("BridgeMessage timestamp must be positive")
                 return false
             }
 

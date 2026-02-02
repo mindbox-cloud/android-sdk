@@ -1,11 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(InternalMindboxApi::class)
 class BridgeMessageValidatorTest {
     private val validator: BridgeMessageValidator = BridgeMessageValidator()
 

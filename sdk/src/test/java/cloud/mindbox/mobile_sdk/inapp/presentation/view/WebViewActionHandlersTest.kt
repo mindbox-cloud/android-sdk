@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -8,7 +9,7 @@ import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, InternalMindboxApi::class)
 class WebViewActionHandlersTest {
 
     @Test
