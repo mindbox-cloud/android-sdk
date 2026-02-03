@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerDayLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerSessionLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MinIntervalBetweenShowsLimitChecker
@@ -25,6 +26,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidato
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
@@ -37,6 +39,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 
+@OptIn(InternalMindboxApi::class)
 internal fun DataModule(
     appContextModule: AppContextModule,
     apiModule: ApiModule
@@ -270,6 +273,23 @@ internal fun DataModule(
 
     override val gson: Gson by lazy {
         GsonBuilder()
+            .registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        BridgeMessage::class.java,
+                        BridgeMessage.TYPE_FIELD_NAME,
+                        true
+                    ).registerSubtype(
+                        BridgeMessage.Request::class.java,
+                        BridgeMessage.TYPE_REQUEST
+                    ).registerSubtype(
+                        BridgeMessage.Response::class.java,
+                        BridgeMessage.TYPE_RESPONSE
+                    ).registerSubtype(
+                        BridgeMessage.Error::class.java,
+                        BridgeMessage.TYPE_ERROR
+                    )
+            )
             .registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
                     .of(
