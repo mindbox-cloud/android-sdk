@@ -17,7 +17,7 @@ internal fun PresentationModule(
     AppContextModule by appContextModule {
 
     override val inAppMessageViewDisplayer by lazy {
-        InAppMessageViewDisplayerImpl(inAppImageSizeStorage)
+        InAppMessageViewDisplayerImpl(inAppImageSizeStorage, featureToggleManager)
     }
 
     override val inAppMessageManager by lazy {

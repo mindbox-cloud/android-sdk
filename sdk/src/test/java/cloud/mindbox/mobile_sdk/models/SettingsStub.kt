@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.models
 
+import cloud.mindbox.mobile_sdk.models.operation.response.FeatureTogglesDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InappSettingsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
@@ -21,7 +22,8 @@ internal class SettingsStub {
                         config = config,
                         pushTokenKeepalive = pushTokenKeepalive
                     ),
-                    inapp = null
+                    inapp = null,
+                    featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
                 ),
                 abtests = null
             )
@@ -43,7 +45,8 @@ internal class SettingsStub {
                     maxInappsPerSession = maxInappsPerSession,
                     maxInappsPerDay = maxInappsPerDay,
                     minIntervalBetweenShows = minIntervalBetweenShows
-                )
+                ),
+                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
             ),
             abtests = null
         )

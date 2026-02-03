@@ -114,6 +114,7 @@ internal interface DataModule : MindboxModule {
     val mobileConfigSettingsManager: MobileConfigSettingsManager
     val integerPositiveValidator: IntegerPositiveValidator
     val inappSettingsManager: InappSettingsManager
+    val featureToggleManager: FeatureToggleManager
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker

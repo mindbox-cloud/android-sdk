@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -34,7 +35,10 @@ internal interface MindboxView {
     fun requestPermission()
 }
 
-internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: InAppImageSizeStorage) :
+internal class InAppMessageViewDisplayerImpl(
+    private val inAppImageSizeStorage: InAppImageSizeStorage,
+    private val featureToggleManager: FeatureToggleManager
+) :
     InAppMessageViewDisplayer {
 
     companion object {
@@ -191,6 +195,11 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
+        when (featureToggleManager.shouldSendInAppShowError()) {
+            true -> mindboxLogI("InApp.ShowFailure sending enabled")
+            false -> mindboxLogI("InApp.ShowFailure sending disabled")
+        }
+
         if (!isRestored) isActionExecuted = false
         if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
 

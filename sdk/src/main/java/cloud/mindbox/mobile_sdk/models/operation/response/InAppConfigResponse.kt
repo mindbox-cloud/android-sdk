@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.FeatureTogglesDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppIsPriorityDeserializer
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
@@ -31,7 +32,9 @@ internal data class SettingsDtoBlank(
     @SerializedName("slidingExpiration")
     val slidingExpiration: SlidingExpirationDtoBlank?,
     @SerializedName("inapp")
-    val inappSettings: InappSettingsDtoBlank?
+    val inappSettings: InappSettingsDtoBlank?,
+    @SerializedName("featureToggles")
+    val featureToggles: FeatureTogglesDtoBlank?
 ) {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
@@ -60,6 +63,12 @@ internal data class SettingsDtoBlank(
         @SerializedName(InappSettingsDtoBlankDeserializer.MIN_INTERVAL_BETWEEN_SHOWS)
         val minIntervalBetweenShows: TimeSpan?,
     )
+
+    @JsonAdapter(FeatureTogglesDtoBlankDeserializer::class)
+    internal data class FeatureTogglesDtoBlank(
+        @SerializedName(FeatureTogglesDtoBlankDeserializer.SHOULD_SEND_INAPP_SHOW_ERROR)
+        val shouldSendInAppShowError: Boolean?
+    )
 }
 
 internal data class SettingsDto(
@@ -70,7 +79,9 @@ internal data class SettingsDto(
     @SerializedName("slidingExpiration")
     val slidingExpiration: SlidingExpirationDto?,
     @SerializedName("inapp")
-    val inapp: InappSettingsDto?
+    val inapp: InappSettingsDto?,
+    @SerializedName("featureToggles")
+    val featureToggles: FeatureTogglesDto?
 )
 
 internal data class OperationDto(
@@ -92,6 +103,10 @@ internal data class InappSettingsDto(
     val maxInappsPerSession: Int?,
     val maxInappsPerDay: Int?,
     val minIntervalBetweenShows: Milliseconds?,
+)
+
+internal data class FeatureTogglesDto(
+    val shouldSendInAppShowError: Boolean
 )
 
 internal data class LogRequestDto(
