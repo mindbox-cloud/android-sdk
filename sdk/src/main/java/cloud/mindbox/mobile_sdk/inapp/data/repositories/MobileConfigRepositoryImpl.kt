@@ -249,7 +249,8 @@ internal class MobileConfigRepositoryImpl(
             null
         }
 
-    private fun getFeatureToggles(configBlank: InAppConfigResponseBlank?): FeatureTogglesDto? =
+    @VisibleForTesting
+    internal fun getFeatureToggles(configBlank: InAppConfigResponseBlank?): FeatureTogglesDto? =
         try {
             configBlank?.settings?.featureToggles?.let {
                 FeatureTogglesDto(

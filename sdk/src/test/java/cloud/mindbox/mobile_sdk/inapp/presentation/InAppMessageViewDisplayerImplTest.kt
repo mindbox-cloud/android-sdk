@@ -25,7 +25,7 @@ internal class InAppMessageViewDisplayerImplTest {
         every { MindboxDI.appModule } returns mockk {
             every { gson } returns Gson()
         }
-        displayer = InAppMessageViewDisplayerImpl(mockk())
+        displayer = InAppMessageViewDisplayerImpl(mockk(), mockk())
     }
 
     @After

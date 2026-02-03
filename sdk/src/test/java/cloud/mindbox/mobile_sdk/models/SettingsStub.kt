@@ -23,7 +23,7 @@ internal class SettingsStub {
                         pushTokenKeepalive = pushTokenKeepalive
                     ),
                     inapp = null,
-                    featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
+                    featureToggles = null
                 ),
                 abtests = null
             )
@@ -46,7 +46,7 @@ internal class SettingsStub {
                     maxInappsPerDay = maxInappsPerDay,
                     minIntervalBetweenShows = minIntervalBetweenShows
                 ),
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
+                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = true)
             ),
             abtests = null
         )
