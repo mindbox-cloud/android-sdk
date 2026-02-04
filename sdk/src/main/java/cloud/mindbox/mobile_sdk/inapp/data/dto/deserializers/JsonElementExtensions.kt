@@ -39,3 +39,9 @@ internal fun JsonElement.getString(): String? {
         else -> null
     }
 }
+
+internal fun JsonObject.getAsBooleanOrNull(key: String): Boolean? {
+    return get(key)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+        ?.asJsonPrimitive
+        ?.asBoolean
+}

@@ -110,12 +110,18 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
             }
 
             val inappSettings = runCatching {
-                gson.fromJson(json.asJsonObject.get("inapp"), SettingsDtoBlank.InappSettingsDtoBlank::class.java)?.copy()
+                gson.fromJson(json.asJsonObject.get("inapp"), InappSettingsDtoBlank::class.java)?.copy()
             }.getOrNull {
                 mindboxLogE("Failed to parse inapp block in settings section ")
             }
 
-            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings)
+            val featureToggles = runCatching {
+                gson.fromJson(json.asJsonObject.get("featureToggles"), FeatureTogglesDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse featureToggles block in settings section")
+            }
+
+            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings, featureToggles)
         }
     }.getOrNull {
         mindboxLogE("Failed to parse settings block", it)

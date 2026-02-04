@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
@@ -157,7 +158,8 @@ internal fun DataModule(
             timeSpanPositiveValidator = slidingExpirationParametersValidator,
             mobileConfigSettingsManager = mobileConfigSettingsManager,
             integerPositiveValidator = integerPositiveValidator,
-            inappSettingsManager = inappSettingsManager
+            inappSettingsManager = inappSettingsManager,
+            featureToggleManager = featureToggleManager
         )
     }
 
@@ -242,6 +244,7 @@ internal fun DataModule(
     }
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }
+    override val featureToggleManager: FeatureToggleManager by lazy { FeatureToggleManagerImpl() }
     override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
     override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker(sessionStorageManager, inAppRepository, timeProvider) }
