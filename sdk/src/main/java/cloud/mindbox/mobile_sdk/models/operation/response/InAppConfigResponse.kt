@@ -66,8 +66,7 @@ internal data class SettingsDtoBlank(
 
     @JsonAdapter(FeatureTogglesDtoBlankDeserializer::class)
     internal data class FeatureTogglesDtoBlank(
-        @SerializedName(FeatureTogglesDtoBlankDeserializer.SHOULD_SEND_INAPP_SHOW_ERROR)
-        val shouldSendInAppShowError: Boolean?
+        val toggles: Map<String, Boolean?>
     )
 }
 
@@ -81,7 +80,7 @@ internal data class SettingsDto(
     @SerializedName("inapp")
     val inapp: InappSettingsDto?,
     @SerializedName("featureToggles")
-    val featureToggles: FeatureTogglesDto?
+    val featureToggles: Map<String, Boolean?>?
 )
 
 internal data class OperationDto(
@@ -103,10 +102,6 @@ internal data class InappSettingsDto(
     val maxInappsPerSession: Int?,
     val maxInappsPerDay: Int?,
     val minIntervalBetweenShows: Milliseconds?,
-)
-
-internal data class FeatureTogglesDto(
-    val shouldSendInAppShowError: Boolean
 )
 
 internal data class LogRequestDto(

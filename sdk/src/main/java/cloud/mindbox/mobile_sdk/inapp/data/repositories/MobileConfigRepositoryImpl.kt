@@ -249,18 +249,8 @@ internal class MobileConfigRepositoryImpl(
             null
         }
 
-    @VisibleForTesting
-    internal fun getFeatureToggles(configBlank: InAppConfigResponseBlank?): FeatureTogglesDto? =
-        try {
-            configBlank?.settings?.featureToggles?.let {
-                FeatureTogglesDto(
-                    shouldSendInAppShowError = it.shouldSendInAppShowError ?: false
-                )
-            }
-        } catch (e: Exception) {
-            mindboxLogE("Error parse config featureToggles settings", e)
-            null
-        }
+    private fun getFeatureToggles(configBlank: InAppConfigResponseBlank?): Map<String, Boolean?>? =
+        configBlank?.settings?.featureToggles?.toggles
 
     private fun getABTests(configBlank: InAppConfigResponseBlank?): List<ABTestDto> {
         return try {

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers
 
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_SHOW_ERROR_FEATURE
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -8,6 +9,7 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -28,7 +30,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertEquals(true, result.shouldSendInAppShowError)
+        assertEquals(true, result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -39,7 +41,20 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertEquals(false, result.shouldSendInAppShowError)
+        assertEquals(false, result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
+    }
+
+    @Test
+    fun `deserialize multiple keys`() {
+        val json = JsonObject().apply {
+            addProperty("shouldSendInAppShowError", true)
+            addProperty("anotherToggle", false)
+        }
+
+        val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
+
+        assertEquals(true, result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
+        assertEquals(false, result.toggles["anotherToggle"])
     }
 
     @Test
@@ -50,7 +65,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -61,7 +76,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -72,7 +87,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -83,7 +98,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -96,7 +111,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -109,7 +124,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -120,7 +135,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 
     @Test
@@ -129,7 +144,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertTrue(result.toggles.isEmpty())
     }
 
     @Test
@@ -140,6 +155,6 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
 
-        assertNull(result.shouldSendInAppShowError)
+        assertNull(result.toggles[SEND_INAPP_SHOW_ERROR_FEATURE])
     }
 }

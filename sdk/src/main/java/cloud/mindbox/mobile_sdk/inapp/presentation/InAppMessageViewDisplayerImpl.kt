@@ -8,9 +8,9 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_SHOW_ERROR_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggle
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -196,7 +196,7 @@ internal class InAppMessageViewDisplayerImpl(
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
-        when (featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR)) {
+        when (featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
             true -> mindboxLogI("InApp.ShowFailure sending enabled")
             false -> mindboxLogI("InApp.ShowFailure sending disabled")
         }

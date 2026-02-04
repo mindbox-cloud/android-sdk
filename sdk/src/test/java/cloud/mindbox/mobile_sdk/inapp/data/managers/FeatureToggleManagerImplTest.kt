@@ -1,7 +1,5 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggle
-import cloud.mindbox.mobile_sdk.models.operation.response.FeatureTogglesDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
 import org.junit.Assert.assertEquals
@@ -18,7 +16,7 @@ class FeatureToggleManagerImplTest {
     }
 
     @Test
-    fun `applyToggles sets SEND_INAPP_SHOW_ERROR to true when featureToggles is true`() {
+    fun `applyToggles sets shouldSendInAppShowError to true when featureToggles contains true`() {
         val config = InAppConfigResponse(
             inApps = null,
             monitoring = null,
@@ -27,18 +25,18 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = true)
+                featureToggles = mapOf("shouldSendInAppShowError" to true)
             ),
             abtests = null
         )
 
         featureToggleManager.applyToggles(config)
 
-        assertEquals(true, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
-    fun `applyToggles sets SEND_INAPP_SHOW_ERROR to false when featureToggles is false`() {
+    fun `applyToggles sets shouldSendInAppShowError to false when featureToggles contains false`() {
         val config = InAppConfigResponse(
             inApps = null,
             monitoring = null,
@@ -47,18 +45,66 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
+                featureToggles = mapOf("shouldSendInAppShowError" to false)
             ),
             abtests = null
         )
 
         featureToggleManager.applyToggles(config)
 
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
-    fun `applyToggles sets SEND_INAPP_SHOW_ERROR to false when featureToggles is null`() {
+    fun `applyToggles handles multiple toggles`() {
+        val config = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf(
+                    "shouldSendInAppShowError" to true,
+                    "anotherToggle" to false
+                )
+            ),
+            abtests = null
+        )
+
+        featureToggleManager.applyToggles(config)
+
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
+        assertEquals(false, featureToggleManager.isEnabled("anotherToggle"))
+    }
+
+    @Test
+    fun `applyToggles ignores null values in featureToggles map`() {
+        val config = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf(
+                    "shouldSendInAppShowError" to true,
+                    "invalidToggle" to null
+                )
+            ),
+            abtests = null
+        )
+
+        featureToggleManager.applyToggles(config)
+
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
+        assertEquals(false, featureToggleManager.isEnabled("invalidToggle"))
+    }
+
+    @Test
+    fun `applyToggles returns false when featureToggles is null`() {
         val config = InAppConfigResponse(
             inApps = null,
             monitoring = null,
@@ -74,11 +120,11 @@ class FeatureToggleManagerImplTest {
 
         featureToggleManager.applyToggles(config)
 
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
-    fun `applyToggles sets SEND_INAPP_SHOW_ERROR to false when settings is null`() {
+    fun `applyToggles returns false when settings is null`() {
         val config = InAppConfigResponse(
             inApps = null,
             monitoring = null,
@@ -88,19 +134,19 @@ class FeatureToggleManagerImplTest {
 
         featureToggleManager.applyToggles(config)
 
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
-    fun `applyToggles sets SEND_INAPP_SHOW_ERROR to false when config is null`() {
+    fun `applyToggles returns false when config is null`() {
         featureToggleManager.applyToggles(null)
 
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
     fun `isEnabled returns false by default`() {
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
@@ -113,12 +159,12 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = true)
+                featureToggles = mapOf("shouldSendInAppShowError" to true)
             ),
             abtests = null
         )
         featureToggleManager.applyToggles(configTrue)
-        assertEquals(true, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
 
         val configFalse = InAppConfigResponse(
             inApps = null,
@@ -128,12 +174,12 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
+                featureToggles = mapOf("shouldSendInAppShowError" to false)
             ),
             abtests = null
         )
         featureToggleManager.applyToggles(configFalse)
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
@@ -146,12 +192,12 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = false)
+                featureToggles = mapOf("shouldSendInAppShowError" to false)
             ),
             abtests = null
         )
         featureToggleManager.applyToggles(configFalse)
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
 
         val configTrue = InAppConfigResponse(
             inApps = null,
@@ -161,16 +207,16 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = true)
+                featureToggles = mapOf("shouldSendInAppShowError" to true)
             ),
             abtests = null
         )
         featureToggleManager.applyToggles(configTrue)
-        assertEquals(true, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
-    fun `applyToggles resets to false when null config is applied after true`() {
+    fun `applyToggles clears previous toggles when null config is applied`() {
         val configTrue = InAppConfigResponse(
             inApps = null,
             monitoring = null,
@@ -179,14 +225,53 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = FeatureTogglesDto(shouldSendInAppShowError = true)
+                featureToggles = mapOf("shouldSendInAppShowError" to true)
             ),
             abtests = null
         )
         featureToggleManager.applyToggles(configTrue)
-        assertEquals(true, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
 
         featureToggleManager.applyToggles(null)
-        assertEquals(false, featureToggleManager.isEnabled(FeatureToggle.SEND_INAPP_SHOW_ERROR))
+        assertEquals(false, featureToggleManager.isEnabled("shouldSendInAppShowError"))
+    }
+
+    @Test
+    fun `applyToggles clears previous toggles when new config is applied`() {
+        val config1 = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf(
+                    "shouldSendInAppShowError" to true,
+                    "toggle1" to true
+                )
+            ),
+            abtests = null
+        )
+        featureToggleManager.applyToggles(config1)
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
+        assertEquals(true, featureToggleManager.isEnabled("toggle1"))
+
+        val config2 = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf("toggle2" to true)
+            ),
+            abtests = null
+        )
+        featureToggleManager.applyToggles(config2)
+        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
+        assertEquals(false, featureToggleManager.isEnabled("toggle1"))
+        assertEquals(true, featureToggleManager.isEnabled("toggle2"))
     }
 }

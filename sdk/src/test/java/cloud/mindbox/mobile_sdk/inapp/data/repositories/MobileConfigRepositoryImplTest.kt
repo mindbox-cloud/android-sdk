@@ -12,7 +12,6 @@ import org.junit.Rule
 import org.junit.Test
 import cloud.mindbox.mobile_sdk.inapp.data.validators.TimeSpanPositiveValidator
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank
 
 internal class MobileConfigRepositoryImplTest {
 
@@ -69,95 +68,6 @@ internal class MobileConfigRepositoryImplTest {
         repository.getInApps(configBlank)
 
         verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any()) }
-    }
-
-    @Test
-    fun `getFeatureToggles when featureToggles is present with true returns FeatureTogglesDto with true`() {
-        val settingsBlank = SettingsDtoBlank(
-            operations = null,
-            ttl = null,
-            slidingExpiration = null,
-            inappSettings = null,
-            featureToggles = SettingsDtoBlank.FeatureTogglesDtoBlank(
-                shouldSendInAppShowError = true
-            )
-        )
-        val configBlank = InAppConfigResponseBlank(null, null, settingsBlank, null)
-
-        val result = repository.getFeatureToggles(configBlank)
-
-        assertNotNull(result)
-        assertEquals(true, result?.shouldSendInAppShowError)
-    }
-
-    @Test
-    fun `getFeatureToggles when featureToggles is present with false returns FeatureTogglesDto with false`() {
-        val settingsBlank = SettingsDtoBlank(
-            operations = null,
-            ttl = null,
-            slidingExpiration = null,
-            inappSettings = null,
-            featureToggles = SettingsDtoBlank.FeatureTogglesDtoBlank(
-                shouldSendInAppShowError = false
-            )
-        )
-        val configBlank = InAppConfigResponseBlank(null, null, settingsBlank, null)
-
-        val result = repository.getFeatureToggles(configBlank)
-
-        assertNotNull(result)
-        assertEquals(false, result?.shouldSendInAppShowError)
-    }
-
-    @Test
-    fun `getFeatureToggles when featureToggles is present with null value returns FeatureTogglesDto with false`() {
-        val settingsBlank = SettingsDtoBlank(
-            operations = null,
-            ttl = null,
-            slidingExpiration = null,
-            inappSettings = null,
-            featureToggles = SettingsDtoBlank.FeatureTogglesDtoBlank(
-                shouldSendInAppShowError = null
-            )
-        )
-        val configBlank = InAppConfigResponseBlank(null, null, settingsBlank, null)
-
-        val result = repository.getFeatureToggles(configBlank)
-
-        assertNotNull(result)
-        assertEquals(false, result?.shouldSendInAppShowError)
-    }
-
-    @Test
-    fun `getFeatureToggles when featureToggles section is absent returns null`() {
-        val settingsBlank = SettingsDtoBlank(
-            operations = null,
-            ttl = null,
-            slidingExpiration = null,
-            inappSettings = null,
-            featureToggles = null
-        )
-        val configBlank = InAppConfigResponseBlank(null, null, settingsBlank, null)
-
-        val result = repository.getFeatureToggles(configBlank)
-
-        assertNull(result)
-    }
-
-    @Test
-    fun `getFeatureToggles when settings is null returns null`() {
-        val configBlank = InAppConfigResponseBlank(null, null, null, null)
-
-        val result = repository.getFeatureToggles(configBlank)
-
-        assertNull(result)
-    }
-
-    @Test
-    fun `getFeatureToggles when configBlank is null returns null`() {
-        val result = repository.getFeatureToggles(null)
-
-        assertNull(result)
     }
 
     private fun createRepository(): MobileConfigRepositoryImpl {

@@ -4,6 +4,7 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_SHOW_ERROR_FEATURE
 import cloud.mindbox.mobile_sdk.models.operation.response.ABTestDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import io.mockk.every
@@ -129,7 +130,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull(config.inappSettings?.minIntervalBetweenShows)
 
         assertNotNull(config.featureToggles)
-        assertEquals(true, config.featureToggles?.shouldSendInAppShowError)
+        assertEquals(true, config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     // MARK: - Operations
@@ -646,7 +647,7 @@ class SettingsMobileConfigSerializationManagerTest {
         val config = manager.deserializeSettings(json)!!
 
         assertNotNull("FeatureToggles must be successfully parsed", config.featureToggles)
-        assertEquals(true, config.featureToggles?.shouldSendInAppShowError)
+        assertEquals(true, config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
@@ -663,7 +664,6 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
         assertNull("FeatureToggles must be `null` if the key `featureToggles` is not found", config.featureToggles)
-        assertNull("shouldSendInAppShowError must be `null`", config.featureToggles?.shouldSendInAppShowError)
     }
 
     @Test
@@ -683,7 +683,6 @@ class SettingsMobileConfigSerializationManagerTest {
             "FeatureToggles must be `null` if the type of `featureToggles` is not an object",
             config.featureToggles
         )
-        assertNull("shouldSendInAppShowError must be `null`", config.featureToggles?.shouldSendInAppShowError)
     }
 
     @Test
@@ -700,7 +699,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
         assertNotNull("FeatureToggles must be parsed if the object exists", config.featureToggles)
-        assertNull("shouldSendInAppShowError must be `null` if the key is not found", config.featureToggles?.shouldSendInAppShowError)
+        assertTrue("FeatureToggles should be empty if no valid values", config.featureToggles!!.toggles.isEmpty())
     }
 
     @Test
@@ -717,7 +716,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
 
         assertNotNull("FeatureToggles must be parsed if the object exists", config.featureToggles)
-        assertNull("shouldSendInAppShowError must be `null` if the value is not a boolean", config.featureToggles?.shouldSendInAppShowError)
+        assertNull("shouldSendInAppShowError must be `null` if the value is not a boolean", config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
@@ -726,6 +725,6 @@ class SettingsMobileConfigSerializationManagerTest {
         val config = manager.deserializeSettings(json)!!
 
         assertNotNull("FeatureToggles must be successfully parsed", config.featureToggles)
-        assertEquals(false, config.featureToggles?.shouldSendInAppShowError)
+        assertEquals(false, config.featureToggles?.toggles?.get("shouldSendInAppShowError"))
     }
 }

@@ -15,13 +15,14 @@ internal class FeatureTogglesDtoBlankDeserializer : JsonDeserializer<FeatureTogg
         context: JsonDeserializationContext
     ): FeatureTogglesDtoBlank {
         val jsonObject = json.asJsonObject
+        val result = mutableMapOf<String, Boolean?>()
 
-        return FeatureTogglesDtoBlank(
-            shouldSendInAppShowError = jsonObject.getAsBooleanOrNull(SHOULD_SEND_INAPP_SHOW_ERROR)
-        )
-    }
+        jsonObject.entrySet().forEach { (key, value) ->
+            result[key] = value?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+                ?.asJsonPrimitive
+                ?.asBoolean
+        }
 
-    companion object {
-        const val SHOULD_SEND_INAPP_SHOW_ERROR = "shouldSendInAppShowError"
+        return FeatureTogglesDtoBlank(toggles = result)
     }
 }
