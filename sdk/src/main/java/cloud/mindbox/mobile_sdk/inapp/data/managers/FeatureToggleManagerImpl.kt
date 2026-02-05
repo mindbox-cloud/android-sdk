@@ -20,6 +20,6 @@ internal class FeatureToggleManagerImpl : FeatureToggleManager {
     }
 
     override fun isEnabled(key: String): Boolean {
-        return toggles[key] ?: false
+        return toggles[key] ?: true
     }
 }
