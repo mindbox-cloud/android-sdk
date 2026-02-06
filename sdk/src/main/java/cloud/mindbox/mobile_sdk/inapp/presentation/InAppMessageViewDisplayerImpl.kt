@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -34,6 +36,8 @@ internal interface MindboxView {
     val container: ViewGroup
 
     fun requestPermission()
+
+    fun registerBack(onBack: OnBackPressedCallback)
 }
 
 internal class InAppMessageViewDisplayerImpl(
@@ -232,16 +236,7 @@ internal class InAppMessageViewDisplayerImpl(
         }
 
         currentActivity?.root?.let { root ->
-            currentHolder?.show(object : MindboxView {
-                override val container: ViewGroup
-                    get() = root
-
-                override fun requestPermission() {
-                    currentActivity?.let { activity ->
-                        mindboxNotificationManager.requestPermission(activity = activity)
-                    }
-                }
-            })
+            currentHolder?.show(createMindboxView(root))
         } ?: run {
             mindboxLogE("failed to show inApp: currentRoot is null")
         }
@@ -269,6 +264,11 @@ internal class InAppMessageViewDisplayerImpl(
                 currentActivity?.let { activity ->
                     mindboxNotificationManager.requestPermission(activity = activity)
                 }
+            }
+
+            override fun registerBack(onBack: OnBackPressedCallback) {
+                val backOwner = currentActivity as? OnBackPressedDispatcherOwner
+                backOwner?.onBackPressedDispatcher?.addCallback(onBack)
             }
         }
     }
