@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
@@ -22,17 +23,13 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -61,11 +58,13 @@ internal class WebViewInAppViewHolder(
 
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
+    private var backPressedCallback: OnBackPressedCallback? = null
     private val pendingResponsesById: MutableMap<String, CompletableDeferred<BridgeMessage.Response>> =
         ConcurrentHashMap()
 
     private val gson: Gson by mindboxInject { this.gson }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
+    private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -143,11 +142,10 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleInitAction(controller: WebViewController): String {
-        mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-        closeInappTimer?.cancel()
-        closeInappTimer = null
+        stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         controller.setVisibility(true)
+        backPressedCallback?.isEnabled = true
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -233,6 +231,23 @@ internal class WebViewInAppViewHolder(
             }
         })
         return controller
+    }
+
+    private fun clearBackPressedCallback() {
+        backPressedCallback?.remove()
+        backPressedCallback = null
+    }
+
+    private fun sendBackAction(controller: WebViewController) {
+        val message: BridgeMessage.Request = BridgeMessage.createAction(
+            WebViewAction.BACK,
+            BridgeMessage.EMPTY_PAYLOAD
+        )
+        sendActionInternal(controller, message) { error ->
+            mindboxLogW("Failed to send back action to WebView: $error")
+            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+            hide()
+        }
     }
 
     internal fun checkEvaluateJavaScript(response: String?): Boolean {
@@ -329,35 +344,38 @@ internal class WebViewInAppViewHolder(
                         return@setJsBridge
                     }
 
-                    when (message) {
-                        is BridgeMessage.Request -> handleRequest(message, controller, handlers)
-                        is BridgeMessage.Response -> handleResponse(message)
-                        is BridgeMessage.Error -> handleError(message)
-                        else -> mindboxLogW("Unknown message type: $message")
+                    controller.executeOnViewThread {
+                        when (message) {
+                            is BridgeMessage.Request -> handleRequest(message, controller, handlers)
+                            is BridgeMessage.Response -> handleResponse(message)
+                            is BridgeMessage.Error -> handleError(message)
+                            else -> mindboxLogW("Unknown message type: $message")
+                        }
                     }
                 })
 
                 controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
-                val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
-                val stringRequest = StringRequest(
-                    Request.Method.GET,
-                    layer.contentUrl,
-                    { response: String ->
-                        onContentLoaded(
+                layer.contentUrl?.let { contentUrl ->
+                    runCatching {
+                        gatewayManager.fetchWebViewContent(contentUrl)
+                    }.onSuccess { response: String ->
+                        onContentPageLoaded(
                             controller = controller,
                             content = WebViewHtmlContent(
                                 baseUrl = layer.baseUrl ?: "",
                                 html = response
                             )
                         )
-                    },
-                    { error: VolleyError ->
-                        mindboxLogE("Failed to fetch HTML content for In-App: $error. Destroying.")
+                    }.onFailure { e ->
+                        mindboxLogE("Failed to fetch HTML content for In-App: $e")
+                        hide()
                         release()
                     }
-                )
-                requestQueue.add(stringRequest)
+                } ?: run {
+                    mindboxLogE("WebView content URL is null")
+                    hide()
+                }
             }
         }
 
@@ -370,27 +388,33 @@ internal class WebViewInAppViewHolder(
         } ?: release()
     }
 
-    private fun onContentLoaded(controller: WebViewController, content: WebViewHtmlContent) {
+    private fun onContentPageLoaded(controller: WebViewController, content: WebViewHtmlContent) {
         controller.executeOnViewThread {
             controller.loadContent(content)
-            startTimer(controller)
+        }
+        startTimer {
+            controller.executeOnViewThread {
+                mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
+                hide()
+                release()
+            }
         }
     }
 
-    private fun startTimer(controller: WebViewController) {
+    private fun stopTimer() {
+        closeInappTimer?.let { timer ->
+            mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
+            timer.cancel()
+        }
+        closeInappTimer = null
+    }
+
+    private fun startTimer(onTimeOut: () -> Unit) {
         Stopwatch.start(TIMER)
         closeInappTimer = timer(
             initialDelay = INIT_TIMEOUT_MS,
             period = INIT_TIMEOUT_MS,
-            action = {
-                controller.executeOnViewThread {
-                    if (closeInappTimer != null) {
-                        mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
-                        hide()
-                        release()
-                    }
-                }
-            }
+            action = { onTimeOut() }
         )
     }
 
@@ -399,17 +423,27 @@ internal class WebViewInAppViewHolder(
         mindboxLogI("Try to show in-app with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
-                is Layer.WebViewLayer -> {
-                    renderLayer(layer)
-                }
-
-                else -> {
-                    mindboxLogD("Layer is not supported")
-                }
+                is Layer.WebViewLayer -> renderLayer(layer)
+                else -> mindboxLogW("Layer is not supported")
             }
         }
         mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
         inAppLayout.requestFocus()
+        webViewController?.let { controller ->
+            currentRoot.registerBack(registerBackPressedCallback(controller))
+        }
+    }
+
+    private fun registerBackPressedCallback(controller: WebViewController): OnBackPressedCallback {
+        val isBackCallbackEnabled = backPressedCallback?.isEnabled ?: false
+        clearBackPressedCallback()
+        val callback = object : OnBackPressedCallback(isBackCallbackEnabled) {
+            override fun handleOnBackPressed() {
+                sendBackAction(controller)
+            }
+        }
+        backPressedCallback = callback
+        return callback
     }
 
     override fun reattach(currentRoot: MindboxView) {
@@ -421,15 +455,18 @@ internal class WebViewInAppViewHolder(
             }
         }
         inAppLayout.requestFocus()
+        webViewController?.let { controller ->
+            currentRoot.registerBack(registerBackPressedCallback(controller))
+        }
     }
 
     override fun canReuseOnRestore(inAppId: String): Boolean = wrapper.inAppType.inAppId == inAppId
 
     override fun hide() {
         // Clean up timeout when hiding
-        closeInappTimer?.cancel()
-        closeInappTimer = null
+        stopTimer()
         cancelPendingResponses("WebView In-App is hidden")
+        clearBackPressedCallback()
         webViewController?.let { controller ->
             val view: WebViewPlatformView = controller.view
             inAppLayout.removeView(view)
@@ -440,9 +477,9 @@ internal class WebViewInAppViewHolder(
     override fun release() {
         super.release()
         // Clean up WebView resources
-        closeInappTimer?.cancel()
-        closeInappTimer = null
+        stopTimer()
         cancelPendingResponses("WebView In-App is released")
+        clearBackPressedCallback()
         webViewController?.destroy()
         webViewController = null
     }

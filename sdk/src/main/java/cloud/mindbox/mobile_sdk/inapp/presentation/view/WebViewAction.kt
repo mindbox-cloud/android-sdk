@@ -22,6 +22,9 @@ public enum class WebViewAction {
     @SerializedName("hide")
     HIDE,
 
+    @SerializedName("back")
+    BACK,
+
     @SerializedName("log")
     LOG,
 
