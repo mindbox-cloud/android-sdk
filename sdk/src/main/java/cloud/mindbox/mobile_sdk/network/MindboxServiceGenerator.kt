@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyLog
 import kotlinx.coroutines.launch
@@ -33,6 +34,16 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
             requestQueue.add(request)
             logMindboxRequest(request)
         }
+    }
+
+    internal fun addToRequestQueue(request: Request<*>) = LoggingExceptionHandler.runCatching {
+        requestQueue.add(request)
+        mindboxLogD(
+            """
+            ---> Method: ${request.method} ${request.url}
+            ---> End of request
+            """.trimIndent()
+        )
     }
 
     private fun logMindboxRequest(request: MindboxRequest) {

@@ -23,17 +23,13 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -68,6 +64,7 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
+    private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -359,25 +356,26 @@ internal class WebViewInAppViewHolder(
 
                 controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
-                val requestQueue: RequestQueue = Volley.newRequestQueue(currentDialog.context)
-                val stringRequest = StringRequest(
-                    Request.Method.GET,
-                    layer.contentUrl,
-                    { response: String ->
-                        onContentLoaded(
+                layer.contentUrl?.let { contentUrl ->
+                    runCatching {
+                        gatewayManager.fetchWebViewContent(contentUrl)
+                    }.onSuccess { response: String ->
+                        onContentPageLoaded(
                             controller = controller,
                             content = WebViewHtmlContent(
                                 baseUrl = layer.baseUrl ?: "",
                                 html = response
                             )
                         )
-                    },
-                    { error: VolleyError ->
-                        mindboxLogE("Failed to fetch HTML content for In-App: $error. Destroying.")
+                    }.onFailure { e ->
+                        mindboxLogE("Failed to fetch HTML content for In-App: $e")
+                        hide()
                         release()
                     }
-                )
-                requestQueue.add(stringRequest)
+                } ?: run {
+                    mindboxLogE("WebView content URL is null")
+                    hide()
+                }
             }
         }
 
@@ -390,8 +388,10 @@ internal class WebViewInAppViewHolder(
         } ?: release()
     }
 
-    private fun onContentLoaded(controller: WebViewController, content: WebViewHtmlContent) {
-        controller.loadContent(content)
+    private fun onContentPageLoaded(controller: WebViewController, content: WebViewHtmlContent) {
+        controller.executeOnViewThread {
+            controller.loadContent(content)
+        }
         startTimer {
             controller.executeOnViewThread {
                 mindboxLogE("WebView initialization timed out after ${Stopwatch.stop(TIMER)}.")
