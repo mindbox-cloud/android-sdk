@@ -48,12 +48,4 @@ internal class InAppGeoRepositoryImpl(
             geoSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
         }
     }
-
-    override fun setLastGeoError(errorDetails: String) {
-        sessionStorageManager.lastGeoError = errorDetails
-    }
-
-    override fun getLastGeoError(): String? {
-        return sessionStorageManager.lastGeoError
-    }
 }

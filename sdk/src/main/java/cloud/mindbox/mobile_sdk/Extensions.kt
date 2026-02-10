@@ -21,16 +21,13 @@ import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
-import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
-import com.android.volley.TimeoutError
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.HttpHeaderParser
 import com.google.gson.Gson
@@ -42,7 +39,6 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
-import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Queue
@@ -213,46 +209,6 @@ internal fun VolleyError.getErrorResponseBodyData(): String {
         ?: ""
 }
 
-internal fun VolleyError.isTimeoutError(): Boolean {
-    return this is TimeoutError || cause is SocketTimeoutException
-}
-
-internal fun VolleyError.isServerError(): Boolean {
-    val statusCode = networkResponse?.statusCode ?: return false
-    return statusCode in 500..503
-}
-
-internal fun Throwable?.asVolleyError(): VolleyError? = this as? VolleyError
-
-internal fun Throwable.getVolleyErrorDetails(): String {
-    val volleyError = this.asVolleyError() ?: return "volleyError=null"
-    val statusCode = volleyError.networkResponse?.statusCode ?: "timeout error"
-    val networkTimeMs = volleyError.networkTimeMs
-    val body = volleyError.getErrorResponseBodyData()
-    return "statusCode=$statusCode, networkTimeMs=$networkTimeMs, body=$body"
-}
-
-internal fun TargetingData.getProductFromTargetingData(): Pair<String, String>? {
-    if (this !is TargetingData.OperationBody) return null
-
-    return parseOperationBody(this.operationBody)
-}
-
-private fun parseOperationBody(operationBody: String?): Pair<String, String>? {
-    val body = Gson().fromJson(operationBody, OperationBodyRequest::class.java) ?: return null
-
-    return body.viewProductRequest
-        ?.product
-        ?.ids
-        ?.ids
-        ?.entries
-        ?.firstOrNull()
-        ?.takeIf { entry ->
-            entry.value?.isNotBlank() == true
-        }
-        ?.let { entry -> entry.key to entry.value!! }
-}
-
 internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boolean = true) {
     val isMainThread = Looper.myLooper() == Looper.getMainLooper()
     when {
@@ -359,10 +315,4 @@ internal fun InAppType.getImageUrl(): String? {
                 is Layer.ImageLayer.Source.UrlSource -> source.url
             }
         }
-}
-
-internal fun Throwable.shouldTrackTargetingError(): Boolean {
-    return this.cause.asVolleyError()?.let { volleyError ->
-        volleyError.isTimeoutError() || volleyError.isServerError()
-    } ?: false
 }

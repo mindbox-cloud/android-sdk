@@ -11,6 +11,4 @@ internal abstract class OperationNodeBase(override val type: String) : TreeTarge
     override fun hasGeoNode(): Boolean = false
 
     override fun hasOperationNode(): Boolean = true
-
-    override fun hasProductSegmentationNode(): Boolean = false
 }

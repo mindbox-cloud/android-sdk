@@ -35,10 +35,10 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `trackFailure does not send by default when isShouldSendImmediately is not passed`() {
+    fun `collectFailure does not send immediately`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.collectFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDetails = "error"
@@ -48,15 +48,14 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `trackFailure sends immediately when isShouldSendImmediately is true and feature toggle is enabled`() {
+    fun `sendFailure sends immediately when feature toggle is enabled`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val slot = slot<List<InAppShowFailure>>()
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.sendFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = "error",
-            isShouldSendImmediately = true
+            errorDetails = "error"
         )
 
         verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
@@ -69,36 +68,34 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `trackFailure does not send when feature toggle is disabled`() {
+    fun `sendFailure does not send when feature toggle is disabled`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.sendFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = "error",
-            isShouldSendImmediately = true
+            errorDetails = "error"
         )
 
         verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
     }
 
     @Test
-    fun `trackFailure does not add duplicate when same inAppId already tracked`() {
+    fun `collectFailure does not add duplicate when same inAppId already tracked`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val slot = slot<List<InAppShowFailure>>()
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.collectFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = "first",
-            isShouldSendImmediately = false
+            errorDetails = "first"
         )
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.collectFailure(
             inAppId = inAppId,
             failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-            errorDetails = "second",
-            isShouldSendImmediately = true
+            errorDetails = "second"
         )
+        inAppFailureTracker.sendCollectedFailures()
 
         verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
         val captured = slot.captured
@@ -107,16 +104,15 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `trackFailure truncates errorDetails to 1000 chars`() {
+    fun `sendFailure truncates errorDetails to 1000 chars`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val longErrorDetails = "a".repeat(1500)
         val slot = slot<List<InAppShowFailure>>()
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.sendFailure(
             inAppId = inAppId,
             failureReason = FailureReason.UNKNOWN_ERROR,
-            errorDetails = longErrorDetails,
-            isShouldSendImmediately = true
+            errorDetails = longErrorDetails
         )
 
         verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
@@ -124,23 +120,39 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `sendAccumulatedFailures sends all failures when feature toggle is enabled`() {
+    fun `collectFailure truncates errorDetails to 1000 chars`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val longErrorDetails = "a".repeat(1500)
+        val slot = slot<List<InAppShowFailure>>()
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.UNKNOWN_ERROR,
+            errorDetails = longErrorDetails
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
+        assertEquals("a".repeat(1000), slot.captured[0].errorDetails)
+    }
+
+    @Test
+    fun `sendCollectedFailures sends all failures when feature toggle is enabled`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val slot = slot<List<InAppShowFailure>>()
-        inAppFailureTracker.trackFailure(
+
+        inAppFailureTracker.collectFailure(
             inAppId = "inApp1",
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = false
+            errorDetails = null
         )
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.collectFailure(
             inAppId = "inApp2",
             failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-            errorDetails = "details",
-            isShouldSendImmediately = false
+            errorDetails = "details"
         )
 
-        inAppFailureTracker.sendAccumulatedFailures()
+        inAppFailureTracker.sendCollectedFailures()
         verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
         val captured = slot.captured
         assertEquals(2, captured.size)
@@ -149,71 +161,58 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `sendAccumulatedFailures does not send when feature toggle is disabled`() {
-        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
-        inAppFailureTracker.trackFailure(
+    fun `sendCollectedFailures clears failures after sending`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+
+        inAppFailureTracker.collectFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = false
+            errorDetails = null
         )
+        inAppFailureTracker.sendCollectedFailures()
+        inAppFailureTracker.sendCollectedFailures()
 
-        inAppFailureTracker.sendAccumulatedFailures()
+        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(any()) }
+    }
+
+    @Test
+    fun `sendCollectedFailures does not send when feature toggle is disabled`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDetails = null
+        )
+        inAppFailureTracker.sendCollectedFailures()
 
         verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
     }
 
     @Test
-    fun `clearFailures clears accumulated failures`() {
+    fun `clearFailures clears collected failures`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.collectFailure(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = false
+            errorDetails = null
         )
 
         inAppFailureTracker.clearFailures()
-        inAppFailureTracker.sendAccumulatedFailures()
+        inAppFailureTracker.sendCollectedFailures()
 
         verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
     }
 
     @Test
-    fun `trackFailure without isShouldSendImmediately accumulates failures`() {
-        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
-        inAppFailureTracker.trackFailure(
-            inAppId = "inApp1",
-            failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = false
-        )
-        inAppFailureTracker.trackFailure(
-            inAppId = "inApp2",
-            failureReason = FailureReason.HTML_LOAD_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = false
-        )
-
-        verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
-
-        inAppFailureTracker.sendAccumulatedFailures()
-
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        assertEquals(2, slot.captured.size)
-    }
-
-    @Test
-    fun `trackFailure with null errorDetails`() {
+    fun `sendFailure with null errorDetails`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val slot = slot<List<InAppShowFailure>>()
 
-        inAppFailureTracker.trackFailure(
+        inAppFailureTracker.sendFailure(
             inAppId = inAppId,
             failureReason = FailureReason.GEO_TARGETING_FAILED,
-            errorDetails = null,
-            isShouldSendImmediately = true
+            errorDetails = null
         )
 
         verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }

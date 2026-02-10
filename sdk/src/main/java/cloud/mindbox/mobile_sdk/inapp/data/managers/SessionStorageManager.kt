@@ -22,9 +22,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var inAppProductSegmentations: HashMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
     var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = mutableMapOf()
-    var lastCustomerSegmentationError: String? = null
-    var lastGeoError: String? = null
-    var lastProductSegmentationErrors: MutableMap<Pair<String, String>, String> = mutableMapOf()
+    var lastTargetingErrors: MutableMap<TargetingErrorKey, String> = mutableMapOf()
     var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
@@ -78,9 +76,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()
         processedProductSegmentations.clear()
-        lastCustomerSegmentationError = null
-        lastGeoError = null
-        lastProductSegmentationErrors.clear()
+        lastTargetingErrors.clear()
         currentSessionInApps = emptyList()
         shownInAppIdsWithEvents.clear()
         configFetchingError = false

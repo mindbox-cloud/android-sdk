@@ -6,12 +6,14 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppTargetingErrorRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.*
@@ -83,6 +85,8 @@ internal class InAppProcessingManagerTest {
     private val geoSerializationManager: GeoSerializationManager = mockk(relaxed = true)
     private val gatewayManager: GatewayManager = mockk(relaxed = true)
     private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
+    private val inAppTargetingErrorRepository: InAppTargetingErrorRepository =
+        spyk(InAppTargetingErrorRepositoryImpl(sessionStorageManager))
 
     private val inAppGeoRepositoryTestImpl: InAppGeoRepositoryImpl =
         spyk(
@@ -106,11 +110,13 @@ internal class InAppProcessingManagerTest {
 
     private fun setDIModule(
         geoRepository: InAppGeoRepository,
-        segmentationRepository: InAppSegmentationRepository
+        segmentationRepository: InAppSegmentationRepository,
+        targetingErrorRepository: InAppTargetingErrorRepository = inAppTargetingErrorRepository
     ) {
         val appModuleMock = mockk<cloud.mindbox.mobile_sdk.di.modules.AppModule>(relaxed = true)
         every { appModuleMock.inAppGeoRepository } returns geoRepository
         every { appModuleMock.inAppSegmentationRepository } returns segmentationRepository
+        every { appModuleMock.inAppTargetingErrorRepository } returns targetingErrorRepository
         every { appModuleMock.inAppRepository } returns mockInAppRepository
         every { appModuleMock.gson } returns Gson()
         every { appModuleMock.sessionStorageManager } returns sessionStorageManager
@@ -128,6 +134,7 @@ internal class InAppProcessingManagerTest {
     private val inAppProcessingManager = InAppProcessingManagerImpl(
         inAppGeoRepository = mockkInAppGeoRepository,
         inAppSegmentationRepository = mockkInAppSegmentationRepository,
+        inAppTargetingErrorRepository = inAppTargetingErrorRepository,
         inAppContentFetcher = mockkInAppContentFetcher,
         inAppRepository = mockInAppRepository,
         inAppFailureTracker = inAppFailureTracker
@@ -136,6 +143,7 @@ internal class InAppProcessingManagerTest {
     private val inAppProcessingManagerTestImpl = InAppProcessingManagerImpl(
         inAppGeoRepository = inAppGeoRepositoryTestImpl,
         inAppSegmentationRepository = inAppSegmentationRepositoryTestImpl,
+        inAppTargetingErrorRepository = inAppTargetingErrorRepository,
         inAppContentFetcher = mockkInAppContentFetcher,
         inAppRepository = mockInAppRepository,
         inAppFailureTracker = inAppFailureTracker
@@ -387,9 +395,9 @@ internal class InAppProcessingManagerTest {
                 coEvery { fetchGeo() } throws GeoError(VolleyError())
                 every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
                 every { setGeoStatus(any()) } just runs
-                every { getLastGeoError() } returns "geo error"
             },
             inAppSegmentationRepository = mockkInAppSegmentationRepository,
+            inAppTargetingErrorRepository = mockk(relaxed = true),
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
             inAppFailureTracker = mockk(relaxed = true)
@@ -597,15 +605,21 @@ internal class InAppProcessingManagerTest {
             coEvery { fetchCustomerSegmentations() } just runs
             every { getProductSegmentationFetched(product) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
             coEvery { fetchProductSegmentation(product) } throws ProductSegmentationError(serverError)
-            every { setLastProductSegmentationError(product, any()) } just runs
-            every { getLastProductSegmentationError(product) } returns "Product segmentation fetch failed. statusCode=500"
             every { getProductSegmentations(product) } returns emptySet<ProductSegmentationResponseWrapper?>()
         }
-        setDIModule(mockkInAppGeoRepository, mockSegmentationRepo)
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every {
+                getError(TargetingErrorKey.ProductSegmentation(product))
+            } returns "Product segmentation fetch failed. statusCode=500"
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, mockSegmentationRepo, targetingErrorRepository)
         val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
         val processingManager = InAppProcessingManagerImpl(
             inAppGeoRepository = mockkInAppGeoRepository,
             inAppSegmentationRepository = mockSegmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
             inAppFailureTracker = failureTracker
@@ -640,15 +654,14 @@ internal class InAppProcessingManagerTest {
         assertNotNull(result)
         assertEquals(validId, result?.id)
         verify(exactly = 1) {
-            failureTracker.trackFailure(
+            failureTracker.collectFailure(
                 inAppId = inAppWithProductSegId,
                 failureReason = FailureReason.PRODUCT_SEGMENT_REQUEST_FAILED,
-                errorDetails = "Product segmentation fetch failed. statusCode=500",
-                isShouldSendImmediately = false
+                errorDetails = "Product segmentation fetch failed. statusCode=500"
             )
         }
         verify(exactly = 1) { failureTracker.clearFailures() }
-        verify(exactly = 0) { failureTracker.sendAccumulatedFailures() }
+        verify(exactly = 0) { failureTracker.sendCollectedFailures() }
     }
 
     @Test
@@ -658,9 +671,13 @@ internal class InAppProcessingManagerTest {
             coEvery { fetchGeo() } throws GeoError(VolleyError())
             every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
             every { setGeoStatus(any()) } just runs
-            every { getLastGeoError() } returns errorDetails
         }
-        setDIModule(geoRepo, mockkInAppSegmentationRepository)
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.Geo) } returns errorDetails
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(geoRepo, mockkInAppSegmentationRepository, targetingErrorRepository)
         every { geoRepo.getGeo() } returns GeoTargetingStub.getGeoTargeting().copy(
             cityId = "234", regionId = "regionId", countryId = "123"
         )
@@ -684,6 +701,7 @@ internal class InAppProcessingManagerTest {
         val processingManager = InAppProcessingManagerImpl(
             inAppGeoRepository = geoRepo,
             inAppSegmentationRepository = mockkInAppSegmentationRepository,
+            inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
             inAppFailureTracker = failureTracker
@@ -694,14 +712,13 @@ internal class InAppProcessingManagerTest {
         assertNotNull(result)
         assertEquals(validId, result?.id)
         verify(exactly = 1) {
-            failureTracker.trackFailure(
+            failureTracker.collectFailure(
                 inAppId = "123",
                 failureReason = FailureReason.GEO_TARGETING_FAILED,
-                errorDetails = errorDetails,
-                isShouldSendImmediately = false
+                errorDetails = errorDetails
             )
         }
         verify(exactly = 1) { failureTracker.clearFailures() }
-        verify(exactly = 0) { failureTracker.sendAccumulatedFailures() }
+        verify(exactly = 0) { failureTracker.sendCollectedFailures() }
     }
 }

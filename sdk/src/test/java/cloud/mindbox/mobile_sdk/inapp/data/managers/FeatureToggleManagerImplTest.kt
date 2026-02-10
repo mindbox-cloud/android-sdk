@@ -36,6 +36,26 @@ class FeatureToggleManagerImplTest {
     }
 
     @Test
+    fun `applyToggles works with feature name containing special characters`() {
+        val config = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf("!@#$%^&*()_+<>:;{},./|~`" to false)
+            ),
+            abtests = null
+        )
+
+        featureToggleManager.applyToggles(config)
+
+        assertEquals(false, featureToggleManager.isEnabled("!@#$%^&*()_+<>:;{},./|~`"))
+    }
+
+    @Test
     fun `applyToggles sets shouldSendInAppShowError to false when featureToggles contains false`() {
         val config = InAppConfigResponse(
             inApps = null,

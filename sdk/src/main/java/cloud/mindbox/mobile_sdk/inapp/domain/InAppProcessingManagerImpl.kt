@@ -1,27 +1,29 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.Mindbox.logI
-import cloud.mindbox.mobile_sdk.asVolleyError
 import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
 import cloud.mindbox.mobile_sdk.getImageUrl
-import cloud.mindbox.mobile_sdk.getVolleyErrorDetails
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.asVolleyError
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getProductFromTargetingData
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getVolleyErrorDetails
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackTargetingError
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.*
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
-import cloud.mindbox.mobile_sdk.getProductFromTargetingData
-import cloud.mindbox.mobile_sdk.shouldTrackTargetingError
 import kotlinx.coroutines.*
 
 internal class InAppProcessingManagerImpl(
     private val inAppGeoRepository: InAppGeoRepository,
     private val inAppSegmentationRepository: InAppSegmentationRepository,
+    private val inAppTargetingErrorRepository: InAppTargetingErrorRepository,
     private val inAppContentFetcher: InAppContentFetcher,
     private val inAppRepository: InAppRepository,
     private val inAppFailureTracker: InAppFailureTracker
@@ -60,7 +62,7 @@ internal class InAppProcessingManagerImpl(
 
                                 is InAppContentFetchingError -> {
                                     isInAppContentFetched = false
-                                    imageFailureDetails = throwable.message + "\n Url is ${inApp.form.variants.first().getImageUrl()} }"
+                                    imageFailureDetails = throwable.message + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
                                 }
                             }
                         }
@@ -75,8 +77,10 @@ internal class InAppProcessingManagerImpl(
                                 isTargetingErrorOccurred = true
                                 inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
                                 if (throwable.shouldTrackTargetingError()) {
-                                    val errorDetails = "${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
-                                    inAppGeoRepository.setLastGeoError(errorDetails)
+                                    inAppTargetingErrorRepository.saveError(
+                                        key = TargetingErrorKey.Geo,
+                                        error = throwable
+                                    )
                                 }
                                 MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
                             }
@@ -87,15 +91,17 @@ internal class InAppProcessingManagerImpl(
                                     CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                                 )
                                 if (throwable.shouldTrackTargetingError()) {
-                                    val errorDetails = "${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
-                                    inAppSegmentationRepository.setLastCustomerSegmentationError(errorDetails)
+                                    inAppTargetingErrorRepository.saveError(
+                                        key = TargetingErrorKey.CustomerSegmentation,
+                                        error = throwable
+                                    )
                                 }
                                 handleCustomerSegmentationErrorLog(throwable)
                             }
 
                             else -> {
                                 MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
-                                inAppFailureTracker.trackFailure(
+                                inAppFailureTracker.sendFailure(
                                     inAppId = inApp.id,
                                     failureReason = FailureReason.UNKNOWN_ERROR,
                                     errorDetails = "Unknown exception when checking target ${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
@@ -120,7 +126,7 @@ internal class InAppProcessingManagerImpl(
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
             trackTargetingErrorIfAny(inApp, data)
             if (isInAppContentFetched == false && targetingCheck) {
-                inAppFailureTracker.trackFailure(
+                inAppFailureTracker.collectFailure(
                     inAppId = inApp.id,
                     failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
                     errorDetails = imageFailureDetails
@@ -144,7 +150,7 @@ internal class InAppProcessingManagerImpl(
                 return inApp
             }
         }
-        inAppFailureTracker.sendAccumulatedFailures()
+        inAppFailureTracker.sendCollectedFailures()
         return null
     }
 
@@ -205,32 +211,32 @@ internal class InAppProcessingManagerImpl(
         when {
             inApp.targeting.hasSegmentationNode() &&
                 inAppSegmentationRepository.getCustomerSegmentationFetched() == CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR -> {
-                val errorDetails = inAppSegmentationRepository.getLastCustomerSegmentationError()
-                    ?: "Unknown segmentation error"
-                inAppFailureTracker.trackFailure(
+                inAppFailureTracker.collectFailure(
                     inAppId = inApp.id,
                     failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
-                    errorDetails = errorDetails
+                    errorDetails = inAppTargetingErrorRepository.getError(TargetingErrorKey.CustomerSegmentation)
+                        ?: "Unknown segmentation error"
                 )
                 return
             }
 
             inApp.targeting.hasGeoNode() &&
                 inAppGeoRepository.getGeoFetchedStatus() == GeoFetchStatus.GEO_FETCH_ERROR -> {
-                val errorDetails = inAppGeoRepository.getLastGeoError()
-                    ?: "Unknown geo error"
-                inAppFailureTracker.trackFailure(
+                inAppFailureTracker.collectFailure(
                     inAppId = inApp.id,
                     failureReason = FailureReason.GEO_TARGETING_FAILED,
-                    errorDetails = errorDetails
+                    errorDetails = inAppTargetingErrorRepository.getError(TargetingErrorKey.Geo)
+                        ?: "Unknown geo error"
                 )
                 return
             }
 
             inApp.targeting.hasProductSegmentationNode() -> {
                 data.getProductFromTargetingData()?.let { product ->
-                    inAppSegmentationRepository.getLastProductSegmentationError(product)?.let { errorDetails ->
-                        inAppFailureTracker.trackFailure(
+                    inAppTargetingErrorRepository.getError(
+                        TargetingErrorKey.ProductSegmentation(product)
+                    )?.let { errorDetails ->
+                        inAppFailureTracker.collectFailure(
                             inAppId = inApp.id,
                             failureReason = FailureReason.PRODUCT_SEGMENT_REQUEST_FAILED,
                             errorDetails = errorDetails

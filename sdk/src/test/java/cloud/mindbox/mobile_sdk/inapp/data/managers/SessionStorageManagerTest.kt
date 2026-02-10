@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchSta
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingErrorKey
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
@@ -117,9 +118,9 @@ class SessionStorageManagerTest {
             configFetchingError = true
             sessionTime = 1000L.milliseconds
             inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 20, maxInappsPerDay = 20, minIntervalBetweenShows = Milliseconds(100))
-            lastCustomerSegmentationError = "error in customer segment"
-            lastGeoError = "error in geo"
-            lastProductSegmentationErrors[Pair("product", "45")] = "error in product segment"
+            lastTargetingErrors[TargetingErrorKey.CustomerSegmentation] = "error in customer segment"
+            lastTargetingErrors[TargetingErrorKey.Geo] = "error in geo"
+            lastTargetingErrors[TargetingErrorKey.ProductSegmentation(Pair("product", "45"))] = "error in product segment"
         }
 
         sessionStorageManager.clearSessionData()
@@ -137,9 +138,7 @@ class SessionStorageManagerTest {
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
         assertEquals(InAppShowLimitsSettings(), sessionStorageManager.inAppShowLimitsSettings)
-        assertNull(sessionStorageManager.lastCustomerSegmentationError)
-        assertNull(sessionStorageManager.lastGeoError)
-        assertTrue(sessionStorageManager.lastProductSegmentationErrors.isEmpty())
+        assertTrue(sessionStorageManager.lastTargetingErrors.isEmpty())
     }
 
     @Test

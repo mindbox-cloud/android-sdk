@@ -218,6 +218,11 @@ internal fun DataModule(
             gatewayManager = gatewayManager,
         )
     }
+    override val inAppTargetingErrorRepository: InAppTargetingErrorRepository by lazy {
+        InAppTargetingErrorRepositoryImpl(
+            sessionStorageManager = sessionStorageManager
+        )
+    }
 
     override val monitoringValidator: MonitoringValidator by lazy { MonitoringValidator() }
 

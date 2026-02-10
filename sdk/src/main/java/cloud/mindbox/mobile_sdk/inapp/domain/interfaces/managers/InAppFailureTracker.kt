@@ -4,14 +4,19 @@ import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 
 internal interface InAppFailureTracker {
 
-    fun trackFailure(
+    fun sendFailure(
         inAppId: String,
         failureReason: FailureReason,
-        errorDetails: String?,
-        isShouldSendImmediately: Boolean = false
+        errorDetails: String?
     )
 
-    fun sendAccumulatedFailures()
+    fun collectFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?
+    )
+
+    fun sendCollectedFailures()
 
     fun clearFailures()
 }

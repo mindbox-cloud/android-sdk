@@ -1,10 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackTargetingError
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
-import cloud.mindbox.mobile_sdk.shouldTrackTargetingError
-import cloud.mindbox.mobile_sdk.getVolleyErrorDetails
 
 internal data class ViewProductSegmentNode(
     override val type: String,
@@ -15,6 +14,7 @@ internal data class ViewProductSegmentNode(
 
     private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
     private val inAppSegmentationRepository by mindboxInject { inAppSegmentationRepository }
+    private val inAppTargetingErrorRepository by mindboxInject { inAppTargetingErrorRepository }
     private val gson by mindboxInject { gson }
     private val sessionStorageManager by mindboxInject { sessionStorageManager }
 
@@ -34,8 +34,10 @@ internal data class ViewProductSegmentNode(
                         sessionStorageManager.processedProductSegmentations[product] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                         if (error.shouldTrackTargetingError()) {
-                            val errorDetails = "${error.message}. ${error.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
-                            inAppSegmentationRepository.setLastProductSegmentationError(product, errorDetails)
+                            inAppTargetingErrorRepository.saveError(
+                                key = TargetingErrorKey.ProductSegmentation(product),
+                                error = error
+                            )
                         }
                         mindboxLogE("Error fetching product segmentations for product $product")
                     }

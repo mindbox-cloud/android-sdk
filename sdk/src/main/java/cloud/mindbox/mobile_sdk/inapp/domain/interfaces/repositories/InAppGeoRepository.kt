@@ -12,8 +12,4 @@ internal interface InAppGeoRepository {
     fun getGeoFetchedStatus(): GeoFetchStatus
 
     fun getGeo(): GeoTargeting
-
-    fun setLastGeoError(errorDetails: String)
-
-    fun getLastGeoError(): String?
 }

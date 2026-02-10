@@ -19,11 +19,10 @@ internal class InAppFailureTrackerImpl(
 
     private val failures = CopyOnWriteArrayList<InAppShowFailure>()
 
-    private fun trackFailure(failure: InAppShowFailure, isShouldSendImmediately: Boolean) {
+    private fun trackFailure(failure: InAppShowFailure) {
         if (failures.none { it.inAppId == failure.inAppId }) {
             failures.add(failure)
         }
-        if (isShouldSendImmediately) sendFailures()
     }
 
     private fun sendFailures() {
@@ -32,12 +31,27 @@ internal class InAppFailureTrackerImpl(
         failures.clear()
     }
 
-    override fun trackFailure(
-        inAppId: String,
-        failureReason: FailureReason,
-        errorDetails: String?,
-        isShouldSendImmediately: Boolean
-    ) {
+    private fun sendSingleFailure(failure: InAppShowFailure) {
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) return
+        inAppRepository.sendInAppShowFailure(listOf(failure))
+    }
+
+    override fun sendFailure(inAppId: String, failureReason: FailureReason, errorDetails: String?) {
+        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
+            .convertToZonedDateTimeAtUTC()
+            .convertToString()
+
+        sendSingleFailure(
+            failure = InAppShowFailure(
+                inAppId = inAppId,
+                failureReason = failureReason,
+                errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
+                timestamp = timestamp
+            )
+        )
+    }
+
+    override fun collectFailure(inAppId: String, failureReason: FailureReason, errorDetails: String?) {
         val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
             .convertToZonedDateTimeAtUTC()
             .convertToString()
@@ -47,12 +61,11 @@ internal class InAppFailureTrackerImpl(
                 failureReason = failureReason,
                 errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
                 timestamp = timestamp
-            ),
-            isShouldSendImmediately = isShouldSendImmediately
+            )
         )
     }
 
-    override fun sendAccumulatedFailures() {
+    override fun sendCollectedFailures() {
         sendFailures()
     }
 

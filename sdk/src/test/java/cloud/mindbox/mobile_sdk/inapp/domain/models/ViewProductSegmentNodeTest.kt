@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppTargetingErrorRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -31,7 +32,8 @@ class ViewProductSegmentNodeTest {
     }
 
     private val mockkInAppSegmentationRepository: InAppSegmentationRepository = mockk()
-    private val sessionStorageManager = mockk<SessionStorageManager>()
+    private val sessionStorageManagerMock = mockk<SessionStorageManager>()
+    private val inAppTargetingErrorRepositoryMock = mockk<InAppTargetingErrorRepositoryImpl>()
 
     @get:Rule
     val mockkRule = MockKRule(this)
@@ -47,7 +49,8 @@ class ViewProductSegmentNodeTest {
             every { mobileConfigRepository } returns mockkMobileConfigRepository
             every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
             every { gson } returns Gson()
-            every { sessionStorageManager } returns sessionStorageManager
+            every { inAppTargetingErrorRepository } returns inAppTargetingErrorRepositoryMock
+            every { sessionStorageManager } returns sessionStorageManagerMock
         }
     }
 
@@ -265,7 +268,7 @@ class ViewProductSegmentNodeTest {
             "website" to "successProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
             "website" to "errorProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         )
-        every { sessionStorageManager.processedProductSegmentations } returns processedProducts
+        every { sessionStorageManagerMock.processedProductSegmentations } returns processedProducts
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "successProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "errorProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "newProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED

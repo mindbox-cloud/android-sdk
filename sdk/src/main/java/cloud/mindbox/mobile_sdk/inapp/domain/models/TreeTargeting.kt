@@ -28,7 +28,7 @@ internal interface TargetingInfo {
 
     fun hasOperationNode(): Boolean
 
-    fun hasProductSegmentationNode(): Boolean
+    fun hasProductSegmentationNode(): Boolean = false
 
     suspend fun getOperationsSet(): Set<String>
 }
@@ -82,10 +82,6 @@ internal sealed class TreeTargeting(open val type: String) :
             return false
         }
 
-        override fun hasProductSegmentationNode(): Boolean {
-            return false
-        }
-
         override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
@@ -118,8 +114,6 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun hasGeoNode(): Boolean = true
 
         override fun hasOperationNode(): Boolean = false
-
-        override fun hasProductSegmentationNode(): Boolean = false
     }
 
     internal data class CityNode(
@@ -149,8 +143,6 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun hasGeoNode(): Boolean = true
 
         override fun hasOperationNode(): Boolean = false
-
-        override fun hasProductSegmentationNode(): Boolean = false
     }
 
     internal data class RegionNode(
@@ -192,10 +184,6 @@ internal sealed class TreeTargeting(open val type: String) :
         }
 
         override fun hasOperationNode(): Boolean {
-            return false
-        }
-
-        override fun hasProductSegmentationNode(): Boolean {
             return false
         }
     }
@@ -353,8 +341,6 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun hasGeoNode(): Boolean = false
 
         override fun hasOperationNode(): Boolean = false
-
-        override fun hasProductSegmentationNode(): Boolean = false
     }
 
     internal data class VisitNode(
@@ -399,10 +385,6 @@ internal sealed class TreeTargeting(open val type: String) :
             return false
         }
 
-        override fun hasProductSegmentationNode(): Boolean {
-            return false
-        }
-
         override suspend fun getOperationsSet(): Set<String> {
             return emptySet()
         }
@@ -423,8 +405,6 @@ internal sealed class TreeTargeting(open val type: String) :
         override fun hasGeoNode(): Boolean = false
 
         override fun hasOperationNode(): Boolean = false
-
-        override fun hasProductSegmentationNode(): Boolean = false
 
         override suspend fun getOperationsSet(): Set<String> = emptySet()
     }
