@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
@@ -67,7 +70,7 @@ internal class InAppSerializationManagerTest {
 
     @Test
     fun `serialize to inApp handled string success`() {
-        val expectedResult = "{\"inappid\":\"${inAppId}\"}"
+        val expectedResult = "{\"inappId\":\"${inAppId}\"}"
         val actualResult = inAppSerializationManager.serializeToInAppHandledString(inAppId)
         assertEquals(expectedResult, actualResult)
     }
@@ -122,5 +125,43 @@ internal class InAppSerializationManagerTest {
         val expectedResult = hashSetOf<String>()
         val actualResult = inAppSerializationManager.deserializeToShownInApps(testString)
         assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `serializeToInAppShowFailuresString returns valid JSON string`() {
+        val inAppShowFailures = listOf(
+            InAppShowFailure(
+                inAppId = inAppId,
+                failureReason = FailureReason.PRESENTATION_FAILED,
+                errorDetails = "error",
+                timestamp = "2024-02-10T00:00:00Z"
+            )
+        )
+        val expectedJson = Gson().toJson(InAppFailuresWrapper(inAppShowFailures))
+
+        val actualJson = inAppSerializationManager.serializeToInAppShowFailuresString(inAppShowFailures)
+
+        assertEquals(expectedJson, actualJson)
+    }
+
+    @Test
+    fun `serializeToInAppShowFailuresString returns empty string when exception occurs`() {
+        val gson: Gson = mockk()
+        val inAppShowFailures = listOf(
+            InAppShowFailure(
+                inAppId = inAppId,
+                failureReason = FailureReason.UNKNOWN_ERROR,
+                errorDetails = null,
+                timestamp = "2024-02-10T00:00:00Z"
+            )
+        )
+        every {
+            gson.toJson(any<InAppFailuresWrapper>(), object : TypeToken<InAppFailuresWrapper>() {}.type)
+        } throws RuntimeException("Serialization error")
+        inAppSerializationManager = InAppSerializationManagerImpl(gson)
+
+        val actualJson = inAppSerializationManager.serializeToInAppShowFailuresString(inAppShowFailures)
+
+        assertEquals("", actualJson)
     }
 }

@@ -204,4 +204,33 @@ internal class InAppGeoRepositoryTest {
         every { sessionStorageManager.geoFetchStatus } throws Error()
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, inAppGeoRepository.getGeoFetchedStatus())
     }
+
+    @Test
+    fun `setLastGeoError saves error details`() {
+        val errorDetails = "Network timeout"
+        every { sessionStorageManager.lastGeoError = any() } just runs
+
+        inAppGeoRepository.setLastGeoError(errorDetails)
+
+        verify(exactly = 1) { sessionStorageManager.lastGeoError = errorDetails }
+    }
+
+    @Test
+    fun `getLastGeoError returns saved error`() {
+        val errorDetails = "Geo request failed"
+        every { sessionStorageManager.lastGeoError } returns errorDetails
+
+        val result = inAppGeoRepository.getLastGeoError()
+
+        assertEquals(errorDetails, result)
+    }
+
+    @Test
+    fun `getLastGeoError returns null when no error saved`() {
+        every { sessionStorageManager.lastGeoError } returns null
+
+        val result = inAppGeoRepository.getLastGeoError()
+
+        assertEquals(null, result)
+    }
 }

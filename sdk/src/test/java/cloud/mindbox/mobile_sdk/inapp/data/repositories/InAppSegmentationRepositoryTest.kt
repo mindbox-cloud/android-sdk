@@ -326,4 +326,66 @@ class InAppSegmentationRepositoryTest {
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
     }
+
+    @Test
+    fun `setLastCustomerSegmentationError saves error details`() {
+        val errorDetails = "Customer segmentation request failed"
+        every { sessionStorageManager.lastCustomerSegmentationError = any() } just runs
+
+        inAppSegmentationRepository.setLastCustomerSegmentationError(errorDetails)
+
+        verify(exactly = 1) { sessionStorageManager.lastCustomerSegmentationError = errorDetails }
+    }
+
+    @Test
+    fun `getLastCustomerSegmentationError returns saved error`() {
+        val errorDetails = "Segmentation fetch failed"
+        every { sessionStorageManager.lastCustomerSegmentationError } returns errorDetails
+
+        val result = inAppSegmentationRepository.getLastCustomerSegmentationError()
+
+        assertEquals(errorDetails, result)
+    }
+
+    @Test
+    fun `getLastCustomerSegmentationError returns null when no error saved`() {
+        every { sessionStorageManager.lastCustomerSegmentationError } returns null
+
+        val result = inAppSegmentationRepository.getLastCustomerSegmentationError()
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun `setLastProductSegmentationError saves error details`() {
+        val product = "testSystem" to "testValue"
+        val errorDetails = "Product segmentation request failed"
+        val errorsMap = mutableMapOf<Pair<String, String>, String>()
+        every { sessionStorageManager.lastProductSegmentationErrors } returns errorsMap
+
+        inAppSegmentationRepository.setLastProductSegmentationError(product, errorDetails)
+
+        assertEquals(errorDetails, errorsMap[product])
+    }
+
+    @Test
+    fun `getLastProductSegmentationError returns saved error`() {
+        val product = "testSystem" to "testValue"
+        val errorDetails = "Product segmentation failed"
+        every { sessionStorageManager.lastProductSegmentationErrors[product] } returns errorDetails
+
+        val result = inAppSegmentationRepository.getLastProductSegmentationError(product)
+
+        assertEquals(errorDetails, result)
+    }
+
+    @Test
+    fun `getLastProductSegmentationError returns null when no error saved`() {
+        val product = "testSystem" to "testValue"
+        every { sessionStorageManager.lastProductSegmentationErrors[product] } returns null
+
+        val result = inAppSegmentationRepository.getLastProductSegmentationError(product)
+
+        assertEquals(null, result)
+    }
 }

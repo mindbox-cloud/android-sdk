@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.domain.models
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
+import cloud.mindbox.mobile_sdk.shouldTrackTargetingError
+import cloud.mindbox.mobile_sdk.getVolleyErrorDetails
 
 internal data class ViewProductSegmentNode(
     override val type: String,
@@ -31,6 +33,10 @@ internal data class ViewProductSegmentNode(
                     if (error is ProductSegmentationError) {
                         sessionStorageManager.processedProductSegmentations[product] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                        if (error.shouldTrackTargetingError()) {
+                            val errorDetails = "${error.message}. ${error.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
+                            inAppSegmentationRepository.setLastProductSegmentationError(product, errorDetails)
+                        }
                         mindboxLogE("Error fetching product segmentations for product $product")
                     }
                 }
@@ -62,4 +68,6 @@ internal data class ViewProductSegmentNode(
             setOf(it)
         } ?: setOf()
     }
+
+    override fun hasProductSegmentationNode(): Boolean = true
 }

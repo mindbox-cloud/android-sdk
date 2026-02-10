@@ -102,4 +102,20 @@ internal class InAppSegmentationRepositoryImpl(
             sessionStorageManager.inAppCustomerSegmentations?.customerSegmentations ?: emptyList()
         }
     }
+
+    override fun setLastCustomerSegmentationError(errorDetails: String) {
+        sessionStorageManager.lastCustomerSegmentationError = errorDetails
+    }
+
+    override fun getLastCustomerSegmentationError(): String? {
+        return sessionStorageManager.lastCustomerSegmentationError
+    }
+
+    override fun setLastProductSegmentationError(product: Pair<String, String>, errorDetails: String) {
+        sessionStorageManager.lastProductSegmentationErrors[product] = errorDetails
+    }
+
+    override fun getLastProductSegmentationError(product: Pair<String, String>): String? {
+        return sessionStorageManager.lastProductSegmentationErrors[product]
+    }
 }

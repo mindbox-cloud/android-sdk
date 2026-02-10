@@ -28,6 +28,7 @@ internal object MindboxEventManager {
     const val IN_APP_OPERATION_VIEW_TYPE = "Inapp.Show"
     const val IN_APP_OPERATION_CLICK_TYPE = "Inapp.Click"
     const val IN_APP_OPERATION_TARGETING_TYPE = "Inapp.Targeting"
+    const val IN_APP_OPERATION_SHOW_FAILURE_TYPE = "Inapp.ShowFailure"
 
     private val gson = Gson()
 
@@ -82,6 +83,10 @@ internal object MindboxEventManager {
 
     fun sendUserTargeted(context: Context, body: String) {
         asyncOperation(context, IN_APP_OPERATION_TARGETING_TYPE, body)
+    }
+
+    fun inAppShowFailure(context: Context, body: String) {
+        asyncOperation(context, IN_APP_OPERATION_SHOW_FAILURE_TYPE, body)
     }
 
     fun pushClicked(

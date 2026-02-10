@@ -20,4 +20,12 @@ internal interface InAppSegmentationRepository {
     fun getProductSegmentationFetched(productId: Pair<String, String>): ProductSegmentationFetchStatus
 
     fun getCustomerSegmentations(): List<CustomerSegmentationInApp>
+
+    fun setLastCustomerSegmentationError(errorDetails: String)
+
+    fun getLastCustomerSegmentationError(): String?
+
+    fun setLastProductSegmentationError(product: Pair<String, String>, errorDetails: String)
+
+    fun getLastProductSegmentationError(product: Pair<String, String>): String?
 }

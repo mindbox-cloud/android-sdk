@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppRepository {
@@ -33,6 +34,8 @@ internal interface InAppRepository {
     fun sendInAppClicked(inAppId: String)
 
     fun sendUserTargeted(inAppId: String)
+
+    fun sendInAppShowFailure(failures: List<InAppShowFailure>)
 
     fun setInAppShown(inAppId: String)
 

@@ -47,6 +47,7 @@ class ViewProductSegmentNodeTest {
             every { mobileConfigRepository } returns mockkMobileConfigRepository
             every { inAppSegmentationRepository } returns mockkInAppSegmentationRepository
             every { gson } returns Gson()
+            every { sessionStorageManager } returns sessionStorageManager
         }
     }
 
@@ -63,6 +64,11 @@ class ViewProductSegmentNodeTest {
     @Test
     fun `hasSegmentationNode always false`() {
         assertFalse(InAppStub.viewProductSegmentNode.hasSegmentationNode())
+    }
+
+    @Test
+    fun `hasProductSegmentationNode always true`() {
+        assertTrue(InAppStub.viewProductSegmentNode.hasProductSegmentationNode())
     }
 
     @Test

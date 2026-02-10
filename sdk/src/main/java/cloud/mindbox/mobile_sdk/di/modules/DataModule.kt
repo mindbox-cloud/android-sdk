@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
@@ -201,6 +202,14 @@ internal fun DataModule(
 
     override val inAppSerializationManager: InAppSerializationManager
         get() = InAppSerializationManagerImpl(gson = gson)
+
+    override val inAppFailureTracker: InAppFailureTracker by lazy {
+        InAppFailureTrackerImpl(
+            timeProvider = timeProvider,
+            inAppRepository = inAppRepository,
+            featureToggleManager = featureToggleManager
+        )
+    }
 
     override val inAppSegmentationRepository: InAppSegmentationRepository by lazy {
         InAppSegmentationRepositoryImpl(

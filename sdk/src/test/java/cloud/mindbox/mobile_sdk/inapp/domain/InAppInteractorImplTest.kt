@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
@@ -78,6 +79,9 @@ class InAppInteractorImplTest {
     private lateinit var inAppContentFetcher: InAppContentFetcher
 
     private lateinit var interactor: InAppInteractor
+
+    @RelaxedMockK
+    private lateinit var inAppFailureTracker: InAppFailureTracker
 
     @Before
     fun setup() {
@@ -163,7 +167,8 @@ class InAppInteractorImplTest {
             inAppGeoRepository,
             inAppSegmentationRepository,
             inAppContentFetcher,
-            inAppRepository
+            inAppRepository,
+            inAppFailureTracker
         )
 
         interactor = InAppInteractorImpl(

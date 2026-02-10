@@ -68,6 +68,11 @@ class ViewProductNodeTest {
     }
 
     @Test
+    fun `hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.viewProductNode.hasProductSegmentationNode())
+    }
+
+    @Test
     fun `checkTargeting after AppStartup`() = runTest {
         MindboxEventManager.eventFlow.resetReplayCache()
         MindboxEventManager.eventFlow.emit(InAppEventType.AppStartup)

@@ -44,7 +44,8 @@ internal fun DomainModule(
             inAppGeoRepository = inAppGeoRepository,
             inAppSegmentationRepository = inAppSegmentationRepository,
             inAppContentFetcher = inAppContentFetcher,
-            inAppRepository = inAppRepository
+            inAppRepository = inAppRepository,
+            inAppFailureTracker = inAppFailureTracker
         )
     }
 

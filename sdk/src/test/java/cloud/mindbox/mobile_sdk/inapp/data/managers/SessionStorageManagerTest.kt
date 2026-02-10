@@ -117,6 +117,9 @@ class SessionStorageManagerTest {
             configFetchingError = true
             sessionTime = 1000L.milliseconds
             inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 20, maxInappsPerDay = 20, minIntervalBetweenShows = Milliseconds(100))
+            lastCustomerSegmentationError = "error in customer segment"
+            lastGeoError = "error in geo"
+            lastProductSegmentationErrors[Pair("product", "45")] = "error in product segment"
         }
 
         sessionStorageManager.clearSessionData()
@@ -134,6 +137,9 @@ class SessionStorageManagerTest {
         assertFalse(sessionStorageManager.configFetchingError)
         assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
         assertEquals(InAppShowLimitsSettings(), sessionStorageManager.inAppShowLimitsSettings)
+        assertNull(sessionStorageManager.lastCustomerSegmentationError)
+        assertNull(sessionStorageManager.lastGeoError)
+        assertTrue(sessionStorageManager.lastProductSegmentationErrors.isEmpty())
     }
 
     @Test
