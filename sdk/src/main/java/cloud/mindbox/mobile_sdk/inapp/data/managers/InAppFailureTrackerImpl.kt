@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -26,13 +27,19 @@ internal class InAppFailureTrackerImpl(
     }
 
     private fun sendFailures() {
-        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) return
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
+            mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failures")
+            return
+        }
         if (failures.isNotEmpty()) inAppRepository.sendInAppShowFailure(failures.toList())
         failures.clear()
     }
 
     private fun sendSingleFailure(failure: InAppShowFailure) {
-        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) return
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
+            mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failure")
+            return
+        }
         inAppRepository.sendInAppShowFailure(listOf(failure))
     }
 

@@ -14,7 +14,8 @@ internal class InAppEventManagerImpl : InAppEventManager {
         val isNotInAppEvent = (listOf(
             MindboxEventManager.IN_APP_OPERATION_VIEW_TYPE,
             MindboxEventManager.IN_APP_OPERATION_TARGETING_TYPE,
-            MindboxEventManager.IN_APP_OPERATION_CLICK_TYPE
+            MindboxEventManager.IN_APP_OPERATION_CLICK_TYPE,
+            MindboxEventManager.IN_APP_OPERATION_SHOW_FAILURE_TYPE
         ).contains(event.name).not())
         return isAppStartUp ||
             (isOrdinalEvent &&

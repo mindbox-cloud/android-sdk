@@ -25,7 +25,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize valid true value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", true)
+            addProperty("MobileSdkShouldSendInAppShowError", true)
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -36,7 +36,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize valid false value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", false)
+            addProperty("MobileSdkShouldSendInAppShowError", false)
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -47,7 +47,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize multiple keys`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", true)
+            addProperty("MobileSdkShouldSendInAppShowError", true)
             addProperty("anotherToggle", false)
         }
 
@@ -60,7 +60,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize string true value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", "true")
+            addProperty("MobileSdkShouldSendInAppShowError", "true")
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -71,7 +71,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize string false value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", "false")
+            addProperty("MobileSdkShouldSendInAppShowError", "false")
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -82,7 +82,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize number 1 value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", 1)
+            addProperty("MobileSdkShouldSendInAppShowError", 1)
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -93,7 +93,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize invalid string value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", "invalid")
+            addProperty("MobileSdkShouldSendInAppShowError", "invalid")
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -104,7 +104,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize object value`() {
         val json = JsonObject().apply {
-            add("shouldSendInAppShowError", JsonObject().apply {
+            add("MobileSdkShouldSendInAppShowError", JsonObject().apply {
                 addProperty("value", true)
             })
         }
@@ -117,7 +117,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize array value`() {
         val json = JsonObject().apply {
-            add("shouldSendInAppShowError", JsonArray().apply {
+            add("MobileSdkShouldSendInAppShowError", JsonArray().apply {
                 add(true)
             })
         }
@@ -130,7 +130,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize empty string value`() {
         val json = JsonObject().apply {
-            addProperty("shouldSendInAppShowError", "")
+            addProperty("MobileSdkShouldSendInAppShowError", "")
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)
@@ -150,7 +150,7 @@ internal class FeatureTogglesDtoBlankDeserializerTest {
     @Test
     fun `deserialize null value`() {
         val json = JsonObject().apply {
-            add("shouldSendInAppShowError", JsonNull.INSTANCE)
+            add("MobileSdkShouldSendInAppShowError", JsonNull.INSTANCE)
         }
 
         val result = gson.fromJson(json, SettingsDtoBlank.FeatureTogglesDtoBlank::class.java)

@@ -4,7 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleMa
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import java.util.concurrent.ConcurrentHashMap
 
-internal const val SEND_INAPP_SHOW_ERROR_FEATURE = "shouldSendInAppShowError"
+internal const val SEND_INAPP_SHOW_ERROR_FEATURE = "MobileSdkShouldSendInAppShowError"
 
 internal class FeatureToggleManagerImpl : FeatureToggleManager {
 
