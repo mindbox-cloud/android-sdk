@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.concurrent.atomic.AtomicLong
@@ -28,6 +30,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var configFetchingError: Boolean = false
     var sessionTime: Duration = 0L.milliseconds
     var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
+    var lastTrackVisitData: TrackVisitData? = null
+    var inAppTriggerEvent: InAppEventType? = null
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
@@ -82,6 +86,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         configFetchingError = false
         sessionTime = 0L.milliseconds
         inAppShowLimitsSettings = InAppShowLimitsSettings()
+        inAppTriggerEvent = null
     }
 
     private fun notifySessionExpired() {

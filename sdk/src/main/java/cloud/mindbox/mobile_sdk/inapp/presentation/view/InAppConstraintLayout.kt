@@ -24,6 +24,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     }
 
     private var swipeToDismissCallback: (() -> Unit)? = null
+    internal var webViewInsets: InAppInsets = InAppInsets()
 
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
@@ -200,14 +201,17 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             gravity = Gravity.CENTER
             height = FrameLayout.LayoutParams.MATCH_PARENT
         }
-        ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInset ->
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInset ->
             val inset = windowInset.getInsets(
                 WindowInsetsCompat.Type.systemBars()
                     or WindowInsetsCompat.Type.displayCutout()
                     or WindowInsetsCompat.Type.ime()
+                    or WindowInsetsCompat.Type.navigationBars()
             )
-
-            view.updatePadding(
+            webViewInsets = InAppInsets(
+                left = inset.left,
+                top = inset.top,
+                right = inset.right,
                 bottom = maxOf(inset.bottom, getNavigationBarHeight())
             )
             mindboxLogI("Webview Insets: $inset")
@@ -260,5 +264,19 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         val handled = backButtonHandler?.dispatchKeyEvent(event)
         return handled ?: super.dispatchKeyEvent(event)
+    }
+}
+
+internal data class InAppInsets(
+    val left: Int = 0,
+    val top: Int = 0,
+    val right: Int = 0,
+    val bottom: Int = 0
+) {
+    companion object {
+        const val LEFT = "left"
+        const val TOP = "top"
+        const val RIGHT = "right"
+        const val BOTTOM = "bottom"
     }
 }

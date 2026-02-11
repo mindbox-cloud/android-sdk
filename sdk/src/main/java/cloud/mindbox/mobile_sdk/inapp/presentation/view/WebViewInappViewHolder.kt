@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.app.Application
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
@@ -11,7 +12,9 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
@@ -29,10 +32,8 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
-import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.safeAs
-import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
@@ -41,7 +42,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Timer
-import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.timer
 
@@ -69,6 +69,9 @@ internal class WebViewInAppViewHolder(
     private val gson: Gson by mindboxInject { this.gson }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
+    private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
+    private val permissionManager: PermissionManager by mindboxInject { permissionManager }
+    private val appContext: Application by mindboxInject { appContext }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -102,6 +105,7 @@ internal class WebViewInAppViewHolder(
         message: BridgeMessage,
         onError: ((String?) -> Unit)? = null
     ) {
+        mindboxLogI("SDK -> send message $message")
         val json = gson.toJson(message)
         controller.evaluateJavaScript(JS_CALL_BRIDGE.format(json)) { result ->
             if (!checkEvaluateJavaScript(result)) {
@@ -122,7 +126,7 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.TOAST, ::handleToastAction)
             register(WebViewAction.ALERT, ::handleAlertAction)
             register(WebViewAction.READY) {
-                handleReadyAction(layer, configuration)
+                handleReadyAction(configuration, inAppLayout.webViewInsets, layer.params)
             }
             register(WebViewAction.INIT) {
                 handleInitAction(controller)
@@ -133,16 +137,20 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    private fun handleReadyAction(layer: Layer.WebViewLayer, configuration: Configuration): String {
-        val params: TreeMap<String, String> = TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER).apply {
-            put("sdkVersion", Mindbox.getSdkVersion())
-            put("endpointId", configuration.endpointId)
-            put("deviceUuid", MindboxPreferences.deviceUuid)
-            put("sdkVersionNumeric", Constants.SDK_VERSION_NUMERIC.toString())
-            putAll(layer.params)
-        }
-
-        return gson.toJson(params)
+    private fun handleReadyAction(
+        configuration: Configuration,
+        insets: InAppInsets,
+        params: Map<String, String>,
+    ): String {
+        return DataCollector(
+            appContext = appContext,
+            sessionStorageManager = sessionStorageManager,
+            permissionManager = permissionManager,
+            gson = gson,
+            configuration = configuration,
+            params = params,
+            inAppInsets = insets,
+        ).get()
     }
 
     private fun handleInitAction(controller: WebViewController): String {
@@ -347,6 +355,7 @@ internal class WebViewInAppViewHolder(
                 controller.setVisibility(false)
                 controller.setJsBridge(bridge = { json ->
                     val message = gson.fromJson<BridgeMessage>(json).getOrNull()
+                    mindboxLogI("SDK <- receive message $message")
                     if (!messageValidator.isValid(message)) {
                         return@setJsBridge
                     }
