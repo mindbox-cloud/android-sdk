@@ -201,18 +201,24 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             gravity = Gravity.CENTER
             height = FrameLayout.LayoutParams.MATCH_PARENT
         }
-        ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInset ->
+        ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInset ->
             val inset = windowInset.getInsets(
                 WindowInsetsCompat.Type.systemBars()
                     or WindowInsetsCompat.Type.displayCutout()
-                    or WindowInsetsCompat.Type.ime()
                     or WindowInsetsCompat.Type.navigationBars()
             )
+
             webViewInsets = InAppInsets(
                 left = inset.left,
                 top = inset.top,
                 right = inset.right,
                 bottom = maxOf(inset.bottom, getNavigationBarHeight())
+            )
+
+            view.updatePadding(
+                bottom = windowInset.getInsets(
+                    WindowInsetsCompat.Type.ime()
+                ).bottom
             )
             mindboxLogI("Webview Insets: $inset")
             WindowInsetsCompat.CONSUMED
