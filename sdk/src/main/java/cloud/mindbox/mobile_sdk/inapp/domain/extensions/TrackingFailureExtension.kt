@@ -57,14 +57,14 @@ internal fun Throwable.shouldTrackTargetingError(): Boolean {
     } ?: false
 }
 
-internal fun InAppFailureTracker.trackPresentationFailure(
+internal fun InAppFailureTracker.sendPresentationFailure(
     inAppId: String,
-    context: String,
+    errorDescription: String,
     throwable: Throwable? = null
 ) {
     val errorDetails = when {
-        throwable != null -> "$context: ${throwable.message ?: "Unknown error"}"
-        else -> context
+        throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
+        else -> errorDescription
     }
     mindboxLogE(errorDetails)
     sendFailure(
@@ -74,15 +74,15 @@ internal fun InAppFailureTracker.trackPresentationFailure(
     )
 }
 
-internal fun InAppFailureTracker.trackFailure(
+internal fun InAppFailureTracker.sendFailureWithContext(
     inAppId: String,
     failureReason: FailureReason,
-    context: String,
+    errorDescription: String,
     throwable: Throwable? = null
 ) {
     val errorDetails = when {
-        throwable != null -> "$context: ${throwable.message ?: "Unknown error"}"
-        else -> context
+        throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
+        else -> errorDescription
     }
     mindboxLogE(errorDetails)
     sendFailure(

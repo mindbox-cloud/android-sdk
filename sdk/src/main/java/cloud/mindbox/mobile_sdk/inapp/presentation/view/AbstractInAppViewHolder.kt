@@ -16,7 +16,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.trackPresentationFailure
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
@@ -118,17 +118,17 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                     isFirstResource: Boolean
                 ): Boolean {
                     return runCatching {
-                        inAppFailureTracker.trackPresentationFailure(
+                        inAppFailureTracker.sendPresentationFailure(
                             inAppId = wrapper.inAppType.inAppId,
-                            context = "Failed to load in-app image with url = $url",
+                            errorDescription = "Failed to load in-app image with url = $url",
                             throwable = e
                         )
                         hide()
                         false
                     }.getOrElse {
-                        inAppFailureTracker.trackPresentationFailure(
+                        inAppFailureTracker.sendPresentationFailure(
                             inAppId = wrapper.inAppType.inAppId,
-                            context = "Unknown error after loading image from cache succeeded",
+                            errorDescription = "Unknown error after loading image from cache succeeded",
                             throwable = it
                         )
                         false
@@ -154,9 +154,9 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                         }
                         false
                     }.getOrElse {
-                        inAppFailureTracker.trackPresentationFailure(
+                        inAppFailureTracker.sendPresentationFailure(
                             inAppId = wrapper.inAppType.inAppId,
-                            context = "Unknown error in onResourceReady callback",
+                            errorDescription = "Unknown error in onResourceReady callback",
                             throwable = it
                         )
                         false

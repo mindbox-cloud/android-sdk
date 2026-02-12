@@ -10,7 +10,7 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.trackPresentationFailure
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -233,7 +233,7 @@ internal class InAppMessageViewDisplayerImpl(
             runCatching {
                 currentHolder?.show(createMindboxView(root))
             }.onFailure { error ->
-                inAppFailureTracker.trackPresentationFailure(
+                inAppFailureTracker.sendPresentationFailure(
                     wrapper.inAppType.inAppId,
                     "Error when trying draw inapp",
                     error
@@ -241,7 +241,7 @@ internal class InAppMessageViewDisplayerImpl(
                 runCatching { currentHolder?.hide() }
             }
         } ?: run {
-            inAppFailureTracker.trackPresentationFailure(
+            inAppFailureTracker.sendPresentationFailure(
                 wrapper.inAppType.inAppId,
                 "currentRoot is null",
                 null
@@ -256,7 +256,7 @@ internal class InAppMessageViewDisplayerImpl(
         currentHolder = restoredHolder
         pausedHolder = null
         val root: ViewGroup = currentActivity?.root ?: run {
-            inAppFailureTracker.trackPresentationFailure(
+            inAppFailureTracker.sendPresentationFailure(
                 inAppId,
                 "failed to reattach inApp: currentRoot is null",
                 null
@@ -266,7 +266,7 @@ internal class InAppMessageViewDisplayerImpl(
         runCatching {
             restoredHolder.reattach(createMindboxView(root))
         }.onFailure { error ->
-            inAppFailureTracker.trackPresentationFailure(
+            inAppFailureTracker.sendPresentationFailure(
                 inAppId,
                 "Error when trying reattach InApp",
                 error
