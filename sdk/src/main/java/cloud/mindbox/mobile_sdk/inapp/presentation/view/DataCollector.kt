@@ -57,6 +57,7 @@ internal class DataCollector(
         private const val KEY_OPERATION_BODY = "operationBody"
         private const val KEY_OPERATION_NAME = "operationName"
         private const val KEY_PERMISSIONS = "permissions"
+        private const val KEY_PERMISSIONS_STATUS = "status"
         private const val KEY_PERMISSIONS_CAMERA = "camera"
         private const val KEY_PERMISSIONS_LOCATION = "location"
         private const val KEY_PERMISSIONS_MICROPHONE = "microphone"
@@ -132,11 +133,11 @@ internal class DataCollector(
         val photoLibraryStatus: String = permissionManager.getPhotoLibraryPermissionStatus().value
         return Provider {
             JsonObject().apply {
-                add(KEY_PERMISSIONS_CAMERA, JsonObject().apply { addProperty("status", cameraStatus) })
-                add(KEY_PERMISSIONS_LOCATION, JsonObject().apply { addProperty("status", locationStatus) })
-                add(KEY_PERMISSIONS_MICROPHONE, JsonObject().apply { addProperty("status", microphoneStatus) })
-                add(KEY_PERMISSIONS_NOTIFICATIONS, JsonObject().apply { addProperty("status", notificationsStatus) })
-                add(KEY_PERMISSIONS_PHOTO_LIBRARY, JsonObject().apply { addProperty("status", photoLibraryStatus) })
+                add(KEY_PERMISSIONS_CAMERA, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, cameraStatus) })
+                add(KEY_PERMISSIONS_LOCATION, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, locationStatus) })
+                add(KEY_PERMISSIONS_MICROPHONE, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, microphoneStatus) })
+                add(KEY_PERMISSIONS_NOTIFICATIONS, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, notificationsStatus) })
+                add(KEY_PERMISSIONS_PHOTO_LIBRARY, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, photoLibraryStatus) })
             }
         }
     }
