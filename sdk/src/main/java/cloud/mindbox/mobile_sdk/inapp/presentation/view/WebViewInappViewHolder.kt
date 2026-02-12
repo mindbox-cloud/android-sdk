@@ -12,10 +12,12 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTrackingSuspend
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
@@ -68,8 +70,6 @@ internal class WebViewInAppViewHolder(
     private val gson: Gson by mindboxInject { this.gson }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
-    private val inAppFailureTracker by mindboxInject { inAppFailureTracker }
-    private var isWebViewVisible: Boolean = false
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -151,7 +151,6 @@ internal class WebViewInAppViewHolder(
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         controller.setVisibility(true)
         backPressedCallback?.isEnabled = true
-        isWebViewVisible = true
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -234,10 +233,8 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_INIT_FAILED,
-                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}",
-                        throwable = null
+                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
                     )
-                    release()
                 }
             }
         })
@@ -352,13 +349,6 @@ internal class WebViewInAppViewHolder(
                 controller.setJsBridge(bridge = { json ->
                     val message = gson.fromJson<BridgeMessage>(json).getOrNull()
                     if (!messageValidator.isValid(message)) {
-                        if (!isWebViewVisible) {
-                            inAppFailureTracker.sendFailureWithContext(
-                                inAppId = wrapper.inAppType.inAppId,
-                                failureReason = FailureReason.UNKNOWN_ERROR,
-                                errorDescription = "Error on validation message from bridge before show WebView. message: $message"
-                            )
-                        }
                         return@setJsBridge
                     }
 
@@ -375,7 +365,15 @@ internal class WebViewInAppViewHolder(
                 controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
                 layer.contentUrl?.let { contentUrl ->
-                    runCatching {
+                    inAppFailureTracker.executeWithFailureTrackingSuspend(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.HTML_LOAD_FAILED,
+                        errorDescription = "Failed to fetch HTML content for In-App",
+                        onFailure = {
+                            hide()
+                            release()
+                        }
+                    ) {
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
                         onContentPageLoaded(
@@ -385,41 +383,28 @@ internal class WebViewInAppViewHolder(
                                 html = response
                             )
                         )
-                    }.onFailure { e ->
-                        inAppFailureTracker.sendFailureWithContext(
-                            inAppId = wrapper.inAppType.inAppId,
-                            failureReason = FailureReason.HTML_LOAD_FAILED,
-                            errorDescription = "Failed to fetch HTML content for In-App",
-                            throwable = e
-                        )
-                        hide()
-                        release()
                     }
                 } ?: run {
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.HTML_LOAD_FAILED,
-                        errorDescription = "WebView content URL is null",
-                        null
+                        errorDescription = "WebView content URL is null"
                     )
-                    hide()
                 }
             }
         }
 
         webViewController?.let { controller ->
-            runCatching {
+            inAppFailureTracker.executeWithFailureTracking(
+                inAppId = wrapper.inAppType.inAppId,
+                failureReason = FailureReason.PRESENTATION_FAILED,
+                errorDescription = "Error when trying WebView layout",
+            ) {
                 val view: WebViewPlatformView = controller.view
                 if (view.parent !== inAppLayout) {
                     view.parent.safeAs<ViewGroup>()?.removeView(view)
                     inAppLayout.addView(view)
                 }
-            }.onFailure { throwable ->
-                inAppFailureTracker.sendPresentationFailure(
-                    inAppId = wrapper.inAppType.inAppId,
-                    errorDescription = "Error when trying WebView layout",
-                    throwable = throwable
-                )
             }
         } ?: run {
             inAppFailureTracker.sendPresentationFailure(
@@ -440,11 +425,8 @@ internal class WebViewInAppViewHolder(
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = FailureReason.HTML_LOAD_FAILED,
-                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}.",
-                    throwable = null
+                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
                 )
-                hide()
-                release()
             }
         }
     }
@@ -519,7 +501,6 @@ internal class WebViewInAppViewHolder(
             val view: WebViewPlatformView = controller.view
             inAppLayout.removeView(view)
         }
-        isWebViewVisible = false
         super.hide()
     }
 
@@ -531,6 +512,5 @@ internal class WebViewInAppViewHolder(
         clearBackPressedCallback()
         webViewController?.destroy()
         webViewController = null
-        isWebViewVisible = false
     }
 }

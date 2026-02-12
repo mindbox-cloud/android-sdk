@@ -91,3 +91,41 @@ internal fun InAppFailureTracker.sendFailureWithContext(
         errorDetails = errorDetails
     )
 }
+
+internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
+    inAppId: String,
+    failureReason: FailureReason,
+    errorDescription: String,
+    crossinline onFailure: () -> Unit = {},
+    block: () -> T
+): Result<T> {
+    return runCatching(block).onFailure { throwable ->
+        sendFailureWithContext(
+            inAppId = inAppId,
+            failureReason = failureReason,
+            errorDescription = errorDescription,
+            throwable = throwable
+        )
+        onFailure()
+    }
+}
+
+internal suspend inline fun <T> InAppFailureTracker.executeWithFailureTrackingSuspend(
+    inAppId: String,
+    failureReason: FailureReason,
+    errorDescription: String,
+    crossinline onFailure: () -> Unit = {},
+    block: suspend () -> T
+): Result<T> {
+    return runCatching {
+        block()
+    }.onFailure { throwable ->
+        sendFailureWithContext(
+            inAppId = inAppId,
+            failureReason = failureReason,
+            errorDescription = errorDescription,
+            throwable = throwable
+        )
+        onFailure()
+    }
+}

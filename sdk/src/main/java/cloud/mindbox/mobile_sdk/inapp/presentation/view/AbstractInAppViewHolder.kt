@@ -50,7 +50,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     private val mindboxNotificationManager by mindboxInject {
         mindboxNotificationManager
     }
-    private val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
+    internal val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private var inAppActionHandler = InAppActionHandler()
 
@@ -125,11 +125,11 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                         )
                         hide()
                         false
-                    }.getOrElse {
+                    }.getOrElse { throwable ->
                         inAppFailureTracker.sendPresentationFailure(
                             inAppId = wrapper.inAppType.inAppId,
                             errorDescription = "Unknown error after loading image from cache succeeded",
-                            throwable = it
+                            throwable = throwable
                         )
                         false
                     }
@@ -153,11 +153,11 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                             }
                         }
                         false
-                    }.getOrElse {
+                    }.getOrElse { throwable ->
                         inAppFailureTracker.sendPresentationFailure(
                             inAppId = wrapper.inAppType.inAppId,
                             errorDescription = "Unknown error in onResourceReady callback",
-                            throwable = it
+                            throwable = throwable
                         )
                         false
                     }
