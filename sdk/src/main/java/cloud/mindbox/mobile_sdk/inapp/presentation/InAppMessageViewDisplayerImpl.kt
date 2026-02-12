@@ -10,10 +10,11 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_SHOW_ERROR_FEATURE
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -22,9 +23,9 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
@@ -41,8 +42,7 @@ internal interface MindboxView {
 }
 
 internal class InAppMessageViewDisplayerImpl(
-    private val inAppImageSizeStorage: InAppImageSizeStorage,
-    private val featureToggleManager: FeatureToggleManager
+    private val inAppImageSizeStorage: InAppImageSizeStorage
 ) :
     InAppMessageViewDisplayer {
 
@@ -63,6 +63,7 @@ internal class InAppMessageViewDisplayerImpl(
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val gson by mindboxInject { gson }
+    private val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
@@ -200,11 +201,6 @@ internal class InAppMessageViewDisplayerImpl(
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
-        when (featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
-            true -> mindboxLogI("InApp.ShowFailure sending enabled")
-            false -> mindboxLogI("InApp.ShowFailure sending disabled")
-        }
-
         if (!isRestored) isActionExecuted = false
         if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
 
@@ -236,9 +232,19 @@ internal class InAppMessageViewDisplayerImpl(
         }
 
         currentActivity?.root?.let { root ->
-            currentHolder?.show(createMindboxView(root))
+            inAppFailureTracker.executeWithFailureTracking(
+                inAppId = wrapper.inAppType.inAppId,
+                failureReason = FailureReason.PRESENTATION_FAILED,
+                errorDescription = "Error when trying draw inapp",
+                onFailure = { runCatching { currentHolder?.hide() } }
+            ) {
+                currentHolder?.show(createMindboxView(root))
+            }
         } ?: run {
-            mindboxLogE("failed to show inApp: currentRoot is null")
+            inAppFailureTracker.sendPresentationFailure(
+                inAppId = wrapper.inAppType.inAppId,
+                errorDescription = "currentRoot is null"
+            )
         }
     }
 
@@ -249,10 +255,20 @@ internal class InAppMessageViewDisplayerImpl(
         currentHolder = restoredHolder
         pausedHolder = null
         val root: ViewGroup = currentActivity?.root ?: run {
-            mindboxLogE("failed to reattach inApp: currentRoot is null")
+            inAppFailureTracker.sendPresentationFailure(
+                inAppId = inAppId,
+                errorDescription = "failed to reattach inApp: currentRoot is null"
+            )
             return true
         }
-        restoredHolder.reattach(createMindboxView(root))
+        inAppFailureTracker.executeWithFailureTracking(
+            inAppId = inAppId,
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDescription = "Error when trying reattach InApp",
+            onFailure = { runCatching { restoredHolder.hide() } },
+        ) {
+            restoredHolder.reattach(createMindboxView(root))
+        }
         return true
     }
 

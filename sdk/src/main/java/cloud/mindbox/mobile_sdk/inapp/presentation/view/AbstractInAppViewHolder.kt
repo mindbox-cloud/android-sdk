@@ -16,7 +16,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.safeAs
@@ -49,6 +50,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
     private val mindboxNotificationManager by mindboxInject {
         mindboxNotificationManager
     }
+    internal val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private var inAppActionHandler = InAppActionHandler()
 
@@ -116,17 +118,18 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                     isFirstResource: Boolean
                 ): Boolean {
                     return runCatching {
-                        this.mindboxLogE(
-                            message = "Failed to load in-app image with url = $url",
-                            exception = e
-                                ?: RuntimeException("Failed to load in-app image with url = $url")
+                        inAppFailureTracker.sendPresentationFailure(
+                            inAppId = wrapper.inAppType.inAppId,
+                            errorDescription = "Failed to load in-app image with url = $url",
+                            throwable = e
                         )
                         hide()
                         false
-                    }.getOrElse {
-                        mindboxLogE(
-                            "Unknown error when loading image from cache succeeded",
-                            exception = it
+                    }.getOrElse { throwable ->
+                        inAppFailureTracker.sendPresentationFailure(
+                            inAppId = wrapper.inAppType.inAppId,
+                            errorDescription = "Unknown error after loading image from cache succeeded",
+                            throwable = throwable
                         )
                         false
                     }
@@ -150,10 +153,11 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                             }
                         }
                         false
-                    }.getOrElse {
-                        mindboxLogE(
-                            "Unknown error when loading image from cache failed",
-                            exception = it
+                    }.getOrElse { throwable ->
+                        inAppFailureTracker.sendPresentationFailure(
+                            inAppId = wrapper.inAppType.inAppId,
+                            errorDescription = "Unknown error in onResourceReady callback",
+                            throwable = throwable
                         )
                         false
                     }

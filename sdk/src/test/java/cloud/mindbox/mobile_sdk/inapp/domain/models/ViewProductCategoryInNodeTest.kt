@@ -68,6 +68,11 @@ class ViewProductCategoryInNodeTest {
     }
 
     @Test
+    fun `hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.viewProductCategoryInNode.hasProductSegmentationNode())
+    }
+
+    @Test
     fun `getOperationsSet return viewCategory`() = runTest {
         assertEquals(
             setOf("TestSystemNameCategory"),

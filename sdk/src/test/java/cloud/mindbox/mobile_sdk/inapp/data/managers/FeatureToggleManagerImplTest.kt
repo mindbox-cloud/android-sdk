@@ -25,7 +25,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to true)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to true)
             ),
             abtests = null
         )
@@ -33,6 +33,26 @@ class FeatureToggleManagerImplTest {
         featureToggleManager.applyToggles(config)
 
         assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
+    }
+
+    @Test
+    fun `applyToggles works with feature name containing special characters`() {
+        val config = InAppConfigResponse(
+            inApps = null,
+            monitoring = null,
+            settings = SettingsDto(
+                operations = null,
+                ttl = null,
+                slidingExpiration = null,
+                inapp = null,
+                featureToggles = mapOf("!@#$%^&*()_+<>:;{},./|~`" to false)
+            ),
+            abtests = null
+        )
+
+        featureToggleManager.applyToggles(config)
+
+        assertEquals(false, featureToggleManager.isEnabled("!@#$%^&*()_+<>:;{},./|~`"))
     }
 
     @Test
@@ -45,7 +65,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to false)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to false)
             ),
             abtests = null
         )
@@ -66,7 +86,7 @@ class FeatureToggleManagerImplTest {
                 slidingExpiration = null,
                 inapp = null,
                 featureToggles = mapOf(
-                    "shouldSendInAppShowError" to true,
+                    "MobileSdkShouldSendInAppShowError" to true,
                     "anotherToggle" to false
                 )
             ),
@@ -90,7 +110,7 @@ class FeatureToggleManagerImplTest {
                 slidingExpiration = null,
                 inapp = null,
                 featureToggles = mapOf(
-                    "shouldSendInAppShowError" to true,
+                    "MobileSdkShouldSendInAppShowError" to true,
                     "invalidToggle" to null
                 )
             ),
@@ -159,7 +179,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to true)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to true)
             ),
             abtests = null
         )
@@ -174,7 +194,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to false)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to false)
             ),
             abtests = null
         )
@@ -192,7 +212,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to false)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to false)
             ),
             abtests = null
         )
@@ -207,7 +227,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to true)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to true)
             ),
             abtests = null
         )
@@ -225,7 +245,7 @@ class FeatureToggleManagerImplTest {
                 ttl = null,
                 slidingExpiration = null,
                 inapp = null,
-                featureToggles = mapOf("shouldSendInAppShowError" to false)
+                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to false)
             ),
             abtests = null
         )
@@ -233,7 +253,7 @@ class FeatureToggleManagerImplTest {
         assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
 
         featureToggleManager.applyToggles(null)
-        assertEquals(true, featureToggleManager.isEnabled("shouldSendInAppShowError"))
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test
@@ -247,7 +267,7 @@ class FeatureToggleManagerImplTest {
                 slidingExpiration = null,
                 inapp = null,
                 featureToggles = mapOf(
-                    "shouldSendInAppShowError" to false,
+                    "MobileSdkShouldSendInAppShowError" to false,
                     "toggle1" to true
                 )
             ),

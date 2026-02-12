@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackTargetingError
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 
@@ -13,6 +14,7 @@ internal data class ViewProductSegmentNode(
 
     private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
     private val inAppSegmentationRepository by mindboxInject { inAppSegmentationRepository }
+    private val inAppTargetingErrorRepository by mindboxInject { inAppTargetingErrorRepository }
     private val gson by mindboxInject { gson }
     private val sessionStorageManager by mindboxInject { sessionStorageManager }
 
@@ -31,6 +33,12 @@ internal data class ViewProductSegmentNode(
                     if (error is ProductSegmentationError) {
                         sessionStorageManager.processedProductSegmentations[product] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                        if (error.shouldTrackTargetingError()) {
+                            inAppTargetingErrorRepository.saveError(
+                                key = TargetingErrorKey.ProductSegmentation(product),
+                                error = error
+                            )
+                        }
                         mindboxLogE("Error fetching product segmentations for product $product")
                     }
                 }
@@ -62,4 +70,6 @@ internal data class ViewProductSegmentNode(
             setOf(it)
         } ?: setOf()
     }
+
+    override fun hasProductSegmentationNode(): Boolean = true
 }

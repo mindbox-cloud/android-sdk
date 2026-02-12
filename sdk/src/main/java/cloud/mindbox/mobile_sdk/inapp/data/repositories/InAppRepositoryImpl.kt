@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
@@ -128,6 +129,18 @@ internal class InAppRepositoryImpl(
                 )
             }
         }
+    }
+
+    override fun sendInAppShowFailure(failures: List<InAppShowFailure>) {
+        failures
+            .takeIf { it.isNotEmpty() }
+            ?.let { failures ->
+                inAppSerializationManager.serializeToInAppShowFailuresString(failures)
+                    .takeIf { it.isNotBlank() }
+                    ?.let { operationBody ->
+                        MindboxEventManager.inAppShowFailure(context, operationBody)
+                    }
+            }
     }
 
     override fun isInAppShown(inAppId: String): Boolean {

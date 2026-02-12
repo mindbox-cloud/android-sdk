@@ -28,6 +28,8 @@ internal interface TargetingInfo {
 
     fun hasOperationNode(): Boolean
 
+    fun hasProductSegmentationNode(): Boolean = false
+
     suspend fun getOperationsSet(): Set<String>
 }
 
@@ -238,6 +240,8 @@ internal sealed class TreeTargeting(open val type: String) :
             }
             return false
         }
+
+        override fun hasProductSegmentationNode() = nodes.any { it.hasProductSegmentationNode() }
     }
 
     internal data class UnionNode(
@@ -288,6 +292,8 @@ internal sealed class TreeTargeting(open val type: String) :
             }
             return false
         }
+
+        override fun hasProductSegmentationNode() = nodes.any { it.hasProductSegmentationNode() }
     }
 
     internal data class SegmentNode(

@@ -23,6 +23,6 @@
     "minIntervalBetweenShows": "00:30:00"
   },
   "featureToggles": {
-    "shouldSendInAppShowError": true
+    "MobileSdkShouldSendInAppShowError": true
   }
 }

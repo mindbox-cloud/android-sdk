@@ -43,8 +43,10 @@ internal fun DomainModule(
         InAppProcessingManagerImpl(
             inAppGeoRepository = inAppGeoRepository,
             inAppSegmentationRepository = inAppSegmentationRepository,
+            inAppTargetingErrorRepository = inAppTargetingErrorRepository,
             inAppContentFetcher = inAppContentFetcher,
-            inAppRepository = inAppRepository
+            inAppRepository = inAppRepository,
+            inAppFailureTracker = inAppFailureTracker
         )
     }
 

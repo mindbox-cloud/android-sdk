@@ -69,7 +69,9 @@ internal interface DataModule : MindboxModule {
     val callbackRepository: CallbackRepository
     val geoSerializationManager: GeoSerializationManager
     val inAppSerializationManager: InAppSerializationManager
+    val inAppFailureTracker: InAppFailureTracker
     val inAppSegmentationRepository: InAppSegmentationRepository
+    val inAppTargetingErrorRepository: InAppTargetingErrorRepository
     val inAppValidator: InAppValidator
     val inAppMapper: InAppMapper
     val gson: Gson

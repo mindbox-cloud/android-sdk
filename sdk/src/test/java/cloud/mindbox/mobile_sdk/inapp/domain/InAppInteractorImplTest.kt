@@ -6,12 +6,14 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -74,10 +76,16 @@ class InAppInteractorImplTest {
     @RelaxedMockK
     private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
 
+    @RelaxedMockK
+    private lateinit var inAppTargetingErrorRepository: InAppTargetingErrorRepository
+
     @MockK
     private lateinit var inAppContentFetcher: InAppContentFetcher
 
     private lateinit var interactor: InAppInteractor
+
+    @RelaxedMockK
+    private lateinit var inAppFailureTracker: InAppFailureTracker
 
     @Before
     fun setup() {
@@ -162,8 +170,10 @@ class InAppInteractorImplTest {
         val realProcessingManager = InAppProcessingManagerImpl(
             inAppGeoRepository,
             inAppSegmentationRepository,
+            inAppTargetingErrorRepository,
             inAppContentFetcher,
-            inAppRepository
+            inAppRepository,
+            inAppFailureTracker
         )
 
         interactor = InAppInteractorImpl(
