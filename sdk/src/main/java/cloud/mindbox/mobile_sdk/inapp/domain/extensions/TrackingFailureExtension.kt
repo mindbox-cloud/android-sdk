@@ -109,23 +109,3 @@ internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
         onFailure()
     }
 }
-
-internal suspend inline fun <T> InAppFailureTracker.executeWithFailureTrackingSuspend(
-    inAppId: String,
-    failureReason: FailureReason,
-    errorDescription: String,
-    crossinline onFailure: () -> Unit = {},
-    block: suspend () -> T
-): Result<T> {
-    return runCatching {
-        block()
-    }.onFailure { throwable ->
-        sendFailureWithContext(
-            inAppId = inAppId,
-            failureReason = failureReason,
-            errorDescription = errorDescription,
-            throwable = throwable
-        )
-        onFailure()
-    }
-}

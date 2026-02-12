@@ -13,7 +13,6 @@ import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTrackingSuspend
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -365,15 +364,7 @@ internal class WebViewInAppViewHolder(
                 controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
                 layer.contentUrl?.let { contentUrl ->
-                    inAppFailureTracker.executeWithFailureTrackingSuspend(
-                        inAppId = wrapper.inAppType.inAppId,
-                        failureReason = FailureReason.HTML_LOAD_FAILED,
-                        errorDescription = "Failed to fetch HTML content for In-App",
-                        onFailure = {
-                            hide()
-                            release()
-                        }
-                    ) {
+                    runCatching {
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
                         onContentPageLoaded(
@@ -383,6 +374,15 @@ internal class WebViewInAppViewHolder(
                                 html = response
                             )
                         )
+                    }.onFailure { e ->
+                        inAppFailureTracker.sendFailureWithContext(
+                            inAppId = wrapper.inAppType.inAppId,
+                            failureReason = FailureReason.HTML_LOAD_FAILED,
+                            errorDescription = "Failed to fetch HTML content for In-App",
+                            throwable = e
+                        )
+                        hide()
+                        release()
                     }
                 } ?: run {
                     inAppFailureTracker.sendFailureWithContext(
