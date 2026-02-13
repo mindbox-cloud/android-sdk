@@ -64,7 +64,7 @@ internal class InAppFailureTrackerImplTest {
         assertEquals(inAppId, captured[0].inAppId)
         assertEquals(FailureReason.PRESENTATION_FAILED, captured[0].failureReason)
         assertEquals("error", captured[0].errorDetails)
-        assertEquals(expectedTimestamp, captured[0].timestamp)
+        assertEquals(expectedTimestamp, captured[0].dateTimeUtc)
     }
 
     @Test
