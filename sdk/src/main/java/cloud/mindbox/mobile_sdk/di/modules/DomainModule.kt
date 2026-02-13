@@ -33,6 +33,7 @@ internal fun DomainModule(
             maxInappsPerDayLimitChecker = maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker = minIntervalBetweenShowsLimitChecker,
             timeProvider = timeProvider,
+            sessionStorageManager = sessionStorageManager,
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {

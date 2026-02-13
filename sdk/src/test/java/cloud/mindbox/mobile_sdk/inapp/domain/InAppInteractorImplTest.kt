@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -79,6 +80,9 @@ class InAppInteractorImplTest {
     @RelaxedMockK
     private lateinit var inAppTargetingErrorRepository: InAppTargetingErrorRepository
 
+    @RelaxedMockK
+    private lateinit var sessionStorageManager: SessionStorageManager
+
     @MockK
     private lateinit var inAppContentFetcher: InAppContentFetcher
 
@@ -100,7 +104,8 @@ class InAppInteractorImplTest {
             maxInappsPerSessionLimitChecker,
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
-            timeProvider
+            timeProvider,
+            sessionStorageManager
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
@@ -187,7 +192,8 @@ class InAppInteractorImplTest {
             maxInappsPerSessionLimitChecker,
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
-            timeProvider
+            timeProvider,
+            sessionStorageManager
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns inAppsFromConfig

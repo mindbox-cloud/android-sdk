@@ -1358,7 +1358,9 @@ public object Mindbox : MindboxLog {
                 requestUrl = requestUrl,
                 sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC
             )
-
+            if (source != null || requestUrl != null) {
+                sessionStorageManager.lastTrackVisitData = trackVisitData
+            }
             MindboxEventManager.appStarted(applicationContext, trackVisitData)
         }
     }

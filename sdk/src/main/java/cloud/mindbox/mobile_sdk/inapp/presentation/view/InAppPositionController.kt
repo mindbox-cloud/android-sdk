@@ -16,6 +16,7 @@ internal class InAppPositionController {
     private var inAppView: View? = null
     private var originalParent: ViewGroup? = null
     private var inAppOriginalIndex: Int = -1
+    private var hostActivity: FragmentActivity? = null
 
     private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
         override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
@@ -39,27 +40,32 @@ internal class InAppPositionController {
                 this.inAppOriginalIndex = parent.indexOfChild(inAppView)
             }
 
-            entryView.findActivity().safeAs<FragmentActivity>()
-                ?.supportFragmentManager
-                ?.registerFragmentLifecycleCallbacks(
-                    fragmentLifecycleCallbacks,
-                    true
-                )
+            entryView.findActivity().safeAs<FragmentActivity>()?.apply {
+                hostActivity = this
+                supportFragmentManager
+                    .registerFragmentLifecycleCallbacks(
+                        fragmentLifecycleCallbacks,
+                        true
+                    )
+            }
+
             repositionInApp()
         }
 
     fun stop(): Unit = loggingRunCatching {
-        originalParent?.findActivity().safeAs<FragmentActivity>()
-            ?.supportFragmentManager
-            ?.unregisterFragmentLifecycleCallbacks(
-                fragmentLifecycleCallbacks
-            )
+        hostActivity?.apply {
+            supportFragmentManager
+                .unregisterFragmentLifecycleCallbacks(
+                    fragmentLifecycleCallbacks
+                )
+        }
         inAppView = null
         originalParent = null
+        hostActivity = null
     }
 
     private fun repositionInApp(): Unit = loggingRunCatching {
-        val activity = inAppView?.findActivity().safeAs<FragmentActivity>() ?: return@loggingRunCatching
+        val activity = hostActivity ?: return@loggingRunCatching
         val topDialog = findTopDialogFragment(activity.supportFragmentManager)
         val targetParent = topDialog?.dialog?.window?.decorView.safeAs<ViewGroup>()
         if (targetParent != null) {
