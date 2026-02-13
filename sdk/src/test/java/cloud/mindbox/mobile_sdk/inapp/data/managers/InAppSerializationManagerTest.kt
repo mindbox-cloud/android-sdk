@@ -134,7 +134,7 @@ internal class InAppSerializationManagerTest {
                 inAppId = inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDetails = "error",
-                timestamp = "2024-02-10T00:00:00Z"
+                dateTimeUtc = "2024-02-10T00:00:00Z"
             )
         )
         val expectedJson = Gson().toJson(InAppFailuresWrapper(inAppShowFailures))
@@ -152,7 +152,7 @@ internal class InAppSerializationManagerTest {
                 inAppId = inAppId,
                 failureReason = FailureReason.UNKNOWN_ERROR,
                 errorDetails = null,
-                timestamp = "2024-02-10T00:00:00Z"
+                dateTimeUtc = "2024-02-10T00:00:00Z"
             )
         )
         every {

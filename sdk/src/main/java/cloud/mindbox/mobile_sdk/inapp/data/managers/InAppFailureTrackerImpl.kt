@@ -53,7 +53,7 @@ internal class InAppFailureTrackerImpl(
                 inAppId = inAppId,
                 failureReason = failureReason,
                 errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                timestamp = timestamp
+                dateTimeUtc = timestamp
             )
         )
     }
@@ -67,7 +67,7 @@ internal class InAppFailureTrackerImpl(
                 inAppId = inAppId,
                 failureReason = failureReason,
                 errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                timestamp = timestamp
+                dateTimeUtc = timestamp
             )
         )
     }

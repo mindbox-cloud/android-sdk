@@ -9,8 +9,8 @@ internal data class InAppShowFailure(
     val failureReason: FailureReason,
     @SerializedName("errorDetails")
     val errorDetails: String?,
-    @SerializedName("timestamp")
-    val timestamp: String
+    @SerializedName("dateTimeUtc")
+    val dateTimeUtc: String
 )
 
 internal enum class FailureReason(val value: String) {
