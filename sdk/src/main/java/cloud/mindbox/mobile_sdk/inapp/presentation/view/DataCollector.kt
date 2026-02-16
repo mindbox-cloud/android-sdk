@@ -4,6 +4,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -13,6 +14,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import java.util.Locale
+import kotlin.math.roundToInt
 import android.content.res.Configuration as UiConfiguration
 
 internal class DataCollector(
@@ -126,18 +128,19 @@ internal class DataCollector(
     }
 
     private fun createPermissionsPayload(): Provider {
-        val cameraStatus: String = permissionManager.getCameraPermissionStatus().value
-        val locationStatus: String = permissionManager.getLocationPermissionStatus().value
-        val microphoneStatus: String = permissionManager.getMicrophonePermissionStatus().value
-        val notificationsStatus: String = permissionManager.getNotificationPermissionStatus().value
-        val photoLibraryStatus: String = permissionManager.getPhotoLibraryPermissionStatus().value
+        val map = mapOf(
+            KEY_PERMISSIONS_CAMERA to permissionManager.getCameraPermissionStatus().value,
+            KEY_PERMISSIONS_LOCATION to permissionManager.getLocationPermissionStatus().value,
+            KEY_PERMISSIONS_MICROPHONE to permissionManager.getMicrophonePermissionStatus().value,
+            KEY_PERMISSIONS_NOTIFICATIONS to permissionManager.getNotificationPermissionStatus().value,
+            KEY_PERMISSIONS_PHOTO_LIBRARY to permissionManager.getPhotoLibraryPermissionStatus().value,
+        ).filter { (_, value) -> value == PermissionStatus.GRANTED.value }
+
         return Provider {
             JsonObject().apply {
-                add(KEY_PERMISSIONS_CAMERA, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, cameraStatus) })
-                add(KEY_PERMISSIONS_LOCATION, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, locationStatus) })
-                add(KEY_PERMISSIONS_MICROPHONE, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, microphoneStatus) })
-                add(KEY_PERMISSIONS_NOTIFICATIONS, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, notificationsStatus) })
-                add(KEY_PERMISSIONS_PHOTO_LIBRARY, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, photoLibraryStatus) })
+                map.forEach { (key, value) ->
+                    add(key, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, value) })
+                }
             }
         }
     }
@@ -153,12 +156,16 @@ internal class DataCollector(
     }
 
     private fun createInsetsPayload(insets: InAppInsets): Provider {
+        val density: Float = appContext.resources.displayMetrics.density
+
+        fun Int.toCssPixel(): Int = (this / density).roundToInt()
+
         return Provider {
             JsonObject().apply {
-                addProperty(InAppInsets.BOTTOM, insets.bottom)
-                addProperty(InAppInsets.LEFT, insets.left)
-                addProperty(InAppInsets.RIGHT, insets.right)
-                addProperty(InAppInsets.TOP, insets.top)
+                addProperty(InAppInsets.BOTTOM, insets.bottom.toCssPixel())
+                addProperty(InAppInsets.LEFT, insets.left.toCssPixel())
+                addProperty(InAppInsets.RIGHT, insets.right.toCssPixel())
+                addProperty(InAppInsets.TOP, insets.top.toCssPixel())
             }
         }
     }
