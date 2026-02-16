@@ -250,7 +250,6 @@ internal class WebViewInAppViewHolder(
 
     private fun clearBackPressedCallback() {
         backPressedCallback?.remove()
-        backPressedCallback = null
     }
 
     private fun sendBackAction(controller: WebViewController) {
@@ -521,5 +520,6 @@ internal class WebViewInAppViewHolder(
         clearBackPressedCallback()
         webViewController?.destroy()
         webViewController = null
+        backPressedCallback = null
     }
 }

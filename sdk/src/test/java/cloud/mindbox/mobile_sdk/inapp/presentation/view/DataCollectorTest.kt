@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
 import android.content.res.Resources
+import android.util.DisplayMetrics
+import org.junit.Assert.assertNotNull
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
@@ -44,8 +46,10 @@ class DataCollectorTest {
         uiConfiguration = UiConfiguration()
         permissionManager = mockk()
         sessionStorageManager = SessionStorageManager(timeProvider = mockk())
+        val displayMetrics = DisplayMetrics().apply { density = 1f }
         every { appContext.resources } returns resources
         every { resources.configuration } returns uiConfiguration
+        every { resources.displayMetrics } returns displayMetrics
         mockkObject(MindboxPreferences)
     }
 
@@ -104,11 +108,12 @@ class DataCollectorTest {
         assertEquals(2, actualJson.getAsJsonObject("insets").get("top").asInt)
         assertEquals(3, actualJson.getAsJsonObject("insets").get("right").asInt)
         assertEquals(4, actualJson.getAsJsonObject("insets").get("bottom").asInt)
+        val permissionsJson: JsonObject = actualJson.getAsJsonObject("permissions")
         assertEquals("granted", getPermissionStatus(actualJson, "camera"))
-        assertEquals("denied", getPermissionStatus(actualJson, "location"))
-        assertEquals("notDetermined", getPermissionStatus(actualJson, "microphone"))
-        assertEquals("restricted", getPermissionStatus(actualJson, "notifications"))
-        assertEquals("limited", getPermissionStatus(actualJson, "photoLibrary"))
+        assertFalse(permissionsJson.has("location"))
+        assertFalse(permissionsJson.has("microphone"))
+        assertFalse(permissionsJson.has("notifications"))
+        assertFalse(permissionsJson.has("photoLibrary"))
         assertTrue(actualJson.has("sdkVersion"))
         assertEquals(Constants.SDK_VERSION_NUMERIC.toString(), actualJson.get("sdkVersionNumeric").asString)
     }
@@ -151,6 +156,47 @@ class DataCollectorTest {
         assertEquals("overridden-endpoint", actualJson.get("endpointId").asString)
         assertEquals("dark", actualJson.get("theme").asString)
         assertEquals("ru_RU", actualJson.get("locale").asString)
+        val permissionsJson: JsonObject = actualJson.getAsJsonObject("permissions")
+        assertEquals(5, permissionsJson.keySet().size)
+        assertEquals("granted", getPermissionStatus(actualJson, "camera"))
+        assertEquals("granted", getPermissionStatus(actualJson, "location"))
+        assertEquals("granted", getPermissionStatus(actualJson, "microphone"))
+        assertEquals("granted", getPermissionStatus(actualJson, "notifications"))
+        assertEquals("granted", getPermissionStatus(actualJson, "photoLibrary"))
+    }
+
+    @Test
+    fun `get converts insets to CSS pixels when density is not 1f`() {
+        val density = 2.5f
+        val displayMetrics = DisplayMetrics().apply { this.density = density }
+        every { resources.displayMetrics } returns displayMetrics
+        every { MindboxPreferences.deviceUuid } returns "device-uuid"
+        every { MindboxPreferences.userVisitCount } returns 0
+        every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.DENIED
+        every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.DENIED
+        every { permissionManager.getMicrophonePermissionStatus() } returns PermissionStatus.DENIED
+        every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.DENIED
+        every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.DENIED
+        sessionStorageManager.lastTrackVisitData = null
+        sessionStorageManager.inAppTriggerEvent = InAppEventType.AppStartup
+        val inAppInsets = InAppInsets(left = 5, top = 10, right = 15, bottom = 20)
+        val dataCollector = DataCollector(
+            appContext = appContext,
+            sessionStorageManager = sessionStorageManager,
+            permissionManager = permissionManager,
+            configuration = createConfiguration(endpointId = "endpoint-id", versionName = "1.0.0"),
+            params = emptyMap(),
+            inAppInsets = inAppInsets,
+            gson = gson,
+        )
+        val actualPayload = dataCollector.get()
+        val actualJson = JsonParser.parseString(actualPayload).asJsonObject
+        val insetsJson = actualJson.getAsJsonObject("insets")
+        assertNotNull(insetsJson)
+        assertEquals(2, insetsJson.get("left").asInt)
+        assertEquals(4, insetsJson.get("top").asInt)
+        assertEquals(6, insetsJson.get("right").asInt)
+        assertEquals(8, insetsJson.get("bottom").asInt)
     }
 
     private fun getPermissionStatus(payload: JsonObject, permissionKey: String): String {
