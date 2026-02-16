@@ -89,6 +89,7 @@ class DataCollectorTest {
             params = mapOf("customKey" to "customValue"),
             inAppInsets = InAppInsets(left = 1, top = 2, right = 3, bottom = 4),
             gson = gson,
+            inAppId = "inapp-id",
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -145,6 +146,7 @@ class DataCollectorTest {
             params = mapOf("endpointId" to "overridden-endpoint"),
             inAppInsets = InAppInsets(),
             gson = gson,
+            inAppId = "inapp-id",
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -188,6 +190,7 @@ class DataCollectorTest {
             params = emptyMap(),
             inAppInsets = inAppInsets,
             gson = gson,
+            inAppId = "inapp-id",
         )
         val actualPayload = dataCollector.get()
         val actualJson = JsonParser.parseString(actualPayload).asJsonObject

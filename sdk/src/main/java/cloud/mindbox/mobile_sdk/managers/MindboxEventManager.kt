@@ -109,7 +109,7 @@ internal object MindboxEventManager {
         )
     }
 
-    fun asyncOperation(context: Context, name: String, body: String) =
+    fun asyncOperation(context: Context, name: String, body: String): Unit =
         asyncOperation(
             context,
             Event(

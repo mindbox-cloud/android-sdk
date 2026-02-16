@@ -33,6 +33,12 @@ public enum class WebViewAction {
 
     @SerializedName("toast")
     TOAST,
+
+    @SerializedName("syncOperation")
+    SYNC_OPERATION,
+
+    @SerializedName("asyncOperation")
+    ASYNC_OPERATION,
 }
 
 @InternalMindboxApi
