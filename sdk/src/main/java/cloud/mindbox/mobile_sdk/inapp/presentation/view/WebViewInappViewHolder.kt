@@ -72,6 +72,9 @@ internal class WebViewInAppViewHolder(
     private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
     private val permissionManager: PermissionManager by mindboxInject { permissionManager }
     private val appContext: Application by mindboxInject { appContext }
+    private val operationExecutor: WebViewOperationExecutor by lazy {
+        MindboxWebViewOperationExecutor()
+    }
 
     override val isActive: Boolean
         get() = isInAppMessageActive
@@ -125,8 +128,15 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.LOG, ::handleLogAction)
             register(WebViewAction.TOAST, ::handleToastAction)
             register(WebViewAction.ALERT, ::handleAlertAction)
+            register(WebViewAction.ASYNC_OPERATION, ::handleAsyncOperationAction)
+            registerSuspend(WebViewAction.SYNC_OPERATION, ::handleSyncOperationAction)
             register(WebViewAction.READY) {
-                handleReadyAction(configuration, inAppLayout.webViewInsets, layer.params)
+                handleReadyAction(
+                    configuration = configuration,
+                    insets = inAppLayout.webViewInsets,
+                    params = layer.params,
+                    inAppId = wrapper.inAppType.inAppId,
+                )
             }
             register(WebViewAction.INIT) {
                 handleInitAction(controller)
@@ -141,6 +151,7 @@ internal class WebViewInAppViewHolder(
         configuration: Configuration,
         insets: InAppInsets,
         params: Map<String, String>,
+        inAppId: String,
     ): String {
         return DataCollector(
             appContext = appContext,
@@ -150,6 +161,7 @@ internal class WebViewInAppViewHolder(
             configuration = configuration,
             params = params,
             inAppInsets = insets,
+            inAppId = inAppId,
         ).get()
     }
 
@@ -174,7 +186,6 @@ internal class WebViewInAppViewHolder(
             }
             val url: String? = actionResult.first
             val payload: String? = actionResult.second
-            wrapper.inAppActionCallbacks.onInAppClick.onClick()
             inAppCallback.onInAppClick(
                 wrapper.inAppType.inAppId,
                 url ?: "",
@@ -218,6 +229,15 @@ internal class WebViewInAppViewHolder(
                 .show()
         }
         return BridgeMessage.EMPTY_PAYLOAD
+    }
+
+    private fun handleAsyncOperationAction(message: BridgeMessage.Request): String {
+        operationExecutor.executeAsyncOperation(appContext, message.payload)
+        return BridgeMessage.EMPTY_PAYLOAD
+    }
+
+    private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
+        return operationExecutor.executeSyncOperation(message.payload)
     }
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
