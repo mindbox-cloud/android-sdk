@@ -29,7 +29,6 @@ internal class ModalWindowValidator(
                     !rez
                 }
                 is BackgroundDto.LayerDto.WebViewLayerDto -> {
-                    mindboxLogI("Start checking webview layer")
                     val rez = webViewLayerValidator.isValid(layerDto)
                     mindboxLogI("Finish checking webview layer and it's validity = $rez")
                     !rez
