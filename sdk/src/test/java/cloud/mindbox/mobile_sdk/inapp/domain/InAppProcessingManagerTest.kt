@@ -219,7 +219,7 @@ internal class InAppProcessingManagerTest {
                 id = validId,
                 targeting = InAppStub.getTargetingTrueNode(),
                 form = InAppStub.getInApp().form.copy(
-                    listOf(
+                    variants = listOf(
                         InAppStub.getModalWindow().copy(
                             inAppId = validId
                         )
@@ -241,13 +241,44 @@ internal class InAppProcessingManagerTest {
                         id = validId,
                         targeting = InAppStub.getTargetingTrueNode(),
                         form = InAppStub.getInApp().form.copy(
-                            listOf(
+                            variants = listOf(
                                 InAppStub.getModalWindow().copy(
                                     inAppId = validId
                                 )
                             )
                         )
                     ),
+            ),
+            event
+        )
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `choose inApp to show chooses WebView inApp when targeting matches`() = runTest {
+        val validId = "webview-valid-id"
+        val expectedResult = InAppStub.getInApp().copy(
+            id = validId,
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
+            )
+        )
+        val actualResult = inAppProcessingManager.chooseInAppToShow(
+            listOf(
+                InAppStub.getInApp().copy(
+                    id = "123",
+                    targeting = InAppStub.getTargetingRegionNode().copy(
+                        type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
+                    )
+                ),
+                InAppStub.getInApp().copy(
+                    id = validId,
+                    targeting = InAppStub.getTargetingTrueNode(),
+                    form = InAppStub.getInApp().form.copy(
+                        variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
+                    )
+                ),
             ),
             event
         )
@@ -330,7 +361,7 @@ internal class InAppProcessingManagerTest {
                 id = validId,
                 targeting = InAppStub.getTargetingTrueNode(),
                 form = InAppStub.getInApp().form.copy(
-                    listOf(
+                    variants = listOf(
                         InAppStub.getModalWindow().copy(
                             inAppId = validId
                         )
@@ -348,7 +379,7 @@ internal class InAppProcessingManagerTest {
             id = validId,
             targeting = InAppStub.getTargetingTrueNode(),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = validId
                     )
@@ -381,7 +412,7 @@ internal class InAppProcessingManagerTest {
                 id = validId,
                 targeting = InAppStub.getTargetingTrueNode(),
                 form = InAppStub.getInApp().form.copy(
-                    listOf(
+                    variants = listOf(
                         InAppStub.getModalWindow().copy(
                             inAppId = validId
                         )
@@ -426,7 +457,7 @@ internal class InAppProcessingManagerTest {
         setupTestGeoRepositoryForErrorScenario()
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
-                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
                 nodes = listOf(
                     InAppStub.getTargetingCountryNode().copy(kind = Kind.NEGATIVE),
                     InAppStub.getTargetingTrueNode()
@@ -446,7 +477,7 @@ internal class InAppProcessingManagerTest {
         setupTestSegmentationRepositoryForErrorScenario()
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
-                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
                 nodes = listOf(
                     InAppStub.getTargetingSegmentNode().copy(kind = Kind.NEGATIVE),
                     InAppStub.getTargetingTrueNode()
@@ -464,7 +495,7 @@ internal class InAppProcessingManagerTest {
 
         val testInApp = InAppStub.getInApp().copy(
             targeting = TreeTargeting.UnionNode(
-                type = TreeTargetingDto.UnionNodeDto.Companion.OR_JSON_NAME,
+                type = TreeTargetingDto.UnionNodeDto.OR_JSON_NAME,
                 nodes = listOf(
                     spyk(InAppStub.getTargetingViewProductSegmentNode().copy(kind = Kind.NEGATIVE)) {
                         coEvery { fetchTargetingInfo(any()) } throws ProductSegmentationError(VolleyError())

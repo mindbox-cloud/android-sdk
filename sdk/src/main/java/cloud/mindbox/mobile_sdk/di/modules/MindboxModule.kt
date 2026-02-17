@@ -90,6 +90,7 @@ internal interface DataModule : MindboxModule {
     val modalElementDtoDataFiller: ModalElementDtoDataFiller
     val modalWindowValidator: ModalWindowValidator
     val imageLayerValidator: ImageLayerValidator
+    val webViewLayerValidator: WebViewLayerValidator
     val modalElementValidator: ModalElementValidator
     val snackbarValidator: SnackbarValidator
     val closeButtonModalElementValidator: CloseButtonModalElementValidator

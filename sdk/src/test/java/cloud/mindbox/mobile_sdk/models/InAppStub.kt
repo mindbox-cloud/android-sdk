@@ -311,6 +311,19 @@ internal class InAppStub {
             type = "", inAppId = "", layers = listOf(), elements = listOf()
         )
 
+        fun getWebView() = InAppType.WebView(
+            inAppId = "",
+            type = "webview",
+            layers = listOf(
+                Layer.WebViewLayer(
+                    baseUrl = "https://inapp.local/popup",
+                    contentUrl = "https://inapp-dev.html",
+                    type = "webview",
+                    params = mapOf("formId" to "73379")
+                )
+            )
+        )
+
         val viewProductNode: ViewProductNode = ViewProductNode(
             type = "", kind = KindSubstring.SUBSTRING, value = ""
         )

@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -17,6 +19,9 @@ internal class ModalWindowValidatorTest {
 
     @MockK
     private lateinit var imageLayerValidator: ImageLayerValidator
+
+    @MockK
+    private lateinit var webViewLayerValidator: WebViewLayerValidator
 
     @MockK
     private lateinit var elementValidator: ModalElementValidator
@@ -71,6 +76,56 @@ internal class ModalWindowValidatorTest {
                 background = null
             )
         )
+        assertFalse(modalWindowValidator.isValid(modalWindowDto))
+    }
+
+    @Test
+    fun `test isValid returns true when webview layer is valid`() {
+        val webViewLayerDto = BackgroundDto.LayerDto.WebViewLayerDto(
+            baseUrl = "https://inapp.local/popup",
+            contentUrl = "https://inapp-dev.html",
+            type = "webview",
+            params = mapOf("formId" to "73379")
+        )
+        val modalWindowDto = PayloadDto.ModalWindowDto(
+            content = PayloadDto.ModalWindowDto.ContentDto(
+                background = InAppStub.getBackgroundDto().copy(
+                    layers = listOf(webViewLayerDto)
+                ),
+                elements = null
+            ),
+            type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+        )
+
+        every {
+            webViewLayerValidator.isValid(any())
+        } returns true
+
+        assertTrue(modalWindowValidator.isValid(modalWindowDto))
+    }
+
+    @Test
+    fun `test isValid returns false when webview layer is invalid`() {
+        val webViewLayerDto = BackgroundDto.LayerDto.WebViewLayerDto(
+            baseUrl = null,
+            contentUrl = "https://inapp-dev.html",
+            type = "webview",
+            params = null
+        )
+        val modalWindowDto = PayloadDto.ModalWindowDto(
+            content = PayloadDto.ModalWindowDto.ContentDto(
+                background = InAppStub.getBackgroundDto().copy(
+                    layers = listOf(webViewLayerDto)
+                ),
+                elements = null
+            ),
+            type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+        )
+
+        every {
+            webViewLayerValidator.isValid(any())
+        } returns false
+
         assertFalse(modalWindowValidator.isValid(modalWindowDto))
     }
 }
