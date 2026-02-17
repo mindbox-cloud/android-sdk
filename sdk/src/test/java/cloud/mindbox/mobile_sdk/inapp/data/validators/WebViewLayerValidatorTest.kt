@@ -79,4 +79,15 @@ internal class WebViewLayerValidatorTest {
     fun `isValid returns false when item is null`() {
         assertFalse(webViewLayerValidator.isValid(null))
     }
+
+    @Test
+    fun `isValid returns false when contentUrl is blank`() {
+        val webViewLayerDto = BackgroundDto.LayerDto.WebViewLayerDto(
+            baseUrl = "https://inapp.local/popup",
+            contentUrl = "   ",
+            type = "webview",
+            params = null
+        )
+        assertFalse(webViewLayerValidator.isValid(webViewLayerDto))
+    }
 }
