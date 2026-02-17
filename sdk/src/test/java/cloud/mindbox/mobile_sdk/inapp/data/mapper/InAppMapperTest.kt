@@ -1,8 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.data.mapper
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppDto
@@ -212,5 +218,100 @@ class InAppMapperTest {
             )
         )
         assertNull(result.inApps.first().delayTime)
+    }
+
+    @Test
+    fun `mapToInAppConfig maps ModalWindowDto with webview layer to InAppType WebView`() {
+        val mapper = InAppMapper()
+        val inAppId = "webview-inapp-id"
+        val webViewLayerDto = BackgroundDto.LayerDto.WebViewLayerDto(
+            baseUrl = "https://inapp.local/popup",
+            contentUrl = "https://inapp-dev.html",
+            type = BackgroundDto.LayerDto.WebViewLayerDto.WEBVIEW_TYPE_JSON_NAME,
+            params = mapOf("formId" to "73379")
+        )
+        val modalWindowDto = PayloadDto.ModalWindowDto(
+            content = PayloadDto.ModalWindowDto.ContentDto(
+                background = InAppStub.getBackgroundDto().copy(
+                    layers = listOf(webViewLayerDto)
+                ),
+                elements = null
+            ),
+            type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+        )
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = inAppId,
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.TrueNodeDto(type = ""),
+                        form = FormDto(variants = listOf(modalWindowDto))
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        val inApp = result.inApps.first()
+        assertTrue(inApp.form.variants.first() is InAppType.WebView)
+        val webView = inApp.form.variants.first() as InAppType.WebView
+        assertEquals(inAppId, webView.inAppId)
+        assertEquals(BackgroundDto.LayerDto.WebViewLayerDto.WEBVIEW_TYPE_JSON_NAME, webView.type)
+        assertEquals(1, webView.layers.size)
+        assertTrue(webView.layers.first() is Layer.WebViewLayer)
+        val layer = webView.layers.first() as Layer.WebViewLayer
+        assertEquals("https://inapp.local/popup", layer.baseUrl)
+        assertEquals("https://inapp-dev.html", layer.contentUrl)
+        assertEquals(mapOf("formId" to "73379"), layer.params)
+    }
+
+    @Test
+    fun `mapToInAppConfig maps ModalWindowDto with image layer to InAppType ModalWindow`() {
+        val mapper = InAppMapper()
+        val inAppId = "modal-inapp-id"
+        val modalWindowDto = InAppStub.getModalWindowDto().copy(
+            content = InAppStub.getModalWindowContentDto().copy(
+                background = InAppStub.getBackgroundDto().copy(
+                    layers = listOf(InAppStub.getImageLayerDto())
+                ),
+                elements = emptyList()
+            )
+        )
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = inAppId,
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(
+                            type = "once",
+                            kind = "lifetime",
+                        ),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.TrueNodeDto(type = ""),
+                        form = FormDto(variants = listOf(modalWindowDto))
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        val inApp = result.inApps.first()
+        assertTrue(inApp.form.variants.first() is InAppType.ModalWindow)
+        val modalWindow = inApp.form.variants.first() as InAppType.ModalWindow
+        assertEquals(inAppId, modalWindow.inAppId)
+        assertEquals(PayloadDto.ModalWindowDto.MODAL_JSON_NAME, modalWindow.type)
+        assertEquals(1, modalWindow.layers.size)
+        assertTrue(modalWindow.layers.first() is Layer.ImageLayer)
     }
 }

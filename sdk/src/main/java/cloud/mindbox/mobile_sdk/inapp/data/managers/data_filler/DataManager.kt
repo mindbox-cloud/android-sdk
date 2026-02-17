@@ -11,13 +11,6 @@ internal class DataManager(
 ) {
     fun fillFormData(item: FormDto?): FormDto? = item?.copy(variants = item.variants?.filterNotNull()?.map { payloadDto ->
         when (payloadDto) {
-            is PayloadDto.WebViewDto -> {
-                payloadDto.copy(
-                    content = payloadDto.content,
-                    type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
-                )
-            }
-
             is PayloadDto.ModalWindowDto -> {
                 modalWindowDtoDataFiller.fillData(payloadDto)
             }

@@ -4,12 +4,8 @@ import android.app.Activity
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcherOwner
-import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
-import cloud.mindbox.mobile_sdk.fromJson
-import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
@@ -17,7 +13,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
@@ -62,7 +57,6 @@ internal class InAppMessageViewDisplayerImpl(
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
-    private val gson by mindboxInject { gson }
     private val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
@@ -131,50 +125,11 @@ internal class InAppMessageViewDisplayerImpl(
         currentHolder = null
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal fun getWebViewFromPayload(inAppType: InAppType, inAppId: String): InAppType.WebView? {
-        val layer = when (inAppType) {
-            is InAppType.Snackbar -> inAppType.layers.firstOrNull()
-            is InAppType.ModalWindow -> inAppType.layers.firstOrNull()
-            is InAppType.WebView -> return inAppType
-        }
-        if (layer !is Layer.ImageLayer) {
-            return null
-        }
-
-        val payload = when (layer.action) {
-            is Layer.ImageLayer.Action.RedirectUrlAction -> layer.action.payload
-            is Layer.ImageLayer.Action.PushPermissionAction -> layer.action.payload
-        }
-        runCatching {
-            val layerDto = gson.fromJson<BackgroundDto.LayerDto.WebViewLayerDto>(payload).getOrThrow()
-            requireNotNull(layerDto.type)
-            requireNotNull(layerDto.contentUrl)
-            requireNotNull(layerDto.baseUrl)
-            Layer.WebViewLayer(
-                baseUrl = layerDto.baseUrl,
-                contentUrl = layerDto.contentUrl,
-                type = layerDto.type,
-                params = layerDto.params ?: emptyMap()
-            )
-        }.getOrNull()?.let { webView ->
-            return InAppType.WebView(
-                inAppId = inAppId,
-                type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
-                layers = listOf(webView),
-            )
-        }
-
-        return null
-    }
-
     override fun tryShowInAppMessage(
         inAppType: InAppType,
         inAppActionCallbacks: InAppActionCallbacks
     ) {
-        val wrapper = getWebViewFromPayload(inAppType, inAppType.inAppId)?.let {
-            InAppTypeWrapper(it, inAppActionCallbacks)
-        } ?: InAppTypeWrapper(inAppType, inAppActionCallbacks)
+        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks)
 
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)

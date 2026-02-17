@@ -61,11 +61,14 @@ internal fun DataModule(
     override val modalWindowValidator: ModalWindowValidator by lazy {
         ModalWindowValidator(
             imageLayerValidator = imageLayerValidator,
+            webViewLayerValidator = webViewLayerValidator,
             elementValidator = modalElementValidator
         )
     }
     override val imageLayerValidator: ImageLayerValidator
         get() = ImageLayerValidator()
+    override val webViewLayerValidator: WebViewLayerValidator
+        get() = WebViewLayerValidator()
 
     override val modalElementValidator: ModalElementValidator by lazy {
         ModalElementValidator(
@@ -332,9 +335,6 @@ internal fun DataModule(
                     ).registerSubtype(
                         PayloadBlankDto.SnackBarBlankDto::class.java,
                         PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
-                    ).registerSubtype(
-                        PayloadBlankDto.WebViewBlankDto::class.java,
-                        PayloadDto.WebViewDto.WEBVIEW_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory

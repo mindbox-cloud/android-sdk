@@ -26,7 +26,10 @@ internal class SnackbarValidator(
                     mindboxLogD("Finish checking image layer and it's validity = $rez")
                     !rez
                 }
-                else -> false
+                else -> {
+                    mindboxLogD("InApp is not valid. Snackbar supports only image layer, got ${layerDto.javaClass.simpleName}")
+                    true
+                }
             }
         }
         if (invalidLayer != null) {
