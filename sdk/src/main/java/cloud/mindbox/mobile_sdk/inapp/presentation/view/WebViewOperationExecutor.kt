@@ -55,8 +55,7 @@ internal class MindboxWebViewOperationExecutor : WebViewOperationExecutor {
     }
 
     private fun parseOperationRequest(payload: String?): Pair<String, String> {
-        val jsonObject: JsonObject = JsonParser.parseString(payload).getAsJsonObject()
-            ?: throw IllegalArgumentException("Payload is not a valid JSON")
+        val jsonObject: JsonObject = JsonParser.parseString(payload).asJsonObject
         val operation: String = jsonObject.getAsJsonPrimitive(OPERATION_FIELD)?.asString
             ?: throw IllegalArgumentException("Operation is not provided")
         val body: String = jsonObject.getAsJsonObject(BODY_FIELD)?.toString()

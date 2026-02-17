@@ -3,11 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.app.Application
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.MindboxError
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
-import io.mockk.verify
+import io.mockk.*
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -54,6 +50,19 @@ class WebViewOperationExecutorTest {
             fail("Expected IllegalArgumentException")
         } catch (exception: IllegalArgumentException) {
             assertEquals("Operation is not provided", exception.message)
+        }
+        verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
+    }
+
+    @Test
+    fun `executeAsyncOperation throws when payload misses body`() {
+        val context: Application = mockk()
+        val payload: String = """{"operation":"OpenScreen"}"""
+        try {
+            executor.executeAsyncOperation(context, payload)
+            fail("Expected IllegalArgumentException")
+        } catch (exception: IllegalArgumentException) {
+            assertEquals("Body is not provided", exception.message)
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
     }
