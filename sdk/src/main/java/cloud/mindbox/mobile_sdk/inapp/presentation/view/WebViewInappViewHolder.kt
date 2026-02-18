@@ -41,6 +41,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.Timer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.timer
@@ -55,8 +56,8 @@ internal class WebViewInAppViewHolder(
         private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
         private const val JS_RETURN = "true"
-        private const val JS_BRIDGE = "window.receiveFromSDK"
-        private const val JS_CALL_BRIDGE = "$JS_BRIDGE(%s);"
+        private const val JS_BRIDGE = "window.bridgeMessagesHandlers.emit"
+        private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
         private const val JS_CHECK_BRIDGE = "typeof $JS_BRIDGE === 'function'"
     }
 
@@ -109,8 +110,9 @@ internal class WebViewInAppViewHolder(
         onError: ((String?) -> Unit)? = null
     ) {
         mindboxLogI("SDK -> send message $message")
-        val json = gson.toJson(message)
-        controller.evaluateJavaScript(JS_CALL_BRIDGE.format(json)) { result ->
+        val json: String = gson.toJson(message)
+        val escapedJson: String = JSONObject.quote(json)
+        controller.evaluateJavaScript(JS_CALL_BRIDGE.format(escapedJson)) { result ->
             if (!checkEvaluateJavaScript(result)) {
                 onError?.invoke(result)
             }
@@ -373,8 +375,8 @@ internal class WebViewInAppViewHolder(
 
                 controller.setVisibility(false)
                 controller.setJsBridge(bridge = { json ->
+                    mindboxLogI("SDK <- receive message $json")
                     val message = gson.fromJson<BridgeMessage>(json).getOrNull()
-                    mindboxLogI("SDK <- receive message $message")
                     if (!messageValidator.isValid(message)) {
                         return@setJsBridge
                     }
@@ -393,7 +395,7 @@ internal class WebViewInAppViewHolder(
 
                 layer.contentUrl?.let { contentUrl ->
                     runCatching {
-                        gatewayManager.fetchWebViewContent(contentUrl)
+                        gatewayManager.fetchWebViewContent("https://mobile-static-staging.mindbox.ru/inapps/webview/content/index.html")
                     }.onSuccess { response: String ->
                         onContentPageLoaded(
                             controller = controller,

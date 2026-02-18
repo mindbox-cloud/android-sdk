@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.content.Context
 import android.content.res.Resources
 import android.util.DisplayMetrics
-import org.junit.Assert.assertNotNull
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
@@ -21,9 +20,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.util.Locale
@@ -93,7 +90,7 @@ class DataCollectorTest {
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
-        assertEquals("device-uuid", actualJson.get("deviceUuid").asString)
+        assertEquals("device-uuid", actualJson.get("deviceUUID").asString)
         assertEquals("endpoint-id", actualJson.get("endpointId").asString)
         assertEquals("en_US", actualJson.get("locale").asString)
         assertEquals("OpenScreen", actualJson.get("operationName").asString)
@@ -150,7 +147,7 @@ class DataCollectorTest {
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
-        assertFalse(actualJson.has("deviceUuid"))
+        assertFalse(actualJson.has("deviceUUID"))
         assertFalse(actualJson.has("operationName"))
         assertFalse(actualJson.has("operationBody"))
         assertFalse(actualJson.has("trackVisitSource"))
