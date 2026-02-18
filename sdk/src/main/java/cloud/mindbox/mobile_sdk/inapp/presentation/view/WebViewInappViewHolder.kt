@@ -16,7 +16,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
@@ -259,7 +258,7 @@ internal class WebViewInAppViewHolder(
                 if (error.isForMainFrame == true) {
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
-                        failureReason = FailureReason.WEBVIEW_INIT_FAILED,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                         errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
                     )
                 }
@@ -288,7 +287,11 @@ internal class WebViewInAppViewHolder(
         return when (response) {
             JS_RETURN -> true
             else -> {
-                mindboxLogE("evaluateJavaScript return unexpected response: $response")
+                inAppFailureTracker.sendFailureWithContext(
+                    inAppId = wrapper.inAppType.inAppId,
+                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                    errorDescription = "evaluateJavaScript return unexpected response: $response"
+                )
                 hide()
                 false
             }
@@ -396,7 +399,6 @@ internal class WebViewInAppViewHolder(
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
                         onContentPageLoaded(
-                            controller = controller,
                             content = WebViewHtmlContent(
                                 baseUrl = layer.baseUrl ?: "",
                                 html = response
@@ -405,7 +407,7 @@ internal class WebViewInAppViewHolder(
                     }.onFailure { e ->
                         inAppFailureTracker.sendFailureWithContext(
                             inAppId = wrapper.inAppType.inAppId,
-                            failureReason = FailureReason.HTML_LOAD_FAILED,
+                            failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                             errorDescription = "Failed to fetch HTML content for In-App",
                             throwable = e
                         )
@@ -415,7 +417,7 @@ internal class WebViewInAppViewHolder(
                 } ?: run {
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
-                        failureReason = FailureReason.HTML_LOAD_FAILED,
+                        failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                         errorDescription = "WebView content URL is null"
                     )
                 }
@@ -435,26 +437,30 @@ internal class WebViewInAppViewHolder(
                 }
             }
         } ?: run {
-            inAppFailureTracker.sendPresentationFailure(
+            inAppFailureTracker.sendFailureWithContext(
                 inAppId = wrapper.inAppType.inAppId,
-                errorDescription = "WebView controller is null when trying show inapp",
-                null
+                failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                errorDescription = "WebView controller is null when trying show inapp"
             )
             release()
         }
     }
 
-    private fun onContentPageLoaded(controller: WebViewController, content: WebViewHtmlContent) {
-        controller.executeOnViewThread {
-            controller.loadContent(content)
+    private fun onContentPageLoaded(content: WebViewHtmlContent) {
+        webViewController?.executeOnViewThread {
+            webViewController?.loadContent(content)
         }
-        startTimer {
-            controller.executeOnViewThread {
+        webViewController?.let {
+            startTimer {
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.HTML_LOAD_FAILED,
+                    failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                     errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
                 )
+                webViewController?.executeOnViewThread {
+                    hide()
+                    release()
+                }
             }
         }
     }

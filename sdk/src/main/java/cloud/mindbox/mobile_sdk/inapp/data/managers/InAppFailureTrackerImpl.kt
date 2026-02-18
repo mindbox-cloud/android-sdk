@@ -27,11 +27,12 @@ internal class InAppFailureTrackerImpl(
     }
 
     private fun sendFailures() {
+        if (failures.isEmpty()) return
         if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failures")
             return
         }
-        if (failures.isNotEmpty()) inAppRepository.sendInAppShowFailure(failures.toList())
+        inAppRepository.sendInAppShowFailure(failures.toList())
         failures.clear()
     }
 

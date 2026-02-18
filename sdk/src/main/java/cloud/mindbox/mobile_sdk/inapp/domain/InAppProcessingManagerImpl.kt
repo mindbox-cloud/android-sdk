@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.getImageUrl
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.asVolleyError
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getProductFromTargetingData
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getVolleyErrorDetails
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackImageDownloadError
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackTargetingError
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -43,7 +44,7 @@ internal class InAppProcessingManagerImpl(
             var isTargetingErrorOccurred = false
             var isInAppContentFetched: Boolean? = null
             var targetingCheck = false
-            var imageFailureDetails: String? = null
+            var imageFetchError: Throwable? = null
             withContext(Dispatchers.IO) {
                 val imageJob =
                     launch(start = CoroutineStart.LAZY) {
@@ -62,7 +63,7 @@ internal class InAppProcessingManagerImpl(
 
                                 is InAppContentFetchingError -> {
                                     isInAppContentFetched = false
-                                    imageFailureDetails = throwable.message + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
+                                    imageFetchError = throwable
                                 }
                             }
                         }
@@ -126,11 +127,13 @@ internal class InAppProcessingManagerImpl(
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
             trackTargetingErrorIfAny(inApp, data)
             if (isInAppContentFetched == false && targetingCheck) {
-                inAppFailureTracker.collectFailure(
-                    inAppId = inApp.id,
-                    failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-                    errorDetails = imageFailureDetails
-                )
+                imageFetchError?.takeIf { it.shouldTrackImageDownloadError() }?.let { error ->
+                    inAppFailureTracker.collectFailure(
+                        inAppId = inApp.id,
+                        failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
+                        errorDetails = error.message + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
+                    )
+                }
             }
             if (isInAppContentFetched == false) {
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to content fetching error.")
@@ -211,23 +214,27 @@ internal class InAppProcessingManagerImpl(
         when {
             inApp.targeting.hasSegmentationNode() &&
                 inAppSegmentationRepository.getCustomerSegmentationFetched() == CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR -> {
-                inAppFailureTracker.collectFailure(
-                    inAppId = inApp.id,
-                    failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
-                    errorDetails = inAppTargetingErrorRepository.getError(TargetingErrorKey.CustomerSegmentation)
-                        ?: "Unknown segmentation error"
-                )
+                inAppTargetingErrorRepository.getError(TargetingErrorKey.CustomerSegmentation)
+                    ?.let { errorDetails ->
+                        inAppFailureTracker.collectFailure(
+                            inAppId = inApp.id,
+                            failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                            errorDetails = errorDetails
+                        )
+                    }
                 return
             }
 
             inApp.targeting.hasGeoNode() &&
                 inAppGeoRepository.getGeoFetchedStatus() == GeoFetchStatus.GEO_FETCH_ERROR -> {
-                inAppFailureTracker.collectFailure(
-                    inAppId = inApp.id,
-                    failureReason = FailureReason.GEO_TARGETING_FAILED,
-                    errorDetails = inAppTargetingErrorRepository.getError(TargetingErrorKey.Geo)
-                        ?: "Unknown geo error"
-                )
+                inAppTargetingErrorRepository.getError(TargetingErrorKey.Geo)
+                    ?.let { errorDetails ->
+                        inAppFailureTracker.collectFailure(
+                            inAppId = inApp.id,
+                            failureReason = FailureReason.GEO_TARGETING_FAILED,
+                            errorDetails = errorDetails
+                        )
+                    }
                 return
             }
 

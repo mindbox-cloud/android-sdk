@@ -23,17 +23,17 @@ internal enum class FailureReason(val value: String) {
     @SerializedName("geo_request_failed")
     GEO_TARGETING_FAILED("geo_request_failed"),
 
-    @SerializedName("customer_segment_request_failed")
-    CUSTOMER_SEGMENT_REQUEST_FAILED("customer_segment_request_failed"),
+    @SerializedName("customer_segmentation_request_failed")
+    CUSTOMER_SEGMENT_REQUEST_FAILED("customer_segmentation_request_failed"),
 
     @SerializedName("product_segmentation_request_failed")
     PRODUCT_SEGMENT_REQUEST_FAILED("product_segmentation_request_failed"),
 
-    @SerializedName("html_load_failed")
-    HTML_LOAD_FAILED("html_load_failed"),
+    @SerializedName("webview_load_failed")
+    WEBVIEW_LOAD_FAILED("webview_load_failed"),
 
-    @SerializedName("webview_init_failed")
-    WEBVIEW_INIT_FAILED("webview_init_failed"),
+    @SerializedName("webview_presentation_failed")
+    WEBVIEW_PRESENTATION_FAILED("webview_presentation_failed"),
 
     @SerializedName("unknown_error")
     UNKNOWN_ERROR("unknown_error")

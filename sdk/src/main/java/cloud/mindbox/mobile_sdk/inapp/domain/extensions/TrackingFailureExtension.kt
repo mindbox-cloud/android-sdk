@@ -5,10 +5,15 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTra
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingData
 import cloud.mindbox.mobile_sdk.models.operation.request.OperationBodyRequest
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import com.android.volley.NoConnectionError
 import com.android.volley.TimeoutError
 import com.android.volley.VolleyError
+import com.bumptech.glide.load.HttpException
+import com.bumptech.glide.load.engine.GlideException
 import com.google.gson.Gson
+import java.net.ConnectException
 import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 
@@ -16,9 +21,30 @@ internal fun VolleyError.isTimeoutError(): Boolean {
     return this is TimeoutError || cause is SocketTimeoutException
 }
 
+internal fun VolleyError.isNoConnectionError(): Boolean {
+    return this is NoConnectionError
+}
+
 internal fun VolleyError.isServerError(): Boolean {
     val statusCode = networkResponse?.statusCode ?: return false
     return statusCode in 500..599
+}
+
+internal fun Throwable.shouldTrackTargetingError(): Boolean {
+    val volleyError = cause.asVolleyError() ?: return false
+    return volleyError.isServerError() && !volleyError.isTimeoutError() && !volleyError.isNoConnectionError()
+}
+
+internal fun Throwable.shouldTrackImageDownloadError(): Boolean {
+    val glideException = cause as? GlideException ?: return true
+    return glideException.rootCauses.none { rootCause ->
+        when {
+            rootCause is SocketTimeoutException || rootCause.cause is SocketTimeoutException -> true
+            rootCause is HttpException && rootCause.statusCode <= 0 ->
+                rootCause.cause is UnknownHostException || rootCause.cause is ConnectException
+            else -> false
+        }
+    }
 }
 
 internal fun Throwable?.asVolleyError(): VolleyError? = this as? VolleyError
@@ -50,12 +76,6 @@ private fun parseOperationBody(operationBody: String?): Pair<String, String>? =
             }
             ?.let { entry -> entry.key to entry.value!! }
     }
-
-internal fun Throwable.shouldTrackTargetingError(): Boolean {
-    return this.cause.asVolleyError()?.let { volleyError ->
-        volleyError.isTimeoutError() || volleyError.isServerError()
-    } ?: false
-}
 
 internal fun InAppFailureTracker.sendPresentationFailure(
     inAppId: String,
