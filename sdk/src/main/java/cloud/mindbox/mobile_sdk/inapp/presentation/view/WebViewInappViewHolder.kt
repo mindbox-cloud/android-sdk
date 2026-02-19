@@ -447,21 +447,23 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
-        webViewController?.executeOnViewThread {
-            webViewController?.loadContent(content)
-        }
-        webViewController?.let {
+        webViewController?.let { controller ->
+            controller.executeOnViewThread {
+                controller.loadContent(content)
+            }
             startTimer {
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                     errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
                 )
-                webViewController?.executeOnViewThread {
+                controller.executeOnViewThread {
                     hide()
                     release()
                 }
             }
+        } ?: run {
+            mindboxLogW("WebView controller is null when loading content, skipping")
         }
     }
 
