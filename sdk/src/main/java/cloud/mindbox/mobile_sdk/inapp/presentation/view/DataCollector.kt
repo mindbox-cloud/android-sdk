@@ -54,7 +54,7 @@ internal class DataCollector(
     }
 
     companion object Companion {
-        private const val KEY_DEVICE_UUID = "deviceUuid"
+        private const val KEY_DEVICE_UUID = "deviceUUID"
         private const val KEY_ENDPOINT_ID = "endpointId"
         private const val KEY_IN_APP_ID = "inAppId"
         private const val KEY_INSETS = "insets"
