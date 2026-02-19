@@ -752,4 +752,271 @@ internal class InAppProcessingManagerTest {
         verify(exactly = 1) { failureTracker.clearFailures() }
         verify(exactly = 0) { failureTracker.sendCollectedFailures() }
     }
+
+    @Test
+    fun `trackTargetingErrorIfAny collects customer segmentation failure when error was saved`() = runTest {
+        val errorDetails = "Customer segmentation fetch failed. statusCode=500"
+        val segmentationRepo = mockk<InAppSegmentationRepository> {
+            coEvery { fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+            every { getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            every { setCustomerSegmentationStatus(any()) } just runs
+            every { getCustomerSegmentations() } returns listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                    segmentation = "segmentationEI", segment = "segmentEI"
+                )
+            )
+            every { getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.CustomerSegmentation) } returns errorDetails
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, segmentationRepo, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = mockkInAppGeoRepository,
+            inAppSegmentationRepository = segmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = "123",
+                targeting = InAppStub.getTargetingSegmentNode().copy(
+                    type = "",
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "segmentationEI",
+                    segmentExternalId = "segmentEI"
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "123"))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = "validId",
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "validId"))
+                )
+            )
+        )
+
+        val result = processingManager.chooseInAppToShow(testInAppList, event)
+
+        assertNotNull(result)
+        assertEquals("validId", result?.id)
+        verify(exactly = 1) {
+            failureTracker.collectFailure(
+                inAppId = "123",
+                failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                errorDetails = errorDetails
+            )
+        }
+    }
+
+    @Test
+    fun `trackTargetingErrorIfAny does not collect customer segmentation failure when error was not saved`() = runTest {
+        val segmentationRepo = mockk<InAppSegmentationRepository> {
+            coEvery { fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+            every { getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            every { setCustomerSegmentationStatus(any()) } just runs
+            every { getCustomerSegmentations() } returns listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                    segmentation = "segmentationEI", segment = "segmentEI"
+                )
+            )
+            every { getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.CustomerSegmentation) } returns null
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, segmentationRepo, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = mockkInAppGeoRepository,
+            inAppSegmentationRepository = segmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = "123",
+                targeting = InAppStub.getTargetingSegmentNode().copy(
+                    type = "",
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "segmentationEI",
+                    segmentExternalId = "segmentEI"
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "123"))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = "validId",
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "validId"))
+                )
+            )
+        )
+
+        val result = processingManager.chooseInAppToShow(testInAppList, event)
+
+        assertNotNull(result)
+        assertEquals("validId", result?.id)
+        verify(exactly = 0) {
+            failureTracker.collectFailure(
+                inAppId = "123",
+                failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                errorDetails = any()
+            )
+        }
+    }
+
+    @Test
+    fun `trackTargetingErrorIfAny does not collect geo failure when error was not saved`() = runTest {
+        val geoRepo = mockk<InAppGeoRepository> {
+            coEvery { fetchGeo() } throws GeoError(VolleyError())
+            every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
+            every { setGeoStatus(any()) } just runs
+            every { getGeo() } returns GeoTargetingStub.getGeoTargeting().copy(
+                cityId = "234", regionId = "regionId", countryId = "123"
+            )
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.Geo) } returns null
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(geoRepo, mockkInAppSegmentationRepository, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = geoRepo,
+            inAppSegmentationRepository = mockkInAppSegmentationRepository,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = "123",
+                targeting = InAppStub.getTargetingRegionNode().copy(
+                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    listOf(InAppStub.getModalWindow().copy(inAppId = "123"))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = "validId",
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    listOf(InAppStub.getModalWindow().copy(inAppId = "validId"))
+                )
+            )
+        )
+
+        val result = processingManager.chooseInAppToShow(testInAppList, event)
+
+        assertNotNull(result)
+        assertEquals("validId", result?.id)
+        verify(exactly = 0) {
+            failureTracker.collectFailure(
+                inAppId = "123",
+                failureReason = FailureReason.GEO_TARGETING_FAILED,
+                errorDetails = any()
+            )
+        }
+    }
+
+    @Test
+    fun `trackTargetingErrorIfAny does not collect product segmentation failure when error was not saved`() = runTest {
+        val viewProductBody = """{
+            "viewProduct": {
+                "product": {
+                    "ids": {
+                        "website": "ProductRandomName"
+                    }
+                }
+            }
+        }""".trimIndent()
+        val product = "website" to "ProductRandomName"
+        val viewProductEvent = InAppEventType.OrdinalEvent(
+            EventType.SyncOperation("viewProduct"),
+            viewProductBody
+        )
+        val inAppWithProductSegId = "inAppWithProductSeg"
+        val validId = "validId"
+        val mockSegmentationRepo = mockk<InAppSegmentationRepository> {
+            every { getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+            every { getCustomerSegmentations() } returns listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                    segmentation = "segmentationEI", segment = "segmentEI"
+                )
+            )
+            coEvery { fetchCustomerSegmentations() } just runs
+            every { getProductSegmentationFetched(product) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            coEvery { fetchProductSegmentation(product) } throws ProductSegmentationError(VolleyError())
+            every { getProductSegmentations(product) } returns emptySet<ProductSegmentationResponseWrapper?>()
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.ProductSegmentation(product)) } returns null
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, mockSegmentationRepo, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = mockkInAppGeoRepository,
+            inAppSegmentationRepository = mockSegmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = inAppWithProductSegId,
+                targeting = InAppStub.getTargetingUnionNode().copy(
+                    nodes = listOf(
+                        InAppStub.viewProductSegmentNode.copy(
+                            kind = Kind.POSITIVE,
+                            segmentationExternalId = "segmentationExternalId",
+                            segmentExternalId = "segmentExternalId"
+                        )
+                    )
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = inAppWithProductSegId))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = validId,
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = validId))
+                )
+            )
+        )
+
+        val result = processingManager.chooseInAppToShow(testInAppList, viewProductEvent)
+
+        assertNotNull(result)
+        assertEquals(validId, result?.id)
+        verify(exactly = 0) {
+            failureTracker.collectFailure(
+                inAppId = inAppWithProductSegId,
+                failureReason = FailureReason.PRODUCT_SEGMENT_REQUEST_FAILED,
+                errorDetails = any()
+            )
+        }
+    }
 }
