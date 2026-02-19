@@ -56,9 +56,10 @@ internal class WebViewInAppViewHolder(
         private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
         private const val JS_RETURN = "true"
-        private const val JS_BRIDGE = "window.bridgeMessagesHandlers.emit"
+        private const val JS_BRIDGE_CLASS = "window.bridgeMessagesHandlers"
+        private const val JS_BRIDGE = "$JS_BRIDGE_CLASS.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
-        private const val JS_CHECK_BRIDGE = "typeof $JS_BRIDGE === 'function'"
+        private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
     }
 
     private var closeInappTimer: Timer? = null
@@ -395,7 +396,7 @@ internal class WebViewInAppViewHolder(
 
                 layer.contentUrl?.let { contentUrl ->
                     runCatching {
-                        gatewayManager.fetchWebViewContent("https://mobile-static-staging.mindbox.ru/inapps/webview/content/index.html")
+                        gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
                         onContentPageLoaded(
                             controller = controller,
