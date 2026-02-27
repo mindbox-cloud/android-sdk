@@ -22,7 +22,8 @@ internal class InAppStub {
             ),
             form = Form(variants = listOf(getModalWindow())),
             isPriority = false,
-            delayTime = null
+            delayTime = null,
+            tags = null,
         )
 
         fun getInAppDto(): InAppDto = InAppDto(
@@ -32,7 +33,8 @@ internal class InAppStub {
             targeting = (TreeTargetingDto.TrueNodeDto("")),
             form = FormDto(variants = listOf(getModalWindowDto())),
             isPriority = false,
-            delayTime = null
+            delayTime = null,
+            tags = null,
         )
 
         fun getFrequencyOnceDto(): FrequencyDto.FrequencyOnceDto = FrequencyDto.FrequencyOnceDto(
@@ -157,7 +159,8 @@ internal class InAppStub {
                 sdkVersion = null,
                 targeting = null,
                 frequency = null,
-                form = null
+                form = null,
+                tags = null,
             )
         }
 

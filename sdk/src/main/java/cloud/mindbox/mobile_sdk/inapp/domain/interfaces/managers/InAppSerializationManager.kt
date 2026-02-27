@@ -8,7 +8,9 @@ internal interface InAppSerializationManager {
 
     fun deserializeToShownInAppsMap(shownInApps: String): Map<String, List<Long>>
 
-    fun serializeToInAppHandledString(inAppId: String): String
+    fun serializeToInAppShownActionString(inAppId: String, timeToDisplay: String, tags: Map<String, String>?): String
+
+    fun serializeToInAppActionString(inAppId: String): String
 
     fun serializeToInAppShowFailuresString(inAppShowFailures: List<InAppShowFailure>): String
 

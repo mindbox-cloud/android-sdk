@@ -29,7 +29,7 @@ internal interface InAppRepository {
 
     fun saveShownInApp(id: String, timeStamp: Long)
 
-    fun sendInAppShown(inAppId: String)
+    fun sendInAppShown(inAppId: String, timeToDisplay: String, tags: Map<String, String>?)
 
     fun sendInAppClicked(inAppId: String)
 

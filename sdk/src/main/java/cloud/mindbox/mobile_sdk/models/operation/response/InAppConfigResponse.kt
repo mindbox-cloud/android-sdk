@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDt
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
 import com.google.gson.annotations.JsonAdapter
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppDelayTimeDeserializer
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppTagsDeserializer
 
 internal data class InAppConfigResponse(
     @SerializedName("inapps")
@@ -130,6 +131,8 @@ internal data class InAppDto(
     val targeting: TreeTargetingDto?,
     @SerializedName("form")
     val form: FormDto?,
+    @SerializedName(InAppTagsDeserializer.TAGS)
+    val tags: Map<String, String>?,
 )
 
 internal sealed class FrequencyDto {
@@ -223,5 +226,8 @@ internal data class InAppConfigResponseBlank(
         // FormDto. Parsed after filtering inApp versions.
         @SerializedName("form")
         val form: JsonObject?,
+        @SerializedName("tags")
+        @JsonAdapter(InAppTagsDeserializer::class)
+        val tags: Map<String, String>?,
     )
 }

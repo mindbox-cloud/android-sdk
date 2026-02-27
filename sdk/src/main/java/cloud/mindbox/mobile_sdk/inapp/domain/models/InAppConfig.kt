@@ -28,6 +28,7 @@ internal data class InApp(
     val frequency: Frequency,
     val targeting: TreeTargeting,
     val form: Form,
+    val tags: Map<String, String>?,
 )
 
 internal data class Frequency(val delay: Delay) {

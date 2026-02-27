@@ -9,9 +9,14 @@ internal interface InAppInteractor {
 
     fun setInAppShown(inAppId: String)
 
-    suspend fun processEventAndConfig(): Flow<InApp>
+    suspend fun processEventAndConfig(): Flow<Pair<InApp, Long>>
 
-    fun saveShownInApp(id: String, timeStamp: Long)
+    fun saveShownInApp(
+        id: String,
+        timeStamp: Long,
+        timeToDisplay: String,
+        tags: Map<String, String>?
+    )
 
     fun sendInAppClicked(inAppId: String)
 

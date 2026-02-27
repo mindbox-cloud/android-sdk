@@ -40,7 +40,7 @@ internal class InAppInteractorImpl(
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override suspend fun processEventAndConfig(): Flow<InApp> {
+    override suspend fun processEventAndConfig(): Flow<Pair<InApp, Long>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
@@ -66,6 +66,7 @@ internal class InAppInteractorImpl(
             .onEach {
                 mindboxLogD("Event triggered: ${it.name}")
             }.map { event ->
+                val triggerTimeMillis = timeProvider.currentTimeMillis()
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
@@ -83,10 +84,10 @@ internal class InAppInteractorImpl(
                 inApp?.let {
                     sessionStorageManager.inAppTriggerEvent = event
                 }
-                inApp
+                inApp?.let { it to (timeProvider.currentTimeMillis() - triggerTimeMillis) }
             }
-            .onEach { inApp ->
-                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}") }
+            .onEach { pair ->
+                pair?.let { (inApp, preparedTime) -> mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}, preparedTime = $preparedTime ms") }
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
@@ -104,9 +105,14 @@ internal class InAppInteractorImpl(
         )
     }
 
-    override fun saveShownInApp(id: String, timeStamp: Long) {
+    override fun saveShownInApp(
+        id: String,
+        timeStamp: Long,
+        timeToDisplay: String,
+        tags: Map<String, String>?
+    ) {
         inAppRepository.setInAppShown(id)
-        inAppRepository.sendInAppShown(id)
+        inAppRepository.sendInAppShown(id, timeToDisplay, tags)
         inAppRepository.saveShownInApp(id, timeStamp)
         inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }

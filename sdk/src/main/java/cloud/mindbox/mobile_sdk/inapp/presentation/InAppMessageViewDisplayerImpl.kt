@@ -127,9 +127,10 @@ internal class InAppMessageViewDisplayerImpl(
 
     override fun tryShowInAppMessage(
         inAppType: InAppType,
-        inAppActionCallbacks: InAppActionCallbacks
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit,
     ) {
-        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks)
+        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks, onRenderStart)
 
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)
@@ -156,7 +157,10 @@ internal class InAppMessageViewDisplayerImpl(
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
-        if (!isRestored) isActionExecuted = false
+        if (!isRestored) {
+            wrapper.onRenderStart()
+            isActionExecuted = false
+        }
         if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
 
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {

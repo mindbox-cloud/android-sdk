@@ -3,12 +3,14 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -69,22 +71,49 @@ internal class InAppSerializationManagerTest {
     }
 
     @Test
-    fun `serialize to inApp handled string success`() {
+    fun `serializeToInAppActionString returns JSON with inAppId only`() {
         val expectedResult = "{\"inappId\":\"${inAppId}\"}"
-        val actualResult = inAppSerializationManager.serializeToInAppHandledString(inAppId)
+        val actualResult = inAppSerializationManager.serializeToInAppActionString(inAppId)
         assertEquals(expectedResult, actualResult)
     }
 
     @Test
-    fun `serialize to inApp handled string error`() {
+    fun `serializeToInAppActionString returns empty string on error`() {
         val gson: Gson = mockk()
-        every {
-            gson.toJson(any())
-        } throws Error("errorMessage")
+        every { gson.toJson(any(), any<Class<*>>()) } throws Error("errorMessage")
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
-        val expectedResult = ""
-        val actualResult = inAppSerializationManager.serializeToInAppHandledString(inAppId)
-        assertEquals(expectedResult, actualResult)
+        val actualResult = inAppSerializationManager.serializeToInAppActionString(inAppId)
+        assertEquals("", actualResult)
+    }
+
+    @Test
+    fun `serializeToInAppShownString returns JSON with inAppId timeToDisplay and tags`() {
+        val timeToDisplay = "0:00:00:00.2250000"
+        val tags = mapOf("layer" to "webView", "type" to "onboarding")
+        val actualResult = inAppSerializationManager.serializeToInAppShownActionString(inAppId, timeToDisplay, tags)
+        val parsed = gson.fromJson(actualResult, InAppShowRequest::class.java)
+        assertEquals(inAppId, parsed.inAppId)
+        assertEquals(timeToDisplay, parsed.timeToDisplay)
+        assertEquals(tags, parsed.tags)
+    }
+
+    @Test
+    fun `serializeToInAppShownString omits tags when null`() {
+        val timeToDisplay = "0:00:00:00.2250000"
+        val actualResult = inAppSerializationManager.serializeToInAppShownActionString(inAppId, timeToDisplay, null)
+        val parsed = gson.fromJson(actualResult, InAppShowRequest::class.java)
+        assertEquals(inAppId, parsed.inAppId)
+        assertEquals(timeToDisplay, parsed.timeToDisplay)
+        assertNull(parsed.tags)
+    }
+
+    @Test
+    fun `serializeToInAppShownString returns empty string on error`() {
+        val gson: Gson = mockk()
+        every { gson.toJson(any(), any<Class<*>>()) } throws Error("errorMessage")
+        inAppSerializationManager = InAppSerializationManagerImpl(gson)
+        val actualResult = inAppSerializationManager.serializeToInAppShownActionString(inAppId, "0:00:00:00.2250000", null)
+        assertEquals("", actualResult)
     }
 
     @Test

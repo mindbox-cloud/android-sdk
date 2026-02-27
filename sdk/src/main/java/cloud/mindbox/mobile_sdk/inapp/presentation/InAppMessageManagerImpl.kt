@@ -6,16 +6,19 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
@@ -28,7 +31,8 @@ internal class InAppMessageManagerImpl(
     private val monitoringInteractor: MonitoringInteractor,
     private val sessionStorageManager: SessionStorageManager,
     private val userVisitManager: UserVisitManager,
-    private val inAppMessageDelayedManager: InAppMessageDelayedManager
+    private val inAppMessageDelayedManager: InAppMessageDelayedManager,
+    private val timeProvider: TimeProvider
 ) : InAppMessageManager {
 
     init {
@@ -65,15 +69,15 @@ internal class InAppMessageManagerImpl(
 
     private suspend fun handleInAppFromInteractor() {
         inAppInteractor.processEventAndConfig()
-            .onEach { inApp ->
+            .onEach { (inApp, preparedTimeMs) ->
                 mindboxLogI("Got in-app from interactor: ${inApp.id}. Processing with DelayedManager.")
-                inAppMessageDelayedManager.process(inApp)
+                inAppMessageDelayedManager.process(inApp, preparedTimeMs)
             }
             .collect()
     }
 
     private suspend fun handleInAppFromDelayedManager() {
-        inAppMessageDelayedManager.inAppToShowFlow.collect { inApp ->
+        inAppMessageDelayedManager.inAppToShowFlow.collect { (inApp, preparedTimeMs) ->
             mindboxLogI("Got in-app from DelayedManager: ${inApp.id}")
             withContext(Dispatchers.Main) {
                 if (inAppMessageViewDisplayer.isInAppActive()) {
@@ -92,14 +96,18 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
+                var renderStartTimeMs = 0L
+                val tags = inApp.tags?.takeIf { it.isNotEmpty() }
+
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
+                    onRenderStart = { renderStartTimeMs = timeProvider.currentTimeMillis() },
                     inAppActionCallbacks = object : InAppActionCallbacks {
                         override val onInAppClick = OnInAppClick {
                             inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                         }
                         override val onInAppShown = OnInAppShown {
-                            inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                            handleInAppShown(renderStartTimeMs, preparedTimeMs, inAppMessage, tags)
                         }
                         override val onInAppDismiss = OnInAppDismiss {
                             inAppInteractor.saveInAppDismissTime()
@@ -192,6 +200,18 @@ internal class InAppMessageManagerImpl(
             MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
             requestConfig().join()
         }
+    }
+
+    private fun handleInAppShown(
+        renderStartTimeMs: Long,
+        preparedTimeMs: Long,
+        inAppMessage: InAppType,
+        tags: Map<String, String>?
+    ) {
+        val shownTime = timeProvider.currentTimeMillis()
+        mindboxLogI("Render time is ${shownTime - renderStartTimeMs}ms, prepared time is ${preparedTimeMs}ms")
+        val timeToDisplay = (preparedTimeMs + (shownTime - renderStartTimeMs)).millisToTimeSpan()
+        inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime, timeToDisplay, tags)
     }
 
     companion object {

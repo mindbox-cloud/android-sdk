@@ -54,6 +54,7 @@ class InAppMapperTest {
                             ),
                         ),
                         form = null,
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -105,6 +106,7 @@ class InAppMapperTest {
                             ),
                         ),
                         form = null,
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -140,6 +142,7 @@ class InAppMapperTest {
                             ),
                         ),
                         form = null,
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -175,6 +178,7 @@ class InAppMapperTest {
                             ),
                         ),
                         form = null,
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -210,6 +214,7 @@ class InAppMapperTest {
                             ),
                         ),
                         form = null,
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -252,7 +257,8 @@ class InAppMapperTest {
                         ),
                         sdkVersion = null,
                         targeting = TreeTargetingDto.TrueNodeDto(type = ""),
-                        form = FormDto(variants = listOf(modalWindowDto))
+                        form = FormDto(variants = listOf(modalWindowDto)),
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -298,7 +304,8 @@ class InAppMapperTest {
                         ),
                         sdkVersion = null,
                         targeting = TreeTargetingDto.TrueNodeDto(type = ""),
-                        form = FormDto(variants = listOf(modalWindowDto))
+                        form = FormDto(variants = listOf(modalWindowDto)),
+                        tags = null,
                     )
                 ),
                 monitoring = null,
@@ -313,5 +320,110 @@ class InAppMapperTest {
         assertEquals(PayloadDto.ModalWindowDto.MODAL_JSON_NAME, modalWindow.type)
         assertEquals(1, modalWindow.layers.size)
         assertTrue(modalWindow.layers.first() is Layer.ImageLayer)
+    }
+
+    @Test
+    fun `mapToInAppConfig maps tags from InAppDto to InApp`() {
+        val mapper = InAppMapper()
+        val inputTags = mapOf("layer" to "webView", "type" to "onboarding")
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "test-id",
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.TrueNodeDto(type = ""),
+                        form = null,
+                        tags = inputTags,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertEquals(inputTags, result.inApps.first().tags)
+    }
+
+    @Test
+    fun `mapToInAppConfig maps null tags to null in InApp`() {
+        val mapper = InAppMapper()
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "test-id",
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.TrueNodeDto(type = ""),
+                        form = null,
+                        tags = null,
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertNull(result.inApps.first().tags)
+    }
+
+    @Test
+    fun `mapToInAppConfig maps empty tags map to null in InApp`() {
+        val mapper = InAppMapper()
+        val result = mapper.mapToInAppConfig(
+            InAppConfigResponse(
+                inApps = listOf(
+                    InAppDto(
+                        id = "test-id",
+                        isPriority = false,
+                        delayTime = null,
+                        frequency = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
+                        sdkVersion = null,
+                        targeting = TreeTargetingDto.TrueNodeDto(type = ""),
+                        form = null,
+                        tags = emptyMap(),
+                    )
+                ),
+                monitoring = null,
+                abtests = null,
+                settings = null,
+            )
+        )
+        assertNull(result.inApps.first().tags)
+    }
+
+    @Test
+    fun `mapToInAppDto maps tags from InAppDtoBlank to InAppDto`() {
+        val mapper = InAppMapper()
+        val inputTags = mapOf("layer" to "webView", "type" to "onboarding")
+        val inputDtoBlank = InAppStub.getInAppDtoBlank().copy(tags = inputTags)
+        val result = mapper.mapToInAppDto(
+            inAppDtoBlank = inputDtoBlank,
+            delayTime = null,
+            formDto = null,
+            frequencyDto = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
+            targetingDto = null,
+        )
+        assertEquals(inputTags, result.tags)
+    }
+
+    @Test
+    fun `mapToInAppDto maps null tags from InAppDtoBlank to InAppDto`() {
+        val mapper = InAppMapper()
+        val inputDtoBlank = InAppStub.getInAppDtoBlank().copy(tags = null)
+        val result = mapper.mapToInAppDto(
+            inAppDtoBlank = inputDtoBlank,
+            delayTime = null,
+            formDto = null,
+            frequencyDto = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
+            targetingDto = null,
+        )
+        assertNull(result.tags)
     }
 }

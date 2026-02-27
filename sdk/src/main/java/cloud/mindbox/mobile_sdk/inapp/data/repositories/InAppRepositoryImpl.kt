@@ -98,8 +98,8 @@ internal class InAppRepositoryImpl(
         mindboxLogI("Increase count of shown inapp per day")
     }
 
-    override fun sendInAppShown(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+    override fun sendInAppShown(inAppId: String, timeToDisplay: String, tags: Map<String, String>?) {
+        inAppSerializationManager.serializeToInAppShownActionString(inAppId, timeToDisplay, tags).apply {
             if (isNotBlank()) {
                 MindboxEventManager.inAppShown(
                     context,
@@ -110,7 +110,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun sendInAppClicked(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
             if (isNotBlank()) {
                 MindboxEventManager.inAppClicked(
                     context,
@@ -121,7 +121,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun sendUserTargeted(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
             if (isNotBlank()) {
                 MindboxEventManager.sendUserTargeted(
                     context,

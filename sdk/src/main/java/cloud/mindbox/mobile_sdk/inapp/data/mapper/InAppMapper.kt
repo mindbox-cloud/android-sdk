@@ -62,7 +62,8 @@ internal class InAppMapper {
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
                 frequency = frequencyDto,
-                form = formDto
+                form = formDto,
+                tags = inApp.tags,
             )
         }
     }
@@ -303,7 +304,8 @@ internal class InAppMapper {
                         ),
                         minVersion = inAppDto.sdkVersion?.minVersion,
                         maxVersion = inAppDto.sdkVersion?.maxVersion,
-                        frequency = Frequency(getDelay(inAppDto.frequency))
+                        frequency = Frequency(getDelay(inAppDto.frequency)),
+                        tags = inAppDto.tags?.takeIf { it.isNotEmpty() }
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {
