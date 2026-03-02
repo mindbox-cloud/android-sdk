@@ -59,7 +59,7 @@ internal class MindboxWebViewLinkRouter(
         val parsedUri: Uri = url.toUri()
         val scheme: String = parsedUri.scheme?.lowercase().orEmpty()
         if (scheme.isBlank()) {
-            throw IllegalStateException("Invalid URL: '$parsedUri' could not be parsed")
+            throw IllegalStateException("Invalid URL: '$url' could not be parsed")
         }
         if (scheme in BLOCKED_SCHEMES) {
             throw IllegalStateException("Blocked URL scheme: '$scheme'")
