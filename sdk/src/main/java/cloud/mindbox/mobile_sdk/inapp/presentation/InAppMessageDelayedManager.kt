@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.pollIf
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -33,17 +34,17 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
         pendingInAppComparator
     )
 
-    private val _inAppToShowFlow = MutableSharedFlow<Pair<InApp, Long>>()
+    private val _inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
     val inAppToShowFlow = _inAppToShowFlow.asSharedFlow()
 
     private data class PendingInApp(
         val inApp: InApp,
         val showTimeMillis: Long,
         val sequenceNumber: Long,
-        val preparedTimeMs: Long,
+        val preparedTimeMs: Milliseconds,
     )
 
-    internal fun process(inApp: InApp, preparedTimeMs: Long) {
+    internal fun process(inApp: InApp, preparedTimeMs: Milliseconds) {
         coroutineScope.launchWithLock(processingMutex) {
             mindboxLogD("Processing In-App: ${inApp.id}, Priority: ${inApp.isPriority}, Delay: ${inApp.delayTime}")
             val delay = inApp.delayTime?.interval ?: 0L

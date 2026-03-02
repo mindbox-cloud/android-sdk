@@ -19,24 +19,20 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
         timeToDisplay: String,
         tags: Map<String, String>?,
     ): String {
-        return LoggingExceptionHandler.runCatching("") {
-            gson.toJson(
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppShowRequest>(
                 InAppShowRequest(
                     inAppId = inAppId,
                     timeToDisplay = timeToDisplay,
                     tags = tags,
-                ),
-                InAppShowRequest::class.java,
+                )
             )
         }
     }
 
     override fun serializeToInAppActionString(inAppId: String): String {
-        return LoggingExceptionHandler.runCatching("") {
-            gson.toJson(
-                InAppHandleRequest(inAppId = inAppId),
-                InAppHandleRequest::class.java,
-            )
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppHandleRequest>(InAppHandleRequest(inAppId = inAppId))
         }
     }
 

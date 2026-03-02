@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers
 
+import cloud.mindbox.mobile_sdk.fromJsonTyped
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -21,10 +22,8 @@ internal class InAppTagsDeserializerTest {
             .create()
     }
 
-    private fun deserialize(json: String): Map<String, String>? {
-        val mapType = object : TypeToken<Map<String, String>?>() {}.type
-        return gson.fromJson(json, mapType)
-    }
+    private fun deserialize(json: String): Map<String, String>? =
+        gson.fromJsonTyped<Map<String, String>?>(json)
 
     @Test
     fun `deserialize returns string values as is`() {

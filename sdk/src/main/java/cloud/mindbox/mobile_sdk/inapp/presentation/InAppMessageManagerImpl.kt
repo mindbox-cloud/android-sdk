@@ -13,6 +13,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
@@ -96,18 +98,18 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                var renderStartTimeMs = 0L
+                var renderStartTime = Timestamp(0L)
                 val tags = inApp.tags?.takeIf { it.isNotEmpty() }
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
-                    onRenderStart = { renderStartTimeMs = timeProvider.currentTimeMillis() },
+                    onRenderStart = { renderStartTime = timeProvider.currentTimestamp() },
                     inAppActionCallbacks = object : InAppActionCallbacks {
                         override val onInAppClick = OnInAppClick {
                             inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                         }
                         override val onInAppShown = OnInAppShown {
-                            handleInAppShown(renderStartTimeMs, preparedTimeMs, inAppMessage, tags)
+                            handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)
                         }
                         override val onInAppDismiss = OnInAppDismiss {
                             inAppInteractor.saveInAppDismissTime()
@@ -203,15 +205,16 @@ internal class InAppMessageManagerImpl(
     }
 
     private fun handleInAppShown(
-        renderStartTimeMs: Long,
-        preparedTimeMs: Long,
+        renderStartTime: Timestamp,
+        preparedTimeMs: Milliseconds,
         inAppMessage: InAppType,
         tags: Map<String, String>?
     ) {
-        val shownTime = timeProvider.currentTimeMillis()
-        mindboxLogI("Render time is ${shownTime - renderStartTimeMs}ms, prepared time is ${preparedTimeMs}ms")
-        val timeToDisplay = (preparedTimeMs + (shownTime - renderStartTimeMs)).millisToTimeSpan()
-        inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime, timeToDisplay, tags)
+        val shownTime = timeProvider.currentTimestamp()
+        val renderTime = shownTime - renderStartTime
+        mindboxLogI("Render time is ${renderTime.ms}ms, prepared time is ${preparedTimeMs.interval}ms")
+        val timeToDisplay = (preparedTimeMs.interval + renderTime.ms).millisToTimeSpan()
+        inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime.ms, timeToDisplay, tags)
     }
 
     companion object {

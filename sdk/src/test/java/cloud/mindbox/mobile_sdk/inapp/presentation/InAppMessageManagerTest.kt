@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sortByPriority
@@ -137,14 +138,14 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app messages success message shown`() = runTest {
-        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Long>>()
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
             this@runTest.launch {
-                inAppToShowFlow.emit(inApp to 0L)
+                inAppToShowFlow.emit(inApp to Milliseconds(0L))
             }
         }
 
@@ -162,7 +163,7 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
-                emit(inApp to 0L)
+                emit(inApp to Milliseconds(0L))
             }
         }
 
@@ -175,7 +176,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app messages success message not shown when inApp already active`() = runTest {
-        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Long>>()
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
         every { inAppMessageViewDisplayer.isInAppActive() } returns true
@@ -196,13 +197,13 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
-                emit(inApp to 0L)
+                emit(inApp to Milliseconds(0L))
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } answers {
             this@runTest.launch {
-                inAppToShowFlow.emit(inApp to 0L)
+                inAppToShowFlow.emit(inApp to Milliseconds(0L))
             }
         }
 
@@ -215,7 +216,7 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
-        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Long>>()
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
@@ -236,13 +237,13 @@ internal class InAppMessageManagerTest {
             inAppMessageInteractor.processEventAndConfig()
         }.answers {
             flow {
-                emit(inApp to 0L)
+                emit(inApp to Milliseconds(0L))
             }
         }
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } answers {
             this@runTest.launch {
-                inAppToShowFlow.emit(inApp to 0L)
+                inAppToShowFlow.emit(inApp to Milliseconds(0L))
             }
         }
 

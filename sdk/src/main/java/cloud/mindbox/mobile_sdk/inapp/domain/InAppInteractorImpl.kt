@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -40,7 +41,7 @@ internal class InAppInteractorImpl(
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override suspend fun processEventAndConfig(): Flow<Pair<InApp, Long>> {
+    override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
@@ -63,10 +64,10 @@ internal class InAppInteractorImpl(
             }
         return inAppRepository.listenInAppEvents()
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
-            .onEach {
-                mindboxLogD("Event triggered: ${it.name}")
+            .onEach { event ->
+                mindboxLogD("Event triggered: ${event.name}")
             }.map { event ->
-                val triggerTimeMillis = timeProvider.currentTimeMillis()
+                val triggerTimeMillis = timeProvider.currentTimestamp()
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
@@ -84,10 +85,10 @@ internal class InAppInteractorImpl(
                 inApp?.let {
                     sessionStorageManager.inAppTriggerEvent = event
                 }
-                inApp?.let { it to (timeProvider.currentTimeMillis() - triggerTimeMillis) }
+                inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
             .onEach { pair ->
-                pair?.let { (inApp, preparedTime) -> mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}, preparedTime = $preparedTime ms") }
+                pair?.let { (inApp, preparedTime) -> mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}, preparedTime = ${preparedTime.interval} ms") }
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
