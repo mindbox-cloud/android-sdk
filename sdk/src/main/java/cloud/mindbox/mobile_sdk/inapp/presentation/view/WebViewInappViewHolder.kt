@@ -264,6 +264,7 @@ internal class WebViewInAppViewHolder(
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                         errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
                     )
+                    release()
                 }
             }
         })
@@ -423,6 +424,7 @@ internal class WebViewInAppViewHolder(
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                         errorDescription = "WebView content URL is null"
                     )
+                    hide()
                 }
             }
         }

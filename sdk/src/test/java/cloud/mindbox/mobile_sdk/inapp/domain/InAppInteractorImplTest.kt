@@ -68,7 +68,7 @@ class InAppInteractorImplTest {
     @MockK
     private lateinit var minIntervalBetweenShowsLimitChecker: Checker
 
-    @MockK
+    @RelaxedMockK
     private lateinit var timeProvider: TimeProvider
 
     @RelaxedMockK
@@ -122,7 +122,7 @@ class InAppInteractorImplTest {
             isPriority = false,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "nonPriorityInapp1"
                     )
@@ -134,7 +134,7 @@ class InAppInteractorImplTest {
             isPriority = true,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "priorityInapp"
                     )
@@ -147,7 +147,7 @@ class InAppInteractorImplTest {
             isPriority = true,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "priorityInapp2"
                     )
@@ -159,7 +159,7 @@ class InAppInteractorImplTest {
             isPriority = false,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "nonPriorityInApp2"
                     )
@@ -213,19 +213,19 @@ class InAppInteractorImplTest {
         interactor.processEventAndConfig().test {
             eventFlow.emit(InAppEventType.AppStartup)
             val firstItem = awaitItem()
-            assertEquals(priorityInApp, firstItem)
+            assertEquals(priorityInApp, firstItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val secondItem = awaitItem()
-            assertEquals(priorityInAppTwo, secondItem)
+            assertEquals(priorityInAppTwo, secondItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val thirdItem = awaitItem()
-            assertEquals(nonPriorityInApp, thirdItem)
+            assertEquals(nonPriorityInApp, thirdItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val fourthItem = awaitItem()
-            assertEquals(nonPriorityInAppTwo, fourthItem)
+            assertEquals(nonPriorityInAppTwo, fourthItem.first)
 
             cancelAndIgnoreRemainingEvents()
         }
