@@ -410,7 +410,12 @@ internal class WebViewInAppViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, error.message)
+        val json: String = runCatching {
+            val payload = ErrorPayload(error = requireNotNull(error.message))
+            gson.toJson(payload)
+        }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+
+        val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, json)
         mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")
         sendActionInternal(controller, errorMessage)
     }
@@ -633,5 +638,9 @@ internal class WebViewInAppViewHolder(
 
     private data class NavigationInterceptedPayload(
         val url: String
+    )
+
+    private data class ErrorPayload(
+        val error: String
     )
 }

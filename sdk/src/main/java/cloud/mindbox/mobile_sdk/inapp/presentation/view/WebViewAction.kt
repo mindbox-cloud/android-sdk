@@ -87,6 +87,7 @@ public sealed class BridgeMessage {
         public const val VERSION: Int = 1
         public const val EMPTY_PAYLOAD: String = "{}"
         public const val SUCCESS_PAYLOAD: String = """{"success":true}"""
+        public const val UNKNOWN_ERROR_PAYLOAD: String = """{"error":"Unknown error"}"""
         public const val TYPE_FIELD_NAME: String = "type"
         public const val TYPE_REQUEST: String = "request"
         public const val TYPE_RESPONSE: String = "response"
