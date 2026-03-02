@@ -1,11 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.app.Application
+import android.net.Uri
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import androidx.core.net.toUri
 import cloud.mindbox.mobile_sdk.BuildConfig
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -41,6 +43,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.util.Locale
 import java.util.Timer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.timer
@@ -64,6 +67,7 @@ internal class WebViewInAppViewHolder(
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
     private var backPressedCallback: OnBackPressedCallback? = null
+    private var currentWebViewOrigin: String? = null
     private val pendingResponsesById: MutableMap<String, CompletableDeferred<BridgeMessage.Response>> =
         ConcurrentHashMap()
 
@@ -75,6 +79,9 @@ internal class WebViewInAppViewHolder(
     private val appContext: Application by mindboxInject { appContext }
     private val operationExecutor: WebViewOperationExecutor by lazy {
         MindboxWebViewOperationExecutor()
+    }
+    private val linkRouter: WebViewLinkRouter by lazy {
+        MindboxWebViewLinkRouter(appContext)
     }
 
     override val isActive: Boolean
@@ -131,6 +138,7 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.TOAST, ::handleToastAction)
             register(WebViewAction.ALERT, ::handleAlertAction)
             register(WebViewAction.ASYNC_OPERATION, ::handleAsyncOperationAction)
+            register(WebViewAction.OPEN_LINK, ::handleOpenLinkAction)
             registerSuspend(WebViewAction.SYNC_OPERATION, ::handleSyncOperationAction)
             register(WebViewAction.READY) {
                 handleReadyAction(
@@ -238,6 +246,14 @@ internal class WebViewInAppViewHolder(
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
+    private fun handleOpenLinkAction(message: BridgeMessage.Request): String {
+        linkRouter.executeOpenLink(message.payload)
+            .getOrElse { error: Throwable ->
+                throw IllegalStateException(error.message ?: "Navigation error")
+            }
+        return BridgeMessage.SUCCESS_PAYLOAD
+    }
+
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
         return operationExecutor.executeSyncOperation(message.payload)
     }
@@ -253,7 +269,12 @@ internal class WebViewInAppViewHolder(
         controller.setEventListener(object : WebViewEventListener {
             override fun onPageFinished(url: String?) {
                 mindboxLogD("onPageFinished: $url")
+                currentWebViewOrigin = resolveOrigin(url) ?: currentWebViewOrigin
                 webViewController?.evaluateJavaScript(JS_CHECK_BRIDGE, ::checkEvaluateJavaScript)
+            }
+
+            override fun onShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
+                return handleShouldOverrideUrlLoading(url = url, isForMainFrame = isForMainFrame)
             }
 
             override fun onError(error: WebViewError) {
@@ -269,6 +290,60 @@ internal class WebViewInAppViewHolder(
             }
         })
         return controller
+    }
+
+    private fun handleShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
+        if (isForMainFrame != true) {
+            return false
+        }
+        if (shouldAllowLocalNavigation(url)) {
+            return false
+        }
+        val normalizedUrl: String = url?.trim().orEmpty()
+        sendNavigationInterceptedEvent(url = normalizedUrl)
+        return true
+    }
+
+    private fun sendNavigationInterceptedEvent(url: String) {
+        val controller: WebViewController = webViewController ?: return
+        val payload: String = gson.toJson(NavigationInterceptedPayload(url = url))
+        val message: BridgeMessage.Request = BridgeMessage.createAction(
+            action = WebViewAction.NAVIGATION_INTERCEPTED,
+            payload = payload
+        )
+        sendActionInternal(controller, message) { error ->
+            mindboxLogW("Failed to send navigationIntercepted event to WebView: $error")
+        }
+    }
+
+    private fun shouldAllowLocalNavigation(url: String?): Boolean {
+        if (url.isNullOrBlank()) {
+            return true
+        }
+        val normalizedUrl: String = url.trim()
+        if (normalizedUrl.startsWith("#")) {
+            return true
+        }
+        if (normalizedUrl.startsWith("about:blank")) {
+            return true
+        }
+        val targetOrigin: String = resolveOrigin(normalizedUrl) ?: return false
+        val sourceOrigin: String = currentWebViewOrigin ?: return false
+        return targetOrigin == sourceOrigin
+    }
+
+    private fun resolveOrigin(url: String?): String? {
+        if (url.isNullOrBlank()) {
+            return null
+        }
+        val parsedUri: Uri = runCatching { url.toUri() }.getOrNull() ?: return null
+        val scheme: String = parsedUri.scheme?.lowercase(Locale.US).orEmpty()
+        val host: String = parsedUri.host?.lowercase(Locale.US).orEmpty()
+        if (scheme.isBlank() || host.isBlank()) {
+            return null
+        }
+        val normalizedPort: String = if (parsedUri.port >= 0) ":${parsedUri.port}" else ""
+        return "$scheme://$host$normalizedPort"
     }
 
     private fun clearBackPressedCallback() {
@@ -336,7 +411,12 @@ internal class WebViewInAppViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, error.message)
+        val json: String = runCatching {
+            val payload = ErrorPayload(error = requireNotNull(error.message))
+            gson.toJson(payload)
+        }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+
+        val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, json)
         mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")
         sendActionInternal(controller, errorMessage)
     }
@@ -402,6 +482,7 @@ internal class WebViewInAppViewHolder(
                     runCatching {
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
+                        currentWebViewOrigin = resolveOrigin(layer.baseUrl)
                         onContentPageLoaded(
                             content = WebViewHtmlContent(
                                 baseUrl = layer.baseUrl ?: "",
@@ -551,8 +632,17 @@ internal class WebViewInAppViewHolder(
         stopTimer()
         cancelPendingResponses("WebView In-App is released")
         clearBackPressedCallback()
+        currentWebViewOrigin = null
         webViewController?.destroy()
         webViewController = null
         backPressedCallback = null
     }
+
+    private data class NavigationInterceptedPayload(
+        val url: String
+    )
+
+    private data class ErrorPayload(
+        val error: String
+    )
 }
