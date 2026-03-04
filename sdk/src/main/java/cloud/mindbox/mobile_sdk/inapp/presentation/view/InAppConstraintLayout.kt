@@ -15,9 +15,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
 import kotlin.math.abs
 
-internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
-
-    private var backButtonHandler: BackButtonHandler? = null
+internal class InAppConstraintLayout : ConstraintLayout {
 
     fun setSwipeToDismissCallback(callback: () -> Unit) {
         swipeToDismissCallback = callback
@@ -255,22 +253,6 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     ) : super(
         context, attrs, defStyleAttr, defStyleRes
     )
-
-    override fun setDismissListener(listener: OnClickListener?) {
-        backButtonHandler = BackButtonHandler(this, listener)
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean =
-        if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
-            true
-        } else {
-            super.onKeyDown(keyCode, event)
-        }
-
-    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        val handled = backButtonHandler?.dispatchKeyEvent(event)
-        return handled ?: super.dispatchKeyEvent(event)
-    }
 }
 
 internal data class InAppInsets(
