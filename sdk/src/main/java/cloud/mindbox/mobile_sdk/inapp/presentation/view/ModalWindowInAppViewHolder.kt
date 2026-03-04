@@ -17,15 +17,13 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 
 internal class ModalWindowInAppViewHolder(
-    override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
-    private val inAppCallback: InAppCallback,
-) : AbstractInAppViewHolder<InAppType.ModalWindow>() {
+    wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
+    controller: InAppViewHolder.InAppController,
+    inAppCallback: InAppCallback,
+) : AbstractInAppViewHolder<InAppType.ModalWindow>(wrapper, controller, inAppCallback) {
 
     private var currentBackground: ViewGroup? = null
     private var backPressedCallback: OnBackPressedCallback? = null
-
-    override val isActive: Boolean
-        get() = isInAppMessageActive
 
     private fun registerBackPressedCallback(): OnBackPressedCallback {
         clearBackPressedCallback()
@@ -33,12 +31,13 @@ internal class ModalWindowInAppViewHolder(
             override fun handleOnBackPressed() {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by back press")
-                hide()
+                inAppController.close()
             }
         }
         backPressedCallback = callback
         return callback
     }
+
 
     private fun clearBackPressedCallback() {
         backPressedCallback?.remove()
@@ -54,9 +53,9 @@ internal class ModalWindowInAppViewHolder(
                         element
                     ).apply {
                         setOnClickListener {
-                            mindboxLogI("In-app dismissed by close click")
                             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                            hide()
+                            mindboxLogI("In-app dismissed by close click")
+                            inAppController.close()
                         }
                     }
                     inAppLayout.addView(inAppCrossView)
@@ -68,7 +67,7 @@ internal class ModalWindowInAppViewHolder(
             setOnClickListener {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by background click")
-                hide()
+                inAppController.close()
             }
 
             isVisible = true

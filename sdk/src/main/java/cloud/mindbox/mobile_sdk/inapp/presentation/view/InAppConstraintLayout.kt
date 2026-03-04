@@ -219,7 +219,7 @@ internal class InAppConstraintLayout : ConstraintLayout {
                 ).bottom
             )
             mindboxLogI("Webview Insets: $inset")
-            WindowInsetsCompat.CONSUMED
+            windowInset
         }
     }
 
