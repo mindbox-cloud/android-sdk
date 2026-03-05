@@ -112,7 +112,7 @@ internal class InAppMessageViewDisplayerImpl(
 
     override fun onStopCurrentActivity(activity: Activity) {
         mindboxLogI("onStopCurrentActivity: ${activity.hashCode()}")
-        pausedHolder?.onClose()
+        pausedHolder?.onStop()
     }
 
     override fun onPauseCurrentActivity(activity: Activity) {

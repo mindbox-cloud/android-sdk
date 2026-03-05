@@ -604,6 +604,10 @@ internal class WebViewInAppViewHolder(
 
     override fun canReuseOnRestore(inAppId: String): Boolean = wrapper.inAppType.inAppId == inAppId
 
+    override fun onStop() {
+        // do nothing
+    }
+
     override fun onClose() {
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")

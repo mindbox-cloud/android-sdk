@@ -25,6 +25,8 @@ internal interface InAppViewHolder<T : InAppType> {
 
     fun onClose()
 
+    fun onStop()
+
     fun interface InAppController {
 
         fun close()

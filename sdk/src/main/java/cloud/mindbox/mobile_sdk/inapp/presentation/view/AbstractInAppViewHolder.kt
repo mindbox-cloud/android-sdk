@@ -232,4 +232,8 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         mindboxLogI("Close ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
     }
+
+    override fun onStop() {
+        onClose()
+    }
 }
