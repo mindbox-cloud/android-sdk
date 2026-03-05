@@ -87,13 +87,7 @@ internal class WebViewInAppViewHolder(
     override val isActive: Boolean
         get() = isInAppMessageActive
 
-    override fun bind() {
-        inAppLayout.setDismissListener {
-            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogI("In-app dismissed by dialog click")
-            hide()
-        }
-    }
+    override fun bind() {}
 
     suspend fun sendActionAndAwaitResponse(
         controller: WebViewController,

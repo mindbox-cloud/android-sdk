@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Element
@@ -21,16 +22,30 @@ internal class ModalWindowInAppViewHolder(
 ) : AbstractInAppViewHolder<InAppType.ModalWindow>() {
 
     private var currentBackground: ViewGroup? = null
+    private var backPressedCallback: OnBackPressedCallback? = null
 
     override val isActive: Boolean
         get() = isInAppMessageActive
 
-    override fun bind() {
-        inAppLayout.setDismissListener {
-            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogI("In-app dismissed by dialog click")
-            hide()
+    private fun registerBackPressedCallback(): OnBackPressedCallback {
+        clearBackPressedCallback()
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+                mindboxLogI("In-app dismissed by back press")
+                hide()
+            }
         }
+        backPressedCallback = callback
+        return callback
+    }
+
+    private fun clearBackPressedCallback() {
+        backPressedCallback?.remove()
+        backPressedCallback = null
+    }
+
+    override fun bind() {
         wrapper.inAppType.elements.forEach { element ->
             when (element) {
                 is Element.CloseButton -> {
@@ -88,6 +103,12 @@ internal class ModalWindowInAppViewHolder(
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         currentDialog.requestFocus()
+        currentRoot.registerBack(registerBackPressedCallback())
+    }
+
+    override fun hide() {
+        clearBackPressedCallback()
+        super.hide()
     }
 
     override fun initView(currentRoot: ViewGroup) {
