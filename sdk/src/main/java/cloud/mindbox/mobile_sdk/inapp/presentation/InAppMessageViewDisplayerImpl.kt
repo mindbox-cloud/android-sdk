@@ -165,7 +165,7 @@ internal class InAppMessageViewDisplayerImpl(
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
         }
-        val controller = InAppViewHolder.InAppController { closeCurrentInApp() }
+        val controller = InAppViewHolder.InAppController { closeInApp() }
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
@@ -189,13 +189,14 @@ internal class InAppMessageViewDisplayerImpl(
                 isFirstShow = !isRestored
             )
         }
+        pausedHolder = null
 
         currentActivity?.root?.let { root ->
             inAppFailureTracker.executeWithFailureTracking(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying draw inapp",
-                onFailure = ::closeCurrentInApp
+                onFailure = ::closeInApp
             ) {
                 currentHolder?.show(createMindboxView(root))
             }
@@ -224,7 +225,7 @@ internal class InAppMessageViewDisplayerImpl(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "Error when trying reattach InApp",
-            onFailure = ::closeCurrentInApp,
+            onFailure = ::closeInApp,
         ) {
             restoredHolder.reattach(createMindboxView(root))
         }
@@ -248,8 +249,7 @@ internal class InAppMessageViewDisplayerImpl(
         }
     }
 
-    override fun closeCurrentInApp() {
-        mindboxLogI("Close current in-app ${currentHolder?.wrapper?.inAppType?.inAppId}")
+    override fun dismissCurrentInApp() {
         loggingRunCatching {
             if (isInAppActive()) {
                 currentHolder?.wrapper?.inAppActionCallbacks
@@ -257,6 +257,12 @@ internal class InAppMessageViewDisplayerImpl(
                     ?.onInAppDismiss
                     ?.onDismiss()
             }
+        }
+        closeInApp()
+    }
+
+    private fun closeInApp() {
+        loggingRunCatching {
             currentHolder?.onClose()
             currentHolder = null
             pausedHolder?.onClose()

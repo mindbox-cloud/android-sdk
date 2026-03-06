@@ -38,7 +38,6 @@ internal class ModalWindowInAppViewHolder(
         return callback
     }
 
-
     private fun clearBackPressedCallback() {
         backPressedCallback?.remove()
         backPressedCallback = null
@@ -105,9 +104,9 @@ internal class ModalWindowInAppViewHolder(
         currentRoot.registerBack(registerBackPressedCallback())
     }
 
-    override fun hide() {
+    override fun onClose() {
         clearBackPressedCallback()
-        super.hide()
+        super.onClose()
     }
 
     override fun initView(currentRoot: ViewGroup) {

@@ -24,5 +24,5 @@ internal interface InAppMessageViewDisplayer {
 
     fun isInAppActive(): Boolean
 
-    fun closeCurrentInApp()
+    fun dismissCurrentInApp()
 }
