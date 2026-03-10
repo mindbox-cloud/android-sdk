@@ -50,9 +50,10 @@ import kotlin.concurrent.timer
 
 @OptIn(InternalMindboxApi::class)
 internal class WebViewInAppViewHolder(
-    override val wrapper: InAppTypeWrapper<InAppType.WebView>,
-    private val inAppCallback: InAppCallback,
-) : AbstractInAppViewHolder<InAppType.WebView>() {
+    wrapper: InAppTypeWrapper<InAppType.WebView>,
+    controller: InAppViewHolder.InAppController,
+    inAppCallback: InAppCallback,
+) : AbstractInAppViewHolder<InAppType.WebView>(wrapper, controller, inAppCallback) {
 
     companion object {
         private const val INIT_TIMEOUT_MS = 7_000L
@@ -83,9 +84,6 @@ internal class WebViewInAppViewHolder(
     private val linkRouter: WebViewLinkRouter by lazy {
         MindboxWebViewLinkRouter(appContext)
     }
-
-    override val isActive: Boolean
-        get() = isInAppMessageActive
 
     override fun bind() {}
 
@@ -203,8 +201,7 @@ internal class WebViewInAppViewHolder(
     private fun handleCloseAction(message: BridgeMessage): String {
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
-        hide()
-        release()
+        inAppController.close()
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -279,7 +276,7 @@ internal class WebViewInAppViewHolder(
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                         errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
                     )
-                    release()
+                    inAppController.close()
                 }
             }
         })
@@ -342,6 +339,7 @@ internal class WebViewInAppViewHolder(
 
     private fun clearBackPressedCallback() {
         backPressedCallback?.remove()
+        backPressedCallback = null
     }
 
     private fun sendBackAction(controller: WebViewController) {
@@ -352,7 +350,7 @@ internal class WebViewInAppViewHolder(
         sendActionInternal(controller, message) { error ->
             mindboxLogW("Failed to send back action to WebView: $error")
             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            hide()
+            inAppController.close()
         }
     }
 
@@ -365,7 +363,7 @@ internal class WebViewInAppViewHolder(
                     failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                     errorDescription = "evaluateJavaScript return unexpected response: $response"
                 )
-                hide()
+                inAppController.close()
                 false
             }
         }
@@ -430,7 +428,7 @@ internal class WebViewInAppViewHolder(
         mindboxLogW("WebView error: ${message.payload}")
         val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(message.id)
         responseDeferred?.cancel("WebView error: ${message.payload}")
-        hide()
+        inAppController.close()
     }
 
     private fun cancelPendingResponses(reason: String) {
@@ -490,8 +488,7 @@ internal class WebViewInAppViewHolder(
                             errorDescription = "Failed to fetch HTML content for In-App",
                             throwable = e
                         )
-                        hide()
-                        release()
+                        inAppController.close()
                     }
                 } ?: run {
                     inAppFailureTracker.sendFailureWithContext(
@@ -499,7 +496,7 @@ internal class WebViewInAppViewHolder(
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                         errorDescription = "WebView content URL is null"
                     )
-                    hide()
+                    inAppController.close()
                 }
             }
         }
@@ -522,7 +519,7 @@ internal class WebViewInAppViewHolder(
                 failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                 errorDescription = "WebView controller is null when trying show inapp"
             )
-            release()
+            inAppController.close()
         }
     }
 
@@ -538,8 +535,7 @@ internal class WebViewInAppViewHolder(
                     errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
                 )
                 controller.executeOnViewThread {
-                    hide()
-                    release()
+                    inAppController.close()
                 }
             }
         } ?: run {
@@ -608,28 +604,23 @@ internal class WebViewInAppViewHolder(
 
     override fun canReuseOnRestore(inAppId: String): Boolean = wrapper.inAppType.inAppId == inAppId
 
-    override fun hide() {
-        // Clean up timeout when hiding
+    override fun onStop() {
+        // do nothing
+    }
+
+    override fun onClose() {
         stopTimer()
-        cancelPendingResponses("WebView In-App is hidden")
+        cancelPendingResponses("WebView In-App is closed")
         clearBackPressedCallback()
         webViewController?.let { controller ->
             val view: WebViewPlatformView = controller.view
-            inAppLayout.removeView(view)
+            view.parent.safeAs<ViewGroup>()?.removeView(view)
+            controller.destroy()
         }
-        super.hide()
-    }
-
-    override fun release() {
-        super.release()
-        // Clean up WebView resources
-        stopTimer()
-        cancelPendingResponses("WebView In-App is released")
-        clearBackPressedCallback()
         currentWebViewOrigin = null
         webViewController?.destroy()
         webViewController = null
-        backPressedCallback = null
+        super.onClose()
     }
 
     private data class NavigationInterceptedPayload(

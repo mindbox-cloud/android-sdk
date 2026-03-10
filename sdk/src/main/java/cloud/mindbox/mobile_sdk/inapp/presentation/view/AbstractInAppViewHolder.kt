@@ -10,14 +10,15 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.safeAs
@@ -29,9 +30,15 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 
-internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder<InAppType> {
+internal abstract class AbstractInAppViewHolder<T : InAppType>(
+    final override val wrapper: InAppTypeWrapper<T>,
+    final override val inAppController: InAppViewHolder.InAppController,
+    final override val inAppCallback: InAppCallback,
+) : InAppViewHolder<T> {
 
     protected open var isInAppMessageActive = false
+    override val isActive: Boolean
+        get() = isInAppMessageActive
 
     private var positionController: InAppPositionController? = null
 
@@ -47,9 +54,6 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
 
     protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
-    private val mindboxNotificationManager by mindboxInject {
-        mindboxNotificationManager
-    }
     internal val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private var inAppActionHandler = InAppActionHandler()
@@ -96,7 +100,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
             if (shouldDismiss) {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by click")
-                hide()
+                inAppController.close()
             }
 
             inAppData.onCompleted?.invoke()
@@ -123,7 +127,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
                             errorDescription = "Failed to load in-app image with url = $url",
                             throwable = e
                         )
-                        hide()
+                        inAppController.close()
                         false
                     }.getOrElse { throwable ->
                         inAppFailureTracker.sendPresentationFailure(
@@ -221,11 +225,15 @@ internal abstract class AbstractInAppViewHolder<T : InAppType> : InAppViewHolder
         inAppActionHandler.mindboxView = currentRoot
     }
 
-    override fun hide() {
+    override fun onClose() {
         positionController?.stop()
         positionController = null
         currentDialog.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)
-        mindboxLogI("hide ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
+        mindboxLogI("Close ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
+    }
+
+    override fun onStop() {
+        onClose()
     }
 }

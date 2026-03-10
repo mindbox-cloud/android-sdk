@@ -74,10 +74,9 @@ internal class InAppMessageViewDisplayerImpl(
                         inAppActionCallbacks = wrapper.inAppActionCallbacks.copy(onInAppShown = {
                             mindboxLogI("Skip InApp.Show for restored inApp")
                             currentActivity?.postDelayedAnimation {
-                                pausedHolder?.hide()
+                                pausedHolder?.onClose()
                             }
-                        }
-                        )
+                        })
                     ),
                     isRestored = true
                 )
@@ -113,7 +112,7 @@ internal class InAppMessageViewDisplayerImpl(
 
     override fun onStopCurrentActivity(activity: Activity) {
         mindboxLogI("onStopCurrentActivity: ${activity.hashCode()}")
-        pausedHolder?.hide()
+        pausedHolder?.onStop()
     }
 
     override fun onPauseCurrentActivity(activity: Activity) {
@@ -165,37 +164,39 @@ internal class InAppMessageViewDisplayerImpl(
 
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
-            pausedHolder?.hide()
-            pausedHolder = null
-            currentHolder = null
         }
+        val controller = InAppViewHolder.InAppController { closeInApp() }
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
             is InAppType.WebView -> WebViewInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.WebView>,
+                controller = controller,
                 inAppCallback = callbackWrapper
             )
 
             is InAppType.ModalWindow -> ModalWindowInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
+                controller = controller,
                 inAppCallback = callbackWrapper
             )
 
             is InAppType.Snackbar -> SnackbarInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.Snackbar>,
+                controller = controller,
                 inAppCallback = callbackWrapper,
                 inAppImageSizeStorage = inAppImageSizeStorage,
                 isFirstShow = !isRestored
             )
         }
+        pausedHolder = null
 
         currentActivity?.root?.let { root ->
             inAppFailureTracker.executeWithFailureTracking(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying draw inapp",
-                onFailure = { runCatching { currentHolder?.hide() } }
+                onFailure = ::closeInApp
             ) {
                 currentHolder?.show(createMindboxView(root))
             }
@@ -224,7 +225,7 @@ internal class InAppMessageViewDisplayerImpl(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "Error when trying reattach InApp",
-            onFailure = { runCatching { restoredHolder.hide() } },
+            onFailure = ::closeInApp,
         ) {
             restoredHolder.reattach(createMindboxView(root))
         }
@@ -248,7 +249,7 @@ internal class InAppMessageViewDisplayerImpl(
         }
     }
 
-    override fun hideCurrentInApp() {
+    override fun dismissCurrentInApp() {
         loggingRunCatching {
             if (isInAppActive()) {
                 currentHolder?.wrapper?.inAppActionCallbacks
@@ -256,15 +257,15 @@ internal class InAppMessageViewDisplayerImpl(
                     ?.onInAppDismiss
                     ?.onDismiss()
             }
-            currentHolder?.apply {
-                hide()
-                release()
-            }
+        }
+        closeInApp()
+    }
+
+    private fun closeInApp() {
+        loggingRunCatching {
+            currentHolder?.onClose()
             currentHolder = null
-            pausedHolder?.apply {
-                hide()
-                release()
-            }
+            pausedHolder?.onClose()
             pausedHolder = null
             inAppQueue.clear()
             isActionExecuted = false
