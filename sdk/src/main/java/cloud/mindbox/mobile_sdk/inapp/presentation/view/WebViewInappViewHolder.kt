@@ -84,6 +84,9 @@ internal class WebViewInAppViewHolder(
     private val linkRouter: WebViewLinkRouter by lazy {
         MindboxWebViewLinkRouter(appContext)
     }
+    private val localStateStore: WebViewLocalStateStore by lazy {
+        WebViewLocalStateStore(appContext)
+    }
 
     override fun bind() {}
 
@@ -132,6 +135,15 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.ASYNC_OPERATION, ::handleAsyncOperationAction)
             register(WebViewAction.OPEN_LINK, ::handleOpenLinkAction)
             registerSuspend(WebViewAction.SYNC_OPERATION, ::handleSyncOperationAction)
+            register(WebViewAction.LOCAL_STATE_GET) { message ->
+                handleLocalStateGetAction(message)
+            }
+            register(WebViewAction.LOCAL_STATE_SET) { message ->
+                handleLocalStateSetAction(message)
+            }
+            register(WebViewAction.LOCAL_STATE_INIT) { message ->
+                handleLocalStateInitAction(message)
+            }
             register(WebViewAction.READY) {
                 handleReadyAction(
                     configuration = configuration,
@@ -247,6 +259,21 @@ internal class WebViewInAppViewHolder(
 
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
         return operationExecutor.executeSyncOperation(message.payload)
+    }
+
+    private fun handleLocalStateGetAction(message: BridgeMessage.Request): String {
+        val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
+        return localStateStore.getState(payload)
+    }
+
+    private fun handleLocalStateSetAction(message: BridgeMessage.Request): String {
+        val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
+        return localStateStore.setState(payload)
+    }
+
+    private fun handleLocalStateInitAction(message: BridgeMessage.Request): String {
+        val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
+        return localStateStore.initState(payload)
     }
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
