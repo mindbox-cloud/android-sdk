@@ -45,6 +45,15 @@ public enum class WebViewAction {
 
     @SerializedName("navigationIntercepted")
     NAVIGATION_INTERCEPTED,
+
+    @SerializedName("localState.get")
+    LOCAL_STATE_GET,
+
+    @SerializedName("localState.set")
+    LOCAL_STATE_SET,
+
+    @SerializedName("localState.init")
+    LOCAL_STATE_INIT,
 }
 
 @InternalMindboxApi
