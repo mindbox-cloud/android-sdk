@@ -33,6 +33,7 @@ internal class DataCollector(
             KEY_DEVICE_UUID to Provider.string(MindboxPreferences.deviceUuid),
             KEY_LOCAL_STATE_VERSION to Provider.number(MindboxPreferences.localStateVersion),
             KEY_ENDPOINT_ID to Provider.string(configuration.endpointId),
+            KEY_FIRST_INITIALIZATION_TIME to Provider.string(MindboxPreferences.firstInitializationTime),
             KEY_IN_APP_ID to Provider.string(inAppId),
             KEY_INSETS to createInsetsPayload(inAppInsets),
             KEY_LOCALE to Provider.string(resolveLocale()),
@@ -57,6 +58,7 @@ internal class DataCollector(
     companion object Companion {
         private const val KEY_DEVICE_UUID = "deviceUUID"
         private const val KEY_ENDPOINT_ID = "endpointId"
+        private const val KEY_FIRST_INITIALIZATION_TIME = "firstInitializationDateTime"
         private const val KEY_IN_APP_ID = "inAppId"
         private const val KEY_INSETS = "insets"
         private const val KEY_LOCALE = "locale"

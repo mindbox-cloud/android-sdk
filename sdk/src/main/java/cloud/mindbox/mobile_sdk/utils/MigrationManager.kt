@@ -8,6 +8,8 @@ import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
+import cloud.mindbox.mobile_sdk.models.convertToIso8601String
+import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toJsonTyped
@@ -23,6 +25,7 @@ internal class MigrationManager(val context: Context) : MindboxLog {
     private var isMigrating = false
 
     private val gson by mindboxInject { gson }
+    private val timeProvider by mindboxInject { timeProvider }
 
     suspend fun migrateAll() {
         if (isMigrating) return
@@ -36,7 +39,8 @@ internal class MigrationManager(val context: Context) : MindboxLog {
         listOf(
             version290(),
             version2120(),
-            version2140()
+            version2140(),
+            version2150()
         ).filter { it.isNeeded }
             .onEach { migration ->
                 val job = Mindbox.mindboxScope.launch {
@@ -141,6 +145,30 @@ internal class MigrationManager(val context: Context) : MindboxLog {
 
             MindboxPreferences.shownInApps = newMapString
             SharedPreferencesManager.remove("SHOWN_IDS")
+            MindboxPreferences.versionCode = VERSION_CODE
+        }
+    }
+
+    private fun version2150() = object : Migration {
+        val VERSION_CODE = 4
+
+        override val description: String
+            get() = "Stores the first SDK initialization time"
+        override val isNeeded: Boolean
+            get() = (MindboxPreferences.versionCode ?: 0) < VERSION_CODE
+
+        override suspend fun run() {
+            if (MindboxPreferences.firstInitializationTime == null) {
+                val firstInitTimestamp = MindboxPreferences.pushTokens.values
+                    .map { token -> token.updateDate }
+                    .filter { timestamp -> timestamp > 0L }
+                    .minOrNull()
+                    ?: timeProvider.currentTimestamp().ms
+                MindboxPreferences.firstInitializationTime =
+                    firstInitTimestamp
+                        .toTimestamp()
+                        .convertToIso8601String()
+            }
             MindboxPreferences.versionCode = VERSION_CODE
         }
     }

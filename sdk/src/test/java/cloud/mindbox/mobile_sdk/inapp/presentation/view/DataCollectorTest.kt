@@ -63,6 +63,7 @@ class DataCollectorTest {
         uiConfiguration.uiMode = UiConfiguration.UI_MODE_NIGHT_NO
         every { MindboxPreferences.deviceUuid } returns "device-uuid"
         every { MindboxPreferences.localStateVersion } returns 12
+        every { MindboxPreferences.firstInitializationTime } returns "2025-01-10T07:40:00Z"
         every { MindboxPreferences.userVisitCount } returns 7
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.DENIED
@@ -80,7 +81,7 @@ class DataCollectorTest {
             eventType = EventType.AsyncOperation("OpenScreen"),
             body = "{\"screen\":\"home\"}",
         )
-        val dataCollector: DataCollector = DataCollector(
+        val dataCollector = DataCollector(
             appContext = appContext,
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
@@ -94,6 +95,7 @@ class DataCollectorTest {
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
         assertEquals("device-uuid", actualJson.get("deviceUUID").asString)
         assertEquals("endpoint-id", actualJson.get("endpointId").asString)
+        assertEquals("2025-01-10T07:40:00Z", actualJson.get("firstInitializationDateTime").asString)
         assertEquals("en_US", actualJson.get("locale").asString)
         assertEquals("OpenScreen", actualJson.get("operationName").asString)
         assertEquals("{\"screen\":\"home\"}", actualJson.get("operationBody").asString)
@@ -125,6 +127,7 @@ class DataCollectorTest {
         uiConfiguration.uiMode = UiConfiguration.UI_MODE_NIGHT_YES
         every { MindboxPreferences.deviceUuid } returns ""
         every { MindboxPreferences.localStateVersion } returns 3
+        every { MindboxPreferences.firstInitializationTime } returns null
         every { MindboxPreferences.userVisitCount } returns 3
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.GRANTED
@@ -139,7 +142,7 @@ class DataCollectorTest {
             requestUrl = " ",
             sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
-        val dataCollector: DataCollector = DataCollector(
+        val dataCollector = DataCollector(
             appContext = appContext,
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
@@ -152,6 +155,7 @@ class DataCollectorTest {
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
         assertFalse(actualJson.has("deviceUUID"))
+        assertFalse(actualJson.has("firstInitializationDateTime"))
         assertFalse(actualJson.has("operationName"))
         assertFalse(actualJson.has("operationBody"))
         assertFalse(actualJson.has("trackVisitSource"))
@@ -176,6 +180,7 @@ class DataCollectorTest {
         every { resources.displayMetrics } returns displayMetrics
         every { MindboxPreferences.deviceUuid } returns "device-uuid"
         every { MindboxPreferences.localStateVersion } returns 5
+        every { MindboxPreferences.firstInitializationTime } returns null
         every { MindboxPreferences.userVisitCount } returns 0
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.DENIED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.DENIED
