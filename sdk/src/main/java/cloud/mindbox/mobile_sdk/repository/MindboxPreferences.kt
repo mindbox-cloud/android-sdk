@@ -36,6 +36,8 @@ internal object MindboxPreferences {
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
     private const val KEY_LAST_INFO_UPDATE_TIME = "key_last_info_update_time"
     private const val KEY_LAST_INAPP_CHANGE_STATE_TIME = "key_last_inapp_change_state_time"
+    private const val KEY_LOCAL_STATE_VERSION = "local_state_version"
+    private const val DEFAULT_LOCAL_STATE_VERSION = 1
     private const val KEY_FIRST_INITIALIZATION_TIME = "key_first_initialization_time"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
@@ -262,6 +264,16 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_LAST_INAPP_CHANGE_STATE_TIME, value.ms)
+            }
+        }
+
+    var localStateVersion: Int
+        get() = loggingRunCatching(defaultValue = DEFAULT_LOCAL_STATE_VERSION) {
+            SharedPreferencesManager.getInt(KEY_LOCAL_STATE_VERSION, DEFAULT_LOCAL_STATE_VERSION)
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_LOCAL_STATE_VERSION, value)
             }
         }
 }

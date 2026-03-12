@@ -31,6 +31,7 @@ internal class DataCollector(
     private val providers: MutableMap<String, Provider> by lazy {
         mutableMapOf<String, Provider>(
             KEY_DEVICE_UUID to Provider.string(MindboxPreferences.deviceUuid),
+            KEY_LOCAL_STATE_VERSION to Provider.number(MindboxPreferences.localStateVersion),
             KEY_ENDPOINT_ID to Provider.string(configuration.endpointId),
             KEY_FIRST_INITIALIZATION_TIME to Provider.string(MindboxPreferences.firstInitializationTime),
             KEY_IN_APP_ID to Provider.string(inAppId),
@@ -78,6 +79,7 @@ internal class DataCollector(
         private const val KEY_TRACK_VISIT_REQUEST_URL = "trackVisitRequestUrl"
         private const val KEY_USER_VISIT_COUNT = "userVisitCount"
         private const val KEY_VERSION = "version"
+        private const val KEY_LOCAL_STATE_VERSION = "localStateVersion"
         private const val VALUE_PLATFORM = "android"
         private const val VALUE_THEME_DARK = "dark"
         private const val VALUE_THEME_LIGHT = "light"
