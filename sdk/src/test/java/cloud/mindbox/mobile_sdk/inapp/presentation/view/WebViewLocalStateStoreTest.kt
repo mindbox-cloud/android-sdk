@@ -39,13 +39,30 @@ internal class WebViewLocalStateStoreTest {
     }
 
     @Test
-    fun `initState stores values and getState returns requested keys with null for missing`() {
+    fun `get with specific keys returns only requested keys`() {
         store.initState("""{"data":{"key1":"value1","key2":"value2"},"version":2}""")
-        val actualResponse: JSONObject = store.getState("""{"data":["key1","missing"]}""").toJsonObject()
+        val actualResponse: JSONObject = store.getState("""{"data":["key1"]}""").toJsonObject()
         assertEquals(2, actualResponse.getInt("version"))
         val actualData: JSONObject = actualResponse.getJSONObject("data")
         assertEquals("value1", actualData.getString("key1"))
-        assertTrue(actualData.isNull("missing"))
+        assertFalse(actualData.has("key2"))
+    }
+
+    @Test
+    fun `get with empty keys returns all stored keys`() {
+        store.setState("""{"data":{"key1":"value1","key2":"value2"}}""")
+        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertEquals(2, actualData.length())
+        assertEquals("value1", actualData.getString("key1"))
+        assertEquals("value2", actualData.getString("key2"))
+    }
+
+    @Test
+    fun `get returns current version from preferences`() {
+        MindboxPreferences.localStateVersion = 5
+        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
+        assertEquals(5, actualResponse.getInt("version"))
     }
 
     @Test
@@ -90,6 +107,98 @@ internal class WebViewLocalStateStoreTest {
         assertEquals("firstValue", localStatePreferences.getString("firstKey", null))
         assertEquals("secondValue", localStatePreferences.getString("secondKey", null))
         assertFalse(localStatePreferences.contains("local_state_data_json"))
+    }
+
+    @Test
+    fun `get missing keys excludes absent keys from response`() {
+        store.initState("""{"data":{"existing":"value"},"version":2}""")
+        val actualResponse: JSONObject = store.getState("""{"data":["existing","missing"]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertTrue(actualData.has("existing"))
+        assertTrue(actualData.has("missing"))
+        assertEquals(2, actualData.length())
+    }
+
+    @Test
+    fun `setState returns only affected keys`() {
+        store.initState("""{"data":{"oldKey":"oldValue"},"version":4}""")
+        val actualResponse: JSONObject = store.setState("""{"data":{"newKey":"newValue"}}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertTrue(actualData.has("newKey"))
+        assertFalse(actualData.has("oldKey"))
+    }
+
+    @Test
+    fun `setState does not change version`() {
+        store.initState("""{"data":{"key":"value"},"version":8}""")
+        val actualResponse: JSONObject = store.setState("""{"data":{"key":"updated"}}""").toJsonObject()
+        assertEquals(8, actualResponse.getInt("version"))
+        assertEquals(8, MindboxPreferences.localStateVersion)
+    }
+
+    @Test
+    fun `initState merges with existing data`() {
+        store.setState("""{"data":{"base":"base-value","keep":"keep-value"}}""")
+        store.initState("""{"data":{"base":"updated-base","added":"added-value"},"version":3}""")
+        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertEquals("updated-base", actualData.getString("base"))
+        assertEquals("keep-value", actualData.getString("keep"))
+        assertEquals("added-value", actualData.getString("added"))
+    }
+
+    @Test
+    fun `initState rejects negative version`() {
+        val actualError: IllegalArgumentException = assertThrows(IllegalArgumentException::class.java) {
+            store.initState("""{"data":{"key":"value"},"version":-1}""")
+        }
+        assertTrue(actualError.message?.contains("Version must be greater than 0") == true)
+    }
+
+    @Test
+    fun `initState rejects zero version`() {
+        val actualError: IllegalArgumentException = assertThrows(IllegalArgumentException::class.java) {
+            store.initState("""{"data":{"key":"value"},"version":0}""")
+        }
+        assertTrue(actualError.message?.contains("Version must be greater than 0") == true)
+    }
+
+    @Test
+    fun `initState does not write version when rejected`() {
+        store.initState("""{"data":{"key":"value"},"version":6}""")
+        assertThrows(IllegalArgumentException::class.java) {
+            store.initState("""{"data":{"key":"next"},"version":-10}""")
+        }
+        assertEquals(6, MindboxPreferences.localStateVersion)
+    }
+
+    @Test
+    fun `full flow init set get works correctly`() {
+        store.initState("""{"data":{"k1":"v1"},"version":5}""")
+        store.setState("""{"data":{"k2":"v2","k1":"v1-updated"}}""")
+        val actualResponse: JSONObject = store.getState("""{"data":["k1","k2"]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertEquals("v1-updated", actualData.getString("k1"))
+        assertEquals("v2", actualData.getString("k2"))
+        assertEquals(5, actualResponse.getInt("version"))
+    }
+
+    @Test
+    fun `set null then get returns removed key as empty`() {
+        store.setState("""{"data":{"keyToDelete":"value"}}""")
+        store.setState("""{"data":{"keyToDelete":null}}""")
+        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertFalse(actualData.has("keyToDelete"))
+    }
+
+    @Test
+    fun `initState removes key when value is null`() {
+        store.setState("""{"data":{"keyToDelete":"value"}}""")
+        store.initState("""{"data":{"keyToDelete":null},"version":2}""")
+        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
+        val actualData: JSONObject = actualResponse.getJSONObject("data")
+        assertFalse(actualData.has("keyToDelete"))
     }
 
     private fun String.toJsonObject(): JSONObject = JSONObject(this)

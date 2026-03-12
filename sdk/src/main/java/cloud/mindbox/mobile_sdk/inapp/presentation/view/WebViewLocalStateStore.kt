@@ -46,9 +46,7 @@ internal class WebViewLocalStateStore(
     }
 
     fun initState(payload: String): String {
-        val payloadObject: JSONObject = JSONObject(payload)
-        val jsonData: JSONObject = payloadObject.getJSONObject(FIELD_DATA)
-        val version: Int = payloadObject.getInt(FIELD_VERSION)
+        val version: Int = JSONObject(payload).getInt(FIELD_VERSION)
         require(version > 0) { "Version must be greater than 0" }
 
         MindboxPreferences.localStateVersion = version

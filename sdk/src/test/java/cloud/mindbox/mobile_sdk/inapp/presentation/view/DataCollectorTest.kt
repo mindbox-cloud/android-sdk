@@ -48,6 +48,7 @@ class DataCollectorTest {
         every { resources.configuration } returns uiConfiguration
         every { resources.displayMetrics } returns displayMetrics
         mockkObject(MindboxPreferences)
+        every { MindboxPreferences.localStateVersion } returns 1
     }
 
     @After
@@ -61,6 +62,7 @@ class DataCollectorTest {
         Locale.setDefault(Locale.forLanguageTag("en-US"))
         uiConfiguration.uiMode = UiConfiguration.UI_MODE_NIGHT_NO
         every { MindboxPreferences.deviceUuid } returns "device-uuid"
+        every { MindboxPreferences.localStateVersion } returns 12
         every { MindboxPreferences.userVisitCount } returns 7
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.DENIED
@@ -97,6 +99,7 @@ class DataCollectorTest {
         assertEquals("{\"screen\":\"home\"}", actualJson.get("operationBody").asString)
         assertEquals("android", actualJson.get("platform").asString)
         assertEquals("light", actualJson.get("theme").asString)
+        assertEquals(12, actualJson.get("localStateVersion").asInt)
         assertEquals("link", actualJson.get("trackVisitSource").asString)
         assertEquals("https://mindbox.cloud/path", actualJson.get("trackVisitRequestUrl").asString)
         assertEquals("7", actualJson.get("userVisitCount").asString)
@@ -121,6 +124,7 @@ class DataCollectorTest {
         Locale.setDefault(Locale.forLanguageTag("ru-RU"))
         uiConfiguration.uiMode = UiConfiguration.UI_MODE_NIGHT_YES
         every { MindboxPreferences.deviceUuid } returns ""
+        every { MindboxPreferences.localStateVersion } returns 3
         every { MindboxPreferences.userVisitCount } returns 3
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.GRANTED
@@ -152,6 +156,7 @@ class DataCollectorTest {
         assertFalse(actualJson.has("operationBody"))
         assertFalse(actualJson.has("trackVisitSource"))
         assertFalse(actualJson.has("trackVisitRequestUrl"))
+        assertEquals(3, actualJson.get("localStateVersion").asInt)
         assertEquals("overridden-endpoint", actualJson.get("endpointId").asString)
         assertEquals("dark", actualJson.get("theme").asString)
         assertEquals("ru_RU", actualJson.get("locale").asString)
@@ -170,6 +175,7 @@ class DataCollectorTest {
         val displayMetrics = DisplayMetrics().apply { this.density = density }
         every { resources.displayMetrics } returns displayMetrics
         every { MindboxPreferences.deviceUuid } returns "device-uuid"
+        every { MindboxPreferences.localStateVersion } returns 5
         every { MindboxPreferences.userVisitCount } returns 0
         every { permissionManager.getCameraPermissionStatus() } returns PermissionStatus.DENIED
         every { permissionManager.getLocationPermissionStatus() } returns PermissionStatus.DENIED
@@ -197,6 +203,7 @@ class DataCollectorTest {
         assertEquals(4, insetsJson.get("top").asInt)
         assertEquals(6, insetsJson.get("right").asInt)
         assertEquals(8, insetsJson.get("bottom").asInt)
+        assertEquals(5, actualJson.get("localStateVersion").asInt)
     }
 
     private fun getPermissionStatus(payload: JsonObject, permissionKey: String): String {

@@ -135,15 +135,9 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.ASYNC_OPERATION, ::handleAsyncOperationAction)
             register(WebViewAction.OPEN_LINK, ::handleOpenLinkAction)
             registerSuspend(WebViewAction.SYNC_OPERATION, ::handleSyncOperationAction)
-            register(WebViewAction.LOCAL_STATE_GET) { message ->
-                handleLocalStateGetAction(message)
-            }
-            register(WebViewAction.LOCAL_STATE_SET) { message ->
-                handleLocalStateSetAction(message)
-            }
-            register(WebViewAction.LOCAL_STATE_INIT) { message ->
-                handleLocalStateInitAction(message)
-            }
+            registerSuspend(WebViewAction.LOCAL_STATE_GET, ::handleLocalStateGetAction)
+            registerSuspend(WebViewAction.LOCAL_STATE_SET, ::handleLocalStateSetAction)
+            registerSuspend(WebViewAction.LOCAL_STATE_INIT, ::handleLocalStateInitAction)
             register(WebViewAction.READY) {
                 handleReadyAction(
                     configuration = configuration,
