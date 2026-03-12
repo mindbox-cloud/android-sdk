@@ -55,18 +55,12 @@ internal class WebViewLocalStateStore(
     }
 
     private fun JSONObject.toMap(): Map<String, String?> {
-        val keysIterator: Iterator<String> = this.keys()
-        val resultMap: MutableMap<String, String?> = mutableMapOf()
-        while (keysIterator.hasNext()) {
-            val key: String = keysIterator.next()
-            val value: Any? = this.opt(key)
-            if (value == null || value == JSONObject.NULL) {
-                resultMap[key] = null
-            } else {
-                resultMap[key] = value.toString()
+        return buildMap(capacity = this.length()) {
+            keys().forEach { key ->
+                val value: Any? = opt(key)
+                put(key, if (value == null || value == JSONObject.NULL) null else value.toString())
             }
         }
-        return resultMap
     }
 
     private fun buildResponse(data: Map<String, String?>): String {
