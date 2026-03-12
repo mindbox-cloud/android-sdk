@@ -1,5 +1,9 @@
 package cloud.mindbox.mobile_sdk.models
 
+import cloud.mindbox.mobile_sdk.convertToString
+import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
+import org.threeten.bp.Instant
+
 /**
  * Represents a specific point in time as milliseconds since the Unix epoch (January 1, 1970, 00:00:00 UTC)
  */
@@ -11,3 +15,9 @@ internal value class Timestamp(val ms: Long) {
 }
 
 internal fun Long.toTimestamp(): Timestamp = Timestamp(this)
+
+internal fun Timestamp.convertToIso8601String(): String {
+    return Instant.ofEpochMilli(ms)
+        .convertToZonedDateTimeAtUTC()
+        .convertToString()
+}

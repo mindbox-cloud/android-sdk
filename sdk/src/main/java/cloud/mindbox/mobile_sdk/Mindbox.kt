@@ -94,6 +94,7 @@ public object Mindbox : MindboxLog {
     private lateinit var lifecycleManager: LifecycleManager
 
     private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
+    private val timeProvider by mindboxInject { timeProvider }
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
@@ -1243,6 +1244,11 @@ public object Mindbox : MindboxLog {
         }
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
         MindboxPreferences.instanceId = instanceId
+
+        if (MindboxPreferences.firstInitializationTime == null) {
+            MindboxPreferences.firstInitializationTime = timeProvider.currentTimestamp()
+                .convertToIso8601String()
+        }
 
         MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
 

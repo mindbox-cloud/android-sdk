@@ -36,6 +36,7 @@ internal object MindboxPreferences {
     private const val KEY_SDK_VERSION_CODE = "key_sdk_version_code"
     private const val KEY_LAST_INFO_UPDATE_TIME = "key_last_info_update_time"
     private const val KEY_LAST_INAPP_CHANGE_STATE_TIME = "key_last_inapp_change_state_time"
+    private const val KEY_FIRST_INITIALIZATION_TIME = "key_first_initialization_time"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -230,6 +231,17 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(KEY_SDK_VERSION_CODE, value ?: Constants.SDK_VERSION_CODE)
+            }
+        }
+
+    var firstInitializationTime: String?
+        get() = loggingRunCatching(defaultValue = null) {
+            SharedPreferencesManager.getString(KEY_FIRST_INITIALIZATION_TIME)
+                ?.takeIf { value -> value.isNotBlank() }
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_FIRST_INITIALIZATION_TIME, value)
             }
         }
 
