@@ -120,6 +120,7 @@ internal class InAppMessageViewDisplayerImpl(
         if (currentActivity == activity) {
             currentActivity = null
         }
+        pausedHolder?.onClose()
         pausedHolder = currentHolder
         currentHolder = null
     }
@@ -189,7 +190,6 @@ internal class InAppMessageViewDisplayerImpl(
                 isFirstShow = !isRestored
             )
         }
-        pausedHolder = null
 
         currentActivity?.root?.let { root ->
             inAppFailureTracker.executeWithFailureTracking(
