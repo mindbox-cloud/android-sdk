@@ -120,8 +120,9 @@ internal class InAppMessageViewDisplayerImpl(
         if (currentActivity == activity) {
             currentActivity = null
         }
+        val holderToPause = currentHolder ?: return
         pausedHolder?.onClose()
-        pausedHolder = currentHolder
+        pausedHolder = holderToPause
         currentHolder = null
     }
 
