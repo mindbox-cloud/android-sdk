@@ -43,6 +43,9 @@ internal object HapticConstants {
     const val STYLE_LIGHT = "light"
     const val STYLE_MEDIUM = "medium"
     const val STYLE_HEAVY = "heavy"
+    const val STYLE_SOFT = "soft"
+    const val STYLE_RIGID = "rigid"
+
     const val SELECTION_FALLBACK_DURATION_MS = 20L
     const val TRANSIENT_DURATION_MS = 10L
 }
@@ -66,8 +69,8 @@ internal fun parseHapticRequest(payload: String?): HapticRequest {
 }
 
 private fun parseImpactStyle(style: String): HapticImpactStyle = when (style) {
-    HapticConstants.STYLE_LIGHT -> HapticImpactStyle.Light
-    HapticConstants.STYLE_HEAVY -> HapticImpactStyle.Heavy
+    HapticConstants.STYLE_LIGHT, HapticConstants.STYLE_SOFT -> HapticImpactStyle.Light
+    HapticConstants.STYLE_HEAVY, HapticConstants.STYLE_RIGID -> HapticImpactStyle.Heavy
     else -> HapticImpactStyle.Medium
 }
 
