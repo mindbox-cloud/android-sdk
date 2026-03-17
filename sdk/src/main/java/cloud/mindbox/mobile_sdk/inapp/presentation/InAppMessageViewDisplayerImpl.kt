@@ -163,6 +163,10 @@ internal class InAppMessageViewDisplayerImpl(
             isActionExecuted = false
         }
         if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
+        if (isRestored) {
+            pausedHolder?.onClose()
+            pausedHolder = null
+        }
 
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
