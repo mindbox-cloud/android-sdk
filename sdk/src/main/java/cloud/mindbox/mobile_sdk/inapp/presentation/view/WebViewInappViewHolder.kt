@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.app.Application
 import android.net.Uri
-
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
