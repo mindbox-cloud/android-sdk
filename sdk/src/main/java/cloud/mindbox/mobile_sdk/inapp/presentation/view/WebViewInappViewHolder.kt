@@ -291,7 +291,7 @@ internal class WebViewInAppViewHolder(
 
     private suspend fun handlePermissionAction(message: BridgeMessage.Request): String {
         val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
-        val typeString: String? = JSONObject(payload).getString(BridgeMessage.TYPE_FIELD_NAME)
+        val typeString: String? = JSONObject(payload).getString(PERMISSION_PAYLOAD_TYPE_FIELD_NAME)
         val type: PermissionType? = runCatching { typeString.enumValue<PermissionType>() }.getOrNull()
         requireNotNull(type) { "Unknown permission type: $typeString" }
 

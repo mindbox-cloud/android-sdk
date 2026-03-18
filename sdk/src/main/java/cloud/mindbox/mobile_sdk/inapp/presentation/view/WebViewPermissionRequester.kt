@@ -18,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+internal const val PERMISSION_PAYLOAD_TYPE_FIELD_NAME = "type"
+
 internal interface WebViewPermissionRequester {
     suspend fun requestPermission(activity: Activity, permissionType: PermissionType): PermissionActionResponse
 }

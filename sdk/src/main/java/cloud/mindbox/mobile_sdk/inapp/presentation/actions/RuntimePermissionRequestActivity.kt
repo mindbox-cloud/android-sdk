@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
-import androidx.annotation.RequiresApi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 
 internal class RuntimePermissionRequestActivity : Activity() {
@@ -19,7 +18,6 @@ internal class RuntimePermissionRequestActivity : Activity() {
     private var requestId: String? = null
     private var isResultSent: Boolean = false
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -36,7 +34,13 @@ internal class RuntimePermissionRequestActivity : Activity() {
             return
         }
         requestId = actualRequestId
-        requestPermissions(permissions, REQUEST_CODE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(permissions, REQUEST_CODE)
+        } else {
+            RuntimePermissionRequestBridge.resolve(actualRequestId, false)
+            isResultSent = true
+            finish()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -60,7 +64,7 @@ internal class RuntimePermissionRequestActivity : Activity() {
     }
 
     override fun onDestroy() {
-        if (!isResultSent) {
+        if (!isResultSent && isFinishing && !isChangingConfigurations) {
             val actualRequestId: String = requestId.orEmpty()
             if (actualRequestId.isNotBlank()) {
                 mindboxLogW("Permission request activity closed before result for id=$actualRequestId")
