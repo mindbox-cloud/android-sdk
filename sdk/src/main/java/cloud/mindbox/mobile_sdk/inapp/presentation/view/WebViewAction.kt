@@ -54,6 +54,9 @@ public enum class WebViewAction {
 
     @SerializedName("localState.init")
     LOCAL_STATE_INIT,
+
+    @SerializedName("haptic")
+    HAPTIC,
 }
 
 @InternalMindboxApi

@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
+import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
@@ -74,6 +75,7 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
+    private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
     private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
     private val permissionManager: PermissionManager by mindboxInject { permissionManager }
@@ -86,6 +88,9 @@ internal class WebViewInAppViewHolder(
     }
     private val localStateStore: WebViewLocalStateStore by lazy {
         WebViewLocalStateStore(appContext)
+    }
+    private val hapticFeedbackExecutor: HapticFeedbackExecutor by lazy {
+        HapticFeedbackExecutorImpl(appContext)
     }
 
     override fun bind() {}
@@ -152,7 +157,15 @@ internal class WebViewInAppViewHolder(
             register(WebViewAction.HIDE) {
                 handleHideAction(controller)
             }
+            register(WebViewAction.HAPTIC, ::handleHapticAction)
         }
+    }
+
+    private fun handleHapticAction(message: BridgeMessage.Request): String {
+        val request = parseHapticRequest(message.payload)
+        if (!hapticRequestValidator.isValid(request)) return BridgeMessage.EMPTY_PAYLOAD
+        hapticFeedbackExecutor.execute(request = request)
+        return BridgeMessage.EMPTY_PAYLOAD
     }
 
     private fun handleReadyAction(
@@ -630,6 +643,7 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun onClose() {
+        hapticFeedbackExecutor.cancel()
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")
         clearBackPressedCallback()
