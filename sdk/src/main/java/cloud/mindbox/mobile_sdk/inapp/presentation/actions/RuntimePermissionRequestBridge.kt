@@ -19,11 +19,4 @@ internal object RuntimePermissionRequestBridge {
             deferred.complete(isGranted)
         }
     }
-
-    fun reject(requestId: String, error: Throwable) {
-        val deferred: CompletableDeferred<Boolean> = pendingRequestsById.remove(requestId) ?: return
-        if (!deferred.isCompleted) {
-            deferred.completeExceptionally(error)
-        }
-    }
 }
