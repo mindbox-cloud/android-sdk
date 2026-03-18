@@ -191,6 +191,7 @@ internal class WebViewInAppViewHolder(
         stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         controller.setVisibility(true)
+        backPressedCallback?.isEnabled = true
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
