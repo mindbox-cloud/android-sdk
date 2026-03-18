@@ -20,6 +20,18 @@ internal sealed class HapticRequest {
     data class Pattern(val events: List<HapticPatternEvent>) : HapticRequest()
 }
 
+/**
+ * Represents a single haptic pattern event.
+ *
+ * @param time Start time of the event relative to the beginning of the pattern, in milliseconds.
+ * @param duration Duration of the vibration, in milliseconds.
+ * @param intensity Normalized intensity in range [0.0, 1.0].
+ * @param sharpness Normalized sharpness in range [0.0, 1.0].
+ *
+ * Note: On Android, [sharpness] is currently parsed for compatibility with the
+ * cross‑platform schema but is not applied when generating vibration effects.
+ * Changes to this parameter will not affect the resulting haptic feedback on Android.
+ */
 internal data class HapticPatternEvent(
     val time: Long,
     val duration: Long,
@@ -91,9 +103,11 @@ private fun parsePatternEvents(json: JSONObject): List<HapticPatternEvent> {
 
 internal interface HapticFeedbackExecutor {
     fun execute(request: HapticRequest)
+
+    fun cancel()
 }
 
-internal class AndroidHapticFeedbackExecutor(
+internal class HapticFeedbackExecutorImpl(
     private val context: Context,
 ) : HapticFeedbackExecutor {
 
@@ -104,6 +118,12 @@ internal class AndroidHapticFeedbackExecutor(
                 is HapticRequest.Impact -> executeImpact(request.style)
                 is HapticRequest.Pattern -> executePattern(request.events)
             }
+        }
+    }
+
+    override fun cancel() {
+        loggingRunCatching {
+            resolveVibrator()?.cancel()
         }
     }
 
@@ -164,7 +184,7 @@ internal class AndroidHapticFeedbackExecutor(
         for (event in sorted) {
             val effectiveDuration: Long =
                 if (event.duration > 0) event.duration else HapticConstants.TRANSIENT_DURATION_MS
-            val amplitude: Int = (event.intensity * 255).toInt().coerceIn(1, 255)
+            val amplitude: Int = (event.intensity * 255).toInt().coerceIn(0, 255)
             val gap: Long = event.time - currentTime
             if (gap > 0) {
                 timings.add(gap)

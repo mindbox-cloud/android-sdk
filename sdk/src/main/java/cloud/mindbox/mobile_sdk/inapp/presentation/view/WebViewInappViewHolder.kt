@@ -91,7 +91,7 @@ internal class WebViewInAppViewHolder(
         WebViewLocalStateStore(appContext)
     }
     private val hapticFeedbackExecutor: HapticFeedbackExecutor by lazy {
-        AndroidHapticFeedbackExecutor(appContext)
+        HapticFeedbackExecutorImpl(appContext)
     }
 
     override fun bind() {}
@@ -644,6 +644,7 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun onClose() {
+        hapticFeedbackExecutor.cancel()
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")
         clearBackPressedCallback()

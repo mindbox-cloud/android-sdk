@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.HapticConstants
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.HapticPatternEvent
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.HapticRequest
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -15,7 +16,8 @@ internal class HapticRequestValidator : Validator<HapticRequest> {
     private fun isValidPattern(events: List<HapticPatternEvent>): Boolean {
         if (events.isEmpty()) return logAndFail("pattern is empty")
         if (events.size > MAX_EVENTS) return logAndFail("too many events: ${events.size}")
-        return events.all { isValidEvent(it) }
+        if (!events.all { isValidEvent(it) }) return false
+        return isValidPatternOrder(events.sortedBy { it.time })
     }
 
     private fun isValidEvent(event: HapticPatternEvent): Boolean {
@@ -31,11 +33,27 @@ internal class HapticRequestValidator : Validator<HapticRequest> {
         if (event.sharpness !in 0f..1f) {
             return logAndFail("event sharpness out of range: ${event.sharpness}")
         }
-        if (event.time + event.duration > MAX_TOTAL_DURATION_MS) {
-            return logAndFail("event time + duration exceeds max: ${event.time + event.duration}")
+        val effectiveDuration: Long = effectiveDurationOf(event)
+        if (event.time + effectiveDuration > MAX_TOTAL_DURATION_MS) {
+            return logAndFail("event time + effectiveDuration exceeds max: ${event.time + effectiveDuration}")
         }
         return true
     }
+
+    private fun isValidPatternOrder(sortedEvents: List<HapticPatternEvent>): Boolean {
+        for (i in 1 until sortedEvents.size) {
+            val previous: HapticPatternEvent = sortedEvents[i - 1]
+            val next: HapticPatternEvent = sortedEvents[i]
+            val previousEnd: Long = previous.time + effectiveDurationOf(previous)
+            if (next.time < previousEnd) {
+                return logAndFail("event at time=${next.time} overlaps previous event ending at $previousEnd")
+            }
+        }
+        return true
+    }
+
+    private fun effectiveDurationOf(event: HapticPatternEvent): Long =
+        if (event.duration > 0) event.duration else HapticConstants.TRANSIENT_DURATION_MS
 
     private fun logAndFail(reason: String): Boolean {
         mindboxLogW("[Haptic] invalid pattern: $reason")

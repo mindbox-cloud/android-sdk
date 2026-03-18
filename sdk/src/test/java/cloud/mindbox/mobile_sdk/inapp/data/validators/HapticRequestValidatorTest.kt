@@ -62,9 +62,14 @@ class HapticRequestValidatorTest {
     }
 
     @Test
-    fun `isValid returns true when event time is at boundary 0 and 30000`() {
+    fun `isValid returns true when event time is 0`() {
         assertTrue(validator.isValid(HapticRequest.Pattern(listOf(validEvent(time = 0L)))))
-        assertTrue(validator.isValid(HapticRequest.Pattern(listOf(validEvent(time = 30_000L, duration = 0L)))))
+    }
+
+    @Test
+    fun `isValid returns false when transient event starts at 30000 because effective duration exceeds limit`() {
+        val events: List<HapticPatternEvent> = listOf(validEvent(time = 30_000L, duration = 0L))
+        assertFalse(validator.isValid(HapticRequest.Pattern(events)))
     }
 
     @Test
@@ -154,6 +159,69 @@ class HapticRequestValidatorTest {
         )
         val request: HapticRequest = HapticRequest.Pattern(events = events)
         assertFalse(validator.isValid(request))
+    }
+
+    @Test
+    fun `isValid returns false when events overlap`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 200L),
+            validEvent(time = 100L, duration = 100L),
+        )
+        assertFalse(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns false when events have same time`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 100L),
+            validEvent(time = 0L, duration = 100L),
+        )
+        assertFalse(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns true when events are adjacent without overlap`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 100L),
+            validEvent(time = 100L, duration = 100L),
+        )
+        assertTrue(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns true when events have gap between them`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 100L),
+            validEvent(time = 300L, duration = 100L),
+        )
+        assertTrue(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns false when unsorted events overlap after sorting`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 100L, duration = 100L),
+            validEvent(time = 0L, duration = 200L),
+        )
+        assertFalse(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns false when transient event overlaps next event`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 0L),
+            validEvent(time = 5L, duration = 100L),
+        )
+        assertFalse(validator.isValid(HapticRequest.Pattern(events)))
+    }
+
+    @Test
+    fun `isValid returns true when transient event ends exactly when next event starts`() {
+        val events: List<HapticPatternEvent> = listOf(
+            validEvent(time = 0L, duration = 0L),
+            validEvent(time = 10L, duration = 100L),
+        )
+        assertTrue(validator.isValid(HapticRequest.Pattern(events)))
     }
 
     private fun validEvent(
