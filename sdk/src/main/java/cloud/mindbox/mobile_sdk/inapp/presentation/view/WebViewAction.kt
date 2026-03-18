@@ -57,6 +57,9 @@ public enum class WebViewAction {
 
     @SerializedName("haptic")
     HAPTIC,
+
+    @SerializedName(value = "permission.request")
+    PERMISSION_REQUEST,
 }
 
 @InternalMindboxApi

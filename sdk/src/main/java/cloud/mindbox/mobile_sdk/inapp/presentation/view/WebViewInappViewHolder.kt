@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import android.app.Activity
 import android.app.Application
 import android.net.Uri
 import android.view.ViewGroup
@@ -8,11 +9,9 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
-import cloud.mindbox.mobile_sdk.BuildConfig
-import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.*
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
-import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
@@ -35,7 +34,6 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
-import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
@@ -93,6 +91,13 @@ internal class WebViewInAppViewHolder(
         HapticFeedbackExecutorImpl(appContext)
     }
 
+    private val webViewPermissionRequester: WebViewPermissionRequester by lazy {
+        WebViewPermissionRequesterImpl(
+            context = appContext,
+            permissionManager = permissionManager
+        )
+    }
+
     override fun bind() {}
 
     suspend fun sendActionAndAwaitResponse(
@@ -143,6 +148,7 @@ internal class WebViewInAppViewHolder(
             registerSuspend(WebViewAction.LOCAL_STATE_GET, ::handleLocalStateGetAction)
             registerSuspend(WebViewAction.LOCAL_STATE_SET, ::handleLocalStateSetAction)
             registerSuspend(WebViewAction.LOCAL_STATE_INIT, ::handleLocalStateInitAction)
+            registerSuspend(WebViewAction.PERMISSION_REQUEST, ::handlePermissionAction)
             register(WebViewAction.READY) {
                 handleReadyAction(
                     configuration = configuration,
@@ -281,6 +287,22 @@ internal class WebViewInAppViewHolder(
     private fun handleLocalStateInitAction(message: BridgeMessage.Request): String {
         val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
         return localStateStore.initState(payload)
+    }
+
+    private suspend fun handlePermissionAction(message: BridgeMessage.Request): String {
+        val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
+        val typeString: String? = JSONObject(payload).getString(BridgeMessage.TYPE_FIELD_NAME)
+        val type: PermissionType? = runCatching { typeString.enumValue<PermissionType>() }.getOrNull()
+        requireNotNull(type) { "Unknown permission type: $typeString" }
+
+        val activity: Activity? = webViewController?.view?.context?.safeAs<Activity>()
+        checkNotNull(activity) { "Not found activity for permission request" }
+
+        val permissionRequestResult: PermissionActionResponse = webViewPermissionRequester.requestPermission(
+            activity,
+            type
+        )
+        return gson.toJson(permissionRequestResult)
     }
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
