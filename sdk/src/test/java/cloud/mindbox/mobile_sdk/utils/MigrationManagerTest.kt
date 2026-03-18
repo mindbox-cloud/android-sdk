@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.utils
 
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.models.convertToIso8601String
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
@@ -18,9 +19,9 @@ class MigrationManagerTest {
     fun setUp() {
         mockkObject(MindboxPreferences)
         mockkObject(MindboxDI)
-        every { MindboxDI.appModule } returns mockk(relaxed = true) {
-            every { gson } returns Gson()
-        }
+        val appModule = mockk<AppModule>(relaxed = true)
+        every { appModule.gson } returns Gson()
+        every { MindboxDI.appModule } returns appModule
     }
 
     @Test
