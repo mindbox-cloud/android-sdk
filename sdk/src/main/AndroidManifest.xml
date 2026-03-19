@@ -18,5 +18,14 @@
             android:noHistory="true"
             android:theme="@style/Theme.MindboxTransparent">
         </activity>
+        <activity
+            android:name="cloud.mindbox.mobile_sdk.inapp.presentation.actions.RuntimePermissionRequestActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:theme="@style/Theme.MindboxTransparent">
+        </activity>
     </application>
 </manifest>
