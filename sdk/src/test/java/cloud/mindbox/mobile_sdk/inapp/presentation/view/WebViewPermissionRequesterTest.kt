@@ -7,149 +7,96 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WebViewPermissionRequesterTest {
 
     @Test
-    fun `requestPermission returns granted when camera permission already granted`() = runTest {
-        val runtimePermissionLauncher: RuntimePermissionLauncher = FakeRuntimePermissionLauncher(PermissionRequestStatus.DENIED)
-        val permissionManifestChecker: PermissionManifestChecker = FakePermissionManifestChecker(
-            declaredPermissions = setOf(android.Manifest.permission.CAMERA)
+    fun `requestPermission returns granted when push permission already granted`() = runTest {
+        val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.DENIED,
+                shouldShowRequestPermissionRationale = false
+            )
         )
         val permissionManager: PermissionManager = FakePermissionManager(
-            cameraStatus = PermissionStatus.GRANTED
+            pushStatus = PermissionStatus.GRANTED
         )
         val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
             context = mockk(relaxed = true),
-            runtimePermissionLauncher = runtimePermissionLauncher,
-            manifestPermissionChecker = permissionManifestChecker,
+            pushPermissionLauncher = pushPermissionLauncher,
             permissionManager = permissionManager,
             sdkIntProvider = { Build.VERSION_CODES.TIRAMISU }
         )
         val actualResult: PermissionActionResponse = requester.requestPermission(
             activity = mockk(relaxed = true),
-            permissionType = PermissionType.CAMERA
+            permissionType = PermissionType.PUSH_NOTIFICATIONS
         )
         assertEquals(PermissionRequestStatus.GRANTED, actualResult.result)
         assertEquals(false, actualResult.dialogShown)
+        assertEquals(true, actualResult.details.required)
+        assertEquals(null, actualResult.details.shouldShowRequestPermissionRationale)
     }
 
     @Test
-    fun `requestPermission returns denied when camera permission request is denied`() = runTest {
-        val runtimePermissionLauncher: RuntimePermissionLauncher = FakeRuntimePermissionLauncher(PermissionRequestStatus.DENIED)
-        val permissionManifestChecker: PermissionManifestChecker = FakePermissionManifestChecker(
-            declaredPermissions = setOf(android.Manifest.permission.CAMERA)
-        )
-        val permissionManager: PermissionManager = FakePermissionManager(
-            cameraStatus = PermissionStatus.DENIED
-        )
-        val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
-            context = mockk(relaxed = true),
-            runtimePermissionLauncher = runtimePermissionLauncher,
-            manifestPermissionChecker = permissionManifestChecker,
-            permissionManager = permissionManager,
-            sdkIntProvider = { Build.VERSION_CODES.TIRAMISU }
-        )
-        val actualResult: PermissionActionResponse = requester.requestPermission(
-            activity = mockk(relaxed = true),
-            permissionType = PermissionType.CAMERA
-        )
-        assertEquals(PermissionRequestStatus.DENIED, actualResult.result)
-        assertEquals(true, actualResult.dialogShown)
-    }
-
-    @Test
-    fun `requestPermission throws error when permission missing in AndroidManifest`() = runTest {
-        val runtimePermissionLauncher: RuntimePermissionLauncher = FakeRuntimePermissionLauncher(PermissionRequestStatus.GRANTED)
-        val permissionManifestChecker: PermissionManifestChecker = FakePermissionManifestChecker(
-            declaredPermissions = emptySet()
-        )
-        val permissionManager: PermissionManager = FakePermissionManager(
-            cameraStatus = PermissionStatus.DENIED
-        )
-        val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
-            context = mockk(relaxed = true),
-            runtimePermissionLauncher = runtimePermissionLauncher,
-            manifestPermissionChecker = permissionManifestChecker,
-            permissionManager = permissionManager,
-            sdkIntProvider = { Build.VERSION_CODES.TIRAMISU }
-        )
-        val error: Throwable = runCatching {
-            requester.requestPermission(
-                activity = mockk(relaxed = true),
-                permissionType = PermissionType.CAMERA
+    fun `requestPermission returns denied when push permission request is denied`() = runTest {
+        val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.DENIED,
+                shouldShowRequestPermissionRationale = true
             )
-        }.exceptionOrNull() ?: error("Expected exception for missing manifest permission")
-        assertTrue(error is IllegalStateException)
-    }
-
-    @Test
-    fun `requestPermission returns denied without dialog for push on sdk lower than tiramisu`() = runTest {
-        val runtimePermissionLauncher: RuntimePermissionLauncher = FakeRuntimePermissionLauncher(PermissionRequestStatus.GRANTED)
-        val permissionManifestChecker: PermissionManifestChecker = FakePermissionManifestChecker(
-            declaredPermissions = setOf(android.Manifest.permission.POST_NOTIFICATIONS)
         )
         val permissionManager: PermissionManager = FakePermissionManager(
             pushStatus = PermissionStatus.DENIED
         )
         val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
             context = mockk(relaxed = true),
-            runtimePermissionLauncher = runtimePermissionLauncher,
-            manifestPermissionChecker = permissionManifestChecker,
+            pushPermissionLauncher = pushPermissionLauncher,
+            permissionManager = permissionManager,
+            sdkIntProvider = { Build.VERSION_CODES.TIRAMISU }
+        )
+        val actualResult: PermissionActionResponse = requester.requestPermission(
+            activity = mockk(relaxed = true),
+            permissionType = PermissionType.PUSH_NOTIFICATIONS
+        )
+        assertEquals(PermissionRequestStatus.DENIED, actualResult.result)
+        assertEquals(true, actualResult.dialogShown)
+        assertEquals(true, actualResult.details.required)
+        assertEquals(true, actualResult.details.shouldShowRequestPermissionRationale)
+    }
+
+    @Test
+    fun `requestPermission returns denied without dialog for push on sdk lower than tiramisu`() = runTest {
+        val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.GRANTED,
+                shouldShowRequestPermissionRationale = false
+            )
+        )
+        val permissionManager: PermissionManager = FakePermissionManager(
+            pushStatus = PermissionStatus.DENIED
+        )
+        val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
+            context = mockk(relaxed = true),
+            pushPermissionLauncher = pushPermissionLauncher,
             permissionManager = permissionManager,
             sdkIntProvider = { Build.VERSION_CODES.S }
         )
         val actualResult: PermissionActionResponse = requester.requestPermission(
             activity = mockk(relaxed = true),
-            permissionType = PermissionType.entries.first { permissionType: PermissionType ->
-                permissionType.value == "pushNotifications"
-            }
+            permissionType = PermissionType.PUSH_NOTIFICATIONS
         )
         assertEquals(PermissionRequestStatus.DENIED, actualResult.result)
         assertEquals(false, actualResult.dialogShown)
+        assertEquals(false, actualResult.details.required)
+        assertEquals(null, actualResult.details.shouldShowRequestPermissionRationale)
     }
 
-    @Test
-    fun `requestPermission returns granted without dialog when status is limited`() = runTest {
-        val runtimePermissionLauncher: RuntimePermissionLauncher = FakeRuntimePermissionLauncher(PermissionRequestStatus.DENIED)
-        val permissionManifestChecker: PermissionManifestChecker = FakePermissionManifestChecker(
-            declaredPermissions = setOf(android.Manifest.permission.READ_MEDIA_IMAGES)
-        )
-        val permissionManager: PermissionManager = FakePermissionManager(
-            libraryStatus = PermissionStatus.LIMITED
-        )
-        val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
-            context = mockk(relaxed = true),
-            runtimePermissionLauncher = runtimePermissionLauncher,
-            manifestPermissionChecker = permissionManifestChecker,
-            permissionManager = permissionManager,
-            sdkIntProvider = { Build.VERSION_CODES.UPSIDE_DOWN_CAKE }
-        )
-        val actualResult: PermissionActionResponse = requester.requestPermission(
-            activity = mockk(relaxed = true),
-            permissionType = PermissionType.entries.first { permissionType: PermissionType ->
-                permissionType.value == "photoLibrary"
-            }
-        )
-        assertEquals(PermissionRequestStatus.GRANTED, actualResult.result)
-        assertEquals(false, actualResult.dialogShown)
-    }
-
-    private class FakeRuntimePermissionLauncher(
-        private val result: PermissionRequestStatus
-    ) : RuntimePermissionLauncher {
-        override suspend fun requestPermission(activity: Activity, permissions: Array<String>): PermissionRequestStatus {
+    private class FakePushPermissionLauncher(
+        private val result: PushPermissionRequestResult
+    ) : PushPermissionLauncher {
+        override suspend fun requestPermission(activity: Activity): PushPermissionRequestResult {
             return result
-        }
-    }
-
-    private class FakePermissionManifestChecker(
-        private val declaredPermissions: Set<String>
-    ) : PermissionManifestChecker {
-        override fun isPermissionDeclared(permission: String): Boolean {
-            return declaredPermissions.contains(permission)
         }
     }
 
