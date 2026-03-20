@@ -5,18 +5,16 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
 import android.os.Build
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.PermissionManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
-import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RuntimePermissionRequestActivity
+import cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushActivationActivity
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.RuntimePermissionRequestBridge
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 internal const val PERMISSION_PAYLOAD_TYPE_FIELD_NAME = "type"
 
@@ -25,11 +23,7 @@ internal interface WebViewPermissionRequester {
 }
 
 internal enum class PermissionType(val value: String) {
-    PUSH_NOTIFICATIONS("pushNotifications"),
-    LOCATION("location"),
-    CAMERA("camera"),
-    MICROPHONE("microphone"),
-    PHOTO_LIBRARY("photoLibrary")
+    PUSH_NOTIFICATIONS("pushNotifications")
 }
 
 internal data class PermissionActionResponse(
@@ -37,6 +31,15 @@ internal data class PermissionActionResponse(
     val result: PermissionRequestStatus,
     @SerializedName("dialogShown")
     val dialogShown: Boolean,
+    @SerializedName("details")
+    val details: PermissionActionDetails,
+)
+
+internal data class PermissionActionDetails(
+    @SerializedName("required")
+    val required: Boolean,
+    @SerializedName("shouldShowRequestPermissionRationale")
+    val shouldShowRequestPermissionRationale: Boolean? = null,
 )
 
 internal enum class PermissionRequestStatus(val value: String) {
@@ -50,8 +53,7 @@ internal enum class PermissionRequestStatus(val value: String) {
 @SuppressLint("InlinedApi")
 internal class WebViewPermissionRequesterImpl(
     private val context: Context,
-    private val runtimePermissionLauncher: RuntimePermissionLauncher = RuntimePermissionLauncherImpl(),
-    private val manifestPermissionChecker: PermissionManifestChecker = ManifestPermissionChecker(context),
+    private val pushPermissionLauncher: PushPermissionLauncher = PushPermissionLauncherImpl(),
     private val permissionManager: PermissionManager = PermissionManagerImpl(context),
     private val sdkIntProvider: () -> Int = { Build.VERSION.SDK_INT },
 ) : WebViewPermissionRequester {
@@ -62,49 +64,29 @@ internal class WebViewPermissionRequesterImpl(
     ): PermissionActionResponse {
         val currentStatus: PermissionStatus = getPermissionStatus(permissionType)
         if (isGrantedStatus(currentStatus)) {
-            return PermissionActionResponse(
+            return createPermissionActionResponse(
                 result = PermissionRequestStatus.GRANTED,
                 dialogShown = false
             )
         }
-        val permissionsToRequest: List<String> = resolveRequestPermissions(permissionType)
-        if (permissionsToRequest.isEmpty()) {
-            return PermissionActionResponse(
+        if (!isPermissionRequired()) {
+            return createPermissionActionResponse(
                 result = PermissionRequestStatus.DENIED,
                 dialogShown = false
             )
         }
-        val declaredPermissions: List<String> = permissionsToRequest.filter { permission: String ->
-            manifestPermissionChecker.isPermissionDeclared(permission)
-        }
-        if (declaredPermissions.isEmpty()) {
-            throw IllegalStateException("Permission is not declared in AndroidManifest for type: ${permissionType.value}")
-        }
-        declaredPermissions.forEach { permission: String ->
-            val status: PermissionRequestStatus = runtimePermissionLauncher.requestPermission(
-                activity = activity,
-                permissions = arrayOf(permission)
-            )
-            if (status == PermissionRequestStatus.GRANTED) {
-                return PermissionActionResponse(
-                    result = status,
-                    dialogShown = true
-                )
-            }
-        }
-        return PermissionActionResponse(
-            result = PermissionRequestStatus.DENIED,
-            dialogShown = true
+
+        val permissionResult: PushPermissionRequestResult = pushPermissionLauncher.requestPermission(activity = activity)
+        return createPermissionActionResponse(
+            result = permissionResult.status,
+            dialogShown = true,
+            shouldShowRequestPermissionRationale = permissionResult.shouldShowRequestPermissionRationale
         )
     }
 
     private fun getPermissionStatus(permissionType: PermissionType): PermissionStatus {
         return when (permissionType) {
             PermissionType.PUSH_NOTIFICATIONS -> permissionManager.getNotificationPermissionStatus()
-            PermissionType.LOCATION -> permissionManager.getLocationPermissionStatus()
-            PermissionType.CAMERA -> permissionManager.getCameraPermissionStatus()
-            PermissionType.MICROPHONE -> permissionManager.getMicrophonePermissionStatus()
-            PermissionType.PHOTO_LIBRARY -> permissionManager.getPhotoLibraryPermissionStatus()
         }
     }
 
@@ -112,92 +94,71 @@ internal class WebViewPermissionRequesterImpl(
         return permissionStatus == PermissionStatus.GRANTED || permissionStatus == PermissionStatus.LIMITED
     }
 
-    private fun resolveRequestPermissions(permissionType: PermissionType): List<String> {
-        return when (permissionType) {
-            PermissionType.PUSH_NOTIFICATIONS -> {
-                if (sdkIntProvider() >= Build.VERSION_CODES.TIRAMISU) {
-                    listOf(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    emptyList()
-                }
-            }
-            PermissionType.LOCATION -> listOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-            PermissionType.CAMERA -> listOf(Manifest.permission.CAMERA)
-            PermissionType.MICROPHONE -> listOf(Manifest.permission.RECORD_AUDIO)
-            PermissionType.PHOTO_LIBRARY -> resolveLibraryPermissions()
-        }
-    }
+    private fun isPermissionRequired(): Boolean = sdkIntProvider() >= Build.VERSION_CODES.TIRAMISU
 
-    private fun resolveLibraryPermissions(): List<String> {
-        if (sdkIntProvider() >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            return listOf(
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+    private fun createPermissionActionResponse(
+        result: PermissionRequestStatus,
+        dialogShown: Boolean,
+        shouldShowRequestPermissionRationale: Boolean? = null
+    ): PermissionActionResponse {
+        val isPermissionRequired: Boolean = isPermissionRequired()
+        return PermissionActionResponse(
+            result = result,
+            dialogShown = dialogShown,
+            details = PermissionActionDetails(
+                required = isPermissionRequired,
+                shouldShowRequestPermissionRationale = shouldShowRequestPermissionRationale
             )
-        }
-        if (sdkIntProvider() >= Build.VERSION_CODES.TIRAMISU) {
-            return listOf(Manifest.permission.READ_MEDIA_IMAGES)
-        }
-        return listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        )
     }
 }
 
-internal interface RuntimePermissionLauncher {
-    suspend fun requestPermission(activity: Activity, permissions: Array<String>): PermissionRequestStatus
+internal interface PushPermissionLauncher {
+    suspend fun requestPermission(activity: Activity): PushPermissionRequestResult
 }
 
-internal class RuntimePermissionLauncherImpl : RuntimePermissionLauncher {
-    override suspend fun requestPermission(
-        activity: Activity,
-        permissions: Array<String>
-    ): PermissionRequestStatus {
-        val requestId: String = UUID.randomUUID().toString()
+internal data class PushPermissionRequestResult(
+    val status: PermissionRequestStatus,
+    val shouldShowRequestPermissionRationale: Boolean,
+)
+
+@SuppressLint("InlinedApi")
+internal class PushPermissionLauncherImpl(
+    private val sdkIntProvider: () -> Int = { Build.VERSION.SDK_INT }
+) : PushPermissionLauncher {
+    private val notificationPermission: String = Manifest.permission.POST_NOTIFICATIONS
+
+    override suspend fun requestPermission(activity: Activity): PushPermissionRequestResult {
+        if (sdkIntProvider() < Build.VERSION_CODES.TIRAMISU) {
+            return PushPermissionRequestResult(
+                status = PermissionRequestStatus.DENIED,
+                shouldShowRequestPermissionRationale = false
+            )
+        }
+        val requestId: String = Mindbox.generateRandomUuid()
         val deferredResult = RuntimePermissionRequestBridge.register(requestId)
         withContext(Dispatchers.Main.immediate) {
             activity.startActivity(
-                Intent(activity, RuntimePermissionRequestActivity::class.java).apply {
-                    putExtra(RuntimePermissionRequestActivity.EXTRA_REQUEST_ID, requestId)
-                    putExtra(RuntimePermissionRequestActivity.EXTRA_PERMISSIONS, permissions)
+                Intent(activity, PushActivationActivity::class.java).apply {
+                    putExtra(PushActivationActivity.EXTRA_REQUEST_ID, requestId)
+                    putExtra(PushActivationActivity.EXTRA_ROUTE_TO_SETTINGS, false)
                 }
             )
         }
         val isGranted: Boolean = deferredResult.await()
-        return if (isGranted) {
-            PermissionRequestStatus.GRANTED
-        } else {
-            PermissionRequestStatus.DENIED
+        val shouldShowRationale: Boolean = withContext(Dispatchers.Main.immediate) {
+            activity.shouldShowRequestPermissionRationale(notificationPermission)
         }
-    }
-}
-
-internal interface PermissionManifestChecker {
-    fun isPermissionDeclared(permission: String): Boolean
-}
-
-internal class ManifestPermissionChecker(
-    private val context: Context
-) : PermissionManifestChecker {
-    private val declaredPermissions: Set<String> by lazy {
-        readDeclaredPermissions()
-    }
-
-    override fun isPermissionDeclared(permission: String): Boolean {
-        return declaredPermissions.contains(permission)
-    }
-
-    private fun readDeclaredPermissions(): Set<String> {
-        val packageInfo: PackageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageInfo(
-                context.packageName,
-                PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong())
+        return if (isGranted) {
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.GRANTED,
+                shouldShowRequestPermissionRationale = shouldShowRationale
             )
         } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.DENIED,
+                shouldShowRequestPermissionRationale = shouldShowRationale
+            )
         }
-        return packageInfo.requestedPermissions?.toSet().orEmpty()
     }
 }

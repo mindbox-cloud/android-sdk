@@ -14,12 +14,18 @@ class WebViewPermissionBridgeSerializationTest {
     fun `toJson serializes denied result correctly`() {
         val payload = PermissionActionResponse(
             result = PermissionRequestStatus.DENIED,
-            dialogShown = true
+            dialogShown = true,
+            details = PermissionActionDetails(
+                required = true,
+                shouldShowRequestPermissionRationale = false
+            )
         )
         val json: String = gson.toJson(payload)
         val parsedPayload: PermissionResponseTestPayload = gson.fromJson(json, PermissionResponseTestPayload::class.java)
         assertEquals("denied", parsedPayload.result)
         assertEquals(true, parsedPayload.dialogShown)
+        assertEquals(true, parsedPayload.details.required)
+        assertEquals(false, parsedPayload.details.shouldShowRequestPermissionRationale)
     }
 
     @Test
@@ -30,7 +36,13 @@ class WebViewPermissionBridgeSerializationTest {
 
     private data class PermissionResponseTestPayload(
         val result: String,
-        val dialogShown: Boolean
+        val dialogShown: Boolean,
+        val details: PermissionDetailsTestPayload
+    )
+
+    private data class PermissionDetailsTestPayload(
+        val required: Boolean,
+        val shouldShowRequestPermissionRationale: Boolean?
     )
 
     private data class ActionWrapper(
