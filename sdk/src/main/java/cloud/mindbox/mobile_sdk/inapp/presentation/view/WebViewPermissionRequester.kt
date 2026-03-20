@@ -141,6 +141,7 @@ internal class PushPermissionLauncherImpl(
             activity.startActivity(
                 Intent(activity, PushActivationActivity::class.java).apply {
                     putExtra(PushActivationActivity.EXTRA_REQUEST_ID, requestId)
+                    putExtra(PushActivationActivity.EXTRA_ROUTE_TO_SETTINGS, false)
                 }
             )
         }
