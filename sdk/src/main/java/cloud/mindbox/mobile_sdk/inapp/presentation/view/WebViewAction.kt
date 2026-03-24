@@ -60,6 +60,9 @@ public enum class WebViewAction {
 
     @SerializedName(value = "permission.request")
     PERMISSION_REQUEST,
+
+    @SerializedName(value = "settings.open")
+    SETTINGS_OPEN,
 }
 
 @InternalMindboxApi

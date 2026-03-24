@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
@@ -11,7 +12,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.utils.Constants
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
 internal class MindboxNotificationManagerImpl(
     private val context: Context,
@@ -29,15 +30,15 @@ internal class MindboxNotificationManagerImpl(
         }
     }
 
-    override fun openNotificationSettings(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
+    override fun openNotificationSettings(activity: Activity, channelId: String?) {
+        loggingRunCatching {
             val intent = when {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
                     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                         putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+                        putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
                     }
                 }
-
                 else -> {
                     Intent(Constants.NOTIFICATION_SETTINGS).apply {
                         putExtra(Constants.APP_PACKAGE_NAME, activity.packageName)
@@ -45,16 +46,25 @@ internal class MindboxNotificationManagerImpl(
                     }
                 }
             }
-            mindboxLogI("Opening notification settings.")
+            mindboxLogI("Opening notification settings")
+            activity.startActivity(intent)
+        }
+    }
+
+    override fun openApplicationSettings(activity: Activity) {
+        loggingRunCatching {
+            val packageUri: Uri = Uri.fromParts("package", activity.packageName, null)
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
+            mindboxLogI("Opening application settings")
             activity.startActivity(intent)
         }
     }
 
     override fun requestPermission(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
+        loggingRunCatching {
             if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
                 mindboxLogI("Notification is enabled now, don't try request permission")
-                return@runCatching
+                return@loggingRunCatching
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
