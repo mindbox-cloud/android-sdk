@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.webview.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
@@ -36,6 +37,7 @@ import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
@@ -77,6 +79,7 @@ internal class WebViewInAppViewHolder(
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
     private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
     private val permissionManager: PermissionManager by mindboxInject { permissionManager }
+    private val mindboxNotificationManager: MindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val appContext: Application by mindboxInject { appContext }
     private val operationExecutor: WebViewOperationExecutor by lazy {
         MindboxWebViewOperationExecutor()
@@ -149,6 +152,7 @@ internal class WebViewInAppViewHolder(
             registerSuspend(WebViewAction.LOCAL_STATE_SET, ::handleLocalStateSetAction)
             registerSuspend(WebViewAction.LOCAL_STATE_INIT, ::handleLocalStateInitAction)
             registerSuspend(WebViewAction.PERMISSION_REQUEST, ::handlePermissionAction)
+            register(WebViewAction.SETTINGS_OPEN, ::handleSettingsOpenAction)
             register(WebViewAction.READY) {
                 handleReadyAction(
                     configuration = configuration,
@@ -303,6 +307,22 @@ internal class WebViewInAppViewHolder(
             type
         )
         return gson.toJson(permissionRequestResult)
+    }
+
+    private fun handleSettingsOpenAction(message: BridgeMessage.Request): String {
+        val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
+        val settingsOpenRequest: SettingsOpenRequest? = gson.fromJson<SettingsOpenRequest>(payload).getOrNull()
+        requireNotNull(settingsOpenRequest)
+
+        val targetType = settingsOpenRequest.target.enumValue<SettingsOpenTargetType>()
+        val activity: Activity? = webViewController?.view?.context?.safeAs<Activity>()
+        checkNotNull(activity) { "Not found activity for open settings" }
+
+        when (targetType) {
+            SettingsOpenTargetType.NOTIFICATIONS -> mindboxNotificationManager.openNotificationSettings(activity, settingsOpenRequest.channelId)
+            SettingsOpenTargetType.APPLICATION -> mindboxNotificationManager.openApplicationSettings(activity)
+        }
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
@@ -687,4 +707,16 @@ internal class WebViewInAppViewHolder(
     private data class ErrorPayload(
         val error: String
     )
+
+    private data class SettingsOpenRequest(
+        @SerializedName("target")
+        val target: String,
+        @SerializedName("channelId")
+        val channelId: String?
+    )
+
+    private enum class SettingsOpenTargetType {
+        NOTIFICATIONS,
+        APPLICATION
+    }
 }
