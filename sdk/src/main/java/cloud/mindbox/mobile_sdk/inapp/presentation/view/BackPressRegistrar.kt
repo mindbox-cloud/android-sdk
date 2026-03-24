@@ -37,7 +37,7 @@ internal class ActivityBackPressRegistrar(
             onBackPress()
         }
         activity.onBackInvokedDispatcher.registerOnBackInvokedCallback(
-            OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+            OnBackInvokedDispatcher.PRIORITY_DEFAULT,
             callback
         )
         return BackRegistration {
