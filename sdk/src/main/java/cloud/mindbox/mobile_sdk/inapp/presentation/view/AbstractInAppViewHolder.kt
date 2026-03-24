@@ -57,6 +57,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     internal val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private var inAppActionHandler = InAppActionHandler()
+    private var backRegistration: BackRegistration? = null
 
     private fun hideKeyboard(currentRoot: ViewGroup) {
         val context = currentRoot.context
@@ -178,6 +179,16 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         inAppLayout.prepareLayoutForInApp(wrapper.inAppType)
     }
 
+    protected fun bindBackAction(currentRoot: MindboxView, onBackPress: () -> Unit) {
+        clearBackRegistration()
+        backRegistration = currentRoot.backPressRegistrar.register(inAppLayout, onBackPress)
+    }
+
+    protected fun clearBackRegistration() {
+        backRegistration?.unregister()
+        backRegistration = null
+    }
+
     private fun attachToRoot(currentRoot: ViewGroup) {
         if (_currentDialog == null) {
             initView(currentRoot)
@@ -226,6 +237,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     override fun onClose() {
+        clearBackRegistration()
         positionController?.stop()
         positionController = null
         currentDialog.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)

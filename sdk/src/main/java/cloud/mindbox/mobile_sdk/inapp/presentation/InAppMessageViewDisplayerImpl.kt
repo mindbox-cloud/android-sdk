@@ -2,8 +2,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.OnBackPressedDispatcherOwner
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
@@ -14,6 +12,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTra
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.ActivityBackPressRegistrar
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BackPressRegistrar
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
@@ -31,9 +31,9 @@ internal interface MindboxView {
 
     val container: ViewGroup
 
-    fun requestPermission()
+    val backPressRegistrar: BackPressRegistrar
 
-    fun registerBack(onBack: OnBackPressedCallback)
+    fun requestPermission()
 }
 
 internal class InAppMessageViewDisplayerImpl(
@@ -237,22 +237,16 @@ internal class InAppMessageViewDisplayerImpl(
         return true
     }
 
-    private fun createMindboxView(root: ViewGroup): MindboxView {
-        return object : MindboxView {
+    private fun createMindboxView(root: ViewGroup): MindboxView =
+        object : MindboxView {
             override val container: ViewGroup = root
+            override val backPressRegistrar: BackPressRegistrar =
+                ActivityBackPressRegistrar(activityProvider = { currentActivity })
 
             override fun requestPermission() {
-                currentActivity?.let { activity ->
-                    mindboxNotificationManager.requestPermission(activity = activity)
-                }
-            }
-
-            override fun registerBack(onBack: OnBackPressedCallback) {
-                val backOwner = currentActivity as? OnBackPressedDispatcherOwner
-                backOwner?.onBackPressedDispatcher?.addCallback(onBack)
+                currentActivity?.let { mindboxNotificationManager.requestPermission(activity = it) }
             }
         }
-    }
 
     override fun dismissCurrentInApp() {
         loggingRunCatching {

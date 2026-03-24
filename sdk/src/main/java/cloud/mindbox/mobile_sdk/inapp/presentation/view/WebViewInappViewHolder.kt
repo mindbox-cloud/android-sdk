@@ -6,7 +6,6 @@ import android.net.Uri
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import cloud.mindbox.mobile_sdk.*
@@ -66,8 +65,12 @@ internal class WebViewInAppViewHolder(
 
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
-    private var backPressedCallback: OnBackPressedCallback? = null
     private var currentWebViewOrigin: String? = null
+
+    private fun bindWebViewBackAction(currentRoot: MindboxView, controller: WebViewController) {
+        bindBackAction(currentRoot) { sendBackAction(controller) }
+    }
+
     private val pendingResponsesById: MutableMap<String, CompletableDeferred<BridgeMessage.Response>> =
         ConcurrentHashMap()
 
@@ -196,7 +199,6 @@ internal class WebViewInAppViewHolder(
         stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         controller.setVisibility(true)
-        backPressedCallback?.isEnabled = true
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -391,11 +393,6 @@ internal class WebViewInAppViewHolder(
         }
         val normalizedPort: String = if (parsedUri.port >= 0) ":${parsedUri.port}" else ""
         return "$scheme://$host$normalizedPort"
-    }
-
-    private fun clearBackPressedCallback() {
-        backPressedCallback?.remove()
-        backPressedCallback = null
     }
 
     private fun sendBackAction(controller: WebViewController) {
@@ -627,21 +624,7 @@ internal class WebViewInAppViewHolder(
         }
         mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
         inAppLayout.requestFocus()
-        webViewController?.let { controller ->
-            currentRoot.registerBack(registerBackPressedCallback(controller))
-        }
-    }
-
-    private fun registerBackPressedCallback(controller: WebViewController): OnBackPressedCallback {
-        val isBackCallbackEnabled = backPressedCallback?.isEnabled ?: false
-        clearBackPressedCallback()
-        val callback = object : OnBackPressedCallback(isBackCallbackEnabled) {
-            override fun handleOnBackPressed() {
-                sendBackAction(controller)
-            }
-        }
-        backPressedCallback = callback
-        return callback
+        webViewController?.let { controller -> bindWebViewBackAction(currentRoot, controller) }
     }
 
     override fun reattach(currentRoot: MindboxView) {
@@ -653,9 +636,7 @@ internal class WebViewInAppViewHolder(
             }
         }
         inAppLayout.requestFocus()
-        webViewController?.let { controller ->
-            currentRoot.registerBack(registerBackPressedCallback(controller))
-        }
+        webViewController?.let { controller -> bindWebViewBackAction(currentRoot, controller) }
     }
 
     override fun canReuseOnRestore(inAppId: String): Boolean = wrapper.inAppType.inAppId == inAppId
@@ -668,7 +649,6 @@ internal class WebViewInAppViewHolder(
         hapticFeedbackExecutor.cancel()
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")
-        clearBackPressedCallback()
         webViewController?.let { controller ->
             val view: WebViewPlatformView = controller.view
             view.parent.safeAs<ViewGroup>()?.removeView(view)
