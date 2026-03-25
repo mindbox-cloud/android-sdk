@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
@@ -51,6 +53,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     private var typingView: View? = null
+    private var shouldRestoreKeyboard: Boolean = false
 
     protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
@@ -59,16 +62,24 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     private var inAppActionHandler = InAppActionHandler()
     private var backRegistration: BackRegistration? = null
 
-    private fun hideKeyboard(currentRoot: ViewGroup) {
-        val context = currentRoot.context
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
-        if (imm?.isAcceptingText == true) {
-            typingView = currentRoot.findFocus()
-            imm.hideSoftInputFromWindow(
+    private fun isKeyboardVisible(root: View): Boolean =
+        ViewCompat.getRootWindowInsets(root)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+    protected fun hideKeyboard(currentRoot: ViewGroup) {
+        typingView = currentRoot.rootView.findFocus()
+        if (isKeyboardVisible(currentRoot)) {
+            shouldRestoreKeyboard = true
+            val context = currentRoot.context
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
+            imm?.hideSoftInputFromWindow(
                 currentRoot.windowToken,
                 0
             )
         }
+    }
+
+    protected open fun onBeforeShow(currentRoot: MindboxView) {
+        hideKeyboard(currentRoot.container)
     }
 
     abstract fun bind()
@@ -208,23 +219,29 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         }
     }
 
-    private fun restoreKeyboard() {
+    protected fun restoreKeyboard() {
         typingView?.let { view ->
-            view.requestFocus()
-            val imm =
-                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
-            imm?.showSoftInput(
-                view,
-                InputMethodManager.SHOW_IMPLICIT
-            )
+            view.post {
+                view.requestFocus()
+                if (shouldRestoreKeyboard) {
+                    val imm =
+                        (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+                    imm?.showSoftInput(
+                        view,
+                        InputMethodManager.SHOW_IMPLICIT
+                    )
+                }
+            }
         }
+        shouldRestoreKeyboard = false
+        typingView = null
     }
 
     override fun show(currentRoot: MindboxView) {
         isInAppMessageActive = true
         attachToRoot(currentRoot.container)
         startPositionController(currentRoot.container)
-        hideKeyboard(currentRoot.container)
+        onBeforeShow(currentRoot)
         inAppActionHandler.mindboxView = currentRoot
     }
 

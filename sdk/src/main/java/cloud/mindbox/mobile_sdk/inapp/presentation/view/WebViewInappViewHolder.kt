@@ -100,6 +100,9 @@ internal class WebViewInAppViewHolder(
             permissionManager = permissionManager
         )
     }
+    private var currentMindboxView: MindboxView? = null
+
+    override fun onBeforeShow(currentRoot: MindboxView) = Unit
 
     override fun bind() {}
 
@@ -195,10 +198,28 @@ internal class WebViewInAppViewHolder(
         ).get()
     }
 
+    private fun activateFirstShowPresentation(
+        mindboxView: MindboxView,
+        controller: WebViewController,
+    ) {
+        hideKeyboard(inAppLayout)
+        inAppLayout.requestFocus()
+        bindWebViewBackAction(mindboxView, controller)
+        controller.setVisibility(true)
+    }
+
     private fun handleInitAction(controller: WebViewController): String {
         stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
-        controller.setVisibility(true)
+        val mindboxView = currentMindboxView ?: run {
+            mindboxLogW("MindboxView is null when activating WebView In-App")
+            inAppController.close()
+            return BridgeMessage.UNKNOWN_ERROR_PAYLOAD
+        }
+        activateFirstShowPresentation(
+            mindboxView = mindboxView,
+            controller = controller,
+        )
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -614,6 +635,7 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun show(currentRoot: MindboxView) {
+        currentMindboxView = currentRoot
         super.show(currentRoot)
         mindboxLogI("Try to show in-app with id ${wrapper.inAppType.inAppId}")
         wrapper.inAppType.layers.forEach { layer ->
@@ -623,11 +645,10 @@ internal class WebViewInAppViewHolder(
             }
         }
         mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
-        inAppLayout.requestFocus()
-        webViewController?.let { controller -> bindWebViewBackAction(currentRoot, controller) }
     }
 
     override fun reattach(currentRoot: MindboxView) {
+        currentMindboxView = currentRoot
         super.reattach(currentRoot)
         wrapper.inAppType.layers.forEach { layer ->
             when (layer) {
@@ -657,6 +678,7 @@ internal class WebViewInAppViewHolder(
         currentWebViewOrigin = null
         webViewController?.destroy()
         webViewController = null
+        currentMindboxView = null
         super.onClose()
     }
 

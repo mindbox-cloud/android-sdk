@@ -288,3 +288,7 @@ internal data class InAppInsets(
         const val BOTTOM = "bottom"
     }
 }
+
+internal fun interface BackButtonLayout {
+    fun setBackListener(listener: (() -> Unit)?)
+}
