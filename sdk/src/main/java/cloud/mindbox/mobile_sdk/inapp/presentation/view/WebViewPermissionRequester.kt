@@ -79,7 +79,7 @@ internal class WebViewPermissionRequesterImpl(
         val permissionResult: PushPermissionRequestResult = pushPermissionLauncher.requestPermission(activity = activity)
         return createPermissionActionResponse(
             result = permissionResult.status,
-            dialogShown = true,
+            dialogShown = permissionResult.dialogShown,
             shouldShowRequestPermissionRationale = permissionResult.shouldShowRequestPermissionRationale
         )
     }
@@ -120,6 +120,7 @@ internal interface PushPermissionLauncher {
 internal data class PushPermissionRequestResult(
     val status: PermissionRequestStatus,
     val shouldShowRequestPermissionRationale: Boolean,
+    val dialogShown: Boolean,
 )
 
 @SuppressLint("InlinedApi")
@@ -132,7 +133,8 @@ internal class PushPermissionLauncherImpl(
         if (sdkIntProvider() < Build.VERSION_CODES.TIRAMISU) {
             return PushPermissionRequestResult(
                 status = PermissionRequestStatus.DENIED,
-                shouldShowRequestPermissionRationale = false
+                shouldShowRequestPermissionRationale = false,
+                dialogShown = false
             )
         }
         val requestId: String = Mindbox.generateRandomUuid()
@@ -145,20 +147,14 @@ internal class PushPermissionLauncherImpl(
                 }
             )
         }
-        val isGranted: Boolean = deferredResult.await()
+        val (isGranted, dialogShown) = deferredResult.await()
         val shouldShowRationale: Boolean = withContext(Dispatchers.Main.immediate) {
             activity.shouldShowRequestPermissionRationale(notificationPermission)
         }
-        return if (isGranted) {
-            PushPermissionRequestResult(
-                status = PermissionRequestStatus.GRANTED,
-                shouldShowRequestPermissionRationale = shouldShowRationale
-            )
-        } else {
-            PushPermissionRequestResult(
-                status = PermissionRequestStatus.DENIED,
-                shouldShowRequestPermissionRationale = shouldShowRationale
-            )
-        }
+        return PushPermissionRequestResult(
+            status = if (isGranted) PermissionRequestStatus.GRANTED else PermissionRequestStatus.DENIED,
+            shouldShowRequestPermissionRationale = shouldShowRationale,
+            dialogShown = dialogShown
+        )
     }
 }

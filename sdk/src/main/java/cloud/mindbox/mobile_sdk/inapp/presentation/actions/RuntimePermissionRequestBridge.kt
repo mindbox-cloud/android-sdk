@@ -5,18 +5,23 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal object RuntimePermissionRequestBridge {
 
-    private val pendingRequestsById: MutableMap<String, CompletableDeferred<Boolean>> = ConcurrentHashMap()
+    private val pendingRequestsById: MutableMap<String, CompletableDeferred<PermissionRequest>> = ConcurrentHashMap()
 
-    fun register(requestId: String): CompletableDeferred<Boolean> {
-        val deferred: CompletableDeferred<Boolean> = CompletableDeferred()
+    fun register(requestId: String): CompletableDeferred<PermissionRequest> {
+        val deferred: CompletableDeferred<PermissionRequest> = CompletableDeferred()
         pendingRequestsById[requestId] = deferred
         return deferred
     }
 
-    fun resolve(requestId: String, isGranted: Boolean) {
-        val deferred: CompletableDeferred<Boolean> = pendingRequestsById.remove(requestId) ?: return
+    fun resolve(requestId: String, isGranted: Boolean, isDialogShown: Boolean) {
+        val deferred: CompletableDeferred<PermissionRequest> = pendingRequestsById.remove(requestId) ?: return
         if (!deferred.isCompleted) {
-            deferred.complete(isGranted)
+            deferred.complete(PermissionRequest(isGranted, isDialogShown))
         }
     }
+
+    data class PermissionRequest(
+        val isGranted: Boolean,
+        val dialogShown: Boolean,
+    )
 }

@@ -56,7 +56,7 @@ internal class PushActivationActivity : Activity() {
                     if (requestPermissionManager.getRequestCount() > 1) {
                         mindboxLogI("User already rejected permission two times, try open settings")
                         mindboxNotificationManager.openNotificationSettings(this)
-                        finishWithResult(isGranted = false)
+                        finishWithResult(isGranted = false, dialogShown = false)
                     } else {
                         mindboxLogI("Awaiting show dialog")
                         shouldCheckDialogShowing = true
@@ -84,7 +84,7 @@ internal class PushActivationActivity : Activity() {
         )
         requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
         isNeedToRouteSettings = intent?.getBooleanExtra(EXTRA_ROUTE_TO_SETTINGS, true) ?: true
-        mindboxLogI("Call permission laucher")
+        mindboxLogI("Call permission launcher")
         requestPermissions(arrayOf(Constants.POST_NOTIFICATION), PERMISSION_REQUEST_CODE)
     }
 
@@ -92,7 +92,8 @@ internal class PushActivationActivity : Activity() {
         resumeTimes.add(SystemClock.elapsedRealtime())
         if (shouldCheckDialogShowing) {
             val duration = resumeTimes.last() - resumeTimes.first()
-            if (duration < TIME_BETWEEN_RESUME && isNeedToRouteSettings) {
+            val dialogShown = duration >= TIME_BETWEEN_RESUME
+            if (!dialogShown && isNeedToRouteSettings) {
                 resumeTimes.clear()
                 mindboxLogI("System dialog not shown because timeout=$duration -> open settings")
                 mindboxNotificationManager.openNotificationSettings(this)
@@ -101,7 +102,7 @@ internal class PushActivationActivity : Activity() {
                 requestPermissionManager.decreaseRequestCounter()
             }
             shouldCheckDialogShowing = false
-            finishWithResult(isGranted = false)
+            finishWithResult(isGranted = false, dialogShown = dialogShown)
         }
         super.onResume()
     }
@@ -116,13 +117,13 @@ internal class PushActivationActivity : Activity() {
 
     override fun onDestroy() {
         if (!isResultSent && isFinishing && !isChangingConfigurations) {
-            RuntimePermissionRequestBridge.resolve(requestId.orEmpty(), false)
+            finishWithResult(false)
         }
         super.onDestroy()
     }
 
-    private fun finishWithResult(isGranted: Boolean) {
-        RuntimePermissionRequestBridge.resolve(requestId.orEmpty(), isGranted)
+    private fun finishWithResult(isGranted: Boolean, dialogShown: Boolean = true) {
+        RuntimePermissionRequestBridge.resolve(requestId.orEmpty(), isGranted, dialogShown)
         isResultSent = true
         finish()
     }
