@@ -220,21 +220,21 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     protected fun restoreKeyboard() {
-        typingView?.let { view ->
-            view.post {
-                view.requestFocus()
-                if (shouldRestoreKeyboard) {
-                    val imm =
-                        (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
-                    imm?.showSoftInput(
-                        view,
-                        InputMethodManager.SHOW_IMPLICIT
-                    )
-                }
+        val view: View = typingView ?: return
+        val shouldShowKeyboard: Boolean = shouldRestoreKeyboard
+        typingView = null
+        shouldRestoreKeyboard = false
+        view.post {
+            view.requestFocus()
+            if (shouldShowKeyboard) {
+                val imm =
+                    (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+                imm?.showSoftInput(
+                    view,
+                    InputMethodManager.SHOW_IMPLICIT
+                )
             }
         }
-        shouldRestoreKeyboard = false
-        typingView = null
     }
 
     override fun show(currentRoot: MindboxView) {
