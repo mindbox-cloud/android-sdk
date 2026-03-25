@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
@@ -51,23 +53,33 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     private var typingView: View? = null
+    private var shouldRestoreKeyboard: Boolean = false
 
     protected val preparedImages: MutableMap<ImageView, Boolean> = mutableMapOf()
 
     internal val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private var inAppActionHandler = InAppActionHandler()
+    private var backRegistration: BackRegistration? = null
 
-    private fun hideKeyboard(currentRoot: ViewGroup) {
-        val context = currentRoot.context
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
-        if (imm?.isAcceptingText == true) {
-            typingView = currentRoot.findFocus()
-            imm.hideSoftInputFromWindow(
+    private fun isKeyboardVisible(root: View): Boolean =
+        ViewCompat.getRootWindowInsets(root)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+    protected fun hideKeyboard(currentRoot: ViewGroup) {
+        typingView = currentRoot.rootView.findFocus()
+        if (isKeyboardVisible(currentRoot)) {
+            shouldRestoreKeyboard = true
+            val context = currentRoot.context
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
+            imm?.hideSoftInputFromWindow(
                 currentRoot.windowToken,
                 0
             )
         }
+    }
+
+    protected open fun onBeforeShow(currentRoot: MindboxView) {
+        hideKeyboard(currentRoot.container)
     }
 
     abstract fun bind()
@@ -178,6 +190,16 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         inAppLayout.prepareLayoutForInApp(wrapper.inAppType)
     }
 
+    protected fun bindBackAction(currentRoot: MindboxView, onBackPress: () -> Unit) {
+        clearBackRegistration()
+        backRegistration = currentRoot.backPressRegistrar.register(inAppLayout, onBackPress)
+    }
+
+    protected fun clearBackRegistration() {
+        backRegistration?.unregister()
+        backRegistration = null
+    }
+
     private fun attachToRoot(currentRoot: ViewGroup) {
         if (_currentDialog == null) {
             initView(currentRoot)
@@ -197,15 +219,21 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         }
     }
 
-    private fun restoreKeyboard() {
-        typingView?.let { view ->
+    protected fun restoreKeyboard() {
+        val view: View = typingView ?: return
+        val shouldShowKeyboard: Boolean = shouldRestoreKeyboard
+        typingView = null
+        shouldRestoreKeyboard = false
+        view.post {
             view.requestFocus()
-            val imm =
-                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
-            imm?.showSoftInput(
-                view,
-                InputMethodManager.SHOW_IMPLICIT
-            )
+            if (shouldShowKeyboard) {
+                val imm =
+                    (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?)
+                imm?.showSoftInput(
+                    view,
+                    InputMethodManager.SHOW_IMPLICIT
+                )
+            }
         }
     }
 
@@ -213,7 +241,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         isInAppMessageActive = true
         attachToRoot(currentRoot.container)
         startPositionController(currentRoot.container)
-        hideKeyboard(currentRoot.container)
+        onBeforeShow(currentRoot)
         inAppActionHandler.mindboxView = currentRoot
     }
 
@@ -226,6 +254,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     override fun onClose() {
+        clearBackRegistration()
         positionController?.stop()
         positionController = null
         currentDialog.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)
