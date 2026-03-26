@@ -437,7 +437,133 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     configuration = configuration,
                     jsonRequest = null,
                     listener = { response ->
-                        continuation.resume(response.toString())
+                        continuation.resume("""
+{
+  "monitoring": {
+    "logs": []
+  },
+  "settings": {
+    "operations": {
+      "viewProduct": {
+        "systemName": "app.viewProduct"
+      },
+      "viewCategory": {
+        "systemName": "app.viewCategory"
+      }
+    },
+    "ttl": {
+      "inapps": "1.00:00:00"
+    },
+    "slidingExpiration": {
+      "config": "01:00:01",
+      "pushTokenKeepalive": "14.00:00:00"
+    },
+    "inapp": {
+      "maxInappsPerSession": 20,
+      "maxInappsPerDay": 100,
+      "minIntervalBetweenShows": "00:00:01"
+    },
+    "featureToggles": {
+      "MobileSdkShouldSendInAppShowError": true
+    }
+  },
+  "inapps": [
+    {
+      "id": "322df172-4039-48f1-9cda-513c3213cc28",
+      "isPriority": true,
+      "delayTime": null,
+      "sdkVersion": {
+        "min": 12,
+        "max": null
+      },
+      "frequency": {
+        "kind": "session",
+        "${'$'}type": "once"
+      },
+      "targeting": {
+        "nodes": [
+          {
+            "kind": "gte",
+            "value": 1,
+            "${'$'}type": "visit"
+          }
+        ],
+        "${'$'}type": "and"
+      },
+      "form": {
+        "variants": [
+          {
+            "content": {
+              "background": {
+                "layers": [
+                  {
+                    "params": {
+                      "formId": "143364"
+                    },
+                    "baseUrl": "https://inapp.local/popup",
+                    "contentUrl": "https://mobile-static.mindbox.ru/stable/inapps/webview/content/index.html",
+                    "${'$'}type": "webview"
+                  }
+                ]
+              },
+              "elements": null
+            },
+            "imageUrl": "",
+            "redirectUrl": "",
+            "intentPayload": "",
+            "${'$'}type": "modal"
+          }
+        ]
+      }
+    },
+    {
+      "id": "322df172-4039-48f1-9cda-513c3213cc28",
+      "isPriority": true,
+      "sdkVersion": {
+        "min": 11,
+        "max": 11
+      },
+      "frequency": {
+        "kind": "session",
+        "${'$'}type": "once"
+      },
+      "targeting": {
+        "nodes": [
+          {
+            "kind": "gte",
+            "value": 1,
+            "${'$'}type": "visit"
+          }
+        ],
+        "${'$'}type": "and"
+      },
+      "form": {
+        "variants": [
+          {
+            "content": {
+              "background": {
+                "layers": [
+                  {
+                    "params": {
+                      "popUpId": "143364"
+                    },
+                    "baseUrl": "https://inapp.local/popup",
+                    "contentUrl": "https://mobile-static.mindbox.ru/stable/inapps/webview/content/index.html",
+                    "${'$'}type": "webview",
+                    "type": "webview"
+                  }
+                ]
+              }
+            },
+            "${'$'}type": "webview"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+                        """.trimIndent())
                     },
                     errorsListener = { error ->
                         continuation.resumeWithException(error)
