@@ -16,7 +16,8 @@ class WebViewPermissionRequesterTest {
         val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
             PushPermissionRequestResult(
                 status = PermissionRequestStatus.DENIED,
-                shouldShowRequestPermissionRationale = false
+                shouldShowRequestPermissionRationale = false,
+                dialogShown = false
             )
         )
         val permissionManager: PermissionManager = FakePermissionManager(
@@ -39,11 +40,40 @@ class WebViewPermissionRequesterTest {
     }
 
     @Test
+    fun `requestPermission returns granted when push permission request is granted without dialog`() = runTest {
+        val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
+            PushPermissionRequestResult(
+                status = PermissionRequestStatus.GRANTED,
+                shouldShowRequestPermissionRationale = false,
+                dialogShown = false
+            )
+        )
+        val permissionManager: PermissionManager = FakePermissionManager(
+            pushStatus = PermissionStatus.DENIED
+        )
+        val requester: WebViewPermissionRequester = WebViewPermissionRequesterImpl(
+            context = mockk(relaxed = true),
+            pushPermissionLauncher = pushPermissionLauncher,
+            permissionManager = permissionManager,
+            sdkIntProvider = { Build.VERSION_CODES.TIRAMISU }
+        )
+        val actualResult: PermissionActionResponse = requester.requestPermission(
+            activity = mockk(relaxed = true),
+            permissionType = PermissionType.PUSH_NOTIFICATIONS
+        )
+        assertEquals(PermissionRequestStatus.GRANTED, actualResult.result)
+        assertEquals(false, actualResult.dialogShown)
+        assertEquals(true, actualResult.details.required)
+        assertEquals(false, actualResult.details.shouldShowRequestPermissionRationale)
+    }
+
+    @Test
     fun `requestPermission returns denied when push permission request is denied`() = runTest {
         val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
             PushPermissionRequestResult(
                 status = PermissionRequestStatus.DENIED,
-                shouldShowRequestPermissionRationale = true
+                shouldShowRequestPermissionRationale = true,
+                dialogShown = true
             )
         )
         val permissionManager: PermissionManager = FakePermissionManager(
@@ -70,7 +100,8 @@ class WebViewPermissionRequesterTest {
         val pushPermissionLauncher: PushPermissionLauncher = FakePushPermissionLauncher(
             PushPermissionRequestResult(
                 status = PermissionRequestStatus.GRANTED,
-                shouldShowRequestPermissionRationale = false
+                shouldShowRequestPermissionRationale = false,
+                dialogShown = false
             )
         )
         val permissionManager: PermissionManager = FakePermissionManager(
