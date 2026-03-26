@@ -47,10 +47,10 @@ internal class MotionService(
 ) : MotionServiceProtocol {
 
     private companion object {
-        const val SMOOTHING_FACTOR = 0.9f
+        const val SMOOTHING_FACTOR = 0.7f
         const val COOLDOWN_MS = 800L
         const val TABLET_MIN_WIDTH_DP = 600
-        const val PHONE_THRESHOLD_G = 2.5f
+        const val PHONE_THRESHOLD_G = 3.0f
         const val TABLET_THRESHOLD_G = 1.5f
         const val FLIP_ENTER_THRESHOLD_G = 0.8f
         const val FLIP_EXIT_THRESHOLD_G = 0.6f
@@ -61,7 +61,7 @@ internal class MotionService(
     private val sensorManager: SensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-    private val shakeThresholdMs2: Float by lazy {
+    private val shakeAccelerationThreshold: Float by lazy {
         val isTablet = context.resources.configuration.smallestScreenWidthDp >= TABLET_MIN_WIDTH_DP
         val thresholdG = if (isTablet) TABLET_THRESHOLD_G else PHONE_THRESHOLD_G
         thresholdG * SensorManager.GRAVITY_EARTH
@@ -165,7 +165,7 @@ internal class MotionService(
         if (activeGestures.contains(MotionGesture.SHAKE)) {
             val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
             if (sensor != null) {
-                sensorManager.registerListener(shakeListener, sensor, SensorManager.SENSOR_DELAY_GAME)
+                sensorManager.registerListener(shakeListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
             }
         }
         if (activeGestures.contains(MotionGesture.FLIP)) {
@@ -200,11 +200,13 @@ internal class MotionService(
         val dz = z - lastShakeZ
         val delta = sqrt(dx * dx + dy * dy + dz * dz)
         accumShake = accumShake * SMOOTHING_FACTOR + delta
-
+        mindboxLogI("Accum shake is $accumShake")
         val nowMs = System.currentTimeMillis()
-        if (accumShake > shakeThresholdMs2 && nowMs - lastShakeTimestampMs > COOLDOWN_MS) {
+        if (accumShake > shakeAccelerationThreshold && nowMs - lastShakeTimestampMs > COOLDOWN_MS) {
+            val detectedAccum = accumShake
+            accumShake = 0f
             lastShakeTimestampMs = nowMs
-            mindboxLogD("[WebView] Motion: shake detected (accum=$accumShake, threshold=$shakeThresholdMs2)")
+            mindboxLogD("[WebView] Motion: shake detected (accum=$detectedAccum, threshold=$shakeAccelerationThreshold)")
             onGestureDetected?.invoke(MotionGesture.SHAKE, emptyMap())
         }
 

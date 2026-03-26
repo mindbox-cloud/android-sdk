@@ -21,12 +21,10 @@ class MotionServiceResolvePositionTest {
     @Before
     fun setUp() {
         val mockContext: Context = mockk(relaxed = true)
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockk(relaxed = true)
+        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockk<SensorManager>(relaxed = true)
         every { mockContext.resources } returns mockk(relaxed = true)
         motionService = MotionService(context = mockContext)
     }
-
-    // region — Определение новой позиции без текущей
 
     @Test
     fun `resolvePosition returns faceUp when z is strongly negative and no current position`() {
@@ -100,10 +98,6 @@ class MotionServiceResolvePositionTest {
         assertEquals(DevicePosition.LANDSCAPE_RIGHT, actualPosition)
     }
 
-    // endregion
-
-    // region — Мёртвая зона: нет позиции когда все оси ниже enterThreshold
-
     @Test
     fun `resolvePosition returns null when all axes are below enter threshold and no current position`() {
         val inputValue = enterThreshold - 0.1f
@@ -126,10 +120,6 @@ class MotionServiceResolvePositionTest {
         )
         assertNull(actualPosition)
     }
-
-    // endregion
-
-    // region — Гистерезис: удержание текущей позиции выше exitThreshold
 
     @Test
     fun `resolvePosition retains current faceUp when z is above exit threshold`() {
@@ -170,10 +160,6 @@ class MotionServiceResolvePositionTest {
         assertEquals(DevicePosition.LANDSCAPE_LEFT, actualPosition)
     }
 
-    // endregion
-
-    // region — Сброс текущей позиции ниже exitThreshold и переход на новую
-
     @Test
     fun `resolvePosition drops current faceUp when z falls below exit threshold and switches to portrait`() {
         val inputZ = -(exitThreshold - 0.1f)
@@ -201,10 +187,6 @@ class MotionServiceResolvePositionTest {
         assertNull(actualPosition)
     }
 
-    // endregion
-
-    // region — Доминантная ось
-
     @Test
     fun `resolvePosition picks dominant axis when multiple axes exceed enter threshold`() {
         val inputZ = -(enterThreshold + 0.1f)
@@ -218,5 +200,85 @@ class MotionServiceResolvePositionTest {
         assertEquals(DevicePosition.PORTRAIT, actualPosition)
     }
 
-    // endregion
+    @Test
+    fun `resolvePosition picks z axis when z magnitude exceeds y magnitude`() {
+        val inputZ = -(enterThreshold + 1.0f)
+        val inputY = -(enterThreshold + 0.1f)
+        val actualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = inputY,
+            z = inputZ,
+            current = null,
+        )
+        assertEquals(DevicePosition.FACE_UP, actualPosition)
+    }
+
+    @Test
+    fun `resolvePosition returns null when z is exactly at enter threshold`() {
+        val inputZ = -enterThreshold
+        val actualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = 0f,
+            z = inputZ,
+            current = null,
+        )
+        assertNull(actualPosition)
+    }
+
+    @Test
+    fun `resolvePosition transitions from faceUp to faceDown when z flips to positive`() {
+        val inputZ = enterThreshold + 0.5f
+        val actualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = 0f,
+            z = inputZ,
+            current = DevicePosition.FACE_UP,
+        )
+        assertEquals(DevicePosition.FACE_DOWN, actualPosition)
+    }
+
+    @Test
+    fun `resolvePosition transitions from portrait to portraitUpsideDown when y flips to positive`() {
+        val inputY = enterThreshold + 0.5f
+        val actualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = inputY,
+            z = 0f,
+            current = DevicePosition.PORTRAIT,
+        )
+        assertEquals(DevicePosition.PORTRAIT_UPSIDE_DOWN, actualPosition)
+    }
+
+    @Test
+    fun `resolvePosition handles multi-step transition from portrait through faceUp to faceDown`() {
+        val inputStrongZ = -(enterThreshold + 0.5f)
+        val step1ActualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = 0f,
+            z = inputStrongZ,
+            current = DevicePosition.PORTRAIT,
+        )
+        assertEquals(DevicePosition.FACE_UP, step1ActualPosition)
+
+        val step2ActualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = 0f,
+            z = enterThreshold + 0.5f,
+            current = DevicePosition.FACE_UP,
+        )
+        assertEquals(DevicePosition.FACE_DOWN, step2ActualPosition)
+    }
+
+    @Test
+    fun `resolvePosition retains portrait when y is above exit threshold even though z is below enter threshold`() {
+        val inputY = -(exitThreshold + 0.5f)
+        val inputZ = -(enterThreshold - 1.0f)
+        val actualPosition: DevicePosition? = motionService.resolvePosition(
+            x = 0f,
+            y = inputY,
+            z = inputZ,
+            current = DevicePosition.PORTRAIT,
+        )
+        assertEquals(DevicePosition.PORTRAIT, actualPosition)
+    }
 }
