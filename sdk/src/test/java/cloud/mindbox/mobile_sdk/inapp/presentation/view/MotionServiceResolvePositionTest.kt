@@ -2,8 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
 import android.hardware.SensorManager
+import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.DevicePosition
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -23,7 +25,11 @@ class MotionServiceResolvePositionTest {
         val mockContext: Context = mockk(relaxed = true)
         every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockk<SensorManager>(relaxed = true)
         every { mockContext.resources } returns mockk(relaxed = true)
-        motionService = MotionService(context = mockContext)
+        motionService = MotionService(
+            context = mockContext,
+            lifecycle = mockk<Lifecycle>(relaxed = true),
+            timeProvider = SystemTimeProvider(),
+        )
     }
 
     @Test

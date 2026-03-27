@@ -6,9 +6,13 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -43,11 +47,13 @@ internal interface MotionServiceProtocol {
 
 internal class MotionService(
     private val context: Context,
+    private val lifecycle: Lifecycle,
+    private val timeProvider: TimeProvider,
 ) : MotionServiceProtocol {
 
     private companion object {
         const val SMOOTHING_FACTOR = 0.7f
-        const val COOLDOWN_MS = 800L
+        val SHAKE_COOLDOWN = Milliseconds(800L)
         const val TABLET_MIN_WIDTH_DP = 600
         const val PHONE_THRESHOLD_G = 3.0f
         const val TABLET_THRESHOLD_G = 1.5f
@@ -57,8 +63,8 @@ internal class MotionService(
 
     override var onGestureDetected: ((gesture: MotionGesture, data: Map<String, String>) -> Unit)? = null
 
-    private val sensorManager: SensorManager =
-        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val sensorManager: SensorManager? =
+        context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
 
     private val shakeAccelerationThreshold: Float by lazy {
         val isTablet = context.resources.configuration.smallestScreenWidthDp >= TABLET_MIN_WIDTH_DP
@@ -73,7 +79,7 @@ internal class MotionService(
     private var lastShakeY = 0f
     private var lastShakeZ = 0f
     private var accumulateShake = 0f
-    private var lastShakeTimestampMs = 0L
+    private var lastShakeTimestamp: Timestamp = Timestamp(0L)
 
     private var currentFlipPosition: DevicePosition? = null
 
@@ -109,8 +115,10 @@ internal class MotionService(
 
     override fun startMonitoring(gestures: Set<MotionGesture>): MotionStartResult {
         stopMonitoring()
-
         val unavailable = mutableSetOf<MotionGesture>()
+        if (gestures.contains(MotionGesture.SHAKE) && !isShakeAvailable()) {
+            unavailable.add(MotionGesture.SHAKE)
+        }
         if (gestures.contains(MotionGesture.FLIP) && !isFlipAvailable()) {
             unavailable.add(MotionGesture.FLIP)
         }
@@ -118,7 +126,6 @@ internal class MotionService(
         activeGestures = gestures - unavailable
         val result = MotionStartResult(started = activeGestures, unavailable = unavailable)
         if (activeGestures.isEmpty()) return result
-
         addLifecycleObserver()
         startSensors()
 
@@ -138,21 +145,21 @@ internal class MotionService(
     }
 
     private fun addLifecycleObserver() {
-        ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver)
+        lifecycle.addObserver(lifecycleObserver)
     }
 
     private fun removeLifecycleObserver() {
-        ProcessLifecycleOwner.get().lifecycle.removeObserver(lifecycleObserver)
+        lifecycle.removeObserver(lifecycleObserver)
     }
 
-    private fun suspend() {
+    internal fun suspend() {
         if (activeGestures.isEmpty()) return
         suspendedGestures = activeGestures
         stopSensors()
         mindboxLogI("[WebView] Motion: suspended (app in background)")
     }
 
-    private fun resume() {
+    internal fun resume() {
         val gestures = suspendedGestures ?: return
         suspendedGestures = null
         activeGestures = gestures
@@ -162,22 +169,20 @@ internal class MotionService(
 
     private fun startSensors() {
         if (activeGestures.contains(MotionGesture.SHAKE)) {
-            val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-            if (sensor != null) {
+            sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sensor ->
                 sensorManager.registerListener(shakeListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
             }
         }
         if (activeGestures.contains(MotionGesture.FLIP)) {
-            val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-            if (sensor != null) {
+            sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY)?.let { sensor ->
                 sensorManager.registerListener(flipListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
             }
         }
     }
 
     private fun stopSensors() {
-        sensorManager.unregisterListener(shakeListener)
-        sensorManager.unregisterListener(flipListener)
+        sensorManager?.unregisterListener(shakeListener)
+        sensorManager?.unregisterListener(flipListener)
         resetShakeState()
         currentFlipPosition = null
     }
@@ -187,23 +192,27 @@ internal class MotionService(
         lastShakeY = 0f
         lastShakeZ = 0f
         accumulateShake = 0f
-        lastShakeTimestampMs = 0L
+        lastShakeTimestamp = Timestamp(0L)
     }
 
-    private fun isFlipAvailable(): Boolean =
-        sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY) != null
+    private fun isShakeAvailable(): Boolean =
+        sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
 
-    private fun processShake(x: Float, y: Float, z: Float) {
+    private fun isFlipAvailable(): Boolean =
+        sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY) != null
+
+    internal fun processShake(x: Float, y: Float, z: Float) {
         val dx = x - lastShakeX
         val dy = y - lastShakeY
         val dz = z - lastShakeZ
         val delta = sqrt(dx * dx + dy * dy + dz * dz)
         accumulateShake = accumulateShake * SMOOTHING_FACTOR + delta
-        val nowMs = System.currentTimeMillis()
-        if (accumulateShake > shakeAccelerationThreshold && nowMs - lastShakeTimestampMs > COOLDOWN_MS) {
+        val now: Timestamp = timeProvider.currentTimestamp()
+        val elapsed: Milliseconds = timeProvider.elapsedSince(lastShakeTimestamp)
+        if (accumulateShake > shakeAccelerationThreshold && elapsed.interval > SHAKE_COOLDOWN.interval) {
             accumulateShake = 0f
-            lastShakeTimestampMs = nowMs
-            onGestureDetected?.invoke(MotionGesture.SHAKE, emptyMap())
+            lastShakeTimestamp = now
+            loggingRunCatching { onGestureDetected?.invoke(MotionGesture.SHAKE, emptyMap()) }
         }
 
         lastShakeX = x
@@ -220,10 +229,12 @@ internal class MotionService(
 
         if (from == null) return
 
-        onGestureDetected?.invoke(
-            MotionGesture.FLIP,
-            mapOf("from" to from.value, "to" to newPosition.value),
-        )
+        loggingRunCatching {
+            onGestureDetected?.invoke(
+                MotionGesture.FLIP,
+                mapOf("from" to from.value, "to" to newPosition.value),
+            )
+        }
     }
 
     internal fun resolvePosition(
@@ -253,16 +264,16 @@ internal class MotionService(
             }
         }
 
-        var best: DevicePosition? = null
-        var bestMagnitude = FLIP_ENTER_THRESHOLD_G * SensorManager.GRAVITY_EARTH
+        var dominantPosition: DevicePosition? = null
+        var maxMagnitude = FLIP_ENTER_THRESHOLD_G * SensorManager.GRAVITY_EARTH
 
         for (axis in axes) {
             val magnitude = abs(axis.value)
-            if (magnitude > bestMagnitude) {
-                bestMagnitude = magnitude
-                best = if (axis.value > 0f) axis.positive else axis.negative
+            if (magnitude > maxMagnitude) {
+                maxMagnitude = magnitude
+                dominantPosition = if (axis.value > 0f) axis.positive else axis.negative
             }
         }
-        return best
+        return dominantPosition
     }
 }

@@ -24,6 +24,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import androidx.lifecycle.ProcessLifecycleOwner
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionServiceProtocol
@@ -39,6 +41,7 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
@@ -67,6 +70,8 @@ internal class WebViewInAppViewHolder(
         private const val JS_BRIDGE = "$JS_BRIDGE_CLASS.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
         private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
+        private const val MOTION_GESTURE_KEY = "gesture"
+        private const val MOTION_GESTURES_KEY = "gestures"
     }
 
     private var closeInappTimer: Timer? = null
@@ -76,7 +81,11 @@ internal class WebViewInAppViewHolder(
     private var isMotionServiceInitialized = false
     private val motionService: MotionServiceProtocol by lazy {
         isMotionServiceInitialized = true
-        MotionService(context = appContext).also { service ->
+        MotionService(
+            context = appContext,
+            lifecycle = ProcessLifecycleOwner.get().lifecycle,
+            timeProvider = timeProvider,
+        ).also { service ->
             service.onGestureDetected = { gesture, data ->
                 sendMotionEvent(gesture = gesture, data = data)
             }
@@ -91,6 +100,7 @@ internal class WebViewInAppViewHolder(
         ConcurrentHashMap()
 
     private val gson: Gson by mindboxInject { this.gson }
+    private val timeProvider: TimeProvider by mindboxInject { timeProvider }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -206,22 +216,20 @@ internal class WebViewInAppViewHolder(
         if (gestures.isEmpty()) {
             return buildMotionError("No valid gestures provided. Available: shake, flip")
         }
-        val result: MotionStartResult = motionService.startMonitoring(gestures)
+        val result = motionService.startMonitoring(gestures)
         if (result.allUnavailable) {
             return buildMotionError(
                 "No sensors available for: ${result.unavailable.joinToString { it.value }}"
             )
         }
-        return if (result.unavailable.isEmpty()) {
-            BridgeMessage.SUCCESS_PAYLOAD
-        } else {
-            val unavailableJson = result.unavailable.joinToString(
-                prefix = "[",
-                postfix = "]",
-                separator = ","
-            ) { "\"${it.value}\"" }
-            """{"success":true,"unavailable":$unavailableJson}"""
-        }
+        return buildMotionStartPayload(result)
+    }
+
+    private fun buildMotionStartPayload(result: MotionStartResult): String {
+        if (result.unavailable.isEmpty()) return BridgeMessage.SUCCESS_PAYLOAD
+        return gson.toJson(
+            MotionStartPayload(unavailable = result.unavailable.map { it.value })
+        )
     }
 
     private fun handleMotionStopAction(): String {
@@ -231,12 +239,15 @@ internal class WebViewInAppViewHolder(
 
     private fun sendMotionEvent(gesture: MotionGesture, data: Map<String, String>) {
         val controller: WebViewController = webViewController ?: return
-        val payloadBuilder = StringBuilder("""{"gesture":"${gesture.value}"""")
-        data.forEach { (key, value) -> payloadBuilder.append(""","$key":"$value"""") }
-        payloadBuilder.append("}")
+        val payload = JSONObject()
+            .apply {
+                put(MOTION_GESTURE_KEY, gesture.value)
+                data.forEach { (key, value) -> put(key, value) }
+            }
+            .toString()
         val message: BridgeMessage.Request = BridgeMessage.createAction(
             action = WebViewAction.MOTION_EVENT,
-            payload = payloadBuilder.toString(),
+            payload = payload,
         )
         sendActionInternal(controller, message) { error ->
             mindboxLogW("[WebView] Motion: failed to send motion.event to JS: $error")
@@ -244,21 +255,16 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun parseMotionGestures(payload: String): Set<MotionGesture> {
-        return runCatching {
-            val array = JSONObject(payload).optJSONArray("gestures")
-                ?: return emptySet()
-            buildSet {
-                for (i in 0 until array.length()) {
-                    val name = array.optString(i) ?: continue
-                    val gesture = MotionGesture.entries.firstOrNull { it.value == name }
-                    if (gesture != null) add(gesture)
-                }
-            }
-        }.getOrDefault(emptySet())
+        return loggingRunCatching(defaultValue = emptySet()) {
+            val array = JSONObject(payload).optJSONArray(MOTION_GESTURES_KEY)
+                ?: return@loggingRunCatching emptySet()
+            (0 until array.length())
+                .mapNotNull { i -> MotionGesture.entries.find { it.value == array.optString(i) } }
+                .toSet()
+        }
     }
 
-    private fun buildMotionError(message: String): String =
-        """{"error":"$message"}"""
+    private fun buildMotionError(message: String): String = gson.toJson(ErrorPayload(error = message))
 
     private fun handleReadyAction(
         configuration: Configuration,
@@ -786,6 +792,11 @@ internal class WebViewInAppViewHolder(
 
     private data class ErrorPayload(
         val error: String
+    )
+
+    private data class MotionStartPayload(
+        val success: Boolean = true,
+        val unavailable: List<String>? = null,
     )
 
     private data class SettingsOpenRequest(
