@@ -114,7 +114,7 @@ internal class MotionService(
     }
 
     override fun startMonitoring(gestures: Set<MotionGesture>): MotionStartResult {
-        stopMonitoring()
+        if (activeGestures.isNotEmpty()) stopMonitoring()
         val unavailable = mutableSetOf<MotionGesture>()
         if (gestures.contains(MotionGesture.SHAKE) && !isShakeAvailable()) {
             unavailable.add(MotionGesture.SHAKE)

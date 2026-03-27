@@ -211,16 +211,12 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleMotionStartAction(message: BridgeMessage.Request): String {
-        val payload = message.payload ?: return buildMotionError("Missing payload")
+        val payload = requireNotNull(message.payload) { "Missing payload" }
         val gestures = parseMotionGestures(payload)
-        if (gestures.isEmpty()) {
-            return buildMotionError("No valid gestures provided. Available: shake, flip")
-        }
+        require(gestures.isNotEmpty()) { "No valid gestures provided. Available: shake, flip" }
         val result = motionService.startMonitoring(gestures)
-        if (result.allUnavailable) {
-            return buildMotionError(
-                "No sensors available for: ${result.unavailable.joinToString { it.value }}"
-            )
+        require(!result.allUnavailable) {
+            "No sensors available for: ${result.unavailable.joinToString { it.value }}"
         }
         return buildMotionStartPayload(result)
     }
@@ -263,8 +259,6 @@ internal class WebViewInAppViewHolder(
                 .toSet()
         }
     }
-
-    private fun buildMotionError(message: String): String = gson.toJson(ErrorPayload(error = message))
 
     private fun handleReadyAction(
         configuration: Configuration,
