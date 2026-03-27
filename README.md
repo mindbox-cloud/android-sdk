@@ -1,4 +1,4 @@
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/cloud.mindbox/mobile-sdk/badge.svg)](https://central.sonatype.com/artifact/cloud.mindbox/mobile-sdk)
+[![Maven Central](https://img.shields.io/maven-central/v/cloud.mindbox/mobile-sdk?label=Maven%20Central)](https://central.sonatype.com/artifact/cloud.mindbox/mobile-sdk)
 
 # Mindbox SDK for Android
 
