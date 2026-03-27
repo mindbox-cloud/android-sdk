@@ -7,6 +7,7 @@ import android.hardware.SensorManager
 import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionVector
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -58,7 +59,7 @@ class MotionServiceShakeTest {
         var isDetected = false
         motionService.onGestureDetected = { gesture, _ -> isDetected = gesture == MotionGesture.SHAKE }
 
-        motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG + 1f, y = 0f, z = 0f))
 
         assertTrue(isDetected)
     }
@@ -68,7 +69,7 @@ class MotionServiceShakeTest {
         var isDetected = false
         motionService.onGestureDetected = { _, _ -> isDetected = true }
 
-        motionService.processShake(x = phoneThresholdG - 1f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG - 1f, y = 0f, z = 0f))
 
         assertFalse(isDetected)
     }
@@ -78,8 +79,8 @@ class MotionServiceShakeTest {
         var detectedCount = 0
         motionService.onGestureDetected = { _, _ -> detectedCount++ }
 
-        motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
-        motionService.processShake(x = 0f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG + 1f, y = 0f, z = 0f))
+        motionService.processShake(MotionVector(x = 0f, y = 0f, z = 0f))
 
         assertEquals(1, detectedCount)
     }
@@ -89,9 +90,9 @@ class MotionServiceShakeTest {
         var detectedCount = 0
         motionService.onGestureDetected = { _, _ -> detectedCount++ }
 
-        motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG + 1f, y = 0f, z = 0f))
         fakeTimeProvider.advanceBy(900L)
-        motionService.processShake(x = 0f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = 0f, y = 0f, z = 0f))
 
         assertEquals(2, detectedCount)
     }
@@ -101,9 +102,9 @@ class MotionServiceShakeTest {
         var detectedCount = 0
         motionService.onGestureDetected = { _, _ -> detectedCount++ }
 
-        motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG + 1f, y = 0f, z = 0f))
         fakeTimeProvider.advanceBy(800L)
-        motionService.processShake(x = 0f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = 0f, y = 0f, z = 0f))
 
         assertEquals(1, detectedCount)
     }
@@ -113,7 +114,7 @@ class MotionServiceShakeTest {
         var capturedData: Map<String, String>? = null
         motionService.onGestureDetected = { _, data -> capturedData = data }
 
-        motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = phoneThresholdG + 1f, y = 0f, z = 0f))
 
         assertTrue(capturedData != null && capturedData?.isEmpty() == true)
     }
@@ -124,9 +125,9 @@ class MotionServiceShakeTest {
         motionService.onGestureDetected = { _, _ -> isDetected = true }
 
         val halfThreshold = phoneThresholdG / 2f
-        motionService.processShake(x = halfThreshold, y = 0f, z = 0f)
-        motionService.processShake(x = 0f, y = 0f, z = 0f)
-        motionService.processShake(x = halfThreshold, y = 0f, z = 0f)
+        motionService.processShake(MotionVector(x = halfThreshold, y = 0f, z = 0f))
+        motionService.processShake(MotionVector(x = 0f, y = 0f, z = 0f))
+        motionService.processShake(MotionVector(x = halfThreshold, y = 0f, z = 0f))
 
         assertTrue(isDetected)
     }

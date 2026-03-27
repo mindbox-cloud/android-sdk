@@ -12,6 +12,10 @@ internal value class Timestamp(val ms: Long) {
     operator fun plus(milliseconds: Long): Timestamp = Timestamp(ms + milliseconds)
 
     operator fun minus(timestamp: Timestamp): Timestamp = Timestamp(ms - timestamp.ms)
+
+    companion object {
+        val ZERO: Timestamp = Timestamp(0L)
+    }
 }
 
 internal fun Long.toTimestamp(): Timestamp = Timestamp(this)

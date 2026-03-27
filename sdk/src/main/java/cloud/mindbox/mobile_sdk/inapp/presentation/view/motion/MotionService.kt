@@ -10,11 +10,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.Milliseconds
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
-import kotlin.math.sqrt
+import kotlin.math.hypot
 
 internal enum class MotionGesture(val value: String) {
     SHAKE("shake"),
@@ -28,6 +28,16 @@ internal enum class DevicePosition(val value: String) {
     PORTRAIT_UPSIDE_DOWN("portraitUpsideDown"),
     LANDSCAPE_LEFT("landscapeLeft"),
     LANDSCAPE_RIGHT("landscapeRight"),
+}
+
+internal data class MotionVector(val x: Float, val y: Float, val z: Float) {
+    companion object {
+        val ZERO: MotionVector = MotionVector(0f, 0f, 0f)
+    }
+
+    operator fun minus(other: MotionVector): MotionVector = MotionVector(x - other.x, y - other.y, z - other.z)
+
+    fun magnitude(): Float = hypot(hypot(x, y), z)
 }
 
 internal data class MotionStartResult(
@@ -75,21 +85,15 @@ internal class MotionService(
     private var activeGestures: Set<MotionGesture> = emptySet()
     private var suspendedGestures: Set<MotionGesture>? = null
 
-    private var lastShakeX = 0f
-    private var lastShakeY = 0f
-    private var lastShakeZ = 0f
+    private var lastShakeVector: MotionVector = MotionVector.ZERO
     private var accumulateShake = 0f
-    private var lastShakeTimestamp: Timestamp = Timestamp(0L)
+    private var lastShakeTimestamp: Timestamp = Timestamp.ZERO
 
     private var currentFlipPosition: DevicePosition? = null
 
     private val shakeListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
-            processShake(
-                x = event.values[0],
-                y = event.values[1],
-                z = event.values[2],
-            )
+            processShake(MotionVector(event.values[0], event.values[1], event.values[2]))
         }
 
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
@@ -97,11 +101,7 @@ internal class MotionService(
 
     private val flipListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
-            processFlip(
-                x = -event.values[0],
-                y = -event.values[1],
-                z = -event.values[2],
-            )
+            processFlip(MotionVector(-event.values[0], -event.values[1], -event.values[2]))
         }
 
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
@@ -115,12 +115,13 @@ internal class MotionService(
 
     override fun startMonitoring(gestures: Set<MotionGesture>): MotionStartResult {
         if (activeGestures.isNotEmpty()) stopMonitoring()
-        val unavailable = mutableSetOf<MotionGesture>()
-        if (gestures.contains(MotionGesture.SHAKE) && !isShakeAvailable()) {
-            unavailable.add(MotionGesture.SHAKE)
-        }
-        if (gestures.contains(MotionGesture.FLIP) && !isFlipAvailable()) {
-            unavailable.add(MotionGesture.FLIP)
+        val unavailable = buildSet {
+            if (gestures.contains(MotionGesture.SHAKE) && !isShakeAvailable()) {
+                add(MotionGesture.SHAKE)
+            }
+            if (gestures.contains(MotionGesture.FLIP) && !isFlipAvailable()) {
+                add(MotionGesture.FLIP)
+            }
         }
 
         activeGestures = gestures - unavailable
@@ -129,19 +130,20 @@ internal class MotionService(
         addLifecycleObserver()
         startSensors()
 
-        mindboxLogI("[WebView] Motion: monitoring started for ${activeGestures.map { it.value }}")
+        mindboxLogI("Motion: monitoring started for ${activeGestures.map { it.value }}")
         if (unavailable.isNotEmpty()) {
-            mindboxLogI("[WebView] Motion: unavailable gestures: ${unavailable.map { it.value }}")
+            mindboxLogI("Motion: unavailable gestures: ${unavailable.map { it.value }}")
         }
         return result
     }
 
     override fun stopMonitoring() {
+        if (activeGestures.isEmpty() && suspendedGestures == null) return
         removeLifecycleObserver()
         stopSensors()
         activeGestures = emptySet()
         suspendedGestures = null
-        mindboxLogI("[WebView] Motion: monitoring stopped")
+        mindboxLogI("Motion: monitoring stopped")
     }
 
     private fun addLifecycleObserver() {
@@ -156,7 +158,7 @@ internal class MotionService(
         if (activeGestures.isEmpty()) return
         suspendedGestures = activeGestures
         stopSensors()
-        mindboxLogI("[WebView] Motion: suspended (app in background)")
+        mindboxLogI("Motion: suspended (app in background)")
     }
 
     internal fun resume() {
@@ -164,7 +166,7 @@ internal class MotionService(
         suspendedGestures = null
         activeGestures = gestures
         startSensors()
-        mindboxLogI("[WebView] Motion: resumed (app in foreground)")
+        mindboxLogI("Motion: resumed (app in foreground)")
     }
 
     private fun startSensors() {
@@ -188,11 +190,9 @@ internal class MotionService(
     }
 
     private fun resetShakeState() {
-        lastShakeX = 0f
-        lastShakeY = 0f
-        lastShakeZ = 0f
+        lastShakeVector = MotionVector.ZERO
         accumulateShake = 0f
-        lastShakeTimestamp = Timestamp(0L)
+        lastShakeTimestamp = Timestamp.ZERO
     }
 
     private fun isShakeAvailable(): Boolean =
@@ -201,11 +201,8 @@ internal class MotionService(
     private fun isFlipAvailable(): Boolean =
         sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY) != null
 
-    internal fun processShake(x: Float, y: Float, z: Float) {
-        val dx = x - lastShakeX
-        val dy = y - lastShakeY
-        val dz = z - lastShakeZ
-        val delta = sqrt(dx * dx + dy * dy + dz * dz)
+    internal fun processShake(vector: MotionVector) {
+        val delta = (vector - lastShakeVector).magnitude()
         accumulateShake = accumulateShake * SMOOTHING_FACTOR + delta
         val now: Timestamp = timeProvider.currentTimestamp()
         val elapsed: Milliseconds = timeProvider.elapsedSince(lastShakeTimestamp)
@@ -214,14 +211,11 @@ internal class MotionService(
             lastShakeTimestamp = now
             loggingRunCatching { onGestureDetected?.invoke(MotionGesture.SHAKE, emptyMap()) }
         }
-
-        lastShakeX = x
-        lastShakeY = y
-        lastShakeZ = z
+        lastShakeVector = vector
     }
 
-    private fun processFlip(x: Float, y: Float, z: Float) {
-        val newPosition = resolvePosition(x = x, y = y, z = z, current = currentFlipPosition)
+    private fun processFlip(vector: MotionVector) {
+        val newPosition = resolvePosition(vector = vector, current = currentFlipPosition)
         if (newPosition == null || newPosition == currentFlipPosition) return
 
         val from = currentFlipPosition
@@ -238,9 +232,7 @@ internal class MotionService(
     }
 
     internal fun resolvePosition(
-        x: Float,
-        y: Float,
-        z: Float,
+        vector: MotionVector,
         current: DevicePosition?,
     ): DevicePosition? {
         data class Axis(
@@ -250,13 +242,13 @@ internal class MotionService(
         )
 
         val axes = listOf(
-            Axis(z, DevicePosition.FACE_UP, DevicePosition.FACE_DOWN),
-            Axis(y, DevicePosition.PORTRAIT, DevicePosition.PORTRAIT_UPSIDE_DOWN),
-            Axis(x, DevicePosition.LANDSCAPE_LEFT, DevicePosition.LANDSCAPE_RIGHT),
+            Axis(vector.z, DevicePosition.FACE_UP, DevicePosition.FACE_DOWN),
+            Axis(vector.y, DevicePosition.PORTRAIT, DevicePosition.PORTRAIT_UPSIDE_DOWN),
+            Axis(vector.x, DevicePosition.LANDSCAPE_LEFT, DevicePosition.LANDSCAPE_RIGHT),
         )
 
         if (current != null) {
-            for (axis in axes) {
+            axes.forEach { axis ->
                 val position = if (axis.value > 0f) axis.positive else axis.negative
                 if (position == current && abs(axis.value) > FLIP_EXIT_THRESHOLD_G * SensorManager.GRAVITY_EARTH) {
                     return current

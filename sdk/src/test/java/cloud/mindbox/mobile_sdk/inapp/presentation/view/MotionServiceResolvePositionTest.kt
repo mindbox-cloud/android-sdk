@@ -5,6 +5,7 @@ import android.hardware.SensorManager
 import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.DevicePosition
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionVector
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -36,9 +37,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns faceUp when z is strongly negative and no current position`() {
         val inputZ = -enterThreshold - 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = null,
         )
         assertEquals(DevicePosition.FACE_UP, actualPosition)
@@ -48,9 +47,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns faceDown when z is strongly positive and no current position`() {
         val inputZ = enterThreshold + 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = null,
         )
         assertEquals(DevicePosition.FACE_DOWN, actualPosition)
@@ -60,9 +57,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns portrait when y is strongly negative and no current position`() {
         val inputY = -enterThreshold - 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = 0f,
+            vector = MotionVector(x = 0f, y = inputY, z = 0f),
             current = null,
         )
         assertEquals(DevicePosition.PORTRAIT, actualPosition)
@@ -72,9 +67,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns portraitUpsideDown when y is strongly positive and no current position`() {
         val inputY = enterThreshold + 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = 0f,
+            vector = MotionVector(x = 0f, y = inputY, z = 0f),
             current = null,
         )
         assertEquals(DevicePosition.PORTRAIT_UPSIDE_DOWN, actualPosition)
@@ -84,9 +77,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns landscapeLeft when x is strongly negative and no current position`() {
         val inputX = -enterThreshold - 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = inputX,
-            y = 0f,
-            z = 0f,
+            vector = MotionVector(x = inputX, y = 0f, z = 0f),
             current = null,
         )
         assertEquals(DevicePosition.LANDSCAPE_LEFT, actualPosition)
@@ -96,9 +87,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns landscapeRight when x is strongly positive and no current position`() {
         val inputX = enterThreshold + 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = inputX,
-            y = 0f,
-            z = 0f,
+            vector = MotionVector(x = inputX, y = 0f, z = 0f),
             current = null,
         )
         assertEquals(DevicePosition.LANDSCAPE_RIGHT, actualPosition)
@@ -108,9 +97,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns null when all axes are below enter threshold and no current position`() {
         val inputValue = enterThreshold - 0.1f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = -inputValue,
+            vector = MotionVector(x = 0f, y = 0f, z = -inputValue),
             current = null,
         )
         assertNull(actualPosition)
@@ -119,9 +106,7 @@ class MotionServiceResolvePositionTest {
     @Test
     fun `resolvePosition returns null when all axes are zero and no current position`() {
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = 0f,
+            vector = MotionVector(x = 0f, y = 0f, z = 0f),
             current = null,
         )
         assertNull(actualPosition)
@@ -132,9 +117,7 @@ class MotionServiceResolvePositionTest {
         val inputZ = -(exitThreshold + 0.1f)
         val inputCurrentPosition = DevicePosition.FACE_UP
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = inputCurrentPosition,
         )
         assertEquals(DevicePosition.FACE_UP, actualPosition)
@@ -145,9 +128,7 @@ class MotionServiceResolvePositionTest {
         val inputY = -(exitThreshold + 0.1f)
         val inputCurrentPosition = DevicePosition.PORTRAIT
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = 0f,
+            vector = MotionVector(x = 0f, y = inputY, z = 0f),
             current = inputCurrentPosition,
         )
         assertEquals(DevicePosition.PORTRAIT, actualPosition)
@@ -158,9 +139,7 @@ class MotionServiceResolvePositionTest {
         val inputX = -(exitThreshold + 0.1f)
         val inputCurrentPosition = DevicePosition.LANDSCAPE_LEFT
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = inputX,
-            y = 0f,
-            z = 0f,
+            vector = MotionVector(x = inputX, y = 0f, z = 0f),
             current = inputCurrentPosition,
         )
         assertEquals(DevicePosition.LANDSCAPE_LEFT, actualPosition)
@@ -172,9 +151,7 @@ class MotionServiceResolvePositionTest {
         val inputY = -(enterThreshold + 0.5f)
         val inputCurrentPosition = DevicePosition.FACE_UP
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = inputY, z = inputZ),
             current = inputCurrentPosition,
         )
         assertEquals(DevicePosition.PORTRAIT, actualPosition)
@@ -185,9 +162,7 @@ class MotionServiceResolvePositionTest {
         val inputZ = -(exitThreshold - 0.1f)
         val inputCurrentPosition = DevicePosition.FACE_UP
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = inputCurrentPosition,
         )
         assertNull(actualPosition)
@@ -198,9 +173,7 @@ class MotionServiceResolvePositionTest {
         val inputZ = -(enterThreshold + 0.1f)
         val inputY = -(enterThreshold + 2.0f)
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = inputY, z = inputZ),
             current = null,
         )
         assertEquals(DevicePosition.PORTRAIT, actualPosition)
@@ -211,9 +184,7 @@ class MotionServiceResolvePositionTest {
         val inputZ = -(enterThreshold + 1.0f)
         val inputY = -(enterThreshold + 0.1f)
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = inputY, z = inputZ),
             current = null,
         )
         assertEquals(DevicePosition.FACE_UP, actualPosition)
@@ -223,9 +194,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition returns null when z is exactly at enter threshold`() {
         val inputZ = -enterThreshold
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = null,
         )
         assertNull(actualPosition)
@@ -235,9 +204,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition transitions from faceUp to faceDown when z flips to positive`() {
         val inputZ = enterThreshold + 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputZ),
             current = DevicePosition.FACE_UP,
         )
         assertEquals(DevicePosition.FACE_DOWN, actualPosition)
@@ -247,9 +214,7 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition transitions from portrait to portraitUpsideDown when y flips to positive`() {
         val inputY = enterThreshold + 0.5f
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = 0f,
+            vector = MotionVector(x = 0f, y = inputY, z = 0f),
             current = DevicePosition.PORTRAIT,
         )
         assertEquals(DevicePosition.PORTRAIT_UPSIDE_DOWN, actualPosition)
@@ -259,17 +224,13 @@ class MotionServiceResolvePositionTest {
     fun `resolvePosition handles multi-step transition from portrait through faceUp to faceDown`() {
         val inputStrongZ = -(enterThreshold + 0.5f)
         val step1ActualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = inputStrongZ,
+            vector = MotionVector(x = 0f, y = 0f, z = inputStrongZ),
             current = DevicePosition.PORTRAIT,
         )
         assertEquals(DevicePosition.FACE_UP, step1ActualPosition)
 
         val step2ActualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = 0f,
-            z = enterThreshold + 0.5f,
+            vector = MotionVector(x = 0f, y = 0f, z = enterThreshold + 0.5f),
             current = DevicePosition.FACE_UP,
         )
         assertEquals(DevicePosition.FACE_DOWN, step2ActualPosition)
@@ -280,9 +241,7 @@ class MotionServiceResolvePositionTest {
         val inputY = -(exitThreshold + 0.5f)
         val inputZ = -(enterThreshold - 1.0f)
         val actualPosition: DevicePosition? = motionService.resolvePosition(
-            x = 0f,
-            y = inputY,
-            z = inputZ,
+            vector = MotionVector(x = 0f, y = inputY, z = inputZ),
             current = DevicePosition.PORTRAIT,
         )
         assertEquals(DevicePosition.PORTRAIT, actualPosition)

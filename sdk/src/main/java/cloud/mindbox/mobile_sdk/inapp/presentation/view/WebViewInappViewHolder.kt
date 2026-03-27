@@ -78,19 +78,7 @@ internal class WebViewInAppViewHolder(
     private var webViewController: WebViewController? = null
     private var currentWebViewOrigin: String? = null
 
-    private var isMotionServiceInitialized = false
-    private val motionService: MotionServiceProtocol by lazy {
-        isMotionServiceInitialized = true
-        MotionService(
-            context = appContext,
-            lifecycle = ProcessLifecycleOwner.get().lifecycle,
-            timeProvider = timeProvider,
-        ).also { service ->
-            service.onGestureDetected = { gesture, data ->
-                sendMotionEvent(gesture = gesture, data = data)
-            }
-        }
-    }
+    private var motionService: MotionServiceProtocol? = null
 
     private fun bindWebViewBackAction(currentRoot: MindboxView, controller: WebViewController) {
         bindBackAction(currentRoot) { sendBackAction(controller) }
@@ -214,7 +202,7 @@ internal class WebViewInAppViewHolder(
         val payload = requireNotNull(message.payload) { "Missing payload" }
         val gestures = parseMotionGestures(payload)
         require(gestures.isNotEmpty()) { "No valid gestures provided. Available: shake, flip" }
-        val result = motionService.startMonitoring(gestures)
+        val result = getOrCreateMotionService().startMonitoring(gestures)
         require(!result.allUnavailable) {
             "No sensors available for: ${result.unavailable.joinToString { it.value }}"
         }
@@ -229,7 +217,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleMotionStopAction(): String {
-        if (isMotionServiceInitialized) motionService.stopMonitoring()
+        motionService?.stopMonitoring()
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
@@ -247,6 +235,7 @@ internal class WebViewInAppViewHolder(
         )
         sendActionInternal(controller, message) { error ->
             mindboxLogW("[WebView] Motion: failed to send motion.event to JS: $error")
+            motionService?.stopMonitoring()
         }
     }
 
@@ -255,7 +244,7 @@ internal class WebViewInAppViewHolder(
             val array = JSONObject(payload).optJSONArray(MOTION_GESTURES_KEY)
                 ?: return@loggingRunCatching emptySet()
             (0 until array.length())
-                .mapNotNull { i -> MotionGesture.entries.find { it.value == array.optString(i) } }
+                .mapNotNull { i -> array.optString(i).enumValue<MotionGesture>() }
                 .toSet()
         }
     }
@@ -327,7 +316,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleCloseAction(message: BridgeMessage): String {
-        if (isMotionServiceInitialized) motionService.stopMonitoring()
+        motionService?.stopMonitoring()
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -765,7 +754,7 @@ internal class WebViewInAppViewHolder(
 
     override fun onClose() {
         hapticFeedbackExecutor.cancel()
-        if (isMotionServiceInitialized) motionService.stopMonitoring()
+        motionService?.stopMonitoring()
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
@@ -780,6 +769,18 @@ internal class WebViewInAppViewHolder(
         super.onClose()
     }
 
+    private fun getOrCreateMotionService(): MotionServiceProtocol =
+        motionService ?: MotionService(
+            context = appContext,
+            lifecycle = ProcessLifecycleOwner.get().lifecycle,
+            timeProvider = timeProvider,
+        ).also { service ->
+            service.onGestureDetected = { gesture, data ->
+                sendMotionEvent(gesture = gesture, data = data)
+            }
+            motionService = service
+        }
+
     private data class NavigationInterceptedPayload(
         val url: String
     )
@@ -789,7 +790,9 @@ internal class WebViewInAppViewHolder(
     )
 
     private data class MotionStartPayload(
+        @SerializedName("success")
         val success: Boolean = true,
+        @SerializedName("unavailable")
         val unavailable: List<String>? = null,
     )
 
