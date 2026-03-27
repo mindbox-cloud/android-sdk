@@ -115,7 +115,7 @@ class MotionServiceShakeTest {
 
         motionService.processShake(x = phoneThresholdG + 1f, y = 0f, z = 0f)
 
-        assertTrue(capturedData != null && capturedData.isEmpty())
+        assertTrue(capturedData != null && capturedData?.isEmpty() == true)
     }
 
     @Test
