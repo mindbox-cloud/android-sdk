@@ -8,7 +8,6 @@ import android.hardware.SensorManager
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import kotlin.math.abs
 import kotlin.math.sqrt
@@ -73,7 +72,7 @@ internal class MotionService(
     private var lastShakeX = 0f
     private var lastShakeY = 0f
     private var lastShakeZ = 0f
-    private var accumShake = 0f
+    private var accumulateShake = 0f
     private var lastShakeTimestampMs = 0L
 
     private var currentFlipPosition: DevicePosition? = null
@@ -93,9 +92,9 @@ internal class MotionService(
     private val flipListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             processFlip(
-                x = event.values[0],
-                y = event.values[1],
-                z = event.values[2],
+                x = -event.values[0],
+                y = -event.values[1],
+                z = -event.values[2],
             )
         }
 
@@ -187,7 +186,7 @@ internal class MotionService(
         lastShakeX = 0f
         lastShakeY = 0f
         lastShakeZ = 0f
-        accumShake = 0f
+        accumulateShake = 0f
         lastShakeTimestampMs = 0L
     }
 
@@ -199,14 +198,11 @@ internal class MotionService(
         val dy = y - lastShakeY
         val dz = z - lastShakeZ
         val delta = sqrt(dx * dx + dy * dy + dz * dz)
-        accumShake = accumShake * SMOOTHING_FACTOR + delta
-        mindboxLogI("Accum shake is $accumShake")
+        accumulateShake = accumulateShake * SMOOTHING_FACTOR + delta
         val nowMs = System.currentTimeMillis()
-        if (accumShake > shakeAccelerationThreshold && nowMs - lastShakeTimestampMs > COOLDOWN_MS) {
-            val detectedAccum = accumShake
-            accumShake = 0f
+        if (accumulateShake > shakeAccelerationThreshold && nowMs - lastShakeTimestampMs > COOLDOWN_MS) {
+            accumulateShake = 0f
             lastShakeTimestampMs = nowMs
-            mindboxLogD("[WebView] Motion: shake detected (accum=$detectedAccum, threshold=$shakeAccelerationThreshold)")
             onGestureDetected?.invoke(MotionGesture.SHAKE, emptyMap())
         }
 
@@ -224,7 +220,6 @@ internal class MotionService(
 
         if (from == null) return
 
-        mindboxLogD("[WebView] Motion: flip detected ${from.value} -> ${newPosition.value}")
         onGestureDetected?.invoke(
             MotionGesture.FLIP,
             mapOf("from" to from.value, "to" to newPosition.value),
