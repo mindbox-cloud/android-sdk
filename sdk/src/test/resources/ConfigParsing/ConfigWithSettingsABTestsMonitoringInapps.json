@@ -20,6 +20,10 @@
         ],
         "$type": "and"
       },
+      "tags": {
+        "layer": "webView",
+        "type": "modal"
+      },
       "form": {
         "variants": [
           {
@@ -330,6 +334,9 @@
     "slidingExpiration": {
       "config": "0.00:30:00",
       "pushTokenKeepalive": "0.00:40:00"
+    },
+    "featureToggles": {
+      "shouldSendInAppShowError": true
     }
   },
   "abtests": [

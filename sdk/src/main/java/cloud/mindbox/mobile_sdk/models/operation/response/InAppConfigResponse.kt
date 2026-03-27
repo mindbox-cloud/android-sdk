@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.models.operation.response
 
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.FeatureTogglesDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppIsPriorityDeserializer
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
@@ -11,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDt
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InappSettingsDtoBlankDeserializer
 import com.google.gson.annotations.JsonAdapter
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppDelayTimeDeserializer
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppTagsDeserializer
 
 internal data class InAppConfigResponse(
     @SerializedName("inapps")
@@ -31,7 +33,9 @@ internal data class SettingsDtoBlank(
     @SerializedName("slidingExpiration")
     val slidingExpiration: SlidingExpirationDtoBlank?,
     @SerializedName("inapp")
-    val inappSettings: InappSettingsDtoBlank?
+    val inappSettings: InappSettingsDtoBlank?,
+    @SerializedName("featureToggles")
+    val featureToggles: FeatureTogglesDtoBlank?
 ) {
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
@@ -60,6 +64,11 @@ internal data class SettingsDtoBlank(
         @SerializedName(InappSettingsDtoBlankDeserializer.MIN_INTERVAL_BETWEEN_SHOWS)
         val minIntervalBetweenShows: TimeSpan?,
     )
+
+    @JsonAdapter(FeatureTogglesDtoBlankDeserializer::class)
+    internal data class FeatureTogglesDtoBlank(
+        val toggles: Map<String, Boolean?>
+    )
 }
 
 internal data class SettingsDto(
@@ -70,7 +79,9 @@ internal data class SettingsDto(
     @SerializedName("slidingExpiration")
     val slidingExpiration: SlidingExpirationDto?,
     @SerializedName("inapp")
-    val inapp: InappSettingsDto?
+    val inapp: InappSettingsDto?,
+    @SerializedName("featureToggles")
+    val featureToggles: Map<String, Boolean?>?
 )
 
 internal data class OperationDto(
@@ -120,6 +131,8 @@ internal data class InAppDto(
     val targeting: TreeTargetingDto?,
     @SerializedName("form")
     val form: FormDto?,
+    @SerializedName(InAppTagsDeserializer.TAGS)
+    val tags: Map<String, String>?,
 )
 
 internal sealed class FrequencyDto {
@@ -213,5 +226,8 @@ internal data class InAppConfigResponseBlank(
         // FormDto. Parsed after filtering inApp versions.
         @SerializedName("form")
         val form: JsonObject?,
+        @SerializedName("tags")
+        @JsonAdapter(InAppTagsDeserializer::class)
+        val tags: Map<String, String>?,
     )
 }

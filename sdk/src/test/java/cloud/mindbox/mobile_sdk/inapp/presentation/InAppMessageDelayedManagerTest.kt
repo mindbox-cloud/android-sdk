@@ -25,10 +25,10 @@ class InAppMessageDelayedManagerTest {
         val inApp = InAppStub.getInApp().copy(delayTime = Milliseconds(10000))
         every { timeProvider.currentTimeMillis() } answers { testDispatcher.scheduler.currentTime }
 
-        inAppMessageDelayedManager.process(inApp)
+        inAppMessageDelayedManager.process(inApp, Milliseconds(0L))
         inAppMessageDelayedManager.inAppToShowFlow.test {
             advanceTimeBy(10_001)
-            assertEquals(inApp, awaitItem())
+            assertEquals(inApp, awaitItem().first)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -38,13 +38,13 @@ class InAppMessageDelayedManagerTest {
         every { timeProvider.currentTimeMillis() } answers { testDispatcher.scheduler.currentTime }
         val inApp = InAppStub.getInApp().copy(delayTime = Milliseconds(10000))
 
-        inAppMessageDelayedManager.process(inApp)
+        inAppMessageDelayedManager.process(inApp, Milliseconds(0L))
 
         inAppMessageDelayedManager.inAppToShowFlow.test {
             advanceTimeBy(9_999)
             expectNoEvents()
             advanceTimeBy(1)
-            assertEquals(inApp, awaitItem())
+            assertEquals(inApp, awaitItem().first)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -53,7 +53,7 @@ class InAppMessageDelayedManagerTest {
     fun `clearSession should cancel pending jobs and clear queue`() = runTest(testDispatcher.scheduler) {
         every { timeProvider.currentTimeMillis() } answers { testDispatcher.scheduler.currentTime }
         val inApp = InAppStub.getInApp().copy(delayTime = Milliseconds(10000))
-        inAppMessageDelayedManager.process(inApp)
+        inAppMessageDelayedManager.process(inApp, Milliseconds(0L))
         inAppMessageDelayedManager.clearSession()
         inAppMessageDelayedManager.inAppToShowFlow.test {
             testDispatcher.scheduler.advanceUntilIdle()
@@ -67,11 +67,11 @@ class InAppMessageDelayedManagerTest {
         val inAppOne = InAppStub.getInApp().copy(id = "inApp1", delayTime = Milliseconds(10000))
         val inAppTwo = InAppStub.getInApp().copy(id = "inApp2", delayTime = Milliseconds(5000), isPriority = true)
 
-        inAppMessageDelayedManager.process(inAppOne)
-        inAppMessageDelayedManager.process(inAppTwo)
+        inAppMessageDelayedManager.process(inAppOne, Milliseconds(0L))
+        inAppMessageDelayedManager.process(inAppTwo, Milliseconds(0L))
 
         inAppMessageDelayedManager.inAppToShowFlow.test {
-            assertEquals(inAppTwo, awaitItem())
+            assertEquals(inAppTwo, awaitItem().first)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -82,11 +82,11 @@ class InAppMessageDelayedManagerTest {
         val inAppNonPriority = InAppStub.getInApp().copy(id = "inApp1", delayTime = Milliseconds(5000))
         val inAppPriority = InAppStub.getInApp().copy(id = "inApp2", delayTime = Milliseconds(5000), isPriority = true)
 
-        inAppMessageDelayedManager.process(inAppNonPriority)
-        inAppMessageDelayedManager.process(inAppPriority)
+        inAppMessageDelayedManager.process(inAppNonPriority, Milliseconds(0L))
+        inAppMessageDelayedManager.process(inAppPriority, Milliseconds(0L))
 
         inAppMessageDelayedManager.inAppToShowFlow.test {
-            assertEquals(inAppPriority, awaitItem())
+            assertEquals(inAppPriority, awaitItem().first)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -97,11 +97,11 @@ class InAppMessageDelayedManagerTest {
         val inAppFirst = InAppStub.getInApp().copy(id = "inApp1", delayTime = Milliseconds(5000), isPriority = true)
         val inAppSecond = InAppStub.getInApp().copy(id = "inApp2", delayTime = Milliseconds(5000), isPriority = true)
 
-        inAppMessageDelayedManager.process(inAppFirst)
-        inAppMessageDelayedManager.process(inAppSecond)
+        inAppMessageDelayedManager.process(inAppFirst, Milliseconds(0L))
+        inAppMessageDelayedManager.process(inAppSecond, Milliseconds(0L))
 
         inAppMessageDelayedManager.inAppToShowFlow.test {
-            assertEquals(inAppFirst, awaitItem())
+            assertEquals(inAppFirst, awaitItem().first)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -113,12 +113,12 @@ class InAppMessageDelayedManagerTest {
         val inAppLoser1 = InAppStub.getInApp().copy(id = "loser1", delayTime = Milliseconds(5000), isPriority = false)
         val inAppLoser2 = InAppStub.getInApp().copy(id = "loser2", delayTime = Milliseconds(3000), isPriority = false)
 
-        inAppMessageDelayedManager.process(inAppWinner)
-        inAppMessageDelayedManager.process(inAppLoser1)
-        inAppMessageDelayedManager.process(inAppLoser2)
+        inAppMessageDelayedManager.process(inAppWinner, Milliseconds(0L))
+        inAppMessageDelayedManager.process(inAppLoser1, Milliseconds(0L))
+        inAppMessageDelayedManager.process(inAppLoser2, Milliseconds(0L))
         advanceTimeBy(5000)
         inAppMessageDelayedManager.inAppToShowFlow.test {
-            assertEquals(inAppWinner, awaitItem())
+            assertEquals(inAppWinner, awaitItem().first)
             expectNoEvents()
         }
     }

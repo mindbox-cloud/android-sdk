@@ -110,12 +110,18 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
             }
 
             val inappSettings = runCatching {
-                gson.fromJson(json.asJsonObject.get("inapp"), SettingsDtoBlank.InappSettingsDtoBlank::class.java)?.copy()
+                gson.fromJson(json.asJsonObject.get("inapp"), InappSettingsDtoBlank::class.java)?.copy()
             }.getOrNull {
                 mindboxLogE("Failed to parse inapp block in settings section ")
             }
 
-            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings)
+            val featureToggles = runCatching {
+                gson.fromJson(json.asJsonObject.get("featureToggles"), FeatureTogglesDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse featureToggles block in settings section")
+            }
+
+            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings, featureToggles)
         }
     }.getOrNull {
         mindboxLogE("Failed to parse settings block", it)
@@ -145,19 +151,6 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 variants = blankResult.getOrNull()?.variants?.filterNotNull()
                     ?.map { payloadBlankDto ->
                         when (payloadBlankDto) {
-                            is PayloadBlankDto.WebViewBlankDto -> {
-                                PayloadDto.WebViewDto(
-                                    content = PayloadDto.ModalWindowDto.ContentDto(
-                                        background = BackgroundDto(
-                                            layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
-                                                deserializeToBackgroundLayersDto(it as JsonObject)
-                                            }),
-                                        elements = payloadBlankDto.content?.elements?.mapNotNull {
-                                            deserializeToElementDto(it)
-                                        }
-                                    ), type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME
-                                )
-                            }
                             is PayloadBlankDto.ModalWindowBlankDto -> {
                                 PayloadDto.ModalWindowDto(
                                     content = PayloadDto.ModalWindowDto.ContentDto(
@@ -171,6 +164,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                     ), type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
                                 )
                             }
+
                             is PayloadBlankDto.SnackBarBlankDto -> {
                                 PayloadDto.SnackbarDto(
                                     content = PayloadDto.SnackbarDto.ContentDto(
@@ -193,7 +187,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                                 top = payloadBlankDto.content?.position?.margin?.top
                                             )
                                         )
-                                    ), type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
+                                    ), type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
                                 )
                             }
                         }

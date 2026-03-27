@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.dto
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.WebViewParamsDeserializer
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
 internal data class BackgroundDto(
@@ -68,6 +70,7 @@ internal data class BackgroundDto(
             @SerializedName("${"$"}type")
             val type: String?,
             @SerializedName("params")
+            @JsonAdapter(WebViewParamsDeserializer::class)
             val params: Map<String, String>?,
         ) : LayerDto() {
             internal companion object {

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerDayLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerSessionLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MinIntervalBetweenShowsLimitChecker
@@ -17,7 +18,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
@@ -25,6 +28,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidato
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
@@ -37,6 +41,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 
+@OptIn(InternalMindboxApi::class)
 internal fun DataModule(
     appContextModule: AppContextModule,
     apiModule: ApiModule
@@ -56,11 +61,14 @@ internal fun DataModule(
     override val modalWindowValidator: ModalWindowValidator by lazy {
         ModalWindowValidator(
             imageLayerValidator = imageLayerValidator,
+            webViewLayerValidator = webViewLayerValidator,
             elementValidator = modalElementValidator
         )
     }
     override val imageLayerValidator: ImageLayerValidator
         get() = ImageLayerValidator()
+    override val webViewLayerValidator: WebViewLayerValidator
+        get() = WebViewLayerValidator()
 
     override val modalElementValidator: ModalElementValidator by lazy {
         ModalElementValidator(
@@ -154,7 +162,8 @@ internal fun DataModule(
             timeSpanPositiveValidator = slidingExpirationParametersValidator,
             mobileConfigSettingsManager = mobileConfigSettingsManager,
             integerPositiveValidator = integerPositiveValidator,
-            inappSettingsManager = inappSettingsManager
+            inappSettingsManager = inappSettingsManager,
+            featureToggleManager = featureToggleManager
         )
     }
 
@@ -197,11 +206,24 @@ internal fun DataModule(
     override val inAppSerializationManager: InAppSerializationManager
         get() = InAppSerializationManagerImpl(gson = gson)
 
+    override val inAppFailureTracker: InAppFailureTracker by lazy {
+        InAppFailureTrackerImpl(
+            timeProvider = timeProvider,
+            inAppRepository = inAppRepository,
+            featureToggleManager = featureToggleManager
+        )
+    }
+
     override val inAppSegmentationRepository: InAppSegmentationRepository by lazy {
         InAppSegmentationRepositoryImpl(
             inAppMapper = inAppMapper,
             sessionStorageManager = sessionStorageManager,
             gatewayManager = gatewayManager,
+        )
+    }
+    override val inAppTargetingErrorRepository: InAppTargetingErrorRepository by lazy {
+        InAppTargetingErrorRepositoryImpl(
+            sessionStorageManager = sessionStorageManager
         )
     }
 
@@ -239,6 +261,7 @@ internal fun DataModule(
     }
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }
+    override val featureToggleManager: FeatureToggleManager by lazy { FeatureToggleManagerImpl() }
     override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
     override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker(sessionStorageManager, inAppRepository, timeProvider) }
@@ -273,6 +296,23 @@ internal fun DataModule(
             .registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
                     .of(
+                        BridgeMessage::class.java,
+                        BridgeMessage.TYPE_FIELD_NAME,
+                        true
+                    ).registerSubtype(
+                        BridgeMessage.Request::class.java,
+                        BridgeMessage.TYPE_REQUEST
+                    ).registerSubtype(
+                        BridgeMessage.Response::class.java,
+                        BridgeMessage.TYPE_RESPONSE
+                    ).registerSubtype(
+                        BridgeMessage.Error::class.java,
+                        BridgeMessage.TYPE_ERROR
+                    )
+            )
+            .registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
                         FrequencyDto::class.java,
                         Constants.TYPE_JSON_NAME,
                         true
@@ -295,9 +335,6 @@ internal fun DataModule(
                     ).registerSubtype(
                         PayloadBlankDto.SnackBarBlankDto::class.java,
                         PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
-                    ).registerSubtype(
-                        PayloadBlankDto.WebViewBlankDto::class.java,
-                        PayloadDto.WebViewDto.WEBVIEW_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory

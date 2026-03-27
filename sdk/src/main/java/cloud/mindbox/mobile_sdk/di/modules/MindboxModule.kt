@@ -69,7 +69,9 @@ internal interface DataModule : MindboxModule {
     val callbackRepository: CallbackRepository
     val geoSerializationManager: GeoSerializationManager
     val inAppSerializationManager: InAppSerializationManager
+    val inAppFailureTracker: InAppFailureTracker
     val inAppSegmentationRepository: InAppSegmentationRepository
+    val inAppTargetingErrorRepository: InAppTargetingErrorRepository
     val inAppValidator: InAppValidator
     val inAppMapper: InAppMapper
     val gson: Gson
@@ -88,6 +90,7 @@ internal interface DataModule : MindboxModule {
     val modalElementDtoDataFiller: ModalElementDtoDataFiller
     val modalWindowValidator: ModalWindowValidator
     val imageLayerValidator: ImageLayerValidator
+    val webViewLayerValidator: WebViewLayerValidator
     val modalElementValidator: ModalElementValidator
     val snackbarValidator: SnackbarValidator
     val closeButtonModalElementValidator: CloseButtonModalElementValidator
@@ -114,6 +117,7 @@ internal interface DataModule : MindboxModule {
     val mobileConfigSettingsManager: MobileConfigSettingsManager
     val integerPositiveValidator: IntegerPositiveValidator
     val inappSettingsManager: InappSettingsManager
+    val featureToggleManager: FeatureToggleManager
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker

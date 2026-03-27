@@ -2,25 +2,25 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.view.ViewGroup
-import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.addUnique
 import cloud.mindbox.mobile_sdk.di.mindboxInject
-import cloud.mindbox.mobile_sdk.fromJson
-import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
-import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.ActivityBackPressRegistrar
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BackPressRegistrar
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.ModalWindowInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.SnackbarInAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
-import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
@@ -31,10 +31,14 @@ internal interface MindboxView {
 
     val container: ViewGroup
 
+    val backPressRegistrar: BackPressRegistrar
+
     fun requestPermission()
 }
 
-internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: InAppImageSizeStorage) :
+internal class InAppMessageViewDisplayerImpl(
+    private val inAppImageSizeStorage: InAppImageSizeStorage
+) :
     InAppMessageViewDisplayer {
 
     companion object {
@@ -53,7 +57,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
     private var currentHolder: InAppViewHolder<*>? = null
     private var pausedHolder: InAppViewHolder<*>? = null
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
-    private val gson by mindboxInject { gson }
+    private val inAppFailureTracker: InAppFailureTracker by mindboxInject { inAppFailureTracker }
 
     private fun isUiPresent(): Boolean = currentActivity?.isFinishing?.not() ?: false
 
@@ -70,10 +74,9 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                         inAppActionCallbacks = wrapper.inAppActionCallbacks.copy(onInAppShown = {
                             mindboxLogI("Skip InApp.Show for restored inApp")
                             currentActivity?.postDelayedAnimation {
-                                pausedHolder?.hide()
+                                pausedHolder?.onClose()
                             }
-                        }
-                        )
+                        })
                     ),
                     isRestored = true
                 )
@@ -109,7 +112,7 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
 
     override fun onStopCurrentActivity(activity: Activity) {
         mindboxLogI("onStopCurrentActivity: ${activity.hashCode()}")
-        pausedHolder?.hide()
+        pausedHolder?.onStop()
     }
 
     override fun onPauseCurrentActivity(activity: Activity) {
@@ -117,54 +120,18 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         if (currentActivity == activity) {
             currentActivity = null
         }
-        pausedHolder = currentHolder
+        val holderToPause = currentHolder ?: return
+        pausedHolder?.onClose()
+        pausedHolder = holderToPause
         currentHolder = null
-    }
-
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal fun getWebViewFromPayload(inAppType: InAppType, inAppId: String): InAppType.WebView? {
-        val layer = when (inAppType) {
-            is InAppType.Snackbar -> inAppType.layers.firstOrNull()
-            is InAppType.ModalWindow -> inAppType.layers.firstOrNull()
-            is InAppType.WebView -> return inAppType
-        }
-        if (layer !is Layer.ImageLayer) {
-            return null
-        }
-
-        val payload = when (layer.action) {
-            is Layer.ImageLayer.Action.RedirectUrlAction -> layer.action.payload
-            is Layer.ImageLayer.Action.PushPermissionAction -> layer.action.payload
-        }
-        runCatching {
-            val layerDto = gson.fromJson<BackgroundDto.LayerDto.WebViewLayerDto>(payload).getOrThrow()
-            requireNotNull(layerDto.type)
-            requireNotNull(layerDto.contentUrl)
-            requireNotNull(layerDto.baseUrl)
-            Layer.WebViewLayer(
-                baseUrl = layerDto.baseUrl,
-                contentUrl = layerDto.contentUrl,
-                type = layerDto.type,
-                params = layerDto.params ?: emptyMap()
-            )
-        }.getOrNull()?.let { webView ->
-            return InAppType.WebView(
-                inAppId = inAppId,
-                type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
-                layers = listOf(webView),
-            )
-        }
-
-        return null
     }
 
     override fun tryShowInAppMessage(
         inAppType: InAppType,
-        inAppActionCallbacks: InAppActionCallbacks
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit,
     ) {
-        val wrapper = getWebViewFromPayload(inAppType, inAppType.inAppId)?.let {
-            InAppTypeWrapper(it, inAppActionCallbacks)
-        } ?: InAppTypeWrapper(inAppType, inAppActionCallbacks)
+        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks, onRenderStart)
 
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)
@@ -191,28 +158,38 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         wrapper: InAppTypeWrapper<InAppType>,
         isRestored: Boolean = false,
     ) {
-        if (!isRestored) isActionExecuted = false
+        if (!isRestored) {
+            wrapper.onRenderStart()
+            isActionExecuted = false
+        }
+        if (isRestored && tryReattachRestoredInApp(wrapper.inAppType.inAppId)) return
+        if (isRestored) {
+            pausedHolder?.onClose()
+            pausedHolder = null
+        }
+
         val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
-            pausedHolder?.hide()
-            pausedHolder = null
-            currentHolder = null
         }
+        val controller = InAppViewHolder.InAppController { closeInApp() }
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
             is InAppType.WebView -> WebViewInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.WebView>,
+                controller = controller,
                 inAppCallback = callbackWrapper
             )
 
             is InAppType.ModalWindow -> ModalWindowInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.ModalWindow>,
+                controller = controller,
                 inAppCallback = callbackWrapper
             )
 
             is InAppType.Snackbar -> SnackbarInAppViewHolder(
                 wrapper = wrapper as InAppTypeWrapper<InAppType.Snackbar>,
+                controller = controller,
                 inAppCallback = callbackWrapper,
                 inAppImageSizeStorage = inAppImageSizeStorage,
                 isFirstShow = !isRestored
@@ -220,22 +197,58 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
         }
 
         currentActivity?.root?.let { root ->
-            currentHolder?.show(object : MindboxView {
-                override val container: ViewGroup
-                    get() = root
-
-                override fun requestPermission() {
-                    currentActivity?.let { activity ->
-                        mindboxNotificationManager.requestPermission(activity = activity)
-                    }
-                }
-            })
+            inAppFailureTracker.executeWithFailureTracking(
+                inAppId = wrapper.inAppType.inAppId,
+                failureReason = FailureReason.PRESENTATION_FAILED,
+                errorDescription = "Error when trying draw inapp",
+                onFailure = ::closeInApp
+            ) {
+                currentHolder?.show(createMindboxView(root))
+            }
         } ?: run {
-            mindboxLogE("failed to show inApp: currentRoot is null")
+            inAppFailureTracker.sendPresentationFailure(
+                inAppId = wrapper.inAppType.inAppId,
+                errorDescription = "currentRoot is null"
+            )
         }
     }
 
-    override fun hideCurrentInApp() {
+    private fun tryReattachRestoredInApp(inAppId: String): Boolean {
+        val restoredHolder: InAppViewHolder<*> = pausedHolder
+            ?.takeIf { it.canReuseOnRestore(inAppId) }
+            ?: return false
+        currentHolder = restoredHolder
+        pausedHolder = null
+        val root: ViewGroup = currentActivity?.root ?: run {
+            inAppFailureTracker.sendPresentationFailure(
+                inAppId = inAppId,
+                errorDescription = "failed to reattach inApp: currentRoot is null"
+            )
+            return true
+        }
+        inAppFailureTracker.executeWithFailureTracking(
+            inAppId = inAppId,
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDescription = "Error when trying reattach InApp",
+            onFailure = ::closeInApp,
+        ) {
+            restoredHolder.reattach(createMindboxView(root))
+        }
+        return true
+    }
+
+    private fun createMindboxView(root: ViewGroup): MindboxView =
+        object : MindboxView {
+            override val container: ViewGroup = root
+            override val backPressRegistrar: BackPressRegistrar =
+                ActivityBackPressRegistrar(activityProvider = { currentActivity })
+
+            override fun requestPermission() {
+                currentActivity?.let { mindboxNotificationManager.requestPermission(activity = it) }
+            }
+        }
+
+    override fun dismissCurrentInApp() {
         loggingRunCatching {
             if (isInAppActive()) {
                 currentHolder?.wrapper?.inAppActionCallbacks
@@ -243,15 +256,15 @@ internal class InAppMessageViewDisplayerImpl(private val inAppImageSizeStorage: 
                     ?.onInAppDismiss
                     ?.onDismiss()
             }
-            currentHolder?.apply {
-                hide()
-                release()
-            }
+        }
+        closeInApp()
+    }
+
+    private fun closeInApp() {
+        loggingRunCatching {
+            currentHolder?.onClose()
             currentHolder = null
-            pausedHolder?.apply {
-                hide()
-                release()
-            }
+            pausedHolder?.onClose()
             pausedHolder = null
             inAppQueue.clear()
             isActionExecuted = false

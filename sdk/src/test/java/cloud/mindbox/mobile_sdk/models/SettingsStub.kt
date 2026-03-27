@@ -21,7 +21,8 @@ internal class SettingsStub {
                         config = config,
                         pushTokenKeepalive = pushTokenKeepalive
                     ),
-                    inapp = null
+                    inapp = null,
+                    featureToggles = null
                 ),
                 abtests = null
             )
@@ -43,7 +44,8 @@ internal class SettingsStub {
                     maxInappsPerSession = maxInappsPerSession,
                     maxInappsPerDay = maxInappsPerDay,
                     minIntervalBetweenShows = minIntervalBetweenShows
-                )
+                ),
+                featureToggles = emptyMap()
             ),
             abtests = null
         )

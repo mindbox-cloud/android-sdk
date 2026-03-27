@@ -126,8 +126,8 @@ class InAppRepositoryTest {
     fun `send in app shown success`() {
         val testInAppId = "testInAppId"
         val serializedString = "serializedString"
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
-        inAppRepository.sendInAppShown(testInAppId)
+        every { inAppSerializationManager.serializeToInAppShownActionString(any(), any(), any()) } returns serializedString
+        inAppRepository.sendInAppShown(testInAppId, "0:00:00:00.2250000", null)
         verify(exactly = 1) {
             MindboxEventManager.inAppShown(context, serializedString)
         }
@@ -137,8 +137,8 @@ class InAppRepositoryTest {
     fun `send in app shown empty string`() {
         val testInAppId = "testInAppId"
         val serializedString = ""
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
-        inAppRepository.sendInAppShown(testInAppId)
+        every { inAppSerializationManager.serializeToInAppShownActionString(any(), any(), any()) } returns serializedString
+        inAppRepository.sendInAppShown(testInAppId, "0:00:00:00.2250000", null)
         verify(exactly = 0) {
             MindboxEventManager.inAppShown(context, serializedString)
         }
@@ -148,7 +148,7 @@ class InAppRepositoryTest {
     fun `send in app clicked success`() {
         val testInAppId = "testInAppId"
         val serializedString = "serializedString"
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        every { inAppSerializationManager.serializeToInAppActionString(any()) } returns serializedString
         inAppRepository.sendInAppClicked(testInAppId)
         verify(exactly = 1) {
             MindboxEventManager.inAppClicked(context, serializedString)
@@ -159,7 +159,7 @@ class InAppRepositoryTest {
     fun `send in app clicked empty string`() {
         val testInAppId = "testInAppId"
         val serializedString = ""
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
+        every { inAppSerializationManager.serializeToInAppActionString(any()) } returns serializedString
         inAppRepository.sendInAppClicked(testInAppId)
         verify(exactly = 0) {
             MindboxEventManager.inAppClicked(context, serializedString)
@@ -170,10 +170,10 @@ class InAppRepositoryTest {
     fun `send user targeted success`() {
         val testInAppId = "testInAppId"
         val serializedString = "serializedString"
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
-        inAppRepository.sendInAppClicked(testInAppId)
+        every { inAppSerializationManager.serializeToInAppActionString(any()) } returns serializedString
+        inAppRepository.sendUserTargeted(testInAppId)
         verify(exactly = 1) {
-            MindboxEventManager.inAppClicked(context, serializedString)
+            MindboxEventManager.sendUserTargeted(context, serializedString)
         }
     }
 
@@ -181,10 +181,10 @@ class InAppRepositoryTest {
     fun `send user targeted string`() {
         val testInAppId = "testInAppId"
         val serializedString = ""
-        every { inAppSerializationManager.serializeToInAppHandledString(any()) } returns serializedString
-        inAppRepository.sendInAppClicked(testInAppId)
+        every { inAppSerializationManager.serializeToInAppActionString(any()) } returns serializedString
+        inAppRepository.sendUserTargeted(testInAppId)
         verify(exactly = 0) {
-            MindboxEventManager.inAppClicked(context, serializedString)
+            MindboxEventManager.sendUserTargeted(context, serializedString)
         }
     }
 

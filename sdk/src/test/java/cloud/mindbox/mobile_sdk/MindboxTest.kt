@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk
 
 import android.app.Application
 import android.content.Context
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -43,6 +44,8 @@ class MindboxTest {
 
     @Before
     fun setUp() {
+        mockkObject(MindboxDI)
+        every { MindboxDI.appModule } returns mockk(relaxed = true)
         mockkObject(MindboxPreferences)
         mockkObject(PushNotificationManager)
         mockkObject(MindboxEventManager)
@@ -55,6 +58,8 @@ class MindboxTest {
         every { MindboxPreferences.isNotificationEnabled } returns true
         every { MindboxPreferences.instanceId } returns "instanceId"
         every { MindboxPreferences.deviceUuid } returns "deviceUUID"
+        every { MindboxPreferences.firstInitializationTime } returns null
+        every { MindboxPreferences.firstInitializationTime = any() } just runs
         every { MindboxPreferences.infoUpdatedVersion } returns 1
 
         Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
@@ -239,6 +244,28 @@ class MindboxTest {
                 ),
                 any()
             )
+        }
+    }
+
+    @Test
+    fun `firstInitialization does not override saved first initialization time`() = runTest {
+        every { MindboxPreferences.firstInitializationTime } returns "2025-01-10T07:40:00Z"
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 0) {
+            MindboxPreferences.firstInitializationTime = any()
+        }
+    }
+
+    @Test
+    fun `firstInitializationDateTime saved when first initialization time`() = runTest {
+        every { MindboxPreferences.firstInitializationTime } returns null
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) {
+            MindboxPreferences.firstInitializationTime = any()
         }
     }
 

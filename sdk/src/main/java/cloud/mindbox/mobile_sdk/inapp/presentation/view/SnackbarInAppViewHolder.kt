@@ -11,14 +11,12 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.px
 
 internal class SnackbarInAppViewHolder(
-    override val wrapper: InAppTypeWrapper<InAppType.Snackbar>,
-    private val inAppCallback: InAppCallback,
+    wrapper: InAppTypeWrapper<InAppType.Snackbar>,
+    controller: InAppViewHolder.InAppController,
+    inAppCallback: InAppCallback,
     private val inAppImageSizeStorage: InAppImageSizeStorage,
     private val isFirstShow: Boolean = true,
-) : AbstractInAppViewHolder<InAppType.Snackbar>() {
-
-    override val isActive: Boolean
-        get() = isInAppMessageActive
+) : AbstractInAppViewHolder<InAppType.Snackbar>(wrapper, controller, inAppCallback) {
 
     private var requiredSizes: HashMap<String, Size> = HashMap()
 
@@ -42,7 +40,7 @@ internal class SnackbarInAppViewHolder(
         super.initView(currentRoot)
         inAppLayout.setSwipeToDismissCallback {
             mindboxLogI("In-app dismissed by swipe")
-            hideWithAnimation()
+            closeWithAnimation()
         }
     }
 
@@ -85,7 +83,7 @@ internal class SnackbarInAppViewHolder(
                     val inAppCrossView = InAppCrossView(currentDialog.context, element).apply {
                         setOnClickListener {
                             mindboxLogI("In-app dismissed by close click")
-                            hideWithAnimation()
+                            closeWithAnimation()
                         }
                     }
                     inAppLayout.addView(inAppCrossView)
@@ -101,17 +99,17 @@ internal class SnackbarInAppViewHolder(
         }
     }
 
-    private fun hideWithAnimation() {
+    private fun closeWithAnimation() {
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         when (wrapper.inAppType.position.gravity.vertical) {
             SnackbarPosition.TOP -> inAppLayout.slideDown(
                 isReverse = true,
-                onAnimationEnd = ::hide
+                onAnimationEnd = inAppController::close
             )
 
             SnackbarPosition.BOTTOM -> inAppLayout.slideUp(
                 isReverse = true,
-                onAnimationEnd = ::hide
+                onAnimationEnd = inAppController::close
             )
         }
     }

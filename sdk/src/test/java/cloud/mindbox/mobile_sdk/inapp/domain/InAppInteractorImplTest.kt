@@ -2,16 +2,19 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -65,7 +68,7 @@ class InAppInteractorImplTest {
     @MockK
     private lateinit var minIntervalBetweenShowsLimitChecker: Checker
 
-    @MockK
+    @RelaxedMockK
     private lateinit var timeProvider: TimeProvider
 
     @RelaxedMockK
@@ -74,10 +77,19 @@ class InAppInteractorImplTest {
     @RelaxedMockK
     private lateinit var inAppSegmentationRepository: InAppSegmentationRepository
 
+    @RelaxedMockK
+    private lateinit var inAppTargetingErrorRepository: InAppTargetingErrorRepository
+
+    @RelaxedMockK
+    private lateinit var sessionStorageManager: SessionStorageManager
+
     @MockK
     private lateinit var inAppContentFetcher: InAppContentFetcher
 
     private lateinit var interactor: InAppInteractor
+
+    @RelaxedMockK
+    private lateinit var inAppFailureTracker: InAppFailureTracker
 
     @Before
     fun setup() {
@@ -92,7 +104,8 @@ class InAppInteractorImplTest {
             maxInappsPerSessionLimitChecker,
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
-            timeProvider
+            timeProvider,
+            sessionStorageManager
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
@@ -109,7 +122,7 @@ class InAppInteractorImplTest {
             isPriority = false,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "nonPriorityInapp1"
                     )
@@ -121,7 +134,7 @@ class InAppInteractorImplTest {
             isPriority = true,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "priorityInapp"
                     )
@@ -134,7 +147,7 @@ class InAppInteractorImplTest {
             isPriority = true,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "priorityInapp2"
                     )
@@ -146,7 +159,7 @@ class InAppInteractorImplTest {
             isPriority = false,
             targeting = InAppStub.getTargetingTrueNode().copy("true"),
             form = InAppStub.getInApp().form.copy(
-                listOf(
+                variants = listOf(
                     InAppStub.getModalWindow().copy(
                         inAppId = "nonPriorityInApp2"
                     )
@@ -162,8 +175,10 @@ class InAppInteractorImplTest {
         val realProcessingManager = InAppProcessingManagerImpl(
             inAppGeoRepository,
             inAppSegmentationRepository,
+            inAppTargetingErrorRepository,
             inAppContentFetcher,
-            inAppRepository
+            inAppRepository,
+            inAppFailureTracker
         )
 
         interactor = InAppInteractorImpl(
@@ -177,7 +192,8 @@ class InAppInteractorImplTest {
             maxInappsPerSessionLimitChecker,
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
-            timeProvider
+            timeProvider,
+            sessionStorageManager
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns inAppsFromConfig
@@ -197,19 +213,19 @@ class InAppInteractorImplTest {
         interactor.processEventAndConfig().test {
             eventFlow.emit(InAppEventType.AppStartup)
             val firstItem = awaitItem()
-            assertEquals(priorityInApp, firstItem)
+            assertEquals(priorityInApp, firstItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val secondItem = awaitItem()
-            assertEquals(priorityInAppTwo, secondItem)
+            assertEquals(priorityInAppTwo, secondItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val thirdItem = awaitItem()
-            assertEquals(nonPriorityInApp, thirdItem)
+            assertEquals(nonPriorityInApp, thirdItem.first)
 
             eventFlow.emit(InAppEventType.AppStartup)
             val fourthItem = awaitItem()
-            assertEquals(nonPriorityInAppTwo, fourthItem)
+            assertEquals(nonPriorityInAppTwo, fourthItem.first)
 
             cancelAndIgnoreRemainingEvents()
         }

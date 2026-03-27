@@ -62,7 +62,8 @@ internal class InAppMapper {
                 sdkVersion = inApp.sdkVersion,
                 targeting = targetingDto,
                 frequency = frequencyDto,
-                form = formDto
+                form = formDto,
+                tags = inApp.tags,
             )
         }
     }
@@ -78,7 +79,7 @@ internal class InAppMapper {
         )
     }
 
-    private fun mapModalWindowLayers(layers: List<BackgroundDto.LayerDto?>?): List<Layer> {
+    private fun mapBackgroundLayers(layers: List<BackgroundDto.LayerDto?>?): List<Layer> {
         return layers?.map { layerDto ->
             when (layerDto) {
                 is BackgroundDto.LayerDto.ImageLayerDto -> {
@@ -244,28 +245,28 @@ internal class InAppMapper {
                         form = Form(
                             variants = inAppDto.form?.variants?.map { payloadDto ->
                                 when (payloadDto) {
-                                    is PayloadDto.WebViewDto -> {
-                                        InAppType.WebView(
-                                            inAppId = inAppDto.id,
-                                            type = PayloadDto.WebViewDto.WEBVIEW_JSON_NAME,
-                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
-                                        )
-                                    }
-
                                     is PayloadDto.ModalWindowDto -> {
-                                        InAppType.ModalWindow(
-                                            type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
-                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
-                                            inAppId = inAppDto.id,
-                                            elements = mapElements(payloadDto.content?.elements)
-                                        )
+                                        val layers = mapBackgroundLayers(payloadDto.content?.background?.layers)
+                                        when (layers.firstOrNull()) {
+                                            is Layer.WebViewLayer -> InAppType.WebView(
+                                                inAppId = inAppDto.id,
+                                                type = BackgroundDto.LayerDto.WebViewLayerDto.WEBVIEW_TYPE_JSON_NAME,
+                                                layers = layers,
+                                            )
+                                            else -> InAppType.ModalWindow(
+                                                type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME,
+                                                layers = layers,
+                                                inAppId = inAppDto.id,
+                                                elements = mapElements(payloadDto.content?.elements)
+                                            )
+                                        }
                                     }
 
                                     is PayloadDto.SnackbarDto -> {
                                         InAppType.Snackbar(
                                             inAppId = inAppDto.id,
                                             type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME,
-                                            layers = mapModalWindowLayers(payloadDto.content?.background?.layers),
+                                            layers = mapBackgroundLayers(payloadDto.content?.background?.layers),
                                             elements = mapElements(payloadDto.content?.elements),
                                             position = InAppType.Snackbar.Position(
                                                 gravity = InAppType.Snackbar.Position.Gravity(
@@ -303,7 +304,8 @@ internal class InAppMapper {
                         ),
                         minVersion = inAppDto.sdkVersion?.minVersion,
                         maxVersion = inAppDto.sdkVersion?.maxVersion,
-                        frequency = Frequency(getDelay(inAppDto.frequency))
+                        frequency = Frequency(getDelay(inAppDto.frequency)),
+                        tags = inAppDto.tags?.takeIf { it.isNotEmpty() }
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {

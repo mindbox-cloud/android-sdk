@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
@@ -20,6 +21,7 @@ import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.ParseError
 import com.android.volley.Request
 import com.android.volley.VolleyError
+import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
@@ -442,6 +444,25 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     },
                 )
             )
+        }
+    }
+
+    suspend fun fetchWebViewContent(contentUrl: String): String {
+        return suspendCoroutine { continuation ->
+            try {
+                val request: StringRequest = StringRequest(
+                    Request.Method.GET,
+                    contentUrl,
+                    { response -> continuation.resume(response) },
+                    { error -> continuation.resumeWithException(error) }
+                ).apply {
+                    setShouldCache(false)
+                }
+                mindboxServiceGenerator.addToRequestQueue(request)
+            } catch (e: Exception) {
+                mindboxLogE("Failed to fetch WebView content", e)
+                continuation.resumeWithException(e)
+            }
         }
     }
 

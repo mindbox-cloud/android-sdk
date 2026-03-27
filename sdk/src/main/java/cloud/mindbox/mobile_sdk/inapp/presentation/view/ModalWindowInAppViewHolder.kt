@@ -16,21 +16,14 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.removeChildById
 
 internal class ModalWindowInAppViewHolder(
-    override val wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
-    private val inAppCallback: InAppCallback,
-) : AbstractInAppViewHolder<InAppType.ModalWindow>() {
+    wrapper: InAppTypeWrapper<InAppType.ModalWindow>,
+    controller: InAppViewHolder.InAppController,
+    inAppCallback: InAppCallback,
+) : AbstractInAppViewHolder<InAppType.ModalWindow>(wrapper, controller, inAppCallback) {
 
     private var currentBackground: ViewGroup? = null
 
-    override val isActive: Boolean
-        get() = isInAppMessageActive
-
     override fun bind() {
-        inAppLayout.setDismissListener {
-            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-            mindboxLogI("In-app dismissed by dialog click")
-            hide()
-        }
         wrapper.inAppType.elements.forEach { element ->
             when (element) {
                 is Element.CloseButton -> {
@@ -39,9 +32,9 @@ internal class ModalWindowInAppViewHolder(
                         element
                     ).apply {
                         setOnClickListener {
-                            mindboxLogI("In-app dismissed by close click")
                             inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
-                            hide()
+                            mindboxLogI("In-app dismissed by close click")
+                            inAppController.close()
                         }
                     }
                     inAppLayout.addView(inAppCrossView)
@@ -53,7 +46,7 @@ internal class ModalWindowInAppViewHolder(
             setOnClickListener {
                 inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
                 mindboxLogI("In-app dismissed by background click")
-                hide()
+                inAppController.close()
             }
 
             isVisible = true
@@ -88,6 +81,12 @@ internal class ModalWindowInAppViewHolder(
         }
         mindboxLogI("Show ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         currentDialog.requestFocus()
+        val backAction = {
+            inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
+            mindboxLogI("In-app dismissed by back press")
+            inAppController.close()
+        }
+        bindBackAction(currentRoot, backAction)
     }
 
     override fun initView(currentRoot: ViewGroup) {

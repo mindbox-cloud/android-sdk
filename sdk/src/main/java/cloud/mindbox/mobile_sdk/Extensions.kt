@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
@@ -298,4 +299,20 @@ internal fun List<InApp>.sortByPriority(): List<InApp> {
 
 internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
     return peek()?.takeIf(predicate)?.let { poll() }
+}
+
+internal fun InAppType.getImageUrl(): String? {
+    return when (this) {
+        is InAppType.WebView -> this.layers
+        is InAppType.ModalWindow -> this.layers
+        is InAppType.Snackbar -> this.layers
+    }
+        .filterIsInstance<Layer.ImageLayer>()
+        .firstOrNull()
+        ?.source
+        ?.let { source ->
+            when (source) {
+                is Layer.ImageLayer.Source.UrlSource -> source.url
+            }
+        }
 }

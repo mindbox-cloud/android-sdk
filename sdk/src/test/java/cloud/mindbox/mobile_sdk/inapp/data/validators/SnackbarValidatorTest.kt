@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.validators
 
+import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PayloadDtoStub
@@ -292,6 +293,48 @@ internal class SnackbarValidatorTest {
         every {
             elementValidator.isValid(any())
         } returns true
+        val rez = snackbarValidator.isValid(testItem)
+        assertFalse(rez)
+    }
+
+    @Test
+    fun `validate snackbar returns false when layer is webview`() {
+        val webViewLayerDto = BackgroundDto.LayerDto.WebViewLayerDto(
+            baseUrl = "https://inapp.local/popup",
+            contentUrl = "https://api.example.com/inapp.html",
+            type = "webview",
+            params = mapOf("formId" to "73379")
+        )
+        val testItem = InAppStub.getSnackbarDto().copy(
+            type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME,
+            content = InAppStub.getSnackbarContentDto().copy(
+                background = InAppStub.getBackgroundDto().copy(
+                    layers = listOf(webViewLayerDto)
+                ),
+                elements = listOf(
+                    InAppStub.getCloseButtonElementDto().copy(
+                        color = null,
+                        lineWidth = null,
+                        position = null,
+                        size = null,
+                        type = null
+                    )
+                ),
+                position = PayloadDtoStub.getSnackbarPositionDto().copy(
+                    gravity = PayloadDtoStub.getSnackbarGravityDto().copy(
+                        horizontal = null,
+                        vertical = null
+                    ),
+                    margin = PayloadDtoStub.getSnackbarMarginDto().copy(
+                        bottom = 1.0,
+                        kind = "dp",
+                        left = 1.0,
+                        right = 1.0,
+                        top = 1.0
+                    )
+                )
+            )
+        )
         val rez = snackbarValidator.isValid(testItem)
         assertFalse(rez)
     }

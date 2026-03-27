@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.managers.data_filler.DataManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
@@ -49,7 +50,8 @@ internal class MobileConfigRepositoryImpl(
     private val timeSpanPositiveValidator: TimeSpanPositiveValidator,
     private val mobileConfigSettingsManager: MobileConfigSettingsManager,
     private val integerPositiveValidator: IntegerPositiveValidator,
-    private val inappSettingsManager: InappSettingsManager
+    private val inappSettingsManager: InappSettingsManager,
+    private val featureToggleManager: FeatureToggleManager
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -100,6 +102,7 @@ internal class MobileConfigRepositoryImpl(
             mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
             mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
             inappSettingsManager.applySettings(config = filteredConfig)
+            featureToggleManager.applyToggles(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -182,7 +185,12 @@ internal class MobileConfigRepositoryImpl(
         val inappSettings = runCatching { getInappSettings(configBlank) }.getOrNull {
             mindboxLogW("Unable to get inapp settings $it")
         }
-        return SettingsDto(operations, ttl, slidingExpiration, inappSettings)
+
+        val featureToggles = runCatching { getFeatureToggles(configBlank) }.getOrNull {
+            mindboxLogW("Unable to get featureToggles settings $it")
+        }
+
+        return SettingsDto(operations, ttl, slidingExpiration, inappSettings, featureToggles)
     }
 
     private fun getInAppTtl(configBlank: InAppConfigResponseBlank?): TtlDto? =
@@ -240,6 +248,9 @@ internal class MobileConfigRepositoryImpl(
             mindboxLogE("Error parse config inapp settings", e)
             null
         }
+
+    private fun getFeatureToggles(configBlank: InAppConfigResponseBlank?): Map<String, Boolean?>? =
+        configBlank?.settings?.featureToggles?.toggles
 
     private fun getABTests(configBlank: InAppConfigResponseBlank?): List<ABTestDto> {
         return try {
