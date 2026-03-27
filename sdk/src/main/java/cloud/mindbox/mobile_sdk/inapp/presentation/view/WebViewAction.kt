@@ -63,6 +63,15 @@ public enum class WebViewAction {
 
     @SerializedName(value = "settings.open")
     SETTINGS_OPEN,
+
+    @SerializedName("motion.start")
+    MOTION_START,
+
+    @SerializedName("motion.stop")
+    MOTION_STOP,
+
+    @SerializedName("motion.event")
+    MOTION_EVENT,
 }
 
 @InternalMindboxApi

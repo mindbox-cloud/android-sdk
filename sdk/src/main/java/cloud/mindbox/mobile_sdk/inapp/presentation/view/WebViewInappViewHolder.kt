@@ -24,6 +24,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import androidx.lifecycle.ProcessLifecycleOwner
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionServiceProtocol
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionStartResult
 import cloud.mindbox.mobile_sdk.inapp.webview.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
@@ -35,6 +41,7 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
@@ -63,11 +70,15 @@ internal class WebViewInAppViewHolder(
         private const val JS_BRIDGE = "$JS_BRIDGE_CLASS.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
         private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
+        private const val MOTION_GESTURE_KEY = "gesture"
+        private const val MOTION_GESTURES_KEY = "gestures"
     }
 
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
     private var currentWebViewOrigin: String? = null
+
+    private var motionService: MotionServiceProtocol? = null
 
     private fun bindWebViewBackAction(currentRoot: MindboxView, controller: WebViewController) {
         bindBackAction(currentRoot) { sendBackAction(controller) }
@@ -77,6 +88,7 @@ internal class WebViewInAppViewHolder(
         ConcurrentHashMap()
 
     private val gson: Gson by mindboxInject { this.gson }
+    private val timeProvider: TimeProvider by mindboxInject { timeProvider }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -174,6 +186,8 @@ internal class WebViewInAppViewHolder(
                 handleHideAction(controller)
             }
             register(WebViewAction.HAPTIC, ::handleHapticAction)
+            register(WebViewAction.MOTION_START, ::handleMotionStartAction)
+            register(WebViewAction.MOTION_STOP) { handleMotionStopAction() }
         }
     }
 
@@ -182,6 +196,57 @@ internal class WebViewInAppViewHolder(
         if (!hapticRequestValidator.isValid(request)) return BridgeMessage.EMPTY_PAYLOAD
         hapticFeedbackExecutor.execute(request = request)
         return BridgeMessage.EMPTY_PAYLOAD
+    }
+
+    private fun handleMotionStartAction(message: BridgeMessage.Request): String {
+        val payload = requireNotNull(message.payload) { "Missing payload" }
+        val gestures = parseMotionGestures(payload)
+        require(gestures.isNotEmpty()) { "No valid gestures provided. Available: shake, flip" }
+        val result = getOrCreateMotionService().startMonitoring(gestures)
+        require(!result.allUnavailable) {
+            "No sensors available for: ${result.unavailable.joinToString { it.value }}"
+        }
+        return buildMotionStartPayload(result)
+    }
+
+    private fun buildMotionStartPayload(result: MotionStartResult): String {
+        if (result.unavailable.isEmpty()) return BridgeMessage.SUCCESS_PAYLOAD
+        return gson.toJson(
+            MotionStartPayload(unavailable = result.unavailable.map { it.value })
+        )
+    }
+
+    private fun handleMotionStopAction(): String {
+        motionService?.stopMonitoring()
+        return BridgeMessage.SUCCESS_PAYLOAD
+    }
+
+    private fun sendMotionEvent(gesture: MotionGesture, data: Map<String, String>) {
+        val controller: WebViewController = webViewController ?: return
+        val payload = JSONObject()
+            .apply {
+                put(MOTION_GESTURE_KEY, gesture.value)
+                data.forEach { (key, value) -> put(key, value) }
+            }
+            .toString()
+        val message: BridgeMessage.Request = BridgeMessage.createAction(
+            action = WebViewAction.MOTION_EVENT,
+            payload = payload,
+        )
+        sendActionInternal(controller, message) { error ->
+            mindboxLogW("[WebView] Motion: failed to send motion.event to JS: $error")
+            motionService?.stopMonitoring()
+        }
+    }
+
+    private fun parseMotionGestures(payload: String): Set<MotionGesture> {
+        return loggingRunCatching(defaultValue = emptySet()) {
+            val array = JSONObject(payload).optJSONArray(MOTION_GESTURES_KEY)
+                ?: return@loggingRunCatching emptySet()
+            (0 until array.length())
+                .mapNotNull { i -> array.optString(i).enumValue<MotionGesture>() }
+                .toSet()
+        }
     }
 
     private fun handleReadyAction(
@@ -251,6 +316,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleCloseAction(message: BridgeMessage): String {
+        motionService?.stopMonitoring()
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -688,6 +754,7 @@ internal class WebViewInAppViewHolder(
 
     override fun onClose() {
         hapticFeedbackExecutor.cancel()
+        motionService?.stopMonitoring()
         stopTimer()
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
@@ -702,12 +769,31 @@ internal class WebViewInAppViewHolder(
         super.onClose()
     }
 
+    private fun getOrCreateMotionService(): MotionServiceProtocol =
+        motionService ?: MotionService(
+            context = appContext,
+            lifecycle = ProcessLifecycleOwner.get().lifecycle,
+            timeProvider = timeProvider,
+        ).also { service ->
+            service.onGestureDetected = { gesture, data ->
+                sendMotionEvent(gesture = gesture, data = data)
+            }
+            motionService = service
+        }
+
     private data class NavigationInterceptedPayload(
         val url: String
     )
 
     private data class ErrorPayload(
         val error: String
+    )
+
+    private data class MotionStartPayload(
+        @SerializedName("success")
+        val success: Boolean = true,
+        @SerializedName("unavailable")
+        val unavailable: List<String>? = null,
     )
 
     private data class SettingsOpenRequest(
