@@ -54,8 +54,10 @@ internal class PushActivationActivity : Activity() {
             permissionDenied && !shouldShowRationale -> {
                 if (mindboxNotificationManager.shouldOpenSettings) {
                     if (requestPermissionManager.getRequestCount() > 1) {
-                        mindboxLogI("User already rejected permission two times, try open settings")
-                        mindboxNotificationManager.openNotificationSettings(this)
+                        if (isNeedToRouteSettings) {
+                            mindboxLogI("User already rejected permission two times, try open settings")
+                            mindboxNotificationManager.openNotificationSettings(this)
+                        }
                         finishWithResult(isGranted = false, dialogShown = false)
                     } else {
                         mindboxLogI("Awaiting show dialog")

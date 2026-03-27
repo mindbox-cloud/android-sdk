@@ -134,7 +134,7 @@ internal class InAppRepositoryImpl(
     override fun sendInAppShowFailure(failures: List<InAppShowFailure>) {
         failures
             .takeIf { it.isNotEmpty() }
-            ?.let { failures ->
+            ?.let {
                 inAppSerializationManager.serializeToInAppShowFailuresString(failures)
                     .takeIf { it.isNotBlank() }
                     ?.let { operationBody ->
