@@ -19,10 +19,15 @@ internal class PushActivationActivity : Activity() {
     private val requestPermissionManager by mindboxInject { requestPermissionManager }
     private var shouldCheckDialogShowing = false
     private val resumeTimes = mutableListOf<Long>()
+    private var requestId: String? = null
+    private var isResultSent: Boolean = false
+    private var isNeedToRouteSettings: Boolean = true
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 125129
         private const val TIME_BETWEEN_RESUME = 700
+        internal const val EXTRA_REQUEST_ID: String = "runtime_permission_request_id"
+        internal const val EXTRA_ROUTE_TO_SETTINGS: String = "runtime_permission_route_to_settings"
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
@@ -43,28 +48,30 @@ internal class PushActivationActivity : Activity() {
             granted -> {
                 mindboxLogI("User clicked 'allow' in request permission")
                 Mindbox.updateNotificationPermissionStatus(this)
-                finish()
+                finishWithResult(isGranted = true)
             }
 
             permissionDenied && !shouldShowRationale -> {
                 if (mindboxNotificationManager.shouldOpenSettings) {
                     if (requestPermissionManager.getRequestCount() > 1) {
-                        mindboxLogI("User already rejected permission two times, try open settings")
-                        mindboxNotificationManager.openNotificationSettings(this)
-                        finish()
+                        if (isNeedToRouteSettings) {
+                            mindboxLogI("User already rejected permission two times, try open settings")
+                            mindboxNotificationManager.openNotificationSettings(this)
+                        }
+                        finishWithResult(isGranted = false, dialogShown = false)
                     } else {
                         mindboxLogI("Awaiting show dialog")
                         shouldCheckDialogShowing = true
                     }
                 } else {
                     mindboxNotificationManager.shouldOpenSettings = true
-                    finish()
+                    finishWithResult(isGranted = false)
                 }
             }
 
             permissionDenied && shouldShowRationale -> {
                 mindboxLogI("User rejected first permission request")
-                finish()
+                finishWithResult(isGranted = false)
             }
         }
     }
@@ -77,7 +84,9 @@ internal class PushActivationActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        mindboxLogI("Call permission laucher")
+        requestId = intent?.getStringExtra(EXTRA_REQUEST_ID)
+        isNeedToRouteSettings = intent?.getBooleanExtra(EXTRA_ROUTE_TO_SETTINGS, true) ?: true
+        mindboxLogI("Call permission launcher")
         requestPermissions(arrayOf(Constants.POST_NOTIFICATION), PERMISSION_REQUEST_CODE)
     }
 
@@ -85,7 +94,8 @@ internal class PushActivationActivity : Activity() {
         resumeTimes.add(SystemClock.elapsedRealtime())
         if (shouldCheckDialogShowing) {
             val duration = resumeTimes.last() - resumeTimes.first()
-            if (duration < TIME_BETWEEN_RESUME) {
+            val dialogShown = duration >= TIME_BETWEEN_RESUME
+            if (!dialogShown && isNeedToRouteSettings) {
                 resumeTimes.clear()
                 mindboxLogI("System dialog not shown because timeout=$duration -> open settings")
                 mindboxNotificationManager.openNotificationSettings(this)
@@ -94,16 +104,29 @@ internal class PushActivationActivity : Activity() {
                 requestPermissionManager.decreaseRequestCounter()
             }
             shouldCheckDialogShowing = false
-            finish()
+            finishWithResult(isGranted = false, dialogShown = dialogShown)
         }
         super.onResume()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
-            finish()
+            finishWithResult(isGranted = false)
             return true
         }
         return super.onTouchEvent(event)
+    }
+
+    override fun onDestroy() {
+        if (!isResultSent && isFinishing && !isChangingConfigurations) {
+            finishWithResult(false)
+        }
+        super.onDestroy()
+    }
+
+    private fun finishWithResult(isGranted: Boolean, dialogShown: Boolean = true) {
+        RuntimePermissionRequestBridge.resolve(requestId.orEmpty(), isGranted, dialogShown)
+        isResultSent = true
+        finish()
     }
 }

@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -12,15 +13,16 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.allAllow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import cloud.mindbox.mobile_sdk.utils.allAllow
 
 internal class InAppInteractorImpl(
     private val mobileConfigRepository: MobileConfigRepository,
@@ -33,12 +35,13 @@ internal class InAppInteractorImpl(
     private val maxInappsPerSessionLimitChecker: Checker,
     private val maxInappsPerDayLimitChecker: Checker,
     private val minIntervalBetweenShowsLimitChecker: Checker,
-    private val timeProvider: TimeProvider
+    private val timeProvider: TimeProvider,
+    private val sessionStorageManager: SessionStorageManager
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override suspend fun processEventAndConfig(): Flow<InApp> {
+    override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
@@ -61,15 +64,16 @@ internal class InAppInteractorImpl(
             }
         return inAppRepository.listenInAppEvents()
             .filter { event -> inAppEventManager.isValidInAppEvent(event) }
-            .onEach {
-                mindboxLogD("Event triggered: ${it.name}")
+            .onEach { event ->
+                mindboxLogD("Event triggered: ${event.name}")
             }.map { event ->
+                val triggerTimeMillis = timeProvider.currentTimestamp()
                 val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
                     inAppFrequencyManager.filterInAppsFrequency(it)
                 }
                 mindboxLogI("Event: ${event.name} combined with $filteredInApps")
                 val prioritySortedInApps = filteredInApps.sortByPriority()
-                inAppProcessingManager.chooseInAppToShow(
+                val inApp: InApp? = inAppProcessingManager.chooseInAppToShow(
                     prioritySortedInApps,
                     event
                 ).also {
@@ -78,9 +82,13 @@ internal class InAppInteractorImpl(
                         InitializeLock.complete(InitializeLock.State.APP_STARTED)
                     }
                 }
+                inApp?.let {
+                    sessionStorageManager.inAppTriggerEvent = event
+                }
+                inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
-            .onEach { inApp ->
-                inApp?.let { mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}") }
+            .onEach { pair ->
+                pair?.let { (inApp, preparedTime) -> mindboxLogI("InApp ${inApp.id} isPriority=${inApp.isPriority}, delayTime=${inApp.delayTime}, skipLimitChecks=${inApp.isPriority}, preparedTime = ${preparedTime.interval} ms") }
                     ?: mindboxLogI("No inapps to show found")
             }
             .filterNotNull()
@@ -98,9 +106,14 @@ internal class InAppInteractorImpl(
         )
     }
 
-    override fun saveShownInApp(id: String, timeStamp: Long) {
+    override fun saveShownInApp(
+        id: String,
+        timeStamp: Long,
+        timeToDisplay: String,
+        tags: Map<String, String>?
+    ) {
         inAppRepository.setInAppShown(id)
-        inAppRepository.sendInAppShown(id)
+        inAppRepository.sendInAppShown(id, timeToDisplay, tags)
         inAppRepository.saveShownInApp(id, timeStamp)
         inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }

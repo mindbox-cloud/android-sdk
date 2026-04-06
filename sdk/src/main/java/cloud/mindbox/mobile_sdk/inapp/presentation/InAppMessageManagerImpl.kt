@@ -4,8 +4,9 @@ import android.app.Activity
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
@@ -13,9 +14,13 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
@@ -28,7 +33,8 @@ internal class InAppMessageManagerImpl(
     private val monitoringInteractor: MonitoringInteractor,
     private val sessionStorageManager: SessionStorageManager,
     private val userVisitManager: UserVisitManager,
-    private val inAppMessageDelayedManager: InAppMessageDelayedManager
+    private val inAppMessageDelayedManager: InAppMessageDelayedManager,
+    private val timeProvider: TimeProvider
 ) : InAppMessageManager {
 
     init {
@@ -65,15 +71,15 @@ internal class InAppMessageManagerImpl(
 
     private suspend fun handleInAppFromInteractor() {
         inAppInteractor.processEventAndConfig()
-            .onEach { inApp ->
+            .onEach { (inApp, preparedTimeMs) ->
                 mindboxLogI("Got in-app from interactor: ${inApp.id}. Processing with DelayedManager.")
-                inAppMessageDelayedManager.process(inApp)
+                inAppMessageDelayedManager.process(inApp, preparedTimeMs)
             }
             .collect()
     }
 
     private suspend fun handleInAppFromDelayedManager() {
-        inAppMessageDelayedManager.inAppToShowFlow.collect { inApp ->
+        inAppMessageDelayedManager.inAppToShowFlow.collect { (inApp, preparedTimeMs) ->
             mindboxLogI("Got in-app from DelayedManager: ${inApp.id}")
             withContext(Dispatchers.Main) {
                 if (inAppMessageViewDisplayer.isInAppActive()) {
@@ -92,14 +98,18 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
+                var renderStartTime = Timestamp(0L)
+                val tags = inApp.tags?.takeIf { it.isNotEmpty() }
+
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
+                    onRenderStart = { renderStartTime = timeProvider.currentTimestamp() },
                     inAppActionCallbacks = object : InAppActionCallbacks {
                         override val onInAppClick = OnInAppClick {
                             inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
                         }
                         override val onInAppShown = OnInAppShown {
-                            inAppInteractor.saveShownInApp(inAppMessage.inAppId, System.currentTimeMillis())
+                            handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)
                         }
                         override val onInAppDismiss = OnInAppDismiss {
                             inAppInteractor.saveInAppDismissTime()
@@ -179,7 +189,7 @@ internal class InAppMessageManagerImpl(
     override fun handleSessionExpiration() {
         inAppScope.launch {
             withContext(Dispatchers.Main) {
-                inAppMessageViewDisplayer.hideCurrentInApp()
+                inAppMessageViewDisplayer.dismissCurrentInApp()
             }
             processingJob?.cancel()
             inAppInteractor.resetInAppConfigAndEvents()
@@ -192,6 +202,19 @@ internal class InAppMessageManagerImpl(
             MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
             requestConfig().join()
         }
+    }
+
+    private fun handleInAppShown(
+        renderStartTime: Timestamp,
+        preparedTimeMs: Milliseconds,
+        inAppMessage: InAppType,
+        tags: Map<String, String>?
+    ) {
+        val shownTime = timeProvider.currentTimestamp()
+        val renderTime = shownTime - renderStartTime
+        mindboxLogI("Render time is ${renderTime.ms}ms, prepared time is ${preparedTimeMs.interval}ms")
+        val timeToDisplay = (preparedTimeMs.interval + renderTime.ms).millisToTimeSpan()
+        inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime.ms, timeToDisplay, tags)
     }
 
     companion object {

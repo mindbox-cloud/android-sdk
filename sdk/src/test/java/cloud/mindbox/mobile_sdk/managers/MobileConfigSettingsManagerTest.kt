@@ -4,13 +4,11 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.SettingsStub.Companion.getSlidingExpiration
-import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDto
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.*
 import kotlinx.coroutines.test.runTest
@@ -21,21 +19,18 @@ import org.junit.Test
 
 class MobileConfigSettingsManagerImplTest {
 
+    private val mockTimeProvider = mockk<TimeProvider>()
     private lateinit var sessionStorageManager: SessionStorageManager
     private lateinit var mobileConfigSettingsManager: MobileConfigSettingsManagerImpl
     private val now = 100_000L
 
     @Before
     fun onTestStart() {
-        val realSessionStorageManager = SessionStorageManager(SystemTimeProvider())
-        sessionStorageManager = spyk(realSessionStorageManager)
-        mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(mockk(), sessionStorageManager, object : TimeProvider {
-            override fun currentTimeMillis(): Long = now
+        every { mockTimeProvider.currentTimeMillis() } returns now
+        every { mockTimeProvider.currentTimestamp() } returns now.toTimestamp()
 
-            override fun currentTimestamp(): Timestamp {
-                return now.toTimestamp()
-            }
-        })
+        sessionStorageManager = spyk(SessionStorageManager(mockTimeProvider))
+        mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(mockk(), sessionStorageManager, mockTimeProvider)
         mockkObject(Mindbox)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxEventManager)
@@ -148,7 +143,7 @@ class MobileConfigSettingsManagerImplTest {
     @Test
     fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
-        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null, null), null)
+        val config = InAppConfigResponse(null, null, SettingsDto(null, null, null, null, null), null)
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }

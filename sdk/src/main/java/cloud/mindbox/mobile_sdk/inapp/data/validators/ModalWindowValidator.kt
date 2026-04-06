@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class ModalWindowValidator(
     private val imageLayerValidator: ImageLayerValidator,
+    private val webViewLayerValidator: WebViewLayerValidator,
     private val elementValidator: ModalElementValidator
 ) : Validator<PayloadDto.ModalWindowDto?> {
 
@@ -27,7 +28,11 @@ internal class ModalWindowValidator(
                     mindboxLogI("Finish checking image layer and it's validity = $rez")
                     !rez
                 }
-                else -> false
+                is BackgroundDto.LayerDto.WebViewLayerDto -> {
+                    val rez = webViewLayerValidator.isValid(layerDto)
+                    mindboxLogI("Finish checking webview layer and it's validity = $rez")
+                    !rez
+                }
             }
         }
         if (invalidLayer != null) {

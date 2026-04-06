@@ -4,6 +4,7 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_SHOW_ERROR_FEATURE
 import cloud.mindbox.mobile_sdk.models.operation.response.ABTestDto
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import io.mockk.every
@@ -100,6 +101,7 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull(config.settings.ttl?.inApps)
         assertNotNull(config.settings.slidingExpiration?.config)
         assertNotNull(config.settings.slidingExpiration?.pushTokenKeepalive)
+        assertNotNull(config.settings.featureToggles)
 
         assertNotNull(config.abtests)
         assertEquals(2, config.abtests!!.size)
@@ -126,6 +128,9 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNotNull(config.inappSettings?.maxInappsPerDay)
         assertNotNull(config.inappSettings?.maxInappsPerSession)
         assertNotNull(config.inappSettings?.minIntervalBetweenShows)
+
+        assertNotNull(config.featureToggles)
+        assertEquals(true, config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     // MARK: - Operations
@@ -632,5 +637,94 @@ class SettingsMobileConfigSerializationManagerTest {
         assertNull("maxInappsPerSession must be `null` if the value is not a number", config.inappSettings?.maxInappsPerSession)
         assertNull("maxInappsPerDay must be `null` if the value is not a number", config.inappSettings?.maxInappsPerDay)
         assertNull("minIntervalBetweenShows must be `null` if the value is not a string", config.inappSettings?.minIntervalBetweenShows)
+    }
+
+    // MARK: - FeatureToggles
+
+    @Test
+    fun settings_config_withFeatureToggles_shouldParseSuccessfully() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesConfig.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("FeatureToggles must be successfully parsed", config.featureToggles)
+        assertEquals(true, config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
+    }
+
+    @Test
+    fun settings_config_withFeatureTogglesError_shouldSetFeatureTogglesToNull() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesErrors/FeatureTogglesError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull("FeatureToggles must be `null` if the key `featureToggles` is not found", config.featureToggles)
+    }
+
+    @Test
+    fun settings_config_withFeatureTogglesTypeError_shouldSetFeatureTogglesToNull() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesErrors/FeatureTogglesTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNull(
+            "FeatureToggles must be `null` if the type of `featureToggles` is not an object",
+            config.featureToggles
+        )
+    }
+
+    @Test
+    fun settings_config_withFeatureTogglesShouldSendInAppShowErrorMissing_shouldSetValueToNull() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesErrors/FeatureTogglesShouldSendInAppShowErrorMissing.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("FeatureToggles must be parsed if the object exists", config.featureToggles)
+        assertTrue("FeatureToggles should be empty if no valid values", config.featureToggles!!.toggles.isEmpty())
+    }
+
+    @Test
+    fun settings_config_withFeatureTogglesShouldSendInAppShowErrorTypeError_shouldSetValueToNull() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesErrors/FeatureTogglesShouldSendInAppShowErrorTypeError.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("Operations must be successfully parsed", config.operations)
+        assertNotNull(config.operations?.get("viewProduct"))
+        assertNotNull(config.operations?.get("viewCategory"))
+        assertNotNull(config.operations?.get("setCart"))
+
+        assertNotNull("TTL must be successfully parsed", config.ttl)
+        assertNotNull("TTL must be successfully parsed", config.ttl?.inApps)
+
+        assertNotNull("FeatureToggles must be parsed if the object exists", config.featureToggles)
+        assertNull("shouldSendInAppShowError must be `null` if the value is not a boolean", config.featureToggles?.toggles?.get(SEND_INAPP_SHOW_ERROR_FEATURE))
+    }
+
+    @Test
+    fun settings_config_withFeatureTogglesFalse_shouldParseFalse() {
+        val json = getJson("ConfigParsing/Settings/FeatureTogglesErrors/FeatureTogglesFalse.json")
+        val config = manager.deserializeSettings(json)!!
+
+        assertNotNull("FeatureToggles must be successfully parsed", config.featureToggles)
+        assertEquals(false, config.featureToggles?.toggles?.get("shouldSendInAppShowError"))
     }
 }

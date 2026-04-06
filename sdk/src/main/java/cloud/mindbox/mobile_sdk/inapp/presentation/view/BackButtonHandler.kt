@@ -1,22 +1,20 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.view.KeyEvent
-import android.view.View
-import android.view.ViewGroup
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 internal class BackButtonHandler(
-    private val viewGroup: ViewGroup,
-    private val listener: View.OnClickListener?,
+    private val listener: () -> Unit,
 ) {
-    /** Returning "true" or "false" if the event was handled, "null" otherwise.  */
+    /**
+     * Returns true if the event was consumed, null if it was not a back key event.
+     */
     fun dispatchKeyEvent(event: KeyEvent?): Boolean? {
-        if (event != null && event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-            if (listener != null) {
-                listener.onClick(viewGroup)
-                return true
-            }
-            return false
+        if (event?.keyCode != KeyEvent.KEYCODE_BACK || event.action != KeyEvent.ACTION_UP || event.isCanceled) {
+            return null
         }
-        return null
+        mindboxLogI("BackButtonHandler: KEYCODE_BACK ACTION_UP")
+        listener()
+        return true
     }
 }

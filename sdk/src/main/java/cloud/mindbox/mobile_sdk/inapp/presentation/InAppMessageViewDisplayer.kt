@@ -14,7 +14,8 @@ internal interface InAppMessageViewDisplayer {
 
     fun tryShowInAppMessage(
         inAppType: InAppType,
-        inAppActionCallbacks: InAppActionCallbacks
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit = {},
     )
 
     fun registerCurrentActivity(activity: Activity)
@@ -23,5 +24,5 @@ internal interface InAppMessageViewDisplayer {
 
     fun isInAppActive(): Boolean
 
-    fun hideCurrentInApp()
+    fun dismissCurrentInApp()
 }

@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.convertToIso8601String
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
 import com.jakewharton.threetenabp.AndroidThreeTen
@@ -13,6 +15,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.threeten.bp.Instant
 import org.robolectric.RobolectricTestRunner
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneId
@@ -47,6 +50,18 @@ internal class ExtensionsTest {
                 ZoneOffset.UTC
             )
         val actualResult = time.convertToZonedDateTime()
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `converting timestamp to ISO 8601 string`() {
+        val time = Timestamp(1_736_501_200_000L)
+        val expectedResult: String = ZonedDateTime.ofInstant(
+            Instant.ofEpochMilli(time.ms),
+            ZoneOffset.UTC
+        ).convertToString()
+        val actualResult: String = time.convertToIso8601String()
+
         assertEquals(expectedResult, actualResult)
     }
 

@@ -2,7 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.toJsonTyped
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -11,15 +14,39 @@ import com.google.gson.reflect.TypeToken
 
 internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSerializationManager {
 
-    override fun serializeToInAppHandledString(inAppId: String): String {
-        return LoggingExceptionHandler.runCatching("") {
-            gson.toJson(InAppHandleRequest(inAppId), InAppHandleRequest::class.java)
+    override fun serializeToInAppShownActionString(
+        inAppId: String,
+        timeToDisplay: String,
+        tags: Map<String, String>?,
+    ): String {
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppShowRequest>(
+                InAppShowRequest(
+                    inAppId = inAppId,
+                    timeToDisplay = timeToDisplay,
+                    tags = tags,
+                )
+            )
+        }
+    }
+
+    override fun serializeToInAppActionString(inAppId: String): String {
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppHandleRequest>(InAppHandleRequest(inAppId = inAppId))
         }
     }
 
     override fun serializeToShownInAppsString(shownInApps: Map<String, List<Long>>): String {
         return loggingRunCatching("") {
             gson.toJsonTyped<Map<String, List<Long>>>(shownInApps)
+        }
+    }
+
+    override fun serializeToInAppShowFailuresString(
+        inAppShowFailures: List<InAppShowFailure>
+    ): String {
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppFailuresWrapper>(InAppFailuresWrapper(inAppShowFailures))
         }
     }
 

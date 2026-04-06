@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.concurrent.atomic.AtomicLong
@@ -22,11 +24,14 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var inAppProductSegmentations: HashMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
         HashMap()
     var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = mutableMapOf()
+    var lastTargetingErrors: MutableMap<TargetingErrorKey, String> = mutableMapOf()
     var currentSessionInApps: List<InApp> = emptyList()
     var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
     var configFetchingError: Boolean = false
     var sessionTime: Duration = 0L.milliseconds
     var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
+    var lastTrackVisitData: TrackVisitData? = null
+    var inAppTriggerEvent: InAppEventType? = null
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
@@ -75,11 +80,13 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()
         processedProductSegmentations.clear()
+        lastTargetingErrors.clear()
         currentSessionInApps = emptyList()
         shownInAppIdsWithEvents.clear()
         configFetchingError = false
         sessionTime = 0L.milliseconds
         inAppShowLimitsSettings = InAppShowLimitsSettings()
+        inAppTriggerEvent = null
     }
 
     private fun notifySessionExpired() {

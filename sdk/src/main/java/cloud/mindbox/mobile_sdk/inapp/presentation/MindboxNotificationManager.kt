@@ -6,7 +6,9 @@ internal interface MindboxNotificationManager {
 
     fun isNotificationEnabled(): Boolean
 
-    fun openNotificationSettings(activity: Activity)
+    fun openNotificationSettings(activity: Activity, channelId: String? = null)
+
+    fun openApplicationSettings(activity: Activity)
 
     fun requestPermission(activity: Activity)
 

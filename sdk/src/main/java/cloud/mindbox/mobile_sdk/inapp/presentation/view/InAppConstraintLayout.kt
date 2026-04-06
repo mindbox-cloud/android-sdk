@@ -17,13 +17,32 @@ import kotlin.math.abs
 
 internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
 
-    private var backButtonHandler: BackButtonHandler? = null
-
     fun setSwipeToDismissCallback(callback: () -> Unit) {
         swipeToDismissCallback = callback
     }
 
+    override fun setBackListener(listener: (() -> Unit)?) {
+        backButtonHandler = listener?.let { BackButtonHandler(it) }
+    }
+
     private var swipeToDismissCallback: (() -> Unit)? = null
+    private var backButtonHandler: BackButtonHandler? = null
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean =
+        if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
+            true
+        } else {
+            super.onKeyDown(keyCode, event)
+        }
+
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean =
+        if (backButtonHandler?.dispatchKeyEvent(event) == true) {
+            true
+        } else {
+            super.dispatchKeyEvent(event)
+        }
+
+    internal var webViewInsets: InAppInsets = InAppInsets()
 
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
@@ -204,14 +223,23 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             val inset = windowInset.getInsets(
                 WindowInsetsCompat.Type.systemBars()
                     or WindowInsetsCompat.Type.displayCutout()
-                    or WindowInsetsCompat.Type.ime()
+                    or WindowInsetsCompat.Type.navigationBars()
+            )
+
+            webViewInsets = InAppInsets(
+                left = inset.left,
+                top = inset.top,
+                right = inset.right,
+                bottom = maxOf(inset.bottom, getNavigationBarHeight())
             )
 
             view.updatePadding(
-                bottom = maxOf(inset.bottom, getNavigationBarHeight())
+                bottom = windowInset.getInsets(
+                    WindowInsetsCompat.Type.ime()
+                ).bottom
             )
             mindboxLogI("Webview Insets: $inset")
-            WindowInsetsCompat.CONSUMED
+            windowInset
         }
     }
 
@@ -245,20 +273,22 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
     ) : super(
         context, attrs, defStyleAttr, defStyleRes
     )
+}
 
-    override fun setDismissListener(listener: OnClickListener?) {
-        backButtonHandler = BackButtonHandler(this, listener)
+internal data class InAppInsets(
+    val left: Int = 0,
+    val top: Int = 0,
+    val right: Int = 0,
+    val bottom: Int = 0
+) {
+    companion object {
+        const val LEFT = "left"
+        const val TOP = "top"
+        const val RIGHT = "right"
+        const val BOTTOM = "bottom"
     }
+}
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean =
-        if (keyCode == KeyEvent.KEYCODE_BACK && backButtonHandler != null) {
-            true
-        } else {
-            super.onKeyDown(keyCode, event)
-        }
-
-    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        val handled = backButtonHandler?.dispatchKeyEvent(event)
-        return handled ?: super.dispatchKeyEvent(event)
-    }
+internal fun interface BackButtonLayout {
+    fun setBackListener(listener: (() -> Unit)?)
 }

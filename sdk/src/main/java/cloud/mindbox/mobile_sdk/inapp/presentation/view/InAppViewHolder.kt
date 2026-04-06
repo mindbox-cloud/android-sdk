@@ -2,17 +2,33 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 
 internal interface InAppViewHolder<T : InAppType> {
 
     val wrapper: InAppTypeWrapper<T>
 
+    val inAppController: InAppController
+
+    val inAppCallback: InAppCallback
+
     val isActive: Boolean
 
     fun show(currentRoot: MindboxView)
 
-    fun hide()
+    fun reattach(currentRoot: MindboxView) {
+        show(currentRoot)
+    }
 
-    fun release() {}
+    fun canReuseOnRestore(inAppId: String): Boolean = false
+
+    fun onClose()
+
+    fun onStop()
+
+    fun interface InAppController {
+
+        fun close()
+    }
 }

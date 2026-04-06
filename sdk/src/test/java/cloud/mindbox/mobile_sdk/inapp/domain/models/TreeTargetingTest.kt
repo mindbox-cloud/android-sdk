@@ -76,6 +76,74 @@ class TreeTargetingTest {
     }
 
     @Test
+    fun `TrueNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingTrueNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `CountryNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingCountryNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `CityNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingCityNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `RegionNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingRegionNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `SegmentNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingSegmentNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `VisitNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingVisitNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `PushPermissionNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingPushPermissionNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `OperationNode hasProductSegmentationNode always false`() {
+        assertFalse(InAppStub.getTargetingOperationNode().hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `IntersectionNode hasProductSegmentationNode false when no child has it`() {
+        val node = InAppStub.getTargetingIntersectionNode()
+            .copy(nodes = listOf(InAppStub.getTargetingTrueNode(), InAppStub.getTargetingCityNode()))
+        assertFalse(node.hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `IntersectionNode hasProductSegmentationNode true when child has it`() {
+        val node = InAppStub.getTargetingIntersectionNode()
+            .copy(nodes = listOf(InAppStub.getTargetingTrueNode(), InAppStub.viewProductSegmentNode))
+        assertTrue(node.hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `UnionNode hasProductSegmentationNode false when no child has it`() {
+        val node = InAppStub.getTargetingUnionNode()
+            .copy(nodes = listOf(InAppStub.getTargetingTrueNode(), InAppStub.getTargetingCityNode()))
+        assertFalse(node.hasProductSegmentationNode())
+    }
+
+    @Test
+    fun `UnionNode hasProductSegmentationNode true when child has it`() {
+        val node = InAppStub.getTargetingUnionNode()
+            .copy(nodes = listOf(InAppStub.getTargetingTrueNode(), InAppStub.viewProductSegmentNode))
+        assertTrue(node.hasProductSegmentationNode())
+    }
+
+    @Test
     fun `country targeting positive success check`() {
         assertTrue(
             InAppStub.getTargetingCountryNode()

@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
@@ -97,8 +98,8 @@ internal class InAppRepositoryImpl(
         mindboxLogI("Increase count of shown inapp per day")
     }
 
-    override fun sendInAppShown(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+    override fun sendInAppShown(inAppId: String, timeToDisplay: String, tags: Map<String, String>?) {
+        inAppSerializationManager.serializeToInAppShownActionString(inAppId, timeToDisplay, tags).apply {
             if (isNotBlank()) {
                 MindboxEventManager.inAppShown(
                     context,
@@ -109,7 +110,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun sendInAppClicked(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
             if (isNotBlank()) {
                 MindboxEventManager.inAppClicked(
                     context,
@@ -120,7 +121,7 @@ internal class InAppRepositoryImpl(
     }
 
     override fun sendUserTargeted(inAppId: String) {
-        inAppSerializationManager.serializeToInAppHandledString(inAppId).apply {
+        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
             if (isNotBlank()) {
                 MindboxEventManager.sendUserTargeted(
                     context,
@@ -128,6 +129,18 @@ internal class InAppRepositoryImpl(
                 )
             }
         }
+    }
+
+    override fun sendInAppShowFailure(failures: List<InAppShowFailure>) {
+        failures
+            .takeIf { it.isNotEmpty() }
+            ?.let {
+                inAppSerializationManager.serializeToInAppShowFailuresString(failures)
+                    .takeIf { it.isNotBlank() }
+                    ?.let { operationBody ->
+                        MindboxEventManager.inAppShowFailure(context, operationBody)
+                    }
+            }
     }
 
     override fun isInAppShown(inAppId: String): Boolean {

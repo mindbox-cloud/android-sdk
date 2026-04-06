@@ -4,7 +4,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 
 internal data class InAppTypeWrapper<out T : InAppType>(
     val inAppType: T,
-    val inAppActionCallbacks: InAppActionCallbacks
+    val inAppActionCallbacks: InAppActionCallbacks,
+    val onRenderStart: () -> Unit,
 )
 
 internal fun interface OnInAppClick {
