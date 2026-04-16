@@ -19,8 +19,8 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
@@ -45,12 +45,6 @@ internal class InAppMessageManagerImpl(
     }
 
     private var processingJob: Job? = null
-
-    override fun registerCurrentActivity(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.registerCurrentActivity(activity)
-        }
-    }
 
     private val inAppScope =
         CoroutineScope(defaultDispatcher + SupervisorJob() + Mindbox.coroutineExceptionHandler)
@@ -158,32 +152,32 @@ internal class InAppMessageManagerImpl(
         monitoringInteractor.processLogs()
     }
 
-    override fun registerInAppCallback(inAppCallback: InAppCallback) {
-        LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.registerInAppCallback(inAppCallback)
-        }
+    override fun registerInAppCallback(inAppCallback: InAppCallback) = loggingRunCatching {
+        inAppMessageViewDisplayer.registerInAppCallback(inAppCallback)
     }
 
-    override fun onPauseCurrentActivity(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
-        }
+    override fun unregisterInAppCallback(): Unit = loggingRunCatching {
+        inAppMessageViewDisplayer.unregisterInAppCallback()
     }
 
-    override fun onStopCurrentActivity(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.onStopCurrentActivity(activity)
-        }
+    override fun registerCurrentActivity(activity: Activity): Unit = loggingRunCatching {
+        inAppMessageViewDisplayer.registerCurrentActivity(activity)
     }
 
-    override fun onResumeCurrentActivity(activity: Activity) {
-        LoggingExceptionHandler.runCatching {
-            inAppMessageViewDisplayer.onResumeCurrentActivity(
-                activity = activity,
-                isNeedToShow = { !sessionStorageManager.isSessionExpiredOnLastCheck() },
-                onAppResumed = { inAppMessageDelayedManager.onAppResumed() }
-            )
-        }
+    override fun onPauseCurrentActivity(activity: Activity): Unit = loggingRunCatching {
+        inAppMessageViewDisplayer.onPauseCurrentActivity(activity)
+    }
+
+    override fun onStopCurrentActivity(activity: Activity): Unit = loggingRunCatching {
+        inAppMessageViewDisplayer.onStopCurrentActivity(activity)
+    }
+
+    override fun onResumeCurrentActivity(activity: Activity): Unit = loggingRunCatching {
+        inAppMessageViewDisplayer.onResumeCurrentActivity(
+            activity = activity,
+            isNeedToShow = { !sessionStorageManager.isSessionExpiredOnLastCheck() },
+            onAppResumed = { inAppMessageDelayedManager.onAppResumed() }
+        )
     }
 
     override fun handleSessionExpiration() {

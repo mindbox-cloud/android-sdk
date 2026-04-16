@@ -46,12 +46,16 @@ internal class InAppMessageViewDisplayerImpl(
     }
 
     private var currentActivity: Activity? = null
-    private var inAppCallback: InAppCallback = ComposableInAppCallback(
+
+    private val defaultCallback: InAppCallback = ComposableInAppCallback(
         UrlInAppCallback(),
         DeepLinkInAppCallback(),
         CopyPayloadInAppCallback(),
         LoggingInAppCallback()
     )
+
+    private var inAppCallback: InAppCallback = defaultCallback
+
     private val inAppQueue = LinkedList<InAppTypeWrapper<InAppType>>()
 
     private var currentHolder: InAppViewHolder<*>? = null
@@ -106,6 +110,10 @@ internal class InAppMessageViewDisplayerImpl(
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
         this.inAppCallback = inAppCallback
+    }
+
+    override fun unregisterInAppCallback() {
+        this.inAppCallback = defaultCallback
     }
 
     override fun isInAppActive(): Boolean = currentHolder?.isActive ?: false
