@@ -22,6 +22,8 @@ internal interface InAppMessageViewDisplayer {
 
     fun registerInAppCallback(inAppCallback: InAppCallback)
 
+    fun unregisterInAppCallback()
+
     fun isInAppActive(): Boolean
 
     fun dismissCurrentInApp()

@@ -14,9 +14,6 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.common.MindboxCommon
-import cloud.mindbox.mobile_sdk.Mindbox.disposeDeviceUuidSubscription
-import cloud.mindbox.mobile_sdk.Mindbox.disposePushTokenSubscription
-import cloud.mindbox.mobile_sdk.Mindbox.handleRemoteMessage
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -735,16 +732,70 @@ public object Mindbox : MindboxLog {
     }
 
     /**
-     * Method to register callback for InApp Message
+     * Registers a callback for InApp messages.
      *
-     *  Call this method after you call [Mindbox.init]
+     * Call this method after [Mindbox.init]. The SDK holds a **strong reference** to
+     * [inAppCallback], so the callback persists until explicitly replaced or removed via
+     * [unregisterInAppCallback].
      *
-     *  @param inAppCallback used to provide required callback implementation
+     * Calling this method again replaces the previously registered callback.
+     *
+     * **Application-level callback (recommended):**
+     * Register once in `Application.onCreate` with a callback that does not reference any
+     * Activity. No cleanup needed.
+     * ```kotlin
+     * class MyApp : Application() {
+     *     override fun onCreate() {
+     *         super.onCreate()
+     *         Mindbox.init(...)
+     *         Mindbox.registerInAppCallback(MyGlobalInAppCallback())
+     *     }
+     * }
+     * ```
+     *
+     * **Per-screen callback:**
+     * If different screens require different callback behavior and the callback captures an
+     * Activity reference, use `onResume`/`onPause` — **not** `onCreate`/`onDestroy`.
+     * Android guarantees that `onPause` of the current Activity is called before `onResume`
+     * of the next, so callbacks never overlap and the Activity reference is always cleared
+     * before the Activity can be garbage-collected.
+     * ```kotlin
+     * override fun onResume() {
+     *     super.onResume()
+     *     Mindbox.registerInAppCallback(myScreenCallback)
+     * }
+     * override fun onPause() {
+     *     super.onPause()
+     *     Mindbox.unregisterInAppCallback()
+     * }
+     * ```
+     *
+     * @param inAppCallback the callback implementation to register
      **/
-
     public fun registerInAppCallback(inAppCallback: InAppCallback) {
-        MindboxLoggerImpl.d(this, "registerInAppCallback")
+        mindboxLogI("InApp callback registered: ${inAppCallback::class.simpleName}")
         inAppMessageManager.registerInAppCallback(inAppCallback)
+    }
+
+    /**
+     * Unregisters the current InApp message callback and restores the default SDK behavior.
+     *
+     * The default behavior handles URL redirects, deep links, payload copying, and logging
+     * automatically — the same actions performed when no custom callback is registered.
+     *
+     * **When to call:**
+     * Only needed for per-screen callbacks registered in `onResume`. Call in the corresponding
+     * `onPause` to release the Activity reference and restore default behavior while another
+     * screen is in the foreground.
+     *
+     * Not needed if the callback was registered at the Application level and does not
+     * reference any Activity.
+     *
+     * @see registerInAppCallback
+     **/
+    public fun unregisterInAppCallback() {
+        mindboxLogI("InApp callback unregistered, default behavior restored")
+        inAppMessageManager.unregisterInAppCallback()
     }
 
     /**
