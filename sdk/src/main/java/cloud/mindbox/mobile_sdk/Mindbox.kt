@@ -14,11 +14,6 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.WorkerFactory
 import cloud.mindbox.common.MindboxCommon
-import cloud.mindbox.mobile_sdk.Mindbox.disposeDeviceUuidSubscription
-import cloud.mindbox.mobile_sdk.Mindbox.disposePushTokenSubscription
-import cloud.mindbox.mobile_sdk.Mindbox.handleRemoteMessage
-import cloud.mindbox.mobile_sdk.Mindbox.registerInAppCallback
-import cloud.mindbox.mobile_sdk.Mindbox.unregisterInAppCallback
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager

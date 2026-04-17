@@ -176,7 +176,7 @@ internal class InAppMessageViewDisplayerImpl(
             pausedHolder = null
         }
 
-        val callbackWrapper = InAppCallbackWrapper(inAppCallback) {
+        val callbackWrapper = InAppCallbackWrapper({ inAppCallback }) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
         }
         val controller = InAppViewHolder.InAppController { closeInApp() }
