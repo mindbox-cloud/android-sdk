@@ -40,7 +40,7 @@ ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 maven_publish = "0.32.0"
 
-pushclient = "6.10.0"
+pushclient = "7.2.0"
 
 [bundles]
 buildscript-plugins = [
