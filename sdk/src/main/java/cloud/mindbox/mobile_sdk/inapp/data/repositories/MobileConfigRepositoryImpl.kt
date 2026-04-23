@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtlData
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.InAppWebViewPrefetcher
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -105,6 +106,20 @@ internal class MobileConfigRepositoryImpl(
             featureToggleManager.applyToggles(config = filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
+
+            // Port of iOS InAppConfigurationManager.prefetchWebViewAssets().
+            // Kick off disk prefetch of webview in-app HTML + bootstrap scripts so the first
+            // on-screen show hits the disk cache instead of the network. No-op when no webview
+            // in-apps are present, or when [WebViewCacheConfig.enabled] is false.
+            runCatching {
+                val endpointId = DbManager.listenConfigurations().first().endpointId
+                InAppWebViewPrefetcher.prefetch(
+                    config = updatedInAppConfig,
+                    endpointId = endpointId
+                )
+            }.onFailure { e ->
+                mindboxLogW("Failed to prefetch webview assets", e)
+            }
         }
     }
 

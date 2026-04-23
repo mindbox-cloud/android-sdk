@@ -26,6 +26,12 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.InAppWebViewAssetCache
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.QUIZZES_STABLE_SCRIPT_URL
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.WebViewCacheConfig
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.byendpointScriptUrl
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.popMechanicInitUrl
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.cache.quizzesConfigUrl
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionServiceProtocol
@@ -77,6 +83,14 @@ internal class WebViewInAppViewHolder(
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
     private var currentWebViewOrigin: String? = null
+
+    /**
+     * Content URL of the in-app currently being rendered. Captured before `loadContent`
+     * so the WebViewClient's `shouldInterceptRequest` callback can scope cache lookups
+     * to this in-app's asset directory.
+     */
+    @Volatile
+    private var currentContentUrl: String? = null
 
     private var motionService: MotionServiceProtocol? = null
 
@@ -444,8 +458,42 @@ internal class WebViewInAppViewHolder(
                     inAppController.close()
                 }
             }
+
+            override fun onShouldInterceptRequest(url: String?): WebViewCachedResource? {
+                return resolveCachedResource(url)
+            }
         })
         return controller
+    }
+
+    /**
+     * Called on a WebView worker thread for every subresource the page tries to fetch.
+     * Hot path — must stay cheap: fast-path filters on URL prefix before touching disk.
+     */
+    private fun resolveCachedResource(url: String?): WebViewCachedResource? {
+        if (!WebViewCacheConfig.enabled) return null
+        if (url.isNullOrBlank()) return null
+        if (!isMindboxStaticUrl(url)) return null
+        val contentUrl: String = currentContentUrl ?: return null
+        val asset = runCatching {
+            InAppWebViewAssetCache.lookupCachedBytes(contentUrl = contentUrl, requestedUrl = url)
+        }.getOrNull() ?: return null
+        mindboxLogD("[WebViewCache] shouldInterceptRequest HIT (${asset.bytes.size} bytes): $url")
+        return WebViewCachedResource(
+            bytes = asset.bytes,
+            mimeType = asset.mimeType,
+            encoding = if (asset.mimeType.startsWith("image/") || asset.mimeType == "video/mp4") null else "UTF-8",
+            statusCode = 200,
+            reasonPhrase = "OK",
+            extraHeaders = mapOf("Access-Control-Allow-Origin" to "*"),
+        )
+    }
+
+    private fun isMindboxStaticUrl(url: String): Boolean {
+        return url.startsWith("https://web-static.mindbox.ru/") ||
+            url.startsWith("http://web-static.mindbox.ru/") ||
+            url.startsWith("https://mobile-static.mindbox.ru/") ||
+            url.startsWith("http://mobile-static.mindbox.ru/")
     }
 
     private fun handleShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
@@ -631,9 +679,95 @@ internal class WebViewInAppViewHolder(
                 controller.setUserAgentSuffix(configuration.getShortUserAgent())
 
                 layer.contentUrl?.let { contentUrl ->
+                    // Make the current content URL visible to shouldInterceptRequest so
+                    // subresource lookups are scoped to this in-app's cache directory.
+                    currentContentUrl = contentUrl
+                    // Port of iOS MindboxWebViewFacade.loadHTML cache-hit branch.
+                    // Three-stage path:
+                    //  1. Try to serve an already-inlined HTML directly from disk (true HIT).
+                    //  2. On MISS, do a synchronous download+store so the first online show also
+                    //     gets the inlined-HTML path (byendpoint/quizzes pre-injected).
+                    //  3. If the blocking fetch fails (offline, 5xx) — fall through to the
+                    //     existing Volley-based `fetchWebViewContent` so error reporting stays
+                    //     identical to the pre-cache behavior.
+                    if (WebViewCacheConfig.enabled) {
+                        val priorityScripts = buildList {
+                            val endpointId = configuration.endpointId
+                            if (endpointId.isNotBlank()) {
+                                // Order matters: JSON configs must be injected BEFORE byendpoint so
+                                // it picks them up instead of fetching at runtime.
+                                popMechanicInitUrl(endpointId)?.let(::add)
+                                quizzesConfigUrl(endpointId)?.let(::add)
+                                byendpointScriptUrl(endpointId)?.let(::add)
+                            }
+                        }
+                        val cachedHtml = InAppWebViewAssetCache.cachedInlinedHtml(
+                            contentUrl = contentUrl,
+                            priorityInlineScripts = priorityScripts
+                        )
+                        if (cachedHtml != null) {
+                            mindboxLogD(
+                                "[WebViewCache] Cache HIT on loadHTML (${cachedHtml.length} chars): $contentUrl"
+                            )
+                            currentWebViewOrigin = resolveOrigin(layer.baseUrl)
+                            onContentPageLoaded(
+                                content = WebViewHtmlContent(
+                                    baseUrl = layer.baseUrl ?: "",
+                                    html = cachedHtml
+                                )
+                            )
+                            return@launch
+                        }
+                        mindboxLogD(
+                            "[WebViewCache] Cache MISS, attempting blocking prefetch: $contentUrl"
+                        )
+                        val extraScripts = buildList {
+                            addAll(priorityScripts)
+                            add(QUIZZES_STABLE_SCRIPT_URL)
+                        }
+                        val didFetch = runCatching {
+                            InAppWebViewAssetCache.fetchAndStoreBlocking(
+                                contentUrl = contentUrl,
+                                extraScripts = extraScripts
+                            )
+                        }.getOrElse { e ->
+                            mindboxLogW("[WebViewCache] Blocking prefetch threw", e)
+                            false
+                        }
+                        if (didFetch) {
+                            val inlined = InAppWebViewAssetCache.cachedInlinedHtml(
+                                contentUrl = contentUrl,
+                                priorityInlineScripts = priorityScripts
+                            )
+                            if (inlined != null) {
+                                mindboxLogD(
+                                    "[WebViewCache] Served after blocking prefetch " +
+                                        "(${inlined.length} chars): $contentUrl"
+                                )
+                                currentWebViewOrigin = resolveOrigin(layer.baseUrl)
+                                onContentPageLoaded(
+                                    content = WebViewHtmlContent(
+                                        baseUrl = layer.baseUrl ?: "",
+                                        html = inlined
+                                    )
+                                )
+                                return@launch
+                            }
+                        }
+                        mindboxLogD(
+                            "[WebViewCache] Blocking prefetch did not produce inlined HTML, " +
+                                "falling back to gatewayManager.fetchWebViewContent: $contentUrl"
+                        )
+                    }
                     runCatching {
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
+                        // Persist the fresh HTML (and trigger download of its scripts/media) so
+                        // the next show can serve from cache. Fire-and-forget — does not block
+                        // rendering.
+                        if (WebViewCacheConfig.enabled) {
+                            InAppWebViewAssetCache.store(html = response, contentUrl = contentUrl)
+                        }
                         currentWebViewOrigin = resolveOrigin(layer.baseUrl)
                         onContentPageLoaded(
                             content = WebViewHtmlContent(
@@ -763,6 +897,7 @@ internal class WebViewInAppViewHolder(
             controller.destroy()
         }
         currentWebViewOrigin = null
+        currentContentUrl = null
         webViewController?.destroy()
         webViewController = null
         currentMindboxView = null
