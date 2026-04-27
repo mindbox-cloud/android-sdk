@@ -1437,6 +1437,7 @@ public object Mindbox : MindboxLog {
             endpointId = configuration.endpointId,
             previousDeviceUUID = configuration.previousDeviceUUID,
             previousInstallationId = configuration.previousInstallationId,
+            operationsDomain = configuration.operationsDomain,
         )
 
         return if (validationErrors.isEmpty()) {
@@ -1446,27 +1447,14 @@ public object Mindbox : MindboxLog {
                 throw InitializeMindboxException(validationErrors.toString())
             }
             MindboxLoggerImpl.e(this, "Invalid configuration parameters found: $validationErrors")
-            val isDeviceIdError = validationErrors.contains(
-                SdkValidation.Error.INVALID_DEVICE_ID,
-            )
-            val isInstallationIdError = validationErrors.contains(
-                SdkValidation.Error.INVALID_INSTALLATION_ID,
-            )
-
-            val previousDeviceUUID = if (isDeviceIdError) {
-                ""
-            } else {
-                configuration.previousDeviceUUID
-            }
-            val previousInstallationId = if (isInstallationIdError) {
-                ""
-            } else {
-                configuration.previousInstallationId
-            }
+            val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
+            val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
+            val isOperationsDomainError = validationErrors.contains(SdkValidation.Error.INVALID_OPERATIONS_DOMAIN)
 
             configuration.copy(
-                previousDeviceUUID = previousDeviceUUID,
-                previousInstallationId = previousInstallationId,
+                previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
+                previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId,
+                operationsDomain = if (isOperationsDomainError) null else configuration.operationsDomain,
             )
         }
     }

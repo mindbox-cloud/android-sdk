@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.util.Log
 import androidx.annotation.VisibleForTesting
+import cloud.mindbox.mobile_sdk.SdkValidation
 import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -83,7 +84,27 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     }
 
     private fun getConfigUrl(configuration: Configuration): String {
-        return "https://${configuration.domain}/mobile/byendpoint/${configuration.endpointId}.json"
+        return "${SdkValidation.toBaseUrl(configuration.domain)}/mobile/byendpoint/${configuration.endpointId}.json"
+    }
+
+    /**
+     * Resolves the host to use for operations endpoints using the priority:
+     * 1. operationsDomainFromConfig — settings.baseAddresses.operations from the remote mobile config
+     * 2. operationsDomain from Mindbox.init configuration
+     * 3. domain from Mindbox.init configuration (fallback, preserves backward compatibility)
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun resolveOperationsDomain(
+        configuration: Configuration,
+        operationsDomainFromConfig: String?,
+    ): String {
+        operationsDomainFromConfig
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        configuration.operationsDomain
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        return configuration.domain
     }
 
     private fun buildEventUrl(
@@ -123,7 +144,9 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             }
         }
 
-        return "https://${configuration.domain}${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
+        val domain = resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig)
+        val baseUrl = SdkValidation.toBaseUrl(domain)
+        return "$baseUrl${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
     fun sendAsyncEvent(
@@ -328,7 +351,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             mindboxServiceGenerator.addToRequestQueue(
                 MindboxRequest(
                     Request.Method.GET,
-                    "https://${configuration.domain}/geo",
+                    "${SdkValidation.toBaseUrl(configuration.domain)}/geo",
                     configuration,
                     null,
                     { response ->

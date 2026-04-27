@@ -35,8 +35,16 @@ internal data class SettingsDtoBlank(
     @SerializedName("inapp")
     val inappSettings: InappSettingsDtoBlank?,
     @SerializedName("featureToggles")
-    val featureToggles: FeatureTogglesDtoBlank?
+    val featureToggles: FeatureTogglesDtoBlank?,
+    @SerializedName("baseAddresses")
+    val baseAddresses: BaseAddressesDtoBlank?,
 ) {
+
+    internal data class BaseAddressesDtoBlank(
+        @SerializedName("operations")
+        val operations: String?,
+    )
+
     internal data class OperationDtoBlank(
         @SerializedName("systemName")
         val systemName: String
@@ -81,7 +89,14 @@ internal data class SettingsDto(
     @SerializedName("inapp")
     val inapp: InappSettingsDto?,
     @SerializedName("featureToggles")
-    val featureToggles: Map<String, Boolean?>?
+    val featureToggles: Map<String, Boolean?>?,
+    @SerializedName("baseAddresses")
+    val baseAddresses: BaseAddressesDto? = null,
+)
+
+internal data class BaseAddressesDto(
+    @SerializedName("operations")
+    val operations: String?,
 )
 
 internal data class OperationDto(
