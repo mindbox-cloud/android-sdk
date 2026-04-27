@@ -332,7 +332,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         } else {
             try {
                 JSONObject(body)
-            } catch (e: JSONException) {
+            } catch (_: JSONException) {
                 null
             }
         }

@@ -7,11 +7,14 @@ class InputParametersUnitTest {
 
     private val wrongDomainParameter = arrayListOf(
         "",
-        "https://api.mindbox.ru",
-        "api.mindbox.ru/",
-        "https://api.mindbox.ru/",
         "hgkkjhhv",
         "4854-t789"
+    )
+
+    private val normalizedDomainParameter = arrayListOf(
+        "https://api.mindbox.ru",
+        "api.mindbox.ru/",
+        "https://api.mindbox.ru/"
     )
 
     private val wrongUuidParameters = arrayListOf(
@@ -115,45 +118,22 @@ class InputParametersUnitTest {
     }
 
     @Test
-    fun domain_startsWithHttps() {
-        val errors = SdkValidation.validateConfiguration(
-            domain = wrongDomainParameter[1],
-            endpointId = rightEndpointParameter,
-            previousDeviceUUID = rightUuidParameter,
-            previousInstallationId = rightUuidParameter
-        )
-        assertEquals(1, errors.size)
-        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
-    }
-
-    @Test
-    fun domain_endsWithSlash() {
-        val errors = SdkValidation.validateConfiguration(
-            domain = wrongDomainParameter[2],
-            endpointId = rightEndpointParameter,
-            previousDeviceUUID = rightUuidParameter,
-            previousInstallationId = rightUuidParameter
-        )
-        assertEquals(1, errors.size)
-        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
-    }
-
-    @Test
-    fun domain_startsWithHttpsAndEndsWithSlash() {
-        val errors = SdkValidation.validateConfiguration(
-            domain = wrongDomainParameter[3],
-            endpointId = rightEndpointParameter,
-            previousDeviceUUID = rightUuidParameter,
-            previousInstallationId = rightUuidParameter
-        )
-        assertEquals(1, errors.size)
-        assertEquals(SdkValidation.Error.INVALID_FORMAT_DOMAIN, errors[0])
+    fun domain_withSchemeOrTrailingSlash_isNormalized() {
+        normalizedDomainParameter.forEach { input ->
+            val errors = SdkValidation.validateConfiguration(
+                domain = input,
+                endpointId = rightEndpointParameter,
+                previousDeviceUUID = rightUuidParameter,
+                previousInstallationId = rightUuidParameter
+            )
+            assertEquals("Expected 0 errors for '$input'", 0, errors.size)
+        }
     }
 
     @Test
     fun domain_InvalidFormat() {
         val errors4 = SdkValidation.validateConfiguration(
-            domain = wrongDomainParameter[4],
+            domain = wrongDomainParameter[1],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
@@ -162,7 +142,7 @@ class InputParametersUnitTest {
         assertEquals(SdkValidation.Error.INVALID_DOMAIN, errors4[0])
 
         val errors5 = SdkValidation.validateConfiguration(
-            domain = wrongDomainParameter[5],
+            domain = wrongDomainParameter[2],
             endpointId = rightEndpointParameter,
             previousDeviceUUID = rightUuidParameter,
             previousInstallationId = rightUuidParameter
