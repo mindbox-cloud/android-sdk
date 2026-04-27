@@ -278,11 +278,6 @@ internal object MindboxPreferences {
             }
         }
 
-    /**
-     * Operations domain received from the remote mobile config (settings.baseAddresses.operations).
-     * Takes priority over [cloud.mindbox.mobile_sdk.MindboxConfiguration.Builder.operationsDomain] set at init time.
-     * Supports rollback: cleared when the remote config omits the field and a value was stored.
-     */
     var operationsDomainFromConfig: String?
         get() = loggingRunCatching(defaultValue = null) {
             SharedPreferencesManager.getString(KEY_OPERATIONS_DOMAIN_FROM_CONFIG)

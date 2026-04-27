@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -38,6 +40,11 @@ class GatewayManagerTest {
         mockkObject(MindboxPreferences)
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid-123"
         every { MindboxPreferences.operationsDomainFromConfig } returns null
+    }
+
+    @After
+    fun onTestEnd() {
+        unmockkObject(MindboxPreferences)
     }
 
     // region resolveOperationsDomain priority chain

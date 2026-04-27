@@ -14,7 +14,9 @@ internal object OperationsDomainConfigPolicy {
 
     fun action(raw: String?, currentlyStored: String?): OperationsDomainConfigPolicyAction {
         val value = raw?.trim()?.takeIf { it.isNotBlank() }
-            ?: return OperationsDomainConfigPolicyAction.Keep
+            ?: return currentlyStored?.let {
+                OperationsDomainConfigPolicyAction.Clear
+            } ?: OperationsDomainConfigPolicyAction.Keep
 
         if (!SdkValidation.isValidDomain(value)) return OperationsDomainConfigPolicyAction.Keep
 

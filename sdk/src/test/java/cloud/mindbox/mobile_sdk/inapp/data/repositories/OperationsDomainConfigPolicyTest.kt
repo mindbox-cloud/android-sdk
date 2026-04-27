@@ -25,7 +25,7 @@ class OperationsDomainConfigPolicyTest {
         unmockkObject(SdkValidation)
     }
 
-    // region raw null / empty — spec 1.1, 5.7: no rollback
+    // region raw null / empty — backend omitted value: clear if stored, keep if nothing to clear
 
     @Test
     fun `raw null stored null returns Keep`() {
@@ -35,24 +35,24 @@ class OperationsDomainConfigPolicyTest {
     }
 
     @Test
-    fun `raw null stored has value returns Keep — no rollback per spec`() {
+    fun `raw null stored has value returns Clear`() {
         val result = OperationsDomainConfigPolicy.action(raw = null, currentlyStored = VALID_HOST)
 
-        assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
+        assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
 
     @Test
-    fun `raw empty stored has value returns Keep — no rollback per spec`() {
+    fun `raw empty stored has value returns Clear`() {
         val result = OperationsDomainConfigPolicy.action(raw = "", currentlyStored = VALID_HOST)
 
-        assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
+        assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
 
     @Test
-    fun `raw blank stored has value returns Keep — no rollback per spec`() {
+    fun `raw blank stored has value returns Clear`() {
         val result = OperationsDomainConfigPolicy.action(raw = "   ", currentlyStored = VALID_HOST)
 
-        assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
+        assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
 
     // endregion
