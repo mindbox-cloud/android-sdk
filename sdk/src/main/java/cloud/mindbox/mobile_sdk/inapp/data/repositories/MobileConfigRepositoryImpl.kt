@@ -66,6 +66,14 @@ internal class MobileConfigRepositoryImpl(
                     processConfigUpdate(configString)
                 }
         }
+        // Seed the flow with the persisted config so cached webview in-apps render
+        // after an offline restart, before/without a successful network fetch.
+        Mindbox.mindboxScope.launch {
+            val cached = MindboxPreferences.inAppConfig
+            if (cached.isNotBlank()) {
+                MindboxPreferences.inAppConfigFlow.emit(cached)
+            }
+        }
     }
 
     override suspend fun fetchMobileConfig() {
