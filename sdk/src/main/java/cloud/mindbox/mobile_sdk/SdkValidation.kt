@@ -13,7 +13,7 @@ internal object SdkValidation {
         EMPTY_ENDPOINT(true, "Endpoint must not be empty"),
         INVALID_DEVICE_ID(false, "Invalid previous device UUID format"),
         INVALID_INSTALLATION_ID(false, "Invalid UUID format of previous installationId"),
-        INVALID_OPERATIONS_DOMAIN(false, "The operationsDomain is not valid, it will be ignored");
+        INVALID_OPERATIONS_DOMAIN(true, "The operationsDomain is not valid");
 
         override fun toString() = "$name(critical=$critical, message=$message)"
     }
