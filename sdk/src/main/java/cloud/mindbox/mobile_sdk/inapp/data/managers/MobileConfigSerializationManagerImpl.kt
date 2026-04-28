@@ -121,7 +121,13 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                 mindboxLogE("Failed to parse featureToggles block in settings section")
             }
 
-            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings, featureToggles)
+            val baseAddresses = runCatching {
+                gson.fromJson(json.asJsonObject.get("baseAddresses"), BaseAddressesDtoBlank::class.java)?.copy()
+            }.getOrNull {
+                mindboxLogE("Failed to parse baseAddresses block in settings section")
+            }
+
+            SettingsDtoBlank(operations, ttl, slidingExpiration, inappSettings, featureToggles, baseAddresses)
         }
     }.getOrNull {
         mindboxLogE("Failed to parse settings block", it)
