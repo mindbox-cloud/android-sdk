@@ -10,20 +10,22 @@ internal sealed class OperationsDomainConfigPolicyAction {
     object Keep : OperationsDomainConfigPolicyAction()
 }
 
-internal object OperationsDomainConfigPolicy {
-
-    fun action(raw: String?, currentlyStored: String?): OperationsDomainConfigPolicyAction {
-        val value = raw?.trim()?.takeIf { it.isNotBlank() }
-            ?: return currentlyStored?.let {
-                OperationsDomainConfigPolicyAction.Clear
-            } ?: OperationsDomainConfigPolicyAction.Keep
-
-        if (!SdkValidation.isValidDomain(value)) return OperationsDomainConfigPolicyAction.Keep
-
-        return if (value == currentlyStored) {
-            OperationsDomainConfigPolicyAction.Keep
+internal fun operationsDomainConfigPolicyAction(
+    raw: String?,
+    currentlyStored: String?,
+): OperationsDomainConfigPolicyAction {
+    val value = raw?.trim()?.takeIf { it.isNotBlank() }
+        ?: return if (currentlyStored != null) {
+            OperationsDomainConfigPolicyAction.Clear
         } else {
-            OperationsDomainConfigPolicyAction.Save(value)
+            OperationsDomainConfigPolicyAction.Keep
         }
+
+    if (!SdkValidation.isValidDomain(value)) return OperationsDomainConfigPolicyAction.Keep
+
+    return if (value == currentlyStored) {
+        OperationsDomainConfigPolicyAction.Keep
+    } else {
+        OperationsDomainConfigPolicyAction.Save(value)
     }
 }

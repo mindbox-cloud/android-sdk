@@ -71,5 +71,49 @@ class SdkValidationDomainTest {
         assertEquals("http://proxy.internal", SdkValidation.toBaseUrl("http://proxy.internal/"))
     }
 
+    @Test
+    fun `toBaseUrl trims surrounding whitespace before adding scheme`() {
+        assertEquals("https://api.mindbox.ru", SdkValidation.toBaseUrl("  api.mindbox.ru  "))
+    }
+
+    @Test
+    fun `toBaseUrl trims surrounding whitespace when scheme present`() {
+        assertEquals("https://api.mindbox.ru", SdkValidation.toBaseUrl("  https://api.mindbox.ru  "))
+    }
+
+    // endregion
+
+    // region isValidDomain
+
+    @Test
+    fun `isValidDomain accepts bare host`() {
+        assertEquals(true, SdkValidation.isValidDomain("api.mindbox.ru"))
+    }
+
+    @Test
+    fun `isValidDomain accepts https scheme`() {
+        assertEquals(true, SdkValidation.isValidDomain("https://api.mindbox.ru"))
+    }
+
+    @Test
+    fun `isValidDomain accepts https scheme with trailing slash`() {
+        assertEquals(true, SdkValidation.isValidDomain("https://api.mindbox.ru/"))
+    }
+
+    @Test
+    fun `isValidDomain accepts bare host with trailing slash`() {
+        assertEquals(true, SdkValidation.isValidDomain("api.mindbox.ru/"))
+    }
+
+    @Test
+    fun `isValidDomain rejects blank string`() {
+        assertEquals(false, SdkValidation.isValidDomain(""))
+    }
+
+    @Test
+    fun `isValidDomain rejects string with spaces`() {
+        assertEquals(false, SdkValidation.isValidDomain("not a domain"))
+    }
+
     // endregion
 }

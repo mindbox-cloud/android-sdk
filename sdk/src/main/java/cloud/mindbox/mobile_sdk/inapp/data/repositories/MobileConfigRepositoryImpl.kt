@@ -209,7 +209,7 @@ internal class MobileConfigRepositoryImpl(
     private fun persistOperationsDomain(config: InAppConfigResponse) {
         val raw = config.settings?.baseAddresses?.operations
         val stored = MindboxPreferences.operationsDomainFromConfig
-        when (val action = OperationsDomainConfigPolicy.action(raw, stored)) {
+        when (val action = operationsDomainConfigPolicyAction(raw, stored)) {
             is OperationsDomainConfigPolicyAction.Save -> {
                 mindboxLogD("operationsDomain: saving '${action.value}'")
                 MindboxPreferences.operationsDomainFromConfig = action.value

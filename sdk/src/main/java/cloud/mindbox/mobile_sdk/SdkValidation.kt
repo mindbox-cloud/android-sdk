@@ -35,12 +35,14 @@ internal object SdkValidation {
      * "api.mindbox.ru" → "https://api.mindbox.ru"
      * "http://proxy.example.com" → "http://proxy.example.com"
      */
-    fun toBaseUrl(hostOrUrl: String): String =
-        if (hostOrUrl.startsWith("http://") || hostOrUrl.startsWith("https://")) {
-            hostOrUrl.trimEnd('/')
+    fun toBaseUrl(hostOrUrl: String): String {
+        val trimmed = hostOrUrl.trim()
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            trimmed.trimEnd('/')
         } else {
-            "https://${hostOrUrl.trimEnd('/')}"
+            "https://${trimmed.trimEnd('/')}"
         }
+    }
 
     /**
      * Returns true if [domain] is a valid domain host, accepting optional http:// or https:// prefix

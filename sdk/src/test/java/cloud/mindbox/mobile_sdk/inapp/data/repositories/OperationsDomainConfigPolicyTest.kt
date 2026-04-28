@@ -17,6 +17,7 @@ class OperationsDomainConfigPolicyTest {
         every { SdkValidation.isValidDomain(any()) } returns false
         every { SdkValidation.isValidDomain(VALID_HOST) } returns true
         every { SdkValidation.isValidDomain(VALID_HOST_WITH_SCHEME) } returns true
+        every { SdkValidation.isValidDomain(VALID_HOST_WITH_TRAILING_SLASH) } returns true
         every { SdkValidation.isValidDomain(ANOTHER_VALID_HOST) } returns true
     }
 
@@ -29,28 +30,28 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw null stored null returns Keep`() {
-        val result = OperationsDomainConfigPolicy.action(raw = null, currentlyStored = null)
+        val result = operationsDomainConfigPolicyAction(raw = null, currentlyStored = null)
 
         assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
     }
 
     @Test
     fun `raw null stored has value returns Clear`() {
-        val result = OperationsDomainConfigPolicy.action(raw = null, currentlyStored = VALID_HOST)
+        val result = operationsDomainConfigPolicyAction(raw = null, currentlyStored = VALID_HOST)
 
         assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
 
     @Test
     fun `raw empty stored has value returns Clear`() {
-        val result = OperationsDomainConfigPolicy.action(raw = "", currentlyStored = VALID_HOST)
+        val result = operationsDomainConfigPolicyAction(raw = "", currentlyStored = VALID_HOST)
 
         assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
 
     @Test
     fun `raw blank stored has value returns Clear`() {
-        val result = OperationsDomainConfigPolicy.action(raw = "   ", currentlyStored = VALID_HOST)
+        val result = operationsDomainConfigPolicyAction(raw = "   ", currentlyStored = VALID_HOST)
 
         assertEquals(OperationsDomainConfigPolicyAction.Clear, result)
     }
@@ -61,7 +62,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw invalid domain with stored value returns Keep — protect existing`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = "not a valid domain!!",
             currentlyStored = VALID_HOST
         )
@@ -71,7 +72,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw invalid domain no stored value returns Keep`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = "not a valid domain!!",
             currentlyStored = null
         )
@@ -85,14 +86,14 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw valid domain no stored value returns Save`() {
-        val result = OperationsDomainConfigPolicy.action(raw = VALID_HOST, currentlyStored = null)
+        val result = operationsDomainConfigPolicyAction(raw = VALID_HOST, currentlyStored = null)
 
         assertEquals(OperationsDomainConfigPolicyAction.Save(VALID_HOST), result)
     }
 
     @Test
     fun `raw valid domain same as stored returns Keep`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = VALID_HOST,
             currentlyStored = VALID_HOST
         )
@@ -102,7 +103,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw valid domain different from stored returns Save — URL change on backend`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = ANOTHER_VALID_HOST,
             currentlyStored = VALID_HOST
         )
@@ -116,7 +117,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw with https scheme stored null returns Save with scheme preserved`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = VALID_HOST_WITH_SCHEME,
             currentlyStored = null
         )
@@ -126,9 +127,30 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw with scheme same as stored returns Keep`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = VALID_HOST_WITH_SCHEME,
             currentlyStored = VALID_HOST_WITH_SCHEME
+        )
+
+        assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
+    }
+
+    @Test
+    fun `raw with trailing slash is saved as-is`() {
+        val result = operationsDomainConfigPolicyAction(
+            raw = VALID_HOST_WITH_TRAILING_SLASH,
+            currentlyStored = null
+        )
+
+        // value is stored as-is; toBaseUrl() strips the slash when building the request URL
+        assertEquals(OperationsDomainConfigPolicyAction.Save(VALID_HOST_WITH_TRAILING_SLASH), result)
+    }
+
+    @Test
+    fun `raw with trailing slash same as stored returns Keep`() {
+        val result = operationsDomainConfigPolicyAction(
+            raw = VALID_HOST_WITH_TRAILING_SLASH,
+            currentlyStored = VALID_HOST_WITH_TRAILING_SLASH
         )
 
         assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
@@ -140,7 +162,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw with leading trailing whitespace is trimmed before comparison`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = "  $VALID_HOST  ",
             currentlyStored = VALID_HOST
         )
@@ -151,7 +173,7 @@ class OperationsDomainConfigPolicyTest {
 
     @Test
     fun `raw with whitespace trimmed value is saved`() {
-        val result = OperationsDomainConfigPolicy.action(
+        val result = operationsDomainConfigPolicyAction(
             raw = "  $VALID_HOST  ",
             currentlyStored = null
         )
@@ -164,6 +186,7 @@ class OperationsDomainConfigPolicyTest {
     private companion object {
         const val VALID_HOST = "anonymizer.client.ru"
         const val VALID_HOST_WITH_SCHEME = "https://anonymizer.client.ru"
+        const val VALID_HOST_WITH_TRAILING_SLASH = "https://anonymizer.client.ru/"
         const val ANOTHER_VALID_HOST = "new-anonymizer.client.ru"
     }
 }
