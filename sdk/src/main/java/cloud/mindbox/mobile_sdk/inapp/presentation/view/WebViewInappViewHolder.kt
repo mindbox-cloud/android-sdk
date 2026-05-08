@@ -782,10 +782,12 @@ internal class WebViewInAppViewHolder(
         }
 
     private data class NavigationInterceptedPayload(
+        @SerializedName("url")
         val url: String
     )
 
     private data class ErrorPayload(
+        @SerializedName("error")
         val error: String
     )
 
