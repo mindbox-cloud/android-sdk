@@ -39,6 +39,7 @@ agcp = "1.9.1.300"
 ktlint-plugin = "12.1.1"
 ksp = "1.9.22-1.0.17"
 maven_publish = "0.32.0"
+kover = "0.8.3"
 
 pushclient = "7.2.0"
 
@@ -51,6 +52,7 @@ buildscript-plugins = [
     "ktlint_gradle_plugin",
     "ksp_gradle_plugin",
     "maven_publish_plugin",
+    "kover_gradle_plugin",
 ]
 
 test = [
@@ -117,3 +119,4 @@ agcp = { module = "com.huawei.agconnect:agcp", version.ref = "agcp" }
 ktlint_gradle_plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-plugin" }
 ksp_gradle_plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
 maven_publish_plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven_publish" }
+kover_gradle_plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }

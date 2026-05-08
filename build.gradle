@@ -22,6 +22,19 @@ allprojects {
     }
 }
 
+apply plugin: 'org.jetbrains.kotlinx.kover'
+
+dependencies {
+    kover(project(':sdk'))
+    kover(project(':mindbox-firebase'))
+    kover(project(':mindbox-huawei'))
+    kover(project(':mindbox-rustore'))
+    kover(project(':mindbox-firebase-starter'))
+    kover(project(':mindbox-huawei-starter'))
+    kover(project(':mindbox-rustore-starter'))
+    kover(project(':mindbox-sdk-starter-core'))
+}
+
 tasks.register('clean', Delete) {
     delete rootProject.getLayout().getBuildDirectory()
 }
