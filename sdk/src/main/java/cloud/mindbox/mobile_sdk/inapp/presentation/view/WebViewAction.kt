@@ -84,30 +84,30 @@ public sealed class BridgeMessage {
     public abstract val timestamp: Long
 
     public data class Request(
-        override val version: Int,
-        override val action: WebViewAction,
-        override val payload: String?,
-        override val id: String,
-        override val timestamp: Long,
-        override val type: String = TYPE_REQUEST,
+        @SerializedName("version") override val version: Int,
+        @SerializedName("action") override val action: WebViewAction,
+        @SerializedName("payload") override val payload: String?,
+        @SerializedName("id") override val id: String,
+        @SerializedName("timestamp") override val timestamp: Long,
+        @SerializedName("type") override val type: String = TYPE_REQUEST,
     ) : BridgeMessage()
 
     public data class Response(
-        override val version: Int,
-        override val action: WebViewAction,
-        override val payload: String?,
-        override val id: String,
-        override val timestamp: Long,
-        override val type: String = TYPE_RESPONSE,
+        @SerializedName("version") override val version: Int,
+        @SerializedName("action") override val action: WebViewAction,
+        @SerializedName("payload") override val payload: String?,
+        @SerializedName("id") override val id: String,
+        @SerializedName("timestamp") override val timestamp: Long,
+        @SerializedName("type") override val type: String = TYPE_RESPONSE,
     ) : BridgeMessage()
 
     public data class Error(
-        override val version: Int,
-        override val action: WebViewAction,
-        override val payload: String?,
-        override val id: String,
-        override val timestamp: Long,
-        override val type: String = TYPE_ERROR,
+        @SerializedName("version") override val version: Int,
+        @SerializedName("action") override val action: WebViewAction,
+        @SerializedName("payload") override val payload: String?,
+        @SerializedName("id") override val id: String,
+        @SerializedName("timestamp") override val timestamp: Long,
+        @SerializedName("type") override val type: String = TYPE_ERROR,
     ) : BridgeMessage()
 
     public companion object {
