@@ -2,11 +2,16 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import cloud.mindbox.mobile_sdk.Mindbox.logE
+import cloud.mindbox.mobile_sdk.Mindbox.logW
+import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.DIRECT
 import cloud.mindbox.mobile_sdk.models.LINK
@@ -16,186 +21,286 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.Timer
 import kotlin.concurrent.timer
 
-internal class LifecycleManager(
+internal class LifecycleManager internal constructor(
     private var currentActivityName: String?,
     private var currentIntent: Intent?,
     private var isAppInBackground: Boolean,
-    private var onActivityResumed: (resumedActivity: Activity) -> Unit,
-    private var onActivityPaused: (pausedActivity: Activity) -> Unit,
-    private var onActivityStarted: (activity: Activity) -> Unit,
-    private var onActivityStopped: (activity: Activity) -> Unit,
-    private var onTrackVisitReady: (source: String?, requestUrl: String?) -> Unit,
-) : Application.ActivityLifecycleCallbacks, LifecycleEventObserver {
+) : Application.ActivityLifecycleCallbacks, LifecycleEventObserver, MindboxLog {
+
+    internal interface Callbacks {
+        fun onActivityStarted(activity: Activity) {}
+
+        fun onActivityPaused(activity: Activity) {}
+
+        fun onActivityResumed(activity: Activity) {}
+
+        fun onActivityStopped(activity: Activity) {}
+
+        fun onTrackVisitReady(source: String?, requestUrl: String?) {}
+    }
 
     companion object {
 
-        private const val SCHEMA_HTTP = "http"
-        private const val SCHEMA_HTTPS = "https"
+        private const val TIMER_PERIOD = 1_200_000L
+        private const val MAX_INTENT_HASHES = 50
 
-        private const val TIMER_PERIOD = 1200000L
-        private const val MAX_INTENT_HASHES_SIZE = 50
+        @Volatile
+        internal var instance: LifecycleManager? = null
+
+        internal val isRegister: Boolean get() = instance != null
+
+        internal fun register(context: Context) {
+            if (instance != null) return
+
+            val lifecycle = ProcessLifecycleOwner.get().lifecycle
+            val activity = context as? Activity
+            val application = context.applicationContext as? Application
+            val isForegrounded = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+
+            if (isForegrounded && activity == null) {
+                logE("Incorrect context type for calling init in this place")
+            }
+            if (isForegrounded || context !is Application) {
+                logW(
+                    "We recommend to call Mindbox.init() synchronously from " +
+                        "Application.onCreate. If you can't do so, don't forget to " +
+                        "call Mindbox.initPushServices from Application.onCreate",
+                )
+            }
+
+            LifecycleManager(
+                currentActivityName = activity?.javaClass?.name,
+                currentIntent = activity?.intent,
+                isAppInBackground = !isForegrounded,
+            ).also { manager ->
+                application?.registerActivityLifecycleCallbacks(manager)
+                lifecycle.addObserver(manager)
+                instance = manager
+            }
+        }
     }
-
-    private var isIntentChanged = true
-    private var timer: Timer? = null
-    private val intentHashes = mutableListOf<Int>()
 
     /**
-     * True by default.
-     * Has to be true because Activity.onResume() triggers before Lifecycle Manager is registered
-     * when Mindbox.init() was called in Activity.onCreate()
-     **/
-    var isCurrentActivityResumed = true
-    private var skipSendingTrackVisit = false
+     * True when a foreground transition happened before [callbacks] was set —
+     * i.e. before [cloud.mindbox.mobile_sdk.Mindbox.init] was called.
+     */
+    @Volatile
+    private var pendingVisit: Boolean = false
 
-    override fun onActivityCreated(activity: Activity, p1: Bundle?) {
-    }
+    @Volatile
+    var callbacks: Callbacks? = null
+        set(value) {
+            field = value
+            if (value != null && pendingVisit) {
+                pendingVisit = false
+                dispatchCurrentVisit(value)
+            }
+        }
+
+    /**
+     * True by default — Activity.onResume() fires before the manager is registered
+     * when Mindbox.init() is called from Activity.onCreate().
+     */
+    var isCurrentActivityResumed: Boolean = true
+        private set
+
+    private var intentChanged = true
+    private var keepaliveTimer: Timer? = null
+    private val intentHashes = mutableListOf<Int>()
+    private var skipNextTrackVisit = false
+
+    /**
+     * True when [onMovedToForeground] was called while [currentIntent] was still null —
+     * i.e. the app foregrounded before the first [onActivityStarted] callback arrived.
+     *
+     * This happens in Case 3: no [MindboxLifecycleInitializer], [Mindbox.init] called from
+     * [Application.onCreate]. [ProcessLifecycleOwnerInitializer] registers [LifecycleDispatcher]
+     * first, so the process-level ON_START fires *before* [LifecycleManager.onActivityStarted]
+     * updates [currentIntent]. The flag is cleared and the visit is dispatched inside
+     * [onActivityStarted] once the intent becomes available.
+     */
+    @Volatile
+    private var foregroundedWithoutIntent = false
+
+    override fun onActivityCreated(activity: Activity, p1: Bundle?) = Unit
+
+    override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) = Unit
+
+    override fun onActivityDestroyed(activity: Activity) = Unit
 
     override fun onActivityStarted(activity: Activity): Unit = loggingRunCatching {
         mindboxLogI("onActivityStarted. activity: ${activity.javaClass.simpleName}")
-        onActivityStarted.invoke(activity)
-        val areActivitiesEqual = currentActivityName == activity.javaClass.name
+        callbacks?.onActivityStarted(activity)
+
+        val sameActivity = currentActivityName == activity.javaClass.name
         val intent = activity.intent
-        isIntentChanged = if (currentIntent != intent) {
-            updateActivityParameters(activity)
-            intent?.hashCode()?.let(::updateHashesList) ?: true
+        intentChanged = if (currentIntent != intent) {
+            updateActivityState(activity)
+            intent?.hashCode()?.let(::isNewHash) ?: true
         } else {
             false
         }
 
-        if (isAppInBackground || !isIntentChanged) {
+        if (isAppInBackground || !intentChanged) {
             isAppInBackground = false
+            if (foregroundedWithoutIntent && intentChanged) {
+                foregroundedWithoutIntent = false
+                sendTrackVisit(intent ?: return@loggingRunCatching)
+            }
             return@loggingRunCatching
         }
 
-        sendTrackVisit(activity.intent, areActivitiesEqual)
+        sendTrackVisit(intent ?: return@loggingRunCatching, sameActivity)
     }
 
     override fun onActivityResumed(activity: Activity) {
         mindboxLogI("onActivityResumed. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = true
-        onActivityResumed.invoke(activity)
-        isCurrentActivityResumed = true
+        callbacks?.onActivityResumed(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {
         mindboxLogI("onActivityPaused. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = false
-        onActivityPaused.invoke(activity)
-        isCurrentActivityResumed = false
+        callbacks?.onActivityPaused(activity)
     }
 
     override fun onActivityStopped(activity: Activity) {
         mindboxLogI("onActivityStopped. activity: ${activity.javaClass.simpleName}")
         if (currentIntent == null || currentActivityName == null) {
-            updateActivityParameters(activity)
+            updateActivityState(activity)
         }
-        onActivityStopped.invoke(activity)
+        callbacks?.onActivityStopped(activity)
     }
 
-    override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {
-    }
-
-    override fun onActivityDestroyed(activity: Activity) {
+    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+        when (event) {
+            Lifecycle.Event.ON_STOP -> onMovedToBackground()
+            Lifecycle.Event.ON_START -> onMovedToForeground()
+            else -> Unit
+        }
     }
 
     fun isTrackVisitSent(): Boolean {
         currentIntent?.let { intent ->
-            if (updateHashesList(intent.hashCode())) {
+            if (isNewHash(intent.hashCode())) {
                 sendTrackVisit(intent)
             }
         }
         return currentIntent != null
     }
 
-    fun wasReinitialized() {
-        skipSendingTrackVisit = true
+    /**
+     * Schedules a track-visit to be dispatched the next time [callbacks] is assigned.
+     *
+     * Call this before replacing [callbacks] via [cloud.mindbox.mobile_sdk.Mindbox.init]
+     * so the new endpoint receives a track-visit immediately upon reinitialisation.
+     * The backend uses this signal to learn the device is now active in the new environment.
+     */
+    fun scheduleReinitTrackVisit() {
+        pendingVisit = true
+        mindboxLogI("Track visit scheduled for reinit")
     }
 
-    fun onNewIntent(newIntent: Intent?): Unit? = newIntent?.let { intent ->
-        if (intent.data != null || intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true) {
-            isIntentChanged = updateHashesList(intent.hashCode())
-            sendTrackVisit(intent)
-            skipSendingTrackVisit = isAppInBackground
-        }
+    fun onNewIntent(newIntent: Intent?) {
+        val intent = newIntent ?: return
+        val hasDeepLink = intent.data != null
+        val isFromPush = intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true
+        if (!hasDeepLink && !isFromPush) return
+
+        intentChanged = isNewHash(intent.hashCode())
+        sendTrackVisit(intent)
+        skipNextTrackVisit = isAppInBackground
     }
 
-    private fun onAppMovedToBackground(): Unit = loggingRunCatching {
+    private fun onMovedToBackground(): Unit = loggingRunCatching {
         mindboxLogI("onAppMovedToBackground")
         isAppInBackground = true
+        pendingVisit = false
+        foregroundedWithoutIntent = false
         cancelKeepaliveTimer()
     }
 
-    private fun onAppMovedToForeground(): Unit = loggingRunCatching {
+    private fun onMovedToForeground(): Unit = loggingRunCatching {
         mindboxLogI("onAppMovedToForeground")
-        if (!skipSendingTrackVisit) {
-            currentIntent?.let(::sendTrackVisit)
+        if (skipNextTrackVisit) {
+            skipNextTrackVisit = false
+            return@loggingRunCatching
+        }
+        val intent = currentIntent
+        if (intent != null) {
+            sendTrackVisit(intent)
         } else {
-            skipSendingTrackVisit = false
+            foregroundedWithoutIntent = true
+            mindboxLogI("Track visit deferred — foregrounded before first activity")
         }
     }
 
-    private fun updateActivityParameters(activity: Activity): Unit = loggingRunCatching {
+    private fun updateActivityState(activity: Activity): Unit = loggingRunCatching {
         currentActivityName = activity.javaClass.name
         currentIntent = activity.intent
     }
 
     private fun sendTrackVisit(
         intent: Intent,
-        areActivitiesEqual: Boolean = true,
+        sameActivity: Boolean = true,
     ): Unit = loggingRunCatching {
-        val source = if (isIntentChanged) source(intent) else DIRECT
+        val source = if (intentChanged) intentSource(intent) else DIRECT
+        if (!sameActivity && source == DIRECT) return@loggingRunCatching
 
-        if (areActivitiesEqual || source != DIRECT) {
-            val requestUrl = if (source == LINK) intent.data?.toString() else null
-            onTrackVisitReady.invoke(source, requestUrl)
-            startKeepaliveTimer()
-
-            mindboxLogI("Track visit event with source $source and url $requestUrl")
+        val cb = callbacks
+        if (cb == null) {
+            pendingVisit = true
+            mindboxLogI("Track visit pending (no callbacks yet)")
+            return@loggingRunCatching
         }
+        pendingVisit = false
+        val requestUrl = if (source == LINK) intent.data?.toString() else null
+        cb.onTrackVisitReady(source, requestUrl)
+        startKeepaliveTimer()
+        mindboxLogI("Track visit event with source $source and url $requestUrl")
     }
 
-    private fun source(intent: Intent?): String? = loggingRunCatching(defaultValue = null) {
-        when {
-            intent?.scheme == SCHEMA_HTTP || intent?.scheme == SCHEMA_HTTPS -> LINK
-            intent?.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true -> PUSH
-            else -> DIRECT
-        }
+    /**
+     * Derives source and URL from the already-stored [currentIntent]/[intentChanged] and
+     * dispatches the track-visit through [cb].
+     *
+     * Called from the [callbacks] setter when [pendingVisit] is raised — the same pattern
+     * iOS uses in `MBSessionManager` when `initializationCompleted` fires while `isActive` is true.
+     */
+    private fun dispatchCurrentVisit(cb: Callbacks): Unit = loggingRunCatching {
+        val intent = currentIntent ?: return@loggingRunCatching
+        val source = if (intentChanged) intentSource(intent) else DIRECT
+        val requestUrl = if (source == LINK) intent.data?.toString() else null
+        cb.onTrackVisitReady(source, requestUrl)
+        startKeepaliveTimer()
+        mindboxLogI("Track visit dispatched from pending state: source=$source url=$requestUrl")
     }
 
-    private fun updateHashesList(code: Int): Boolean = loggingRunCatching(defaultValue = true) {
-        if (!intentHashes.contains(code)) {
-            if (intentHashes.size >= MAX_INTENT_HASHES_SIZE) {
-                intentHashes.removeAt(0)
-            }
-            intentHashes.add(code)
-            true
-        } else {
-            false
-        }
+    private fun intentSource(intent: Intent): String = when {
+        intent.scheme == "http" || intent.scheme == "https" -> LINK
+        intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true -> PUSH
+        else -> DIRECT
+    }
+
+    private fun isNewHash(hash: Int): Boolean = loggingRunCatching(defaultValue = true) {
+        if (intentHashes.contains(hash)) return@loggingRunCatching false
+        if (intentHashes.size >= MAX_INTENT_HASHES) intentHashes.removeAt(0)
+        intentHashes.add(hash)
+        true
     }
 
     private fun startKeepaliveTimer(): Unit = loggingRunCatching {
         cancelKeepaliveTimer()
-        timer = timer(
+        keepaliveTimer = timer(
             initialDelay = TIMER_PERIOD,
             period = TIMER_PERIOD,
-            action = { onTrackVisitReady.invoke(null, null) },
+            action = { callbacks?.onTrackVisitReady(null, null) },
         )
     }
 
     private fun cancelKeepaliveTimer(): Unit = loggingRunCatching {
-        timer?.cancel()
-        timer = null
-    }
-
-    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        when (event) {
-            Lifecycle.Event.ON_STOP -> onAppMovedToBackground()
-            Lifecycle.Event.ON_START -> onAppMovedToForeground()
-            else -> {
-                // do nothing
-            }
-        }
+        keepaliveTimer?.cancel()
+        keepaliveTimer = null
     }
 }

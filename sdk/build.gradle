@@ -87,6 +87,7 @@ dependencies {
 
     // Handle app lifecycle
     implementation libs.androidx.lifecycle
+    implementation libs.androidx.startup
     implementation libs.threetenabp
 
     // Glide
