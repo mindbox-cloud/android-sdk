@@ -62,7 +62,7 @@ internal class MindboxLifecycleInitializerTest {
     }
 
     @Test
-    fun `calling create twice creates a new instance each time`() {
+    fun `calling create twice keeps the first instance`() {
         every { any<Context>().getCurrentProcessName() } returns context.packageName
         every { any<Context>().isMainProcess(any()) } returns true
 
@@ -72,8 +72,8 @@ internal class MindboxLifecycleInitializerTest {
         MindboxLifecycleInitializer().create(context)
 
         assertNotNull(LifecycleManager.instance)
-        assertNotSame(
-            "second create must produce a new LifecycleManager instance",
+        assertSame(
+            "second create must be a no-op — the existing instance must be kept to avoid a leaked observer",
             firstInstance,
             LifecycleManager.instance,
         )

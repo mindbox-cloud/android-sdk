@@ -50,6 +50,8 @@ internal class LifecycleManager internal constructor(
         internal val isRegister: Boolean get() = instance != null
 
         internal fun register(context: Context) {
+            if (instance != null) return
+
             val lifecycle = ProcessLifecycleOwner.get().lifecycle
             val activity = context as? Activity
             val application = context.applicationContext as? Application
@@ -117,6 +119,7 @@ internal class LifecycleManager internal constructor(
      * updates [currentIntent]. The flag is cleared and the visit is dispatched inside
      * [onActivityStarted] once the intent becomes available.
      */
+    @Volatile
     private var foregroundedWithoutIntent = false
 
     override fun onActivityCreated(activity: Activity, p1: Bundle?) = Unit

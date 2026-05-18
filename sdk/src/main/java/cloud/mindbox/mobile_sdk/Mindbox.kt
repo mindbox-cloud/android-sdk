@@ -873,12 +873,9 @@ public object Mindbox : MindboxLog {
      * @param intent new intent for activity, which was received in [Activity.onNewIntent] method
      */
     public fun onNewIntent(intent: Intent?): Unit = LoggingExceptionHandler.runCatching {
-        MindboxLoggerImpl.d(this, "onNewIntent. intent: $intent")
-        if (lifecycleManager != null) {
-            lifecycleManager?.onNewIntent(intent)
-        } else {
-            MindboxLoggerImpl.d(this, "onNewIntent. LifecycleManager is not initialized. Skipping.")
-        }
+        mindboxLogI("onNewIntent. intent: $intent")
+        lifecycleManager?.onNewIntent(intent)
+            ?: mindboxLogI("onNewIntent. LifecycleManager is not initialized. Skipping.")
     }
 
     /**

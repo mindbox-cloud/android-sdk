@@ -1,12 +1,11 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
-import android.util.Log
 import androidx.annotation.RestrictTo
 import androidx.startup.Initializer
 import cloud.mindbox.mobile_sdk.getCurrentProcessName
 import cloud.mindbox.mobile_sdk.isMainProcess
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 
 /**
  * Registers [LifecycleManager] at application startup via androidx.startup so that lifecycle
@@ -22,8 +21,7 @@ public class MindboxLifecycleInitializer : Initializer<Unit> {
         val currentProcessName = context.getCurrentProcessName()
         if (!context.isMainProcess(currentProcessName)) return
 
-        // Log before init mindbox
-        Log.i(MindboxLoggerImpl.TAG, "LifecycleInitializer: Register LifecycleManager in startup initializer")
+        mindboxLogI("LifecycleInitializer: Register LifecycleManager in startup initializer")
         LifecycleManager.register(context)
     }
 
