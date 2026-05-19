@@ -1,12 +1,16 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.getCurrentProcessName
 import cloud.mindbox.mobile_sdk.isMainProcess
+import cloud.mindbox.mobile_sdk.models.LINK
 import io.mockk.*
 import org.junit.After
 import org.junit.Assert.*
@@ -79,35 +83,86 @@ internal class MindboxLifecycleInitializerTest {
         )
     }
 
+    /**
+     * Robolectric never advances [ProcessLifecycleOwner] to STARTED, so the initializer must
+     * create the manager with `isAppInBackground = true`.
+     *
+     * We verify the flag is honoured by supplying an https deep-link intent (source = LINK).
+     * The LINK source bypasses the `!sameActivity && source == DIRECT` early-return guard inside
+     * [LifecycleManager.sendTrackVisit], so the only thing that can suppress the visit is
+     * the `isAppInBackground` flag itself — making the assertion unambiguous.
+     */
     @Test
-    fun `isAppInBackground is true when ProcessLifecycleOwner is below STARTED`() {
+    fun `isAppInBackground true - suppresses track visit on first onActivityStarted`() {
         every { any<Context>().getCurrentProcessName() } returns context.packageName
         every { any<Context>().isMainProcess(any()) } returns true
 
-        // At test time ProcessLifecycleOwner has not been started by any Activity
-        val stateBefore = ProcessLifecycleOwner.get().lifecycle.currentState
-        val expectedBackground = !stateBefore.isAtLeast(Lifecycle.State.STARTED)
+        // Validate Robolectric environment assumption before trusting the assertion below.
+        val state = ProcessLifecycleOwner.get().lifecycle.currentState
+        assertFalse(
+            "Test requires ProcessLifecycleOwner below STARTED; got $state",
+            state.isAtLeast(Lifecycle.State.STARTED),
+        )
 
         MindboxLifecycleInitializer().create(context)
 
-        // Verify by attempting a foreground track visit: if manager was created with
-        // isAppInBackground=true, onActivityStarted will just clear the flag, not send a visit
-        val trackVisitEvents = mutableListOf<Pair<String?, String?>>()
-        val manager = LifecycleManager.instance!!
+        val manager = checkNotNull(LifecycleManager.instance)
+        val events = mutableListOf<Pair<String?, String?>>()
         manager.callbacks = object : LifecycleManager.Callbacks {
             override fun onTrackVisitReady(source: String?, requestUrl: String?) {
-                trackVisitEvents.add(source to requestUrl)
+                events.add(source to requestUrl)
             }
         }
 
-        manager.onActivityStarted(mockk(relaxed = true))
-
-        if (expectedBackground) {
-            assertTrue(
-                "Track visit must not be sent in first onActivityStarted when isAppInBackground was true",
-                trackVisitEvents.isEmpty(),
-            )
+        // https intent → source = LINK, which bypasses the `!sameActivity && DIRECT` guard, so
+        // a visit would be dispatched if isAppInBackground were false.
+        val deepLinkIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com/promo"))
+        val activity = mockk<Activity>(relaxed = true) {
+            every { this@mockk.intent } returns deepLinkIntent
         }
+
+        manager.onActivityStarted(activity)
+
+        assertTrue(
+            "Track visit must NOT be dispatched on first onActivityStarted when the manager " +
+                "was created while the app was in the background (isAppInBackground = true)",
+            events.isEmpty(),
+        )
+    }
+
+    /**
+     * Counterpart to [isAppInBackground true - suppresses track visit on first onActivityStarted]:
+     * when the manager starts with `isAppInBackground = false` (app already foregrounded),
+     * [LifecycleManager.onActivityStarted] must dispatch a track-visit with source LINK and
+     * the correct URL for an https deep-link intent.
+     *
+     * We construct the manager directly to avoid depending on Robolectric's lifecycle state.
+     */
+    @Test
+    fun `isAppInBackground false - dispatches LINK track visit on onActivityStarted with https intent`() {
+        val deepLinkUrl = "https://example.com/promo"
+        val deepLinkIntent = Intent(Intent.ACTION_VIEW, Uri.parse(deepLinkUrl))
+
+        val manager = LifecycleManager(
+            currentActivityName = null,
+            currentIntent = null,
+            isAppInBackground = false,
+        )
+        val events = mutableListOf<Pair<String?, String?>>()
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onTrackVisitReady(source: String?, requestUrl: String?) {
+                events.add(source to requestUrl)
+            }
+        }
+        val activity = mockk<Activity>(relaxed = true) {
+            every { this@mockk.intent } returns deepLinkIntent
+        }
+
+        manager.onActivityStarted(activity)
+
+        assertEquals("Exactly one track visit must be dispatched", 1, events.size)
+        assertEquals("Source must be LINK for an https intent", LINK, events[0].first)
+        assertEquals("URL must equal the deep-link URI", deepLinkUrl, events[0].second)
     }
 
     @Test
