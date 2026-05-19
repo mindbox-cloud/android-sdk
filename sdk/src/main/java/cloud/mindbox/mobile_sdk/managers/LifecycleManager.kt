@@ -68,14 +68,21 @@ internal class LifecycleManager internal constructor(
                 )
             }
 
-            LifecycleManager(
-                currentActivityName = activity?.javaClass?.name,
-                currentIntent = activity?.intent,
-                isAppInBackground = !isForegrounded,
-            ).also { manager ->
-                application?.registerActivityLifecycleCallbacks(manager)
-                lifecycle.addObserver(manager)
-                instance = manager
+            // Double-checked locking: the fast path above filters the common case cheaply;
+            // the synchronized block below prevents two racing threads from both creating
+            // a manager and registering it twice as an observer.
+            synchronized(LifecycleManager::class.java) {
+                if (instance != null) return
+
+                LifecycleManager(
+                    currentActivityName = activity?.javaClass?.name,
+                    currentIntent = activity?.intent,
+                    isAppInBackground = !isForegrounded,
+                ).also { manager ->
+                    application?.registerActivityLifecycleCallbacks(manager)
+                    lifecycle.addObserver(manager)
+                    instance = manager
+                }
             }
         }
     }

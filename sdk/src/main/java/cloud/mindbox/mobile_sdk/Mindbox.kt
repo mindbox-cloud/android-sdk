@@ -679,6 +679,7 @@ public object Mindbox : MindboxLog {
             override fun onTrackVisitReady(source: String?, requestUrl: String?) {
                 sessionStorageManager.hasSessionExpired()
                 eventScope.launch {
+                    InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                     sendTrackVisitEvent(
                         MindboxDI.appModule.appContext,
                         source,
