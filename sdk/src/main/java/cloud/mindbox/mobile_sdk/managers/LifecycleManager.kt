@@ -152,12 +152,12 @@ internal class LifecycleManager internal constructor(
             isAppInBackground = false
             if (foregroundedWithoutIntent && intentChanged) {
                 foregroundedWithoutIntent = false
-                sendTrackVisit(intent ?: return@loggingRunCatching)
+                sendTrackVisit(intent)
             }
             return@loggingRunCatching
         }
 
-        sendTrackVisit(intent ?: return@loggingRunCatching, sameActivity)
+        sendTrackVisit(intent, sameActivity)
     }
 
     override fun onActivityResumed(activity: Activity) {
@@ -249,7 +249,7 @@ internal class LifecycleManager internal constructor(
     }
 
     private fun sendTrackVisit(
-        intent: Intent,
+        intent: Intent?,
         sameActivity: Boolean = true,
     ): Unit = loggingRunCatching {
         val source = if (intentChanged) intentSource(intent) else DIRECT
@@ -262,7 +262,7 @@ internal class LifecycleManager internal constructor(
             return@loggingRunCatching
         }
         pendingVisit = false
-        val requestUrl = if (source == LINK) intent.data?.toString() else null
+        val requestUrl = if (source == LINK) intent?.data?.toString() else null
         cb.onTrackVisitReady(source, requestUrl)
         startKeepaliveTimer()
         mindboxLogI("Track visit event with source $source and url $requestUrl")
@@ -284,9 +284,9 @@ internal class LifecycleManager internal constructor(
         mindboxLogI("Track visit dispatched from pending state: source=$source url=$requestUrl")
     }
 
-    private fun intentSource(intent: Intent): String = when {
-        intent.scheme == "http" || intent.scheme == "https" -> LINK
-        intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true -> PUSH
+    private fun intentSource(intent: Intent?): String = when {
+        intent?.scheme == "http" || intent?.scheme == "https" -> LINK
+        intent?.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true -> PUSH
         else -> DIRECT
     }
 
