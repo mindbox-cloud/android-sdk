@@ -648,7 +648,7 @@ internal class WebViewInAppViewHolder(
                             errorDescription = "Failed to fetch HTML content for In-App",
                             throwable = e
                         )
-                        inAppController.close()
+                        controller.executeOnViewThread { inAppController.close() }
                     }
                 } ?: run {
                     inAppFailureTracker.sendFailureWithContext(
@@ -656,7 +656,7 @@ internal class WebViewInAppViewHolder(
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                         errorDescription = "WebView content URL is null"
                     )
-                    inAppController.close()
+                    controller.executeOnViewThread { inAppController.close() }
                 }
             }
         }
