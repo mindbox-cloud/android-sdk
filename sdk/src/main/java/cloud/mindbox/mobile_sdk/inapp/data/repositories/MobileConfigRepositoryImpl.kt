@@ -103,6 +103,7 @@ internal class MobileConfigRepositoryImpl(
             mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
             inappSettingsManager.applySettings(config = filteredConfig)
             featureToggleManager.applyToggles(config = filteredConfig)
+            persistOperationsDomain(filteredConfig)
             configState.value = updatedInAppConfig
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
@@ -190,7 +191,37 @@ internal class MobileConfigRepositoryImpl(
             mindboxLogW("Unable to get featureToggles settings $it")
         }
 
-        return SettingsDto(operations, ttl, slidingExpiration, inappSettings, featureToggles)
+        val baseAddresses = runCatching { getBaseAddresses(configBlank) }.getOrNull {
+            mindboxLogW("Unable to get baseAddresses settings $it")
+        }
+
+        return SettingsDto(operations, ttl, slidingExpiration, inappSettings, featureToggles, baseAddresses)
+    }
+
+    private fun getBaseAddresses(configBlank: InAppConfigResponseBlank?): BaseAddressesDto? {
+        val operations = configBlank?.settings?.baseAddresses?.operations
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+        return BaseAddressesDto(operations = operations)
+    }
+
+    private fun persistOperationsDomain(config: InAppConfigResponse) {
+        val raw = config.settings?.baseAddresses?.operations
+        val stored = MindboxPreferences.operationsDomainFromConfig
+        when (val action = operationsDomainConfigPolicyAction(raw, stored)) {
+            is OperationsDomainConfigPolicyAction.Save -> {
+                mindboxLogD("operationsDomain: saving '${action.value}'")
+                MindboxPreferences.operationsDomainFromConfig = action.value
+            }
+            is OperationsDomainConfigPolicyAction.Clear -> {
+                mindboxLogD("operationsDomain: clearing stored value '$stored'")
+                MindboxPreferences.operationsDomainFromConfig = null
+            }
+            is OperationsDomainConfigPolicyAction.Keep -> {
+                mindboxLogD("operationsDomain: keeping existing value '$stored'")
+            }
+        }
     }
 
     private fun getInAppTtl(configBlank: InAppConfigResponseBlank?): TtlDto? =

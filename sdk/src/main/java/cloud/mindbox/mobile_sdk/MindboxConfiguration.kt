@@ -22,6 +22,7 @@ public class MindboxConfiguration private constructor(
     internal val subscribeCustomerIfCreated: Boolean,
     internal val shouldCreateCustomer: Boolean,
     internal val uuidDebugEnabled: Boolean,
+    internal val operationsDomain: String? = null,
 ) {
 
     public constructor(builder: Builder) : this(
@@ -35,6 +36,7 @@ public class MindboxConfiguration private constructor(
         subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
         shouldCreateCustomer = builder.shouldCreateCustomer,
         uuidDebugEnabled = builder.uuidDebugEnabled,
+        operationsDomain = builder.operationsDomain,
     )
 
     internal fun copy(
@@ -48,6 +50,7 @@ public class MindboxConfiguration private constructor(
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
         uuidDebugEnabled: Boolean = this.uuidDebugEnabled,
+        operationsDomain: String? = this.operationsDomain,
     ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
@@ -59,6 +62,7 @@ public class MindboxConfiguration private constructor(
         subscribeCustomerIfCreated = subscribeCustomerIfCreated,
         shouldCreateCustomer = shouldCreateCustomer,
         uuidDebugEnabled = uuidDebugEnabled,
+        operationsDomain = operationsDomain,
     )
 
     override fun toString(): String {
@@ -71,7 +75,8 @@ public class MindboxConfiguration private constructor(
             "versionCode = $versionCode, " +
             "subscribeCustomerIfCreated = $subscribeCustomerIfCreated, " +
             "shouldCreateCustomer = $shouldCreateCustomer, " +
-            "uuidDebugEnabled = $uuidDebugEnabled)"
+            "uuidDebugEnabled = $uuidDebugEnabled, " +
+            "operationsDomain = $operationsDomain)"
     }
 
     /**
@@ -94,6 +99,7 @@ public class MindboxConfiguration private constructor(
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
         internal var shouldCreateCustomer: Boolean = true
         internal var uuidDebugEnabled: Boolean = true
+        internal var operationsDomain: String? = null
 
         /**
          * Specifies deviceUUID for Mindbox
@@ -150,6 +156,17 @@ public class MindboxConfiguration private constructor(
         }
 
         /**
+         * Optional host for operations (/v3/operations/async, /v3/operations/sync,
+         * /v1.1/customer/mobile-track-visit). Use when your project routes operations through
+         * an anonymizer proxy. A blank value is treated as not set. An invalid value is logged
+         * and ignored during SDK initialization.
+         */
+        public fun operationsDomain(operationsDomain: String): Builder {
+            this.operationsDomain = operationsDomain.trim().takeIf { it.isNotBlank() }
+            return this
+        }
+
+        /**
          * Creates a new MindboxConfiguration.Builder.
          */
         public fun build(): MindboxConfiguration {
@@ -175,7 +192,7 @@ public class MindboxConfiguration private constructor(
                 // need for scheduling and stopping one-time background service
                 SharedPreferencesManager.with(context)
                 MindboxPreferences.hostAppName = packageName
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 MindboxLoggerImpl.e(
                     this,
                     "Getting app info failed. Identified as an unknown application",

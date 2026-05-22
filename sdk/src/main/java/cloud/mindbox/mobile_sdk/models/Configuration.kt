@@ -18,7 +18,8 @@ internal data class Configuration(
     val versionName: String,
     val versionCode: String,
     val subscribeCustomerIfCreated: Boolean,
-    val shouldCreateCustomer: Boolean
+    val shouldCreateCustomer: Boolean,
+    val operationsDomain: String? = null,
 ) {
 
     internal constructor(mindboxConfiguration: MindboxConfiguration) : this(
@@ -30,7 +31,8 @@ internal data class Configuration(
         versionName = mindboxConfiguration.versionName,
         versionCode = mindboxConfiguration.versionCode,
         subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated,
-        shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer
+        shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer,
+        operationsDomain = mindboxConfiguration.operationsDomain,
     )
 }
 

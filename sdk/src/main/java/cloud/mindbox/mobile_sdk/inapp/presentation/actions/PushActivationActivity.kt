@@ -58,20 +58,20 @@ internal class PushActivationActivity : Activity() {
                             mindboxLogI("User already rejected permission two times, try open settings")
                             mindboxNotificationManager.openNotificationSettings(this)
                         }
-                        finishWithResult(isGranted = false, dialogShown = false)
+                        finishWithResult(isGranted = false, dialogShown = isDialogLikelyShown())
                     } else {
                         mindboxLogI("Awaiting show dialog")
                         shouldCheckDialogShowing = true
                     }
                 } else {
                     mindboxNotificationManager.shouldOpenSettings = true
-                    finishWithResult(isGranted = false)
+                    finishWithResult(isGranted = false, dialogShown = isDialogLikelyShown())
                 }
             }
 
             permissionDenied && shouldShowRationale -> {
                 mindboxLogI("User rejected first permission request")
-                finishWithResult(isGranted = false)
+                finishWithResult(isGranted = false, dialogShown = isDialogLikelyShown())
             }
         }
     }
@@ -123,6 +123,10 @@ internal class PushActivationActivity : Activity() {
         }
         super.onDestroy()
     }
+
+    private fun isDialogLikelyShown(): Boolean = resumeTimes.lastOrNull()?.let { lastResume ->
+        SystemClock.elapsedRealtime() - lastResume >= TIME_BETWEEN_RESUME
+    } ?: false
 
     private fun finishWithResult(isGranted: Boolean, dialogShown: Boolean = true) {
         RuntimePermissionRequestBridge.resolve(requestId.orEmpty(), isGranted, dialogShown)

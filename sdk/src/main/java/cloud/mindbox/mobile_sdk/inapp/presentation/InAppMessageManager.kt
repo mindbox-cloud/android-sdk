@@ -16,6 +16,8 @@ internal interface InAppMessageManager {
 
     fun registerInAppCallback(inAppCallback: InAppCallback)
 
+    fun unregisterInAppCallback()
+
     fun initLogs()
 
     fun onResumeCurrentActivity(activity: Activity)

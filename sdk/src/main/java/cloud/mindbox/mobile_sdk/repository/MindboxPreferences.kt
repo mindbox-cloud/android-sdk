@@ -39,6 +39,7 @@ internal object MindboxPreferences {
     private const val KEY_LOCAL_STATE_VERSION = "local_state_version"
     private const val DEFAULT_LOCAL_STATE_VERSION = 1
     private const val KEY_FIRST_INITIALIZATION_TIME = "key_first_initialization_time"
+    private const val KEY_OPERATIONS_DOMAIN_FROM_CONFIG = "key_operations_domain_from_config"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -274,6 +275,17 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_LOCAL_STATE_VERSION, value)
+            }
+        }
+
+    var operationsDomainFromConfig: String?
+        get() = loggingRunCatching(defaultValue = null) {
+            SharedPreferencesManager.getString(KEY_OPERATIONS_DOMAIN_FROM_CONFIG)
+                ?.takeIf { it.isNotBlank() }
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_OPERATIONS_DOMAIN_FROM_CONFIG, value)
             }
         }
 }

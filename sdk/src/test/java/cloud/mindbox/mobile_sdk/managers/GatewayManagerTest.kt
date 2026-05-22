@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -37,7 +39,179 @@ class GatewayManagerTest {
 
         mockkObject(MindboxPreferences)
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid-123"
+        every { MindboxPreferences.operationsDomainFromConfig } returns null
     }
+
+    @After
+    fun onTestEnd() {
+        unmockkObject(MindboxPreferences)
+    }
+
+    // region resolveOperationsDomain priority chain
+
+    @Test
+    fun `resolveOperationsDomain returns domain when no operationsDomain configured anywhere`() {
+        val config = mockConfiguration.copy(domain = "api.mindbox.ru", operationsDomain = null)
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
+
+        assertEquals("api.mindbox.ru", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain returns operationsDomain from init when config value is null`() {
+        val config = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
+
+        assertEquals("anonymizer.client.ru", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain returns operationsDomainFromConfig over operationsDomain from init`() {
+        val config = mockConfiguration.copy(operationsDomain = "init-host.com")
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "config-host.com")
+
+        assertEquals("config-host.com", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain returns operationsDomainFromConfig when no init value`() {
+        val config = mockConfiguration.copy(operationsDomain = null)
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "config-host.com")
+
+        assertEquals("config-host.com", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain falls through blank operationsDomainFromConfig to init value`() {
+        val config = mockConfiguration.copy(operationsDomain = "init-host.com")
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "   ")
+
+        assertEquals("init-host.com", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain falls through blank operationsDomain to domain`() {
+        val config = mockConfiguration.copy(domain = "api.mindbox.ru", operationsDomain = "   ")
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
+
+        assertEquals("api.mindbox.ru", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain preserves https scheme from init value`() {
+        val config = mockConfiguration.copy(operationsDomain = "https://proxy.com")
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
+
+        assertEquals("https://proxy.com", result)
+    }
+
+    @Test
+    fun `resolveOperationsDomain preserves http scheme from config value`() {
+        val config = mockConfiguration.copy(operationsDomain = null)
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "http://internal-proxy.com")
+
+        assertEquals("http://internal-proxy.com", result)
+    }
+
+    // endregion
+
+    // region operationsDomain URL routing
+
+    @Test
+    fun `operations URL uses domain when no operationsDomain configured anywhere (backward compat)`() {
+        val config = mockConfiguration.copy(domain = "api.mindbox.ru", operationsDomain = null)
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue("Expected domain fallback", url.startsWith("https://api.mindbox.ru/"))
+    }
+
+    @Test
+    fun `operations URL uses operationsDomain from init when SharedPrefs has no value`() {
+        val config = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("https://anonymizer.client.ru/"))
+    }
+
+    @Test
+    fun `operationsDomainFromConfig in SharedPrefs overrides operationsDomain from init`() {
+        every { MindboxPreferences.operationsDomainFromConfig } returns "config-host.com"
+        val config = mockConfiguration.copy(operationsDomain = "init-host.com")
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("https://config-host.com/"))
+    }
+
+    @Test
+    fun `operationsDomainFromConfig in SharedPrefs overrides domain when no init value`() {
+        every { MindboxPreferences.operationsDomainFromConfig } returns "config-host.com"
+        val config = mockConfiguration.copy(operationsDomain = null)
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("https://config-host.com/"))
+    }
+
+    @Test
+    fun `operationsDomain with https scheme preserves scheme in URL`() {
+        val config = mockConfiguration.copy(operationsDomain = "https://anonymizer.client.ru")
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("https://anonymizer.client.ru/"))
+    }
+
+    @Test
+    fun `operationsDomain with http scheme uses http scheme`() {
+        val config = mockConfiguration.copy(operationsDomain = "http://internal-proxy.com")
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("http://internal-proxy.com/"))
+    }
+
+    @Test
+    fun `logs URL uses operationsDomain from init`() {
+        val config = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")
+
+        val url = gatewayManager.getLogsUrl(config)
+
+        assertTrue(url.startsWith("https://anonymizer.client.ru/"))
+    }
+
+    @Test
+    fun `product segmentation URL uses operationsDomain from init`() {
+        val config = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")
+
+        val url = gatewayManager.getProductSegmentationUrl(config)
+
+        assertTrue(url.startsWith("https://anonymizer.client.ru/"))
+    }
+
+    @Test
+    fun `operationsDomain does not affect endpoint ID in URL`() {
+        val config = mockConfiguration.copy(
+            endpointId = "test-endpoint-id",
+            operationsDomain = "anonymizer.client.ru"
+        )
+
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.contains("endpointId=test-endpoint-id"))
+    }
+
+    // endregion
 
     @Test
     fun `getCustomerSegmentationsUrl should return correct URL with endpointId and deviceUUID`() {
