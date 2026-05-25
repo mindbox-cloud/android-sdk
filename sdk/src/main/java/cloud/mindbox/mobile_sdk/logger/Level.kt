@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.logger
 
-public enum class Level(public var value: Int) {
+public enum class Level(public val value: Int) {
 
     VERBOSE(0),
     DEBUG(1),
