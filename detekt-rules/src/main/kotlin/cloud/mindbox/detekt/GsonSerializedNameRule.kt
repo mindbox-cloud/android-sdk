@@ -15,18 +15,12 @@ import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtTypeAlias
-import org.jetbrains.kotlin.psi.KtTypeReference
-import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.calls.util.getType
 import org.jetbrains.kotlin.types.KotlinType
 
-class GsonSerializedNameRule(
-    config: Config,
-    private val projectGsonClassNameProvider: ProjectGsonClassNameProvider = ProjectGsonClassNameProvider()
-) : Rule(config) {
+class GsonSerializedNameRule(config: Config) : Rule(config) {
 
     override val issue: Issue = Issue(
         id = "GsonMissingSerializedName",
@@ -42,16 +36,10 @@ class GsonSerializedNameRule(
         reportedParameterKeys.clear()
     }
 
-    override fun visitKtFile(file: KtFile) {
-        super.visitKtFile(file)
-        checkGsonTypeReferences(file)
-    }
-
     override fun visitClass(klass: KtClass) {
         super.visitClass(klass)
         if (!klass.isData()) return
-        val className = klass.name ?: return
-        if (!klass.hasSerializedNameContract() && className !in findProjectGsonClassNames(klass.containingKtFile)) return
+        if (!klass.hasSerializedNameContract()) return
         reportMissingSerializedNameParameters(klass)
     }
 
@@ -66,20 +54,25 @@ class GsonSerializedNameRule(
     override fun visitObjectDeclaration(declaration: KtObjectDeclaration) {
         super.visitObjectDeclaration(declaration)
         declaration.superTypeListEntries
-            .filter { superTypeEntry -> superTypeEntry.text.contains(TYPE_TOKEN) }
-            .flatMap { superTypeEntry -> extractModelNamesFromTypeText(superTypeEntry.text, declaration.containingKtFile) }
-            .forEach { className -> findClassByName(declaration.containingKtFile, className)?.let(::reportMissingSerializedNameParameters) }
+            .filter { entry -> entry.typeReference?.text?.contains(TYPE_TOKEN) == true }
+            .forEach { entry ->
+                val type = bindingContext[BindingContext.TYPE, entry.typeReference] ?: return@forEach
+                type.arguments
+                    .filterNot { projection -> projection.isStarProjection }
+                    .forEach { projection -> checkKotlinType(projection.type) }
+            }
     }
 
     private fun checkFirstArgumentType(expression: KtCallExpression) {
         val argument = expression.valueArguments.firstOrNull()?.getArgumentExpression() ?: return
-        checkKotlinType(type = argument.getType(bindingContext), source = expression)
+        checkKotlinType(argument.getType(bindingContext) ?: return)
     }
 
     private fun checkTypeArguments(expression: KtCallExpression) {
         expression.typeArguments
             .mapNotNull { typeProjection -> typeProjection.typeReference }
-            .forEach { typeReference -> checkTypeReference(typeReference, expression) }
+            .mapNotNull { typeRef -> bindingContext[BindingContext.TYPE, typeRef] }
+            .forEach { type -> checkKotlinType(type) }
     }
 
     private fun checkClassLiteralArguments(expression: KtCallExpression) {
@@ -90,43 +83,23 @@ class GsonSerializedNameRule(
                     is KtDotQualifiedExpression -> argument.receiverExpression as? KtClassLiteralExpression
                     is KtClassLiteralExpression -> argument
                     else -> null
-                }
-                classLiteral?.let { literal -> checkKotlinType(type = literal.getType(bindingContext), source = expression) }
+                } ?: return@forEach
+                // KClass<T> or Class<T> — first type argument is T
+                val type = classLiteral.getType(bindingContext) ?: return@forEach
+                type.arguments.firstOrNull()
+                    ?.takeIf { projection -> !projection.isStarProjection }
+                    ?.type
+                    ?.let(::checkKotlinType)
             }
     }
 
-    private fun checkTypeReference(typeReference: KtTypeReference, source: KtCallExpression) {
-        checkKotlinType(type = bindingContext[BindingContext.TYPE, typeReference], source = source)
-    }
-
-    private fun checkGsonTypeReferences(file: KtFile) {
-        val aliases = file.extractTypeAliases()
-        val dataClasses = file.collectDescendantsOfType<KtClass>()
-            .filter { klass -> klass.isData() }
-            .associateBy { klass -> klass.name.orEmpty() }
-        val referencedTypeTexts = (
-            TYPE_TOKEN_PATTERN.findAll(file.text).map { match -> match.groupValues[1] } +
-                GSON_GENERIC_CALL_PATTERN.findAll(file.text).map { match -> match.groupValues[1] } +
-                GSON_CLASS_LITERAL_PATTERN.findAll(file.text).map { match -> match.groupValues[1] }
-            ).toList()
-        referencedTypeTexts
-            .flatMap { typeText -> extractModelNamesFromTypeText(typeText, aliases) }
-            .mapNotNull { className -> dataClasses[className] }
-            .forEach(::reportMissingSerializedNameParameters)
-    }
-
-    private fun findProjectGsonClassNames(file: KtFile): Set<String> {
-        return projectGsonClassNameProvider.findProjectGsonClassNames(file)
-    }
-
-    private fun checkKotlinType(type: KotlinType?, source: KtCallExpression) {
-        type ?: return
-        val descriptor = type.constructor.declarationDescriptor as? ClassDescriptor
-        val sourceClass = descriptor?.let { DescriptorToSourceUtils.descriptorToDeclaration(it) } as? KtClass
+    private fun checkKotlinType(type: KotlinType) {
+        val descriptor = type.constructor.declarationDescriptor as? ClassDescriptor ?: return
+        val sourceClass = DescriptorToSourceUtils.descriptorToDeclaration(descriptor) as? KtClass
         sourceClass?.let(::reportMissingSerializedNameParameters)
         type.arguments
             .filterNot { projection -> projection.isStarProjection }
-            .forEach { projection -> checkKotlinType(type = projection.type, source = source) }
+            .forEach { projection -> checkKotlinType(projection.type) }
     }
 
     private fun reportMissingSerializedNameParameters(klass: KtClass) {
@@ -139,17 +112,8 @@ class GsonSerializedNameRule(
                 if (!parameter.hasSerializedNameAnnotation()) reportParameter(parameter, klass)
                 val typeRef = parameter.typeReference ?: return@forEach
                 val type = bindingContext[BindingContext.TYPE, typeRef] ?: return@forEach
-                checkKotlinTypeTransitively(type)
+                checkKotlinType(type)
             }
-    }
-
-    private fun checkKotlinTypeTransitively(type: KotlinType) {
-        val descriptor = type.constructor.declarationDescriptor as? ClassDescriptor ?: return
-        val sourceClass = DescriptorToSourceUtils.descriptorToDeclaration(descriptor) as? KtClass
-        sourceClass?.let(::reportMissingSerializedNameParameters)
-        type.arguments
-            .filterNot { projection -> projection.isStarProjection }
-            .forEach { projection -> checkKotlinTypeTransitively(projection.type) }
     }
 
     private fun reportParameter(parameter: KtParameter, klass: KtClass) {
@@ -174,39 +138,6 @@ class GsonSerializedNameRule(
         }
     }
 
-    private fun KtFile.extractTypeAliases(): Map<String, String> {
-        val psiAliases = declarations
-            .filterIsInstance<KtTypeAlias>()
-            .associate { alias -> alias.name.orEmpty() to alias.getTypeReference()?.text.orEmpty() }
-        val textAliases = TYPE_ALIAS_PATTERN.findAll(text)
-            .associate { match -> match.groupValues[1] to match.groupValues[2].trim() }
-        return psiAliases + textAliases
-    }
-
-    private fun extractModelNamesFromTypeText(typeText: String, file: KtFile): Set<String> {
-        val aliases = file.extractTypeAliases()
-        return extractModelNamesFromTypeText(typeText, aliases)
-    }
-
-    private fun extractModelNamesFromTypeText(typeText: String, aliases: Map<String, String>): Set<String> {
-        val normalizedText = aliases.entries
-            .sortedByDescending { alias -> alias.key.length }
-            .fold(typeText) { currentText, alias ->
-                currentText.replace(Regex("\\b${Regex.escape(alias.key)}\\b"), alias.value)
-        }
-        return MODEL_NAME_PATTERN
-            .findAll(normalizedText)
-            .map { match -> match.value.substringAfterLast('.') }
-            .filter { className -> className !in IGNORED_TYPE_NAMES }
-            .filter { className -> className.firstOrNull()?.isUpperCase() == true }
-            .toSet()
-    }
-
-    private fun findClassByName(file: KtFile, className: String): KtClass? {
-        return file.collectDescendantsOfType<KtClass>()
-            .firstOrNull { klass -> klass.name == className }
-    }
-
     internal companion object {
         private const val SERIALIZED_NAME = "SerializedName"
         private const val TYPE_TOKEN = "TypeToken"
@@ -220,44 +151,6 @@ class GsonSerializedNameRule(
             "operationBodyJson",
             "toJson",
             "toJsonTyped",
-        )
-
-        private val GSON_CLASS_LITERAL_PATTERN: Regex = Regex(
-            "\\b(?:fromJson|convertJsonToBody)\\s*\\([^\\n)]*?([A-Z][A-Za-z0-9_]*)::class\\.java"
-        )
-        private val GSON_GENERIC_CALL_PATTERN: Regex = Regex(
-            "\\b(?:fromJson|fromJsonTyped|toJsonTyped|operationBodyJson)\\s*<\\s*([^>]+)>"
-        )
-        private val MODEL_NAME_PATTERN: Regex = Regex("[A-Za-z_][A-Za-z0-9_.]*")
-        private val TYPE_ALIAS_PATTERN: Regex = Regex("typealias\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*([^\\n]+)")
-        private val TYPE_TOKEN_PATTERN: Regex = Regex("TypeToken\\s*<\\s*([^>]+)>")
-
-        private val IGNORED_TYPE_NAMES: Set<String> = setOf(
-            "Any",
-            "Array",
-            "Boolean",
-            "Byte",
-            "Char",
-            "Collection",
-            "Double",
-            "Float",
-            "HashMap",
-            "HashSet",
-            "Int",
-            "Iterable",
-            "List",
-            "Long",
-            "Map",
-            "MutableList",
-            "MutableMap",
-            "MutableSet",
-            "Number",
-            "Pair",
-            "Set",
-            "Short",
-            "String",
-            "TypeToken",
-            "Unit",
         )
     }
 }

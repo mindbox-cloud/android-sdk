@@ -8,16 +8,11 @@ class MindboxRuleSetProvider : RuleSetProvider {
 
     override val ruleSetId: String = "mindbox"
 
-    private val projectGsonClassNameProvider: ProjectGsonClassNameProvider = ProjectGsonClassNameProvider()
-
     override fun instance(config: Config): RuleSet {
         return RuleSet(
             id = ruleSetId,
             rules = listOf(
-                GsonSerializedNameRule(
-                    config = config,
-                    projectGsonClassNameProvider = projectGsonClassNameProvider
-                ),
+                GsonSerializedNameRule(config = config),
                 UnmonitoredGsonWrapperRule(config = config),
             )
         )

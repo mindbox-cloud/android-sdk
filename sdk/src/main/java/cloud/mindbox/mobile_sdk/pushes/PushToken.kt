@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -18,8 +19,8 @@ internal data class PushToken(
 )
 
 internal data class PrefPushToken(
-    val token: String,
-    val updateDate: Long,
+    @SerializedName("token") val token: String,
+    @SerializedName("updateDate") val updateDate: Long,
 )
 
 internal typealias PushTokenMap = Map<String, String>
