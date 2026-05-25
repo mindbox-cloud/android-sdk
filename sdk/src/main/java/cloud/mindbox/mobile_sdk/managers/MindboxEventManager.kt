@@ -162,7 +162,6 @@ internal object MindboxEventManager {
         }
     }
 
-    @Suppress("UnmonitoredGsonWrapper") // body: T is a client subclass of OperationBodyRequestBase — outside SDK control.
     fun <T, V : OperationResponseBaseInternal> syncOperation(
         name: String,
         body: T,

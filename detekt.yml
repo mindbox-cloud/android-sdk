@@ -33,5 +33,3 @@ mindbox:
   active: true
   GsonMissingSerializedName:
     active: true
-  UnmonitoredGsonWrapper:
-    active: true

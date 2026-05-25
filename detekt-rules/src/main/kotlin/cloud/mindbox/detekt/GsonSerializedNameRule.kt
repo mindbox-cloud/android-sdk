@@ -13,10 +13,13 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassLiteralExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
+import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getType
 import org.jetbrains.kotlin.types.KotlinType
 
@@ -45,10 +48,14 @@ class GsonSerializedNameRule(config: Config) : Rule(config) {
 
     override fun visitCallExpression(expression: KtCallExpression) {
         super.visitCallExpression(expression)
-        if (expression.calleeExpression?.text !in MONITORED_FUNCTION_NAMES) return
-        checkFirstArgumentType(expression)
-        checkTypeArguments(expression)
-        checkClassLiteralArguments(expression)
+        val calleeName = expression.calleeExpression?.text ?: return
+        if (calleeName in DIRECT_GSON_FUNCTION_NAMES) {
+            checkFirstArgumentType(expression)
+            checkTypeArguments(expression)
+            checkClassLiteralArguments(expression)
+        } else {
+            checkIfIndirectGsonCall(expression)
+        }
     }
 
     override fun visitObjectDeclaration(declaration: KtObjectDeclaration) {
@@ -62,6 +69,21 @@ class GsonSerializedNameRule(config: Config) : Rule(config) {
                     .forEach { projection -> checkKotlinType(projection.type) }
             }
     }
+
+    private fun checkIfIndirectGsonCall(expression: KtCallExpression) {
+        val resolvedCall = expression.getResolvedCall(bindingContext) ?: return
+        val sourceFunction = DescriptorToSourceUtils
+            .descriptorToDeclaration(resolvedCall.resultingDescriptor) as? KtNamedFunction ?: return
+        if (sourceFunction.typeParameters.isEmpty()) return
+        if (!sourceFunction.containsDirectGsonCall()) return
+        checkFirstArgumentType(expression)
+        checkTypeArguments(expression)
+        checkClassLiteralArguments(expression)
+    }
+
+    private fun KtNamedFunction.containsDirectGsonCall(): Boolean =
+        collectDescendantsOfType<KtCallExpression>()
+            .any { call -> call.calleeExpression?.text in DIRECT_GSON_FUNCTION_NAMES }
 
     private fun checkFirstArgumentType(expression: KtCallExpression) {
         val argument = expression.valueArguments.firstOrNull()?.getArgumentExpression() ?: return
@@ -84,7 +106,6 @@ class GsonSerializedNameRule(config: Config) : Rule(config) {
                     is KtClassLiteralExpression -> argument
                     else -> null
                 } ?: return@forEach
-                // KClass<T> or Class<T> — first type argument is T
                 val type = classLiteral.getType(bindingContext) ?: return@forEach
                 type.arguments.firstOrNull()
                     ?.takeIf { projection -> !projection.isStarProjection }
@@ -138,19 +159,15 @@ class GsonSerializedNameRule(config: Config) : Rule(config) {
         }
     }
 
-    internal companion object {
+    private companion object {
         private const val SERIALIZED_NAME = "SerializedName"
         private const val TYPE_TOKEN = "TypeToken"
 
-        // To add a new Gson wrapper: just add its name here.
-        // UnmonitoredGsonWrapperRule references this same set to stay in sync.
-        internal val MONITORED_FUNCTION_NAMES: Set<String> = setOf(
-            "convertJsonToBody",
+        private val DIRECT_GSON_FUNCTION_NAMES: Set<String> = setOf(
             "fromJson",
-            "fromJsonTyped",
-            "operationBodyJson",
+            "fromJsonTree",
             "toJson",
-            "toJsonTyped",
+            "toJsonTree",
         )
     }
 }

@@ -13,7 +13,6 @@ class MindboxRuleSetProvider : RuleSetProvider {
             id = ruleSetId,
             rules = listOf(
                 GsonSerializedNameRule(config = config),
-                UnmonitoredGsonWrapperRule(config = config),
             )
         )
     }

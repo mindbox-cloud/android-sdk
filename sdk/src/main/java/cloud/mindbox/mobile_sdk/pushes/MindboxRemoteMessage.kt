@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
 import android.os.Bundle
+import com.google.gson.annotations.SerializedName
 
 /**
  * A class representing mindbox remote message
@@ -11,13 +12,13 @@ import android.os.Bundle
  * with your custom push notification implementation.
  * */
 public data class MindboxRemoteMessage(
-    val uniqueKey: String,
-    val title: String,
-    val description: String,
-    val pushActions: List<PushAction>,
-    val pushLink: String?,
-    val imageUrl: String?,
-    val payload: String?,
+    @SerializedName("uniqueKey") val uniqueKey: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("pushActions") val pushActions: List<PushAction>,
+    @SerializedName("pushLink") val pushLink: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("payload") val payload: String?,
 ) {
     public companion object {
         public const val DATA_UNIQUE_KEY: String = "uniqueKey"

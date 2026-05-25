@@ -12,15 +12,15 @@ import org.junit.Test
 class GsonSerializedNameRuleTest {
 
     private val stubs = """
+        annotation class SerializedName(val value: String)
+        abstract class TypeToken<T>
         fun fromJson(json: String, clazz: Class<*>): Any = error("stub")
         fun <T> fromJson(json: String, clazz: Class<T>): T = error("stub")
         fun toJson(obj: Any?): String = error("stub")
-        fun <T> toJsonTyped(obj: T): String = error("stub")
-        fun <T> fromJsonTyped(json: String, clazz: Class<T>): T = error("stub")
-        fun <T> operationBodyJson(obj: T): String = error("stub")
-        fun convertJsonToBody(json: String, clazz: Class<*>): Any = error("stub")
-        abstract class TypeToken<T>
-        annotation class SerializedName(val value: String)
+        fun <T> fromJsonTyped(json: String, clazz: Class<T>): T = fromJson(json, clazz)
+        fun <T> toJsonTyped(obj: T): String = toJson(obj)
+        fun <T> operationBodyJson(obj: T): String = toJson(obj)
+        fun <T> convertJsonToBody(json: String, clazz: Class<T>): T = fromJson(json, clazz)
     """.trimIndent()
 
     private fun compileAndLint(code: String): List<Finding> =
@@ -116,6 +116,33 @@ class GsonSerializedNameRuleTest {
         )
         assertEquals(1, findings.size)
         assertTrue(findings.first().message.contains("EventBody.type"))
+    }
+
+    @Test
+    fun `reports class via custom auto-detected generic wrapper`() {
+        val findings = compileAndLint(
+            """
+            $stubs
+            data class Payload(val id: String)
+            fun <T> myDeserializer(json: String, clazz: Class<T>): T = fromJson(json, clazz)
+            fun test(json: String) = myDeserializer(json, Payload::class.java)
+            """.trimIndent()
+        )
+        assertEquals(1, findings.size)
+        assertTrue(findings.first().message.contains("Payload.id"))
+    }
+
+    @Test
+    fun `does not report class passed to a function that does not wrap Gson`() {
+        val findings = compileAndLint(
+            """
+            $stubs
+            data class Config(val key: String)
+            fun <T> jacksonDeserialize(json: String, clazz: Class<T>): T = error("stub")
+            fun test(json: String) = jacksonDeserialize(json, Config::class.java)
+            """.trimIndent()
+        )
+        assertTrue(findings.isEmpty())
     }
 
     @Test
