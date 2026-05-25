@@ -25,6 +25,8 @@ internal data class PrefPushToken(
 internal typealias PushTokenMap = Map<String, String>
 internal typealias PrefPushTokenMap = Map<String, PrefPushToken>
 
+// Called only with Map<String, PrefPushToken> and Map<String, String> — both covered by GsonMissingSerializedName.
+@Suppress("UnmonitoredGsonWrapper")
 internal fun <K, V> Map<K, V>.toPreferences(): String =
     runCatching {
         Gson().toJson(this)
