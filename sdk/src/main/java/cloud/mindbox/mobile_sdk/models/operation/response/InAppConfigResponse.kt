@@ -75,7 +75,7 @@ internal data class SettingsDtoBlank(
 
     @JsonAdapter(FeatureTogglesDtoBlankDeserializer::class)
     internal data class FeatureTogglesDtoBlank(
-        val toggles: Map<String, Boolean?>
+        @SerializedName("toggles") val toggles: Map<String, Boolean?>
     )
 }
 
@@ -110,14 +110,14 @@ internal data class TtlDto(
 )
 
 internal data class SlidingExpirationDto(
-    val config: Milliseconds?,
-    val pushTokenKeepalive: Milliseconds?,
+    @SerializedName("config") val config: Milliseconds?,
+    @SerializedName("pushTokenKeepalive") val pushTokenKeepalive: Milliseconds?,
 )
 
 internal data class InappSettingsDto(
-    val maxInappsPerSession: Int?,
-    val maxInappsPerDay: Int?,
-    val minIntervalBetweenShows: Milliseconds?,
+    @SerializedName("maxInappsPerSession") val maxInappsPerSession: Int?,
+    @SerializedName("maxInappsPerDay") val maxInappsPerDay: Int?,
+    @SerializedName("minIntervalBetweenShows") val minIntervalBetweenShows: Milliseconds?,
 )
 
 internal data class LogRequestDto(

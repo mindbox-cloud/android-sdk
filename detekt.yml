@@ -1,0 +1,35 @@
+config:
+  validation: true
+  excludes: "mindbox.*,mindbox>.*>.*"
+
+comments:
+  active: false
+
+complexity:
+  active: false
+
+coroutines:
+  active: false
+
+empty-blocks:
+  active: false
+
+exceptions:
+  active: false
+
+naming:
+  active: false
+
+performance:
+  active: false
+
+potential-bugs:
+  active: false
+
+style:
+  active: false
+
+mindbox:
+  active: true
+  GsonMissingSerializedName:
+    active: true

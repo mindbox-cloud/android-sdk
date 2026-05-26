@@ -50,6 +50,9 @@ jobs:
       - name: lint check
         run: ./gradlew --no-daemon lintDebug
 
+      - name: detekt check
+        run: ./gradlew --no-daemon detektDebug
+
   unit:
     runs-on: ubuntu-latest 
     steps:

@@ -1,0 +1,27 @@
+apply plugin: 'java-library'
+apply plugin: 'kotlin'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+    implementation libs.detekt.api
+    implementation libs.kotlin.stdlib
+
+    testImplementation libs.detekt.test
+    testImplementation libs.junit
+}
