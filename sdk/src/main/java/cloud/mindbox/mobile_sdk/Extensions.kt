@@ -149,6 +149,11 @@ internal val Int.dp: Int
 internal val Int.px: Int
     get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 
+internal fun Context.maxScreenDimension(): Int {
+    val displayMetrics = resources.displayMetrics
+    return maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+}
+
 internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
     setAnimationListener(object : AnimationListener {
         override fun onAnimationStart(animation: Animation?) {

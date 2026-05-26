@@ -10,6 +10,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendPresentationFailure
@@ -22,6 +23,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageViewDisplayerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.presentation.actions.InAppActionHandler
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.maxScreenDimension
 import cloud.mindbox.mobile_sdk.removeChildById
 import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.setSingleClickListener
@@ -122,64 +124,71 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
     }
 
     protected fun getImageFromCache(url: String, imageView: InAppImageView) {
+        val maxDim = currentDialog.context.maxScreenDimension()
+        val timeout = currentDialog.context.getString(R.string.mindbox_inapp_fetching_timeout).toInt()
         Glide
             .with(currentDialog.context)
             .load(url)
-            .diskCacheStrategy(DiskCacheStrategy.ALL)
-            .listener(object : RequestListener<Drawable> {
-                override fun onLoadFailed(
-                    e: GlideException?,
-                    model: Any?,
-                    target: Target<Drawable>?,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    return runCatching {
-                        inAppFailureTracker.sendPresentationFailure(
-                            inAppId = wrapper.inAppType.inAppId,
-                            errorDescription = "Failed to load in-app image with url = $url",
-                            throwable = e
-                        )
-                        inAppController.close()
-                        false
-                    }.getOrElse { throwable ->
-                        inAppFailureTracker.sendPresentationFailure(
-                            inAppId = wrapper.inAppType.inAppId,
-                            errorDescription = "Unknown error after loading image from cache succeeded",
-                            throwable = throwable
-                        )
-                        false
-                    }
-                }
-
-                override fun onResourceReady(
-                    resource: Drawable?,
-                    model: Any?,
-                    target: Target<Drawable>?,
-                    dataSource: DataSource?,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    return runCatching {
-                        bind()
-                        preparedImages[imageView] = true
-                        if (!preparedImages.values.contains(false)) {
-                            this@AbstractInAppViewHolder.mindboxLogI("In-app shown")
-                            wrapper.inAppActionCallbacks.onInAppShown.onShown()
-                            for (image in preparedImages.keys) {
-                                image.visibility = View.VISIBLE
-                            }
-                        }
-                        false
-                    }.getOrElse { throwable ->
-                        inAppFailureTracker.sendPresentationFailure(
-                            inAppId = wrapper.inAppType.inAppId,
-                            errorDescription = "Unknown error in onResourceReady callback",
-                            throwable = throwable
-                        )
-                        false
-                    }
-                }
-            })
+            .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+            .override(maxDim, maxDim)
+            .timeout(timeout)
+            .centerInside()
+            .listener(buildCacheRequestListener(url, imageView))
             .into(imageView)
+    }
+
+    private fun buildCacheRequestListener(
+        url: String,
+        imageView: InAppImageView,
+    ): RequestListener<Drawable> = object : RequestListener<Drawable> {
+
+        override fun onLoadFailed(
+            e: GlideException?,
+            model: Any?,
+            target: Target<Drawable>?,
+            isFirstResource: Boolean,
+        ): Boolean {
+            runCatching {
+                inAppFailureTracker.sendPresentationFailure(
+                    inAppId = wrapper.inAppType.inAppId,
+                    errorDescription = "Failed to load in-app image with url = $url",
+                    throwable = e
+                )
+                inAppController.close()
+            }.onFailure { throwable ->
+                inAppFailureTracker.sendPresentationFailure(
+                    inAppId = wrapper.inAppType.inAppId,
+                    errorDescription = "Unknown error in onLoadFailed callback for url = $url",
+                    throwable = throwable
+                )
+            }
+            return false
+        }
+
+        override fun onResourceReady(
+            resource: Drawable?,
+            model: Any?,
+            target: Target<Drawable>?,
+            dataSource: DataSource?,
+            isFirstResource: Boolean,
+        ): Boolean {
+            runCatching {
+                bind()
+                preparedImages[imageView] = true
+                if (!preparedImages.values.contains(false)) {
+                    mindboxLogI("In-app ${wrapper.inAppType.inAppId} shown")
+                    wrapper.inAppActionCallbacks.onInAppShown.onShown()
+                    preparedImages.keys.forEach { it.isVisible = true }
+                }
+            }.onFailure { throwable ->
+                inAppFailureTracker.sendPresentationFailure(
+                    inAppId = wrapper.inAppType.inAppId,
+                    errorDescription = "Unknown error in onResourceReady callback for url = $url",
+                    throwable = throwable
+                )
+            }
+            return false
+        }
     }
 
     protected open fun initView(currentRoot: ViewGroup) {
