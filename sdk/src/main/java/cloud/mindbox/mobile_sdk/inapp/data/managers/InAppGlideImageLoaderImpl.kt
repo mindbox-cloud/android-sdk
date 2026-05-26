@@ -75,6 +75,7 @@ internal class InAppGlideImageLoaderImpl(
             isFirstResource: Boolean,
         ): Boolean {
             mindboxLogI("Image loading failed for inapp $inAppId, url = $url")
+            requests.remove(inAppId)
             if (continuation.isActive) {
                 continuation.resumeWithException(InAppContentFetchingError(e))
             }
@@ -90,6 +91,7 @@ internal class InAppGlideImageLoaderImpl(
         ): Boolean {
             mindboxLogI("Image loading succeeded for inapp $inAppId, url = $url")
             if (!continuation.isActive) return true
+            requests.remove(inAppId)
             return runCatching {
                 val bitmap = resource.toBitmap()
                 inAppImageSizeStorage.addSize(inAppId, url, bitmap.width, bitmap.height)
