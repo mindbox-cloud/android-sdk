@@ -12,4 +12,5 @@ public enum class Level(public val value: Int) {
 
 internal infix fun Level.isAtMost(other: Level): Boolean = value <= other.value
 
+@Suppress("unused")
 internal infix fun Level.isAtLeast(other: Level): Boolean = value >= other.value
