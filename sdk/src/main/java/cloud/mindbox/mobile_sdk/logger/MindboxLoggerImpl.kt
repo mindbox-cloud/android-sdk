@@ -58,7 +58,14 @@ internal object MindboxLoggerImpl : MindboxLogger {
      *
      * `Log.isLoggable(TAG, Log.DEBUG)` returns `true` for both VERBOSE and DEBUG setprop values
      * because VERBOSE has a lower priority than DEBUG in Android's priority scale.
-     * The property is read on every call, so changes take effect immediately without app restart.
+     * The property is consulted when execution reaches the setprop override check, so changes
+     * take effect immediately without app restart for calls that evaluate this branch.
+     *
+     * By design, only DEBUG and VERBOSE are supported as override values. WARN and ERROR could
+     * technically be detected (they make `isLoggable(INFO)` return `false`, unlike the default),
+     * but using setprop to make logging *more restrictive* than the SDK default serves no practical
+     * debugging purpose. INFO is indistinguishable from "no setprop" and is also intentionally
+     * ignored. Use [Mindbox.setLogLevel] for fine-grained programmatic control.
      */
     private fun setPropLevel(): Level =
         if (Log.isLoggable(TAG, Log.DEBUG)) Level.DEBUG else Level.NONE
@@ -68,7 +75,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
      */
     override fun i(parent: Any, message: String) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.INFO || setPropLevel() <= Level.INFO) {
+        if (level isAtMost Level.INFO || setPropLevel() isAtMost Level.INFO) {
             Log.i(TAG, logMessage)
         }
         saveLog(logMessage)
@@ -76,7 +83,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     override fun d(parent: Any, message: String) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.DEBUG || setPropLevel() <= Level.DEBUG) {
+        if (level isAtMost Level.DEBUG || setPropLevel() isAtMost Level.DEBUG) {
             Log.d(TAG, logMessage)
         }
         saveLog(logMessage)
@@ -84,7 +91,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     override fun e(parent: Any, message: String) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.ERROR || setPropLevel() <= Level.ERROR) {
+        if (level isAtMost Level.ERROR || setPropLevel() isAtMost Level.ERROR) {
             Log.e(TAG, logMessage)
         }
         saveLog(logMessage)
@@ -92,7 +99,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     override fun e(parent: Any, message: String, exception: Throwable) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.ERROR || setPropLevel() <= Level.ERROR) {
+        if (level isAtMost Level.ERROR || setPropLevel() isAtMost Level.ERROR) {
             Log.e(TAG, logMessage, exception)
         }
         saveLog(logMessage + exception.stackTraceToString())
@@ -100,7 +107,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     override fun w(parent: Any, message: String) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.WARN || setPropLevel() <= Level.WARN) {
+        if (level isAtMost Level.WARN || setPropLevel() isAtMost Level.WARN) {
             Log.w(TAG, logMessage)
         }
         saveLog(logMessage)
@@ -108,7 +115,7 @@ internal object MindboxLoggerImpl : MindboxLogger {
 
     override fun w(parent: Any, message: String, exception: Throwable) {
         val logMessage = buildMessage(parent, message)
-        if (level <= Level.WARN || setPropLevel() <= Level.WARN) {
+        if (level isAtMost Level.WARN || setPropLevel() isAtMost Level.WARN) {
             Log.w(TAG, logMessage, exception)
         }
         saveLog(logMessage + exception.stackTraceToString())

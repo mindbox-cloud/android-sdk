@@ -9,3 +9,7 @@ public enum class Level(public val value: Int) {
     ERROR(4),
     NONE(5)
 }
+
+internal infix fun Level.isAtMost(other: Level): Boolean = value <= other.value
+
+internal infix fun Level.isAtLeast(other: Level): Boolean = value >= other.value
