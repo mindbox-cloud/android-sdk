@@ -16,6 +16,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -28,7 +29,7 @@ internal class InAppGlideImageLoaderImpl(
     private val inAppImageSizeStorage: InAppImageSizeStorage
 ) : InAppImageLoader {
 
-    private val requests = HashMap<String, Target<Drawable>>()
+    private val requests = ConcurrentHashMap<String, Target<Drawable>>()
 
     override suspend fun loadImage(inAppId: String, url: String): Boolean {
         mindboxLogI("Loading image for inapp with id $inAppId started")

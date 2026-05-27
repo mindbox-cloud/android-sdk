@@ -221,7 +221,7 @@ internal class InAppGlideImageLoaderImplTest {
         every { requestBuilder.preload(any<Int>(), any<Int>()) } returns target
 
         val job = launch { runCatching { loader.loadImage("id1", URL) } }
-        advanceUntilIdle()
+        runCurrent()
 
         advanceTimeBy(3001)
         job.join()
