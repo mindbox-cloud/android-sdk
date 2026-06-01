@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.content.Context
-import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -24,7 +23,7 @@ internal class InAppImageView(context: Context) : AppCompatImageView(context) {
         val oneThirdScreenHeight = resources.displayMetrics.heightPixels / 3
         val desiredHeight =
             (((resources.displayMetrics.widthPixels.toDouble() - marginStart.toDouble() - marginEnd.toDouble()) / (size.width.toDouble())) * size.height).roundToInt()
-        layoutParams = FrameLayout.LayoutParams(
+        layoutParams = ConstraintLayout.LayoutParams(
             ConstraintLayout.LayoutParams.MATCH_PARENT,
             if (desiredHeight > oneThirdScreenHeight) oneThirdScreenHeight else desiredHeight
         )
@@ -36,38 +35,13 @@ internal class InAppImageView(context: Context) : AppCompatImageView(context) {
             width = 0.dp
             height = 0.dp
         }
-        val constraintSet = ConstraintSet()
-        constraintSet.clone(currentDialog)
-        constraintSet.setDimensionRatio(id, MODAL_WINDOW_ASPECT_RATIO)
         scaleType = ScaleType.CENTER_CROP
-        constraintSet.connect(
-            id,
-            ConstraintSet.TOP,
-            currentDialog.id,
-            ConstraintSet.TOP,
-            0
-        )
-        constraintSet.connect(
-            id,
-            ConstraintSet.END,
-            currentDialog.id,
-            ConstraintSet.END,
-            0
-        )
-        constraintSet.connect(
-            id,
-            ConstraintSet.START,
-            currentDialog.id,
-            ConstraintSet.START,
-            0
-        )
-        constraintSet.connect(
-            id,
-            ConstraintSet.BOTTOM,
-            currentDialog.id,
-            ConstraintSet.BOTTOM,
-            0
-        )
-        constraintSet.applyTo(currentDialog)
+        currentDialog.updateConstraints {
+            setDimensionRatio(id, MODAL_WINDOW_ASPECT_RATIO)
+            connect(id, ConstraintSet.TOP, currentDialog.id, ConstraintSet.TOP, 0)
+            connect(id, ConstraintSet.END, currentDialog.id, ConstraintSet.END, 0)
+            connect(id, ConstraintSet.START, currentDialog.id, ConstraintSet.START, 0)
+            connect(id, ConstraintSet.BOTTOM, currentDialog.id, ConstraintSet.BOTTOM, 0)
+        }
     }
 }

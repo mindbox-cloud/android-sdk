@@ -150,7 +150,7 @@ internal val Int.px: Int
     get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 
 internal fun Context.maxScreenDimension(): Int {
-    val displayMetrics = resources.displayMetrics
+    val displayMetrics = applicationContext.resources.displayMetrics
     return maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
 }
 
