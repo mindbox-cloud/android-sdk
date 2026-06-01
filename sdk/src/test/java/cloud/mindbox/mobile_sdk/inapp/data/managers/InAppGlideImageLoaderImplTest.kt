@@ -62,6 +62,7 @@ internal class InAppGlideImageLoaderImplTest {
             widthPixels = 1080
             heightPixels = 1920
         }
+        every { context.applicationContext } returns context
         every { context.resources } returns resources
         every { resources.displayMetrics } returns displayMetrics
         every { context.getString(R.string.mindbox_inapp_fetching_timeout) } returns "3000"
