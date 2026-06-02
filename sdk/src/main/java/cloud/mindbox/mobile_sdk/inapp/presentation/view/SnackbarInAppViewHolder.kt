@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.view.ViewGroup
+import androidx.core.view.doOnLayout
 import androidx.core.view.isInvisible
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
@@ -92,9 +93,11 @@ internal class SnackbarInAppViewHolder(
             }
         }
         if (isFirstShow) {
-            when (wrapper.inAppType.position.gravity.vertical) {
-                SnackbarPosition.TOP -> inAppLayout.slideDown()
-                SnackbarPosition.BOTTOM -> inAppLayout.slideUp()
+            currentDialog.doOnLayout {
+                when (wrapper.inAppType.position.gravity.vertical) {
+                    SnackbarPosition.TOP -> inAppLayout.slideDown()
+                    SnackbarPosition.BOTTOM -> inAppLayout.slideUp()
+                }
             }
         }
     }
