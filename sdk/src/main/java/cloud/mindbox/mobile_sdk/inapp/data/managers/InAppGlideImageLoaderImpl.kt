@@ -23,6 +23,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class InAppGlideImageLoaderImpl(
     private val context: Context,
@@ -36,7 +37,7 @@ internal class InAppGlideImageLoaderImpl(
         val timeoutMs = context.getString(R.string.mindbox_inapp_fetching_timeout).toLong()
         val maxDim = context.maxScreenDimension()
         return try {
-            withTimeout(timeoutMs) {
+            withTimeout(timeoutMs.milliseconds) {
                 suspendCancellableCoroutine { continuation ->
                     requests[inAppId] = startPreload(inAppId, url, maxDim, timeoutMs.toInt(), continuation)
                     continuation.invokeOnCancellation { cancelLoading(inAppId) }
@@ -44,7 +45,7 @@ internal class InAppGlideImageLoaderImpl(
             }
         } catch (e: TimeoutCancellationException) {
             mindboxLogE("Image loading timed out after ${timeoutMs}ms for inapp $inAppId", e)
-            throw InAppContentFetchingError(null)
+            throw InAppContentFetchingError(e)
         }
     }
 

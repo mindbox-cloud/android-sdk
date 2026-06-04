@@ -10,12 +10,17 @@ import com.android.volley.TimeoutError
 import com.android.volley.VolleyError
 import com.bumptech.glide.load.HttpException
 import com.bumptech.glide.load.engine.GlideException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class TrackingFailureExtensionTest {
 
@@ -118,5 +123,17 @@ internal class TrackingFailureExtensionTest {
         val glideException = GlideException("load failed", listOf(rootCause))
         val inAppError = InAppContentFetchingError(glideException)
         assertFalse(inAppError.shouldTrackImageDownloadError())
+    }
+
+    @Test
+    fun `shouldTrackImageDownloadError returns false when cause is TimeoutCancellationException`() {
+        var inAppError: InAppContentFetchingError? = null
+        try {
+            runBlocking { withTimeout(0L.milliseconds) { Thread.sleep(100) } }
+        } catch (e: TimeoutCancellationException) {
+            inAppError = InAppContentFetchingError(e)
+        }
+        assertNotNull(inAppError)
+        assertFalse(inAppError!!.shouldTrackImageDownloadError())
     }
 }
