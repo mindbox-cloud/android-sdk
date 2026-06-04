@@ -92,6 +92,8 @@ internal class WebViewInAppViewHolder(
                             closeInappTimer = null
 
                             wrapper.inAppActionCallbacks.onInAppShown.onShown()
+                            hideKeyboard(inAppLayout)
+                            inAppLayout.requestFocus()
                             webView.get()?.isVisible = true
                         }
 
@@ -224,6 +226,8 @@ internal class WebViewInAppViewHolder(
         } ?: release()
     }
 
+    override fun onBeforeShow(currentRoot: MindboxView) = Unit
+
     override fun show(currentRoot: MindboxView) {
         super.show(currentRoot)
         mindboxLogI("Try to show inapp with id ${wrapper.inAppType.inAppId}")
@@ -239,7 +243,6 @@ internal class WebViewInAppViewHolder(
             }
         }
         mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
-        inAppLayout.requestFocus()
     }
 
     override fun hide() {
