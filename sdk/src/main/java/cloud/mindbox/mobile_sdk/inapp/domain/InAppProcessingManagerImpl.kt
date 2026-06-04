@@ -131,7 +131,7 @@ internal class InAppProcessingManagerImpl(
                     inAppFailureTracker.collectFailure(
                         inAppId = inApp.id,
                         failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-                        errorDetails = error.message + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
+                        errorDetails = (error.message ?: "Image loading error") + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
                     )
                 }
             }

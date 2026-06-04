@@ -141,7 +141,7 @@ internal class InAppGlideImageLoaderImplTest {
         }
 
         runCurrent()
-        listenerSlot.captured.onLoadFailed(mockk<GlideException>(), null, null, false)
+        listenerSlot.captured.onLoadFailed(mockk<GlideException>(relaxed = true), null, null, false)
         runCurrent()
         job.join()
 

@@ -16,6 +16,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import kotlinx.coroutines.TimeoutCancellationException
 
 internal fun VolleyError.isTimeoutError(): Boolean {
     return this is TimeoutError || cause is SocketTimeoutException
@@ -36,6 +37,7 @@ internal fun Throwable.shouldTrackTargetingError(): Boolean {
 }
 
 internal fun Throwable.shouldTrackImageDownloadError(): Boolean {
+    if (cause is TimeoutCancellationException) return false
     val glideException = cause as? GlideException ?: return true
     return glideException.rootCauses.none { rootCause ->
         when {

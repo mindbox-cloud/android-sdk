@@ -176,7 +176,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
                 bind()
                 preparedImages[imageView] = true
                 if (!preparedImages.values.contains(false)) {
-                    mindboxLogI("In-app ${wrapper.inAppType.inAppId} shown")
+                    this@AbstractInAppViewHolder.mindboxLogI("In-app ${wrapper.inAppType.inAppId} shown")
                     wrapper.inAppActionCallbacks.onInAppShown.onShown()
                     preparedImages.keys.forEach { it.isVisible = true }
                 }
