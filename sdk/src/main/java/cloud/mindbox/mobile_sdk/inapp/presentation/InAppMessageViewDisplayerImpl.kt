@@ -48,7 +48,6 @@ internal class InAppMessageViewDisplayerImpl(
     private var currentActivity: Activity? = null
 
     private val defaultCallback: InAppCallback = ComposableInAppCallback(
-        UrlInAppCallback(),
         DeepLinkInAppCallback(),
         CopyPayloadInAppCallback(),
         LoggingInAppCallback()
