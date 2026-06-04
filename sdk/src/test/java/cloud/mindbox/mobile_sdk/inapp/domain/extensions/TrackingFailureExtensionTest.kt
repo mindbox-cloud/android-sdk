@@ -11,6 +11,7 @@ import com.android.volley.VolleyError
 import com.bumptech.glide.load.HttpException
 import com.bumptech.glide.load.engine.GlideException
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertFalse
@@ -129,7 +130,7 @@ internal class TrackingFailureExtensionTest {
     fun `shouldTrackImageDownloadError returns false when cause is TimeoutCancellationException`() {
         var inAppError: InAppContentFetchingError? = null
         try {
-            runBlocking { withTimeout(0L.milliseconds) { Thread.sleep(100) } }
+            runBlocking { withTimeout(1.milliseconds) { delay(100.milliseconds) } }
         } catch (e: TimeoutCancellationException) {
             inAppError = InAppContentFetchingError(e)
         }
