@@ -32,5 +32,6 @@
 -dontwarn com.huawei.libcore.io.ExternalStorageFileInputStream
 -dontwarn com.huawei.libcore.io.ExternalStorageFileOutputStream
 -dontwarn com.huawei.libcore.io.ExternalStorageRandomAccessFile
+-dontwarn com.huawei.hms.availableupdate.UpdateAdapterMgr
 
 -keep class com.mindbox.example.PushPayload { *; }
