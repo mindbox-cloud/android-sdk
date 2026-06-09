@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ContextWrapper
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.VisibleForTesting
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -99,9 +100,21 @@ internal class InAppPositionController {
         }
     }
 
-    private fun findTopDialogFragment(fragmentManager: FragmentManager): DialogFragment? {
-        return fragmentManager.fragments.filterIsInstance<DialogFragment>().lastOrNull { it.isAdded }
-    }
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun findTopDialogFragment(fragmentManager: FragmentManager): DialogFragment? =
+        fragmentManager.allDialogFragments()
+            .lastOrNull { it.isAdded && it.dialog?.window != null }
+
+    private fun FragmentManager.allDialogFragments(): List<DialogFragment> =
+        fragments.flatMap { fragment ->
+            val self = if (fragment is DialogFragment) listOf(fragment) else emptyList()
+            val nested = if (fragment.isAdded) {
+                fragment.childFragmentManager.allDialogFragments()
+            } else {
+                emptyList()
+            }
+            self + nested
+        }
 
     private fun View.findActivity(): Activity? {
         var context = this.context
