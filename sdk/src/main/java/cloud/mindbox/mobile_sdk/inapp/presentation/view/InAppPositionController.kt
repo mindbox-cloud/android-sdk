@@ -100,7 +100,7 @@ internal class InAppPositionController {
         }
     }
 
-    @VisibleForTesting
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal fun findTopDialogFragment(fragmentManager: FragmentManager): DialogFragment? =
         fragmentManager.allDialogFragments()
             .lastOrNull { it.isAdded && it.dialog?.window != null }
