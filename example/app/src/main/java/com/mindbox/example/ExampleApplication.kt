@@ -12,7 +12,9 @@ import cloud.mindbox.mobile_sdk.logger.Level
 class ExampleApp : Application() {
 
     companion object {
-        const val RU_STORE_PROJECT_ID = "" //paste your RuStore project id
+        // Value is injected from example.properties via BuildConfig.
+        // To set it manually, replace BuildConfig.MINDBOX_RUSTORE_PROJECT_ID with a string literal.
+        val RU_STORE_PROJECT_ID: String = BuildConfig.MINDBOX_RUSTORE_PROJECT_ID //paste your RuStore project id
         private var privateApplication: Application? = null
         val application: Application
             get() = privateApplication!!
@@ -23,10 +25,15 @@ class ExampleApp : Application() {
         privateApplication = this
 
         //https://developers.mindbox.ru/docs/android-sdk-initialization
+        // Values are injected from example.properties via BuildConfig.
+        // To set them manually, replace BuildConfig.MINDBOX_DOMAIN / MINDBOX_ENDPOINT_ID with string literals.
+        val domain = BuildConfig.MINDBOX_DOMAIN.ifEmpty { "" } //paste your domain address
+        val endpointId = BuildConfig.MINDBOX_ENDPOINT_ID.ifEmpty { "" } //paste your endpointId
+
         val configuration = MindboxConfiguration.Builder(
             context = applicationContext,
-            domain = "",//paste your domain address
-            endpointId = ""//paste your domain address
+            domain = domain,
+            endpointId = endpointId
         )
             .shouldCreateCustomer(true)
             .subscribeCustomerIfCreated(true)

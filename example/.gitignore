@@ -28,4 +28,5 @@ local.properties
 *.zip
 *.keystore
 keystore.properties
+example.properties
 *.jks
