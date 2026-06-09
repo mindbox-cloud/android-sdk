@@ -8,13 +8,17 @@ plugins {
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    keystorePropertiesFile.withInputStream { stream ->
+        keystoreProperties.load(stream)
+    }
 }
 
 def examplePropertiesFile = rootProject.file("example.properties")
 def exampleProperties = new Properties()
 if (examplePropertiesFile.exists()) {
-    exampleProperties.load(new FileInputStream(examplePropertiesFile))
+    examplePropertiesFile.withInputStream { stream ->
+        exampleProperties.load(stream)
+    }
 }
 
 android {
