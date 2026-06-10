@@ -39,10 +39,11 @@ jobs:
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '\.kt$|\.kts$' || true)
             echo "Changed Kotlin files:"
             echo "$CHANGED_FILES"
+            DELIM="EOF_$(openssl rand -hex 8)"
             {
-              echo "CHANGED_FILES<<EOF"
+              echo "CHANGED_FILES<<$DELIM"
               echo "$CHANGED_FILES"
-              echo "EOF"
+              echo "$DELIM"
             } >> "$GITHUB_OUTPUT"
 
       - name: Run ktlintCheck on changed files

@@ -19,8 +19,10 @@ jobs:
     steps:
       - name: Extract version from branch name
         id: extract
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          BRANCH_NAME="${{ github.ref_name }}"
+          BRANCH_NAME="$REF_NAME"
           echo "BRANCH_NAME: $BRANCH_NAME"
           VERSION="${BRANCH_NAME#release/}"
           VERSION="${VERSION#support/}"
@@ -47,12 +49,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       
       - name: Bump version
-        run: ./.github/bump_versions_in_release_branch.sh "${{ needs.extract_version.outputs.version }}"
+        env:
+          VERSION: ${{ needs.extract_version.outputs.version }}
+        run: ./.github/bump_versions_in_release_branch.sh "$VERSION"
 
       - name: Output version
         id: bump
+        env:
+          VERSION: ${{ needs.extract_version.outputs.version }}
         run: |
-          echo "version2=${{ needs.extract_version.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "version2=$VERSION" >> "$GITHUB_OUTPUT"
           
   check_sdk_version:
     name: Check SDK Version
@@ -69,9 +75,11 @@ jobs:
         run: git pull
 
       - name: Check if SDK_VERSION_NAME matches VERSION
+        env:
+          VERSION2: ${{ needs.bump_version.outputs.version2 }}
         run: |
           SDK_VERSION=$(grep '^SDK_VERSION_NAME=' gradle.properties | cut -d '=' -f2)
-          EXPECTED_VERSION=${{ needs.bump_version.outputs.version2 }}
+          EXPECTED_VERSION="$VERSION2"
 
           if [ "$SDK_VERSION" != "$EXPECTED_VERSION" ]; then
             echo "SDK_VERSION_NAME ($ACTUAL_VERSION) does not match the expected version ($EXPECTED_VERSION)."
@@ -90,14 +98,15 @@ jobs:
           submodules: recursive
     
       - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.PAT_FOR_TRIGGERING_BRANCH_PROTECTION }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           gh pr create \
             --base master \
-            --head ${{ github.ref_name }} \
-            --title "${{ github.ref_name }}" \
-            --body "Updates the release version to ${{ github.ref_name }}"
+            --head "$REF_NAME" \
+            --title "$REF_NAME" \
+            --body "Updates the release version to $REF_NAME"
           PR_URL=$(gh pr view --json url --jq '.url')
           echo "PR_URL=$PR_URL" >> "$GITHUB_ENV"
-        env:
-          GH_TOKEN: ${{ secrets.PAT_FOR_TRIGGERING_BRANCH_PROTECTION }}
  

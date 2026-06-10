@@ -33,10 +33,11 @@ jobs:
         run: |
           set -euo pipefail
           commits="$(git log -3 --pretty=format:"%s")"
+          delim="EOF_$(openssl rand -hex 8)"
           {
-            echo "commits<<EOF"
+            echo "commits<<$delim"
             echo "$commits"
-            echo "EOF"
+            echo "$delim"
           } >> "$GITHUB_ENV"
 
       - name: Debug payload that will be sent to GitLab

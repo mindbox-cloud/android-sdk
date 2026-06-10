@@ -24,7 +24,7 @@ else
   git tag $version
 fi
 
-if git ls-remote --tags origin | grep -q "refs/tags/$version"; then
+if [ -n "$(git ls-remote --tags origin "refs/tags/$version")" ]; then
   echo "Remote tag $version already exists."
 else
   echo "Pushing local tag $version to remote."
