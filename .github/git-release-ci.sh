@@ -8,7 +8,7 @@ if [[ $version == *"rc"* ]]; then
   is_beta=true
 fi
 
-branch=${GITHUB_REF#refs/heads/}
+branch=${RELEASE_BRANCH:-${GITHUB_REF#refs/heads/}}
 
 echo "Version: $version"
 echo "Is Beta: $is_beta"

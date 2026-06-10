@@ -15,6 +15,9 @@ on:
         required: true
         default: 'master'
 
+permissions:
+  contents: read
+
 jobs:
   validate-input:
     name: Validate release_version format
@@ -35,7 +38,7 @@ jobs:
     needs: validate-input
     steps:
       - name: Checkout minimal repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
           submodules: recursive
@@ -60,11 +63,13 @@ jobs:
     name: Create release branch & bump version
     runs-on: ubuntu-latest
     needs: validate-branches
+    permissions:
+      contents: write
     outputs:
       release_branch: ${{ steps.bump.outputs.release_branch }}
     steps:
       - name: Checkout source branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.event.inputs.source_branch }}
           fetch-depth: 0
@@ -100,7 +105,7 @@ jobs:
     needs: bump_and_branch
     steps:
       - name: Checkout the release branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.bump_and_branch.outputs.release_branch }}
           fetch-depth: 0

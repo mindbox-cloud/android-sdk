@@ -8,6 +8,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   call-reusable:
     uses: ./.github/workflows/distribute-reusable.yml

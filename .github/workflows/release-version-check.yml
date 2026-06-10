@@ -7,6 +7,9 @@ on:
       - master
       - develop
 
+permissions:
+  contents: read
+
 jobs:
   check-rc-pattern:
     runs-on: ubuntu-latest
@@ -45,7 +48,7 @@ jobs:
           echo "MASTER_VERSION=$MASTER_VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
       - name: Compare versions
-        uses: jackbilestech/semver-compare@1.0.4
+        uses: jackbilestech/semver-compare@b6b063c569b77bea4a0ab627192cbdabf75de3f5 # 1.0.4
         with:
           head: ${{ env.RELEASE_VERSION }}
           base: ${{ env.MASTER_VERSION }}
