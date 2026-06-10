@@ -11,38 +11,38 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v4
       - name: lint check
         run: ./gradlew --no-daemon lintDebug
 
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v4
       - name: unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
@@ -50,13 +50,13 @@ jobs:
     needs: [lint, unit-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -68,14 +68,14 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
       - name: Extract SDK version
         run: |
             SDK_VERSION=$(grep '^SDK_VERSION_NAME=' gradle.properties | cut -d '=' -f2)
-            echo "SDK_VERSION=$SDK_VERSION" >> $GITHUB_ENV
+            echo "SDK_VERSION=$SDK_VERSION" >> "$GITHUB_ENV"
             echo "Extracted SDK version: $SDK_VERSION"
       - name: Create tag
         run: |
@@ -86,12 +86,12 @@ jobs:
     needs: [set-tag]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           submodules: recursive
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -101,12 +101,14 @@ jobs:
           echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
           gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
           --output /tmp/secret.gpg /tmp/publish_key.gpg
-          echo "" >> gradle.properties
-          echo "signing.password=${{secrets.SIGNINGPASSWORD}}" >> gradle.properties
-          echo "signing.keyId=${{secrets.SIGNINGKEYID}}" >> gradle.properties
-          echo "signing.secretKeyRingFile=/tmp/secret.gpg" >> gradle.properties
-          echo "mavenCentralUsername=${{secrets.CENTER_PORTAL_USERNAME}}" >> gradle.properties
-          echo "mavenCentralPassword=${{secrets.CENTER_PORTAL_PASSWORD}}" >> gradle.properties
+          {
+            echo ""
+            echo "signing.password=${{secrets.SIGNINGPASSWORD}}"
+            echo "signing.keyId=${{secrets.SIGNINGKEYID}}"
+            echo "signing.secretKeyRingFile=/tmp/secret.gpg"
+            echo "mavenCentralUsername=${{secrets.CENTER_PORTAL_USERNAME}}"
+            echo "mavenCentralPassword=${{secrets.CENTER_PORTAL_PASSWORD}}"
+          } >> gradle.properties
         env:
           signingpassword: ${{secrets.SIGNINGPASSWORD}}
           signingkeyId: ${{secrets.SIGNINGKEYID}}
@@ -114,7 +116,6 @@ jobs:
           GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
           SONATYPE_CONNECT_TIMEOUT_SECONDS: 60
           SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
       - name: Publish to Central Portal
         # Change github variable CENTER_PORTAL_AUTO_RELEASE to set up auto release Maven Central
         run: |
@@ -128,7 +129,7 @@ jobs:
     needs: [publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
       - name: Github Release generation
@@ -146,7 +147,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PAT_FOR_TRIGGERING_BRANCH_PROTECTION }}
     steps:
       - name: Checkout develop branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
       - name: Create Pull Request
@@ -154,22 +155,4 @@ jobs:
       - name: Merge Pull Request
         run: |
           pr_number=$(gh pr list --base develop --head master --json number --jq '.[0].number')
-          gh pr merge $pr_number --merge --auto
-
-  message-to-loop-if-success:
-    needs: [release-github]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send message to LOOP
-        env:
-            LOOP_NOTIFICATION_WEBHOOK_URL: ${{ secrets.LOOP_NOTIFICATION_WEBHOOK_URL }}
-            VERSION: ${{ github.ref_name }}
-        run: |
-            MESSAGE=$(cat <<EOF
-            {
-              "text": "**🤖 Android release was successful. Version: ${VERSION}**"
-            }
-            EOF)
-            curl -X POST "$LOOP_NOTIFICATION_WEBHOOK_URL" \
-              -H "Content-Type: application/json" \
-              -d "$MESSAGE"
+          gh pr merge "$pr_number" --merge --auto
