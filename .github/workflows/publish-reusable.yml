@@ -110,29 +110,33 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - name: Prepare to publish
+        env:
+          GPGKEYCONTENTS: ${{ secrets.GPGKEYCONTENTS }}
+          SECRETPASSPHRASE: ${{ secrets.SECRETPASSPHRASE }}
+          SIGNINGPASSWORD: ${{ secrets.SIGNINGPASSWORD }}
+          SIGNINGKEYID: ${{ secrets.SIGNINGKEYID }}
+          CENTER_PORTAL_USERNAME: ${{ secrets.CENTER_PORTAL_USERNAME }}
+          CENTER_PORTAL_PASSWORD: ${{ secrets.CENTER_PORTAL_PASSWORD }}
         run: |
-          echo '${{secrets.GPGKEYCONTENTS}}' | base64 -d > /tmp/publish_key.gpg
-          gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRETPASSPHRASE}}" \
+          echo "$GPGKEYCONTENTS" | base64 -d > /tmp/publish_key.gpg
+          gpg --quiet --batch --yes --decrypt --passphrase="$SECRETPASSPHRASE" \
           --output /tmp/secret.gpg /tmp/publish_key.gpg
           {
             echo ""
-            echo "signing.password=${{secrets.SIGNINGPASSWORD}}"
-            echo "signing.keyId=${{secrets.SIGNINGKEYID}}"
+            echo "signing.password=$SIGNINGPASSWORD"
+            echo "signing.keyId=$SIGNINGKEYID"
             echo "signing.secretKeyRingFile=/tmp/secret.gpg"
-            echo "mavenCentralUsername=${{secrets.CENTER_PORTAL_USERNAME}}"
-            echo "mavenCentralPassword=${{secrets.CENTER_PORTAL_PASSWORD}}"
+            echo "mavenCentralUsername=$CENTER_PORTAL_USERNAME"
+            echo "mavenCentralPassword=$CENTER_PORTAL_PASSWORD"
           } >> gradle.properties
-        env:
-          signingpassword: ${{secrets.SIGNINGPASSWORD}}
-          signingkeyId: ${{secrets.SIGNINGKEYID}}
-          SECRETPASSPHRASE: ${{secrets.SECRETPASSPHRASE}}
-          GPGKEYCONTENTS: ${{secrets.GPGKEYCONTENTS}}
-          SONATYPE_CONNECT_TIMEOUT_SECONDS: 60
-          SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
       - name: Publish to Central Portal
         # Change github variable CENTER_PORTAL_AUTO_RELEASE to set up auto release Maven Central
+        env:
+          CENTER_PORTAL_AUTO_RELEASE: ${{ vars.CENTER_PORTAL_AUTO_RELEASE }}
+          SONATYPE_CONNECT_TIMEOUT_SECONDS: 60
+          SONATYPE_CLOSE_TIMEOUT_SECONDS: 900
         run: |
-          if [ "${{ vars.CENTER_PORTAL_AUTO_RELEASE }}" = "true" ]; then
+          if [ "$CENTER_PORTAL_AUTO_RELEASE" = "true" ]; then
           ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
           else
           ./gradlew publishToMavenCentral --no-configuration-cache

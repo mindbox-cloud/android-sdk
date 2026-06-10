@@ -82,7 +82,7 @@ jobs:
           EXPECTED_VERSION="$VERSION2"
 
           if [ "$SDK_VERSION" != "$EXPECTED_VERSION" ]; then
-            echo "SDK_VERSION_NAME ($ACTUAL_VERSION) does not match the expected version ($EXPECTED_VERSION)."
+            echo "SDK_VERSION_NAME ($SDK_VERSION) does not match the expected version ($EXPECTED_VERSION)."
             exit 1
           fi
         shell: bash

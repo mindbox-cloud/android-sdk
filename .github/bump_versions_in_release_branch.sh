@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Check if the parameter is provided
 if [ $# -eq 0 ]; then
@@ -31,19 +32,22 @@ ls -l
 # Add changelog to the index and create a commit
 properties_file="gradle.properties"
 current_version=$(grep -E '^SDK_VERSION_NAME=' gradle.properties | cut -d'=' -f2)
-sed -i "s/^SDK_VERSION_NAME=.*/SDK_VERSION_NAME=$version/" $properties_file
-sed -i "s/^SDK_VERSION_NAME=.*/SDK_VERSION_NAME=$version/" $properties_file
+sed -i "s/^SDK_VERSION_NAME=.*/SDK_VERSION_NAME=$version/" "$properties_file"
 build_gradle_example_path="example/app/build.gradle"
-sed -i -E "s/cloud.mindbox:mobile-sdk:[0-9]+\.[0-9]+\.[0-9]+(-rc)?/cloud.mindbox:mobile-sdk:$version/" $build_gradle_example_path
+sed -i -E "s/cloud.mindbox:mobile-sdk:[0-9]+\.[0-9]+\.[0-9]+(-rc)?/cloud.mindbox:mobile-sdk:$version/" "$build_gradle_example_path"
 
 echo "Bump SDK version from $current_version to $version."
 
-git add $properties_file
-git add -f $build_gradle_example_path
-git commit -m "Bump SDK version to $version"
+git add "$properties_file"
+git add -f "$build_gradle_example_path"
+if git diff --cached --quiet; then
+    echo "Version is already $version — nothing to commit."
+else
+    git commit -m "Bump SDK version to $version"
+fi
 
 echo "Pushing changes to branch: $current_branch"
-if ! git push origin $current_branch; then
+if ! git push origin "$current_branch"; then
     echo "Failed to push changes to the origin $current_branch"
     exit 1
 fi
