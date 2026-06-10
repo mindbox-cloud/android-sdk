@@ -44,7 +44,7 @@ jobs:
       - name: Bump version
         run: ./.github/bump_versions_in_release_branch.sh "${{ needs.extract_version.outputs.version }}"
 
-      - name: Ouput version
+      - name: Output version
         id: bump
         run: |
           echo "version2=${{ needs.extract_version.outputs.version }}" >> "$GITHUB_OUTPUT"

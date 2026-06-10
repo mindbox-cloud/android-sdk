@@ -132,7 +132,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
-      - name: Github Release generation
+      - name: GitHub Release generation
         run: ./.github/git-release-ci.sh
         env:
           GH_TOKEN: ${{ github.token }}

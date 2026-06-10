@@ -82,7 +82,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6.4.1
         if: ${{ always() }}
         with:
-          report_paths: '**/build/test-results/**/TEST-*.xml'
+          report_paths: '**/build/test-results/testDebugUnitTest/TEST-*.xml'
           fail_on_failure: true
           detailed_summary: true
 
