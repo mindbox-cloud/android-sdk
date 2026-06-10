@@ -18,7 +18,7 @@ class PushTokenTest {
         assertEquals("{\"provider1\":{\"token\":\"token1\",\"updateDate\":1},\"provider2\":{\"token\":\"token2\",\"updateDate\":2},\"provider3\":{\"token\":\"token3\",\"updateDate\":3}}", threeTokens.toPreferences())
 
         val noToken: PrefPushTokenMap = mapOf()
-        assertEquals("{BROKEN_ON_PURPOSE}", noToken.toPreferences()) // MOBILE-121: temporary CI check — REVERT
+        assertEquals("{}", noToken.toPreferences())
     }
 
     @Test

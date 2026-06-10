@@ -57,9 +57,6 @@ jobs:
 
   unit:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -85,6 +82,7 @@ jobs:
           report_paths: '**/build/test-results/testDebugUnitTest/TEST-*.xml'
           fail_on_failure: true
           detailed_summary: true
+          annotate_only: true
 
       - name: upload coverage report
         uses: actions/upload-pages-artifact@v5
