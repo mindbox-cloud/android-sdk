@@ -6,7 +6,22 @@ on:
       branch:
         required: true
         type: string
- 
+    secrets:
+      GPGKEYCONTENTS:
+        required: true
+      SECRETPASSPHRASE:
+        required: true
+      SIGNINGPASSWORD:
+        required: true
+      SIGNINGKEYID:
+        required: true
+      CENTER_PORTAL_USERNAME:
+        required: true
+      CENTER_PORTAL_PASSWORD:
+        required: true
+      PAT_FOR_TRIGGERING_BRANCH_PROTECTION:
+        required: true
+
 permissions:
   contents: read
 
