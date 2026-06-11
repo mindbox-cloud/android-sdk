@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           submodules: true
 
       - name: Set up JDK 17
@@ -35,8 +35,17 @@ jobs:
 
       - name: Get changed Kotlin files
         id: get_changed_files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '\.kt$|\.kts$' || true)
+            set -euo pipefail
+            if [ -z "$BASE_SHA" ] || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+              echo "Base commit '$BASE_SHA' unavailable; falling back to ${HEAD_SHA}^"
+              BASE_SHA=$(git rev-parse "${HEAD_SHA}^")
+            fi
+            echo "Diff range: $BASE_SHA..$HEAD_SHA"
+            CHANGED_FILES=$(git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" | { grep -E '\.kt$|\.kts$' || true; })
             echo "Changed Kotlin files:"
             echo "$CHANGED_FILES"
             DELIM="EOF_$(openssl rand -hex 8)"
