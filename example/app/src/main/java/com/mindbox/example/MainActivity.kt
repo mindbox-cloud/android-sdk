@@ -1,11 +1,16 @@
 package com.mindbox.example
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         showSdkDataOnScreen()
+        setupCopyOnClick()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             checkAndRequestPostNotificationsPermission()
@@ -34,6 +40,10 @@ class MainActivity : AppCompatActivity() {
             binding.tvPushUrlResult.text = url
             binding.tvPushPayloadResult.text = payload
             proceedUrl(url = url)
+        }
+
+        binding.btnShowInapp.setOnClickListener {
+            InAppBottomSheet().show(supportFragmentManager, InAppBottomSheet::class.java.simpleName)
         }
 
         binding.btnAsyncOperation.setOnClickListener {
@@ -47,9 +57,9 @@ class MainActivity : AppCompatActivity() {
             sendSync(type = SyncOperationType.OPERATION_BODY_WITH_CUSTOM_RESPONSE, context = this)
             showToast(context = this, message = "Sync operation was sent")
         }
+
         binding.btnOpenActivity.setOnClickListener {
-            val intent = Intent(this, ActivityTransitionByPush::class.java)
-            this.startActivity(intent)
+            startActivity(Intent(this, ActivityTransitionByPush::class.java))
         }
 
         binding.btnOpenPushList.setOnClickListener {
@@ -117,17 +127,38 @@ class MainActivity : AppCompatActivity() {
 
         //https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
         var subscriptionPushToken = ""
-        subscriptionPushToken =
-            Mindbox.subscribePushTokens { tokens ->
-                runOnUiThread {
-                    binding.tvTokenResult.text = tokens
-                    //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-                    binding.tvTokenDateResult.text = Mindbox.getPushTokensSaveDate().toString()
-                }
-                Mindbox.disposePushTokenSubscription(subscriptionPushToken)
+        subscriptionPushToken = Mindbox.subscribePushTokens { tokens ->
+            runOnUiThread {
+                binding.tvTokenResult.text = tokens
+                //https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
+                binding.tvTokenDateResult.text = Mindbox.getPushTokensSaveDate().toString()
             }
+            Mindbox.disposePushTokenSubscription(subscriptionPushToken)
+        }
 
         //https://developers.mindbox.ru/docs/android-sdk-methods#getsdkversion
         binding.tvSdkVersionResult.text = Mindbox.getSdkVersion()
+    }
+
+    private fun setupCopyOnClick() {
+        binding.rowDeviceUuid.copyOnClick(binding.tvDeviceUUIDResult)
+        binding.rowToken.copyOnClick(binding.tvTokenResult)
+        binding.rowTokenDate.copyOnClick(binding.tvTokenDateResult)
+        binding.rowPushUrl.copyOnClick(binding.tvPushUrlResult)
+        binding.rowPushPayload.copyOnClick(binding.tvPushPayloadResult)
+        binding.rowSdkVersion.copyOnClick(binding.tvSdkVersionResult)
+    }
+
+    private fun View.copyOnClick(valueView: TextView) {
+        setOnClickListener {
+            val text = valueView.text.toString()
+            if (text.isEmpty()) return@setOnClickListener
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText(null, text))
+            // Android 13+ shows its own copy confirmation bubble — avoid double toast
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                showToast(context = this@MainActivity, message = "Скопировано")
+            }
+        }
     }
 }

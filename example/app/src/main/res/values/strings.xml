@@ -8,9 +8,13 @@
     <string name="push_payload">Payload:</string>
     <string name="async_operation">Send async operation</string>
     <string name="sync_operation">Send sync operation</string>
-    <string name="sdk_version">SDK version</string>
+    <string name="sdk_version">SDK version:</string>
     <string name="open_activity">Open second activity</string>
     <string name="token_date">Token date:</string>
     <string name="open_notification_history">Open Notification history</string>
+    <string name="show_inapp">Показать in-app</string>
+    <string name="inapp_wheel_of_fortune">Колесо фортуны</string>
+    <string name="inapp_luck_feed">Лента удачи</string>
+    <string name="inapp_scratcher">Стирашка</string>
 
 </resources>
