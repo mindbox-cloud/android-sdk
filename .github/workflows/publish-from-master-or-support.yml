@@ -7,10 +7,22 @@ on:
       - 'master'
       - 'support/*'
 
+permissions:
+  contents: read
+
 jobs:
   call-reusable:
     if: ${{ github.event.pull_request.merged == true }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/publish-reusable.yml
     with:
       branch: ${{ github.base_ref }}
-    secrets: inherit
+    secrets:
+      GPGKEYCONTENTS: ${{ secrets.GPGKEYCONTENTS }}
+      SECRETPASSPHRASE: ${{ secrets.SECRETPASSPHRASE }}
+      SIGNINGPASSWORD: ${{ secrets.SIGNINGPASSWORD }}
+      SIGNINGKEYID: ${{ secrets.SIGNINGKEYID }}
+      CENTER_PORTAL_USERNAME: ${{ secrets.CENTER_PORTAL_USERNAME }}
+      CENTER_PORTAL_PASSWORD: ${{ secrets.CENTER_PORTAL_PASSWORD }}
+      PAT_FOR_TRIGGERING_BRANCH_PROTECTION: ${{ secrets.PAT_FOR_TRIGGERING_BRANCH_PROTECTION }}
