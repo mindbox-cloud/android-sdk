@@ -2,7 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="mindbox_default_notification_color">#FF000000</color>
+    <color name="mindbox_default_notification_color">#39AA5D</color>
 
     <!-- Mindbox brand palette -->
     <color name="mindbox_green">#39AA5D</color>

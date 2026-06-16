@@ -29,7 +29,7 @@ android {
         applicationId "com.mindbox.example"
         minSdk 21
         targetSdk 35
-        versionCode 8
+        versionCode 10
         versionName "2.15.2"
         multiDexEnabled true
 
