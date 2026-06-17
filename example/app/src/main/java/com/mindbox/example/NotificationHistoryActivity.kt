@@ -2,20 +2,23 @@ package com.mindbox.example
 
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import cloud.mindbox.mobile_sdk.Mindbox
 import com.google.gson.Gson
-import com.mindbox.example.databinding.ActivityNotificationHistoryActivivityBinding
+import com.mindbox.example.ui.NotificationHistoryScreen
+import com.mindbox.example.ui.theme.MindboxTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class NotificationHistoryActivity : AppCompatActivity() {
 
-    private var _binding: ActivityNotificationHistoryActivivityBinding? = null
-    private val binding: ActivityNotificationHistoryActivivityBinding
-        get() = _binding!!
+    private var notifications by mutableStateOf(NotificationStorage.notifications)
 
     private fun getPushOpenOperationBody(
         pushName: String,
@@ -34,45 +37,53 @@ class NotificationHistoryActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        _binding = ActivityNotificationHistoryActivivityBinding.inflate(layoutInflater)
         Mindbox.executeAsyncOperation(
             applicationContext,
             "mobileapp.NCOpen",
             ""
         )
-        setContentView(binding.root)
-        Toast.makeText(applicationContext, "Notification center opened", Toast.LENGTH_LONG).show()
-        binding.rvList.apply {
-            setHasFixedSize(true)
-            layoutManager = LinearLayoutManager(applicationContext)
-            adapter = NotificationAdapter {
-                /*Assuming payload of push notification has this structure:
-                     {
-                        "pushName":"<Push name>",
-                        "pushDate":"<Push date>"
-                      }*/
-                val pushPayload = Gson().fromJson(it.payload, PushPayload::class.java)
-                Mindbox.executeAsyncOperation(
-                    applicationContext,
-                    "mobileapp.NCPushOpen",
-                    getPushOpenOperationBody(
-                        pushPayload.pushName,
-                        pushPayload.pushDate
-                    )
+        Toast.makeText(
+            applicationContext,
+            getString(R.string.toast_notification_center_opened),
+            Toast.LENGTH_LONG
+        ).show()
+
+        setContent {
+            MindboxTheme {
+                NotificationHistoryScreen(
+                    notifications = notifications,
+                    darkTheme = isSystemInDarkTheme(),
+                    onBack = { finish() },
+                    onItemClick = ::onNotificationClick,
                 )
-                Toast.makeText(
-                    applicationContext,
-                    "Click on notification with unique key ${it.uniqueKey}, title = ${it.title} and description = ${it.description}",
-                    Toast.LENGTH_LONG
-                ).show()
             }
         }
-        (binding.rvList.adapter as NotificationAdapter).updateNotifications(NotificationStorage.notifications)
-        //Don't listen to storage in your actual app inside activity.
+
+        // Don't listen to storage in your actual app inside activity.
         lifecycleScope.launch(Dispatchers.IO) {
-            NotificationStorage.notificationsFlow.collect {
-                (binding.rvList.adapter as NotificationAdapter).updateNotifications(it)
-            }
+            NotificationStorage.notificationsFlow.collect { notifications = it }
         }
+    }
+
+    private fun onNotificationClick(item: cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage) {
+        /*Assuming payload of push notification has this structure:
+             {
+                "pushName":"<Push name>",
+                "pushDate":"<Push date>"
+              }*/
+        val pushPayload = Gson().fromJson(item.payload, PushPayload::class.java)
+        Mindbox.executeAsyncOperation(
+            applicationContext,
+            "mobileapp.NCPushOpen",
+            getPushOpenOperationBody(
+                pushPayload.pushName,
+                pushPayload.pushDate
+            )
+        )
+        Toast.makeText(
+            applicationContext,
+            getString(R.string.toast_notification_click, item.uniqueKey, item.title, item.description),
+            Toast.LENGTH_LONG
+        ).show()
     }
 }

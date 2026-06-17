@@ -20,7 +20,7 @@ class MindboxRuStoreMessagingService : RuStoreMessagingService() {
         super.onMessageReceived(message)
         // Listing of links and activities that should be opened by different links
         val activities = mapOf(
-            "https://newActivity.com" to ActivityTransitionByPush::class.java
+            SECOND_ACTIVITY_PUSH_URL to ActivityTransitionByPush::class.java
         )
         // Default Active. It will open if a link that is not in the list is received
         val defaultActivity = MainActivity::class.java
