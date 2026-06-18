@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -190,6 +189,17 @@ private fun HeroHeader(sdkVersion: String) {
 
 private const val SECRET_MASK = "••••••••••••••••••••"
 
+/** How many leading characters of the device UUID stay visible on screen. */
+private const val UUID_VISIBLE_PREFIX = 9
+
+/**
+ * Masks the device UUID for display: keeps the first [UUID_VISIBLE_PREFIX]
+ * characters and replaces the remainder with "****". Per legal guidance the full
+ * UUID must not be readable or copyable from the example app's main screen.
+ */
+private fun maskUuid(value: String): String =
+    if (value.length <= UUID_VISIBLE_PREFIX) value else value.take(UUID_VISIBLE_PREFIX) + "****-****-****-************"
+
 @Composable
 private fun SdkInfoCard(state: SdkInfoState, onCopy: (String, String) -> Unit) {
     Column(
@@ -212,13 +222,10 @@ private fun SdkInfoCard(state: SdkInfoState, onCopy: (String, String) -> Unit) {
             SectionLabel(stringResource(R.string.section_sdk_info))
         }
 
-        val uuidLabel = stringResource(R.string.label_device_uuid)
-
         Spacer(Modifier.height(10.dp))
         UuidField(
-            label = uuidLabel,
+            label = stringResource(R.string.label_device_uuid),
             value = state.deviceUuid,
-            onCopy = { onCopy(uuidLabel, state.deviceUuid) },
         )
 
         Spacer(Modifier.height(4.dp))
@@ -226,19 +233,12 @@ private fun SdkInfoCard(state: SdkInfoState, onCopy: (String, String) -> Unit) {
     }
 }
 
-/** Device UUID: label + copy button, with the value shown in a single-line,
- * horizontally-scrollable monospace box. */
+/** Device UUID: label + masked value in a single-line monospace box. Per legal
+ * guidance the full UUID must not be copyable or fully visible here, so there is
+ * no copy button and only the first [UUID_VISIBLE_PREFIX] characters are shown. */
 @Composable
-private fun UuidField(label: String, value: String, onCopy: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.weight(1f))
-        IconCircleButton(
-            icon = Icons.Filled.ContentCopy,
-            contentDescription = stringResource(R.string.copy_content_description, label),
-            tint = MaterialTheme.colorScheme.primary,
-            onClick = onCopy,
-        )
-    }
+private fun UuidField(label: String, value: String) {
+    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
     Spacer(Modifier.height(6.dp))
     Box(
         Modifier
@@ -247,15 +247,13 @@ private fun UuidField(label: String, value: String, onCopy: () -> Unit) {
             .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Text(
-            text = value.ifEmpty { stringResource(R.string.value_placeholder) },
+            text = if (value.isEmpty()) stringResource(R.string.value_placeholder) else maskUuid(value),
             color = MaterialTheme.colorScheme.onSurface,
             fontFamily = FontFamily.Monospace,
             fontSize = 13.sp,
             maxLines = 1,
             softWrap = false,
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 13.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
         )
     }
 }
