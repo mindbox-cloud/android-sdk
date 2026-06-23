@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">Mindbox SDK Example</string>
 
     <!-- Brand / header -->
@@ -33,10 +33,16 @@
     <string name="action_open_notification_history">Open Notification history</string>
 
     <!-- In-app picker -->
-    <string name="inapp_picker_title">Choose in-app</string>
+    <string name="inapp_picker_title">Useful</string>
+    <string name="inapp_picker_subtitle">In-app formats and mechanics — choose what to show.</string>
+    <string name="inapp_picker_close">Close</string>
     <string name="inapp_wheel_of_fortune">Wheel of Fortune</string>
-    <string name="inapp_luck_feed">Luck Feed</string>
+    <string name="inapp_lucky_feed">Lucky Feed</string>
     <string name="inapp_scratch_card">Scratch card</string>
+    <string name="inapp_custom_html">Custom HTML</string>
+    <string name="inapp_onboarding">Onboarding</string>
+    <string name="inapp_modal">Modal window</string>
+    <string name="inapp_snackbar">Snackbar</string>
 
     <!-- Second activity -->
     <string name="second_activity_title">Second activity</string>

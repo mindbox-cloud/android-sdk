@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.Mindbox
-import com.mindbox.example.ui.InAppOption
 import com.mindbox.example.ui.MainScreen
 import com.mindbox.example.ui.SdkInfoState
 import com.mindbox.example.ui.theme.MindboxTheme
@@ -83,15 +82,10 @@ class MainActivity : AppCompatActivity() {
                         onPickInApp = { option ->
                             showInAppSheet = false
                             // https://developers.mindbox.ru/docs/android-integration-of-actions
-                            when (option) {
-                                InAppOption.WheelOfFortune ->
-                                    sendAsyncOperationWithEmptyBody(this@MainActivity, "Test1")
-                                InAppOption.LuckFeed ->
-                                    sendAsyncOperationWithEmptyBody(this@MainActivity, "Test2")
-                                InAppOption.ScratchCard -> Unit
-                            }
-                            showToast(
-                                this@MainActivity,
+                            // Each option triggers its in-app via an async operation.
+                            sendAsyncOperationWithEmptyBody(this@MainActivity, option.operationSystemName)
+                            Log.d(
+                                "InApp",
                                 getString(R.string.toast_inapp_shown, getString(option.titleRes)),
                             )
                         },

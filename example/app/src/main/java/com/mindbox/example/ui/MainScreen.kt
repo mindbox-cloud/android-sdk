@@ -33,10 +33,10 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -68,12 +68,20 @@ data class SdkInfoState(
     val sdkVersion: String = "",
 )
 
-/** In-app options offered by the picker bottom sheet. A stable id so callers
- * don't have to compare localized display titles. */
-enum class InAppOption(@StringRes val titleRes: Int) {
-    WheelOfFortune(R.string.inapp_wheel_of_fortune),
-    LuckFeed(R.string.inapp_luck_feed),
-    ScratchCard(R.string.inapp_scratch_card),
+/** In-app options offered by the picker bottom sheet. Each entry carries the
+ * Mindbox operation system name that triggers the corresponding in-app when
+ * tapped, plus a stable id so callers don't compare localized display titles. */
+enum class InAppOption(
+    @StringRes val titleRes: Int,
+    val operationSystemName: String,
+) {
+    WheelOfFortune(R.string.inapp_wheel_of_fortune, "showInAppWheelOfFortune"),
+    LuckyFeed(R.string.inapp_lucky_feed, "showInAppLuckyFeed"),
+    ScratchCard(R.string.inapp_scratch_card, "showInAppScratchCard"),
+    CustomHtml(R.string.inapp_custom_html, "showInAppCustomHtml"),
+    Onboarding(R.string.inapp_onboarding, "showInAppOnboarding"),
+    Modal(R.string.inapp_modal, "showInAppModal"),
+    Snackbar(R.string.inapp_snackbar, "showInAppSnackbar"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,13 +132,13 @@ fun MainScreen(
     }
 
     if (showInAppSheet) {
-        val sheetState = rememberModalBottomSheetState()
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = onDismissInAppSheet,
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            InAppPickerContent(onPick = onPickInApp)
+            InAppPickerContent(onPick = onPickInApp, onClose = onDismissInAppSheet)
         }
     }
 }
@@ -517,36 +525,97 @@ private fun ActionRow(
 }
 
 @Composable
-private fun InAppPickerContent(onPick: (InAppOption) -> Unit) {
+private fun InAppPickerContent(onPick: (InAppOption) -> Unit, onClose: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
             .padding(start = 22.dp, end = 22.dp, bottom = 30.dp),
     ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            CloseButton(onClick = onClose)
+        }
+
+        Spacer(Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.inapp_picker_title),
             color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 18.sp,
+            fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+            letterSpacing = (-1).sp,
         )
-        InAppOption.entries.forEach { option ->
-            OutlinedButton(
-                onClick = { onPick(option) },
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(bottom = 13.dp),
-            ) {
-                Text(
-                    stringResource(option.titleRes),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.inapp_picker_subtitle),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+        )
+
+        Spacer(Modifier.height(20.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        ) {
+            InAppOption.entries.forEachIndexed { index, option ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.padding(start = 18.dp),
+                    )
+                }
+                InAppRow(
+                    title = stringResource(option.titleRes),
+                    onClick = { onPick(option) },
                 )
             }
         }
+    }
+}
+
+/** A single tappable row in the in-app picker list: title on the left, chevron
+ * on the right, matching the grouped-list style of the reference design. */
+@Composable
+private fun InAppRow(title: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 17.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/** Pill "Close" button shown at the top-right of the picker sheet. */
+@Composable
+private fun CloseButton(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+    ) {
+        Text(
+            stringResource(R.string.inapp_picker_close),
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
