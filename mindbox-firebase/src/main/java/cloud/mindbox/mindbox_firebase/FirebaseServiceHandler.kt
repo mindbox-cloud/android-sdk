@@ -86,7 +86,7 @@ internal class FirebaseServiceHandler(
 
     private fun namedFirebaseAppName(context: Context): String =
         cachedNamedAppName ?: exceptionHandler.runCatching(defaultValue = "") {
-            context.getString(R.string.mindbox_firebase_app_name)
+            context.getString(R.string.mindbox_firebase_app_name).trim()
         }.also { cachedNamedAppName = it }
 
     override fun getAdsId(context: Context): Pair<String?, Boolean> {

@@ -112,6 +112,27 @@ class FirebaseServiceHandlerTest {
     }
 
     @Test
+    fun `resource with surrounding whitespace - trimmed before use as named app`() = runTest {
+        stubAppName("  mindbox-named  ")
+        val namedMessaging = mockk<FirebaseMessaging> {
+            every { token } returns successTask("named-token")
+        }
+        val namedApp = mockk<FirebaseApp> {
+            every { get(FirebaseMessaging::class.java) } returns namedMessaging
+        }
+        mockkStatic(FirebaseApp::class)
+        every { FirebaseApp.getInstance("mindbox-named") } returns namedApp
+        mockkStatic(FirebaseMessaging::class)
+        every { FirebaseMessaging.getInstance() } returns mockk()
+
+        val token = handler.registerToken(context, previousToken = null)
+
+        assertEquals("named-token", token)
+        // Trimmed name is used, not the raw "  mindbox-named  ".
+        verify(exactly = 1) { FirebaseApp.getInstance("mindbox-named") }
+    }
+
+    @Test
     fun `resource set but named app unresolvable - falls back to DEFAULT FirebaseApp`() = runTest {
         stubAppName("does-not-exist")
         mockkStatic(FirebaseApp::class)

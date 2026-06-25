@@ -6,5 +6,5 @@
         a token isolated from the [DEFAULT] FirebaseApp (whose token third-party SDKs
         may churn). Empty by default — Mindbox then uses the [DEFAULT] FirebaseApp.
     -->
-    <string name="mindbox_firebase_app_name" />
+    <string name="mindbox_firebase_app_name" translatable="false" />
 </resources>
