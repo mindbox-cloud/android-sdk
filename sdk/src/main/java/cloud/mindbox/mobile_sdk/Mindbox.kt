@@ -1314,7 +1314,7 @@ public object Mindbox : MindboxLog {
 
             mindboxLogI(
                 "updateAppInfo. pushToken: $pushTokens, isNotificationEnabled: $isNotificationEnabled, " +
-                    "old isNotificationEnabled: $savedPushTokens"
+                    "old isNotificationEnabled: $savedIsNotificationEnabled"
             )
             val initData = UpdateData(
                 isNotificationsEnabled = isNotificationEnabled,
