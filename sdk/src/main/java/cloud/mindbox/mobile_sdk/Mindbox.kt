@@ -562,6 +562,9 @@ public object Mindbox : MindboxLog {
         Stopwatch.start(Stopwatch.INIT_SDK)
 
         initComponents(context.applicationContext)
+        // Prewarm stage 1: head start for webview in-apps from the cached config
+        // (mirrors the iOS SDK's init-time prewarm; a real show always preempts it).
+        MindboxDI.appModule.inAppWebViewPrewarmService.prewarmOnInit()
         pushConverters = selectPushServiceHandler(pushServices)
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +

@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.app.Activity
 import android.app.Application
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
@@ -22,6 +24,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmService
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -77,6 +80,8 @@ internal class WebViewInAppViewHolder(
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
     private var currentWebViewOrigin: String? = null
+    private var readyChecker: WebViewReadyChecker? = null
+    private val mainHandler: Handler = Handler(Looper.getMainLooper())
 
     private var motionService: MotionServiceProtocol? = null
 
@@ -89,6 +94,7 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val timeProvider: TimeProvider by mindboxInject { timeProvider }
+    private val webViewPrewarmService: InAppWebViewPrewarmService by mindboxInject { inAppWebViewPrewarmService }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -317,6 +323,8 @@ internal class WebViewInAppViewHolder(
 
     private fun handleCloseAction(message: BridgeMessage): String {
         motionService?.stopMonitoring()
+        // Remember which https hosts this show actually used — feeds the next launch's preconnect.
+        webViewController?.let { controller -> webViewPrewarmService.captureObservedHosts(controller) }
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -426,7 +434,7 @@ internal class WebViewInAppViewHolder(
             override fun onPageFinished(url: String?) {
                 mindboxLogD("onPageFinished: $url")
                 currentWebViewOrigin = resolveOrigin(url) ?: currentWebViewOrigin
-                webViewController?.evaluateJavaScript(JS_CHECK_BRIDGE, ::checkEvaluateJavaScript)
+                startReadyCheck(url)
             }
 
             override fun onShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
@@ -515,17 +523,70 @@ internal class WebViewInAppViewHolder(
         }
     }
 
+    /**
+     * Readiness probe for a freshly finished page. Module scripts can evaluate a beat after
+     * `onPageFinished` (slow device, cold cache), so a single early `false` must not close a
+     * healthy in-app — the checker polls before giving up. Every new `onPageFinished` (redirect,
+     * re-load) restarts the poll; teardown cancels it. The outgoing-message verification in
+     * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
+     * path talks to a page that already proved itself ready.
+     *
+     * Give-up records the failure but does NOT close: the init timer is the closing
+     * authority. The checker's ~1.2s budget can expire while an allowed same-origin
+     * navigation is still in flight or while a slow page is still booting its bridge —
+     * cases the timer would have accepted (the window stays invisible until `init` anyway).
+     */
+    private fun startReadyCheck(url: String?) {
+        // A late onPageFinished can be queued on the main looper when the in-app closes;
+        // a checker started against the torn-down holder would only produce a spurious
+        // failure event.
+        if (webViewController == null) return
+        readyChecker?.cancel()
+        val checker = WebViewReadyChecker(
+            evaluate = { script, resultCallback ->
+                webViewController?.evaluateJavaScript(script, resultCallback)
+                    ?: resultCallback(null)
+            },
+            schedule = { delayMillis, action -> mainHandler.postDelayed(action, delayMillis) }
+        )
+        readyChecker = checker
+        checker.run(
+            script = JS_CHECK_BRIDGE,
+            expectedResult = JS_RETURN,
+            onReady = { mindboxLogD("JS ready check passed for $url") },
+            onGiveUp = { lastFailure ->
+                inAppFailureTracker.sendFailureWithContext(
+                    inAppId = wrapper.inAppType.inAppId,
+                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                    errorDescription = "JS ready check gave up for $url: $lastFailure"
+                )
+            }
+        )
+    }
+
+    /**
+     * Verifies an outgoing bridge call's JS result. Tracks the failure but does NOT close
+     * the in-app: whether one undelivered message is fatal is the caller's policy (a failed
+     * `back` action closes via its own onError, a failed motion event just stops monitoring)
+     * — force-closing here used to tear down a healthy show over a single transient miss.
+     * Page readiness has its own retrying probe ([startReadyCheck]).
+     */
     internal fun checkEvaluateJavaScript(response: String?): Boolean {
         return when (response) {
             JS_RETURN -> true
             else -> {
-                inAppFailureTracker.sendFailureWithContext(
-                    inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "evaluateJavaScript return unexpected response: $response",
+                // A miss during teardown (holder already closed, controller gone) is an
+                // expected race, not a presentation failure — don't feed it to telemetry.
+                if (webViewController != null) {
+                    inAppFailureTracker.sendFailureWithContext(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                        errorDescription = "evaluateJavaScript return unexpected response: $response",
                     tags = wrapper.tags
                 )
-                inAppController.close()
+                } else {
+                    mindboxLogW("evaluateJavaScript miss after teardown (ignored): $response")
+                }
                 false
             }
         }
@@ -605,6 +666,8 @@ internal class WebViewInAppViewHolder(
 
     private fun renderLayer(layer: Layer.WebViewLayer) {
         if (webViewController == null) {
+            // A real show takes priority: kill the prewarm so it can't compete for bandwidth.
+            webViewPrewarmService.onRealShowWillStart()
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
 
@@ -763,14 +826,18 @@ internal class WebViewInAppViewHolder(
         hapticFeedbackExecutor.cancel()
         motionService?.stopMonitoring()
         stopTimer()
+        readyChecker?.cancel()
+        readyChecker = null
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
+            // Detach first: a page event already queued on the main looper must not reach
+            // this torn-down holder (e.g. a late onPageFinished spawning a ready checker).
+            controller.setEventListener(null)
             val view: WebViewPlatformView = controller.view
             view.parent.safeAs<ViewGroup>()?.removeView(view)
             controller.destroy()
         }
         currentWebViewOrigin = null
-        webViewController?.destroy()
         webViewController = null
         currentMindboxView = null
         super.onClose()
