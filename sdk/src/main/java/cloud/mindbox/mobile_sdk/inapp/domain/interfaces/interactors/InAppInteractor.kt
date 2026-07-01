@@ -19,7 +19,7 @@ internal interface InAppInteractor {
         tags: Map<String, String>?
     )
 
-    fun sendInAppClicked(inAppId: String)
+    fun sendInAppClicked(inAppId: String, tags: Map<String, String>?)
 
     suspend fun fetchMobileConfig()
 

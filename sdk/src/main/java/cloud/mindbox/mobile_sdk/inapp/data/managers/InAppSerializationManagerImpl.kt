@@ -3,9 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
-import cloud.mindbox.mobile_sdk.models.operation.request.InAppHandleRequest
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppClickRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppTargetingRequest
 import cloud.mindbox.mobile_sdk.toJsonTyped
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -30,9 +31,20 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
         }
     }
 
-    override fun serializeToInAppActionString(inAppId: String): String {
+    override fun serializeToInAppTargetingString(inAppId: String, tags: Map<String, String>?): String {
         return loggingRunCatching("") {
-            gson.toJsonTyped<InAppHandleRequest>(InAppHandleRequest(inAppId = inAppId))
+            gson.toJsonTyped<InAppTargetingRequest>(InAppTargetingRequest(inAppId = inAppId, tags = tags))
+        }
+    }
+
+    override fun serializeToInAppClickActionString(inAppId: String, tags: Map<String, String>?): String {
+        return loggingRunCatching("") {
+            gson.toJsonTyped<InAppClickRequest>(
+                InAppClickRequest(
+                    inAppId = inAppId,
+                    tags = tags,
+                )
+            )
         }
     }
 

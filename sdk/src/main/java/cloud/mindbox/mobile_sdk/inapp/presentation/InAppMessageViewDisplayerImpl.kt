@@ -137,8 +137,9 @@ internal class InAppMessageViewDisplayerImpl(
         inAppType: InAppType,
         inAppActionCallbacks: InAppActionCallbacks,
         onRenderStart: () -> Unit,
+        tags: Map<String, String>?,
     ) {
-        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks, onRenderStart)
+        val wrapper = InAppTypeWrapper(inAppType, inAppActionCallbacks, onRenderStart, tags)
 
         if (isUiPresent() && currentHolder == null && pausedHolder == null) {
             val duration = Stopwatch.track(Stopwatch.INIT_SDK)
@@ -208,6 +209,7 @@ internal class InAppMessageViewDisplayerImpl(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying draw inapp",
+                tags = wrapper.tags,
                 onFailure = ::closeInApp
             ) {
                 currentHolder?.show(createMindboxView(root))
@@ -215,7 +217,8 @@ internal class InAppMessageViewDisplayerImpl(
         } ?: run {
             inAppFailureTracker.sendPresentationFailure(
                 inAppId = wrapper.inAppType.inAppId,
-                errorDescription = "currentRoot is null"
+                errorDescription = "currentRoot is null",
+                tags = wrapper.tags
             )
         }
     }
@@ -226,10 +229,12 @@ internal class InAppMessageViewDisplayerImpl(
             ?: return false
         currentHolder = restoredHolder
         pausedHolder = null
+        val restoredTags = restoredHolder.wrapper.tags
         val root: ViewGroup = currentActivity?.root ?: run {
             inAppFailureTracker.sendPresentationFailure(
                 inAppId = inAppId,
-                errorDescription = "failed to reattach inApp: currentRoot is null"
+                errorDescription = "failed to reattach inApp: currentRoot is null",
+                tags = restoredTags
             )
             return true
         }
@@ -237,6 +242,7 @@ internal class InAppMessageViewDisplayerImpl(
             inAppId = inAppId,
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "Error when trying reattach InApp",
+            tags = restoredTags,
             onFailure = ::closeInApp,
         ) {
             restoredHolder.reattach(createMindboxView(root))

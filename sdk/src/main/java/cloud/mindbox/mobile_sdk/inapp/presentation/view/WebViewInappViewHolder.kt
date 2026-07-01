@@ -97,7 +97,7 @@ internal class WebViewInAppViewHolder(
     private val mindboxNotificationManager: MindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val appContext: Application by mindboxInject { appContext }
     private val operationExecutor: WebViewOperationExecutor by lazy {
-        MindboxWebViewOperationExecutor()
+        MindboxWebViewOperationExecutor(gson)
     }
     private val linkRouter: WebViewLinkRouter by lazy {
         MindboxWebViewLinkRouter(appContext)
@@ -351,7 +351,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleAsyncOperationAction(message: BridgeMessage.Request): String {
-        operationExecutor.executeAsyncOperation(appContext, message.payload)
+        operationExecutor.executeAsyncOperation(appContext, message.payload, wrapper.tags)
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -364,7 +364,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
-        return operationExecutor.executeSyncOperation(message.payload)
+        return operationExecutor.executeSyncOperation(message.payload, wrapper.tags)
     }
 
     private fun handleLocalStateGetAction(message: BridgeMessage.Request): String {
@@ -439,7 +439,8 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
+                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}",
+                        tags = wrapper.tags
                     )
                     inAppController.close()
                 }
@@ -521,7 +522,8 @@ internal class WebViewInAppViewHolder(
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "evaluateJavaScript return unexpected response: $response"
+                    errorDescription = "evaluateJavaScript return unexpected response: $response",
+                    tags = wrapper.tags
                 )
                 inAppController.close()
                 false
@@ -646,7 +648,8 @@ internal class WebViewInAppViewHolder(
                             inAppId = wrapper.inAppType.inAppId,
                             failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                             errorDescription = "Failed to fetch HTML content for In-App",
-                            throwable = e
+                            throwable = e,
+                            tags = wrapper.tags
                         )
                         controller.executeOnViewThread { inAppController.close() }
                     }
@@ -654,7 +657,8 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                        errorDescription = "WebView content URL is null"
+                        errorDescription = "WebView content URL is null",
+                        tags = wrapper.tags
                     )
                     controller.executeOnViewThread { inAppController.close() }
                 }
@@ -666,6 +670,7 @@ internal class WebViewInAppViewHolder(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying WebView layout",
+                tags = wrapper.tags,
             ) {
                 val view: WebViewPlatformView = controller.view
                 if (view.parent !== inAppLayout) {
@@ -677,7 +682,8 @@ internal class WebViewInAppViewHolder(
             inAppFailureTracker.sendFailureWithContext(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                errorDescription = "WebView controller is null when trying show inapp"
+                errorDescription = "WebView controller is null when trying show inapp",
+                tags = wrapper.tags
             )
             inAppController.close()
         }
@@ -692,7 +698,8 @@ internal class WebViewInAppViewHolder(
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
+                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}.",
+                    tags = wrapper.tags
                 )
                 controller.executeOnViewThread {
                     inAppController.close()

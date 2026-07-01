@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponse
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val SEND_INAPP_SHOW_ERROR_FEATURE = "MobileSdkShouldSendInAppShowError"
+internal const val SEND_INAPP_TAGS_FEATURE = "MobileSdkShouldSendInAppTags"
 
 internal class FeatureToggleManagerImpl : FeatureToggleManager {
 

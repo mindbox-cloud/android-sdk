@@ -3,8 +3,11 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.gatedTags
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
@@ -34,7 +37,8 @@ internal class InAppMessageManagerImpl(
     private val sessionStorageManager: SessionStorageManager,
     private val userVisitManager: UserVisitManager,
     private val inAppMessageDelayedManager: InAppMessageDelayedManager,
-    private val timeProvider: TimeProvider
+    private val timeProvider: TimeProvider,
+    private val featureToggleManager: FeatureToggleManager,
 ) : InAppMessageManager {
 
     init {
@@ -93,14 +97,15 @@ internal class InAppMessageManagerImpl(
                 }
 
                 var renderStartTime = Timestamp(0L)
-                val tags = inApp.tags?.takeIf { it.isNotEmpty() }
+                val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
                     onRenderStart = { renderStartTime = timeProvider.currentTimestamp() },
+                    tags = tags,
                     inAppActionCallbacks = object : InAppActionCallbacks {
                         override val onInAppClick = OnInAppClick {
-                            inAppInteractor.sendInAppClicked(inAppMessage.inAppId)
+                            inAppInteractor.sendInAppClicked(inAppMessage.inAppId, tags)
                         }
                         override val onInAppShown = OnInAppShown {
                             handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)

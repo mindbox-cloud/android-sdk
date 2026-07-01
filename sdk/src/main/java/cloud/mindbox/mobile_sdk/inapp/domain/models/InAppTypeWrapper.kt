@@ -6,6 +6,7 @@ internal data class InAppTypeWrapper<out T : InAppType>(
     val inAppType: T,
     val inAppActionCallbacks: InAppActionCallbacks,
     val onRenderStart: () -> Unit,
+    val tags: Map<String, String>? = null,
 )
 
 internal fun interface OnInAppClick {
