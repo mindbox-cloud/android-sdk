@@ -562,6 +562,8 @@ public object Mindbox : MindboxLog {
         Stopwatch.start(Stopwatch.INIT_SDK)
 
         initComponents(context.applicationContext)
+        // MEASUREMENT (throwaway): warm the WebView renderer process at SDK init (analog of iOS prewarm).
+        cloud.mindbox.mobile_sdk.inapp.webview.MindboxWebViewLab.prewarm(context.applicationContext)
         pushConverters = selectPushServiceHandler(pushServices)
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
