@@ -179,15 +179,27 @@ class WebViewOperationExecutorTest {
     }
 
     @Test
-    fun `executeAsyncOperation throws when payload is invalid json empty or null`() {
+    fun `executeAsyncOperation throws IllegalArgumentException when payload is null`() {
         val context: Application = mockk()
-        val payloads: List<String?> = listOf("not-json", "", null)
-        payloads.forEach { payload: String? ->
+        try {
+            executor.executeAsyncOperation(context, payload = null, tags = null)
+            fail("Expected IllegalArgumentException")
+        } catch (exception: IllegalArgumentException) {
+            assertEquals("Payload is not provided", exception.message)
+        }
+        verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
+    }
+
+    @Test
+    fun `executeAsyncOperation throws IllegalArgumentException when payload is invalid json`() {
+        val context: Application = mockk()
+        val payloads: List<String> = listOf("not-json", "")
+        payloads.forEach { payload: String ->
             try {
                 executor.executeAsyncOperation(context, payload, tags = null)
-                fail("Expected exception for payload: $payload")
-            } catch (exception: Exception) {
-                // Expected: payload cannot be parsed to required JSON object.
+                fail("Expected IllegalArgumentException for payload: $payload")
+            } catch (exception: IllegalArgumentException) {
+                assertEquals("Payload is not a valid JSON object", exception.message)
             }
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
@@ -321,14 +333,32 @@ class WebViewOperationExecutorTest {
     }
 
     @Test
-    fun `executeSyncOperation throws when payload is invalid json empty or null`() = runTest {
-        val payloads: List<String?> = listOf("not-json", "", null)
-        payloads.forEach { payload: String? ->
+    fun `executeSyncOperation throws IllegalArgumentException when payload is null`() = runTest {
+        try {
+            executor.executeSyncOperation(payload = null, tags = null)
+            fail("Expected IllegalArgumentException")
+        } catch (exception: IllegalArgumentException) {
+            assertEquals("Payload is not provided", exception.message)
+        }
+        verify(exactly = 0) {
+            MindboxEventManager.syncOperation(
+                name = any(),
+                bodyJson = any(),
+                onSuccess = any(),
+                onError = any(),
+            )
+        }
+    }
+
+    @Test
+    fun `executeSyncOperation throws IllegalArgumentException when payload is invalid json`() = runTest {
+        val payloads: List<String> = listOf("not-json", "")
+        payloads.forEach { payload: String ->
             try {
                 executor.executeSyncOperation(payload, tags = null)
-                fail("Expected exception for payload: $payload")
-            } catch (exception: Exception) {
-                // Expected: payload cannot be parsed to required JSON object.
+                fail("Expected IllegalArgumentException for payload: $payload")
+            } catch (exception: IllegalArgumentException) {
+                assertEquals("Payload is not a valid JSON object", exception.message)
             }
         }
         verify(exactly = 0) {

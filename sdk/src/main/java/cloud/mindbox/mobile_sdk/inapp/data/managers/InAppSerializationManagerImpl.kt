@@ -32,13 +32,13 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
     }
 
     override fun serializeToInAppTargetingString(inAppId: String, tags: Map<String, String>?): String {
-        return loggingRunCatching("") {
+        return loggingRunCatching(defaultValue = "") {
             gson.toJsonTyped<InAppTargetingRequest>(InAppTargetingRequest(inAppId = inAppId, tags = tags))
         }
     }
 
     override fun serializeToInAppClickActionString(inAppId: String, tags: Map<String, String>?): String {
-        return loggingRunCatching("") {
+        return loggingRunCatching(defaultValue = "") {
             gson.toJsonTyped<InAppClickRequest>(
                 InAppClickRequest(
                     inAppId = inAppId,
