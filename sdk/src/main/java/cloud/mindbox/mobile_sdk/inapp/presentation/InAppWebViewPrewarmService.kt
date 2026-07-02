@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppWebViewLearnedHostsStore
 import cloud.mindbox.mobile_sdk.inapp.data.validators.WebViewLayerValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -68,6 +69,7 @@ internal class InAppWebViewPrewarmServiceImpl(
     private val engine: InAppWebViewPrewarmEngine,
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
     private val gatewayManager: GatewayManager,
+    private val inAppValidator: InAppValidator,
     private val webViewLayerValidator: WebViewLayerValidator,
     private val learnedHostsStore: InAppWebViewLearnedHostsStore
 ) : InAppWebViewPrewarmService {
@@ -192,11 +194,14 @@ internal class InAppWebViewPrewarmServiceImpl(
     private suspend fun currentConfiguration(): Configuration? =
         runCatching { DbManager.listenConfigurations().first() }.getOrNull()
 
-    /** Light parse of the cached config: only webview layer urls, no targeting/validation. */
+    /** Light parse of the cached config: only webview layer urls, no targeting checks. */
     private fun webViewLayers(configString: String): List<InAppWebViewPrewarmLayer> {
         val configBlank = mobileConfigSerializationManager.deserializeToConfigDtoBlank(configString)
             ?: return emptyList()
         return configBlank.inApps.orEmpty()
+            // Same version gate as the real pipeline: in-apps for other SDK versions may
+            // carry form formats this version cannot even deserialize.
+            .filter { inAppBlank -> inAppValidator.validateInAppVersion(inAppBlank) }
             .flatMap { inAppBlank ->
                 mobileConfigSerializationManager.deserializeToInAppFormDto(inAppBlank.form)
                     ?.variants.orEmpty()

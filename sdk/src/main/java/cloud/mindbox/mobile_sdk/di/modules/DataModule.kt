@@ -156,6 +156,7 @@ internal fun DataModule(
             },
             mobileConfigSerializationManager = mobileConfigSerializationManager,
             gatewayManager = gatewayManager,
+            inAppValidator = inAppValidator,
             webViewLayerValidator = webViewLayerValidator,
             learnedHostsStore = InAppWebViewLearnedHostsStore()
         )

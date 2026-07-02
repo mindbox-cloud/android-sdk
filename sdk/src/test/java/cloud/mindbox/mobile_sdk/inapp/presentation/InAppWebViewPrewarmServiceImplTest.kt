@@ -88,6 +88,9 @@ internal class InAppWebViewPrewarmServiceImplTest {
             engine = engine,
             mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson = configGson()),
             gatewayManager = gatewayManager,
+            inAppValidator = mockk(relaxed = true) {
+                every { validateInAppVersion(any()) } returns true
+            },
             webViewLayerValidator = WebViewLayerValidator(),
             learnedHostsStore = mockk(relaxed = true) {
                 every { hosts(any()) } returns listOf("learned-cdn.mindbox.ru")
