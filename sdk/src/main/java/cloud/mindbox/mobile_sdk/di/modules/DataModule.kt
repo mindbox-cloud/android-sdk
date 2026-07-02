@@ -26,9 +26,13 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmService
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmServiceImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
+import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmEngine
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
@@ -145,6 +149,18 @@ internal fun DataModule(
         )
     }
 
+    override val inAppWebViewPrewarmService: InAppWebViewPrewarmService by lazy {
+        InAppWebViewPrewarmServiceImpl(
+            engine = InAppWebViewPrewarmEngine(appContext) { message ->
+                mindboxLogI("[WebView] Prewarm: $message")
+            },
+            mobileConfigSerializationManager = mobileConfigSerializationManager,
+            gatewayManager = gatewayManager,
+            webViewLayerValidator = webViewLayerValidator,
+            learnedHostsStore = InAppWebViewLearnedHostsStore()
+        )
+    }
+
     override val mobileConfigRepository: MobileConfigRepository by lazy {
         MobileConfigRepositoryImpl(
             inAppMapper = inAppMapper,
@@ -163,7 +179,8 @@ internal fun DataModule(
             mobileConfigSettingsManager = mobileConfigSettingsManager,
             integerPositiveValidator = integerPositiveValidator,
             inappSettingsManager = inappSettingsManager,
-            featureToggleManager = featureToggleManager
+            featureToggleManager = featureToggleManager,
+            inAppWebViewPrewarmService = inAppWebViewPrewarmService
         )
     }
 

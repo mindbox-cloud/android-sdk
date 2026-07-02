@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmService
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -89,6 +90,7 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val timeProvider: TimeProvider by mindboxInject { timeProvider }
+    private val webViewPrewarmService: InAppWebViewPrewarmService by mindboxInject { inAppWebViewPrewarmService }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -317,6 +319,8 @@ internal class WebViewInAppViewHolder(
 
     private fun handleCloseAction(message: BridgeMessage): String {
         motionService?.stopMonitoring()
+        // Remember which https hosts this show actually used — feeds the next launch's preconnect.
+        webViewController?.let { controller -> webViewPrewarmService.captureObservedHosts(controller) }
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -603,6 +607,8 @@ internal class WebViewInAppViewHolder(
 
     private fun renderLayer(layer: Layer.WebViewLayer) {
         if (webViewController == null) {
+            // A real show takes priority: kill the prewarm so it can't compete for bandwidth.
+            webViewPrewarmService.onRealShowWillStart()
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
 
