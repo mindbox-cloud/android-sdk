@@ -150,11 +150,11 @@ internal class InAppWebViewPrewarmServiceImplTest {
     }
 
     @Test
-    fun `real show preempts prewarm and blocks later attempts`() {
+    fun `real show preempts prewarm terminally and blocks later attempts`() {
         service.onRealShowWillStart()
         service.prewarmResources(configWith(webViewInApp))
 
-        verify(atLeast = 1) { engine.release() }
+        verify(exactly = 1) { engine.abort() }
         verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
         verify(exactly = 0) { engine.loadContentPage(any(), any(), any(), any(), any()) }
     }

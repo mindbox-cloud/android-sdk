@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONTokener
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Production prewarm for webview in-apps. Two stages, both driven by the mobile
@@ -83,7 +84,7 @@ internal class InAppWebViewPrewarmServiceImpl(
 
     private val hasStartedResourcePrewarm = AtomicBoolean(false)
     private val hasAborted = AtomicBoolean(false)
-    private var settleJob: Job? = null
+    private val settleJob = AtomicReference<Job?>(null)
 
     override fun prewarmOnInit() {
         if (!MindboxWebViewLab.PREWARM_ENABLED) return // MEASUREMENT (throwaway) gate
@@ -109,7 +110,7 @@ internal class InAppWebViewPrewarmServiceImpl(
             .map { layer -> InAppWebViewPrewarmLayer(baseUrl = layer.baseUrl, contentUrl = layer.contentUrl) }
         if (layers.isEmpty()) {
             mindboxLogI("[WebView] Prewarm: config has no webview in-apps, releasing warm WebView")
-            settleJob?.cancel()
+            settleJob.getAndSet(null)?.cancel()
             engine.release()
             return
         }
@@ -122,8 +123,10 @@ internal class InAppWebViewPrewarmServiceImpl(
 
     override fun onRealShowWillStart() {
         hasAborted.set(true)
-        settleJob?.cancel()
-        engine.release()
+        settleJob.getAndSet(null)?.cancel()
+        // Terminal: the engine latches synchronously, so a prewarm load already posted from
+        // a background thread cannot resurrect the WebView mid-show.
+        engine.abort()
     }
 
     override fun captureObservedHosts(controller: WebViewController) {
@@ -184,11 +187,11 @@ internal class InAppWebViewPrewarmServiceImpl(
     }
 
     private fun scheduleSettleRelease() {
-        settleJob?.cancel()
-        settleJob = Mindbox.mindboxScope.launch {
+        val job = Mindbox.mindboxScope.launch {
             delay(SETTLE_RELEASE_MS)
             engine.release()
         }
+        settleJob.getAndSet(job)?.cancel()
     }
 
     private suspend fun currentConfiguration(): Configuration? =
