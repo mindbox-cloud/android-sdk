@@ -7,13 +7,15 @@ internal interface InAppFailureTracker {
     fun sendFailure(
         inAppId: String,
         failureReason: FailureReason,
-        errorDetails: String?
+        errorDetails: String?,
+        tags: Map<String, String>? = null
     )
 
     fun collectFailure(
         inAppId: String,
         failureReason: FailureReason,
-        errorDetails: String?
+        errorDetails: String?,
+        tags: Map<String, String>? = null
     )
 
     fun sendCollectedFailures()

@@ -82,7 +82,8 @@ private fun parseOperationBody(operationBody: String?): Pair<String, String>? =
 internal fun InAppFailureTracker.sendPresentationFailure(
     inAppId: String,
     errorDescription: String,
-    throwable: Throwable? = null
+    throwable: Throwable? = null,
+    tags: Map<String, String>? = null
 ) {
     val errorDetails = when {
         throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
@@ -92,7 +93,8 @@ internal fun InAppFailureTracker.sendPresentationFailure(
     sendFailure(
         inAppId = inAppId,
         failureReason = FailureReason.PRESENTATION_FAILED,
-        errorDetails = errorDetails
+        errorDetails = errorDetails,
+        tags = tags
     )
 }
 
@@ -100,7 +102,8 @@ internal fun InAppFailureTracker.sendFailureWithContext(
     inAppId: String,
     failureReason: FailureReason,
     errorDescription: String,
-    throwable: Throwable? = null
+    throwable: Throwable? = null,
+    tags: Map<String, String>? = null
 ) {
     val errorDetails = when {
         throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
@@ -110,7 +113,8 @@ internal fun InAppFailureTracker.sendFailureWithContext(
     sendFailure(
         inAppId = inAppId,
         failureReason = failureReason,
-        errorDetails = errorDetails
+        errorDetails = errorDetails,
+        tags = tags
     )
 }
 
@@ -118,6 +122,7 @@ internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
     inAppId: String,
     failureReason: FailureReason,
     errorDescription: String,
+    tags: Map<String, String>? = null,
     crossinline onFailure: () -> Unit = {},
     block: () -> T
 ): Result<T> {
@@ -126,7 +131,8 @@ internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
             inAppId = inAppId,
             failureReason = failureReason,
             errorDescription = errorDescription,
-            throwable = throwable
+            throwable = throwable,
+            tags = tags
         )
         onFailure()
     }

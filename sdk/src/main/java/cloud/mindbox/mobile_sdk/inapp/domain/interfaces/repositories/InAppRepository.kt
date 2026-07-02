@@ -31,9 +31,9 @@ internal interface InAppRepository {
 
     fun sendInAppShown(inAppId: String, timeToDisplay: String, tags: Map<String, String>?)
 
-    fun sendInAppClicked(inAppId: String)
+    fun sendInAppClicked(inAppId: String, tags: Map<String, String>?)
 
-    fun sendUserTargeted(inAppId: String)
+    fun sendUserTargeted(inAppId: String, tags: Map<String, String>?)
 
     fun sendInAppShowFailure(failures: List<InAppShowFailure>)
 

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.Mindbox.logI
+import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.getErrorResponseBodyData
 import cloud.mindbox.mobile_sdk.getImageUrl
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.asVolleyError
@@ -8,7 +9,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getProductFromTargetingD
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.getVolleyErrorDetails
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackImageDownloadError
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.shouldTrackTargetingError
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -27,7 +30,8 @@ internal class InAppProcessingManagerImpl(
     private val inAppTargetingErrorRepository: InAppTargetingErrorRepository,
     private val inAppContentFetcher: InAppContentFetcher,
     private val inAppRepository: InAppRepository,
-    private val inAppFailureTracker: InAppFailureTracker
+    private val inAppFailureTracker: InAppFailureTracker,
+    private val featureToggleManager: FeatureToggleManager
 ) : InAppProcessingManager {
 
     companion object {
@@ -35,12 +39,16 @@ internal class InAppProcessingManagerImpl(
             "CheckCustomerSegments requires customer"
     }
 
+    private fun isTagsFeatureEnabled(): Boolean =
+        featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE)
+
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
     ): InApp? {
         for (inApp in inApps) {
             val data = getTargetingData(triggerEvent)
+            val tags = inApp.gatedTags(isTagsFeatureEnabled())
             var isTargetingErrorOccurred = false
             var isInAppContentFetched: Boolean? = null
             var targetingCheck = false
@@ -105,7 +113,8 @@ internal class InAppProcessingManagerImpl(
                                 inAppFailureTracker.sendFailure(
                                     inAppId = inApp.id,
                                     failureReason = FailureReason.UNKNOWN_ERROR,
-                                    errorDetails = "Unknown exception when checking target ${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}"
+                                    errorDetails = "Unknown exception when checking target ${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}",
+                                    tags = tags
                                 )
                                 throw throwable
                             }
@@ -125,13 +134,14 @@ internal class InAppProcessingManagerImpl(
             }
             mindboxLogD("loading and targeting fetching finished")
             if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
-            trackTargetingErrorIfAny(inApp, data)
+            trackTargetingErrorIfAny(inApp, data, tags)
             if (isInAppContentFetched == false && targetingCheck) {
                 imageFetchError?.takeIf { it.shouldTrackImageDownloadError() }?.let { error ->
                     inAppFailureTracker.collectFailure(
                         inAppId = inApp.id,
                         failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-                        errorDetails = (error.message ?: "Image loading error") + "\n Url is ${inApp.form.variants.first().getImageUrl()}"
+                        errorDetails = (error.message ?: "Image loading error") + "\n Url is ${inApp.form.variants.first().getImageUrl()}",
+                        tags = tags
                     )
                 }
             }
@@ -184,7 +194,10 @@ internal class InAppProcessingManagerImpl(
         if (isTargetingErrorOccurred) return sendTargetedInApp(inApp, triggerEvent)
         if (inApp.targeting.checkTargeting(data)) {
             logI("InApp with id = ${inApp.id} sends targeting by event $triggerEvent")
-            inAppRepository.sendUserTargeted(inAppId = inApp.id)
+            inAppRepository.sendUserTargeted(
+                inAppId = inApp.id,
+                tags = inApp.gatedTags(isTagsFeatureEnabled()),
+            )
         }
     }
 
@@ -210,7 +223,7 @@ internal class InAppProcessingManagerImpl(
         mindboxLogW("Error fetching customer segmentations", error)
     }
 
-    private fun trackTargetingErrorIfAny(inApp: InApp, data: TargetingData) {
+    private fun trackTargetingErrorIfAny(inApp: InApp, data: TargetingData, tags: Map<String, String>?) {
         when {
             inApp.targeting.hasSegmentationNode() &&
                 inAppSegmentationRepository.getCustomerSegmentationFetched() == CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR -> {
@@ -219,7 +232,8 @@ internal class InAppProcessingManagerImpl(
                         inAppFailureTracker.collectFailure(
                             inAppId = inApp.id,
                             failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
-                            errorDetails = errorDetails
+                            errorDetails = errorDetails,
+                            tags = tags
                         )
                     }
                 return
@@ -232,7 +246,8 @@ internal class InAppProcessingManagerImpl(
                         inAppFailureTracker.collectFailure(
                             inAppId = inApp.id,
                             failureReason = FailureReason.GEO_TARGETING_FAILED,
-                            errorDetails = errorDetails
+                            errorDetails = errorDetails,
+                            tags = tags
                         )
                     }
                 return
@@ -246,7 +261,8 @@ internal class InAppProcessingManagerImpl(
                         inAppFailureTracker.collectFailure(
                             inAppId = inApp.id,
                             failureReason = FailureReason.PRODUCT_SEGMENT_REQUEST_FAILED,
-                            errorDetails = errorDetails
+                            errorDetails = errorDetails,
+                            tags = tags
                         )
                     }
                 }

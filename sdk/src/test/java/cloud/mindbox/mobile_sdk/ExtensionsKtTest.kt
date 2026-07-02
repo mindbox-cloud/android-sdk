@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -44,5 +45,30 @@ class ExtensionsKtTest {
         assertFalse((null as String?).equalsAny())
         assertFalse((null as String?).equalsAny(""))
         assertFalse((null as String?).equalsAny("null"))
+    }
+
+    @Test
+    fun `gatedTags returns tags when present and feature enabled`() {
+        val tags = mapOf("templateType" to "Popup")
+        val inApp = InAppStub.getInApp().copy(tags = tags)
+        assertEquals(tags, inApp.gatedTags(isTagsFeatureEnabled = true))
+    }
+
+    @Test
+    fun `gatedTags returns null when feature disabled`() {
+        val inApp = InAppStub.getInApp().copy(tags = mapOf("templateType" to "Popup"))
+        assertNull(inApp.gatedTags(isTagsFeatureEnabled = false))
+    }
+
+    @Test
+    fun `gatedTags returns null when tags empty`() {
+        val inApp = InAppStub.getInApp().copy(tags = emptyMap())
+        assertNull(inApp.gatedTags(isTagsFeatureEnabled = true))
+    }
+
+    @Test
+    fun `gatedTags returns null when tags null`() {
+        val inApp = InAppStub.getInApp().copy(tags = null)
+        assertNull(inApp.gatedTags(isTagsFeatureEnabled = true))
     }
 }

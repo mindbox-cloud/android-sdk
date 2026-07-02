@@ -44,7 +44,12 @@ internal class InAppFailureTrackerImpl(
         inAppRepository.sendInAppShowFailure(listOf(failure))
     }
 
-    override fun sendFailure(inAppId: String, failureReason: FailureReason, errorDetails: String?) {
+    override fun sendFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?,
+        tags: Map<String, String>?
+    ) {
         val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
             .convertToZonedDateTimeAtUTC()
             .convertToString()
@@ -54,12 +59,18 @@ internal class InAppFailureTrackerImpl(
                 inAppId = inAppId,
                 failureReason = failureReason,
                 errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                dateTimeUtc = timestamp
+                dateTimeUtc = timestamp,
+                tags = tags
             )
         )
     }
 
-    override fun collectFailure(inAppId: String, failureReason: FailureReason, errorDetails: String?) {
+    override fun collectFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?,
+        tags: Map<String, String>?
+    ) {
         val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
             .convertToZonedDateTimeAtUTC()
             .convertToString()
@@ -68,7 +79,8 @@ internal class InAppFailureTrackerImpl(
                 inAppId = inAppId,
                 failureReason = failureReason,
                 errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                dateTimeUtc = timestamp
+                dateTimeUtc = timestamp,
+                tags = tags
             )
         )
     }
