@@ -175,10 +175,17 @@ internal class InAppWebViewPrewarmServiceImpl(
                 return
             }
         if (hasAborted.get()) return
-        mindboxLogI("[WebView] Prewarm: content page under ${plan.baseUrl}, endpoint ${configuration.endpointId}")
+        // Official prewarm contract on the document URL: a runtime that knows it boots
+        // tracker-only; older runtimes ignore it and use the engine's legacy stub bridge.
+        val prewarmBaseUrl = InAppWebViewPrewarmPlanner.prewarmContentBaseUrl(
+            baseUrl = plan.baseUrl,
+            endpointId = configuration.endpointId,
+            deviceUuid = MindboxPreferences.deviceUuid
+        )
+        mindboxLogI("[WebView] Prewarm: content page under $prewarmBaseUrl, endpoint ${configuration.endpointId}")
         engine.loadContentPage(
             html = html,
-            baseUrl = plan.baseUrl,
+            baseUrl = prewarmBaseUrl,
             endpointId = configuration.endpointId,
             deviceUuid = MindboxPreferences.deviceUuid,
             userAgentSuffix = userAgentSuffix
