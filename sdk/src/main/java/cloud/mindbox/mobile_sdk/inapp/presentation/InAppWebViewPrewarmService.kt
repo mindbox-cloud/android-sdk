@@ -44,8 +44,8 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * The resource prewarm loads a preconnect page (origins from the config layers +
  * API domain + hosts learned from previous shows) and then the layer's real content
- * page with a stub legacy bridge, so the shared HTTP cache and connection pool are
- * warm before the first show. A real show always preempts the prewarm
+ * page with the official prewarm params on its URL, so the shared HTTP cache and
+ * connection pool are warm before the first show. A real show always preempts the prewarm
  * ([onRealShowWillStart]): the hidden WebView is destroyed and the network is
  * handed over. Unlike iOS there is no instance reuse — Android shares the renderer
  * process, so a warm instance buys nothing (measured).
@@ -176,7 +176,7 @@ internal class InAppWebViewPrewarmServiceImpl(
             }
         if (hasAborted.get()) return
         // Official prewarm contract on the document URL: a runtime that knows it boots
-        // tracker-only; older runtimes ignore it and use the engine's legacy stub bridge.
+        // tracker-only; an older runtime ignores it (plain page warm, no byendpoint).
         val prewarmBaseUrl = InAppWebViewPrewarmPlanner.prewarmContentBaseUrl(
             baseUrl = plan.baseUrl,
             endpointId = configuration.endpointId,
@@ -186,8 +186,6 @@ internal class InAppWebViewPrewarmServiceImpl(
         engine.loadContentPage(
             html = html,
             baseUrl = prewarmBaseUrl,
-            endpointId = configuration.endpointId,
-            deviceUuid = MindboxPreferences.deviceUuid,
             userAgentSuffix = userAgentSuffix
         )
         scheduleSettleRelease()
