@@ -134,8 +134,6 @@ internal class InAppWebViewPrewarmServiceImplTest {
                 html = "<html></html>",
                 // Official prewarm contract: the content page's document URL carries the params.
                 baseUrl = "https://inapp.local/popup?prewarm=1&endpointId=Test.Endpoint&deviceUuid=test-device-uuid",
-                endpointId = "Test.Endpoint",
-                deviceUuid = "test-device-uuid",
                 userAgentSuffix = any()
             )
         }
@@ -147,7 +145,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
 
         verify(exactly = 1) { engine.release() }
         verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
-        verify(exactly = 0) { engine.loadContentPage(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
     }
 
     @Test
@@ -157,7 +155,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
 
         verify(exactly = 1) { engine.abort() }
         verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
-        verify(exactly = 0) { engine.loadContentPage(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
     }
 
     @Test
@@ -171,8 +169,6 @@ internal class InAppWebViewPrewarmServiceImplTest {
             engine.loadContentPage(
                 any(),
                 "https://inapp.local/popup?prewarm=1&endpointId=Test.Endpoint&deviceUuid=test-device-uuid",
-                "Test.Endpoint",
-                "test-device-uuid",
                 any()
             )
         }
