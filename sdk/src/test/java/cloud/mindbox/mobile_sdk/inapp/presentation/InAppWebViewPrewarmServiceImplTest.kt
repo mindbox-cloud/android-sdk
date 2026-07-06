@@ -89,7 +89,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
         service = InAppWebViewPrewarmServiceImpl(
             engine = engine,
             mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson = configGson()),
-            gatewayManager = gatewayManager,
+            gatewayManager = lazyOf(gatewayManager),
             inAppValidator = mockk(relaxed = true) {
                 every { validateInAppVersion(any()) } returns true
             },
@@ -159,7 +159,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
     }
 
     @Test
-    fun `garbage probes never satisfy the idle check and the hard cap releases`() = runTest {
+    fun `garbage probes are charged the probe timeout and drain the cap budget early`() = runTest {
         every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         every { engine.evaluateJavaScript(any(), any()) } answers {
             secondArg<(String?) -> Unit>().invoke("\"\"")
@@ -167,10 +167,35 @@ internal class InAppWebViewPrewarmServiceImplTest {
 
         service.prewarmResources(configWith(webViewInApp))
 
-        advanceTimeBy(29_000)
+        // Each 1s poll yields a garbage (null) probe charged the 2s probe timeout on top of
+        // its own second, so the 30-unit budget drains after 10 polls — the cap is a
+        // wall-clock bound even when the page never answers usefully.
+        advanceTimeBy(9_500)
         verify(exactly = 0) { engine.release() }
-        advanceTimeBy(2_000)
+        advanceTimeBy(1_000)
         verify(exactly = 1) { engine.release() }
+    }
+
+    @Test
+    fun `a real show during the settle poll stops the poller at the next tick`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // The page keeps downloading (entry count grows every poll), so the poll never
+        // goes idle by itself.
+        var count = 0
+        every { engine.evaluateJavaScript(any(), any()) } answers {
+            count++
+            secondArg<(String?) -> Unit>().invoke("\"$count:100\"")
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        advanceTimeBy(2_500)
+        service.onRealShowWillStart()
+        advanceTimeBy(60_000)
+
+        // The poller stops (job cancelled; the per-tick hasAborted guard is the backstop):
+        // the terminal abort stays the only teardown, no second release lands mid-show.
+        verify(exactly = 1) { engine.abort() }
+        verify(exactly = 0) { engine.release() }
     }
 
     @Test
@@ -202,6 +227,27 @@ internal class InAppWebViewPrewarmServiceImplTest {
         service.prewarmResources(configWith(webViewInApp))
         advanceTimeBy(31_000)
 
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+        // The resumed prewarm must RELEASE, not bare-return: its preconnect load already
+        // created a WebView, and this path schedules no settle poll to free it later.
+        // (First release comes from the no-layers branch itself, second from the resume.)
+        verify(exactly = 2) { engine.release() }
+    }
+
+    @Test
+    fun `a no-layers config arriving before the preconnect load keeps the webview from being created`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // The fresh no-layers config lands while the prewarm is suspended reading the
+        // saved configuration — before it has touched the engine at all.
+        every { DbManager.listenConfigurations() } answers {
+            service.prewarmResources(configWith(InAppStub.getInApp()))
+            flowOf(configuration)
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        advanceTimeBy(31_000)
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
         verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
     }
 
