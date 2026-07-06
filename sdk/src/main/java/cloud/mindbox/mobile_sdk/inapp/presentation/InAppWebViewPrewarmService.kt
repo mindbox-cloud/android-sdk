@@ -29,6 +29,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONTokener
 import java.util.concurrent.atomic.AtomicBoolean
@@ -76,10 +78,26 @@ internal class InAppWebViewPrewarmServiceImpl(
 ) : InAppWebViewPrewarmService {
 
     companion object {
-        // How long the hidden WebView may keep downloading after the content page was
-        // handed to it; afterwards the instance is destroyed (cache/sockets survive at
-        // the profile level, so keeping it alive any longer buys nothing).
+        // Hard cap on how long the hidden WebView may live after the content page was
+        // handed to it; normally the network-idle poll below releases it much earlier
+        // (cache/sockets survive at the profile level, so keeping it alive buys nothing).
         private const val SETTLE_RELEASE_MS = 30_000L
+
+        // Network-idle release: the page is considered settled when the Resource Timing
+        // entry count is stable across consecutive polls AND the last completed resource
+        // finished at least IDLE_QUIET_MS ago. Entries appear only on completion, so the
+        // quiet window (not the stable count alone) is what guards against an in-flight
+        // download; a transfer slower than the window can still be cut — same worst case
+        // as the hard cap, the show just re-fetches that file.
+        private const val IDLE_POLL_MS = 1_000L
+        private const val IDLE_QUIET_MS = 2_000L
+        private const val IDLE_STABLE_POLLS = 2
+
+        // Returns "<entryCount>:<msSinceLastResponseEnd>" (or "" on any error).
+        private const val IDLE_PROBE_JS =
+            "(function(){try{var e=performance.getEntriesByType('resource');var l=0;" +
+                "for(var i=0;i<e.length;i++){var r=e[i].responseEnd;if(r>l)l=r}" +
+                "return e.length+':'+Math.round(performance.now()-l)}catch(t){return''}})()"
     }
 
     private val hasStartedResourcePrewarm = AtomicBoolean(false)
@@ -193,11 +211,58 @@ internal class InAppWebViewPrewarmServiceImpl(
 
     private fun scheduleSettleRelease() {
         val job = Mindbox.mindboxScope.launch {
-            delay(SETTLE_RELEASE_MS)
+            val startedAt = System.currentTimeMillis()
+            var lastCount = -1
+            var stablePolls = 0
+            var idle = false
+            while (System.currentTimeMillis() - startedAt < SETTLE_RELEASE_MS) {
+                delay(IDLE_POLL_MS)
+                val probe = probeResourceState() ?: continue
+                if (probe.entryCount == lastCount) {
+                    stablePolls++
+                } else {
+                    stablePolls = 0
+                    lastCount = probe.entryCount
+                }
+                if (stablePolls >= IDLE_STABLE_POLLS && probe.msSinceLastResponseEnd > IDLE_QUIET_MS) {
+                    idle = true
+                    break
+                }
+            }
+            val lifetimeMs = System.currentTimeMillis() - startedAt
+            mindboxLogI(
+                "[WebView] Prewarm: settle release after ${lifetimeMs}ms " +
+                    if (idle) "(network idle, $lastCount resources)" else "(hard cap)"
+            )
             engine.release()
         }
         settleJob.getAndSet(job)?.cancel()
     }
+
+    private data class ResourceProbe(val entryCount: Int, val msSinceLastResponseEnd: Long)
+
+    /**
+     * One Resource Timing probe on the prewarm page. Null when the probe cannot run or
+     * returns garbage (WebView gone/aborted, page not ready) — callers just keep polling
+     * until the hard cap. The 2s timeout guards against a callback that never fires.
+     */
+    private suspend fun probeResourceState(): ResourceProbe? =
+        withTimeoutOrNull(IDLE_QUIET_MS) {
+            suspendCancellableCoroutine { continuation ->
+                engine.evaluateJavaScript(IDLE_PROBE_JS) { rawResult ->
+                    // evaluateJavascript JSON-quotes string results: "\"6:3456\"".
+                    val parts = rawResult?.trim('"')?.split(':')
+                    val probe = if (parts?.size == 2) {
+                        val count = parts[0].toIntOrNull()
+                        val sinceLast = parts[1].toLongOrNull()
+                        if (count != null && sinceLast != null) ResourceProbe(count, sinceLast) else null
+                    } else {
+                        null
+                    }
+                    if (continuation.isActive) continuation.resume(probe) {}
+                }
+            }
+        }
 
     private suspend fun currentConfiguration(): Configuration? =
         runCatching { DbManager.listenConfigurations().first() }.getOrNull()
