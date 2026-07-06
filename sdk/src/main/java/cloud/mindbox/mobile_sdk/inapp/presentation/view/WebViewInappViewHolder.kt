@@ -529,11 +529,16 @@ internal class WebViewInAppViewHolder(
      * re-load) restarts the poll; teardown cancels it. The outgoing-message verification in
      * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
      * path talks to a page that already proved itself ready.
+     *
+     * Give-up records the failure but does NOT close: the init timer is the closing
+     * authority. The checker's ~1.2s budget can expire while an allowed same-origin
+     * navigation is still in flight or while a slow page is still booting its bridge —
+     * cases the timer would have accepted (the window stays invisible until `init` anyway).
      */
     private fun startReadyCheck(url: String?) {
         // A late onPageFinished can be queued on the main looper when the in-app closes;
         // a checker started against the torn-down holder would only produce a spurious
-        // failure event and a second close.
+        // failure event.
         if (webViewController == null) return
         readyChecker?.cancel()
         val checker = WebViewReadyChecker(
@@ -554,7 +559,6 @@ internal class WebViewInAppViewHolder(
                     failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                     errorDescription = "JS ready check gave up for $url: $lastFailure"
                 )
-                inAppController.close()
             }
         )
     }
@@ -570,11 +574,17 @@ internal class WebViewInAppViewHolder(
         return when (response) {
             JS_RETURN -> true
             else -> {
-                inAppFailureTracker.sendFailureWithContext(
-                    inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "evaluateJavaScript return unexpected response: $response"
-                )
+                // A miss during teardown (holder already closed, controller gone) is an
+                // expected race, not a presentation failure — don't feed it to telemetry.
+                if (webViewController != null) {
+                    inAppFailureTracker.sendFailureWithContext(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                        errorDescription = "evaluateJavaScript return unexpected response: $response"
+                    )
+                } else {
+                    mindboxLogW("evaluateJavaScript miss after teardown (ignored): $response")
+                }
                 false
             }
         }

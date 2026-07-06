@@ -155,7 +155,10 @@ internal fun DataModule(
                 mindboxLogI("[WebView] Prewarm: $message")
             },
             mobileConfigSerializationManager = mobileConfigSerializationManager,
-            gatewayManager = gatewayManager,
+            // Lazy on purpose: this service is resolved on the main thread during SDK init
+            // (prewarm stage 1), and constructing GatewayManager spins up Volley (thread
+            // pool + cache-dir I/O) — defer that to the background fetch that needs it.
+            gatewayManager = lazy { gatewayManager },
             inAppValidator = inAppValidator,
             webViewLayerValidator = webViewLayerValidator,
             learnedHostsStore = InAppWebViewLearnedHostsStore()

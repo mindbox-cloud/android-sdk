@@ -26,7 +26,12 @@ internal class InAppWebViewLearnedHostsStore {
         }
     }
 
-    /** Newest-first merge capped at [MAX_HOSTS] so one weird show can't flood the list. */
+    /**
+     * Newest-first merge capped at [MAX_HOSTS] so one weird show can't flood the list.
+     * Synchronized: merges arrive from evaluate callbacks/coroutines of concurrent closes,
+     * and an unsynchronized read-modify-write would silently drop one close's hosts.
+     */
+    @Synchronized
     fun merge(endpointId: String, observedHosts: List<String>): Unit = loggingRunCatching {
         if (endpointId.isBlank()) return@loggingRunCatching
         val incoming = observedHosts.map(String::trim).filter(String::isNotBlank)
