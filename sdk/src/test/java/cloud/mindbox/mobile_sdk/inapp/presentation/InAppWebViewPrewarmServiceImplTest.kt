@@ -31,6 +31,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -137,6 +139,23 @@ internal class InAppWebViewPrewarmServiceImplTest {
                 userAgentSuffix = any()
             )
         }
+    }
+
+    @Test
+    fun `prewarm webview is released by network idle well before the hard cap`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // Page reports a stable resource list whose last download finished long ago.
+        every { engine.evaluateJavaScript(any(), any()) } answers {
+            secondArg<(String?) -> Unit>().invoke("\"6:5000\"")
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        verify(exactly = 0) { engine.release() }
+
+        // Two stable polls after the baseline one -> idle at the third second, not at 30s.
+        advanceTimeBy(3_100)
+        verify(exactly = 1) { engine.release() }
+        verify(exactly = 0) { engine.abort() }
     }
 
     @Test
