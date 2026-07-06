@@ -159,6 +159,75 @@ internal class InAppWebViewPrewarmServiceImplTest {
     }
 
     @Test
+    fun `garbage probes never satisfy the idle check and the hard cap releases`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        every { engine.evaluateJavaScript(any(), any()) } answers {
+            secondArg<(String?) -> Unit>().invoke("\"\"")
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+
+        advanceTimeBy(29_000)
+        verify(exactly = 0) { engine.release() }
+        advanceTimeBy(2_000)
+        verify(exactly = 1) { engine.release() }
+    }
+
+    @Test
+    fun `terminal preempt during the content fetch prevents both the content load and the settle poll`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // The real show starts while the prewarm is suspended in the content fetch.
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            service.onRealShowWillStart()
+            "<html></html>"
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        advanceTimeBy(31_000)
+
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+        // Only the terminal abort released the engine; no zombie poll produced a second one.
+        verify(exactly = 1) { engine.abort() }
+        verify(exactly = 0) { engine.release() }
+    }
+
+    @Test
+    fun `a no-layers config arriving mid-fetch stops the content load from resurrecting a webview`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            service.prewarmResources(configWith(InAppStub.getInApp()))
+            "<html></html>"
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        advanceTimeBy(31_000)
+
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `an attempt without a saved configuration does not consume the one-shot`() {
+        every { DbManager.listenConfigurations() } returnsMany listOf(
+            kotlinx.coroutines.flow.emptyFlow(),
+            flowOf(configuration)
+        )
+
+        // First attempt: configuration read fails -> skipped, one-shot must survive.
+        service.prewarmResources(configWith(webViewInApp))
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+
+        // Second attempt with a readable configuration warms normally.
+        service.prewarmResources(configWith(webViewInApp))
+        verify(exactly = 1) {
+            engine.loadContentPage(
+                any(),
+                "https://inapp.local/popup?prewarm=1&endpointId=Test.Endpoint&deviceUuid=test-device-uuid",
+                any()
+            )
+        }
+    }
+
+    @Test
     fun `prewarmResources releases warm webview when config has no webview inapps`() {
         service.prewarmResources(configWith(InAppStub.getInApp()))
 
