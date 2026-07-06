@@ -531,6 +531,10 @@ internal class WebViewInAppViewHolder(
      * path talks to a page that already proved itself ready.
      */
     private fun startReadyCheck(url: String?) {
+        // A late onPageFinished can be queued on the main looper when the in-app closes;
+        // a checker started against the torn-down holder would only produce a spurious
+        // failure event and a second close.
+        if (webViewController == null) return
         readyChecker?.cancel()
         val checker = WebViewReadyChecker(
             evaluate = { script, resultCallback ->
@@ -555,6 +559,13 @@ internal class WebViewInAppViewHolder(
         )
     }
 
+    /**
+     * Verifies an outgoing bridge call's JS result. Tracks the failure but does NOT close
+     * the in-app: whether one undelivered message is fatal is the caller's policy (a failed
+     * `back` action closes via its own onError, a failed motion event just stops monitoring)
+     * — force-closing here used to tear down a healthy show over a single transient miss.
+     * Page readiness has its own retrying probe ([startReadyCheck]).
+     */
     internal fun checkEvaluateJavaScript(response: String?): Boolean {
         return when (response) {
             JS_RETURN -> true
@@ -564,7 +575,6 @@ internal class WebViewInAppViewHolder(
                     failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                     errorDescription = "evaluateJavaScript return unexpected response: $response"
                 )
-                inAppController.close()
                 false
             }
         }
@@ -803,12 +813,14 @@ internal class WebViewInAppViewHolder(
         readyChecker = null
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
+            // Detach first: a page event already queued on the main looper must not reach
+            // this torn-down holder (e.g. a late onPageFinished spawning a ready checker).
+            controller.setEventListener(null)
             val view: WebViewPlatformView = controller.view
             view.parent.safeAs<ViewGroup>()?.removeView(view)
             controller.destroy()
         }
         currentWebViewOrigin = null
-        webViewController?.destroy()
         webViewController = null
         currentMindboxView = null
         super.onClose()

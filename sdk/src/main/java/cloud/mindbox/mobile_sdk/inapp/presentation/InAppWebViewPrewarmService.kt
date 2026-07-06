@@ -102,6 +102,10 @@ internal class InAppWebViewPrewarmServiceImpl(
 
     private val hasStartedResourcePrewarm = AtomicBoolean(false)
     private val hasAborted = AtomicBoolean(false)
+
+    // Set when the freshest config proved there is nothing to warm: an init prewarm still
+    // suspended in the content fetch must not resurrect a WebView the config just retired.
+    private val latestConfigHasNoLayers = AtomicBoolean(false)
     private val settleJob = AtomicReference<Job?>(null)
 
     override fun prewarmOnInit() {
@@ -128,10 +132,12 @@ internal class InAppWebViewPrewarmServiceImpl(
             .map { layer -> InAppWebViewPrewarmLayer(baseUrl = layer.baseUrl, contentUrl = layer.contentUrl) }
         if (layers.isEmpty()) {
             mindboxLogI("[WebView] Prewarm: config has no webview in-apps, releasing warm WebView")
+            latestConfigHasNoLayers.set(true)
             settleJob.getAndSet(null)?.cancel()
             engine.release()
             return
         }
+        latestConfigHasNoLayers.set(false)
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
                 startResourcePrewarm(layers)
@@ -161,9 +167,17 @@ internal class InAppWebViewPrewarmServiceImpl(
         }
     }
 
+    /**
+     * Runs at most once per process — but only an attempt that actually reaches the engine
+     * consumes the one-shot: a transient configuration read failure or an unplannable
+     * cached config must not block a later attempt from a valid fresh config.
+     *
+     * By design the one-shot also means stage 2 does NOT re-warm when stage 1 already ran
+     * from a cached config whose URLs have since changed — the head start beats freshness
+     * for this launch, and the next launch heals with the new cached config.
+     */
     private suspend fun startResourcePrewarm(layers: List<InAppWebViewPrewarmLayer>) {
         if (hasAborted.get()) return
-        if (!hasStartedResourcePrewarm.compareAndSet(false, true)) return
 
         val configuration = currentConfiguration() ?: run {
             mindboxLogW("[WebView] Prewarm: no saved configuration, skipping")
@@ -176,6 +190,7 @@ internal class InAppWebViewPrewarmServiceImpl(
             mindboxLogW("[WebView] Prewarm: no valid webview layer urls in config, skipping")
             return
         }
+        if (!hasStartedResourcePrewarm.compareAndSet(false, true)) return
         val userAgentSuffix = configuration.getShortUserAgent()
 
         mindboxLogI("[WebView] Prewarm: preconnect to ${plan.preconnectOrigins.joinToString(",")} under ${plan.baseUrl}")
@@ -192,7 +207,10 @@ internal class InAppWebViewPrewarmServiceImpl(
                 scheduleSettleRelease()
                 return
             }
-        if (hasAborted.get()) return
+        // Re-check both verdicts after the suspension point: a real show may have taken the
+        // network over, or a fresh config may have proven there is nothing to warm — either
+        // way the fetched content must not resurrect a WebView.
+        if (hasAborted.get() || latestConfigHasNoLayers.get()) return
         // Official prewarm contract on the document URL: a runtime that knows it boots
         // tracker-only; an older runtime ignores it (plain page warm, no byendpoint).
         val prewarmBaseUrl = InAppWebViewPrewarmPlanner.prewarmContentBaseUrl(
@@ -210,13 +228,22 @@ internal class InAppWebViewPrewarmServiceImpl(
     }
 
     private fun scheduleSettleRelease() {
+        // A terminal preempt may have landed while the caller was suspended — never store a
+        // poll job into the slot onRealShowWillStart() just cleared (it would probe the main
+        // looper for 30s during the live show).
+        if (hasAborted.get()) return
         val job = Mindbox.mindboxScope.launch {
-            val startedAt = System.currentTimeMillis()
+            // Poll-count cap instead of wall clock: identical budget, but the whole loop
+            // runs on virtual time in tests.
+            val maxPolls = (SETTLE_RELEASE_MS / IDLE_POLL_MS).toInt()
+            var polls = 0
             var lastCount = -1
             var stablePolls = 0
             var idle = false
-            while (System.currentTimeMillis() - startedAt < SETTLE_RELEASE_MS) {
+            while (polls < maxPolls) {
                 delay(IDLE_POLL_MS)
+                polls++
+                if (hasAborted.get()) return@launch
                 val probe = probeResourceState() ?: continue
                 if (probe.entryCount == lastCount) {
                     stablePolls++
@@ -229,9 +256,8 @@ internal class InAppWebViewPrewarmServiceImpl(
                     break
                 }
             }
-            val lifetimeMs = System.currentTimeMillis() - startedAt
             mindboxLogI(
-                "[WebView] Prewarm: settle release after ${lifetimeMs}ms " +
+                "[WebView] Prewarm: settle release after ~${polls * IDLE_POLL_MS}ms " +
                     if (idle) "(network idle, $lastCount resources)" else "(hard cap)"
             )
             engine.release()
