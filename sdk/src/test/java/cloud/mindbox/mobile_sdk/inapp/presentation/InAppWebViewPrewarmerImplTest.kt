@@ -38,7 +38,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class InAppWebViewPrewarmServiceImplTest {
+internal class InAppWebViewPrewarmerImplTest {
 
     private val configuration = Configuration(
         previousInstallationId = "",
@@ -73,7 +73,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
 
     private lateinit var engine: InAppWebViewPrewarmEngine
     private lateinit var gatewayManager: GatewayManager
-    private lateinit var service: InAppWebViewPrewarmServiceImpl
+    private lateinit var service: InAppWebViewPrewarmerImpl
 
     @Before
     fun setUp() {
@@ -86,7 +86,7 @@ internal class InAppWebViewPrewarmServiceImplTest {
         engine = mockk(relaxed = true)
         gatewayManager = mockk(relaxed = true)
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html></html>"
-        service = InAppWebViewPrewarmServiceImpl(
+        service = InAppWebViewPrewarmerImpl(
             engine = engine,
             mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson = configGson()),
             gatewayManager = lazyOf(gatewayManager),

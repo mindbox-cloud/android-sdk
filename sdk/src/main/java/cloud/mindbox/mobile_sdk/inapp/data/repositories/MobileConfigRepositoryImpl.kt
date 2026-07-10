@@ -13,7 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtlData
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmService
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -53,7 +53,7 @@ internal class MobileConfigRepositoryImpl(
     private val integerPositiveValidator: IntegerPositiveValidator,
     private val inappSettingsManager: InappSettingsManager,
     private val featureToggleManager: FeatureToggleManager,
-    private val inAppWebViewPrewarmService: InAppWebViewPrewarmService
+    private val inAppWebViewPrewarmer: InAppWebViewPrewarmer
 ) : MobileConfigRepository {
 
     private val mutex = Mutex()
@@ -109,7 +109,7 @@ internal class MobileConfigRepositoryImpl(
             configState.value = updatedInAppConfig
             // Prewarm stage 2: warm what the config's webview in-apps will need
             // (or release the warm instance when the config proves there are none).
-            inAppWebViewPrewarmService.prewarmResources(updatedInAppConfig)
+            inAppWebViewPrewarmer.prewarmResources(updatedInAppConfig)
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
     }

@@ -26,8 +26,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmService
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmServiceImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmer
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
@@ -149,8 +149,8 @@ internal fun DataModule(
         )
     }
 
-    override val inAppWebViewPrewarmService: InAppWebViewPrewarmService by lazy {
-        InAppWebViewPrewarmServiceImpl(
+    override val inAppWebViewPrewarmer: InAppWebViewPrewarmer by lazy {
+        InAppWebViewPrewarmerImpl(
             engine = InAppWebViewPrewarmEngine(appContext) { message ->
                 mindboxLogI("[WebView] Prewarm: $message")
             },
@@ -184,7 +184,7 @@ internal fun DataModule(
             integerPositiveValidator = integerPositiveValidator,
             inappSettingsManager = inappSettingsManager,
             featureToggleManager = featureToggleManager,
-            inAppWebViewPrewarmService = inAppWebViewPrewarmService
+            inAppWebViewPrewarmer = inAppWebViewPrewarmer
         )
     }
 

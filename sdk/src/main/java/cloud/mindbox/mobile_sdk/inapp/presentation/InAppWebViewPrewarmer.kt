@@ -14,7 +14,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmEngine
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmLayer
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmPlanner
-import cloud.mindbox.mobile_sdk.inapp.webview.MindboxWebViewLab
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -52,7 +51,7 @@ import java.util.concurrent.atomic.AtomicReference
  * handed over. Unlike iOS there is no instance reuse — Android shares the renderer
  * process, so a warm instance buys nothing (measured).
  */
-internal interface InAppWebViewPrewarmService {
+internal interface InAppWebViewPrewarmer {
 
     /** Prewarm stage 1: head start from the cached config. Call once at SDK init. */
     fun prewarmOnInit()
@@ -75,14 +74,14 @@ internal interface InAppWebViewPrewarmService {
 }
 
 @OptIn(InternalMindboxApi::class)
-internal class InAppWebViewPrewarmServiceImpl(
+internal class InAppWebViewPrewarmerImpl(
     private val engine: InAppWebViewPrewarmEngine,
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
     private val gatewayManager: Lazy<GatewayManager>,
     private val inAppValidator: InAppValidator,
     private val webViewLayerValidator: WebViewLayerValidator,
     private val learnedHostsStore: InAppWebViewLearnedHostsStore
-) : InAppWebViewPrewarmService {
+) : InAppWebViewPrewarmer {
 
     companion object {
         // Hard cap on how long the hidden WebView may live after the content page was
@@ -116,7 +115,6 @@ internal class InAppWebViewPrewarmServiceImpl(
     private val settleJob = AtomicReference<Job?>(null)
 
     override fun prewarmOnInit() {
-        if (!MindboxWebViewLab.PREWARM_ENABLED) return // MEASUREMENT (throwaway) gate
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
                 val cachedConfig = MindboxPreferences.inAppConfig
@@ -130,7 +128,6 @@ internal class InAppWebViewPrewarmServiceImpl(
     }
 
     override fun prewarmResources(config: InAppConfig) {
-        if (!MindboxWebViewLab.PREWARM_ENABLED) return // MEASUREMENT (throwaway) gate
         val layers = config.inApps
             .flatMap { inApp -> inApp.form.variants }
             .filterIsInstance<InAppType.WebView>()
@@ -206,11 +203,6 @@ internal class InAppWebViewPrewarmServiceImpl(
 
         mindboxLogI("[WebView] Prewarm: preconnect to ${plan.preconnectOrigins.joinToString(",")} under ${plan.baseUrl}")
         engine.loadPreconnectPage(plan.preconnectHtml, plan.baseUrl, userAgentSuffix)
-
-        if (MindboxWebViewLab.PREWARM_PRECONNECT_ONLY) { // MEASUREMENT (throwaway) gate
-            scheduleSettleRelease()
-            return
-        }
 
         val html = runCatching { gatewayManager.value.fetchWebViewContent(plan.contentUrl) }
             .getOrElse { error ->

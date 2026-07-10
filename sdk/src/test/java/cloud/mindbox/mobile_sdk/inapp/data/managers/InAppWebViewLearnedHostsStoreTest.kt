@@ -47,6 +47,18 @@ internal class InAppWebViewLearnedHostsStoreTest {
     }
 
     @Test
+    fun `merge drops oldest hosts beyond MAX_HOSTS`() {
+        store.merge("Endpoint.A", (1..12).map { index -> "old$index.ru" })
+        store.merge("Endpoint.A", (1..5).map { index -> "new$index.ru" })
+
+        val hosts = store.hosts("Endpoint.A")
+        assertEquals(12, hosts.size)
+        assertEquals((1..5).map { index -> "new$index.ru" }, hosts.take(5))
+        assertEquals((1..7).map { index -> "old$index.ru" }, hosts.drop(5))
+        assertTrue((8..12).none { index -> hosts.contains("old$index.ru") })
+    }
+
+    @Test
     fun `merge ignores blank input`() {
         store.merge("Endpoint.A", listOf(" ", ""))
         store.merge("", listOf("host.ru"))
