@@ -14,17 +14,19 @@ import cloud.mindbox.mobile_sdk.*
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.CACHE_INAPP_WEBVIEW_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmer
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -94,7 +96,8 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val timeProvider: TimeProvider by mindboxInject { timeProvider }
-    private val webViewPrewarmer: InAppWebViewPrewarmer by mindboxInject { inAppWebViewPrewarmer }
+    private val webViewPrewarmManager: InAppWebViewPrewarmManager by mindboxInject { inAppWebViewPrewarmManager }
+    private val featureToggleManager: FeatureToggleManager by mindboxInject { featureToggleManager }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -324,7 +327,7 @@ internal class WebViewInAppViewHolder(
     private fun handleCloseAction(message: BridgeMessage): String {
         motionService?.stopMonitoring()
         // Remember which https hosts this show actually used — feeds the next launch's preconnect.
-        webViewController?.let { controller -> webViewPrewarmer.captureObservedHosts(controller) }
+        webViewController?.let { controller -> webViewPrewarmManager.captureObservedHosts(controller) }
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -424,7 +427,11 @@ internal class WebViewInAppViewHolder(
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
         mindboxLogI("Creating WebView for In-App: ${wrapper.inAppType.inAppId} with layer ${layer.type}")
-        val controller: WebViewController = WebViewController.create(currentDialog.context, BuildConfig.DEBUG)
+        val controller: WebViewController = WebViewController.create(
+            context = currentDialog.context,
+            isDebugEnabled = BuildConfig.DEBUG,
+            isCacheEnabled = featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE)
+        )
         val view: WebViewPlatformView = controller.view
         view.layoutParams = RelativeLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -667,7 +674,7 @@ internal class WebViewInAppViewHolder(
     private fun renderLayer(layer: Layer.WebViewLayer) {
         if (webViewController == null) {
             // A real show takes priority: kill the prewarm so it can't compete for bandwidth.
-            webViewPrewarmer.onRealShowWillStart()
+            webViewPrewarmManager.onRealShowWillStart()
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
 

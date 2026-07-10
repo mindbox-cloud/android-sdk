@@ -4,8 +4,11 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
+import cloud.mindbox.mobile_sdk.inapp.data.managers.FEATURE_TOGGLE_DEFAULT
 import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppWebViewLearnedHostsStore
+import cloud.mindbox.mobile_sdk.inapp.data.managers.PREWARM_INAPP_WEBVIEW_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.validators.WebViewLayerValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -21,6 +24,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
+import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
@@ -51,7 +55,7 @@ import java.util.concurrent.atomic.AtomicReference
  * handed over. Unlike iOS there is no instance reuse — Android shares the renderer
  * process, so a warm instance buys nothing (measured).
  */
-internal interface InAppWebViewPrewarmer {
+internal interface InAppWebViewPrewarmManager {
 
     /** Prewarm stage 1: head start from the cached config. Call once at SDK init. */
     fun prewarmOnInit()
@@ -74,14 +78,15 @@ internal interface InAppWebViewPrewarmer {
 }
 
 @OptIn(InternalMindboxApi::class)
-internal class InAppWebViewPrewarmerImpl(
+internal class InAppWebViewPrewarmManagerImpl(
     private val engine: InAppWebViewPrewarmEngine,
     private val mobileConfigSerializationManager: MobileConfigSerializationManager,
     private val gatewayManager: Lazy<GatewayManager>,
     private val inAppValidator: InAppValidator,
     private val webViewLayerValidator: WebViewLayerValidator,
-    private val learnedHostsStore: InAppWebViewLearnedHostsStore
-) : InAppWebViewPrewarmer {
+    private val learnedHostsStore: InAppWebViewLearnedHostsStore,
+    private val featureToggleManager: FeatureToggleManager
+) : InAppWebViewPrewarmManager {
 
     companion object {
         // Hard cap on how long the hidden WebView may live after the content page was
@@ -128,6 +133,13 @@ internal class InAppWebViewPrewarmerImpl(
     }
 
     override fun prewarmResources(config: InAppConfig) {
+        // A fresh config that turns the toggle off also kills a stage-1 instance started
+        // under the previous launch's config.
+        if (!featureToggleManager.isEnabled(PREWARM_INAPP_WEBVIEW_FEATURE)) {
+            mindboxLogI("[WebView] Prewarm: feature toggle is off, releasing warm WebView")
+            releaseWarmWebView()
+            return
+        }
         val layers = config.inApps
             .flatMap { inApp -> inApp.form.variants }
             .filterIsInstance<InAppType.WebView>()
@@ -136,9 +148,7 @@ internal class InAppWebViewPrewarmerImpl(
             .map { layer -> InAppWebViewPrewarmLayer(baseUrl = layer.baseUrl, contentUrl = layer.contentUrl) }
         if (layers.isEmpty()) {
             mindboxLogI("[WebView] Prewarm: config has no webview in-apps, releasing warm WebView")
-            latestConfigHasNoLayers.set(true)
-            settleJob.getAndSet(null)?.cancel()
-            engine.release()
+            releaseWarmWebView()
             return
         }
         latestConfigHasNoLayers.set(false)
@@ -147,6 +157,12 @@ internal class InAppWebViewPrewarmerImpl(
                 startResourcePrewarm(layers)
             }
         }
+    }
+
+    private fun releaseWarmWebView() {
+        latestConfigHasNoLayers.set(true)
+        settleJob.getAndSet(null)?.cancel()
+        engine.release()
     }
 
     override fun onRealShowWillStart() {
@@ -311,10 +327,17 @@ internal class InAppWebViewPrewarmerImpl(
     private suspend fun currentConfiguration(): Configuration? =
         runCatching { DbManager.listenConfigurations().first() }.getOrNull()
 
-    /** Light parse of the cached config: only webview layer urls, no targeting checks. */
+    /**
+     * Light parse of the cached config: only webview layer urls, no targeting checks.
+     *
+     * The toggle is read from THIS cached config, not [featureToggleManager]: stage 1 races
+     * the fresh config download, so the manager may still hold last launch's (or no) state
+     * when this runs.
+     */
     private fun webViewLayers(configString: String): List<InAppWebViewPrewarmLayer> {
         val configBlank = mobileConfigSerializationManager.deserializeToConfigDtoBlank(configString)
             ?: return emptyList()
+        if (!isPrewarmEnabled(configBlank)) return emptyList()
         return configBlank.inApps.orEmpty()
             // Same version gate as the real pipeline: in-apps for other SDK versions may
             // carry form formats this version cannot even deserialize.
@@ -329,6 +352,9 @@ internal class InAppWebViewPrewarmerImpl(
             .filter { layerDto -> webViewLayerValidator.isValid(layerDto) }
             .map { layerDto -> InAppWebViewPrewarmLayer(baseUrl = layerDto.baseUrl, contentUrl = layerDto.contentUrl) }
     }
+
+    private fun isPrewarmEnabled(configBlank: InAppConfigResponseBlank): Boolean =
+        configBlank.settings?.featureToggles?.toggles?.get(PREWARM_INAPP_WEBVIEW_FEATURE) ?: FEATURE_TOGGLE_DEFAULT
 
     /**
      * `evaluateJavascript` returns the JS value JSON-encoded; the probe returns a string

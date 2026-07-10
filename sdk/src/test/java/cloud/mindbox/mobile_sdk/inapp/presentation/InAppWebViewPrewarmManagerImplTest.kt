@@ -5,7 +5,9 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.PREWARM_INAPP_WEBVIEW_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.validators.WebViewLayerValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -38,7 +40,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class InAppWebViewPrewarmerImplTest {
+internal class InAppWebViewPrewarmManagerImplTest {
 
     private val configuration = Configuration(
         previousInstallationId = "",
@@ -73,7 +75,8 @@ internal class InAppWebViewPrewarmerImplTest {
 
     private lateinit var engine: InAppWebViewPrewarmEngine
     private lateinit var gatewayManager: GatewayManager
-    private lateinit var service: InAppWebViewPrewarmerImpl
+    private lateinit var featureToggleManager: FeatureToggleManager
+    private lateinit var service: InAppWebViewPrewarmManagerImpl
 
     @Before
     fun setUp() {
@@ -86,7 +89,10 @@ internal class InAppWebViewPrewarmerImplTest {
         engine = mockk(relaxed = true)
         gatewayManager = mockk(relaxed = true)
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html></html>"
-        service = InAppWebViewPrewarmerImpl(
+        featureToggleManager = mockk(relaxed = true) {
+            every { isEnabled(any()) } returns true
+        }
+        service = InAppWebViewPrewarmManagerImpl(
             engine = engine,
             mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson = configGson()),
             gatewayManager = lazyOf(gatewayManager),
@@ -96,7 +102,8 @@ internal class InAppWebViewPrewarmerImplTest {
             webViewLayerValidator = WebViewLayerValidator(),
             learnedHostsStore = mockk(relaxed = true) {
                 every { hosts(any()) } returns listOf("learned-cdn.mindbox.ru")
-            }
+            },
+            featureToggleManager = featureToggleManager
         )
     }
 
@@ -283,6 +290,36 @@ internal class InAppWebViewPrewarmerImplTest {
     }
 
     @Test
+    fun `prewarmResources releases warm webview and skips warming when the feature toggle is off`() {
+        every { featureToggleManager.isEnabled(PREWARM_INAPP_WEBVIEW_FEATURE) } returns false
+
+        service.prewarmResources(configWith(webViewInApp))
+
+        verify(exactly = 1) { engine.release() }
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+        coVerify(exactly = 0) { gatewayManager.fetchWebViewContent(any()) }
+    }
+
+    @Test
+    fun `prewarmResources warms normally once the feature toggle turns back on`() {
+        every { featureToggleManager.isEnabled(PREWARM_INAPP_WEBVIEW_FEATURE) } returns false
+        service.prewarmResources(configWith(webViewInApp))
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+
+        every { featureToggleManager.isEnabled(PREWARM_INAPP_WEBVIEW_FEATURE) } returns true
+        service.prewarmResources(configWith(webViewInApp))
+
+        verify(exactly = 1) {
+            engine.loadContentPage(
+                any(),
+                "https://inapp.local/popup?prewarm=1&endpointId=Test.Endpoint&deviceUuid=test-device-uuid",
+                any()
+            )
+        }
+    }
+
+    @Test
     fun `real show preempts prewarm terminally and blocks later attempts`() {
         service.onRealShowWillStart()
         service.prewarmResources(configWith(webViewInApp))
@@ -317,6 +354,25 @@ internal class InAppWebViewPrewarmerImplTest {
         verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
     }
 
+    @Test
+    fun `prewarmOnInit does nothing when the cached config disables the feature toggle`() {
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson(prewarmToggle = false)
+
+        service.prewarmOnInit()
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `prewarmOnInit warms when the cached config explicitly enables the feature toggle`() {
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson(prewarmToggle = true)
+
+        service.prewarmOnInit()
+
+        verify(exactly = 1) { engine.loadPreconnectPage(any(), "https://inapp.local/popup", any()) }
+    }
+
     /** Same `${'$'}type` adapters the production gson registers for the form payload path. */
     private fun configGson(): Gson = GsonBuilder()
         .registerTypeAdapterFactory(
@@ -339,7 +395,11 @@ internal class InAppWebViewPrewarmerImplTest {
         )
         .create()
 
-    private fun cachedConfigJson(): String = """
+    private fun cachedConfigJson(prewarmToggle: Boolean? = null): String {
+        val settings = prewarmToggle?.let {
+            ", \"settings\": { \"featureToggles\": { \"MobileSdkShouldPrewarmInAppWebView\": $it } }"
+        }.orEmpty()
+        return """
         {
           "inapps": [
             {
@@ -367,7 +427,8 @@ internal class InAppWebViewPrewarmerImplTest {
                 ]
               }
             }
-          ]
+          ]$settings
         }
-        """.trimIndent()
+            """.trimIndent()
+    }
 }

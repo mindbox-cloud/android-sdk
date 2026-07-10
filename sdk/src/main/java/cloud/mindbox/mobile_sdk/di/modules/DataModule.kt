@@ -26,8 +26,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmer
-import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmerImpl
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
@@ -149,11 +149,13 @@ internal fun DataModule(
         )
     }
 
-    override val inAppWebViewPrewarmer: InAppWebViewPrewarmer by lazy {
-        InAppWebViewPrewarmerImpl(
-            engine = InAppWebViewPrewarmEngine(appContext) { message ->
-                mindboxLogI("[WebView] Prewarm: $message")
-            },
+    override val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager by lazy {
+        InAppWebViewPrewarmManagerImpl(
+            engine = InAppWebViewPrewarmEngine(
+                appContext = appContext,
+                log = { message -> mindboxLogI("[WebView] Prewarm: $message") },
+                isCacheEnabled = { featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE) }
+            ),
             mobileConfigSerializationManager = mobileConfigSerializationManager,
             // Lazy on purpose: this service is resolved on the main thread during SDK init
             // (prewarm stage 1), and constructing GatewayManager spins up Volley (thread
@@ -161,7 +163,8 @@ internal fun DataModule(
             gatewayManager = lazy { gatewayManager },
             inAppValidator = inAppValidator,
             webViewLayerValidator = webViewLayerValidator,
-            learnedHostsStore = InAppWebViewLearnedHostsStore()
+            learnedHostsStore = InAppWebViewLearnedHostsStore(),
+            featureToggleManager = featureToggleManager
         )
     }
 
@@ -184,7 +187,7 @@ internal fun DataModule(
             integerPositiveValidator = integerPositiveValidator,
             inappSettingsManager = inappSettingsManager,
             featureToggleManager = featureToggleManager,
-            inAppWebViewPrewarmer = inAppWebViewPrewarmer
+            inAppWebViewPrewarmManager = inAppWebViewPrewarmManager
         )
     }
 
