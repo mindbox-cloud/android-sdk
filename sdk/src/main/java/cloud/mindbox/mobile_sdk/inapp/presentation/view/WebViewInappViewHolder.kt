@@ -430,7 +430,8 @@ internal class WebViewInAppViewHolder(
         val controller: WebViewController = WebViewController.create(
             context = currentDialog.context,
             isDebugEnabled = BuildConfig.DEBUG,
-            isCacheEnabled = featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE)
+            isCacheEnabled = featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE),
+            log = { message -> mindboxLogI("[WebView] $message") }
         )
         val view: WebViewPlatformView = controller.view
         view.layoutParams = RelativeLayout.LayoutParams(

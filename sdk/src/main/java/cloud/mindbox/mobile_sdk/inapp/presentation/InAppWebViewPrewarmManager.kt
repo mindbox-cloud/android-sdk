@@ -337,7 +337,10 @@ internal class InAppWebViewPrewarmManagerImpl(
     private fun webViewLayers(configString: String): List<InAppWebViewPrewarmLayer> {
         val configBlank = mobileConfigSerializationManager.deserializeToConfigDtoBlank(configString)
             ?: return emptyList()
-        if (!isPrewarmEnabled(configBlank)) return emptyList()
+        if (!isPrewarmEnabled(configBlank)) {
+            mindboxLogI("[WebView] Prewarm: feature toggle is off in the cached config, skipping head start")
+            return emptyList()
+        }
         return configBlank.inApps.orEmpty()
             // Same version gate as the real pipeline: in-apps for other SDK versions may
             // carry form formats this version cannot even deserialize.
