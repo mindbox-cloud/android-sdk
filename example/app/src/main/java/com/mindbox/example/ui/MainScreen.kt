@@ -78,6 +78,7 @@ enum class InAppOption(
     WheelOfFortune(R.string.inapp_wheel_of_fortune, "showInAppWheelOfFortune"),
     LuckyFeed(R.string.inapp_lucky_feed, "showInAppLuckyFeed"),
     ScratchCard(R.string.inapp_scratch_card, "showInAppScratchCard"),
+    MysteryGift(R.string.inapp_mystery_gift, "showInAppMysteryGift"),
     CustomHtml(R.string.inapp_custom_html, "showInAppCustomHtml"),
     Onboarding(R.string.inapp_onboarding, "showInAppOnboarding"),
     Modal(R.string.inapp_modal, "showInAppModal"),

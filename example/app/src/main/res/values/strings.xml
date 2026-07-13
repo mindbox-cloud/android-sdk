@@ -39,6 +39,7 @@
     <string name="inapp_wheel_of_fortune">Wheel of Fortune</string>
     <string name="inapp_lucky_feed">Lucky Feed</string>
     <string name="inapp_scratch_card">Scratch card</string>
+    <string name="inapp_mystery_gift">Mystery Gift</string>
     <string name="inapp_custom_html">Custom HTML</string>
     <string name="inapp_onboarding">Onboarding</string>
     <string name="inapp_modal">Modal window</string>
