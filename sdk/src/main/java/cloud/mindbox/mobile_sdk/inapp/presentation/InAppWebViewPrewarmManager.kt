@@ -262,6 +262,10 @@ internal class InAppWebViewPrewarmManagerImpl(
         // looper for 30s during the live show).
         if (hasAborted.get()) return
         val job = Mindbox.mindboxScope.launch {
+            // Belt-and-suspenders with the per-tick check below: an abort landing between
+            // the guard above and this coroutine's first resumption must not run even one
+            // poll tick.
+            if (hasAborted.get()) return@launch
             // Budget in poll units instead of a wall clock read: the whole loop runs on
             // virtual time in tests. A null probe is charged the full probe timeout so the
             // cap stays a real wall-clock bound even when the evaluate callback never fires
@@ -301,6 +305,9 @@ internal class InAppWebViewPrewarmManagerImpl(
             engine.release()
         }
         settleJob.getAndSet(job)?.cancel()
+        if (hasAborted.get()) {
+            settleJob.getAndSet(null)?.cancel()
+        }
     }
 
     private data class ResourceProbe(val entryCount: Int, val msSinceLastResponseEnd: Long)

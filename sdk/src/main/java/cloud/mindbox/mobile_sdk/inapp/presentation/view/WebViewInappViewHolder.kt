@@ -565,7 +565,8 @@ internal class WebViewInAppViewHolder(
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "JS ready check gave up for $url: $lastFailure"
+                    errorDescription = "JS ready check gave up for $url: $lastFailure",
+                    tags = wrapper.tags
                 )
             }
         )
@@ -588,9 +589,9 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "evaluateJavaScript return unexpected response: $response",
-                    tags = wrapper.tags
-                )
+                        errorDescription = "evaluateJavaScript returned unexpected response: $response",
+                        tags = wrapper.tags
+                    )
                 } else {
                     mindboxLogW("evaluateJavaScript miss after teardown (ignored): $response")
                 }
@@ -761,9 +762,7 @@ internal class WebViewInAppViewHolder(
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         webViewController?.let { controller ->
-            controller.executeOnViewThread {
-                controller.loadContent(content)
-            }
+            controller.loadContent(content)
             startTimer {
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
