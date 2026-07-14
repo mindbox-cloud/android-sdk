@@ -14,18 +14,17 @@ import cloud.mindbox.mobile_sdk.*
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
-import cloud.mindbox.mobile_sdk.inapp.data.managers.CACHE_INAPP_WEBVIEW_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.executeWithFailureTracking
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
@@ -97,7 +96,7 @@ internal class WebViewInAppViewHolder(
     private val gson: Gson by mindboxInject { this.gson }
     private val timeProvider: TimeProvider by mindboxInject { timeProvider }
     private val webViewPrewarmManager: InAppWebViewPrewarmManager by mindboxInject { inAppWebViewPrewarmManager }
-    private val featureToggleManager: FeatureToggleManager by mindboxInject { featureToggleManager }
+    private val webViewCachePolicy: InAppWebViewCachePolicy by mindboxInject { webViewCachePolicy }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -430,7 +429,7 @@ internal class WebViewInAppViewHolder(
         val controller: WebViewController = WebViewController.create(
             context = currentDialog.context,
             isDebugEnabled = BuildConfig.DEBUG,
-            isCacheEnabled = featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE),
+            isCacheEnabled = webViewCachePolicy.isCacheEnabled,
             log = { message -> mindboxLogI("[WebView] $message") }
         )
         val view: WebViewPlatformView = controller.view

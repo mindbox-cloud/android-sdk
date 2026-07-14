@@ -65,6 +65,7 @@ internal interface DataModule : MindboxModule {
     val mobileConfigRepository: MobileConfigRepository
     val mobileConfigSerializationManager: MobileConfigSerializationManager
     val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager
+    val webViewCachePolicy: InAppWebViewCachePolicy
     val inAppGeoRepository: InAppGeoRepository
     val inAppRepository: InAppRepository
     val callbackRepository: CallbackRepository

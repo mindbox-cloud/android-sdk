@@ -26,6 +26,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSer
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageDelayedManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
@@ -149,12 +150,16 @@ internal fun DataModule(
         )
     }
 
+    override val webViewCachePolicy: InAppWebViewCachePolicy by lazy {
+        InAppWebViewCachePolicy(mobileConfigSerializationManager)
+    }
+
     override val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager by lazy {
         InAppWebViewPrewarmManagerImpl(
             engine = InAppWebViewPrewarmEngine(
                 appContext = appContext,
                 log = { message -> mindboxLogI("[WebView] Prewarm: $message") },
-                isCacheEnabled = { featureToggleManager.isEnabled(CACHE_INAPP_WEBVIEW_FEATURE) }
+                isCacheEnabled = { webViewCachePolicy.isCacheEnabled }
             ),
             mobileConfigSerializationManager = mobileConfigSerializationManager,
             // Lazy on purpose: this service is resolved on the main thread during SDK init
@@ -164,7 +169,8 @@ internal fun DataModule(
             inAppValidator = inAppValidator,
             webViewLayerValidator = webViewLayerValidator,
             learnedHostsStore = InAppWebViewLearnedHostsStore(),
-            featureToggleManager = featureToggleManager
+            featureToggleManager = featureToggleManager,
+            webViewCachePolicy = webViewCachePolicy
         )
     }
 

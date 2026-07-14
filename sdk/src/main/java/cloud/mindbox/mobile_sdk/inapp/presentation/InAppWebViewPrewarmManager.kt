@@ -28,6 +28,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBla
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -38,6 +39,7 @@ import org.json.JSONArray
 import org.json.JSONTokener
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Production prewarm for webview in-apps. Two stages, both driven by the mobile
@@ -74,6 +76,7 @@ internal interface InAppWebViewPrewarmManager {
     fun onRealShowWillStart()
 
     /** Records the https hosts the shown page actually used (learned-hosts store). */
+    @OptIn(InternalMindboxApi::class)
     fun captureObservedHosts(controller: WebViewController)
 }
 
@@ -85,7 +88,8 @@ internal class InAppWebViewPrewarmManagerImpl(
     private val inAppValidator: InAppValidator,
     private val webViewLayerValidator: WebViewLayerValidator,
     private val learnedHostsStore: InAppWebViewLearnedHostsStore,
-    private val featureToggleManager: FeatureToggleManager
+    private val featureToggleManager: FeatureToggleManager,
+    private val webViewCachePolicy: InAppWebViewCachePolicy
 ) : InAppWebViewPrewarmManager {
 
     companion object {
@@ -271,7 +275,7 @@ internal class InAppWebViewPrewarmManagerImpl(
             var stablePolls = 0
             var idle = false
             while (polls < budgetPolls) {
-                delay(IDLE_POLL_MS)
+                delay(IDLE_POLL_MS.milliseconds)
                 polls++
                 if (hasAborted.get()) return@launch
                 val probe = probeResourceState()
@@ -306,8 +310,9 @@ internal class InAppWebViewPrewarmManagerImpl(
      * returns garbage (WebView gone/aborted, page not ready) — callers just keep polling
      * until the hard cap. The 2s timeout guards against a callback that never fires.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun probeResourceState(): ResourceProbe? =
-        withTimeoutOrNull(IDLE_QUIET_MS) {
+        withTimeoutOrNull(IDLE_QUIET_MS.milliseconds) {
             suspendCancellableCoroutine { continuation ->
                 engine.evaluateJavaScript(IDLE_PROBE_JS) { rawResult ->
                     // evaluateJavascript JSON-quotes string results: "\"6:3456\"".
@@ -337,6 +342,9 @@ internal class InAppWebViewPrewarmManagerImpl(
     private fun webViewLayers(configString: String): List<InAppWebViewPrewarmLayer> {
         val configBlank = mobileConfigSerializationManager.deserializeToConfigDtoBlank(configString)
             ?: return emptyList()
+        // Shares this parse with the cache toggle instead of it deserializing the same
+        // cached config a second time; a no-op once the toggle has already latched.
+        webViewCachePolicy.prime(configBlank)
         if (!isPrewarmEnabled(configBlank)) {
             mindboxLogI("[WebView] Prewarm: feature toggle is off in the cached config, skipping head start")
             return emptyList()

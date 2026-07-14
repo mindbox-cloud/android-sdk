@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationMan
 import cloud.mindbox.mobile_sdk.inapp.data.managers.PREWARM_INAPP_WEBVIEW_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.validators.WebViewLayerValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -27,6 +28,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.spyk
 import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +38,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -76,6 +79,8 @@ internal class InAppWebViewPrewarmManagerImplTest {
     private lateinit var engine: InAppWebViewPrewarmEngine
     private lateinit var gatewayManager: GatewayManager
     private lateinit var featureToggleManager: FeatureToggleManager
+    private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
+    private lateinit var webViewCachePolicy: InAppWebViewCachePolicy
     private lateinit var service: InAppWebViewPrewarmManagerImpl
 
     @Before
@@ -92,9 +97,13 @@ internal class InAppWebViewPrewarmManagerImplTest {
         featureToggleManager = mockk(relaxed = true) {
             every { isEnabled(any()) } returns true
         }
+        // spyk, not a plain instance: lets tests verify the cached config blank is
+        // deserialized only once and shared with the cache policy, not parsed twice.
+        mobileConfigSerializationManager = spyk(MobileConfigSerializationManagerImpl(gson = configGson()))
+        webViewCachePolicy = InAppWebViewCachePolicy(mobileConfigSerializationManager)
         service = InAppWebViewPrewarmManagerImpl(
             engine = engine,
-            mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson = configGson()),
+            mobileConfigSerializationManager = mobileConfigSerializationManager,
             gatewayManager = lazyOf(gatewayManager),
             inAppValidator = mockk(relaxed = true) {
                 every { validateInAppVersion(any()) } returns true
@@ -103,7 +112,8 @@ internal class InAppWebViewPrewarmManagerImplTest {
             learnedHostsStore = mockk(relaxed = true) {
                 every { hosts(any()) } returns listOf("learned-cdn.mindbox.ru")
             },
-            featureToggleManager = featureToggleManager
+            featureToggleManager = featureToggleManager,
+            webViewCachePolicy = webViewCachePolicy
         )
     }
 
@@ -373,6 +383,25 @@ internal class InAppWebViewPrewarmManagerImplTest {
         verify(exactly = 1) { engine.loadPreconnectPage(any(), "https://inapp.local/popup", any()) }
     }
 
+    @Test
+    fun `prewarmOnInit primes the cache toggle from its own parse instead of a second deserialize`() {
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson(prewarmToggle = true, cacheToggle = false)
+
+        service.prewarmOnInit()
+
+        assertEquals(false, webViewCachePolicy.isCacheEnabled)
+        verify(exactly = 1) { mobileConfigSerializationManager.deserializeToConfigDtoBlank(any()) }
+    }
+
+    @Test
+    fun `prewarmOnInit primes the cache toggle even when the prewarm toggle is off`() {
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson(prewarmToggle = false, cacheToggle = false)
+
+        service.prewarmOnInit()
+
+        assertEquals(false, webViewCachePolicy.isCacheEnabled)
+    }
+
     /** Same `${'$'}type` adapters the production gson registers for the form payload path. */
     private fun configGson(): Gson = GsonBuilder()
         .registerTypeAdapterFactory(
@@ -395,10 +424,14 @@ internal class InAppWebViewPrewarmManagerImplTest {
         )
         .create()
 
-    private fun cachedConfigJson(prewarmToggle: Boolean? = null): String {
-        val settings = prewarmToggle?.let {
-            ", \"settings\": { \"featureToggles\": { \"MobileSdkShouldPrewarmInAppWebView\": $it } }"
-        }.orEmpty()
+    private fun cachedConfigJson(prewarmToggle: Boolean? = null, cacheToggle: Boolean? = null): String {
+        val toggles = listOfNotNull(
+            prewarmToggle?.let { "\"MobileSdkShouldPrewarmInAppWebView\": $it" },
+            cacheToggle?.let { "\"MobileSdkShouldCacheInAppWebView\": $it" }
+        )
+        val settings = toggles.takeIf { it.isNotEmpty() }
+            ?.let { ", \"settings\": { \"featureToggles\": { ${it.joinToString(", ")} } }" }
+            .orEmpty()
         return """
         {
           "inapps": [
