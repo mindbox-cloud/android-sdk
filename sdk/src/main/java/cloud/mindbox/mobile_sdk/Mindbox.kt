@@ -1380,6 +1380,7 @@ public object Mindbox : MindboxLog {
     private fun softReinitialization(
         context: Context,
     ) {
+        MindboxDI.appModule.inAppWebViewPrewarmManager.terminate()
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()
         BackgroundWorkManager.cancelAllWork(context)

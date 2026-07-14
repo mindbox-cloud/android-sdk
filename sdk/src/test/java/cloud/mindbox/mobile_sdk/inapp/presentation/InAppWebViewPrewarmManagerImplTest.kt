@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadBlankDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
@@ -42,7 +44,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, InternalMindboxApi::class)
 internal class InAppWebViewPrewarmManagerImplTest {
 
     private val configuration = Configuration(
@@ -91,6 +93,8 @@ internal class InAppWebViewPrewarmManagerImplTest {
         every { DbManager.listenConfigurations() } returns flowOf(configuration)
         mockkObject(MindboxPreferences)
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid"
+        mockkObject(InitializeLock)
+        coEvery { InitializeLock.await(any()) } returns Unit
         engine = mockk(relaxed = true)
         gatewayManager = mockk(relaxed = true)
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html></html>"
@@ -122,6 +126,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
         unmockkObject(Mindbox)
         unmockkObject(DbManager)
         unmockkObject(MindboxPreferences)
+        unmockkObject(InitializeLock)
     }
 
     private fun configWith(vararg inApps: cloud.mindbox.mobile_sdk.inapp.domain.models.InApp) = InAppConfig(
@@ -291,6 +296,32 @@ internal class InAppWebViewPrewarmManagerImplTest {
     }
 
     @Test
+    fun `an attempt that trips the no-layers recheck does not consume the one-shot`() {
+        // The fresh no-layers config lands while this attempt is suspended reading the
+        // saved configuration — before the CAS. Per the doc comment, only an attempt that
+        // reaches the engine may consume the one-shot: this one must not.
+        every { DbManager.listenConfigurations() } answers {
+            service.prewarmResources(configWith(InAppStub.getInApp()))
+            flowOf(configuration)
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+
+        // A later, valid attempt must still be able to warm — the one-shot survived.
+        every { DbManager.listenConfigurations() } returns flowOf(configuration)
+        service.prewarmResources(configWith(webViewInApp))
+
+        verify(exactly = 1) {
+            engine.loadContentPage(
+                any(),
+                "https://inapp.local/popup?prewarm=1&endpointId=Test.Endpoint&deviceUuid=test-device-uuid",
+                any()
+            )
+        }
+    }
+
+    @Test
     fun `prewarmResources releases warm webview when config has no webview inapps`() {
         service.prewarmResources(configWith(InAppStub.getInApp()))
 
@@ -340,6 +371,34 @@ internal class InAppWebViewPrewarmManagerImplTest {
     }
 
     @Test
+    fun `terminate aborts the engine and blocks later attempts, same as a real show`() {
+        service.terminate()
+        service.prewarmResources(configWith(webViewInApp))
+
+        verify(exactly = 1) { engine.abort() }
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `terminate stops an in-flight settle poll like onRealShowWillStart does`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        var count = 0
+        every { engine.evaluateJavaScript(any(), any()) } answers {
+            count++
+            secondArg<(String?) -> Unit>().invoke("\"$count:100\"")
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        advanceTimeBy(2_500)
+        service.terminate()
+        advanceTimeBy(60_000)
+
+        verify(exactly = 1) { engine.abort() }
+        verify(exactly = 0) { engine.release() }
+    }
+
+    @Test
     fun `prewarmOnInit warms from cached config without validation pipeline`() {
         every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
 
@@ -353,6 +412,70 @@ internal class InAppWebViewPrewarmManagerImplTest {
                 any()
             )
         }
+    }
+
+    @Test
+    fun `prewarmOnInit awaits the migration lock before reading the cached config`() {
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+
+        service.prewarmOnInit()
+
+        coVerify(exactly = 1) { InitializeLock.await(InitializeLock.State.MIGRATION) }
+    }
+
+    @Test
+    fun `prewarmOnInit is a no-op once a prior attempt already reached the engine`() {
+        // Reaches the engine and consumes the one-shot.
+        service.prewarmResources(configWith(webViewInApp))
+
+        service.prewarmOnInit()
+
+        // Not even the cheap cached-config read happens on the short-circuited path.
+        verify(exactly = 0) { MindboxPreferences.inAppConfig }
+        coVerify(exactly = 0) { InitializeLock.await(any()) }
+    }
+
+    @Test
+    fun `prewarmOnInit does not warm a modal whose first layer is not webview`() {
+        // Same gate as the real pipeline (InAppMapper): webview must be the FIRST layer of
+        // the modal to ever become a WebView in-app; an image-then-webview modal never will.
+        every { MindboxPreferences.inAppConfig } returns """
+        {
+          "inapps": [
+            {
+              "id": "cached-webview",
+              "sdkVersion": { "min": 1, "max": null },
+              "targeting": { "${'$'}type": "true" },
+              "form": {
+                "variants": [
+                  {
+                    "${'$'}type": "modal",
+                    "content": {
+                      "background": {
+                        "layers": [
+                          { "${'$'}type": "image" },
+                          {
+                            "${'$'}type": "webview",
+                            "baseUrl": "https://inapp.local/popup",
+                            "contentUrl": "https://mobile-static.mindbox.ru/content/index.html",
+                            "params": { "formId": "159510" }
+                          }
+                        ]
+                      },
+                      "elements": []
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        """.trimIndent()
+
+        service.prewarmOnInit()
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
     }
 
     @Test

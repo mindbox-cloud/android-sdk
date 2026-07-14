@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto
@@ -78,6 +79,14 @@ internal interface InAppWebViewPrewarmManager {
     /** Records the https hosts the shown page actually used (learned-hosts store). */
     @OptIn(InternalMindboxApi::class)
     fun captureObservedHosts(controller: WebViewController)
+
+    /**
+     * Terminates the prewarm subsystem for good. Call before cancelling the coroutine scope
+     * this manager runs on (SDK teardown, soft reinitialization): a settle-poll job killed by
+     * scope cancellation never reaches its own tail-end `engine.release()`, so without this
+     * the warm WebView would leak until process death.
+     */
+    fun terminate()
 }
 
 @OptIn(InternalMindboxApi::class)
@@ -124,10 +133,24 @@ internal class InAppWebViewPrewarmManagerImpl(
     private val settleJob = AtomicReference<Job?>(null)
 
     override fun prewarmOnInit() {
+        // Cheap short-circuit before paying for the config read/parse below: a repeat
+        // initialize() call must not redo work a prior attempt already finished.
+        if (hasStartedResourcePrewarm.get()) return
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
+                // Other init-time readers wait for this; without it, a migration that fails
+                // and triggers a softReset could erase the cached config out from under a
+                // prewarm that already read it.
+                InitializeLock.await(InitializeLock.State.MIGRATION)
                 val cachedConfig = MindboxPreferences.inAppConfig
-                if (cachedConfig.isBlank()) return@loggingRunCatchingSuspending
+                if (cachedConfig.isBlank()) {
+                    // Nothing to prewarm, but the cache toggle still needs a decision for
+                    // the first real show — latch it to the default now, off the main
+                    // thread, instead of parsing lazily (nothing to parse anyway) the
+                    // moment isCacheEnabled is first read during that show.
+                    webViewCachePolicy.prime(null)
+                    return@loggingRunCatchingSuspending
+                }
                 val layers = webViewLayers(cachedConfig)
                 if (layers.isEmpty()) return@loggingRunCatchingSuspending
                 mindboxLogI("[WebView] Prewarm: head start from cached config (${layers.size} webview layer(s))")
@@ -169,11 +192,15 @@ internal class InAppWebViewPrewarmManagerImpl(
         engine.release()
     }
 
-    override fun onRealShowWillStart() {
+    override fun onRealShowWillStart() = abortPermanently()
+
+    override fun terminate() = abortPermanently()
+
+    private fun abortPermanently() {
         hasAborted.set(true)
         settleJob.getAndSet(null)?.cancel()
         // Terminal: the engine latches synchronously, so a prewarm load already posted from
-        // a background thread cannot resurrect the WebView mid-show.
+        // a background thread cannot resurrect the WebView afterward.
         engine.abort()
     }
 
@@ -214,11 +241,12 @@ internal class InAppWebViewPrewarmManagerImpl(
             mindboxLogW("[WebView] Prewarm: no valid webview layer urls in config, skipping")
             return
         }
-        if (!hasStartedResourcePrewarm.compareAndSet(false, true)) return
-        // Re-check after the configuration read suspension: a fresh no-layers config that
-        // landed while this (init-triggered) prewarm was suspended must keep the WebView
-        // from ever being created — release() posted at that point was a no-op.
+        // Re-check after the configuration read suspension BEFORE the one-shot CAS: an
+        // attempt that stumbles here must not consume it, or a fresh no-layers config
+        // landing mid-suspension would burn the one-shot on a prewarm that never reaches
+        // the engine, per this function's own doc comment.
         if (hasAborted.get() || latestConfigHasNoLayers.get()) return
+        if (!hasStartedResourcePrewarm.compareAndSet(false, true)) return
         val userAgentSuffix = configuration.getShortUserAgent()
 
         mindboxLogI("[WebView] Prewarm: preconnect to ${plan.preconnectOrigins.joinToString(",")} under ${plan.baseUrl}")
@@ -359,16 +387,22 @@ internal class InAppWebViewPrewarmManagerImpl(
         return configBlank.inApps.orEmpty()
             // Same version gate as the real pipeline: in-apps for other SDK versions may
             // carry form formats this version cannot even deserialize.
+            .asSequence()
             .filter { inAppBlank -> inAppValidator.validateInAppVersion(inAppBlank) }
             .flatMap { inAppBlank ->
                 mobileConfigSerializationManager.deserializeToInAppFormDto(inAppBlank.form)
                     ?.variants.orEmpty()
                     .filterIsInstance<PayloadDto.ModalWindowDto>()
-                    .flatMap { modal -> modal.content?.background?.layers.orEmpty() }
+                    // Same gate as the real pipeline (InAppMapper): a modal only becomes a
+                    // WebView in-app when webview is its FIRST layer — collecting every
+                    // webview layer regardless of position would prewarm modals that will
+                    // never actually show as a webview, burning the one-shot on them.
+                    .mapNotNull { modal -> modal.content?.background?.layers?.firstOrNull() }
             }
             .filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()
             .filter { layerDto -> webViewLayerValidator.isValid(layerDto) }
             .map { layerDto -> InAppWebViewPrewarmLayer(baseUrl = layerDto.baseUrl, contentUrl = layerDto.contentUrl) }
+            .toList()
     }
 
     private fun isPrewarmEnabled(configBlank: InAppConfigResponseBlank): Boolean =

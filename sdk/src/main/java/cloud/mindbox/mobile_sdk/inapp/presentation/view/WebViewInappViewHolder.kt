@@ -84,6 +84,9 @@ internal class WebViewInAppViewHolder(
     private var readyChecker: WebViewReadyChecker? = null
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
 
+    private var hasInitialized = false
+    private var pendingReadyCheckFailure: String? = null
+
     private var motionService: MotionServiceProtocol? = null
 
     private fun bindWebViewBackAction(currentRoot: MindboxView, controller: WebViewController) {
@@ -286,6 +289,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleInitAction(controller: WebViewController): String {
+        hasInitialized = true
         stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         val mindboxView = currentMindboxView ?: run {
@@ -325,8 +329,6 @@ internal class WebViewInAppViewHolder(
 
     private fun handleCloseAction(message: BridgeMessage): String {
         motionService?.stopMonitoring()
-        // Remember which https hosts this show actually used — feeds the next launch's preconnect.
-        webViewController?.let { controller -> webViewPrewarmManager.captureObservedHosts(controller) }
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
@@ -538,10 +540,13 @@ internal class WebViewInAppViewHolder(
      * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
      * path talks to a page that already proved itself ready.
      *
-     * Give-up records the failure but does NOT close: the init timer is the closing
-     * authority. The checker's ~1.2s budget can expire while an allowed same-origin
-     * navigation is still in flight or while a slow page is still booting its bridge —
-     * cases the timer would have accepted (the window stays invisible until `init` anyway).
+     * Give-up BEFORE `init` only records the failure ([pendingReadyCheckFailure]) — the
+     * init timer is the closing authority there, since the checker's ~1.2s budget can
+     * expire while an allowed same-origin navigation is still in flight or a slow page is
+     * still booting its bridge (cases the timer would have accepted; the window stays
+     * invisible until `init` anyway). Give-up AFTER `init` closes immediately instead: a
+     * same-origin navigation broke a bridge that had already proven itself alive, and
+     * there is no init timer left to catch it.
      */
     private fun startReadyCheck(url: String?) {
         // A late onPageFinished can be queued on the main looper when the in-app closes;
@@ -562,12 +567,17 @@ internal class WebViewInAppViewHolder(
             expectedResult = JS_RETURN,
             onReady = { mindboxLogD("JS ready check passed for $url") },
             onGiveUp = { lastFailure ->
-                inAppFailureTracker.sendFailureWithContext(
-                    inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "JS ready check gave up for $url: $lastFailure",
-                    tags = wrapper.tags
-                )
+                if (hasInitialized) {
+                    inAppFailureTracker.sendFailureWithContext(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                        errorDescription = "JS ready check gave up after init for $url: $lastFailure",
+                        tags = wrapper.tags
+                    )
+                    inAppController.close()
+                } else {
+                    pendingReadyCheckFailure = lastFailure
+                }
             }
         )
     }
@@ -762,12 +772,26 @@ internal class WebViewInAppViewHolder(
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         webViewController?.let { controller ->
+            hasInitialized = false
+            pendingReadyCheckFailure = null
             controller.loadContent(content)
             startTimer {
+                // A ready-check give-up that already fired before init is the more specific
+                // reason this timed out — report it instead of the generic load-timeout so
+                // the "ready check never passed" category isn't lost.
+                val readyCheckFailure = pendingReadyCheckFailure
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}.",
+                    failureReason = if (readyCheckFailure != null) {
+                        FailureReason.WEBVIEW_PRESENTATION_FAILED
+                    } else {
+                        FailureReason.WEBVIEW_LOAD_FAILED
+                    },
+                    errorDescription = if (readyCheckFailure != null) {
+                        "JS ready check never passed before init timeout: $readyCheckFailure"
+                    } else {
+                        "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
+                    },
                     tags = wrapper.tags
                 )
                 controller.executeOnViewThread {
@@ -836,6 +860,8 @@ internal class WebViewInAppViewHolder(
         readyChecker = null
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
+            // Remember which https hosts this show actually used — feeds the next launch's preconnect.
+            webViewPrewarmManager.captureObservedHosts(controller)
             // Detach first: a page event already queued on the main looper must not reach
             // this torn-down holder (e.g. a late onPageFinished spawning a ready checker).
             controller.setEventListener(null)
