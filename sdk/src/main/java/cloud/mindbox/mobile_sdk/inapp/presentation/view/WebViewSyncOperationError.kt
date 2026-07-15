@@ -10,6 +10,9 @@ internal class WebViewSyncOperationException(val payloadJson: String) : Exceptio
  * Data-only JSON without the `{type, data}` envelope — the WebView JS-bridge `onError`
  * contract shared with iOS: string `httpStatusCode`, no transport `statusCode`.
  * `toJson()` must keep the envelope: RN/Flutter wrappers dispatch on it.
+ *
+ * Serialized via `JsonElement.toString()`, not `gson.toJson`: the SDK gson has
+ * htmlSafe enabled and would escape `<`/`&`/`'`, while iOS `JSONEncoder` does not.
  */
 internal fun MindboxError.toWebViewDataJson(gson: Gson): String {
     val data = JsonObject()
