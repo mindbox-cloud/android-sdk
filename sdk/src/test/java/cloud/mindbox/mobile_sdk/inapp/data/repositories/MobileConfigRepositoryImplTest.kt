@@ -98,7 +98,8 @@ internal class MobileConfigRepositoryImplTest {
             mobileConfigSettingsManager = mockk(relaxed = true),
             integerPositiveValidator = mockk(relaxed = true),
             inappSettingsManager = mockk(relaxed = true),
-            featureToggleManager = mockk(relaxed = true)
+            featureToggleManager = mockk(relaxed = true),
+            inAppWebViewPrewarmManager = mockk(relaxed = true)
         )
     }
 }
