@@ -52,7 +52,7 @@ internal class MindboxWebViewOperationExecutor(
                 onError = { error: MindboxError ->
                     if (continuation.isActive) {
                         continuation.resumeWithException(
-                            IllegalStateException(error.toJson())
+                            WebViewSyncOperationException(error.toWebViewDataJson(gson))
                         )
                     }
                 },

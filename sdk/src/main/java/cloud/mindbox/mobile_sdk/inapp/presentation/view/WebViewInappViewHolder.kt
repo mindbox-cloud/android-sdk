@@ -644,10 +644,13 @@ internal class WebViewInAppViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val json: String = runCatching {
-            val payload = ErrorPayload(error = requireNotNull(error.message))
-            gson.toJson(payload)
-        }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+        val json: String = when (error) {
+            is WebViewSyncOperationException -> error.payloadJson
+            else -> runCatching {
+                val payload = ErrorPayload(error = requireNotNull(error.message))
+                gson.toJson(payload)
+            }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+        }
 
         val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, json)
         mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")

@@ -3,8 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.app.Application
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.MindboxError
+import cloud.mindbox.mobile_sdk.models.ValidationMessage
 import com.google.gson.Gson
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -290,10 +292,8 @@ class WebViewOperationExecutorTest {
         }
     }
 
-    @Test
-    fun `executeSyncOperation throws IllegalStateException when event manager returns error`() = runTest {
+    private fun executeSyncOperationExpectingError(error: MindboxError): WebViewSyncOperationException = runBlocking {
         val payload: String = """{"operation":"OpenScreen","body":{"screen":"home"}}"""
-        val expectedError: MindboxError = MindboxError.Unknown(Throwable("network failure"))
         every {
             MindboxEventManager.syncOperation(
                 name = any(),
@@ -303,14 +303,83 @@ class WebViewOperationExecutorTest {
             )
         } answers {
             val onError: (MindboxError) -> Unit = arg(3)
-            onError(expectedError)
+            onError(error)
         }
         try {
             executor.executeSyncOperation(payload, tags = null)
-            fail("Expected IllegalStateException")
-        } catch (exception: IllegalStateException) {
-            assertEquals(expectedError.toJson(), exception.message)
+            throw AssertionError("Expected WebViewSyncOperationException")
+        } catch (exception: WebViewSyncOperationException) {
+            exception
         }
+    }
+
+    @Test
+    fun `executeSyncOperation protocol error payload is the data contents in iOS format`() {
+        val exception = executeSyncOperationExpectingError(
+            MindboxError.Protocol(
+                statusCode = 400,
+                status = "ProtocolError",
+                errorMessage = "Operation OpenScreen not found",
+                errorId = "error-id-1",
+                httpStatusCode = 400,
+            )
+        )
+        assertEquals(
+            """{"status":"ProtocolError","errorMessage":"Operation OpenScreen not found","errorId":"error-id-1","httpStatusCode":"400"}""",
+            exception.payloadJson,
+        )
+    }
+
+    @Test
+    fun `executeSyncOperation internal server error payload is the data contents in iOS format`() {
+        val exception = executeSyncOperationExpectingError(
+            MindboxError.InternalServer(
+                statusCode = 500,
+                status = "InternalServerError",
+                errorMessage = "Something went wrong",
+                errorId = null,
+                httpStatusCode = 500,
+            )
+        )
+        assertEquals(
+            """{"status":"InternalServerError","errorMessage":"Something went wrong","errorId":"","httpStatusCode":"500"}""",
+            exception.payloadJson,
+        )
+    }
+
+    @Test
+    fun `executeSyncOperation validation error payload is the data contents with validationMessages`() {
+        val exception = executeSyncOperationExpectingError(
+            MindboxError.Validation(
+                statusCode = 200,
+                status = "ValidationError",
+                validationMessages = listOf(
+                    ValidationMessage(message = "Invalid email", location = "/customer/email")
+                ),
+            )
+        )
+        assertEquals(
+            """{"status":"ValidationError","validationMessages":[{"message":"Invalid email","location":"/customer/email"}]}""",
+            exception.payloadJson,
+        )
+    }
+
+    @Test
+    fun `executeSyncOperation network error payload is the data contents without envelope`() {
+        val exception = executeSyncOperationExpectingError(MindboxError.UnknownServer())
+        assertEquals(
+            """{"errorMessage":"Cannot reach server","httpStatusCode":"null"}""",
+            exception.payloadJson,
+        )
+    }
+
+    @Test
+    fun `executeSyncOperation unknown error payload is the data contents without envelope`() {
+        val exception = executeSyncOperationExpectingError(MindboxError.Unknown(Throwable("network failure")))
+        assertEquals(
+            """{"errorKey":"unknown","errorName":"java.lang.Throwable","errorMessage":"network failure"}""",
+            exception.payloadJson,
+        )
     }
 
     @Test
