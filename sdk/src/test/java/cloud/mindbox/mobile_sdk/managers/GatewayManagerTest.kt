@@ -200,6 +200,37 @@ class GatewayManagerTest {
     }
 
     @Test
+    fun `operationsDomain with path prefix appends operation endpoint after the prefix`() {
+        val config = mockConfiguration.copy(operationsDomain = "https://api-v2.letu.ru/api/mindbox-regular")
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(
+            "Expected endpoint appended after path prefix, got: $url",
+            url.startsWith("https://api-v2.letu.ru/api/mindbox-regular/v3/operations/sync")
+        )
+    }
+
+    @Test
+    fun `operationsDomainFromConfig with path prefix appends operation endpoint after the prefix`() {
+        every { MindboxPreferences.operationsDomainFromConfig } returns "api-v2.letu.ru/api/mindbox-regular"
+        val config = mockConfiguration.copy(operationsDomain = null)
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(
+            "Expected endpoint appended after path prefix, got: $url",
+            url.startsWith("https://api-v2.letu.ru/api/mindbox-regular/v3/operations/sync")
+        )
+    }
+
+    @Test
+    fun `operationsDomain path prefix with trailing slash does not produce double slash`() {
+        val config = mockConfiguration.copy(operationsDomain = "domain.com/api/v2/")
+        val url = gatewayManager.getCustomerSegmentationsUrl(config)
+
+        assertTrue(url.startsWith("https://domain.com/api/v2/v3/operations/sync"))
+    }
+
+    @Test
     fun `operationsDomain does not affect endpoint ID in URL`() {
         val config = mockConfiguration.copy(
             endpointId = "test-endpoint-id",

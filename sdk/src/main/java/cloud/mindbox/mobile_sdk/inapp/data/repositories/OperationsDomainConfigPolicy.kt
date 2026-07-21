@@ -21,7 +21,7 @@ internal fun operationsDomainConfigPolicyAction(
             OperationsDomainConfigPolicyAction.Keep
         }
 
-    if (!SdkValidation.isValidDomain(value)) return OperationsDomainConfigPolicyAction.Keep
+    if (!SdkValidation.isValidOperationsDomain(value)) return OperationsDomainConfigPolicyAction.Keep
 
     return if (value == currentlyStored) {
         OperationsDomainConfigPolicyAction.Keep

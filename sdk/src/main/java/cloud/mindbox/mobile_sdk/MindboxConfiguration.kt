@@ -158,7 +158,9 @@ public class MindboxConfiguration private constructor(
         /**
          * Optional host for operations (/v3/operations/async, /v3/operations/sync,
          * /v1.1/customer/mobile-track-visit). Use when your project routes operations through
-         * an anonymizer proxy. A blank value is treated as not set. An invalid value is logged
+         * an anonymizer proxy. The value may include a path prefix
+         * (e.g. "domain.com/api/v2") — operation endpoints are appended after it.
+         * A blank value is treated as not set. An invalid value is logged
          * and ignored during SDK initialization.
          */
         public fun operationsDomain(operationsDomain: String): Builder {
