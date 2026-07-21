@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.repository
 
 import android.content.Context
-import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -11,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import cloud.mindbox.mobile_sdk.converters.MindboxRoomConverter
 import cloud.mindbox.mobile_sdk.data.ConfigurationsDao
 import cloud.mindbox.mobile_sdk.data.EventsDao
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
@@ -41,14 +41,15 @@ internal abstract class MindboxDatabase : RoomDatabase() {
             }
         }
 
-        @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-        internal val MIGRATION_3_4 = object : Migration(3, 4) {
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
 
             override fun migrate(db: SupportSQLiteDatabase) {
+                mindboxLogI("DB migration 3->4 started")
                 db.execSQL(
                     "ALTER TABLE $CONFIGURATION_TABLE_NAME " +
                         "ADD COLUMN shouldIncludeVersionCode INTEGER NOT NULL DEFAULT 1"
                 )
+                mindboxLogI("DB migration 3->4 finished")
             }
         }
 
