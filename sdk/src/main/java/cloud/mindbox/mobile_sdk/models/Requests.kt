@@ -34,7 +34,7 @@ internal data class MindboxRequest(
 
         private const val VALUE_CONTENT_TYPE = "application/json; charset=utf-8"
         internal const val VALUE_USER_AGENT =
-            "mindbox.sdk/%1$1s (Android %2$1s; %3$1s; %4$1s) %5$1s/%6$1s(%7$1s)" // format: mindbox.sdk/{sdk.version} (Android {os_version}; {vendor}; {model}) {host_app_name}/{host_app_version}
+            "mindbox.sdk/%1$1s (Android %2$1s; %3$1s; %4$1s) %5$1s/%6$1s" // format: mindbox.sdk/{sdk.version} (Android {os_version}; {vendor}; {model}) {host_app_name}/{host_app_version}
         private const val VALUE_INTEGRATION = "Android-SDK"
         private const val VALUE_ACCEPT = "application/json"
 
