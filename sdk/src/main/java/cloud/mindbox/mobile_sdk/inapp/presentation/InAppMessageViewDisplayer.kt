@@ -16,6 +16,7 @@ internal interface InAppMessageViewDisplayer {
         inAppType: InAppType,
         inAppActionCallbacks: InAppActionCallbacks,
         onRenderStart: () -> Unit = {},
+        tags: Map<String, String>? = null,
     )
 
     fun registerCurrentActivity(activity: Activity)

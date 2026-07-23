@@ -10,11 +10,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import cloud.mindbox.mobile_sdk.converters.MindboxRoomConverter
 import cloud.mindbox.mobile_sdk.data.ConfigurationsDao
 import cloud.mindbox.mobile_sdk.data.EventsDao
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 
-@Database(entities = [Configuration::class, Event::class], exportSchema = false, version = 3)
+@Database(entities = [Configuration::class, Event::class], exportSchema = false, version = 4)
 @TypeConverters(MindboxRoomConverter::class)
 internal abstract class MindboxDatabase : RoomDatabase() {
 
@@ -40,6 +41,18 @@ internal abstract class MindboxDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                mindboxLogI("DB migration 3->4 started")
+                db.execSQL(
+                    "ALTER TABLE $CONFIGURATION_TABLE_NAME " +
+                        "ADD COLUMN shouldIncludeVersionCode INTEGER NOT NULL DEFAULT 1"
+                )
+                mindboxLogI("DB migration 3->4 finished")
+            }
+        }
+
         internal var isTestMode = false
 
         internal fun getInstance(context: Context) = if (!isTestMode) {
@@ -50,7 +63,8 @@ internal abstract class MindboxDatabase : RoomDatabase() {
                     DATABASE_NAME,
                 ).addMigrations(
                     MIGRATION_1_2,
-                    MIGRATION_2_3
+                    MIGRATION_2_3,
+                    MIGRATION_3_4
                 )
                 .build()
         } else {

@@ -47,7 +47,8 @@ internal fun DomainModule(
             inAppTargetingErrorRepository = inAppTargetingErrorRepository,
             inAppContentFetcher = inAppContentFetcher,
             inAppRepository = inAppRepository,
-            inAppFailureTracker = inAppFailureTracker
+            inAppFailureTracker = inAppFailureTracker,
+            featureToggleManager = featureToggleManager
         )
     }
 

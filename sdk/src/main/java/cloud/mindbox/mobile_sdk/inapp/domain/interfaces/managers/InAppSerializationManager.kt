@@ -10,7 +10,9 @@ internal interface InAppSerializationManager {
 
     fun serializeToInAppShownActionString(inAppId: String, timeToDisplay: String, tags: Map<String, String>?): String
 
-    fun serializeToInAppActionString(inAppId: String): String
+    fun serializeToInAppTargetingString(inAppId: String, tags: Map<String, String>?): String
+
+    fun serializeToInAppClickActionString(inAppId: String, tags: Map<String, String>?): String
 
     fun serializeToInAppShowFailuresString(inAppShowFailures: List<InAppShowFailure>): String
 

@@ -29,7 +29,8 @@ internal fun PresentationModule(
             sessionStorageManager = sessionStorageManager,
             userVisitManager = userVisitManager,
             inAppMessageDelayedManager = inAppMessageDelayedManager,
-            timeProvider = timeProvider
+            timeProvider = timeProvider,
+            featureToggleManager = featureToggleManager
         )
     }
     override val clipboardManager: ClipboardManager by lazy {

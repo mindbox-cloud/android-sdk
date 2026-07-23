@@ -20,6 +20,7 @@ internal data class Configuration(
     val subscribeCustomerIfCreated: Boolean,
     val shouldCreateCustomer: Boolean,
     val operationsDomain: String? = null,
+    val shouldIncludeVersionCode: Boolean = true,
 ) {
 
     internal constructor(mindboxConfiguration: MindboxConfiguration) : this(
@@ -33,7 +34,14 @@ internal data class Configuration(
         subscribeCustomerIfCreated = mindboxConfiguration.subscribeCustomerIfCreated,
         shouldCreateCustomer = mindboxConfiguration.shouldCreateCustomer,
         operationsDomain = mindboxConfiguration.operationsDomain,
+        shouldIncludeVersionCode = mindboxConfiguration.shouldIncludeVersionCode,
     )
+
+    internal val hostAppVersion: String
+        get() = if (versionCode.isBlank()) versionName else "$versionName($versionCode)"
+
+    internal val shortHostAppVersion: String
+        get() = if (versionCode.isBlank()) versionName else "$versionName-$versionCode"
 }
 
 internal fun Configuration.getUserAgent(): String {
@@ -44,11 +52,10 @@ internal fun Configuration.getUserAgent(): String {
         Build.MANUFACTURER,
         Build.MODEL,
         packageName,
-        versionName,
-        versionCode,
+        hostAppVersion,
     )
 }
 
 internal fun Configuration.getShortUserAgent(): String {
-    return "$packageName/$versionName-$versionCode mindbox.sdk/${BuildConfig.VERSION_NAME} "
+    return "$packageName/$shortHostAppVersion mindbox.sdk/${BuildConfig.VERSION_NAME}"
 }

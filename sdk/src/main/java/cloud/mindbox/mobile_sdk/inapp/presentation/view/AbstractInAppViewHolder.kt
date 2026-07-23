@@ -152,14 +152,16 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
                 inAppFailureTracker.sendPresentationFailure(
                     inAppId = wrapper.inAppType.inAppId,
                     errorDescription = "Failed to load in-app image with url = $url",
-                    throwable = e
+                    throwable = e,
+                    tags = wrapper.tags
                 )
                 inAppController.close()
             }.onFailure { throwable ->
                 inAppFailureTracker.sendPresentationFailure(
                     inAppId = wrapper.inAppType.inAppId,
                     errorDescription = "Unknown error in onLoadFailed callback for url = $url",
-                    throwable = throwable
+                    throwable = throwable,
+                    tags = wrapper.tags
                 )
             }
             return false
@@ -184,7 +186,8 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
                 inAppFailureTracker.sendPresentationFailure(
                     inAppId = wrapper.inAppType.inAppId,
                     errorDescription = "Unknown error in onResourceReady callback for url = $url",
-                    throwable = throwable
+                    throwable = throwable,
+                    tags = wrapper.tags
                 )
             }
             return false

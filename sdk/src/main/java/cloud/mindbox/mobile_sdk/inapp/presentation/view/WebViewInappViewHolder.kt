@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import android.app.Activity
 import android.app.Application
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
@@ -22,6 +24,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -77,6 +81,11 @@ internal class WebViewInAppViewHolder(
     private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
     private var currentWebViewOrigin: String? = null
+    private var readyChecker: WebViewReadyChecker? = null
+    private val mainHandler: Handler = Handler(Looper.getMainLooper())
+
+    private var hasInitialized = false
+    private var pendingReadyCheckFailure: String? = null
 
     private var motionService: MotionServiceProtocol? = null
 
@@ -89,6 +98,8 @@ internal class WebViewInAppViewHolder(
 
     private val gson: Gson by mindboxInject { this.gson }
     private val timeProvider: TimeProvider by mindboxInject { timeProvider }
+    private val webViewPrewarmManager: InAppWebViewPrewarmManager by mindboxInject { inAppWebViewPrewarmManager }
+    private val webViewCachePolicy: InAppWebViewCachePolicy by mindboxInject { webViewCachePolicy }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val gatewayManager: GatewayManager by mindboxInject { gatewayManager }
@@ -97,7 +108,7 @@ internal class WebViewInAppViewHolder(
     private val mindboxNotificationManager: MindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val appContext: Application by mindboxInject { appContext }
     private val operationExecutor: WebViewOperationExecutor by lazy {
-        MindboxWebViewOperationExecutor()
+        MindboxWebViewOperationExecutor(gson)
     }
     private val linkRouter: WebViewLinkRouter by lazy {
         MindboxWebViewLinkRouter(appContext)
@@ -278,6 +289,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleInitAction(controller: WebViewController): String {
+        hasInitialized = true
         stopTimer()
         wrapper.inAppActionCallbacks.onInAppShown.onShown()
         val mindboxView = currentMindboxView ?: run {
@@ -351,7 +363,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleAsyncOperationAction(message: BridgeMessage.Request): String {
-        operationExecutor.executeAsyncOperation(appContext, message.payload)
+        operationExecutor.executeAsyncOperation(appContext, message.payload, wrapper.tags)
         return BridgeMessage.EMPTY_PAYLOAD
     }
 
@@ -364,7 +376,7 @@ internal class WebViewInAppViewHolder(
     }
 
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
-        return operationExecutor.executeSyncOperation(message.payload)
+        return operationExecutor.executeSyncOperation(message.payload, wrapper.tags)
     }
 
     private fun handleLocalStateGetAction(message: BridgeMessage.Request): String {
@@ -416,7 +428,12 @@ internal class WebViewInAppViewHolder(
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {
         mindboxLogI("Creating WebView for In-App: ${wrapper.inAppType.inAppId} with layer ${layer.type}")
-        val controller: WebViewController = WebViewController.create(currentDialog.context, BuildConfig.DEBUG)
+        val controller: WebViewController = WebViewController.create(
+            context = currentDialog.context,
+            isDebugEnabled = BuildConfig.DEBUG,
+            isCacheEnabled = webViewCachePolicy.isCacheEnabled,
+            log = { message -> mindboxLogI("[WebView] $message") }
+        )
         val view: WebViewPlatformView = controller.view
         view.layoutParams = RelativeLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -426,7 +443,7 @@ internal class WebViewInAppViewHolder(
             override fun onPageFinished(url: String?) {
                 mindboxLogD("onPageFinished: $url")
                 currentWebViewOrigin = resolveOrigin(url) ?: currentWebViewOrigin
-                webViewController?.evaluateJavaScript(JS_CHECK_BRIDGE, ::checkEvaluateJavaScript)
+                startReadyCheck(url)
             }
 
             override fun onShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
@@ -439,7 +456,8 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}"
+                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}",
+                        tags = wrapper.tags
                     )
                     inAppController.close()
                 }
@@ -514,16 +532,79 @@ internal class WebViewInAppViewHolder(
         }
     }
 
+    /**
+     * Readiness probe for a freshly finished page. Module scripts can evaluate a beat after
+     * `onPageFinished` (slow device, cold cache), so a single early `false` must not close a
+     * healthy in-app — the checker polls before giving up. Every new `onPageFinished` (redirect,
+     * re-load) restarts the poll; teardown cancels it. The outgoing-message verification in
+     * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
+     * path talks to a page that already proved itself ready.
+     *
+     * Give-up BEFORE `init` only records the failure ([pendingReadyCheckFailure]) — the
+     * init timer is the closing authority there, since the checker's ~1.2s budget can
+     * expire while an allowed same-origin navigation is still in flight or a slow page is
+     * still booting its bridge (cases the timer would have accepted; the window stays
+     * invisible until `init` anyway). Give-up AFTER `init` closes immediately instead: a
+     * same-origin navigation broke a bridge that had already proven itself alive, and
+     * there is no init timer left to catch it.
+     */
+    private fun startReadyCheck(url: String?) {
+        // A late onPageFinished can be queued on the main looper when the in-app closes;
+        // a checker started against the torn-down holder would only produce a spurious
+        // failure event.
+        if (webViewController == null) return
+        readyChecker?.cancel()
+        val checker = WebViewReadyChecker(
+            evaluate = { script, resultCallback ->
+                webViewController?.evaluateJavaScript(script, resultCallback)
+                    ?: resultCallback(null)
+            },
+            schedule = { delayMillis, action -> mainHandler.postDelayed(action, delayMillis) }
+        )
+        readyChecker = checker
+        checker.run(
+            script = JS_CHECK_BRIDGE,
+            expectedResult = JS_RETURN,
+            onReady = { mindboxLogD("JS ready check passed for $url") },
+            onGiveUp = { lastFailure ->
+                if (hasInitialized) {
+                    inAppFailureTracker.sendFailureWithContext(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                        errorDescription = "JS ready check gave up after init for $url: $lastFailure",
+                        tags = wrapper.tags
+                    )
+                    inAppController.close()
+                } else {
+                    pendingReadyCheckFailure = lastFailure
+                }
+            }
+        )
+    }
+
+    /**
+     * Verifies an outgoing bridge call's JS result. Tracks the failure but does NOT close
+     * the in-app: whether one undelivered message is fatal is the caller's policy (a failed
+     * `back` action closes via its own onError, a failed motion event just stops monitoring)
+     * — force-closing here used to tear down a healthy show over a single transient miss.
+     * Page readiness has its own retrying probe ([startReadyCheck]).
+     */
     internal fun checkEvaluateJavaScript(response: String?): Boolean {
         return when (response) {
             JS_RETURN -> true
             else -> {
-                inAppFailureTracker.sendFailureWithContext(
-                    inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                    errorDescription = "evaluateJavaScript return unexpected response: $response"
-                )
-                inAppController.close()
+                // A miss during teardown (holder already closed, controller gone) is an
+                // expected race, not a presentation failure — don't feed it to telemetry.
+                if (webViewController != null) {
+                    inAppFailureTracker.sendFailureWithContext(
+                        inAppId = wrapper.inAppType.inAppId,
+                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
+                        errorDescription = "evaluateJavaScript returned unexpected response: $response",
+                        tags = wrapper.tags
+                    )
+                } else {
+                    mindboxLogW("evaluateJavaScript miss after teardown (ignored): $response")
+                }
                 false
             }
         }
@@ -563,10 +644,13 @@ internal class WebViewInAppViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val json: String = runCatching {
-            val payload = ErrorPayload(error = requireNotNull(error.message))
-            gson.toJson(payload)
-        }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+        val json: String = when (error) {
+            is WebViewSyncOperationException -> error.payloadJson
+            else -> runCatching {
+                val payload = ErrorPayload(error = requireNotNull(error.message))
+                gson.toJson(payload)
+            }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+        }
 
         val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, json)
         mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")
@@ -603,6 +687,8 @@ internal class WebViewInAppViewHolder(
 
     private fun renderLayer(layer: Layer.WebViewLayer) {
         if (webViewController == null) {
+            // A real show takes priority: kill the prewarm so it can't compete for bandwidth.
+            webViewPrewarmManager.onRealShowWillStart()
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
 
@@ -646,7 +732,8 @@ internal class WebViewInAppViewHolder(
                             inAppId = wrapper.inAppType.inAppId,
                             failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                             errorDescription = "Failed to fetch HTML content for In-App",
-                            throwable = e
+                            throwable = e,
+                            tags = wrapper.tags
                         )
                         controller.executeOnViewThread { inAppController.close() }
                     }
@@ -654,7 +741,8 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                        errorDescription = "WebView content URL is null"
+                        errorDescription = "WebView content URL is null",
+                        tags = wrapper.tags
                     )
                     controller.executeOnViewThread { inAppController.close() }
                 }
@@ -666,6 +754,7 @@ internal class WebViewInAppViewHolder(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying WebView layout",
+                tags = wrapper.tags,
             ) {
                 val view: WebViewPlatformView = controller.view
                 if (view.parent !== inAppLayout) {
@@ -677,7 +766,8 @@ internal class WebViewInAppViewHolder(
             inAppFailureTracker.sendFailureWithContext(
                 inAppId = wrapper.inAppType.inAppId,
                 failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                errorDescription = "WebView controller is null when trying show inapp"
+                errorDescription = "WebView controller is null when trying show inapp",
+                tags = wrapper.tags
             )
             inAppController.close()
         }
@@ -685,14 +775,27 @@ internal class WebViewInAppViewHolder(
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         webViewController?.let { controller ->
-            controller.executeOnViewThread {
-                controller.loadContent(content)
-            }
+            hasInitialized = false
+            pendingReadyCheckFailure = null
+            controller.loadContent(content)
             startTimer {
+                // A ready-check give-up that already fired before init is the more specific
+                // reason this timed out — report it instead of the generic load-timeout so
+                // the "ready check never passed" category isn't lost.
+                val readyCheckFailure = pendingReadyCheckFailure
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
-                    failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                    errorDescription = "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
+                    failureReason = if (readyCheckFailure != null) {
+                        FailureReason.WEBVIEW_PRESENTATION_FAILED
+                    } else {
+                        FailureReason.WEBVIEW_LOAD_FAILED
+                    },
+                    errorDescription = if (readyCheckFailure != null) {
+                        "JS ready check never passed before init timeout: $readyCheckFailure"
+                    } else {
+                        "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
+                    },
+                    tags = wrapper.tags
                 )
                 controller.executeOnViewThread {
                     inAppController.close()
@@ -756,14 +859,20 @@ internal class WebViewInAppViewHolder(
         hapticFeedbackExecutor.cancel()
         motionService?.stopMonitoring()
         stopTimer()
+        readyChecker?.cancel()
+        readyChecker = null
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
+            // Remember which https hosts this show actually used — feeds the next launch's preconnect.
+            webViewPrewarmManager.captureObservedHosts(controller)
+            // Detach first: a page event already queued on the main looper must not reach
+            // this torn-down holder (e.g. a late onPageFinished spawning a ready checker).
+            controller.setEventListener(null)
             val view: WebViewPlatformView = controller.view
             view.parent.safeAs<ViewGroup>()?.removeView(view)
             controller.destroy()
         }
         currentWebViewOrigin = null
-        webViewController?.destroy()
         webViewController = null
         currentMindboxView = null
         super.onClose()

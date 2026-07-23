@@ -21,6 +21,7 @@ public class MindboxConfiguration private constructor(
     internal val versionCode: String,
     internal val subscribeCustomerIfCreated: Boolean,
     internal val shouldCreateCustomer: Boolean,
+    internal val shouldIncludeVersionCode: Boolean,
     internal val uuidDebugEnabled: Boolean,
     internal val operationsDomain: String? = null,
 ) {
@@ -35,6 +36,7 @@ public class MindboxConfiguration private constructor(
         versionCode = builder.versionCode,
         subscribeCustomerIfCreated = builder.subscribeCustomerIfCreated,
         shouldCreateCustomer = builder.shouldCreateCustomer,
+        shouldIncludeVersionCode = builder.shouldIncludeVersionCode,
         uuidDebugEnabled = builder.uuidDebugEnabled,
         operationsDomain = builder.operationsDomain,
     )
@@ -49,6 +51,7 @@ public class MindboxConfiguration private constructor(
         versionCode: String = this.versionCode,
         subscribeCustomerIfCreated: Boolean = this.subscribeCustomerIfCreated,
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
+        shouldIncludeVersionCode: Boolean = this.shouldIncludeVersionCode,
         uuidDebugEnabled: Boolean = this.uuidDebugEnabled,
         operationsDomain: String? = this.operationsDomain,
     ) = MindboxConfiguration(
@@ -61,6 +64,7 @@ public class MindboxConfiguration private constructor(
         versionCode = versionCode,
         subscribeCustomerIfCreated = subscribeCustomerIfCreated,
         shouldCreateCustomer = shouldCreateCustomer,
+        shouldIncludeVersionCode = shouldIncludeVersionCode,
         uuidDebugEnabled = uuidDebugEnabled,
         operationsDomain = operationsDomain,
     )
@@ -75,6 +79,7 @@ public class MindboxConfiguration private constructor(
             "versionCode = $versionCode, " +
             "subscribeCustomerIfCreated = $subscribeCustomerIfCreated, " +
             "shouldCreateCustomer = $shouldCreateCustomer, " +
+            "shouldIncludeVersionCode = $shouldIncludeVersionCode, " +
             "uuidDebugEnabled = $uuidDebugEnabled, " +
             "operationsDomain = $operationsDomain)"
     }
@@ -89,6 +94,7 @@ public class MindboxConfiguration private constructor(
             private const val PLACEHOLDER_APP_PACKAGE_NAME = "Unknown package name"
             private const val PLACEHOLDER_APP_VERSION_NAME = "Unknown version"
             private const val PLACEHOLDER_APP_VERSION_CODE = "?"
+            private const val EMPTY_APP_VERSION_CODE = ""
         }
 
         internal var previousInstallationId: String = ""
@@ -98,6 +104,7 @@ public class MindboxConfiguration private constructor(
         internal var versionName: String = PLACEHOLDER_APP_VERSION_NAME
         internal var versionCode: String = PLACEHOLDER_APP_VERSION_CODE
         internal var shouldCreateCustomer: Boolean = true
+        internal var shouldIncludeVersionCode: Boolean = true
         internal var uuidDebugEnabled: Boolean = true
         internal var operationsDomain: String? = null
 
@@ -143,6 +150,21 @@ public class MindboxConfiguration private constructor(
         }
 
         /**
+         * Specifies whether the app versionCode is included in the app version reported
+         * to Mindbox (the User-Agent header). When false, only versionName is reported.
+         *
+         * Note: starting from SDK version 3.0.0 the default value will change to false,
+         * and versionCode will not be reported unless explicitly enabled.
+         *
+         * @param shouldIncludeVersionCode - flag which determines if versionCode is reported.
+         * Default value is true.
+         */
+        public fun shouldIncludeVersionCode(shouldIncludeVersionCode: Boolean): Builder {
+            this.shouldIncludeVersionCode = shouldIncludeVersionCode
+            return this
+        }
+
+        /**
          * Specifies if Mindbox UUID copy to clipboard functionality is enabled. If enabled - UUID
          * can be copied to clipboard by minimizing and maximizing your app 5 times in 10 seconds
          *
@@ -181,18 +203,25 @@ public class MindboxConfiguration private constructor(
                 val packageInfo = packageManager.getPackageInfoCompat(context, 0)
                 packageName = packageInfo.packageName.trim()
                 this.versionName = packageInfo.versionName?.trim()
-                    ?: PLACEHOLDER_APP_PACKAGE_NAME
+                    ?: PLACEHOLDER_APP_VERSION_NAME
                 this.versionCode =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        packageInfo.longVersionCode.toString().trim()
+                    if (shouldIncludeVersionCode) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            packageInfo.longVersionCode.toString().trim()
+                        } else {
+                            PackageInfoCompat.getLongVersionCode(packageInfo).toString().trim()
+                        }
                     } else {
-                        PackageInfoCompat.getLongVersionCode(packageInfo).toString().trim()
+                        EMPTY_APP_VERSION_CODE
                     }
 
                 // need for scheduling and stopping one-time background service
                 SharedPreferencesManager.with(context)
                 MindboxPreferences.hostAppName = packageName
             } catch (_: Exception) {
+                if (!shouldIncludeVersionCode) {
+                    versionCode = EMPTY_APP_VERSION_CODE
+                }
                 MindboxLoggerImpl.e(
                     this,
                     "Getting app info failed. Identified as an unknown application",

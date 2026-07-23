@@ -118,8 +118,8 @@ internal class InAppInteractorImpl(
         inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }
 
-    override fun sendInAppClicked(inAppId: String) {
-        inAppRepository.sendInAppClicked(inAppId)
+    override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
+        inAppRepository.sendInAppClicked(inAppId, tags)
     }
 
     override suspend fun listenToTargetingEvents() {
