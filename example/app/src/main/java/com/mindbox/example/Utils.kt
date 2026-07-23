@@ -11,6 +11,13 @@ import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.retryOrDefaultStrategy
 
 
+/**
+ * Push click-URL that routes to [ActivityTransitionByPush] (the "second activity").
+ * Used both in the `activities` map of the messaging services and in the screen's hint,
+ * so the displayed value always matches the real routing.
+ */
+const val SECOND_ACTIVITY_PUSH_URL = "https://newActivity.com"
+
 class Utils {
     companion object {
         const val TAG = "ExampleApp"

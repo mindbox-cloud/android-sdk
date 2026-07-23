@@ -2,42 +2,52 @@ package com.mindbox.example
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import cloud.mindbox.mobile_sdk.Mindbox
-import com.mindbox.example.databinding.ActivityTrasitionByPushBinding
-
+import com.mindbox.example.ui.SecondActivityScreen
+import com.mindbox.example.ui.theme.MindboxTheme
 
 class ActivityTransitionByPush : AppCompatActivity() {
-    private var _binding: ActivityTrasitionByPushBinding? = null
-    private val binding: ActivityTrasitionByPushBinding
-        get() = _binding!!
+
+    private var pushUrl by mutableStateOf("")
+    private var pushPayload by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        _binding = ActivityTrasitionByPushBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        //Get data from push after click on push or button in push
-        processMindboxIntent(intent, this)?.let { (url, payload) ->
-            binding.tvPushUrlResultSecondActivity.text = url
-            binding.tvPushPayloadResultSecondActivity.text = payload
+        // Get data from push after click on push or button in push
+        applyPushIntent(intent)
+
+        setContent {
+            MindboxTheme {
+                SecondActivityScreen(
+                    pushUrl = pushUrl,
+                    pushPayload = pushPayload,
+                    triggerUrl = SECOND_ACTIVITY_PUSH_URL,
+                    darkTheme = isSystemInDarkTheme(),
+                    onBack = { finish() },
+                )
+            }
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-
-        //Get data from push after click on push or button in push
-        processMindboxIntent(intent, this)?.let { (url, payload) ->
-            binding.tvPushUrlResultSecondActivity.text = url
-            binding.tvPushPayloadResultSecondActivity.text = payload
-        }
-        //https://developers.mindbox.ru/docs/android-app-start-tracking
+        // Get data from push after click on push or button in push
+        applyPushIntent(intent)
+        // https://developers.mindbox.ru/docs/android-app-start-tracking
         Mindbox.onNewIntent(intent)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        _binding = null
+    private fun applyPushIntent(intent: Intent?) {
+        processMindboxIntent(intent, this)?.let { (url, payload) ->
+            pushUrl = url.orEmpty()
+            pushPayload = payload.orEmpty()
+        }
     }
 }

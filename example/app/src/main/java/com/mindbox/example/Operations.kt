@@ -11,6 +11,16 @@ import cloud.mindbox.mobile_sdk.models.operation.request.RecommendationRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.ViewProductRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.OperationResponse
 
+// https://developers.mindbox.ru/docs/android-integration-of-actions
+// Fire-and-forget async operation with an empty JSON body.
+fun sendAsyncOperationWithEmptyBody(context: Context, operationSystemName: String) {
+    Mindbox.executeAsyncOperation(
+        context = context,
+        operationSystemName = operationSystemName,
+        operationBodyJson = "{}"
+    )
+}
+
 fun sendAsync(type: AsyncOperationType, context: Context) {
     when (type) {
         AsyncOperationType.OPERATION_BODY -> viewProductAsync(context)

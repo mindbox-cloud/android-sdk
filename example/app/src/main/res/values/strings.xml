@@ -1,16 +1,76 @@
-<resources>
-    <string name="app_name">Example SDK</string>
-    <string name="device_uuid">Device UUID:</string>
-    <string name="transit_push">The second activity</string>
-    <string name="transit_push_fragment">This Fragment was opening after click on push</string>
-    <string name="push_url">Url from push:</string>
-    <string name="token">Token:</string>
-    <string name="push_payload">Payload:</string>
-    <string name="async_operation">Send async operation</string>
-    <string name="sync_operation">Send sync operation</string>
-    <string name="sdk_version">SDK version</string>
-    <string name="open_activity">Open second activity</string>
-    <string name="token_date">Token date:</string>
-    <string name="open_notification_history">Open Notification history</string>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="app_name">Mindbox SDK Example</string>
 
+    <!-- Brand / header -->
+    <string name="brand_name">mindbox</string>
+    <string name="hero_subtitle">SDK playground</string>
+    <string name="version_format">v%1$s</string>
+
+    <!-- Sections -->
+    <string name="section_sdk_info">SDK Info</string>
+    <string name="section_actions">Actions</string>
+
+    <!-- SDK info labels -->
+    <string name="label_device_uuid">Device UUID</string>
+    <string name="label_token">Token</string>
+    <string name="label_token_date">Token date</string>
+    <string name="label_url_from_push">Url from push</string>
+    <string name="label_payload">Payload</string>
+    <string name="value_placeholder">—</string>
+    <string name="copy_content_description">Copy %1$s</string>
+    <string name="section_service_data">Service data</string>
+    <string name="toggle_service_data">Toggle service data</string>
+    <string name="reveal_token">Show token</string>
+    <string name="hide_token">Hide token</string>
+    <string name="chip_filled_from_push">Filled from push</string>
+    <string name="chip_open_from_push">Open from push to fill</string>
+
+    <!-- Actions -->
+    <string name="action_show_inapp">Show in-app</string>
+    <string name="action_send_async">Send async operation</string>
+    <string name="action_send_sync">Send sync operation</string>
+    <string name="action_open_second_activity">Open second activity</string>
+    <string name="action_open_notification_history">Open Notification history</string>
+
+    <!-- In-app picker -->
+    <string name="inapp_picker_title">Useful</string>
+    <string name="inapp_picker_subtitle">In-app formats and mechanics — choose what to show.</string>
+    <string name="inapp_picker_close">Close</string>
+    <string name="inapp_wheel_of_fortune">Wheel of Fortune</string>
+    <string name="inapp_lucky_feed">Lucky Feed</string>
+    <string name="inapp_scratch_card">Scratch card</string>
+    <string name="inapp_mystery_gift">Mystery Gift</string>
+    <string name="inapp_custom_html">Custom HTML</string>
+    <string name="inapp_onboarding">Onboarding</string>
+    <string name="inapp_modal">Modal window</string>
+    <string name="inapp_snackbar">Snackbar</string>
+
+    <!-- Second activity -->
+    <string name="second_activity_title">Second activity</string>
+    <string name="second_activity_hero_title">The second activity</string>
+    <string name="second_activity_subtitle">Screen opened by tapping a push notification</string>
+    <string name="second_activity_trigger_hint">Opens if the push URL equals</string>
+
+    <!-- Notification history -->
+    <string name="notification_history_title">Notification history</string>
+    <string name="notification_push_link">Link from push</string>
+    <string name="notifications_empty_title">No notifications yet</string>
+    <string name="notifications_empty_subtitle">Send a push to see it here</string>
+    <string name="notification_history_hint_title">How a push gets here</string>
+    <string name="notification_history_hint">A push appears in this list when the app receives a Mindbox push. Tapping a card sends the mobileapp.NCPushOpen operation, so the push payload must be JSON like:</string>
+    <string name="notification_history_payload_example">{\"pushName\": \"…\", \"pushDate\": \"…\"}</string>
+
+    <!-- Push-deep-link fragment -->
+    <string name="nav_fragment_message">This Fragment was opening after click on push</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+
+    <!-- Toasts -->
+    <string name="toast_copied">Copied</string>
+    <string name="toast_inapp_shown">In-app shown: %1$s</string>
+    <string name="toast_operation_sent">Operation was sent</string>
+    <string name="toast_sync_operation_sent">Sync operation was sent</string>
+    <string name="toast_notification_center_opened">Notification center opened</string>
+    <string name="toast_notification_click">Click on notification with unique key %1$s, title = %2$s and description = %3$s</string>
 </resources>
