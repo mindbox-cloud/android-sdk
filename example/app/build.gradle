@@ -23,12 +23,12 @@ if (examplePropertiesFile.exists()) {
 
 android {
     namespace 'com.mindbox.example'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.mindbox.example"
         minSdk 21
-        targetSdk 35
+        targetSdk 36
         versionCode 14
         versionName "2.15.2"
         multiDexEnabled true
