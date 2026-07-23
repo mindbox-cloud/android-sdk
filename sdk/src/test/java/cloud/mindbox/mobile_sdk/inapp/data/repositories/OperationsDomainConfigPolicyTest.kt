@@ -14,11 +14,12 @@ class OperationsDomainConfigPolicyTest {
     @Before
     fun setUp() {
         mockkObject(SdkValidation)
-        every { SdkValidation.isValidDomain(any()) } returns false
-        every { SdkValidation.isValidDomain(VALID_HOST) } returns true
-        every { SdkValidation.isValidDomain(VALID_HOST_WITH_SCHEME) } returns true
-        every { SdkValidation.isValidDomain(VALID_HOST_WITH_TRAILING_SLASH) } returns true
-        every { SdkValidation.isValidDomain(ANOTHER_VALID_HOST) } returns true
+        every { SdkValidation.isValidOperationsDomain(any()) } returns false
+        every { SdkValidation.isValidOperationsDomain(VALID_HOST) } returns true
+        every { SdkValidation.isValidOperationsDomain(VALID_HOST_WITH_SCHEME) } returns true
+        every { SdkValidation.isValidOperationsDomain(VALID_HOST_WITH_TRAILING_SLASH) } returns true
+        every { SdkValidation.isValidOperationsDomain(ANOTHER_VALID_HOST) } returns true
+        every { SdkValidation.isValidOperationsDomain(VALID_HOST_WITH_PATH) } returns true
     }
 
     @After
@@ -183,10 +184,45 @@ class OperationsDomainConfigPolicyTest {
 
     // endregion
 
+    // region path prefix — MOBILE-258: operationsDomain may carry a path
+
+    @Test
+    fun `raw valid host with path prefix no stored value returns Save`() {
+        val result = operationsDomainConfigPolicyAction(
+            raw = VALID_HOST_WITH_PATH,
+            currentlyStored = null
+        )
+
+        assertEquals(OperationsDomainConfigPolicyAction.Save(VALID_HOST_WITH_PATH), result)
+    }
+
+    @Test
+    fun `raw valid host with path prefix same as stored returns Keep`() {
+        val result = operationsDomainConfigPolicyAction(
+            raw = VALID_HOST_WITH_PATH,
+            currentlyStored = VALID_HOST_WITH_PATH
+        )
+
+        assertEquals(OperationsDomainConfigPolicyAction.Keep, result)
+    }
+
+    @Test
+    fun `raw valid host with path prefix replaces stored bare host`() {
+        val result = operationsDomainConfigPolicyAction(
+            raw = VALID_HOST_WITH_PATH,
+            currentlyStored = VALID_HOST
+        )
+
+        assertEquals(OperationsDomainConfigPolicyAction.Save(VALID_HOST_WITH_PATH), result)
+    }
+
+    // endregion
+
     private companion object {
         const val VALID_HOST = "anonymizer.client.ru"
         const val VALID_HOST_WITH_SCHEME = "https://anonymizer.client.ru"
         const val VALID_HOST_WITH_TRAILING_SLASH = "https://anonymizer.client.ru/"
         const val ANOTHER_VALID_HOST = "new-anonymizer.client.ru"
+        const val VALID_HOST_WITH_PATH = "https://api-v2.letu.ru/api/mindbox-regular"
     }
 }
