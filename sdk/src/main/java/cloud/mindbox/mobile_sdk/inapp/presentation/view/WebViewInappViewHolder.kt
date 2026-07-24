@@ -85,7 +85,13 @@ internal class WebViewInAppViewHolder(
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
 
     private var hasInitialized = false
+    private var hasShownFired = false
     private var pendingReadyCheckFailure: String? = null
+    private var lastLoadedContent: WebViewHtmlContent? = null
+
+    private val noCacheRetryPolicy: WebViewNoCacheRetryPolicy = WebViewNoCacheRetryPolicy {
+        webViewCachePolicy.isCacheEnabled
+    }
 
     private var motionService: MotionServiceProtocol? = null
 
@@ -291,7 +297,14 @@ internal class WebViewInAppViewHolder(
     private fun handleInitAction(controller: WebViewController): String {
         hasInitialized = true
         stopTimer()
-        wrapper.inAppActionCallbacks.onInAppShown.onShown()
+        if (noCacheRetryPolicy.hasRetried) {
+            controller.setCacheBypass(false)
+        }
+        lastLoadedContent = null
+        if (!hasShownFired) {
+            hasShownFired = true
+            wrapper.inAppActionCallbacks.onInAppShown.onShown()
+        }
         val mindboxView = currentMindboxView ?: run {
             mindboxLogW("MindboxView is null when activating WebView In-App")
             inAppController.close()
@@ -462,8 +475,29 @@ internal class WebViewInAppViewHolder(
                     inAppController.close()
                 }
             }
+
+            override fun onHttpError(url: String?, statusCode: Int?, isForMainFrame: Boolean?) {
+                if (isRecoverableScriptHttpError(url, statusCode)) {
+                    mindboxLogW("[WebView] HTTP error $statusCode for $url (mainFrame=$isForMainFrame)")
+                } else {
+                    mindboxLogD("[WebView] HTTP error $statusCode for $url (mainFrame=$isForMainFrame)")
+                }
+                if (noCacheRetryPolicy.onHttpError(url, statusCode, hasInitialized)) {
+                    retryContentPageWithoutCache()
+                }
+            }
         })
         return controller
+    }
+
+    private fun retryContentPageWithoutCache() {
+        val controller = webViewController ?: return
+        val content = lastLoadedContent ?: return
+        mindboxLogI("[WebView] Retrying In-App content load with cache bypassed (${noCacheRetryPolicy.lastHttpErrorDetail})")
+        stopTimer()
+        readyChecker?.cancel()
+        controller.setCacheBypass(true)
+        onContentPageLoaded(content)
     }
 
     private fun handleShouldOverrideUrlLoading(url: String?, isForMainFrame: Boolean?): Boolean {
@@ -777,12 +811,13 @@ internal class WebViewInAppViewHolder(
         webViewController?.let { controller ->
             hasInitialized = false
             pendingReadyCheckFailure = null
+            lastLoadedContent = content
             controller.loadContent(content)
             startTimer {
-                // A ready-check give-up that already fired before init is the more specific
-                // reason this timed out — report it instead of the generic load-timeout so
-                // the "ready check never passed" category isn't lost.
                 val readyCheckFailure = pendingReadyCheckFailure
+                val httpErrorSuffix = noCacheRetryPolicy.lastHttpErrorDetail?.let { detail ->
+                    " Last script HTTP error: $detail; no-cache retry attempted: ${noCacheRetryPolicy.hasRetried}."
+                }.orEmpty()
                 inAppFailureTracker.sendFailureWithContext(
                     inAppId = wrapper.inAppType.inAppId,
                     failureReason = if (readyCheckFailure != null) {
@@ -791,9 +826,9 @@ internal class WebViewInAppViewHolder(
                         FailureReason.WEBVIEW_LOAD_FAILED
                     },
                     errorDescription = if (readyCheckFailure != null) {
-                        "JS ready check never passed before init timeout: $readyCheckFailure"
+                        "JS ready check never passed before init timeout: $readyCheckFailure$httpErrorSuffix"
                     } else {
-                        "WebView initialization timed out after ${Stopwatch.stop(TIMER)}."
+                        "WebView initialization timed out after ${Stopwatch.stop(TIMER)}.$httpErrorSuffix"
                     },
                     tags = wrapper.tags
                 )
@@ -861,6 +896,7 @@ internal class WebViewInAppViewHolder(
         stopTimer()
         readyChecker?.cancel()
         readyChecker = null
+        lastLoadedContent = null
         cancelPendingResponses("WebView In-App is closed")
         webViewController?.let { controller ->
             // Remember which https hosts this show actually used — feeds the next launch's preconnect.
