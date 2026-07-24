@@ -54,10 +54,13 @@ internal object SdkValidation {
     }
 
     /**
-     * Path-prefix rule for [isValidOperationsDomain]: zero or more non-empty segments of
-     * unreserved URL characters. Query, fragment and empty segments do not match.
+     * Path-prefix rule for [isValidOperationsDomain]: zero or more non-empty segments made
+     * of unreserved URL characters or complete `%XX` percent-encoded octets. Query, fragment,
+     * empty segments, and a bare/incomplete `%` (not followed by two hex digits) do not
+     * match — an incomplete escape passes this far but corrupts (or fails) URL building at
+     * request time, so it must be rejected at validation, not discovered later at runtime.
      */
-    private val PATH_PREFIX_REGEX = Regex("^(?:/[A-Za-z0-9._~%-]+)*$")
+    private val PATH_PREFIX_REGEX = Regex("^(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})+)*$")
 
     /**
      * Returns true if [value] is a valid operations domain: a host optionally followed by

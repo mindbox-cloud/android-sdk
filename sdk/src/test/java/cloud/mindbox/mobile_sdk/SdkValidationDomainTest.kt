@@ -203,4 +203,40 @@ class SdkValidationDomainTest {
     }
 
     // endregion
+
+    // region isValidOperationsDomain — percent-encoding in path prefix
+
+    @Test
+    fun `isValidOperationsDomain accepts valid percent-encoded octet`() {
+        assertEquals(true, SdkValidation.isValidOperationsDomain("domain.com/a%20b"))
+    }
+
+    @Test
+    fun `isValidOperationsDomain accepts percent-encoded slash within a segment`() {
+        assertEquals(true, SdkValidation.isValidOperationsDomain("domain.com/a%2Fb"))
+    }
+
+    @Test
+    fun `isValidOperationsDomain accepts lowercase hex in percent-encoding`() {
+        assertEquals(true, SdkValidation.isValidOperationsDomain("domain.com/a%2ab"))
+    }
+
+    @Test
+    fun `isValidOperationsDomain rejects non-hex percent escape`() {
+        // Regression: a bare "%" not followed by two hex digits parses fine here but
+        // corrupts (or fails to build) the request URL at runtime — must be rejected now.
+        assertEquals(false, SdkValidation.isValidOperationsDomain("domain.com/a%zz"))
+    }
+
+    @Test
+    fun `isValidOperationsDomain rejects dangling percent at end of path`() {
+        assertEquals(false, SdkValidation.isValidOperationsDomain("domain.com/a%"))
+    }
+
+    @Test
+    fun `isValidOperationsDomain rejects incomplete percent escape (one hex digit)`() {
+        assertEquals(false, SdkValidation.isValidOperationsDomain("domain.com/a%2"))
+    }
+
+    // endregion
 }
