@@ -98,7 +98,7 @@ jobs:
           EXAMPLE_PROPERTIES: ${{ secrets.EXAMPLE_PROPERTIES }}
         run: |
           set -euo pipefail
-          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 -d > example/upload_key_gp.jks
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 -d > example/app/upload_key_gp.jks
           {
             echo "storeFile=upload_key_gp.jks"
             echo "storePassword=$KEYSTORE_STORE_PASSWORD"
