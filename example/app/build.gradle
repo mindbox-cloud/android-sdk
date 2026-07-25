@@ -21,6 +21,17 @@ if (examplePropertiesFile.exists()) {
     }
 }
 
+
+def exampleVersionName = EXAMPLE_VERSION_NAME_FALLBACK
+def sdkPropertiesFile = rootProject.file("../gradle.properties")
+if (sdkPropertiesFile.exists()) {
+    def sdkProperties = new Properties()
+    sdkPropertiesFile.withInputStream { stream ->
+        sdkProperties.load(stream)
+    }
+    exampleVersionName = sdkProperties.getProperty('SDK_VERSION_NAME', exampleVersionName)
+}
+
 android {
     namespace 'com.mindbox.example'
     compileSdk 36
@@ -29,8 +40,11 @@ android {
         applicationId "com.mindbox.example"
         minSdk 21
         targetSdk 36
-        versionCode 14
-        versionName "2.15.2"
+        versionCode EXAMPLE_VERSION_CODE.toInteger()
+        // versionName is taken from SDK_VERSION_NAME in the android-sdk repo root
+        // gradle.properties; if it cannot be read (e.g. the example is built outside
+        // the repo), it falls back to EXAMPLE_VERSION_NAME_FALLBACK.
+        versionName exampleVersionName
         multiDexEnabled true
 
         buildConfigField "String", "MINDBOX_DOMAIN", "\"${exampleProperties.getProperty('mindbox.domain', '')}\""
