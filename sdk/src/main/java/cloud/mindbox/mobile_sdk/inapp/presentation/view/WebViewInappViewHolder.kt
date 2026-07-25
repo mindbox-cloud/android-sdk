@@ -480,7 +480,7 @@ internal class WebViewInAppViewHolder(
                 if (isRecoverableScriptHttpError(url, statusCode)) {
                     mindboxLogW("[WebView] HTTP error $statusCode for $url (mainFrame=$isForMainFrame)")
                 } else {
-                    mindboxLogD("[WebView] HTTP error $statusCode for $url (mainFrame=$isForMainFrame)")
+                    mindboxLogI("[WebView] HTTP error $statusCode for $url (mainFrame=$isForMainFrame)")
                 }
                 if (noCacheRetryPolicy.onHttpError(url, statusCode, hasInitialized)) {
                     retryContentPageWithoutCache()
@@ -494,7 +494,10 @@ internal class WebViewInAppViewHolder(
         val controller = webViewController ?: return
         val content = lastLoadedContent ?: return
         mindboxLogI("[WebView] Retrying In-App content load with cache bypassed (${noCacheRetryPolicy.lastHttpErrorDetail})")
-        stopTimer()
+        // stop timer when retry
+        closeInappTimer?.cancel()
+        closeInappTimer = null
+        Stopwatch.stop(TIMER)
         readyChecker?.cancel()
         controller.setCacheBypass(true)
         onContentPageLoaded(content)
