@@ -1,0 +1,104 @@
+name: Publish Example to Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to release the example app from'
+        required: true
+        default: 'develop'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-example-to-play
+  cancel-in-progress: false
+
+jobs:
+  build_and_upload:
+    name: Build and upload to Google Play
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          submodules: recursive
+
+      - name: Compute example version
+        id: version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          base_code=$(grep -E '^EXAMPLE_VERSION_CODE=' example/gradle.properties | cut -d'=' -f2)
+          if [ -z "$base_code" ]; then
+            echo "Failed to read EXAMPLE_VERSION_CODE from example/gradle.properties"
+            exit 1
+          fi
+          version_code=$((base_code + RUN_NUMBER))
+          version_name=$(grep -E '^SDK_VERSION_NAME=' gradle.properties | cut -d'=' -f2)
+          if [ -z "$version_name" ]; then
+            echo "Failed to read SDK_VERSION_NAME from gradle.properties"
+            exit 1
+          fi
+          echo "Building versionCode=$version_code versionName=$version_name"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Restore signing and config files from secrets
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.EXAMPLE_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.EXAMPLE_KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.EXAMPLE_KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.EXAMPLE_KEYSTORE_KEY_PASSWORD }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.EXAMPLE_GOOGLE_SERVICES_JSON }}
+          AGCONNECT_SERVICES_JSON: ${{ secrets.EXAMPLE_AGCONNECT_SERVICES_JSON }}
+          EXAMPLE_PROPERTIES: ${{ secrets.EXAMPLE_PROPERTIES }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 -d > example/app/upload_key_gp.jks
+          {
+            echo "storeFile=upload_key_gp.jks"
+            echo "storePassword=$KEYSTORE_STORE_PASSWORD"
+            echo "keyAlias=$KEYSTORE_KEY_ALIAS"
+            echo "keyPassword=$KEYSTORE_KEY_PASSWORD"
+          } > example/keystore.properties
+          printf '%s' "$GOOGLE_SERVICES_JSON" > example/app/google-services.json
+          printf '%s' "$AGCONNECT_SERVICES_JSON" > example/app/agconnect-services.json
+          printf '%s' "$EXAMPLE_PROPERTIES" > example/example.properties
+
+      - name: Build release bundle
+        working-directory: example
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: |
+          ./gradlew --no-daemon bundleRelease \
+            -PEXAMPLE_VERSION_CODE="$VERSION_CODE"
+
+      - name: Attach AAB to workflow run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: example-release-bundle
+          path: example/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.mindbox.example
+          releaseFiles: example/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft
+          releaseName: ${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.version_code }})
