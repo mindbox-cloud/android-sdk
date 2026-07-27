@@ -40,7 +40,7 @@ jobs:
     needs: validate-input
     steps:
       - name: Checkout minimal repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           submodules: recursive
@@ -75,7 +75,7 @@ jobs:
       release_branch: ${{ steps.bump.outputs.release_branch }}
     steps:
       - name: Checkout source branch
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.inputs.source_branch }}
           fetch-depth: 0
@@ -116,7 +116,7 @@ jobs:
     needs: bump_and_branch
     steps:
       - name: Checkout the release branch
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.bump_and_branch.outputs.release_branch }}
           fetch-depth: 0
