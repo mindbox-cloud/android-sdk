@@ -51,7 +51,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
         previousInstallationId = "",
         previousDeviceUUID = "",
         endpointId = "Test.Endpoint",
-        domain = "api.mindbox.ru",
+        domain = "api.example.com",
         packageName = "test.package",
         versionName = "1.0",
         versionCode = "1",
@@ -145,7 +145,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
             engine.loadPreconnectPage(
                 html = match { html ->
                     html.contains("https://mobile-static.mindbox.ru") &&
-                        html.contains("https://api.mindbox.ru") &&
+                        html.contains("https://api.example.com") &&
                         html.contains("https://learned-cdn.mindbox.ru")
                 },
                 baseUrl = "https://inapp.local/popup",
@@ -514,6 +514,32 @@ internal class InAppWebViewPrewarmManagerImplTest {
 
         assertEquals(false, webViewCachePolicy.isCacheEnabled)
         verify(exactly = 1) { mobileConfigSerializationManager.deserializeToConfigDtoBlank(any()) }
+    }
+
+    @Test
+    fun `no-cache retry restarts the settle budget so the healing load gets its own 30s`() = runTest {
+        every { Mindbox.mindboxScope } returns CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // The page never goes idle (entry count keeps growing) -> only the hard cap releases.
+        var count = 0
+        every { engine.evaluateJavaScript(any(), any()) } answers {
+            count++
+            secondArg<(String?) -> Unit>().invoke("\"$count:100\"")
+        }
+
+        service.prewarmResources(configWith(webViewInApp))
+        val retryCallback = io.mockk.slot<() -> Unit>()
+        verify { engine.onNoCacheRetryStarted = capture(retryCallback) }
+
+        // The engine reports a no-cache reload just before the original budget would expire.
+        advanceTimeBy(29_000)
+        verify(exactly = 0) { engine.release() }
+        retryCallback.captured.invoke()
+
+        // Old budget (would fire at 30s) is cancelled; the fresh one runs a full 30s more.
+        advanceTimeBy(29_000)
+        verify(exactly = 0) { engine.release() }
+        advanceTimeBy(2_000)
+        verify(exactly = 1) { engine.release() }
     }
 
     @Test

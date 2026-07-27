@@ -247,6 +247,7 @@ internal class InAppWebViewPrewarmManagerImpl(
         // the engine, per this function's own doc comment.
         if (hasAborted.get() || latestConfigHasNoLayers.get()) return
         if (!hasStartedResourcePrewarm.compareAndSet(false, true)) return
+        engine.onNoCacheRetryStarted = { scheduleSettleRelease() }
         val userAgentSuffix = configuration.getShortUserAgent()
 
         mindboxLogI("[WebView] Prewarm: preconnect to ${plan.preconnectOrigins.joinToString(",")} under ${plan.baseUrl}")
