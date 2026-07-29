@@ -1,8 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.util.Log
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
@@ -59,6 +62,8 @@ internal class InAppMessageManagerTest {
 
     private val timeProvider = mockk<SystemTimeProvider>()
 
+    private val featureToggleManager = mockk<FeatureToggleManager>()
+
     /**
      * sets a thread to be used as main dispatcher for running on JVM
      * **/
@@ -71,6 +76,7 @@ internal class InAppMessageManagerTest {
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
         } just runs
+        every { featureToggleManager.isEnabled(any()) } returns true
         every {
             Log.isLoggable(any(), any())
         }.answers {
@@ -95,7 +101,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
@@ -118,7 +125,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         mockkObject(LoggingExceptionHandler)
         every { MindboxPreferences.inAppConfig } returns "test"
@@ -157,7 +165,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
@@ -171,7 +180,7 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp, any()) }
-        verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any()) }
+        verify(exactly = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
     }
 
     @Test
@@ -188,7 +197,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -211,7 +221,7 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp, any()) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any()) }
+        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
     }
 
     @Test
@@ -228,7 +238,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         coEvery {
             inAppMessageInteractor.listenToTargetingEvents()
@@ -251,7 +262,7 @@ internal class InAppMessageManagerTest {
         advanceUntilIdle()
         verify(exactly = 1) { inAppMessageDelayedManager.process(inApp, any()) }
         coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any()) }
+        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
     }
 
     @Test
@@ -264,7 +275,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         coEvery {
             inAppMessageInteractor.processEventAndConfig()
@@ -299,7 +311,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -334,7 +347,8 @@ internal class InAppMessageManagerTest {
             sessionStorageManager,
             userVisitManager,
             inAppMessageDelayedManager,
-            timeProvider
+            timeProvider,
+            featureToggleManager
         )
         mockkConstructor(NetworkResponse::class)
         val networkResponse = mockk<NetworkResponse>()
@@ -367,5 +381,90 @@ internal class InAppMessageManagerTest {
         val resultInappList = inappsFromConfig.sortByPriority()
 
         assertEquals(expectedInappList, resultInappList)
+    }
+
+    @Test
+    fun `tags feature on - tags passed to show and click`() = runTest {
+        val tags = mapOf("templateType" to "Popup")
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
+        val inApp = InAppStub.getInApp().copy(tags = tags)
+        val inAppMessage = inApp.form.variants.first()
+        var capturedCallbacks: InAppActionCallbacks? = null
+        var capturedTags: Map<String, String>? = null
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
+        every { inAppMessageViewDisplayer.isInAppActive() } returns false
+        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
+            this@runTest.launch { inAppToShowFlow.emit(inApp to Milliseconds(0L)) }
+        }
+        every { inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any()) } answers {
+            capturedCallbacks = arg(1)
+            capturedTags = arg(3)
+        }
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager,
+            timeProvider,
+            featureToggleManager
+        )
+        coEvery { inAppMessageInteractor.processEventAndConfig() } answers {
+            flow { emit(inApp to Milliseconds(0L)) }
+        }
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+
+        assertEquals(tags, capturedTags)
+        capturedCallbacks!!.onInAppClick.onClick()
+        verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(inAppMessage.inAppId, tags) }
+    }
+
+    @Test
+    fun `tags feature off - tags are null for show and click`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
+        val inApp = InAppStub.getInApp().copy(tags = mapOf("templateType" to "Popup"))
+        val inAppMessage = inApp.form.variants.first()
+        var capturedCallbacks: InAppActionCallbacks? = null
+        var capturedTags: Map<String, String>? = mapOf("sentinel" to "value")
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        every { inAppMessageViewDisplayer.isInAppActive() } returns false
+        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
+            this@runTest.launch { inAppToShowFlow.emit(inApp to Milliseconds(0L)) }
+        }
+        every { inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any()) } answers {
+            capturedCallbacks = arg(1)
+            capturedTags = arg(3)
+        }
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager,
+            timeProvider,
+            featureToggleManager
+        )
+        coEvery { inAppMessageInteractor.processEventAndConfig() } answers {
+            flow { emit(inApp to Milliseconds(0L)) }
+        }
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+
+        assertEquals(null, capturedTags)
+        capturedCallbacks!!.onInAppClick.onClick()
+        verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(inAppMessage.inAppId, null) }
     }
 }

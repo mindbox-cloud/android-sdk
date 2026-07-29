@@ -16,6 +16,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import kotlinx.coroutines.TimeoutCancellationException
 
 internal fun VolleyError.isTimeoutError(): Boolean {
     return this is TimeoutError || cause is SocketTimeoutException
@@ -36,6 +37,7 @@ internal fun Throwable.shouldTrackTargetingError(): Boolean {
 }
 
 internal fun Throwable.shouldTrackImageDownloadError(): Boolean {
+    if (cause is TimeoutCancellationException) return false
     val glideException = cause as? GlideException ?: return true
     return glideException.rootCauses.none { rootCause ->
         when {
@@ -80,7 +82,8 @@ private fun parseOperationBody(operationBody: String?): Pair<String, String>? =
 internal fun InAppFailureTracker.sendPresentationFailure(
     inAppId: String,
     errorDescription: String,
-    throwable: Throwable? = null
+    throwable: Throwable? = null,
+    tags: Map<String, String>? = null
 ) {
     val errorDetails = when {
         throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
@@ -90,7 +93,8 @@ internal fun InAppFailureTracker.sendPresentationFailure(
     sendFailure(
         inAppId = inAppId,
         failureReason = FailureReason.PRESENTATION_FAILED,
-        errorDetails = errorDetails
+        errorDetails = errorDetails,
+        tags = tags
     )
 }
 
@@ -98,7 +102,8 @@ internal fun InAppFailureTracker.sendFailureWithContext(
     inAppId: String,
     failureReason: FailureReason,
     errorDescription: String,
-    throwable: Throwable? = null
+    throwable: Throwable? = null,
+    tags: Map<String, String>? = null
 ) {
     val errorDetails = when {
         throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
@@ -108,7 +113,8 @@ internal fun InAppFailureTracker.sendFailureWithContext(
     sendFailure(
         inAppId = inAppId,
         failureReason = failureReason,
-        errorDetails = errorDetails
+        errorDetails = errorDetails,
+        tags = tags
     )
 }
 
@@ -116,6 +122,7 @@ internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
     inAppId: String,
     failureReason: FailureReason,
     errorDescription: String,
+    tags: Map<String, String>? = null,
     crossinline onFailure: () -> Unit = {},
     block: () -> T
 ): Result<T> {
@@ -124,7 +131,8 @@ internal inline fun <T> InAppFailureTracker.executeWithFailureTracking(
             inAppId = inAppId,
             failureReason = failureReason,
             errorDescription = errorDescription,
-            throwable = throwable
+            throwable = throwable,
+            tags = tags
         )
         onFailure()
     }

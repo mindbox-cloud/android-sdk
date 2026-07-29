@@ -205,6 +205,48 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
+    fun `sendFailure forwards tags to the failure`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val tags = mapOf("templateType" to "Popup")
+        val slot = slot<List<InAppShowFailure>>()
+
+        inAppFailureTracker.sendFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDetails = "error",
+            tags = tags
+        )
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
+        assertEquals(tags, slot.captured[0].tags)
+    }
+
+    @Test
+    fun `collectFailure keeps each failures own tags`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val slot = slot<List<InAppShowFailure>>()
+
+        inAppFailureTracker.collectFailure(
+            inAppId = "inApp1",
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDetails = null,
+            tags = mapOf("templateType" to "Popup")
+        )
+        inAppFailureTracker.collectFailure(
+            inAppId = "inApp2",
+            failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
+            errorDetails = null,
+            tags = null
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
+        val captured = slot.captured
+        assertEquals(mapOf("templateType" to "Popup"), captured.first { it.inAppId == "inApp1" }.tags)
+        assertEquals(null, captured.first { it.inAppId == "inApp2" }.tags)
+    }
+
+    @Test
     fun `sendFailure with null errorDetails`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val slot = slot<List<InAppShowFailure>>()

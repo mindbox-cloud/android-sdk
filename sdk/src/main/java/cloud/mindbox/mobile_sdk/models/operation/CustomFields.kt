@@ -13,6 +13,10 @@ public class CustomFields(public val fields: Map<String, Any?>? = null) {
      * Convert [CustomFields] value to [T] typed object.
      *
      * @param classOfT Class type for result [CustomFields] object.
+     *
+     * **Important:** [T] is a caller-supplied type deserialized via Gson. All constructor
+     * properties of [T] must declare [@SerializedName][com.google.gson.annotations.SerializedName]
+     * to ensure correct serialization after code shrinking (ProGuard/R8).
      */
     public fun <T> convertTo(classOfT: Class<T>): T? = LoggingExceptionHandler.runCatching(defaultValue = null) {
         val gson = Gson()

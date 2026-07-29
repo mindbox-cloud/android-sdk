@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.logger
 
-public enum class Level(public var value: Int) {
+public enum class Level(public val value: Int) {
 
     VERBOSE(0),
     DEBUG(1),
@@ -9,3 +9,8 @@ public enum class Level(public var value: Int) {
     ERROR(4),
     NONE(5)
 }
+
+internal infix fun Level.isAtMost(other: Level): Boolean = value <= other.value
+
+@Suppress("unused")
+internal infix fun Level.isAtLeast(other: Level): Boolean = value >= other.value

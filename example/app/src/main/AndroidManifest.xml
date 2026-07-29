@@ -64,7 +64,7 @@
         </activity>
         <meta-data
             android:name="ru.rustore.sdk.pushclient.project_id"
-            android:value="RU_STORE_PROJECT_ID" />
+            android:value="${ruStoreProjectId}" />
     </application>
 
 </manifest>

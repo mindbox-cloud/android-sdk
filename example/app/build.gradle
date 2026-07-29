@@ -8,7 +8,17 @@ plugins {
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    keystorePropertiesFile.withInputStream { stream ->
+        keystoreProperties.load(stream)
+    }
+}
+
+def examplePropertiesFile = rootProject.file("example.properties")
+def exampleProperties = new Properties()
+if (examplePropertiesFile.exists()) {
+    examplePropertiesFile.withInputStream { stream ->
+        exampleProperties.load(stream)
+    }
 }
 
 android {
@@ -19,9 +29,14 @@ android {
         applicationId "com.mindbox.example"
         minSdk 21
         targetSdk 35
-        versionCode 7
-        versionName "2.5"
+        versionCode 8
+        versionName "2.15.2"
         multiDexEnabled true
+
+        buildConfigField "String", "MINDBOX_DOMAIN", "\"${exampleProperties.getProperty('mindbox.domain', '')}\""
+        buildConfigField "String", "MINDBOX_ENDPOINT_ID", "\"${exampleProperties.getProperty('mindbox.endpointId', '')}\""
+        buildConfigField "String", "MINDBOX_RUSTORE_PROJECT_ID", "\"${exampleProperties.getProperty('mindbox.ruStoreProjectId', '')}\""
+        manifestPlaceholders = [ruStoreProjectId: exampleProperties.getProperty('mindbox.ruStoreProjectId', '')]
     }
 
     compileOptions {
@@ -82,7 +97,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-    //Push services
+    // Push services
     implementation platform('com.google.firebase:firebase-bom:32.7.1')
     implementation 'com.google.firebase:firebase-analytics-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
@@ -91,13 +106,13 @@ dependencies {
 
     implementation 'com.google.code.gson:gson:2.11.0'
 
-    //Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.15.2'
+    // Mindbox
+    implementation 'cloud.mindbox:mobile-sdk:2.15.3'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
     implementation 'cloud.mindbox:mindbox-rustore'
 
-    //Glade for custom loader
+    // Glide for custom loader
     implementation 'com.github.bumptech.glide:glide:4.15.1'
     implementation 'androidx.activity:activity-ktx:1.9.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'

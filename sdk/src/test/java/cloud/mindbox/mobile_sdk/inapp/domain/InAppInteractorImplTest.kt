@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
@@ -90,6 +91,9 @@ class InAppInteractorImplTest {
 
     @RelaxedMockK
     private lateinit var inAppFailureTracker: InAppFailureTracker
+
+    @RelaxedMockK
+    private lateinit var featureToggleManager: FeatureToggleManager
 
     @Before
     fun setup() {
@@ -178,7 +182,8 @@ class InAppInteractorImplTest {
             inAppTargetingErrorRepository,
             inAppContentFetcher,
             inAppRepository,
-            inAppFailureTracker
+            inAppFailureTracker,
+            featureToggleManager
         )
 
         interactor = InAppInteractorImpl(

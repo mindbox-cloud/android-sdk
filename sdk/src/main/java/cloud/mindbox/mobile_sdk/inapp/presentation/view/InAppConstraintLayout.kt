@@ -7,6 +7,7 @@ import android.view.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.*
 import cloud.mindbox.mobile_sdk.SnackbarPosition
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -291,4 +292,16 @@ internal data class InAppInsets(
 
 internal fun interface BackButtonLayout {
     fun setBackListener(listener: (() -> Unit)?)
+}
+
+/**
+ * Clones the current constraint state, applies [block] to it, then commits the result back.
+ * Removes the clone/applyTo boilerplate from call sites.
+ */
+internal fun InAppConstraintLayout.updateConstraints(block: ConstraintSet.() -> Unit) {
+    ConstraintSet().apply {
+        clone(this@updateConstraints)
+        block()
+        applyTo(this@updateConstraints)
+    }
 }

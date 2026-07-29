@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Optional. Name of an isolated, host-configured FirebaseApp Mindbox should
+        use for its FCM token. Override in the host app's strings.xml to give Mindbox
+        a token isolated from the [DEFAULT] FirebaseApp (whose token third-party SDKs
+        may churn). Empty by default — Mindbox then uses the [DEFAULT] FirebaseApp.
+    -->
+    <string name="mindbox_firebase_app_name" translatable="false" />
+</resources>

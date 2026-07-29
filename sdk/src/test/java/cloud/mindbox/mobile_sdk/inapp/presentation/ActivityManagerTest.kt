@@ -34,6 +34,17 @@ internal class ActivityManagerTest {
             context = context
         )
         val url = "https://mindbox.ru"
+        val componentName = "testComponentName"
+        val packageName = "com.example"
+        val packageManager = shadowOf(RuntimeEnvironment.getApplication().packageManager)
+        packageManager.addActivityIfNotPresent(ComponentName(packageName, componentName))
+        packageManager.addIntentFilterForActivity(
+            ComponentName(packageName, componentName),
+            IntentFilter(Intent.ACTION_VIEW).apply {
+                addCategory(Intent.CATEGORY_DEFAULT)
+                addDataScheme("https")
+            }
+        )
         every {
             callbackInteractor.isValidUrl(url)
         } returns true
@@ -78,24 +89,10 @@ internal class ActivityManagerTest {
     }
 
     @Test
-    fun `try open url doesn't open deeplink`() {
+    fun `tryOpenUrl should return false when no activity can handle url`() {
         context = ApplicationProvider.getApplicationContext()
         activityManager = ActivityManagerImpl(callbackInteractor, context)
         val url = "https://pushok-mindbox.onelink.me/13Z2/a97bb56f"
-        val componentName = "testComponentName"
-        val packageName = "com.example"
-        val packageManager = shadowOf(RuntimeEnvironment.getApplication().packageManager)
-        packageManager.addActivityIfNotPresent(ComponentName(packageName, componentName))
-        packageManager.addIntentFilterForActivity(
-            ComponentName(
-                packageName,
-                componentName
-            ),
-            IntentFilter(Intent.ACTION_VIEW).apply {
-                addCategory(Intent.CATEGORY_DEFAULT)
-                addDataScheme("https")
-            }
-        )
         every {
             callbackInteractor.isValidUrl(url)
         } returns true

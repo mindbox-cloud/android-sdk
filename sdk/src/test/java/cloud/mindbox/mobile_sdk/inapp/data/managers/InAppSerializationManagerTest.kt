@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppClickRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import com.google.gson.Gson
@@ -71,18 +72,53 @@ internal class InAppSerializationManagerTest {
     }
 
     @Test
-    fun `serializeToInAppActionString returns JSON with inAppId only`() {
+    fun `serializeToInAppTargetingString returns JSON with inAppId only when tags null`() {
         val expectedResult = "{\"inappId\":\"${inAppId}\"}"
-        val actualResult = inAppSerializationManager.serializeToInAppActionString(inAppId)
+        val actualResult = inAppSerializationManager.serializeToInAppTargetingString(inAppId, tags = null)
         assertEquals(expectedResult, actualResult)
     }
 
     @Test
-    fun `serializeToInAppActionString returns empty string on error`() {
+    fun `serializeToInAppTargetingString returns JSON with inAppId and tags when tags present`() {
+        val expectedResult = "{\"inappId\":\"${inAppId}\",\"tags\":{\"templateType\":\"Popup\"}}"
+        val actualResult = inAppSerializationManager.serializeToInAppTargetingString(
+            inAppId,
+            tags = mapOf("templateType" to "Popup"),
+        )
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `serializeToInAppTargetingString returns empty string on error`() {
         val gson: Gson = mockk()
         every { gson.toJson(any(), any<Class<*>>()) } throws Error("errorMessage")
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
-        val actualResult = inAppSerializationManager.serializeToInAppActionString(inAppId)
+        val actualResult = inAppSerializationManager.serializeToInAppTargetingString(inAppId, tags = null)
+        assertEquals("", actualResult)
+    }
+
+    @Test
+    fun `serializeToInAppClickActionString returns JSON with inAppId and tags`() {
+        val tags = mapOf("templateType" to "Popup")
+        val actualResult = inAppSerializationManager.serializeToInAppClickActionString(inAppId, tags)
+        val parsed = gson.fromJson(actualResult, InAppClickRequest::class.java)
+        assertEquals(inAppId, parsed.inAppId)
+        assertEquals(tags, parsed.tags)
+    }
+
+    @Test
+    fun `serializeToInAppClickActionString omits tags when null`() {
+        val expectedResult = "{\"inappId\":\"${inAppId}\"}"
+        val actualResult = inAppSerializationManager.serializeToInAppClickActionString(inAppId, null)
+        assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `serializeToInAppClickActionString returns empty string on error`() {
+        val gson: Gson = mockk()
+        every { gson.toJson(any(), any<Class<*>>()) } throws Error("errorMessage")
+        inAppSerializationManager = InAppSerializationManagerImpl(gson)
+        val actualResult = inAppSerializationManager.serializeToInAppClickActionString(inAppId, null)
         assertEquals("", actualResult)
     }
 

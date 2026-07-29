@@ -149,6 +149,11 @@ internal val Int.dp: Int
 internal val Int.px: Int
     get() = (this * Resources.getSystem().displayMetrics.density).roundToInt()
 
+internal fun Context.maxScreenDimension(): Int {
+    val displayMetrics = applicationContext.resources.displayMetrics
+    return maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+}
+
 internal fun Animation.setOnAnimationEnd(runnable: Runnable) {
     setAnimationListener(object : AnimationListener {
         override fun onAnimationStart(animation: Animation?) {
@@ -296,6 +301,14 @@ internal inline fun <reified T> Gson.fromJsonTyped(json: String): T? =
 internal fun List<InApp>.sortByPriority(): List<InApp> {
     return this.sortedByDescending { it.isPriority }
 }
+
+/**
+ * Tags to attach to operations emitted by this in-app: [InApp.tags] when non-empty and the tags
+ * feature is enabled, otherwise `null` (so Gson omits the `tags` key downstream). The feature-flag
+ * decision is taken by the caller and passed in as [isTagsFeatureEnabled].
+ */
+internal fun InApp.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
+    tags?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
 
 internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
     return peek()?.takeIf(predicate)?.let { poll() }

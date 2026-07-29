@@ -109,8 +109,8 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override fun sendInAppClicked(inAppId: String) {
-        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
+    override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
+        inAppSerializationManager.serializeToInAppClickActionString(inAppId, tags).apply {
             if (isNotBlank()) {
                 MindboxEventManager.inAppClicked(
                     context,
@@ -120,8 +120,8 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override fun sendUserTargeted(inAppId: String) {
-        inAppSerializationManager.serializeToInAppActionString(inAppId).apply {
+    override fun sendUserTargeted(inAppId: String, tags: Map<String, String>?) {
+        inAppSerializationManager.serializeToInAppTargetingString(inAppId, tags).apply {
             if (isNotBlank()) {
                 MindboxEventManager.sendUserTargeted(
                     context,

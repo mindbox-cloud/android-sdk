@@ -2,12 +2,14 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppGeoRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppSegmentationRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppTargetingErrorRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
@@ -44,7 +46,7 @@ internal class InAppProcessingManagerTest {
 
     private val mockInAppRepository = mockk<InAppRepository> {
         every {
-            sendUserTargeted(any())
+            sendUserTargeted(any(), any())
         } just runs
         every {
             saveTargetedInAppWithEvent(any(), any())
@@ -85,6 +87,7 @@ internal class InAppProcessingManagerTest {
     private val geoSerializationManager: GeoSerializationManager = mockk(relaxed = true)
     private val gatewayManager: GatewayManager = mockk(relaxed = true)
     private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
+    private val featureToggleManager: FeatureToggleManager = mockk(relaxed = true)
     private val inAppTargetingErrorRepository: InAppTargetingErrorRepository =
         spyk(InAppTargetingErrorRepositoryImpl(sessionStorageManager))
 
@@ -137,7 +140,8 @@ internal class InAppProcessingManagerTest {
         inAppTargetingErrorRepository = inAppTargetingErrorRepository,
         inAppContentFetcher = mockkInAppContentFetcher,
         inAppRepository = mockInAppRepository,
-        inAppFailureTracker = inAppFailureTracker
+        inAppFailureTracker = inAppFailureTracker,
+        featureToggleManager = featureToggleManager
     )
 
     private val inAppProcessingManagerTestImpl = InAppProcessingManagerImpl(
@@ -146,7 +150,8 @@ internal class InAppProcessingManagerTest {
         inAppTargetingErrorRepository = inAppTargetingErrorRepository,
         inAppContentFetcher = mockkInAppContentFetcher,
         inAppRepository = mockInAppRepository,
-        inAppFailureTracker = inAppFailureTracker
+        inAppFailureTracker = inAppFailureTracker,
+        featureToggleManager = featureToggleManager
     )
 
     private fun setupTestGeoRepositoryForErrorScenario() {
@@ -177,7 +182,7 @@ internal class InAppProcessingManagerTest {
             InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
         )
         verify(exactly = 0) {
-            mockInAppRepository.sendUserTargeted(any())
+            mockInAppRepository.sendUserTargeted(any(), any())
         }
     }
 
@@ -206,7 +211,42 @@ internal class InAppProcessingManagerTest {
             InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
         )
         verify(exactly = 2) {
-            mockInAppRepository.sendUserTargeted(any())
+            mockInAppRepository.sendUserTargeted(any(), any())
+        }
+    }
+
+    @Test
+    fun `sendTargetedInApp passes inApp tags when tags feature enabled`() = runTest {
+        val tags = mapOf("templateType" to "Popup")
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
+        val testInApp = mockk<InApp>(relaxed = true)
+        every { testInApp.id } returns "123"
+        every { testInApp.tags } returns tags
+        every { testInApp.targeting.checkTargeting(any()) } returns true
+        coEvery { testInApp.targeting.fetchTargetingInfo(any()) } just runs
+        inAppProcessingManager.sendTargetedInApp(
+            testInApp,
+            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
+        )
+        verify(exactly = 1) {
+            mockInAppRepository.sendUserTargeted(inAppId = "123", tags = tags)
+        }
+    }
+
+    @Test
+    fun `sendTargetedInApp passes null tags when tags feature disabled`() = runTest {
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        val testInApp = mockk<InApp>(relaxed = true)
+        every { testInApp.id } returns "123"
+        every { testInApp.tags } returns mapOf("templateType" to "Popup")
+        every { testInApp.targeting.checkTargeting(any()) } returns true
+        coEvery { testInApp.targeting.fetchTargetingInfo(any()) } just runs
+        inAppProcessingManager.sendTargetedInApp(
+            testInApp,
+            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
+        )
+        verify(exactly = 1) {
+            mockInAppRepository.sendUserTargeted(inAppId = "123", tags = null)
         }
     }
 
@@ -431,7 +471,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = mockk(relaxed = true),
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = mockk(relaxed = true)
+            inAppFailureTracker = mockk(relaxed = true),
+            featureToggleManager = featureToggleManager
         )
 
         val expectedResult = InAppStub.getInApp().copy(
@@ -467,7 +508,7 @@ internal class InAppProcessingManagerTest {
 
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
-        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
     }
 
@@ -485,7 +526,7 @@ internal class InAppProcessingManagerTest {
             )
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
-        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
     }
 
@@ -505,7 +546,7 @@ internal class InAppProcessingManagerTest {
             )
         )
         inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
-        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
     }
 
     @Test
@@ -517,7 +558,7 @@ internal class InAppProcessingManagerTest {
             targeting = InAppStub.getTargetingCountryNode().copy(kind = Kind.NEGATIVE)
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
-        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
     }
 
@@ -529,7 +570,7 @@ internal class InAppProcessingManagerTest {
             targeting = InAppStub.getTargetingSegmentNode().copy(kind = Kind.NEGATIVE)
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
-        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
     }
 
@@ -543,7 +584,7 @@ internal class InAppProcessingManagerTest {
             }
         )
         inAppProcessingManager.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
-        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
     }
 
     @Test
@@ -561,7 +602,7 @@ internal class InAppProcessingManagerTest {
 
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
-        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
     }
 
     @Test
@@ -584,7 +625,7 @@ internal class InAppProcessingManagerTest {
 
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
-        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
     }
 
     @Test
@@ -604,7 +645,7 @@ internal class InAppProcessingManagerTest {
 
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
-        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any()) }
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
     }
 
     @Test
@@ -653,7 +694,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
@@ -735,7 +777,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
 
         val result = processingManager.chooseInAppToShow(testInAppList, event)
@@ -780,7 +823,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
@@ -818,6 +862,140 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
+    fun `collected failure carries inApp tags when tags feature enabled`() = runTest {
+        val errorDetails = "Customer segmentation fetch failed. statusCode=500"
+        val tags = mapOf("templateType" to "Popup")
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
+        val segmentationRepo = mockk<InAppSegmentationRepository> {
+            coEvery { fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+            every { getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            every { setCustomerSegmentationStatus(any()) } just runs
+            every { getCustomerSegmentations() } returns listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                    segmentation = "segmentationEI", segment = "segmentEI"
+                )
+            )
+            every { getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.CustomerSegmentation) } returns errorDetails
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, segmentationRepo, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = mockkInAppGeoRepository,
+            inAppSegmentationRepository = segmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = "123",
+                tags = tags,
+                targeting = InAppStub.getTargetingSegmentNode().copy(
+                    type = "",
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "segmentationEI",
+                    segmentExternalId = "segmentEI"
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "123"))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = "validId",
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "validId"))
+                )
+            )
+        )
+
+        processingManager.chooseInAppToShow(testInAppList, event)
+
+        verify(exactly = 1) {
+            failureTracker.collectFailure(
+                inAppId = "123",
+                failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                errorDetails = errorDetails,
+                tags = tags
+            )
+        }
+    }
+
+    @Test
+    fun `collected failure carries null tags when tags feature disabled`() = runTest {
+        val errorDetails = "Customer segmentation fetch failed. statusCode=500"
+        val tags = mapOf("templateType" to "Popup")
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        val segmentationRepo = mockk<InAppSegmentationRepository> {
+            coEvery { fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
+            every { getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            every { setCustomerSegmentationStatus(any()) } just runs
+            every { getCustomerSegmentations() } returns listOf(
+                SegmentationCheckInAppStub.getCustomerSegmentation().copy(
+                    segmentation = "segmentationEI", segment = "segmentEI"
+                )
+            )
+            every { getProductSegmentationFetched(any()) } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        }
+        val targetingErrorRepository = mockk<InAppTargetingErrorRepository> {
+            every { getError(TargetingErrorKey.CustomerSegmentation) } returns errorDetails
+            every { saveError(any(), any()) } just runs
+            every { clearErrors() } just runs
+        }
+        setDIModule(mockkInAppGeoRepository, segmentationRepo, targetingErrorRepository)
+        val failureTracker = mockk<InAppFailureTracker>(relaxed = true)
+        val processingManager = InAppProcessingManagerImpl(
+            inAppGeoRepository = mockkInAppGeoRepository,
+            inAppSegmentationRepository = segmentationRepo,
+            inAppTargetingErrorRepository = targetingErrorRepository,
+            inAppContentFetcher = mockkInAppContentFetcher,
+            inAppRepository = mockInAppRepository,
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
+        )
+        val testInAppList = listOf(
+            InAppStub.getInApp().copy(
+                id = "123",
+                tags = tags,
+                targeting = InAppStub.getTargetingSegmentNode().copy(
+                    type = "",
+                    kind = Kind.POSITIVE,
+                    segmentationExternalId = "segmentationEI",
+                    segmentExternalId = "segmentEI"
+                ),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "123"))
+                )
+            ),
+            InAppStub.getInApp().copy(
+                id = "validId",
+                targeting = InAppStub.getTargetingTrueNode(),
+                form = InAppStub.getInApp().form.copy(
+                    variants = listOf(InAppStub.getModalWindow().copy(inAppId = "validId"))
+                )
+            )
+        )
+
+        processingManager.chooseInAppToShow(testInAppList, event)
+
+        verify(exactly = 1) {
+            failureTracker.collectFailure(
+                inAppId = "123",
+                failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                errorDetails = errorDetails,
+                tags = null
+            )
+        }
+    }
+
+    @Test
     fun `trackTargetingErrorIfAny does not collect customer segmentation failure when error was not saved`() = runTest {
         val segmentationRepo = mockk<InAppSegmentationRepository> {
             coEvery { fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
@@ -843,7 +1021,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
@@ -903,7 +1082,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
@@ -980,7 +1160,8 @@ internal class InAppProcessingManagerTest {
             inAppTargetingErrorRepository = targetingErrorRepository,
             inAppContentFetcher = mockkInAppContentFetcher,
             inAppRepository = mockInAppRepository,
-            inAppFailureTracker = failureTracker
+            inAppFailureTracker = failureTracker,
+            featureToggleManager = featureToggleManager
         )
         val testInAppList = listOf(
             InAppStub.getInApp().copy(
