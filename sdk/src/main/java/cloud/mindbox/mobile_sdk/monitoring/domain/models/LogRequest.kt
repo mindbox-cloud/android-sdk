@@ -4,7 +4,7 @@ import org.threeten.bp.ZonedDateTime
 
 internal data class LogRequest(
     val requestId: String,
-    val deviceId: String,
+    val target: String,
     val from: ZonedDateTime,
     val to: ZonedDateTime,
 )

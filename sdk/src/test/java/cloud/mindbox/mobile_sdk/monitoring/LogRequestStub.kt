@@ -8,14 +8,14 @@ internal class LogRequestStub {
     companion object {
         fun getLogRequest(): LogRequest = LogRequest(
             requestId = "",
-            deviceId = "",
+            target = "",
             from = ZonedDateTime.now(),
             to = ZonedDateTime.now()
         )
 
         fun getLogRequestDtoBlank(): LogRequestDtoBlank = LogRequestDtoBlank(
             requestId = "",
-            deviceId = "",
+            target = "",
             from = "",
             to = ""
         )

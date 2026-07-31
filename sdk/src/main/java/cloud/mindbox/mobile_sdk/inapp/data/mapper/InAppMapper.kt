@@ -73,7 +73,7 @@ internal class InAppMapper {
     ): LogRequestDto {
         return LogRequestDto(
             requestId = logRequestDtoBlank.requestId,
-            deviceId = logRequestDtoBlank.deviceId,
+            target = logRequestDtoBlank.target!!,
             from = logRequestDtoBlank.from,
             to = logRequestDtoBlank.to
         )
@@ -311,7 +311,7 @@ internal class InAppMapper {
                 monitoring = inAppConfigResponse.monitoring?.map {
                     LogRequest(
                         requestId = it.requestId,
-                        deviceId = it.deviceId,
+                        target = it.target,
                         from = it.from.convertToZonedDateTime(),
                         to = it.to.convertToZonedDateTime()
                     )
