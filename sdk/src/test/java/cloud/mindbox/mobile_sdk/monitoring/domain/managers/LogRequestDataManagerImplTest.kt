@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.monitoring.domain.managers
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.monitoring.LogRequestStub
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.Md5Hash
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.jakewharton.threetenabp.AndroidThreeTen
 import io.mockk.every
@@ -51,11 +52,11 @@ internal class LogRequestDataManagerImplTest {
     @Test
     fun `test monitoring checks only current deviceUuid success`() {
         val testLogRequests = listOf(
-            LogRequestStub.getLogRequest().copy(target = DEVICE_UUID_HASH),
-            LogRequestStub.getLogRequest().copy(target = OTHER_DEVICE_UUID_HASH)
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex(DEVICE_UUID_HASH)),
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex(OTHER_DEVICE_UUID_HASH))
         )
         val actualResult = logRequestDataManager.filterCurrentDeviceUuidLogs(testLogRequests)
-        assertTrue(actualResult.size == 1 && actualResult.first().target == DEVICE_UUID_HASH)
+        assertTrue(actualResult.size == 1 && actualResult.first().target == Md5Hash.ofHex(DEVICE_UUID_HASH))
     }
 
     @Test
@@ -64,7 +65,7 @@ internal class LogRequestDataManagerImplTest {
             MindboxPreferences.deviceUuid
         } returns DEVICE_UUID.uppercase()
         val testLogRequests = listOf(
-            LogRequestStub.getLogRequest().copy(target = DEVICE_UUID_HASH)
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex(DEVICE_UUID_HASH))
         )
         val actualResult = logRequestDataManager.filterCurrentDeviceUuidLogs(testLogRequests)
         assertEquals(1, actualResult.size)
@@ -73,7 +74,7 @@ internal class LogRequestDataManagerImplTest {
     @Test
     fun `test target hash comparison is case insensitive`() {
         val testLogRequests = listOf(
-            LogRequestStub.getLogRequest().copy(target = DEVICE_UUID_HASH.uppercase())
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex(DEVICE_UUID_HASH.uppercase()))
         )
         val actualResult = logRequestDataManager.filterCurrentDeviceUuidLogs(testLogRequests)
         assertEquals(1, actualResult.size)
@@ -85,8 +86,8 @@ internal class LogRequestDataManagerImplTest {
             MindboxPreferences.deviceUuid
         } returns ""
         val testLogRequests = listOf(
-            LogRequestStub.getLogRequest().copy(target = "d41d8cd98f00b204e9800998ecf8427e"),
-            LogRequestStub.getLogRequest().copy(target = DEVICE_UUID_HASH)
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex("d41d8cd98f00b204e9800998ecf8427e")),
+            LogRequestStub.getLogRequest().copy(target = Md5Hash.ofHex(DEVICE_UUID_HASH))
         )
         val actualResult = logRequestDataManager.filterCurrentDeviceUuidLogs(testLogRequests)
         assertEquals(emptyList<LogRequest>(), actualResult)
@@ -116,13 +117,13 @@ internal class LogRequestDataManagerImplTest {
             DEVICE_UUID.uppercase() to DEVICE_UUID_HASH,
         )
         vectors.forEach { (deviceUuid, expectedTarget) ->
-            assertEquals(expectedTarget, deviceUuid.md5())
+            assertEquals(Md5Hash.ofHex(expectedTarget), Md5Hash.ofDeviceUuid(deviceUuid))
         }
     }
 
     @Test
     fun `md5 of empty string is the well-known constant`() {
-        assertEquals("d41d8cd98f00b204e9800998ecf8427e", "".md5())
+        assertEquals(Md5Hash.ofHex("d41d8cd98f00b204e9800998ecf8427e"), Md5Hash.ofDeviceUuid(""))
     }
 
     companion object {

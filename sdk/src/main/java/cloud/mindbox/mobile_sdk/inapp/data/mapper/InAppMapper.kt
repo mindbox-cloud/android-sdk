@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.Frequency
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.FrequencyOnceDto.Companion.FREQUENCY_KIND_SESSION
 import cloud.mindbox.mobile_sdk.models.toMilliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import cloud.mindbox.mobile_sdk.monitoring.domain.models.Md5Hash
 import kotlin.math.roundToInt
 
 internal class InAppMapper {
@@ -311,7 +312,7 @@ internal class InAppMapper {
                 monitoring = inAppConfigResponse.monitoring?.map {
                     LogRequest(
                         requestId = it.requestId,
-                        target = it.target,
+                        target = Md5Hash.ofHex(it.target),
                         from = it.from.convertToZonedDateTime(),
                         to = it.to.convertToZonedDateTime()
                     )
