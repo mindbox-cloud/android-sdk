@@ -123,8 +123,8 @@ internal data class InappSettingsDto(
 internal data class LogRequestDto(
     @SerializedName("requestId")
     val requestId: String,
-    @SerializedName("deviceUUID")
-    val deviceId: String,
+    @SerializedName("target")
+    val target: String,
     @SerializedName("from")
     val from: String,
     @SerializedName("to")
@@ -204,8 +204,8 @@ internal data class MonitoringDto(
 internal data class LogRequestDtoBlank(
     @SerializedName("requestId")
     val requestId: String,
-    @SerializedName("deviceUUID")
-    val deviceId: String,
+    @SerializedName("target")
+    val target: String?,
     @SerializedName("from")
     val from: String,
     @SerializedName("to")

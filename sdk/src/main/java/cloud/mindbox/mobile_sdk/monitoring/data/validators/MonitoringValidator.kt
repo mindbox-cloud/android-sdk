@@ -11,7 +11,7 @@ import org.threeten.bp.format.DateTimeFormatter
 internal class MonitoringValidator {
 
     fun validateLogRequestDtoBlank(logRequest: LogRequestDtoBlank): Boolean {
-        return validateRequestId(logRequest) && validateDeviceId(logRequest) && validateFrom(
+        return validateRequestId(logRequest) && validateTarget(logRequest) && validateFrom(
             logRequest
         ) && validateTo(logRequest)
     }
@@ -20,8 +20,8 @@ internal class MonitoringValidator {
         return logRequest.requestId.isNullOrBlank().not()
     }
 
-    private fun validateDeviceId(logRequest: LogRequestDtoBlank): Boolean {
-        return logRequest.deviceId.isNullOrBlank().not()
+    private fun validateTarget(logRequest: LogRequestDtoBlank): Boolean {
+        return logRequest.target.isNullOrBlank().not()
     }
 
     private fun validateFrom(logRequest: LogRequestDtoBlank): Boolean {
