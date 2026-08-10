@@ -2,4 +2,6 @@
 <resources>
     <color name="mindbox_default_notification_color">@android:color/transparent</color>
     <color name="mindbox_default_inapp_background_color">#80000000</color>
+    <!-- The loading skeleton of an embedded block; see values-night for the dark counterpart. -->
+    <color name="mindbox_embedded_block_placeholder">#E8E8EC</color>
 </resources>

@@ -1,0 +1,39 @@
+apply from: "../modulesCommon.gradle"
+
+android {
+    namespace 'cloud.mindbox.mobile_sdk.embedded.compose'
+
+    buildFeatures {
+        buildConfig = true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion libs.versions.compose.compiler.get()
+    }
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+}
+
+def useLocalMindboxCommon = providers.gradleProperty("USE_LOCAL_MINDBOX_COMMON").map { it.toBoolean() }.getOrElse(false)
+
+dependencies {
+    api project(path: ':sdk')
+    if (useLocalMindboxCommon) {
+        compileOnly project(path: ':mindbox-common')
+    } else {
+        compileOnly "cloud.mindbox:mindbox-common:$SDK_VERSION_NAME"
+    }
+
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.foundation.layout
+
+    // Test dependencies
+    testImplementation libs.bundles.test
+    testImplementation platform(libs.compose.bom)
+    testImplementation libs.compose.ui.test.junit4
+    testImplementation libs.compose.ui.test.manifest
+}
