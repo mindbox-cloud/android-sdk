@@ -11,6 +11,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -66,13 +67,26 @@ public fun MindboxEmbeddedBlock(
     val currentPlaceholder by rememberUpdatedState(placeholder)
     val currentError by rememberUpdatedState(error)
 
+    val context = LocalContext.current
+
     key(placeSystemName) {
         var isCollapsed by remember { mutableStateOf(false) }
 
+        val placeholderHost = remember(context) {
+            lazy(LazyThreadSafetyMode.NONE) {
+                ComposeView(context).apply { setContent { currentPlaceholder?.invoke() } }
+            }
+        }
+        val errorHost = remember(context) {
+            lazy(LazyThreadSafetyMode.NONE) {
+                ComposeView(context).apply { setContent { currentError?.invoke() } }
+            }
+        }
+
         AndroidView(
             modifier = (if (isCollapsed) Modifier.height(0.dp).then(modifier) else modifier).fillMaxWidth(),
-            factory = { context ->
-                MindboxEmbeddedBlockView(context, placeSystemName).apply {
+            factory = { viewContext ->
+                MindboxEmbeddedBlockView(viewContext, placeSystemName).apply {
                     setVisibilityObserver { isVisible -> isCollapsed = !isVisible }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
@@ -85,17 +99,11 @@ public fun MindboxEmbeddedBlock(
                             }
                         },
                     )
-                    if (placeholder != null) {
-                        setPlaceholderView(
-                            ComposeView(context).apply { setContent { currentPlaceholder?.invoke() } },
-                        )
-                    }
-                    if (error != null) {
-                        setErrorView(
-                            ComposeView(context).apply { setContent { currentError?.invoke() } },
-                        )
-                    }
                 }
+            },
+            update = { view ->
+                view.setPlaceholderView(placeholder?.let { placeholderHost.value })
+                view.setErrorView(error?.let { errorHost.value })
             },
             onRelease = { view -> view.release() },
         )

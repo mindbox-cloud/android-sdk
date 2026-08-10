@@ -11,7 +11,14 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -556,6 +563,63 @@ class MindboxEmbeddedBlockViewTest {
         view.release()
 
         assertEquals(1, provider.releaseCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `a released block stops holding on to the host lifecycle`() {
+        val host = object : LifecycleOwner {
+            val registry = LifecycleRegistry(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        host.registry.currentState = Lifecycle.State.RESUMED
+        val view = blockView()
+        val root = LinearLayout(activity).apply { addView(view, 500, 300) }
+        root.setViewTreeLifecycleOwner(host)
+        activity.setContentView(root)
+        showWindow(view)
+        assertEquals(1, host.registry.observerCount)
+
+        view.release()
+
+        // A Compose host releases a block every time it leaves the composition, and the observer
+        // holds the view: one that stays subscribed is kept alive until the whole screen dies.
+        assertEquals(0, host.registry.observerCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `a callback queued before the release never reaches the host`() {
+        val view = attachedView()
+        view.setListener(listener)
+        shadowOf(Looper.getMainLooper()).idle()
+        listener.events.clear()
+
+        // The outcome is queued for the next main-loop pass; the host lets the block go before
+        // that pass runs.
+        provider.report(EmbeddedBlockState.Empty)
+        view.release()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertTrue(listener.events.isEmpty())
+    }
+
+    @Test
+    fun `a blank place name asks for content for nobody`() {
+        mockkObject(MindboxEventManager)
+        try {
+            every { MindboxEventManager.embeddedPlaceRequested(any()) } just Runs
+
+            // Built the way a host would with an unset XML attribute: a name made of spaces is
+            // no name, and it must not reach the in-app pipeline as a trigger either.
+            val view = MindboxEmbeddedBlockView(activity, "   ")
+            attach(view)
+
+            assertNull(view.placeSystemName)
+            verify(exactly = 0) { MindboxEventManager.embeddedPlaceRequested(any()) }
+        } finally {
+            unmockkObject(MindboxEventManager)
+        }
     }
 
     @Test

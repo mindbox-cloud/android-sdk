@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -17,6 +18,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -97,6 +99,7 @@ internal class EmbeddedBlockWebViewPage(
                 return true
             }
 
+            @RequiresApi(Build.VERSION_CODES.M)
             override fun onReceivedError(
                 view: WebView,
                 request: WebResourceRequest,

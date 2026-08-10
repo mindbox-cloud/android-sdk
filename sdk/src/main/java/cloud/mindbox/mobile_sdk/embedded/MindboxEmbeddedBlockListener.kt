@@ -26,8 +26,15 @@ public interface MindboxEmbeddedBlockListener {
      * to put here. An empty place is a normal outcome, not a breakage.
      *
      * The block already hid itself, unless [MindboxEmbeddedBlockView.setErrorView] is set — then
-     * it keeps its place and shows that view. Nothing is required here. The block recovers on
-     * the next attach or when a new session brings a fresh config.
+     * it keeps its place and shows that view. Nothing is required here: the block retries by
+     * itself, and how depends on why the place stayed empty.
+     *
+     * - The config had no placement for this place — resolved again every time the block comes
+     *   back on screen, and on a new session.
+     * - The page failed to load — reloaded on a new session. Coming back on screen replays the
+     *   same outcome instead: the page is already there and it is broken.
+     * - The page stayed silent past its timeout — given another attempt when the block comes back
+     *   on screen. A new session reloads it too, but only after that attempt.
      *
      * @param view The block left without content.
      */

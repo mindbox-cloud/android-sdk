@@ -51,8 +51,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     attrs: AttributeSet?,
     placeSystemName: String?,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
-        resolveFactory = { EmbeddedBlockContentFactory.resolve(context, placeSystemName) },
-        placeSystemName = placeSystemName,
+        resolveFactory = { EmbeddedBlockContentFactory.resolve(context, placeSystemName.orNullIfBlank()) },
+        placeSystemName = placeSystemName.orNullIfBlank(),
     ),
 ) : FrameLayout(context, attrs) {
 
@@ -67,7 +67,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         placeSystemName: String,
     ) : this(context, null, placeSystemName)
 
-    public val placeSystemName: String? = placeSystemName?.takeIf { it.isNotBlank() }
+    public val placeSystemName: String? = placeSystemName.orNullIfBlank()
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
     private var visibilityObserver: ((Boolean) -> Unit)? = null
     private var placeholderView: View? = null
@@ -92,10 +92,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     private val hostDestroyObserver = object : DefaultLifecycleObserver {
         override fun onDestroy(owner: LifecycleOwner) {
             mindboxLogI("[EmbeddedBlock] Host screen destroyed, freeing content")
-            observedLifecycle?.removeObserver(this)
-            observedLifecycle = null
-            mainHandler.removeCallbacksAndMessages(null)
-            isDeliveryScheduled = false
+            detachFromHost()
             loggingRunCatching { contentController.release() }
         }
     }
@@ -196,7 +193,16 @@ public class MindboxEmbeddedBlockView internal constructor(
     @InternalMindboxApi
     public fun release() {
         mindboxLogI("[EmbeddedBlock] Released by the host wrapper, freeing content")
+        detachFromHost()
         loggingRunCatching { contentController.release() }
+    }
+
+    private fun detachFromHost(): Unit = loggingRunCatching {
+        observedLifecycle?.removeObserver(hostDestroyObserver)
+        observedLifecycle = null
+        mainHandler.removeCallbacksAndMessages(null)
+        isDeliveryScheduled = false
+        listener = DefaultListener
     }
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
@@ -313,6 +319,8 @@ public class MindboxEmbeddedBlockView internal constructor(
         private val DefaultListener = object : MindboxEmbeddedBlockListener {}
     }
 }
+
+private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
 
 private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? {
     if (attrs == null) return null

@@ -101,6 +101,32 @@ class MindboxEmbeddedBlockTest {
     }
 
     @Test
+    fun `a slot that appears after the first composition still reaches the block`() {
+        // The factory runs once. A caller that decides on its slots later — after a flag loads,
+        // after a theme resolves — would otherwise never get them installed at all.
+        val withPlaceholder = mutableStateOf(false)
+
+        compose.setContent {
+            MindboxEmbeddedBlock(
+                placeSystemName = "main-screen-top",
+                modifier = Modifier.height(120.dp),
+                placeholder = if (withPlaceholder.value) {
+                    { Box(Modifier.fillMaxSize().testTag("custom-placeholder")) }
+                } else {
+                    null
+                },
+            )
+        }
+        settle()
+        compose.onNodeWithTag("custom-placeholder").assertDoesNotExist()
+
+        compose.runOnUiThread { withPlaceholder.value = true }
+        settle()
+
+        compose.onNodeWithTag("custom-placeholder").assertExists()
+    }
+
+    @Test
     fun `default callbacks and slots are optional`() {
         compose.setContent {
             MindboxEmbeddedBlock(
