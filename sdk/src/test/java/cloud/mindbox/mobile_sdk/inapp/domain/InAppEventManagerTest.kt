@@ -52,4 +52,15 @@ internal class InAppEventManagerTest {
     fun `validate system event`() {
         assertFalse(inAppEventManager.isValidInAppEvent(InAppEventType.OrdinalEvent(EventType.AppInstalledWithoutCustomer)))
     }
+
+    @Test
+    fun `validate embedded place request`() {
+        // A block appearing on screen has to reach the pipeline: what fills the place is an
+        // in-app picked by targeting, same as for any other trigger.
+        assertTrue(
+            inAppEventManager.isValidInAppEvent(
+                InAppEventType.EmbeddedPlaceRequested(placeSystemName = "main-screen-top"),
+            ),
+        )
+    }
 }
