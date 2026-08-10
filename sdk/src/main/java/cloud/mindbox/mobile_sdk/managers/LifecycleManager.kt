@@ -209,9 +209,14 @@ internal class LifecycleManager internal constructor(
      * Call this before replacing [callbacks] via [cloud.mindbox.mobile_sdk.Mindbox.init]
      * so the new endpoint receives a track-visit immediately upon reinitialisation.
      * The backend uses this signal to learn the device is now active in the new environment.
+     *
+     * A reinit is a *new* reason to visit, so any source captured for an earlier deferred visit
+     * is dropped here — it must be recomputed from the current intent state.
      */
     fun scheduleReinitTrackVisit() {
         pendingVisit = true
+        pendingSource = null
+        pendingRequestUrl = null
         mindboxLogI("Track visit scheduled for reinit")
     }
 
@@ -294,11 +299,21 @@ internal class LifecycleManager internal constructor(
      * iOS uses in `MBSessionManager` when `initializationCompleted` fires while `isActive` is true.
      */
     private fun dispatchCurrentVisit(cb: Callbacks): Unit = loggingRunCatching {
-        val intent = currentIntent ?: return@loggingRunCatching
-        val source = pendingSource ?: if (intentChanged) intentSource(intent) else DIRECT
-        val requestUrl = pendingRequestUrl ?: if (source == LINK) intent.data?.toString() else null
+        val capturedSource = pendingSource
+        val capturedRequestUrl = pendingRequestUrl
         pendingSource = null
         pendingRequestUrl = null
+
+        val source: String
+        val requestUrl: String?
+        if (capturedSource != null) {
+            source = capturedSource
+            requestUrl = capturedRequestUrl
+        } else {
+            val intent = currentIntent ?: return@loggingRunCatching
+            source = if (intentChanged) intentSource(intent) else DIRECT
+            requestUrl = if (source == LINK) intent.data?.toString() else null
+        }
         cb.onTrackVisitReady(source, requestUrl)
         startKeepaliveTimer()
         mindboxLogI("Track visit dispatched from pending state: source=$source url=$requestUrl")

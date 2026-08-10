@@ -1088,7 +1088,51 @@ internal class LifecycleManagerTest {
         assertEquals(url, trackVisitEvents[0].second)
     }
 
-    // endregion
+    @Test
+    fun `deferred push visit dispatched when init lands before the first onActivityStarted`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        manager.onNewIntent(intent)
+        listenTrackVisit(manager)
+
+        assertEquals("captured visit must not be dropped", 1, trackVisitEvents.size)
+        assertEquals(PUSH, trackVisitEvents[0].first)
+    }
+
+    @Test
+    fun `deferred deeplink visit keeps its url when init lands before the first onActivityStarted`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val url = "https://example.com/promo"
+
+        manager.onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        listenTrackVisit(manager)
+
+        assertEquals(1, trackVisitEvents.size)
+        assertEquals(LINK, trackVisitEvents[0].first)
+        assertEquals(url, trackVisitEvents[0].second)
+    }
+
+    @Test
+    fun `reinit visit is not replayed with the source captured for an earlier visit`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        manager.onNewIntent(intent)
+        listenTrackVisit(manager)
+        manager.onActivityStarted(buildActivityA(intent))
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+        trackVisitEvents.clear()
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+
+        assertEquals("reinit must send exactly one visit", 1, trackVisitEvents.size)
+        assertEquals(
+            "reinit source must be recomputed, not the stale source of the earlier visit",
+            DIRECT,
+            trackVisitEvents[0].first,
+        )
+    }
 }
 
 private fun assertSame(expected: Any, actual: Any) {
