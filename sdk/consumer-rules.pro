@@ -1,3 +1,7 @@
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
 # Keep model classes
 -keepclassmembers class cloud.mindbox.mobile_sdk.models** { *; }
 -keep class cloud.mindbox.mobile_sdk.MindboxConfiguration { *; }

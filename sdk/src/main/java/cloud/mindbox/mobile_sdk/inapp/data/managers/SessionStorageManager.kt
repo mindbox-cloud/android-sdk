@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -35,12 +36,16 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
-    private val sessionExpirationListeners = mutableListOf<SessionExpirationListener>()
+    private val sessionExpirationListeners = CopyOnWriteArrayList<SessionExpirationListener>()
 
     private var wasSessionExpiredOnLastCheck: Boolean = false
 
     fun addSessionExpirationListener(listener: SessionExpirationListener) {
         sessionExpirationListeners.add(listener)
+    }
+
+    fun removeSessionExpirationListener(listener: SessionExpirationListener) {
+        sessionExpirationListeners.remove(listener)
     }
 
     fun hasSessionExpired() {

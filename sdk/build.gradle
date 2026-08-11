@@ -15,6 +15,7 @@ dependencies {
         api("cloud.mindbox:mindbox-huawei-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-rustore-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-sdk-starter-core:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-embedded-compose:$SDK_VERSION_NAME")
     }
 }
 android {
@@ -86,6 +87,7 @@ dependencies {
 
     // Handle app lifecycle
     implementation libs.androidx.lifecycle
+    implementation libs.androidx.lifecycle.runtime
     implementation libs.androidx.startup
     implementation libs.threetenabp
 

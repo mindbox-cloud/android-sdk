@@ -34,3 +34,6 @@ ktlint_standard_wrapping = disabled
 
 # Throw error when class has single class and file name and class name different
 ktlint_standard_filename = disabled
+
+# Composable functions are PascalCase by convention
+ktlint_function_naming_ignore_when_annotated_with = Composable

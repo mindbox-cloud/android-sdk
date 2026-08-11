@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxNotificationManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import androidx.lifecycle.ProcessLifecycleOwner
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
@@ -67,7 +68,6 @@ internal class WebViewInAppViewHolder(
 ) : AbstractInAppViewHolder<InAppType.WebView>(wrapper, controller, inAppCallback) {
 
     companion object {
-        private const val INIT_TIMEOUT_MS = 7_000L
         private const val TIMER = "CLOSE_INAPP_TIMER"
         private const val JS_RETURN = "true"
         private const val JS_BRIDGE_CLASS = "window.bridgeMessagesHandlers"
@@ -855,8 +855,8 @@ internal class WebViewInAppViewHolder(
     private fun startTimer(onTimeOut: () -> Unit) {
         Stopwatch.start(TIMER)
         closeInappTimer = timer(
-            initialDelay = INIT_TIMEOUT_MS,
-            period = INIT_TIMEOUT_MS,
+            initialDelay = Constants.WebView.readyTimeout.interval,
+            period = Constants.WebView.readyTimeout.interval,
             action = { onTimeOut() }
         )
     }

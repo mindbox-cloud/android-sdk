@@ -27,6 +27,8 @@ import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlockUsage
+import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlocksMockConfigSection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -71,8 +73,16 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
-        MindboxPreferences.inAppConfig = gatewayManager.fetchMobileConfig(
-            configuration = configuration
+        // TODO(MOBILE-324): temporary, must not reach develop — the backend does not send the
+        //  inlineBlocks section yet; drop the inject() wrapper together with the mock page once
+        //  the real contract lands. This is the one place where the temporary code reaches into a
+        //  file that is not itself temporary, so it reports itself even in a release build: the
+        //  wrapper being here at all is what has to go, whether or not it injects anything.
+        TempEmbeddedBlockUsage.report("temporary mock config injection still wrapping fetchMobileConfig()")
+        MindboxPreferences.inAppConfig = TempEmbeddedBlocksMockConfigSection.inject(
+            gatewayManager.fetchMobileConfig(
+                configuration = configuration
+            )
         )
         MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
     }

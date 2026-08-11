@@ -80,4 +80,10 @@ internal sealed class InAppEventType(val name: String) {
     data object AppStartup : InAppEventType("appStartup")
 
     class OrdinalEvent(val eventType: EventType, val body: String? = null) : InAppEventType(eventType.operation)
+
+    data class EmbeddedPlaceRequested(val placeSystemName: String) : InAppEventType(EVENT_NAME) {
+        internal companion object {
+            const val EVENT_NAME = "embeddedPlaceRequested"
+        }
+    }
 }
