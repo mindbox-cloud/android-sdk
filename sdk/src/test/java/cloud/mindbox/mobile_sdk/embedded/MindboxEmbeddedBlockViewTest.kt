@@ -416,6 +416,35 @@ class MindboxEmbeddedBlockViewTest {
     }
 
     @Test
+    fun `re-registering the same listener does not replay the outcome`() {
+        val view = attachedView()
+        view.setListener(listener)
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // A recycled row rebinds its listener on every pass. The host rebuilds its layout on the
+        // outcome, and rebuilding the layout rebinds the listener — replaying here spins that.
+        view.setListener(listener)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
+    fun `a different listener still receives the current outcome`() {
+        val view = attachedView()
+        view.setListener(listener)
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val second = RecordingListener()
+        view.setListener(second)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("fail"), second.events)
+    }
+
+    @Test
     fun `dropping the listener stops the callbacks without touching the content`() {
         val view = attachedView()
         view.setListener(listener)

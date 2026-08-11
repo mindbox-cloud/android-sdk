@@ -116,8 +116,15 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     public fun setListener(listener: MindboxEmbeddedBlockListener?) {
-        this.listener = listener ?: DefaultListener
+        val next = listener ?: DefaultListener
+        // The same listener is not a new subscriber. A host rebinds it on every recycled row, and
+        // replaying an outcome it already heard would have it rebuild its layout again — which
+        // rebinds the listener again.
+        if (next === this.listener) return
+
+        this.listener = next
         if (listener == null) return
+        // A new subscriber has heard nothing yet, so the current outcome is still news to it.
         deliveredEvent = null
         scheduleDelivery()
     }

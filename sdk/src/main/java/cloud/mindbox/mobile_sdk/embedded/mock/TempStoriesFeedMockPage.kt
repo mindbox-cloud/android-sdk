@@ -109,13 +109,13 @@ internal object TempStoriesFeedMockPage {
 
       function post(payload) {
         var json = JSON.stringify(payload);
-        if (window.mindboxStoriesFeed && window.mindboxStoriesFeed.postMessage) {
-          window.mindboxStoriesFeed.postMessage(json);
+        if (window.mindboxEmbeddedBlock && window.mindboxEmbeddedBlock.postMessage) {
+          window.mindboxEmbeddedBlock.postMessage(json);
           return;
         }
         var handlers = window.webkit && window.webkit.messageHandlers;
-        if (handlers && handlers.mindboxStoriesFeed) {
-          handlers.mindboxStoriesFeed.postMessage(json);
+        if (handlers && handlers.mindboxEmbeddedBlock) {
+          handlers.mindboxEmbeddedBlock.postMessage(json);
         }
       }
 
@@ -168,8 +168,6 @@ internal object TempStoriesFeedMockPage {
 
       function reportHeightChange() {
         var height = trayHeight();
-        // Zero height is the "nothing to show" verdict; the observer never issues it, so an
-        // intermediate relayout cannot collapse a feed that is already shown.
         if (height > 0) {
           post({ type: "heightChanged", height: height });
         }
@@ -198,10 +196,11 @@ internal object TempStoriesFeedMockPage {
           return;
         }
         if (SCENARIO === "EMPTY") {
-          // Targeting matched nothing: zero height is the explicit "nothing to show" verdict.
-          // Delayed like real life — the emptiness is only known after the backend answers,
-          // so the block shows its placeholder for a couple of seconds first.
-          setTimeout(function () { post({ type: "ready", height: 0 }); }, EMPTY_DELAY_MS);
+          // Targeting matched nothing. Said with its own message, never as a ready of zero
+          // height: that one means the page believes it rendered and did not. Delayed like real
+          // life — the emptiness is only known after the backend answers, so the block shows its
+          // placeholder for a couple of seconds first.
+          setTimeout(function () { post({ type: "empty" }); }, EMPTY_DELAY_MS);
           return;
         }
         if (SCENARIO === "SLOW") {

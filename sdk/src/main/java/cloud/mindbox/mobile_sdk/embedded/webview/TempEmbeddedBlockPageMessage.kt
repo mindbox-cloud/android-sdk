@@ -8,6 +8,13 @@ internal sealed class TempEmbeddedBlockPageMessage {
 
     data class HeightChanged(val heightCssPx: Double) : TempEmbeddedBlockPageMessage()
 
+    /**
+     * The page has nothing to put in the block — its targeting matched nothing, the mechanic is
+     * switched off. Said explicitly, so that it is never confused with a page that rendered
+     * nothing because it is broken.
+     */
+    data object Empty : TempEmbeddedBlockPageMessage()
+
     companion object {
 
         private const val KEY_TYPE = "type"
@@ -24,6 +31,7 @@ internal sealed class TempEmbeddedBlockPageMessage {
             when (payload.optString(KEY_TYPE)) {
                 "ready" -> height(payload)?.let { Ready(it) }
                 "heightChanged" -> height(payload)?.let { HeightChanged(it) }
+                "empty" -> Empty
                 else -> null
             }
 

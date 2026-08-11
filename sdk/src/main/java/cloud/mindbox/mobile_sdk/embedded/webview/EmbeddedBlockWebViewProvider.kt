@@ -62,16 +62,26 @@ internal class EmbeddedBlockWebViewProvider(
 
         when (message) {
             is TempEmbeddedBlockPageMessage.Ready -> applyHeight(message.heightCssPx)
-            is TempEmbeddedBlockPageMessage.HeightChanged -> applyHeight(message.heightCssPx)
+
+            is TempEmbeddedBlockPageMessage.HeightChanged -> mindboxLogI(
+                "[EmbeddedBlock] Ignored heightChanged(${message.heightCssPx}): " +
+                    "the host owns the block height",
+            )
+
+            is TempEmbeddedBlockPageMessage.Empty -> {
+                mindboxLogI("[EmbeddedBlock] Block page says it has nothing to show")
+                isReady = false
+                report(EmbeddedBlockState.Empty)
+                page.pause()
+            }
         }
     }
 
     private fun applyHeight(heightCssPx: Double) {
-        // Zero height means the page worked and its targeting matched nothing — empty, not broken.
         if (heightCssPx <= 0) {
-            mindboxLogI("[EmbeddedBlock] Block page reported zero height — nothing to show")
+            mindboxLogW("[EmbeddedBlock] Block page reported zero height in ready, treating it as broken")
             isReady = false
-            report(EmbeddedBlockState.Empty)
+            report(EmbeddedBlockState.Failed)
             page.pause()
             return
         }

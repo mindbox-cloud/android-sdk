@@ -19,7 +19,7 @@ public object TempMindboxStoriesFeedMock {
         /** The feed renders and reports its height — the happy path. */
         SUCCESS,
 
-        /** Targeting matched nothing: the page reports zero height — the empty state (hidden by default). */
+        /** Targeting matched nothing: the page says so outright — the empty state (hidden by default). */
         EMPTY,
 
         /** The page never answers: the container times out into the error state. */

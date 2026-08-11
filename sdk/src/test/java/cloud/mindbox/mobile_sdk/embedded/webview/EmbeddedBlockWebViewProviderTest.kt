@@ -75,36 +75,39 @@ class EmbeddedBlockWebViewProviderTest {
         provider.start()
         page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 104.0))
 
-        // The height is only validated (zero → Empty, implausible → Failed), never carried:
+        // The height is only validated (zero → Failed, implausible → Failed), never carried:
         // the host owns the block size.
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertNotNull(provider.contentView)
     }
 
     @Test
-    fun `heightChanged after ready keeps the block Ready`() {
+    fun `heightChanged is not a second way to say ready`() {
         provider.start()
-        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 104.0))
         page.send(TempEmbeddedBlockPageMessage.HeightChanged(heightCssPx = 150.0))
 
-        assertEquals(EmbeddedBlockState.Ready, states.last())
-    }
-
-    @Test
-    fun `a page that empties itself after being ready collapses the block`() {
-        provider.start()
-        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 104.0))
-        page.send(TempEmbeddedBlockPageMessage.HeightChanged(heightCssPx = 0.0))
-
-        // Content can disappear live (every story watched, targeting re-evaluated).
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        // The host owns the height, so this message carries nothing the native side can act on.
+        // Showing a block on it would let a page skip the readiness handshake entirely.
+        assertEquals(EmbeddedBlockState.Loading, states.last())
         assertNull(provider.contentView)
     }
 
     @Test
-    fun `zero height means nothing to show and empties the block`() {
+    fun `a relayout to zero does not collapse a block the user is looking at`() {
         provider.start()
-        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 0.0))
+        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 104.0))
+        page.send(TempEmbeddedBlockPageMessage.HeightChanged(heightCssPx = 0.0))
+
+        // A page measuring itself mid-animation reports zero and recovers a frame later; pulling
+        // the block out of the host layout for that would be a visible jump for nothing.
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertNotNull(provider.contentView)
+    }
+
+    @Test
+    fun `a page with nothing to show says so and empties the block`() {
+        provider.start()
+        page.send(TempEmbeddedBlockPageMessage.Empty)
 
         // The page worked, its targeting just matched nothing — the empty state, not a failure.
         assertEquals(EmbeddedBlockState.Empty, states.last())
@@ -114,11 +117,35 @@ class EmbeddedBlockWebViewProviderTest {
     }
 
     @Test
-    fun `a negative height is treated as nothing to show`() {
+    fun `a page that empties itself after being ready collapses the block`() {
+        provider.start()
+        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 104.0))
+        page.send(TempEmbeddedBlockPageMessage.Empty)
+
+        // Content can disappear live (every story watched, targeting re-evaluated).
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertNull(provider.contentView)
+    }
+
+    @Test
+    fun `a ready at zero height is a broken page, not an empty one`() {
+        provider.start()
+        page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = 0.0))
+
+        // The page announced it rendered and rendered nothing. Emptiness has its own message, so
+        // this is a contradiction — and a block must not pass a contradiction off as a normal
+        // outcome.
+        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertNull(provider.contentView)
+        assertEquals(1, page.pauseCount)
+    }
+
+    @Test
+    fun `a negative height is broken the same way`() {
         provider.start()
         page.send(TempEmbeddedBlockPageMessage.Ready(heightCssPx = -10.0))
 
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed, states.last())
     }
 
     @Test

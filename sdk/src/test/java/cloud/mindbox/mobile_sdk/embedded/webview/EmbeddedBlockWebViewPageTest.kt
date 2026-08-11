@@ -108,6 +108,19 @@ class EmbeddedBlockWebViewPageTest {
     }
 
     @Test
+    fun `a page can say it has nothing to show`() {
+        val page = page()
+        val received = mutableListOf<TempEmbeddedBlockPageMessage>()
+        page.onMessage = { received.add(it) }
+        page.load()
+
+        // Its own message on the wire, carrying no height: emptiness is a verdict, not a number.
+        post(bridgeOf(page)!!, """{"type":"empty"}""")
+
+        assertEquals(listOf<TempEmbeddedBlockPageMessage>(TempEmbeddedBlockPageMessage.Empty), received)
+    }
+
+    @Test
     fun `an unparsable page message is dropped`() {
         val page = page()
         val received = mutableListOf<TempEmbeddedBlockPageMessage>()
