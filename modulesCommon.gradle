@@ -46,10 +46,6 @@ android {
 
     kotlinOptions {
         jvmTarget = '11'
-        // Interface default bodies must be real JVM default methods: a Java host implementing a
-        // listener overrides only what it needs. all-compatibility keeps DefaultImpls for
-        // binary compatibility with already-published code.
-        freeCompilerArgs += ['-Xjvm-default=all-compatibility']
     }
 
     kotlin {

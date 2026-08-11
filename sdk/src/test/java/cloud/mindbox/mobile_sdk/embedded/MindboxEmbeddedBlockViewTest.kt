@@ -416,6 +416,50 @@ class MindboxEmbeddedBlockViewTest {
     }
 
     @Test
+    fun `a Kotlin host implements the interface and takes one callback of two`() {
+        // The interface bodies carry their own weight for Kotlin without any JVM-default compiler
+        // flag: the compiler fills the untouched callback in. Java is the one that needs the
+        // adapter, and this test is what keeps that difference from quietly becoming a regression.
+        val taken = mutableListOf<String>()
+        val view = attachedView()
+        view.setListener(
+            object : MindboxEmbeddedBlockListener {
+                override fun onFail(view: MindboxEmbeddedBlockView) {
+                    taken.add("fail")
+                }
+            },
+        )
+
+        provider.report(EmbeddedBlockState.Empty)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("fail"), taken)
+    }
+
+    @Test
+    fun `the adapter lets a host take one callback and ignore the other`() {
+        // What a Java host gets instead of JVM default methods: the interface members are abstract
+        // in bytecode, so overriding one of two is only possible through this class.
+        val taken = mutableListOf<String>()
+        val view = attachedView()
+        view.setListener(
+            object : MindboxEmbeddedBlockListenerAdapter() {
+                override fun onFail(view: MindboxEmbeddedBlockView) {
+                    taken.add("fail")
+                }
+            },
+        )
+
+        provider.report(EmbeddedBlockState.Empty)
+        shadowOf(Looper.getMainLooper()).idle()
+        provider.readyView = View(activity)
+        provider.report(EmbeddedBlockState.Ready)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("fail"), taken)
+    }
+
+    @Test
     fun `re-registering the same listener does not replay the outcome`() {
         val view = attachedView()
         view.setListener(listener)
