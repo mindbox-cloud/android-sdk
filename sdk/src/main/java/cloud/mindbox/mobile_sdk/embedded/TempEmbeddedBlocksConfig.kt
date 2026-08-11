@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlockUsage
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -27,6 +28,7 @@ internal data class TempEmbeddedBlocksConfig(
         private var cache: Pair<String, TempEmbeddedBlocksConfig?>? = null
 
         fun parse(rawInAppConfig: String): TempEmbeddedBlocksConfig? {
+            TempEmbeddedBlockUsage.report("temporary inlineBlocks config parser (MOBILE-344 replaces it)")
             cache?.let { (raw, parsed) -> if (raw === rawInAppConfig) return parsed }
             val parsed = parseUncached(rawInAppConfig)
             cache = rawInAppConfig to parsed

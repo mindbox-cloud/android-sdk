@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlockUsage
 import org.json.JSONObject
 
 internal sealed class TempEmbeddedBlockPageMessage {
@@ -16,6 +17,12 @@ internal sealed class TempEmbeddedBlockPageMessage {
     data object Empty : TempEmbeddedBlockPageMessage()
 
     companion object {
+
+        // On the class initializer, not on parse(): the DOM-flag protocol builds Ready directly and
+        // never parses anything, so a marker inside parse() would leave that whole path silent.
+        init {
+            TempEmbeddedBlockUsage.report("temporary page message protocol (the shared JS bridge replaces it)")
+        }
 
         private const val KEY_TYPE = "type"
         private const val KEY_HEIGHT = "height"

@@ -4,8 +4,10 @@ package cloud.mindbox.mobile_sdk.embedded.mock
 // page contract stays identical across platforms.
 internal object TempStoriesFeedMockPage {
 
-    fun html(scenario: TempMindboxStoriesFeedMock.Scenario): String =
-        PAGE_TEMPLATE.replace("__SCENARIO__", scenario.name)
+    fun html(scenario: TempMindboxStoriesFeedMock.Scenario): String {
+        TempEmbeddedBlockUsage.report("mock stories feed page served instead of a real page")
+        return PAGE_TEMPLATE.replace("__SCENARIO__", scenario.name)
+    }
 
     private val PAGE_TEMPLATE = """
     <!DOCTYPE html>

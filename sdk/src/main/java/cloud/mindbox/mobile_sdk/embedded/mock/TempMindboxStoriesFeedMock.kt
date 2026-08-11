@@ -29,5 +29,11 @@ public object TempMindboxStoriesFeedMock {
         SLOW,
     }
 
+    // On the initializer, not on the setter: the test app reads the current scenario to draw its
+    // menu, and a read is just as much proof that the switch is still wired in as a write.
+    init {
+        TempEmbeddedBlockUsage.report("mock scenario switch is wired into the host app")
+    }
+
     public var scenario: Scenario = Scenario.SUCCESS
 }

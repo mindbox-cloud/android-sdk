@@ -1,6 +1,12 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlockUsage
+
 internal object TempEmbeddedBlockPageContract {
+
+    init {
+        TempEmbeddedBlockUsage.report("temporary page bridge contract (own bridge name, not the shared one)")
+    }
 
     // Matches the iOS handler name: one page speaks to both platforms, so the name it posts to
     // cannot differ between them. Renaming it again means renaming it on iOS and in every

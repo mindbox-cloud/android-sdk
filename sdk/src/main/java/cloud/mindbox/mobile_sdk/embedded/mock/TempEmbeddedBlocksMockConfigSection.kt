@@ -21,6 +21,7 @@ internal object TempEmbeddedBlocksMockConfigSection {
         val root = JSONObject(rawConfig)
         if (root.has(TempEmbeddedBlocksConfig.SECTION_KEY)) return@runCatching rawConfig
 
+        TempEmbeddedBlockUsage.report("mock inlineBlocks section injected into the mobile config")
         val placements = JSONArray()
             // The secondary place stays on the mock page, so the harness scenario switch
             // (SUCCESS/EMPTY/ERROR/SLOW) keeps a place to drive.
