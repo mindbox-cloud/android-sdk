@@ -25,10 +25,17 @@ internal class FrequencyValidator : Validator<FrequencyDto> {
                 mindboxLogI("Current frequency is periodic, it's unit is ${item.unit} and delay is ${item.value}. It is valid = $isValid")
                 isValid
             }
+
+            is FrequencyDto.FrequencyUnlimitedDto -> {
+                val isValid = item.type == FREQUENCY_TYPE_UNLIMITED
+                mindboxLogI("Current frequency is unlimited. It is valid = $isValid")
+                isValid
+            }
         }
 
     internal companion object {
         private const val FREQUENCY_TYPE_ONCE = "once"
         private const val FREQUENCY_TYPE_PERIODIC = "periodic"
+        private const val FREQUENCY_TYPE_UNLIMITED = "unlimited"
     }
 }

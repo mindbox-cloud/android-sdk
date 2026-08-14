@@ -74,4 +74,14 @@ class FrequencyValidatorTest {
 
         assertFalse(result)
     }
+
+    @Test
+    fun `frequency unlimited is valid`() {
+        assertTrue(frequencyValidator.isValid(FrequencyDto.FrequencyUnlimitedDto(type = "unlimited")))
+    }
+
+    @Test
+    fun `frequency unlimited with wrong type value is invalid`() {
+        assertFalse(frequencyValidator.isValid(FrequencyDto.FrequencyUnlimitedDto(type = "unlim")))
+    }
 }

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers
 
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
@@ -15,4 +16,6 @@ internal interface MobileConfigSerializationManager {
     fun deserializeToInAppFormDto(inAppForm: JsonObject?): FormDto?
 
     fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto?
+
+    fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?): DisplayConditionsDto?
 }

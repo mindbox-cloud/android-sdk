@@ -45,6 +45,20 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         return result.getOrNull()
     }
 
+    override fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?): DisplayConditionsDto? {
+        if (displayConditions == null) return null
+        val result = runCatching {
+            gson.fromJson(displayConditions, DisplayConditionsDto::class.java)
+        }
+        result.exceptionOrNull()?.let { error ->
+            mindboxLogE(
+                message = "Failed to parse displayConditions $displayConditions, reading it as unrestricted",
+                exception = error
+            )
+        }
+        return result.getOrNull()
+    }
+
     override fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank? {
         val jsonObject = runCatching {
             JsonParser.parseString(inAppConfig).asJsonObject
@@ -194,6 +208,19 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                             )
                                         )
                                     ), type = PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                                )
+                            }
+
+                            is PayloadBlankDto.EmbeddedBlankDto -> {
+                                PayloadDto.EmbeddedDto(
+                                    content = PayloadDto.EmbeddedDto.ContentDto(
+                                        background = BackgroundDto(
+                                            layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
+                                                deserializeToBackgroundLayersDto(it as JsonObject)
+                                            })
+                                    ),
+                                    placeSystemName = payloadBlankDto.placeSystemName,
+                                    type = PayloadDto.EmbeddedDto.EMBEDDED_JSON_NAME
                                 )
                             }
                         }
