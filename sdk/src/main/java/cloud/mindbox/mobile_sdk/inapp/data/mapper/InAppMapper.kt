@@ -54,6 +54,7 @@ internal class InAppMapper {
         formDto: FormDto?,
         frequencyDto: FrequencyDto,
         targetingDto: TreeTargetingDto?,
+        displayConditionsDto: DisplayConditionsDto?,
     ): InAppDto {
         return inAppDtoBlank.let { inApp ->
             InAppDto(
@@ -65,6 +66,7 @@ internal class InAppMapper {
                 frequency = frequencyDto,
                 form = formDto,
                 tags = inApp.tags,
+                displayConditions = displayConditionsDto,
             )
         }
     }
@@ -229,7 +231,14 @@ internal class InAppMapper {
                     else -> error("Unknown time unit cannot be mapped. Should never happen because of validators")
                 }
             }
+
+            is FrequencyDto.FrequencyUnlimitedDto -> Frequency.Delay.Unlimited
         }
+    }
+
+    private fun mapDisplayConditions(dto: DisplayConditionsDto?): DisplayConditions? = when (dto) {
+        null -> null
+        is DisplayConditionsDto.DirectCallDto -> DisplayConditions.DIRECT_CALL
     }
 
     fun mapToInAppConfig(
@@ -261,6 +270,17 @@ internal class InAppMapper {
                                                 elements = mapElements(payloadDto.content?.elements)
                                             )
                                         }
+                                    }
+
+                                    is PayloadDto.EmbeddedDto -> {
+                                        InAppType.Embedded(
+                                            inAppId = inAppDto.id,
+                                            placeSystemName = payloadDto.placeSystemName!!.trim(),
+                                            layers = mapBackgroundLayers(
+                                                payloadDto.content?.background?.layers
+                                                    ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()
+                                            ),
+                                        )
                                     }
 
                                     is PayloadDto.SnackbarDto -> {
@@ -306,7 +326,8 @@ internal class InAppMapper {
                         minVersion = inAppDto.sdkVersion?.minVersion,
                         maxVersion = inAppDto.sdkVersion?.maxVersion,
                         frequency = Frequency(getDelay(inAppDto.frequency)),
-                        tags = inAppDto.tags?.takeIf { it.isNotEmpty() }
+                        tags = inAppDto.tags?.takeIf { it.isNotEmpty() },
+                        displayConditions = mapDisplayConditions(inAppDto.displayConditions)
                     )
                 } ?: emptyList(),
                 monitoring = inAppConfigResponse.monitoring?.map {

@@ -314,6 +314,36 @@ internal class InAppStub {
             type = "", inAppId = "", layers = listOf(), elements = listOf()
         )
 
+        fun getEmbeddedWebViewLayer() = Layer.WebViewLayer(
+            baseUrl = "https://feed.local/base",
+            contentUrl = "https://feed.local/stories.html",
+            type = "webview",
+            params = mapOf("stories" to "[{\"inAppId\":\"story-1\"}]")
+        )
+
+        fun getEmbedded() = InAppType.Embedded(
+            inAppId = "embedded-id",
+            placeSystemName = "main-screen-top",
+            layers = listOf(getEmbeddedWebViewLayer())
+        )
+
+        fun getEmbeddedDto() = PayloadDto.EmbeddedDto(
+            content = PayloadDto.EmbeddedDto.ContentDto(
+                background = BackgroundDto(
+                    layers = listOf(
+                        BackgroundDto.LayerDto.WebViewLayerDto(
+                            baseUrl = "https://feed.local/base",
+                            contentUrl = "https://feed.local/stories.html",
+                            type = "webview",
+                            params = mapOf("stories" to "[]")
+                        )
+                    )
+                )
+            ),
+            placeSystemName = "main-screen-top",
+            type = "embedded"
+        )
+
         fun getWebView() = InAppType.WebView(
             inAppId = "",
             type = "webview",
