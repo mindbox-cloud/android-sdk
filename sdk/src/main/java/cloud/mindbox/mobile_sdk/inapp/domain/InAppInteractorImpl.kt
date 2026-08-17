@@ -314,6 +314,7 @@ internal class InAppInteractorImpl(
         inAppTargetingChannel.receiveAsFlow().collect { event ->
             val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
                 .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+                .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
