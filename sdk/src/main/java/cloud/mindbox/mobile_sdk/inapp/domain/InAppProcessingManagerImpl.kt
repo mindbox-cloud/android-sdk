@@ -45,8 +45,14 @@ internal class InAppProcessingManagerImpl(
     override suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
+        selectVariant: (InApp) -> InAppType?,
     ): InApp? {
         for (inApp in inApps) {
+            val variant = selectVariant(inApp)
+            if (variant == null) {
+                mindboxLogD("Skipping inApp with id = ${inApp.id}: no variant this path can render")
+                continue
+            }
             val data = getTargetingData(triggerEvent)
             val tags = inApp.gatedTags(isTagsFeatureEnabled())
             var isTargetingErrorOccurred = false
@@ -60,7 +66,7 @@ internal class InAppProcessingManagerImpl(
                             isInAppContentFetched =
                                 inAppContentFetcher.fetchContent(
                                     inApp.id,
-                                    inApp.form.variants.first()
+                                    variant
                                 )
                         }.onFailure { throwable ->
                             when (throwable) {
@@ -133,14 +139,14 @@ internal class InAppProcessingManagerImpl(
                 }.joinAll()
             }
             mindboxLogD("loading and targeting fetching finished")
-            if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent)
+            if (isTargetingErrorOccurred) return chooseInAppToShow(inApps, triggerEvent, selectVariant)
             trackTargetingErrorIfAny(inApp, data, tags)
             if (isInAppContentFetched == false && targetingCheck) {
                 imageFetchError?.takeIf { it.shouldTrackImageDownloadError() }?.let { error ->
                     inAppFailureTracker.collectFailure(
                         inAppId = inApp.id,
                         failureReason = FailureReason.IMAGE_DOWNLOAD_FAILED,
-                        errorDetails = (error.message ?: "Image loading error") + "\n Url is ${inApp.form.variants.first().getImageUrl()}",
+                        errorDetails = (error.message ?: "Image loading error") + "\n Url is ${variant.getImageUrl()}",
                         tags = tags
                     )
                 }
@@ -154,11 +160,6 @@ internal class InAppProcessingManagerImpl(
                 mindboxLogD("Skipping inApp with id = ${inApp.id} due to targeting is false")
             }
             if (targetingCheck) {
-                sendTargetedInApp(inApp, triggerEvent)
-                inAppRepository.saveTargetedInAppWithEvent(
-                    inAppId = inApp.id,
-                    triggerEvent.hashCode()
-                )
                 inAppFailureTracker.clearFailures()
                 return inApp
             }
@@ -202,7 +203,7 @@ internal class InAppProcessingManagerImpl(
     }
 
     override fun sendTargetedInApp(inApp: InApp) {
-        logI("InApp with id = ${inApp.id} sends targeting by the checkInappsTargeting answer")
+        logI("InApp with id = ${inApp.id} sends targeting without re-checking: the selection already verified it")
         inAppRepository.sendUserTargeted(
             inAppId = inApp.id,
             tags = inApp.gatedTags(isTagsFeatureEnabled()),

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
@@ -68,8 +69,16 @@ internal class InAppFilteringManagerImpl(
         }
     }
 
-    override fun filterOutEmbeddedInApps(inApps: List<InApp>): List<InApp> =
-        inApps.filterNot { inApp -> inApp.embeddedVariants().isNotEmpty() }
+    override fun filterOutNonOverlayInApps(inApps: List<InApp>): List<InApp> =
+        inApps.filter { inApp ->
+            (inApp.firstOverlayVariant() != null).also { hasOverlayVariant ->
+                if (!hasOverlayVariant) {
+                    mindboxLogI(
+                        "InApp with id = ${inApp.id} has no variant an overlay can show, skipping it"
+                    )
+                }
+            }
+        }
 
     override fun filterOutDirectCallInApps(inApps: List<InApp>): List<InApp> =
         inApps.filterNot { inApp ->

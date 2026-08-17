@@ -35,7 +35,6 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
-import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
@@ -43,6 +42,7 @@ import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
@@ -59,6 +59,7 @@ internal class EmbeddedBlockWebViewHolder(
     private val inAppId: String,
     @Volatile private var layer: Layer.WebViewLayer,
     private val context: Context,
+    private val attemptStartedAt: Timestamp,
 ) : EmbeddedUpdatableContentProvider {
 
     override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
@@ -102,8 +103,6 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var hasPageAnswered = false
 
-    @Volatile private var contentLoadStartedAt: Timestamp? = null
-
     @Volatile private var didAccountForShow = false
 
     override fun start() {
@@ -139,8 +138,9 @@ internal class EmbeddedBlockWebViewHolder(
             return
         }
         layer = layer.copy(params = params)
-        val payload = buildParamsPayload(params)
         Mindbox.mindboxScope.launch {
+            val configuration: Configuration = DbManager.listenConfigurations().first()
+            val payload = startPayload(configuration)
             val isUpdated = runCatching {
                 withTimeoutOrNull(Constants.WebView.readyTimeout.interval) {
                     sendActionAndAwaitResponse(
@@ -276,22 +276,34 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleReadyAction(configuration: Configuration): String {
         hasPageAnswered = true
-        return DataCollector(
-            appContext = appContext,
-            sessionStorageManager = sessionStorageManager,
-            permissionManager = permissionManager,
-            gson = gson,
-            configuration = configuration,
-            params = layer.params,
-            inAppInsets = InAppInsets(),
-            inAppId = inAppId,
-        ).get()
+        return startPayload(configuration)
     }
 
+    private fun startPayload(configuration: Configuration): String = DataCollector(
+        appContext = appContext,
+        sessionStorageManager = sessionStorageManager,
+        permissionManager = permissionManager,
+        gson = gson,
+        configuration = configuration,
+        params = layer.params,
+        inAppInsets = InAppInsets(),
+        inAppId = inAppId,
+    ).get()
+
     private suspend fun handleCheckInappsTargetingAction(message: BridgeMessage.Request): String {
-        val requestedIds = runCatching {
-            gson.fromJson(message.payload, InAppIdsPayload::class.java).inappIds.orEmpty()
-        }.getOrDefault(emptyList())
+        val askedIds = runCatching {
+            gson.fromJson(message.payload, JsonObject::class.java)?.get("inappIds") as? JsonArray
+        }.getOrNull() ?: throw IllegalArgumentException("no 'inappIds' array in the payload")
+        val requestedIds = askedIds.mapNotNull { element ->
+            runCatching { element.asJsonPrimitive.takeIf { primitive -> primitive.isString }?.asString }
+                .getOrNull()
+        }
+        if (requestedIds.size != askedIds.size()) {
+            mindboxLogE(
+                "[EmbeddedBlock] ${askedIds.size() - requestedIds.size} of ${askedIds.size()} " +
+                    "asked ids are not strings, skipping them"
+            )
+        }
         val showableIds = inAppInteractor.filterShowableInAppIds(requestedIds)
         mindboxLogI(
             "[EmbeddedBlock] checkInappsTargeting: ${requestedIds.size} id(s) asked, " +
@@ -332,9 +344,7 @@ internal class EmbeddedBlockWebViewHolder(
     private fun accountForShow() {
         if (didAccountForShow) return
         didAccountForShow = true
-        val timeToDisplay = contentLoadStartedAt
-            ?.let { start -> timeProvider.elapsedSince(start) }
-            ?: Milliseconds(0L)
+        val timeToDisplay = timeProvider.elapsedSince(attemptStartedAt)
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
                 inAppInteractor.recordBlockShow(inAppId, timeToDisplay, gatedTags())
@@ -354,7 +364,6 @@ internal class EmbeddedBlockWebViewHolder(
         }
         lastLoadedContent = content
         hasPageAnswered = false
-        contentLoadStartedAt = timeProvider.currentTimestamp()
         controller.loadContent(content)
     }
 
@@ -496,16 +505,6 @@ internal class EmbeddedBlockWebViewHolder(
     private fun gatedTags(): Map<String, String>? = sessionStorageManager.currentSessionInApps
         .firstOrNull { inApp -> inApp.id == inAppId }
         ?.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-
-    private fun buildParamsPayload(params: Map<String, String>): String {
-        val payload = JsonObject()
-        params.forEach { (key, value) ->
-            DataCollector.Provider.jsonStructureOrString(value).get()?.let { element ->
-                payload.add(key, element)
-            }
-        }
-        return gson.toJson(payload)
-    }
 
     private data class InAppIdsPayload(
         @SerializedName("inappIds")

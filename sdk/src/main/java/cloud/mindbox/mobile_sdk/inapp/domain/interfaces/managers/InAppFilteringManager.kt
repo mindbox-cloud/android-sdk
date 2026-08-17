@@ -19,7 +19,7 @@ internal interface InAppFilteringManager {
 
     fun filterEmbeddedInAppsByPlace(inApps: List<InApp>, placeSystemName: String): List<InApp>
 
-    fun filterOutEmbeddedInApps(inApps: List<InApp>): List<InApp>
+    fun filterOutNonOverlayInApps(inApps: List<InApp>): List<InApp>
 
     fun filterOutDirectCallInApps(inApps: List<InApp>): List<InApp>
 }

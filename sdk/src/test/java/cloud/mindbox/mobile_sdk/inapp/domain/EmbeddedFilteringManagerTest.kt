@@ -54,12 +54,29 @@ class EmbeddedFilteringManagerTest {
     }
 
     @Test
-    fun `overlay path never sees in-apps with an embedded variant`() {
+    fun `overlay path never sees in-apps with no overlay variant`() {
         val modal = modalInApp()
 
-        val result = manager.filterOutEmbeddedInApps(listOf(embeddedInApp(), modal))
+        val result = manager.filterOutNonOverlayInApps(listOf(embeddedInApp(), modal))
 
         assertEquals(listOf(modal), result)
+    }
+
+    @Test
+    fun `mixed form stays on the overlay path thanks to its overlay variant`() {
+        val mixed = InAppStub.getInApp().copy(
+            id = "mixed",
+            form = Form(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = "mixed", placeSystemName = "main-screen-top"),
+                    InAppStub.getModalWindow().copy(inAppId = "mixed")
+                )
+            )
+        )
+
+        val result = manager.filterOutNonOverlayInApps(listOf(mixed))
+
+        assertEquals(listOf(mixed), result)
     }
 
     @Test

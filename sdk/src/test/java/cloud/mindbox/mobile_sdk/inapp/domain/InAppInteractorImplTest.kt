@@ -238,6 +238,35 @@ class InAppInteractorImplTest {
     }
 
     @Test
+    fun `event winner sends its targeting and records the event`() = runTest {
+        val winner = InAppStub.getInApp().copy(
+            id = "winner",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getModalWindow().copy(inAppId = "winner"))
+            )
+        )
+        coEvery { mobileConfigRepository.getInAppsSection() } returns listOf(winner)
+        every { inAppFilteringManager.filterUnShownInAppsByEvent(any(), any()) } returns listOf(winner)
+        every { inAppFilteringManager.filterOutNonOverlayInApps(any()) } answers { firstArg() }
+        every { inAppFilteringManager.filterOutDirectCallInApps(any()) } answers { firstArg() }
+        coEvery { inAppFrequencyManager.filterInAppsFrequency(any()) } answers { firstArg() }
+        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } returns winner
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+
+        interactor.processEventAndConfig().test {
+            awaitItem()
+            coVerify(exactly = 1) {
+                inAppProcessingManager.sendTargetedInApp(winner, InAppEventType.AppStartup)
+            }
+            verify(exactly = 1) {
+                inAppRepository.saveTargetedInAppWithEvent(winner.id, InAppEventType.AppStartup.hashCode())
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `areShowAndFrequencyLimitsAllowed returns true when all checks pass for non-priority in-app`() {
         val testInApp = InAppStub.getInApp().copy(isPriority = false)
 

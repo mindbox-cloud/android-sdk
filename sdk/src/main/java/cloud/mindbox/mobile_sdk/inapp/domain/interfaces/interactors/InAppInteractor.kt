@@ -94,7 +94,7 @@ internal interface InAppInteractor {
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
-    fun saveInAppDismissTime()
+    fun saveInAppDismissTime(inApp: InApp)
 
     fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean
 

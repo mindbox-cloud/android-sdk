@@ -71,7 +71,7 @@ class EmbeddedBlockContentControllerTest {
         EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = configTimeout,
-            providerFactory = { FakeProvider().also { createdProviders.add(it) } },
+            providerFactory = { _, _ -> FakeProvider().also { createdProviders.add(it) } },
             blocksRegistry = { blocksRegistry },
         ).apply {
             onStateChange = { state -> states.add(state) }
@@ -223,7 +223,7 @@ class EmbeddedBlockContentControllerTest {
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
             readyTimeout = Milliseconds(7_000L),
-            providerFactory = { silentProvider },
+            providerFactory = { _, _ -> silentProvider },
             blocksRegistry = { blocksRegistry },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()
@@ -232,6 +232,92 @@ class EmbeddedBlockContentControllerTest {
         idleFor(Duration.ofMillis(7_001L))
 
         assertEquals(EmbeddedBlockState.Failed, states.last())
+    }
+
+    @Test
+    fun `config clock counts only the time the block is on screen`() {
+        val controller = controller(configTimeout = Milliseconds(30_000L))
+        controller.start()
+        idleFor(Duration.ofSeconds(20))
+        controller.pause()
+        // Off screen the clock stands still, however long the block stays there.
+        idleFor(Duration.ofSeconds(20))
+        controller.start()
+
+        idleFor(Duration.ofSeconds(9))
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Empty })
+
+        idleFor(Duration.ofSeconds(2))
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+    }
+
+    @Test
+    fun `page budget is not refilled by re-entering the screen`() {
+        val silentProvider = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+
+            override fun start() = Unit // never reports anything
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            readyTimeout = Milliseconds(7_000L),
+            providerFactory = { _, _ -> silentProvider },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        idleFor(Duration.ofSeconds(5))
+        controller.pause()
+        controller.start()
+
+        // 5 of the 7 seconds are already spent: flicking the screen hands back the remainder,
+        // not the whole budget.
+        idleFor(Duration.ofSeconds(1))
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        idleFor(Duration.ofMillis(1_100L))
+        assertEquals(EmbeddedBlockState.Failed, states.last())
+    }
+
+    @Test
+    fun `non-positive config timeout falls back to the default`() {
+        val controller = controller(configTimeout = Milliseconds(0L))
+        controller.start()
+
+        idleFor(Duration.ofMillis(29_999L))
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Empty })
+
+        idleFor(Duration.ofMillis(2L))
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+    }
+
+    @Test
+    fun `provider is built with the attempt start, not the delivery moment`() {
+        var clock = 1_000L
+        var receivedStart: Long? = null
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, attemptStartedAt ->
+                receivedStart = attemptStartedAt.ms
+                FakeProvider()
+            },
+            blocksRegistry = { blocksRegistry },
+            now = { cloud.mindbox.mobile_sdk.models.Timestamp(clock) },
+        ).apply { onStateChange = { state -> states.add(state) } }
+
+        controller.start()
+        // The place answers five seconds later; the wait belongs to timeToDisplay.
+        clock = 6_000L
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(1_000L, receivedStart)
     }
 
     @Test
@@ -267,7 +353,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { updatableProvider },
+            providerFactory = { _, _ -> updatableProvider },
             blocksRegistry = { blocksRegistry },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()
@@ -282,11 +368,67 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `same winner pointing at another page rebuilds the content`() {
+        // The address is part of the page's identity: the backend re-pointing the same in-app at
+        // another page must not be deduplicated into keeping the old one.
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        val first = createdProviders.single()
+
+        val movedLayer = (content.layers.single() as Layer.WebViewLayer)
+            .copy(contentUrl = "https://static.example/another-page.html")
+        blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(movedLayer)))
+
+        assertEquals(2, createdProviders.size)
+        assertEquals(1, first.releaseCount)
+    }
+
+    @Test
+    fun `new params with a new page address rebuild instead of updating in place`() {
+        class RecordingUpdatableProvider : EmbeddedUpdatableContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+            var updatedParams: Map<String, String>? = null
+
+            override fun start() {
+                onStateChange?.invoke(EmbeddedBlockState.Ready)
+            }
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+
+            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+                updatedParams = params
+                onResult(true)
+            }
+        }
+
+        val updatables = mutableListOf<RecordingUpdatableProvider>()
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, _ -> RecordingUpdatableProvider().also { updatables.add(it) } },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        val movedLayer = (content.layers.single() as Layer.WebViewLayer)
+            .copy(contentUrl = "https://static.example/another-page.html", params = mapOf("stories" to "[]"))
+        blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(movedLayer)))
+
+        assertEquals(2, updatables.size)
+        assertEquals(null, updatables.first().updatedParams)
+    }
+
+    @Test
     fun `nameless block collapses to empty`() {
         val controller = EmbeddedBlockContentController(
             placeSystemName = null,
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { FakeProvider() },
+            providerFactory = { _, _ -> FakeProvider() },
             blocksRegistry = { blocksRegistry },
         ).apply { onStateChange = { state -> states.add(state) } }
 
@@ -319,7 +461,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { error("factory boom") },
+            providerFactory = { _, _ -> error("factory boom") },
             blocksRegistry = { blocksRegistry },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()
@@ -344,7 +486,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { crashingProvider },
+            providerFactory = { _, _ -> crashingProvider },
             blocksRegistry = { blocksRegistry },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()

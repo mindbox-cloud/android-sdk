@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.mockk.coEvery
@@ -88,6 +89,7 @@ class EmbeddedBlockWebViewHolderTest {
             inAppId = "embedded-id",
             layer = InAppStub.getEmbeddedWebViewLayer(),
             context = application,
+            attemptStartedAt = Timestamp(0L),
         )
         holder.onStateChange = { state -> states.add(state) }
     }
@@ -192,6 +194,30 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `checkInappsTargeting without an inappIds array is refused with an error`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "checkInappsTargeting", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+
+        // A refusal the page can retry, not an empty answer it would take for the truth.
+        assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any()) }
+    }
+
+    @Test
+    fun `checkInappsTargeting skips non-string ids and answers the rest`() {
+        coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1")) } returns listOf("story-1")
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1",7]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("story-1", lastOutgoingPayload()!!.getAsJsonArray("inappIds").get(0).asString)
+    }
+
+    @Test
     fun `contentRendered with positive count switches state to Ready and counts the show`() {
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
@@ -267,7 +293,15 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
         val outgoing = lastOutgoingMessage()!!
-        assertTrue(lastOutgoingPayload()!!.get("stories").isJsonArray)
+        // The push carries the whole start payload — the same envelope `ready` is answered with —
+        // not only the params (contract shared with iOS).
+        val payload = lastOutgoingPayload()!!
+        assertTrue(payload.get("stories").isJsonArray)
+        assertEquals(
+            "story-2",
+            payload.getAsJsonArray("stories").get(0).asJsonObject.get("inAppId").asString
+        )
+        assertEquals("endpoint-id", payload.get("endpointId").asString)
 
         // The page answers success — the very same webview keeps living.
         postFromPage(

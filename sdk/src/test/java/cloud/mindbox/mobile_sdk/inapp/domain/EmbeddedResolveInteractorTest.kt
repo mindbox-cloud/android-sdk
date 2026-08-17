@@ -35,6 +35,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import java.util.concurrent.ConcurrentHashMap
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -105,11 +106,13 @@ class EmbeddedResolveInteractorTest {
         every { timeProvider.currentTimestamp() } returns now
         every { inAppRepository.getShownInApps() } returns emptyMap()
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+        every { sessionStorageManager.placeTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
         every { maxInappsPerSessionLimitChecker.check() } returns true
         every { maxInappsPerDayLimitChecker.check() } returns true
         every { minIntervalBetweenShowsLimitChecker.check() } returns true
         coEvery { inAppABTestLogic.getInAppsPool(any()) } answers { firstArg<List<String>>().toSet() }
-        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any()) } answers {
+        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } answers {
             firstArg<List<InApp>>().firstOrNull()
         }
     }
@@ -127,6 +130,18 @@ class EmbeddedResolveInteractorTest {
 
     private fun modalInApp(id: String = "modal-id"): InApp =
         InAppStub.getInApp().copy(id = id, targeting = InAppStub.getTargetingTrueNode())
+
+    private fun mixedInApp(id: String = "mixed-id", placeName: String = place): InApp =
+        InAppStub.getInApp().copy(
+            id = id,
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = Form(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = id, placeSystemName = placeName),
+                    InAppStub.getModalWindow().copy(inAppId = id)
+                )
+            )
+        )
 
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
@@ -272,13 +287,60 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `selectInAppForPlace sends targeting for the winner it hands out`() = runTest {
+        givenConfig(embeddedInApp())
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) {
+            inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" })
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends the winner targeting once per session`() = runTest {
+        givenConfig(embeddedInApp())
+
+        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals("embedded-id", first?.inAppId)
+        assertEquals("embedded-id", second?.inAppId)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends no targeting for a winner the show limits block`() = runTest {
+        givenConfig(embeddedInApp())
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+
+        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+
+        every { maxInappsPerSessionLimitChecker.check() } returns true
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `place resolve with an operation trigger dedups with the pull`() = runTest {
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
     fun `selectInAppForPlace passes the push trigger to the selection`() = runTest {
         givenConfig(embeddedInApp())
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
 
         interactor.selectInAppForPlace(place, triggerEvent = operation)
 
-        coVerify { inAppProcessingManager.chooseInAppToShow(any(), operation) }
+        coVerify { inAppProcessingManager.chooseInAppToShow(any(), operation, any()) }
     }
 
     @Test
@@ -509,8 +571,28 @@ class EmbeddedResolveInteractorTest {
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
         verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
         verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
-        // The overlay show moves the cooldown whatever its frequency — it interrupted the user.
+        // Unlimited is outside the show accounting in both directions: the cooldown stays put too.
+        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime moves the cooldown for a counted in-app`() {
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+
+        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"))
+
         verify { inAppRepository.saveInAppStateChangeTime(now) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime leaves the cooldown alone for unlimited`() {
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+
+        interactor.saveInAppDismissTime(
+            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
+        )
+
+        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
     }
 
     @Test
@@ -572,7 +654,7 @@ class EmbeddedResolveInteractorTest {
             awaitComplete()
         }
         // No resolve happens on the domain side — the controller runs it through its dedup.
-        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any()) }
+        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) }
     }
 
     @Test
@@ -585,17 +667,19 @@ class EmbeddedResolveInteractorTest {
         interactor.listenEmbeddedPlaceEvents().test {
             awaitComplete()
         }
-        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any()) }
+        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) }
     }
 
     @Test
-    fun `overlay path never sees embedded or directCall in-apps`() = runTest {
+    fun `overlay path cuts embedded-only and directCall but keeps a mixed form`() = runTest {
         // The step of the plan that touches the common show path: the event chain gets the two
-        // new filters, and the ordinary in-app still goes through (paired regression).
+        // new filters, the ordinary in-app still goes through, and a mixed form survives thanks
+        // to its overlay variant (in sync with iOS).
         val embedded = embeddedInApp()
         val direct = modalInApp(id = "direct").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         val ordinary = modalInApp(id = "ordinary")
-        givenConfig(embedded, direct, ordinary)
+        val mixed = mixedInApp()
+        givenConfig(embedded, direct, ordinary, mixed)
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
 
         interactor.processEventAndConfig().test {
@@ -604,7 +688,26 @@ class EmbeddedResolveInteractorTest {
         }
 
         coVerify {
-            inAppProcessingManager.chooseInAppToShow(listOf(ordinary), InAppEventType.AppStartup)
+            inAppProcessingManager.chooseInAppToShow(listOf(ordinary, mixed), InAppEventType.AppStartup, any())
         }
+    }
+
+    @Test
+    fun `selectInAppForPlace hands out the embedded variant of a mixed form`() = runTest {
+        givenConfig(mixedInApp())
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals("mixed-id", content?.inAppId)
+        assertEquals(place, content?.placeSystemName)
+    }
+
+    @Test
+    fun `filterShowableInAppIds keeps an id whose form also has an overlay variant`() = runTest {
+        givenConfig(mixedInApp())
+
+        val result = interactor.filterShowableInAppIds(listOf("mixed-id"))
+
+        assertEquals(listOf("mixed-id"), result)
     }
 }

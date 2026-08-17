@@ -25,6 +25,8 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.countsShows
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.allAllow
@@ -80,16 +82,22 @@ internal class InAppInteractorImpl(
             }.map { event ->
                 val triggerTimeMillis = timeProvider.currentTimestamp()
                 val candidates = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
-                    .let { inAppFilteringManager.filterOutEmbeddedInApps(it) }
+                    .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
                 val inApp: InApp? = chooseAmongCandidates(
                     logLabel = "Event '${event.name}'",
                     candidates = candidates,
-                    triggerEvent = event
-                ).also {
-                    inAppTargetingChannel.send(event)
-                    if (event == InAppEventType.AppStartup) {
-                        InitializeLock.complete(InitializeLock.State.APP_STARTED)
-                    }
+                    triggerEvent = event,
+                    selectVariant = { candidate -> candidate.firstOverlayVariant() }
+                )?.also { winner ->
+                    inAppProcessingManager.sendTargetedInApp(winner, event)
+                    inAppRepository.saveTargetedInAppWithEvent(
+                        inAppId = winner.id,
+                        event.hashCode()
+                    )
+                }
+                inAppTargetingChannel.send(event)
+                if (event == InAppEventType.AppStartup) {
+                    InitializeLock.complete(InitializeLock.State.APP_STARTED)
                 }
                 inApp?.let {
                     sessionStorageManager.inAppTriggerEvent = event
@@ -116,7 +124,12 @@ internal class InAppInteractorImpl(
         val winner = chooseAmongCandidates(
             logLabel = "Place '$requestedPlace'",
             candidates = candidates,
-            triggerEvent = triggerEvent
+            triggerEvent = triggerEvent,
+            selectVariant = { candidate ->
+                candidate.form.variants
+                    .filterIsInstance<InAppType.Embedded>()
+                    .firstOrNull { variant -> variant.placeSystemName == requestedPlace }
+            }
         )
             ?: run {
                 logI("Place '$requestedPlace': nothing to show")
@@ -126,6 +139,14 @@ internal class InAppInteractorImpl(
         if (!areShowLimitsAllowed(winner)) {
             logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
             return null
+        }
+        // Place resolves repeat for reasons that offer nothing new — the block reappears, a config
+        // lands, an operation passes by — so the winner is offered once per session, and only once
+        // it has actually been given the place (after the limits).
+        if (sessionStorageManager.placeTargetingReportedInSession.add(winner.id)) {
+            inAppProcessingManager.sendTargetedInApp(winner)
+        } else {
+            logI("Place '$requestedPlace': in-app ${winner.id} already sent its targeting this session")
         }
         return winner.form.variants
             .filterIsInstance<InAppType.Embedded>()
@@ -139,11 +160,12 @@ internal class InAppInteractorImpl(
         logLabel: String,
         candidates: List<InApp>,
         triggerEvent: InAppEventType,
+        selectVariant: (InApp) -> InAppType?,
     ): InApp? {
         val showable = inAppFilteringManager.filterOutDirectCallInApps(candidates)
             .let { inAppFrequencyManager.filterInAppsFrequency(it) }
         logI("$logLabel: ${showable.size} candidate(s) after filtering: ${showable.map { it.id }}")
-        return inAppProcessingManager.chooseInAppToShow(showable.sortByPriority(), triggerEvent)
+        return inAppProcessingManager.chooseInAppToShow(showable.sortByPriority(), triggerEvent, selectVariant)
     }
 
     override fun listenConfigUpdates(): Flow<Unit> = mobileConfigRepository.listenConfigUpdates()
@@ -191,8 +213,8 @@ internal class InAppInteractorImpl(
                 logI("Requested id $id is not in the config (or filtered by sdkVersion/ab-tests), cutting it")
                 return@filter false
             }
-            if (inApp.form.variants.any { variant -> variant is InAppType.Embedded }) {
-                logI("Requested id $id points to an embedded in-app, cutting it (no feed inside a feed)")
+            if (inApp.firstOverlayVariant() == null) {
+                logI("Requested id $id has no overlay variant to draw, cutting it (no feed inside a feed)")
                 return@filter false
             }
             if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) {
@@ -262,13 +284,16 @@ internal class InAppInteractorImpl(
                 return
             }
         recordShowCounters(inApp, timeStamp.toTimestamp())
-        // The cooldown measures how often the SDK interrupts on its own, so only an overlay show
-        // moves it: a block interrupts nothing, it is drawn where the host app put it.
-        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
+        // The cooldown measures how often the SDK interrupts on its own. Only an overlay show
+        // moves it (a block interrupts nothing), and an unlimited show does not move it either —
+        // unlimited is outside the show accounting in both directions.
+        if (inApp.countsShows()) {
+            inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
+        }
     }
 
     private fun recordShowCounters(inApp: InApp, shownAt: Timestamp) {
-        if (inApp.frequency.delay is Frequency.Delay.Unlimited) {
+        if (!inApp.countsShows()) {
             logI("In-app ${inApp.id} has unlimited frequency, nothing to count")
             return
         }
@@ -311,9 +336,13 @@ internal class InAppInteractorImpl(
         return inAppRepository.isTimeDelayInapp(inAppId)
     }
 
-    override fun saveInAppDismissTime() {
+    override fun saveInAppDismissTime(inApp: InApp) {
         val timeStamp = timeProvider.currentTimestamp()
         mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
+        if (!inApp.countsShows()) {
+            logI("In-app ${inApp.id} is unlimited, the dismiss does not move the cooldown")
+            return
+        }
         inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
     }
 }

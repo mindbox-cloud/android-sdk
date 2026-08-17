@@ -27,6 +27,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
      * operation ships once per session whatever the frequency.
      */
     val blockShowsReportedInSession: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    val placeTargetingReportedInSession: MutableSet<String> = ConcurrentHashMap.newKeySet()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -91,6 +92,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         operationalInApps.clear()
         inAppMessageShownInSession.clear()
         blockShowsReportedInSession.clear()
+        placeTargetingReportedInSession.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

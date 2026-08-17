@@ -45,7 +45,9 @@ import kotlin.math.abs
  *
  * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
  * The block owns its behavior too — visible while loading and while showing content, `GONE`
- * when the place ends up without content, unless [setErrorView] keeps it in place.
+ * when the place ends up without content, unless [setErrorView] keeps it in place. A block that
+ * has collapsed does not reopen its space for the retry's placeholder — only content expands it
+ * back, so the host layout is not jerked on every pass across the screen.
  * [setListener] only observes: callbacks arrive after the block already acted.
  */
 public class MindboxEmbeddedBlockView internal constructor(
@@ -55,7 +57,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
         configTimeout = readConfigTimeout(context, attrs),
-        providerFactory = { content -> EmbeddedBlockContentFactory.createProvider(context, content) },
+        providerFactory = { content, attemptStartedAt ->
+            EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
+        },
     ),
 ) : FrameLayout(context, attrs) {
 
@@ -88,6 +92,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private var deliveredEvent: BlockEvent? = null
     private var isDeliveryScheduled = false
+    private var hasCollapsed = false
     private var shownContent: View? = null
     private var isContentStarted = false
     private var observedLifecycle: Lifecycle? = null
@@ -276,7 +281,13 @@ public class MindboxEmbeddedBlockView internal constructor(
     private fun applyDefaultVisibility(state: EmbeddedBlockState) {
         val isVisible = when {
             state.nothingToShow -> hasCustomErrorView
+            state is EmbeddedBlockState.Loading -> !hasCollapsed
             else -> true
+        }
+        hasCollapsed = when {
+            state is EmbeddedBlockState.Ready -> false
+            state.nothingToShow -> !isVisible
+            else -> hasCollapsed
         }
         visibility = if (isVisible) VISIBLE else GONE
         loggingRunCatching { visibilityObserver?.invoke(isVisible) }

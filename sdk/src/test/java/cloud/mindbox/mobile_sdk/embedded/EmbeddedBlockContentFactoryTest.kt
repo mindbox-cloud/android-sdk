@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedBlockWebViewHolder
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,6 +18,7 @@ class EmbeddedBlockContentFactoryTest {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded(),
+            attemptStartedAt = Timestamp(0L),
         )
 
         assertTrue(provider is EmbeddedBlockWebViewHolder)
@@ -27,6 +29,7 @@ class EmbeddedBlockContentFactoryTest {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded().copy(layers = emptyList()),
+            attemptStartedAt = Timestamp(0L),
         )
 
         assertNull(provider)

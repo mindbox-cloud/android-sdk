@@ -20,6 +20,7 @@ import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -301,6 +302,20 @@ internal inline fun <reified T> Gson.fromJsonTyped(json: String): T? =
 internal fun List<InApp>.sortByPriority(): List<InApp> {
     return this.sortedByDescending { it.isPriority }
 }
+
+/**
+ * The first variant that can be shown over the app's own screen, or `null` when the form has none.
+ * An embedded variant is drawn inside the host layout and gets its content by place instead.
+ */
+internal fun InApp.firstOverlayVariant(): InAppType? =
+    form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+
+/**
+ * Whether shows of this in-app are written down: the show history, the session list and the
+ * cooldown all exist to hold shows back, and an `unlimited` in-app is outside that accounting in
+ * both directions — it records nothing, and nothing recorded restrains it.
+ */
+internal fun InApp.countsShows(): Boolean = frequency.delay !is Frequency.Delay.Unlimited
 
 /**
  * Tags to attach to operations emitted by this in-app: [InApp.tags] when non-empty and the tags

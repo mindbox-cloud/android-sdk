@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -90,9 +91,9 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                val inAppMessage = inApp.form.variants.firstOrNull()
+                val inAppMessage = inApp.firstOverlayVariant()
                 if (inAppMessage == null) {
-                    mindboxLogI("InApp ${inApp.id} has no variants to show. Skipping.")
+                    mindboxLogI("InApp ${inApp.id} has no variant an overlay can show. Skipping.")
                     return@withContext
                 }
 
@@ -111,7 +112,7 @@ internal class InAppMessageManagerImpl(
                             handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)
                         }
                         override val onInAppDismiss = OnInAppDismiss {
-                            inAppInteractor.saveInAppDismissTime()
+                            inAppInteractor.saveInAppDismissTime(inApp)
                         }
                     }
                 )
