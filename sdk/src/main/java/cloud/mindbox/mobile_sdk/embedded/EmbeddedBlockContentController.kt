@@ -336,7 +336,7 @@ internal class EmbeddedBlockContentController(
         fun sanitizedConfigTimeout(requested: Milliseconds, place: String?): Milliseconds {
             if (requested.interval > 0) return requested
             mindboxLogE(
-                "[EmbeddedBlock] Block for place '$place' was given configTimeout " +
+                "[EmbeddedBlock] Block for place '$place' was given timeout " +
                     "${requested.interval}ms: it must be positive, using the default " +
                     "${Constants.Embedded.defaultConfigTimeout.interval}ms"
             )

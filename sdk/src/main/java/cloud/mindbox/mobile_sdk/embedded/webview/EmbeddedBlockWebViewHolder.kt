@@ -314,27 +314,50 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
-        val count = runCatching {
-            JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD).getInt("count")
-        }.getOrNull() ?: run {
-            mindboxLogE("[EmbeddedBlock] contentRendered without a readable count, treating as broken")
-            inAppFailureTracker.sendFailureWithContext(
-                inAppId = inAppId,
-                failureReason = FailureReason.PRESENTATION_FAILED,
-                errorDescription = "The embedded block page reported contentRendered without a readable count",
-                tags = null
-            )
-            report(EmbeddedBlockState.Failed)
-            return BridgeMessage.EMPTY_PAYLOAD
-        }
+        val raw: Any? = runCatching {
+            JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD).get("count")
+        }.getOrNull()
+        // A count of items the page drew, not the size of a collection: a fraction or a negative
+        // number is a page bug, and rounding or hiding one would decide the block's fate on the
+        // page's behalf — the refusal is what lands the bug in the metrics instead of passing
+        // for an empty feed.
+        val number = raw as? Number
+            ?: throw refusedContentReport("missing or non-numeric 'count'")
+        val count = number.toWholeIntOrNull()
+            ?: throw refusedContentReport("'count' must be a whole number of items, got $number")
+        if (count < 0) throw refusedContentReport("'count' must not be negative, got $count")
         mindboxLogI("[EmbeddedBlock] Page rendered $count feed element(s)")
-        if (count <= 0) {
+        if (count == 0) {
             report(EmbeddedBlockState.Empty)
             return BridgeMessage.EMPTY_PAYLOAD
         }
         report(EmbeddedBlockState.Ready)
         accountForShow()
         return BridgeMessage.EMPTY_PAYLOAD
+    }
+
+    /** JS numbers arrive as [Int] or [Double]; a whole [Double] is still a count of items. */
+    private fun Number.toWholeIntOrNull(): Int? = when (this) {
+        is Int -> this
+        is Double -> toInt().takeIf { whole -> whole.toDouble() == this }
+        else -> null
+    }
+
+    /**
+     * `contentRendered` is the page's only statement about itself, so an unusable one leaves a
+     * reserved space nobody can vouch for: the block fails, the backend hears why, and the thrown
+     * refusal reaches the page as an error response instead of a success it would take for the truth.
+     */
+    private fun refusedContentReport(reason: String): Throwable {
+        mindboxLogE("[EmbeddedBlock] contentRendered refused: $reason")
+        inAppFailureTracker.sendFailureWithContext(
+            inAppId = inAppId,
+            failureReason = FailureReason.PRESENTATION_FAILED,
+            errorDescription = "The embedded block page reported contentRendered with an unusable payload: $reason",
+            tags = null
+        )
+        report(EmbeddedBlockState.Failed)
+        return IllegalArgumentException(reason)
     }
 
     /**
@@ -448,7 +471,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         val responsePayload: String = handlers.handleRequest(message)
             .getOrElse { error ->
-                mindboxLogW("[EmbeddedBlock] Unsupported page action ${message.action}: ${error.message}")
+                mindboxLogW("[EmbeddedBlock] Page action ${message.action} was refused: ${error.message}")
                 sendErrorResponse(message, error, controller)
                 return
             }

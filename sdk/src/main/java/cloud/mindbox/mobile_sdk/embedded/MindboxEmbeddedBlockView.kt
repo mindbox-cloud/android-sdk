@@ -355,12 +355,12 @@ private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String?
 
 private fun readConfigTimeout(context: Context, attrs: AttributeSet?): Milliseconds =
     loggingRunCatching(defaultValue = Constants.Embedded.defaultConfigTimeout) {
-        val default = context.resources.getInteger(R.integer.mindbox_embedded_block_config_timeout_ms)
+        val default = context.resources.getInteger(R.integer.mindbox_embedded_block_timeout_ms)
         if (attrs == null) return@loggingRunCatching Milliseconds(default.toLong())
         val values = context.obtainStyledAttributes(attrs, R.styleable.MindboxEmbeddedBlockView)
         try {
             Milliseconds(
-                values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxConfigTimeoutMs, default).toLong()
+                values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxTimeoutMs, default).toLong()
             )
         } finally {
             values.recycle()

@@ -2,5 +2,5 @@
 <resources>
     <!-- How long an embedded block waits for the mobile config before collapsing to the
          empty state. Hosts override it by redefining a resource with the same name. -->
-    <integer name="mindbox_embedded_block_config_timeout_ms">30000</integer>
+    <integer name="mindbox_embedded_block_timeout_ms">30000</integer>
 </resources>

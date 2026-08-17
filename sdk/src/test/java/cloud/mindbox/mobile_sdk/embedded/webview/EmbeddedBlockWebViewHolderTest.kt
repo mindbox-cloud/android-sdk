@@ -243,7 +243,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `contentRendered without a readable count fails the block and reports the failure`() {
+    fun `contentRendered without a readable count fails the block and refuses the page`() {
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
 
@@ -251,6 +251,43 @@ class EmbeddedBlockWebViewHolderTest {
 
         await { states.lastOrNull() == EmbeddedBlockState.Failed }
         coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
+        // The page must hear the refusal too: a success response would pass for the truth.
+        assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+    }
+
+    @Test
+    fun `contentRendered with a negative count fails the block instead of passing for empty`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":-1}"""))
+
+        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
+        assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+    }
+
+    @Test
+    fun `contentRendered with a fractional count is refused rather than rounded`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2.5}"""))
+
+        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
+        assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+    }
+
+    @Test
+    fun `contentRendered with a whole double count is a valid report`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":3.0}"""))
+
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        coVerify(timeout = 5_000L) { inAppInteractor.recordBlockShow("embedded-id", any(), any()) }
     }
 
     @Test
