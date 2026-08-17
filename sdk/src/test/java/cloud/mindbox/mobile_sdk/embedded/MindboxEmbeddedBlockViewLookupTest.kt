@@ -48,19 +48,34 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `a block created before the config arrived keeps waiting instead of collapsing`() {
+    fun `a block created before the config arrived holds the placeholder within the timeout`() {
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
         val listener = RecordingListener()
         view.setListener(listener)
 
         attach(view)
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(30L))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
 
         // No config yet is not an empty place: the block holds its placeholder and stays silent
-        // rather than burning its one public failure on a slow start-up.
+        // for as long as the config timeout allows.
         assertEquals(View.VISIBLE, view.visibility)
         assertTrue(listener.events.isEmpty())
         assertEquals("main-screen-top", view.placeSystemName)
+    }
+
+    @Test
+    fun `no config within the timeout collapses the block to empty`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        // 30 seconds without a config → Empty (a collapse, not a failure state); a late config
+        // would still expand the block because the registration survives.
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
     }
 
     @Test

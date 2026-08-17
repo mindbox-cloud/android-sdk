@@ -2,5 +2,6 @@
 <resources>
     <declare-styleable name="MindboxEmbeddedBlockView">
         <attr name="mindboxPlaceSystemName" format="string" />
+        <attr name="mindboxConfigTimeoutMs" format="integer" />
     </declare-styleable>
 </resources>

@@ -202,6 +202,13 @@ internal class InAppMessageViewDisplayerImpl(
                 inAppImageSizeStorage = inAppImageSizeStorage,
                 isFirstShow = !isRestored
             )
+
+            is InAppType.Embedded -> {
+                mindboxLogW(
+                    "Embedded in-app ${wrapper.inAppType.inAppId} must never be shown as an overlay, skipping"
+                )
+                return
+            }
         }
 
         currentActivity?.root?.let { root ->

@@ -19,6 +19,8 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
 
@@ -26,8 +28,8 @@ import kotlin.math.abs
  * A drop-in container for an embedded Mindbox block.
  *
  * The host marks a *place* by [placeSystemName] and never learns what goes into it — the mobile
- * config decides through its `inlineBlocks` section and can change it without an app release.
- * Blocks sharing a place work independently.
+ * config decides through an in-app with an `embedded` form variant bound to that place, and can
+ * change it without an app release. Blocks sharing a place work independently.
  *
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
@@ -51,8 +53,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     attrs: AttributeSet?,
     placeSystemName: String?,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
-        resolveFactory = { EmbeddedBlockContentFactory.resolve(context, placeSystemName.orNullIfBlank()) },
         placeSystemName = placeSystemName.orNullIfBlank(),
+        configTimeout = readConfigTimeout(context, attrs),
+        providerFactory = { content -> EmbeddedBlockContentFactory.createProvider(context, content) },
     ),
 ) : FrameLayout(context, attrs) {
 
@@ -338,3 +341,17 @@ private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String?
         values.recycle()
     }
 }
+
+private fun readConfigTimeout(context: Context, attrs: AttributeSet?): Milliseconds =
+    loggingRunCatching(defaultValue = Constants.Embedded.defaultConfigTimeout) {
+        val default = context.resources.getInteger(R.integer.mindbox_embedded_block_config_timeout_ms)
+        if (attrs == null) return@loggingRunCatching Milliseconds(default.toLong())
+        val values = context.obtainStyledAttributes(attrs, R.styleable.MindboxEmbeddedBlockView)
+        try {
+            Milliseconds(
+                values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxConfigTimeoutMs, default).toLong()
+            )
+        } finally {
+            values.recycle()
+        }
+    }
