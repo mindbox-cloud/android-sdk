@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -26,8 +27,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
      * [inAppMessageShownInSession]: that one is not written for `unlimited`, while the show
      * operation ships once per session whatever the frequency.
      */
-    val blockShowsReportedInSession: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    val placeTargetingReportedInSession: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    val blockShowsReportedInSession: MutableSet<String> = newConcurrentSet()
+    val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED

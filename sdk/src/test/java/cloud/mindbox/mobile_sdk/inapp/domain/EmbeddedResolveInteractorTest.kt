@@ -287,6 +287,27 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `targeting catch-up never covers in-apps without an overlay variant`() = runTest {
+        // A pure-embedded in-app gets its targeting from the place resolve; the catch-up
+        // covering it too would double the funnel on every matching operation. A mixed form
+        // stays covered — the catch-up speaks for its overlay half.
+        val pureEmbedded = embeddedInApp(id = "pure-embedded")
+        val mixed = mixedInApp(id = "mixed")
+        givenConfig(pureEmbedded, mixed)
+        coEvery { inAppRepository.getTargetedInApps() } returns emptyMap()
+        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+
+        interactor.processEventAndConfig().test { cancelAndIgnoreRemainingEvents() }
+        val job = launch { interactor.listenToTargetingEvents() }
+        advanceUntilIdle()
+        job.cancel()
+
+        coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(pureEmbedded, any()) }
+        coVerify(atLeast = 1) { inAppProcessingManager.sendTargetedInApp(mixed, any()) }
+    }
+
+    @Test
     fun `selectInAppForPlace sends targeting for the winner it hands out`() = runTest {
         givenConfig(embeddedInApp())
 

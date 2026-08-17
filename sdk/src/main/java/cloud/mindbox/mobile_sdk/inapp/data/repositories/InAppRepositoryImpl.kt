@@ -11,13 +11,13 @@ import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
@@ -45,15 +45,15 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveTargetedInAppWithEvent(inAppId: String, eventHashcode: Int) {
-        sessionStorageManager.shownInAppIdsWithEvents.compute(inAppId) { _, events ->
-            (events ?: ConcurrentHashMap.newKeySet<Int>()).apply { add(eventHashcode) }
-        }
+        sessionStorageManager.shownInAppIdsWithEvents
+            .getOrPut(inAppId) { newConcurrentSet() }
+            .add(eventHashcode)
     }
 
     override fun saveUnShownOperationalInApp(operation: String, inApp: InApp) {
-        sessionStorageManager.unShownOperationalInApps.compute(operation) { _, inApps ->
-            (inApps ?: CopyOnWriteArrayList()).apply { add(inApp) }
-        }
+        sessionStorageManager.unShownOperationalInApps
+            .getOrPut(operation) { CopyOnWriteArrayList() }
+            .add(inApp)
     }
 
     override fun getUnShownOperationalInAppsByOperation(operation: String): List<InApp> {
@@ -61,9 +61,9 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
-        sessionStorageManager.operationalInApps.compute(operation) { _, inApps ->
-            (inApps ?: CopyOnWriteArrayList()).apply { add(inApp) }
-        }
+        sessionStorageManager.operationalInApps
+            .getOrPut(operation) { CopyOnWriteArrayList() }
+            .add(inApp)
     }
 
     override fun getOperationalInAppsByOperation(operation: String): List<InApp> {

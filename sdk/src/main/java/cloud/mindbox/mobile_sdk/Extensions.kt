@@ -42,8 +42,10 @@ import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.net.URLEncoder
 import java.nio.charset.Charset
+import java.util.Collections
 import java.util.Queue
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
 internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingRunCatching(
@@ -316,6 +318,9 @@ internal fun InApp.firstOverlayVariant(): InAppType? =
  * both directions — it records nothing, and nothing recorded restrains it.
  */
 internal fun InApp.countsShows(): Boolean = frequency.delay !is Frequency.Delay.Unlimited
+
+internal fun <T> newConcurrentSet(): MutableSet<T> =
+    Collections.newSetFromMap(ConcurrentHashMap())
 
 /**
  * Tags to attach to operations emitted by this in-app: [InApp.tags] when non-empty and the tags
