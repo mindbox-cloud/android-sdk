@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import kotlinx.coroutines.Dispatchers
 
@@ -36,6 +38,17 @@ internal fun PresentationModule(
     override val clipboardManager: ClipboardManager by lazy {
         ClipboardManagerImpl(context = appContext)
     }
+
+    private val embeddedBlocksRegistryLazy: Lazy<EmbeddedBlocksRegistry> = lazy {
+        EmbeddedBlocksRegistryImpl(inAppInteractor = inAppInteractor)
+    }
+
+    override val embeddedBlocksRegistry: EmbeddedBlocksRegistry
+        get() = embeddedBlocksRegistryLazy.value
+
+    override val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
+        get() = embeddedBlocksRegistryLazy.takeIf { registry -> registry.isInitialized() }?.value
+
     override val activityManager: ActivityManager by lazy {
         ActivityManagerImpl(callbackInteractor = callbackInteractor, context = appContext)
     }

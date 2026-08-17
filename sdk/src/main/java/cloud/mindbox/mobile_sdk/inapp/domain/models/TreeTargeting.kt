@@ -19,6 +19,11 @@ internal sealed interface TargetingData {
     }
 }
 
+internal class TargetingDataWrapper(
+    override val triggerEventName: String,
+    override val operationBody: String? = null,
+) : TargetingData.OperationName, TargetingData.OperationBody
+
 internal interface TargetingInfo {
     suspend fun fetchTargetingInfo(data: TargetingData)
 

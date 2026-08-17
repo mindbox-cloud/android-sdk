@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
@@ -56,6 +57,10 @@ internal interface PresentationModule : MindboxModule {
     val inAppMessageManager: InAppMessageManager
     val clipboardManager: ClipboardManager
     val activityManager: ActivityManager
+    val embeddedBlocksRegistry: EmbeddedBlocksRegistry
+
+    /** The registry only if a block has already asked for it — never creates one. */
+    val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
 }
 
 internal interface DataModule : MindboxModule {
@@ -113,6 +118,7 @@ internal interface DataModule : MindboxModule {
     val inAppConfigTtlValidator: InAppConfigTtlValidator
     val frequencyDataFiller: FrequencyDataFiller
     val frequencyValidator: FrequencyValidator
+    val embeddedVariantValidator: EmbeddedVariantValidator
     val migrationManager: MigrationManager
     val timeProvider: SystemTimeProvider
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator

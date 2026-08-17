@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.os.Handler
 import android.os.Looper
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -35,7 +36,8 @@ internal interface EmbeddedBlocksRegistry {
 
 internal class EmbeddedBlocksRegistryImpl(
     private val inAppInteractor: InAppInteractor,
-    private val scopeProvider: () -> CoroutineScope,
+    // Read on every use, never captured: the SDK scope is recreated on a soft reinitialization.
+    private val scopeProvider: () -> CoroutineScope = { Mindbox.mindboxScope },
 ) : EmbeddedBlocksRegistry {
 
     private val handlesByPlace = mutableMapOf<String, MutableList<EmbeddedBlockHandle>>()

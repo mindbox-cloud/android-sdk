@@ -319,6 +319,7 @@ internal fun InAppType.getImageUrl(): String? {
         is InAppType.WebView -> this.layers
         is InAppType.ModalWindow -> this.layers
         is InAppType.Snackbar -> this.layers
+        is InAppType.Embedded -> this.layers
     }
         .filterIsInstance<Layer.ImageLayer>()
         .firstOrNull()
