@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors
 
+import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import kotlinx.coroutines.flow.Flow
 
@@ -8,7 +11,56 @@ internal interface InAppInteractor {
 
     suspend fun listenToTargetingEvents()
 
-    fun setInAppShown(inAppId: String)
+    /**
+     * Emits after every parsed config update — unlike the raw preference flow, this fires only
+     * when the new config is actually applied, so a re-resolve never reads the previous one.
+     */
+    fun listenConfigUpdates(): Flow<Unit>
+
+    /**
+     * Resolves content for an embedded place through the common selection (A/B pool, place,
+     * `directCall`, frequency, priority, targeting) plus the show limits — the display style
+     * does not change "when to show". Only the `isInAppActive` lock and the delayed queue stay
+     * out: those are overlay machinery. The pull side passes
+     * [InAppEventType.EmbeddedPlaceRequested] as [triggerEvent]; the push side passes the
+     * matched operation. Suspends until the config arrives.
+     */
+    suspend fun selectInAppForPlace(
+        placeSystemName: String,
+        triggerEvent: InAppEventType,
+    ): InAppType.Embedded?
+
+    /**
+     * Content of the in-app with [inAppId] for a direct call: no restriction — frequency,
+     * limits, `displayConditions`, targeting, the A/B pool — is checked. A drawn circle must
+     * open. Returns `null` only for an unknown id, an id filtered out by `sdkVersion`, or an
+     * embedded in-app (never shown as an overlay). The show itself counts via [recordShowLocally].
+     */
+    suspend fun getInAppById(inAppId: String): InAppType?
+
+    /**
+     * The push side of the blocks registry: every **live** operation (the replay cache is
+     * deliberately skipped — "the operation is happening right now") that matches the
+     * operation-targeting of an embedded in-app is emitted as a place-event candidate. No
+     * resolve happens here: the registry intersects candidates with its block list and runs
+     * the same place resolve with the operation as the trigger, so pull and push share one
+     * dedup. An operation with no embedded candidates emits nothing and costs no network.
+     */
+    fun listenEmbeddedPlaceEvents(): Flow<EmbeddedPlaceEvent>
+
+    /**
+     * The single place where stories are cut: the answer to the page's `checkInappsTargeting`.
+     * Keeps the ids whose in-apps exist in the version- and A/B-filtered list, pass the
+     * frequency rule (an exhausted non-unlimited story loses its circle, `unlimited` always
+     * passes — decision 17.08), match targeting (no network fetches — the page waits
+     * 3 seconds) and are not embedded. `directCall` and the show limits are deliberately not
+     * checked: a drawn circle must open.
+     *
+     * Every id kept sends `Inapp.Targeting` with every answer, deliberately without a dedup —
+     * the story funnel counts the proposed circles, not the opened ones (decision 16.08); the
+     * tap ships only `Inapp.Show`.
+     */
+    suspend fun filterShowableInAppIds(inAppIds: List<String>): List<String>
 
     suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>>
 
@@ -18,6 +70,15 @@ internal interface InAppInteractor {
         timeToDisplay: String,
         tags: Map<String, String>?
     )
+
+    /**
+     * Records a show that has already happened into the local stores only — the session list,
+     * the show history and the shared cooldown — and never sends an `Inapp.Show` operation.
+     * `unlimited` frequency writes nothing: it has no counter to keep, and the show budgets
+     * must stay untouched for it. Used by the paths that show without asking first: the
+     * embedded block once its content is rendered, and the page's direct `showInApp`.
+     */
+    suspend fun recordShowLocally(inAppId: String)
 
     fun sendInAppClicked(inAppId: String, tags: Map<String, String>?)
 
@@ -30,4 +91,6 @@ internal interface InAppInteractor {
     fun saveInAppDismissTime()
 
     fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean
+
+    fun areShowLimitsAllowed(inApp: InApp): Boolean
 }

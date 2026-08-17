@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -271,6 +272,30 @@ class InAppInteractorImplTest {
         assertEquals(true, result)
 
         verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed lets an unlimited in-app skip the show limits entirely`() {
+        // The unlimited rule, second half (iOS decision 14.08, mirrored): unlimited neither
+        // writes the show records nor obeys the limits — session, day and interval are not
+        // even checked for it.
+        val testInApp = InAppStub.getInApp().copy(
+            isPriority = false,
+            frequency = Frequency(Frequency.Delay.Unlimited)
+        )
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { maxInappsPerDayLimitChecker.check() } returns false
+        every { minIntervalBetweenShowsLimitChecker.check() } returns false
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(true, result)
         verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
         verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
         verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }

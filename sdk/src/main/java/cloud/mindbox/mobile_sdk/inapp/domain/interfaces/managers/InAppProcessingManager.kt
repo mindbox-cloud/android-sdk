@@ -8,4 +8,7 @@ internal interface InAppProcessingManager {
     suspend fun chooseInAppToShow(inApps: List<InApp>, triggerEvent: InAppEventType): InApp?
 
     suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType)
+
+    /** Sends `Inapp.Targeting` without re-checking anything: the caller has already matched targeting. */
+    fun sendTargetedInApp(inApp: InApp)
 }

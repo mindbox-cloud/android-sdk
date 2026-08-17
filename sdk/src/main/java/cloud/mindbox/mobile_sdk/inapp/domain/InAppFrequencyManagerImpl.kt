@@ -44,6 +44,11 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                             "Result of checking whether we can show inapp ${inApp.id} in the current session = ${!result} "
                     )
                 }
+
+                Frequency.Delay.Unlimited -> {
+                    mindboxLogI("InApp with id = ${inApp.id} has unlimited frequency. Frequency does not restrict it")
+                    true
+                }
             }
         }
     }

@@ -201,6 +201,14 @@ internal class InAppProcessingManagerImpl(
         }
     }
 
+    override fun sendTargetedInApp(inApp: InApp) {
+        logI("InApp with id = ${inApp.id} sends targeting by the checkInappsTargeting answer")
+        inAppRepository.sendUserTargeted(
+            inAppId = inApp.id,
+            tags = inApp.gatedTags(isTagsFeatureEnabled()),
+        )
+    }
+
     private fun getTargetingData(triggerEvent: InAppEventType): TargetingData {
         val ordinalEvent = triggerEvent as? InAppEventType.OrdinalEvent
 
@@ -269,9 +277,4 @@ internal class InAppProcessingManagerImpl(
             }
         }
     }
-
-    private class TargetingDataWrapper(
-        override val triggerEventName: String,
-        override val operationBody: String? = null,
-    ) : TargetingData.OperationName, TargetingData.OperationBody
 }
