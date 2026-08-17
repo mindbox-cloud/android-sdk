@@ -627,6 +627,108 @@ class MindboxEmbeddedBlockViewTest {
 
     @OptIn(InternalMindboxApi::class)
     @Test
+    fun `a block the host keeps hidden does not start when it goes on screen`() {
+        mockkObject(MindboxEventManager)
+        try {
+            every { MindboxEventManager.embeddedPlaceRequested(any()) } just Runs
+            val view = blockView()
+
+            // The wrapper's screen is not the one in front of the user: in Flutter the block still
+            // lands in the one window the app has.
+            view.setHostVisible(false)
+            attach(view)
+
+            assertEquals(0, provider.startCount)
+            // And the place is not asked for content either — an unseen screen must not show up in
+            // the in-app pipeline as a block the user was offered.
+            verify(exactly = 0) { MindboxEventManager.embeddedPlaceRequested(any()) }
+        } finally {
+            unmockkObject(MindboxEventManager)
+        }
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `a block the host shows again starts its content`() {
+        val view = blockView()
+        view.setHostVisible(false)
+        attach(view)
+
+        view.setHostVisible(true)
+
+        assertEquals(1, provider.startCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `the host hiding the block pauses its content`() {
+        val view = attachedView()
+
+        view.setHostVisible(false)
+
+        assertEquals(1, provider.pauseCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `both sources have to agree before the content runs`() {
+        val view = blockView()
+
+        // The wrapper says the block is shown, but it is on no screen at all yet.
+        view.setHostVisible(false)
+        view.setHostVisible(true)
+
+        assertEquals(0, provider.startCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `a window coming back does not start a block the host keeps hidden`() {
+        val view = attachedView()
+        view.setHostVisible(false)
+
+        dispatchWindowVisibility(view, View.GONE)
+        dispatchWindowVisibility(view, View.VISIBLE)
+
+        // Only the start from the attach — the window is no longer the only one who knows whether
+        // anybody is looking.
+        assertEquals(1, provider.startCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `repeating the host visibility changes nothing`() {
+        val view = attachedView()
+
+        view.setHostVisible(false)
+        view.setHostVisible(false)
+
+        assertEquals(1, provider.pauseCount)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `the waiting budget stands still while the host keeps the block hidden`() {
+        val view = attachedView(Milliseconds(1_000L))
+        view.setListener(listener)
+
+        view.setHostVisible(false)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_000L))
+
+        // A block nobody looks at cannot be late: it must not collapse before the user gets to it.
+        assertTrue(listener.events.isEmpty())
+        assertEquals(View.VISIBLE, view.visibility)
+
+        view.setHostVisible(true)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1_100L))
+
+        // Shown again, it is on the clock as usual — the budget was paused, not switched off.
+        assertEquals(listOf("fail"), listener.events)
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
     fun `release frees the content through the controller`() {
         val view = attachedView()
         (view.parent as LinearLayout).removeView(view)

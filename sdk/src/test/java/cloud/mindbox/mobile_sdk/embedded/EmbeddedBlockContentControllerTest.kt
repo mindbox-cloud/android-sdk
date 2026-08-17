@@ -505,6 +505,31 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a paused budget resumes from its remainder instead of starting over`() {
+        val provider = FakeProvider()
+        val controller = controller(timeout = Milliseconds(1_000L)) { content(provider) }
+        controller.start()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(600L))
+
+        controller.pause()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_000L))
+
+        // Nobody was looking, so the block did not give up while it was off screen…
+        assertTrue(states.none { it is EmbeddedBlockState.Failed })
+
+        controller.start()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(300L))
+
+        // …and what it spent on screen before that stays spent: 900ms of the budget are gone. A host
+        // wrapper that hides and shows the block on every screen change cannot extend the wait for
+        // good by handing it a fresh budget each time.
+        assertTrue(states.none { it is EmbeddedBlockState.Failed })
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200L))
+        assertEquals(EmbeddedBlockState.Failed, states.last())
+    }
+
+    @Test
     fun `the same loading state is not reported twice`() {
         val provider = FakeProvider()
         val controller = controller { content(provider) }

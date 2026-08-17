@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
@@ -33,9 +34,20 @@ internal class EmbeddedBlockContentController(
     private var isStarted = false
     private var isReleased = false
     private var isSessionListenerRegistered = false
-    private var isTimeoutScheduled = false
     private var lastReportedState: EmbeddedBlockState? = null
     private var configJob: Job? = null
+
+    /** How much of the waiting budget the past stretches of waiting have spent. */
+    private var consumedTimeout = 0L
+
+    /**
+     * When the running stretch of the count started. Null — the count is not running, and that is
+     * also what tells a paused budget from a running one.
+     *
+     * On the same clock as [Handler.postDelayed]: both ignore deep sleep, so the bookkeeping here
+     * cannot drift away from the scheduler it accounts for.
+     */
+    private var timeoutResumedAt: Long? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val timeoutRunnable = Runnable { onReadyTimeout() }
@@ -72,22 +84,23 @@ internal class EmbeddedBlockContentController(
 
     fun pause() {
         isStarted = false
-        cancelTimeout()
+        pauseTimeout()
         provider?.pause()
     }
 
     fun release() {
         isStarted = false
         isReleased = true
-        cancelTimeout()
+        resetTimeout()
         unregisterSessionListener()
         stopWaitingForConfig()
         dropProvider()
     }
 
     private fun report(state: EmbeddedBlockState) {
-        // Any answer from the page settles the budget, including one the container already knows.
-        if (state !is EmbeddedBlockState.Loading) cancelTimeout()
+        // Any answer from the page settles the budget, including one the container already knows:
+        // this attempt is over, and whatever comes next starts counting from scratch.
+        if (state !is EmbeddedBlockState.Loading) resetTimeout()
         // A page reports its height on every relayout, and each of those arrives as another
         // Ready. Repeating a state the container is already in is pure churn.
         if (state == lastReportedState) return
@@ -95,20 +108,47 @@ internal class EmbeddedBlockContentController(
         onStateChange?.invoke(state)
     }
 
+    /** Starts, or continues, the count for whatever is left of the budget. */
     private fun scheduleTimeout() {
-        if (isTimeoutScheduled) return
-        isTimeoutScheduled = true
-        mainHandler.postDelayed(timeoutRunnable, readyTimeout.interval)
+        if (timeoutResumedAt != null) return
+        timeoutResumedAt = SystemClock.uptimeMillis()
+        mainHandler.postDelayed(timeoutRunnable, remainingTimeout)
     }
 
-    private fun cancelTimeout() {
-        if (!isTimeoutScheduled) return
-        isTimeoutScheduled = false
+    /**
+     * Stops the count and remembers what it has spent: the attempt is not cancelled, and the next
+     * [scheduleTimeout] continues it from the remainder.
+     *
+     * What is counted is the user's waiting time, not calendar time — a block nobody looks at cannot
+     * be late. But the pause does not hand the budget back either: a host wrapper that hides and
+     * shows the block on every screen change would otherwise grant it a whole new budget each time,
+     * and a page that never answers would keep the host layout waiting for good — exactly what the
+     * budget exists to prevent.
+     */
+    private fun pauseTimeout() {
+        val resumedAt = timeoutResumedAt ?: return
+        timeoutResumedAt = null
+        consumedTimeout += (SystemClock.uptimeMillis() - resumedAt).coerceAtLeast(0L)
         mainHandler.removeCallbacks(timeoutRunnable)
     }
 
+    /**
+     * Stops the count and restores the whole budget: the attempt it belonged to is over — with an
+     * outcome, or because the next one is replacing it — and its leftovers have nothing to do with
+     * whatever comes next.
+     */
+    private fun resetTimeout() {
+        pauseTimeout()
+        consumedTimeout = 0L
+    }
+
+    private val remainingTimeout: Long
+        get() = (readyTimeout.interval - consumedTimeout).coerceAtLeast(0L)
+
     private fun onReadyTimeout() {
-        isTimeoutScheduled = false
+        timeoutResumedAt = null
+        // Spent in full: should anything schedule the count again, there is nothing left to wait for.
+        consumedTimeout = readyTimeout.interval
         if (!isStarted || provider == null) return
         mindboxLogW(
             "[EmbeddedBlock] Page for '$placeSystemName' stayed silent for " +
@@ -120,7 +160,9 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun dropProvider() {
-        cancelTimeout()
+        // The content that spent the budget is going away, so the page taking its place gets a whole
+        // one rather than its predecessor's leftovers.
+        resetTimeout()
         provider?.release()
         provider = null
     }

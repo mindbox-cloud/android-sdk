@@ -87,6 +87,13 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var isDeliveryScheduled = false
     private var shownContent: View? = null
     private var isContentStarted = false
+
+    /** What the window callbacks last said. Attached and visible is the only combination that counts. */
+    private var isWindowVisible = false
+
+    /** Whether the host wrapper still shows the block. Nobody says otherwise until a wrapper does. */
+    private var isHostVisible = true
+
     private var observedLifecycle: Lifecycle? = null
 
     private val hostDestroyObserver = object : DefaultLifecycleObserver {
@@ -156,23 +163,58 @@ public class MindboxEmbeddedBlockView internal constructor(
         visibilityObserver = observer
     }
 
+    /**
+     * Tells the block whether the host wrapper still shows it — a second source for the same input as
+     * window visibility: the content runs while the window is visible **and** the wrapper says so.
+     *
+     * For wrappers whose whole app lives in one window. In Flutter every screen shares it, so leaving
+     * a screen never takes the block out of the window: the block would keep waiting — and spending
+     * its waiting budget — on a screen nobody is looking at, and could collapse before the user ever
+     * reached it. `true` until a wrapper says otherwise, so a host that never calls this sees nothing
+     * change.
+     *
+     * The semantics are exactly those of the window going away and coming back: a pause, not a reset.
+     * A block hidden mid-load keeps the page it has and the remainder of its budget; shown again, it
+     * counts that remainder down instead of starting the budget anew.
+     */
+    @InternalMindboxApi
+    public fun setHostVisible(visible: Boolean) {
+        if (isHostVisible == visible) return
+        isHostVisible = visible
+        mindboxLogI(
+            "[EmbeddedBlock] Block (place='$placeSystemName') was " +
+                "${if (visible) "shown" else "hidden"} by the host wrapper",
+        )
+        updateContentActivity()
+    }
+
     private val hasCustomErrorView: Boolean
         get() = errorView != null
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         observeHostDestruction()
-        if (windowVisibility == VISIBLE) startContent()
+        isWindowVisible = windowVisibility == VISIBLE
+        updateContentActivity()
     }
 
     override fun onDetachedFromWindow() {
-        pauseContent()
+        // Said explicitly rather than read back from `isAttachedToWindow`: the framework clears that
+        // only after this call returns, so asking it here would answer that the view is still up.
+        isWindowVisible = false
+        updateContentActivity()
         super.onDetachedFromWindow()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (visibility == VISIBLE) startContent() else pauseContent()
+        isWindowVisible = visibility == VISIBLE
+        updateContentActivity()
+    }
+
+    /** One switch out of two sources: nobody looks at the block unless both of them agree. */
+    private fun updateContentActivity() {
+        if (isWindowVisible && isHostVisible) startContent() else pauseContent()
     }
 
     private fun startContent() {
