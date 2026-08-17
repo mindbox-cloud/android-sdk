@@ -53,6 +53,9 @@ class InAppSegmentationRepositoryTest {
     fun onTestStart() {
         mockkObject(DbManager)
         mockkObject(MindboxPreferences)
+        // The fetch pre-checks the latched status under its mutex before going to the network.
+        every { sessionStorageManager.customerSegmentationFetchStatus } returns
+            CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     }
 
     @Test

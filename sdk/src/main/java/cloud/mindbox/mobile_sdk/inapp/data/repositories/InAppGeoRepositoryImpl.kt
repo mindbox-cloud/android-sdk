@@ -12,6 +12,8 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class InAppGeoRepositoryImpl(
     private val context: Context,
@@ -21,7 +23,12 @@ internal class InAppGeoRepositoryImpl(
     private val gatewayManager: GatewayManager
 ) : InAppGeoRepository {
 
-    override suspend fun fetchGeo() {
+    private val geoMutex = Mutex()
+
+    override suspend fun fetchGeo() = geoMutex.withLock {
+        if (sessionStorageManager.geoFetchStatus == GeoFetchStatus.GEO_FETCH_SUCCESS) {
+            return@withLock
+        }
         val configuration = DbManager.listenConfigurations().first()
         val geoTargeting = inAppMapper.mapGeoTargetingDtoToGeoTargeting(
             geoTargetingDto = gatewayManager.checkGeoTargeting(

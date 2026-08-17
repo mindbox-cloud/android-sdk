@@ -53,6 +53,7 @@ internal class InAppGeoRepositoryTest {
 
     @Before
     fun onTestStart() {
+        every { sessionStorageManager.geoFetchStatus } returns GeoFetchStatus.GEO_NOT_FETCHED
         mockkObject(DbManager)
         mockkObject(MindboxPreferences)
         every {

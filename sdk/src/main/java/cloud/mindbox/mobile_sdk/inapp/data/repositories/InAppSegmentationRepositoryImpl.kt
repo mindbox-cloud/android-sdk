@@ -12,6 +12,8 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class InAppSegmentationRepositoryImpl(
     private val inAppMapper: InAppMapper,
@@ -19,7 +21,14 @@ internal class InAppSegmentationRepositoryImpl(
     private val gatewayManager: GatewayManager,
 ) : InAppSegmentationRepository {
 
-    override suspend fun fetchCustomerSegmentations() {
+    private val customerSegmentationsMutex = Mutex()
+
+    override suspend fun fetchCustomerSegmentations() = customerSegmentationsMutex.withLock {
+        if (sessionStorageManager.customerSegmentationFetchStatus ==
+            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        ) {
+            return@withLock
+        }
         if (sessionStorageManager.currentSessionInApps.isEmpty()) {
             MindboxLoggerImpl.d(
                 this,
@@ -27,7 +36,7 @@ internal class InAppSegmentationRepositoryImpl(
             )
             sessionStorageManager.customerSegmentationFetchStatus =
                 CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-            return
+            return@withLock
         }
         MindboxLoggerImpl.d(
             this,
@@ -44,6 +53,7 @@ internal class InAppSegmentationRepositoryImpl(
             inAppMapper.mapToSegmentationCheck(response)
         sessionStorageManager.customerSegmentationFetchStatus =
             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        return@withLock
     }
 
     override suspend fun fetchProductSegmentation(

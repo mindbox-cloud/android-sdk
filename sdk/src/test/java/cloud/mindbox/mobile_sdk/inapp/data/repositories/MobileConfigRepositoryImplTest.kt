@@ -36,7 +36,7 @@ internal class MobileConfigRepositoryImplTest {
         repository.getInApps(configBlank)
 
         val slot = slot<TimeSpan>()
-        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), capture(slot), any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), capture(slot), any(), any(), any(), any()) }
         assertEquals("00:30:00", slot.captured.value)
     }
 
@@ -47,7 +47,7 @@ internal class MobileConfigRepositoryImplTest {
 
         repository.getInApps(configBlank)
 
-        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any(), any()) }
     }
 
     @Test
@@ -57,7 +57,7 @@ internal class MobileConfigRepositoryImplTest {
 
         repository.getInApps(configBlank)
 
-        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any(), any()) }
     }
 
     @Test
@@ -67,7 +67,7 @@ internal class MobileConfigRepositoryImplTest {
 
         repository.getInApps(configBlank)
 
-        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any(), any()) }
     }
 
     private fun createRepository(): MobileConfigRepositoryImpl {

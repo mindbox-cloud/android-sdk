@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.ConcurrentHashMap
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
@@ -53,11 +54,11 @@ class InAppRepositoryTest {
         val newInApp = InAppStub.getInApp().copy(id = "newInAppId")
         val existingInApp = InAppStub.getInApp().copy(id = "existingId")
         val expectedList = mutableListOf(existingInApp, newInApp)
-        every { sessionStorageManager.unShownOperationalInApps } returns hashMapOf(
+        every { sessionStorageManager.unShownOperationalInApps } returns ConcurrentHashMap(mapOf(
             testOperation to mutableListOf(
                 existingInApp
             )
-        )
+        ))
         inAppRepository.saveUnShownOperationalInApp(testOperation, newInApp)
         assertEquals(expectedList, sessionStorageManager.unShownOperationalInApps[testOperation])
     }
@@ -67,7 +68,7 @@ class InAppRepositoryTest {
         val testOperation = "testOperation"
         val newInApp = InAppStub.getInApp().copy(id = "newInAppId")
         val expectedList = mutableListOf(newInApp)
-        every { sessionStorageManager.unShownOperationalInApps } returns hashMapOf()
+        every { sessionStorageManager.unShownOperationalInApps } returns ConcurrentHashMap()
         inAppRepository.saveUnShownOperationalInApp(testOperation, newInApp)
         assertEquals(expectedList, sessionStorageManager.unShownOperationalInApps[testOperation])
     }
@@ -112,7 +113,7 @@ class InAppRepositoryTest {
         every { MindboxPreferences.shownInApps = any() } just runs
         every {
             inAppSerializationManager.deserializeToShownInAppsMap(any())
-        } returns hashMapOf()
+        } returns ConcurrentHashMap()
 
         // Call the method under test
         inAppRepository.saveShownInApp(id, timeStamp)
@@ -290,5 +291,90 @@ class InAppRepositoryTest {
         verify(exactly = 1) {
             inAppSerializationManager.serializeToShownInAppsString(match { it[inAppId] == expectedTimestamps })
         }
+    }
+
+    @Test
+    fun `concurrent saveShownInApp does not lose a write`() {
+        // Embedded blocks count shows concurrently (one per place). saveShownInApp is a
+        // read-modify-write over one preference: without synchronization the last writer
+        // erases the other block's entry — caught live on the emulator (14.08).
+        val currentTime = System.currentTimeMillis()
+        var stored = ""
+        val gson = com.google.gson.Gson()
+        every { timeProvider.currentTimeMillis() } returns currentTime
+        every { MindboxPreferences.shownInApps } answers { stored }
+        every { MindboxPreferences.shownInApps = any() } answers { stored = firstArg() }
+        every { inAppSerializationManager.deserializeToShownInAppsMap(any()) } answers {
+            val raw = firstArg<String>()
+            if (raw.isBlank()) {
+                hashMapOf()
+            } else {
+                gson.fromJson(raw, object : com.google.gson.reflect.TypeToken<Map<String, List<Long>>>() {}.type)
+            }
+        }
+        every { inAppSerializationManager.serializeToShownInAppsString(any<Map<String, List<Long>>>()) } answers {
+            gson.toJson(firstArg<Map<String, List<Long>>>())
+        }
+
+        val ids = (1..8).map { index -> "in-app-$index" }
+        val threads = ids.map { id ->
+            Thread { inAppRepository.saveShownInApp(id, currentTime) }
+        }
+        threads.forEach { thread -> thread.start() }
+        threads.forEach { thread -> thread.join() }
+
+        val result = inAppSerializationManager.deserializeToShownInAppsMap(stored)
+        assertEquals(ids.toSet(), result.keys)
+    }
+
+    @Test
+    fun `concurrent saveUnShownOperationalInApp does not lose a write`() {
+        val operation = "testOperation"
+        every { sessionStorageManager.unShownOperationalInApps } returns ConcurrentHashMap()
+
+        val inApps = (1..8).map { index -> InAppStub.getInApp().copy(id = "in-app-$index") }
+        val threads = inApps.map { inApp ->
+            Thread { inAppRepository.saveUnShownOperationalInApp(operation, inApp) }
+        }
+        threads.forEach { thread -> thread.start() }
+        threads.forEach { thread -> thread.join() }
+
+        assertEquals(
+            inApps.map { inApp -> inApp.id }.toSet(),
+            sessionStorageManager.unShownOperationalInApps[operation]?.map { inApp -> inApp.id }?.toSet()
+        )
+    }
+
+    @Test
+    fun `concurrent saveOperationalInApp does not lose a write`() {
+        val operation = "testOperation"
+        every { sessionStorageManager.operationalInApps } returns ConcurrentHashMap()
+
+        val inApps = (1..8).map { index -> InAppStub.getInApp().copy(id = "in-app-$index") }
+        val threads = inApps.map { inApp ->
+            Thread { inAppRepository.saveOperationalInApp(operation, inApp) }
+        }
+        threads.forEach { thread -> thread.start() }
+        threads.forEach { thread -> thread.join() }
+
+        assertEquals(
+            inApps.map { inApp -> inApp.id }.toSet(),
+            sessionStorageManager.operationalInApps[operation]?.map { inApp -> inApp.id }?.toSet()
+        )
+    }
+
+    @Test
+    fun `concurrent saveTargetedInAppWithEvent does not lose a write`() {
+        val inAppId = "testInAppId"
+        every { sessionStorageManager.shownInAppIdsWithEvents } returns ConcurrentHashMap()
+
+        val hashes = (1..8).toList()
+        val threads = hashes.map { hash ->
+            Thread { inAppRepository.saveTargetedInAppWithEvent(inAppId, hash) }
+        }
+        threads.forEach { thread -> thread.start() }
+        threads.forEach { thread -> thread.join() }
+
+        assertEquals(hashes.toSet(), sessionStorageManager.shownInAppIdsWithEvents[inAppId])
     }
 }

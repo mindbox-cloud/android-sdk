@@ -409,6 +409,7 @@ class InAppMapperTest {
             formDto = null,
             frequencyDto = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
             targetingDto = null,
+            displayConditionsDto = null,
         )
         assertEquals(inputTags, result.tags)
     }
@@ -423,6 +424,7 @@ class InAppMapperTest {
             formDto = null,
             frequencyDto = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
             targetingDto = null,
+            displayConditionsDto = null,
         )
         assertNull(result.tags)
     }
