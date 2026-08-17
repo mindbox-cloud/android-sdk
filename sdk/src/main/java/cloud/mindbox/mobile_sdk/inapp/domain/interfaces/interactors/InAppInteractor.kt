@@ -34,7 +34,7 @@ internal interface InAppInteractor {
      * Content of the in-app with [inAppId] for a direct call: no restriction — frequency,
      * limits, `displayConditions`, targeting, the A/B pool — is checked. A drawn circle must
      * open. Returns `null` only for an unknown id, an id filtered out by `sdkVersion`, or an
-     * embedded in-app (never shown as an overlay). The show itself counts via [recordShowLocally].
+     * embedded in-app (never shown as an overlay). The show itself ships with the JS-bridge task.
      */
     suspend fun getInAppById(inAppId: String): InAppType?
 
@@ -57,8 +57,8 @@ internal interface InAppInteractor {
      * checked: a drawn circle must open.
      *
      * Every id kept sends `Inapp.Targeting` with every answer, deliberately without a dedup —
-     * the story funnel counts the proposed circles, not the opened ones (decision 16.08); the
-     * tap ships only `Inapp.Show`.
+     * the story funnel counts the proposed circles, not the opened ones (decision 16.08). A tap
+     * reports nothing here — the story is not drawn yet.
      */
     suspend fun filterShowableInAppIds(inAppIds: List<String>): List<String>
 
@@ -72,13 +72,19 @@ internal interface InAppInteractor {
     )
 
     /**
-     * Records a show that has already happened into the local stores only — the session list,
-     * the show history and the shared cooldown — and never sends an `Inapp.Show` operation.
-     * `unlimited` frequency writes nothing: it has no counter to keep, and the show budgets
-     * must stay untouched for it. Used by the paths that show without asking first: the
-     * embedded block once its content is rendered, and the page's direct `showInApp`.
+     * The embedded block drew its content: sends `Inapp.Show` unconditionally and records the
+     * show counters — the session list and the show history — only when the frequency counts
+     * shows at all (`unlimited` has no counter to keep). The shared cooldown between overlay
+     * shows is left alone: the block interrupts nothing. The operation ships **once per session
+     * per in-app**, so a view the host recreated (a rotation, a return to the screen) reports no
+     * second show. [timeToDisplay] is everything the user waited through: the resolve, the page
+     * load and its own pipeline.
      */
-    suspend fun recordShowLocally(inAppId: String)
+    suspend fun recordBlockShow(
+        inAppId: String,
+        timeToDisplay: Milliseconds,
+        tags: Map<String, String>?,
+    )
 
     fun sendInAppClicked(inAppId: String, tags: Map<String, String>?)
 

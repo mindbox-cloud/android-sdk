@@ -193,7 +193,7 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `contentRendered with positive count switches state to Ready and counts the show`() {
-        coEvery { inAppInteractor.recordShowLocally(any()) } just runs
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
@@ -202,25 +202,48 @@ class EmbeddedBlockWebViewHolderTest {
         assertTrue(holder.contentView != null)
         // Content on screen is a show, counted like any other in-app's; the frequency decides
         // inside the interactor whether there is anything to write.
-        coVerify(timeout = 5_000L) { inAppInteractor.recordShowLocally("embedded-id") }
+        coVerify(timeout = 5_000L) { inAppInteractor.recordBlockShow("embedded-id", any(), any()) }
     }
 
     @Test
-    fun `contentRendered with zero count switches state to Empty and counts nothing`() {
-        coEvery { inAppInteractor.recordShowLocally(any()) } just runs
+    fun `contentRendered with zero count switches state to Empty and reports nothing`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "contentRendered", payload = """{"count":0}"""))
 
         await { states.lastOrNull() == EmbeddedBlockState.Empty }
-        coVerify(exactly = 0) { inAppInteractor.recordShowLocally(any()) }
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
     }
 
     @Test
-    fun `showInApp from the page is acknowledged and counts the story show`() {
-        // The page fires the circle tap without waiting; the show itself ships with the
-        // JS-bridge task. Nothing is checked — a drawn circle must open — but it is counted.
-        coEvery { inAppInteractor.recordShowLocally(any()) } just runs
+    fun `contentRendered without a readable count fails the block and reports the failure`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":"many"}"""))
+
+        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `the show is reported once per content instance`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        coVerify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("embedded-id", any(), any()) }
+    }
+
+    @Test
+    fun `showInApp from the page is acknowledged and reports nothing`() {
+        // The circle is not drawn yet: neither the show operation nor the local history may be
+        // spent on it. Both ship with the JS-bridge task, where the story actually opens.
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
 
         postFromPage(
@@ -229,18 +252,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
-        coVerify(timeout = 5_000L) { inAppInteractor.recordShowLocally("story-1") }
-    }
-
-    @Test
-    fun `showInApp without an in-app id counts nothing`() {
-        coEvery { inAppInteractor.recordShowLocally(any()) } just runs
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "showInApp", payload = """{"index":0}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
-
-        coVerify(exactly = 0) { inAppInteractor.recordShowLocally(any()) }
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
     }
 
     @Test

@@ -11,10 +11,13 @@ import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
+import cloud.mindbox.mobile_sdk.gatedTags
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
@@ -32,6 +35,8 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -86,6 +91,8 @@ internal class EmbeddedBlockWebViewHolder(
     private val inAppInteractor: InAppInteractor by mindboxInject { inAppInteractor }
     private val webViewCachePolicy: InAppWebViewCachePolicy by mindboxInject { webViewCachePolicy }
     private val appContext by mindboxInject { appContext }
+    private val timeProvider by mindboxInject { timeProvider }
+    private val featureToggleManager: FeatureToggleManager by mindboxInject { featureToggleManager }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
     private val localStateStore: WebViewLocalStateStore by lazy { WebViewLocalStateStore(appContext) }
 
@@ -94,6 +101,10 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     @Volatile private var hasPageAnswered = false
+
+    @Volatile private var contentLoadStartedAt: Timestamp? = null
+
+    @Volatile private var didAccountForShow = false
 
     override fun start() {
         if (isReleased) return
@@ -292,35 +303,48 @@ internal class EmbeddedBlockWebViewHolder(
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
         val count = runCatching {
-            JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD).optInt("count", 0)
-        }.getOrDefault(0)
-        mindboxLogI("[EmbeddedBlock] Page rendered $count feed element(s)")
-        report(if (count > 0) EmbeddedBlockState.Ready else EmbeddedBlockState.Empty)
-        if (count > 0) {
-            recordShowLocallyAsync(inAppId)
+            JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD).getInt("count")
+        }.getOrNull() ?: run {
+            mindboxLogE("[EmbeddedBlock] contentRendered without a readable count, treating as broken")
+            inAppFailureTracker.sendFailureWithContext(
+                inAppId = inAppId,
+                failureReason = FailureReason.PRESENTATION_FAILED,
+                errorDescription = "The embedded block page reported contentRendered without a readable count",
+                tags = null
+            )
+            report(EmbeddedBlockState.Failed)
+            return BridgeMessage.EMPTY_PAYLOAD
         }
+        mindboxLogI("[EmbeddedBlock] Page rendered $count feed element(s)")
+        if (count <= 0) {
+            report(EmbeddedBlockState.Empty)
+            return BridgeMessage.EMPTY_PAYLOAD
+        }
+        report(EmbeddedBlockState.Ready)
+        accountForShow()
         return BridgeMessage.EMPTY_PAYLOAD
+    }
+
+    /**
+     * The block drew something, so its in-app was shown. Reported once per content instance; the
+     * once-per-session rule lives in the interactor, where the session state is.
+     */
+    private fun accountForShow() {
+        if (didAccountForShow) return
+        didAccountForShow = true
+        val timeToDisplay = contentLoadStartedAt
+            ?.let { start -> timeProvider.elapsedSince(start) }
+            ?: Milliseconds(0L)
+        Mindbox.mindboxScope.launch {
+            loggingRunCatchingSuspending {
+                inAppInteractor.recordBlockShow(inAppId, timeToDisplay, gatedTags())
+            }
+        }
     }
 
     private fun handleShowInAppAction(message: BridgeMessage.Request): String {
         mindboxLogI("[EmbeddedBlock] Circle tap received: ${message.payload}. The show ships with the JS bridge task")
-        val storyId = runCatching {
-            JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD)
-                .optString(SHOW_IN_APP_ID_FIELD)
-                .takeIf { id -> id.isNotBlank() }
-        }.getOrNull()
-        if (storyId == null) {
-            mindboxLogW("[EmbeddedBlock] Circle tap without an in-app id, nothing to count")
-        } else {
-            recordShowLocallyAsync(storyId)
-        }
         return BridgeMessage.EMPTY_PAYLOAD
-    }
-
-    private fun recordShowLocallyAsync(shownInAppId: String) {
-        Mindbox.mindboxScope.launch {
-            loggingRunCatchingSuspending { inAppInteractor.recordShowLocally(shownInAppId) }
-        }
     }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
@@ -330,6 +354,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         lastLoadedContent = content
         hasPageAnswered = false
+        contentLoadStartedAt = timeProvider.currentTimestamp()
         controller.loadContent(content)
     }
 
@@ -466,6 +491,11 @@ internal class EmbeddedBlockWebViewHolder(
         }
         pendingResponsesById.clear()
     }
+
+    /** Tags of this block's in-app, gated by the feature toggle — as the overlay path does. */
+    private fun gatedTags(): Map<String, String>? = sessionStorageManager.currentSessionInApps
+        .firstOrNull { inApp -> inApp.id == inAppId }
+        ?.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
 
     private fun buildParamsPayload(params: Map<String, String>): String {
         val payload = JsonObject()

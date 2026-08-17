@@ -487,28 +487,6 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `recordShowLocally writes the local stores for a counted frequency`() = runTest {
-        givenConfig(modalInApp(id = "story-1"))
-
-        interactor.recordShowLocally("story-1")
-
-        verify { inAppRepository.setInAppShown("story-1") }
-        verify { inAppRepository.saveShownInApp("story-1", now.ms) }
-        verify { inAppRepository.saveInAppStateChangeTime(now) }
-    }
-
-    @Test
-    fun `recordShowLocally writes nothing for unlimited frequency`() = runTest {
-        givenConfig(modalInApp(id = "story-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)))
-
-        interactor.recordShowLocally("story-1")
-
-        verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
-        verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
-        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
-    }
-
-    @Test
     fun `saveShownInApp sends the Inapp Show and writes the counters`() {
         every { inAppRepository.getCurrentSessionInApps() } returns listOf(modalInApp(id = "modal-1"))
 
@@ -531,27 +509,52 @@ class EmbeddedResolveInteractorTest {
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
         verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
         verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
-        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
+        // The overlay show moves the cooldown whatever its frequency — it interrupted the user.
+        verify { inAppRepository.saveInAppStateChangeTime(now) }
     }
 
     @Test
-    fun `recordShowLocally never sends an Inapp Show operation`() = runTest {
-        // Shows are a separate task; counting is local only.
-        givenConfig(modalInApp(id = "story-1"))
+    fun `recordBlockShow sends the Inapp Show and counts the show`() = runTest {
+        givenConfig(embeddedInApp())
+        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
 
-        interactor.recordShowLocally("story-1")
+        interactor.recordBlockShow("embedded-id", Milliseconds(1_500L), mapOf("a" to "b"))
 
-        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+        verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
+        verify { inAppRepository.setInAppShown("embedded-id") }
     }
 
     @Test
-    fun `recordShowLocally ignores an unknown id`() = runTest {
-        givenConfig(modalInApp(id = "story-1"))
+    fun `recordBlockShow sends the Inapp Show once per session`() = runTest {
+        // A rotation or a return to the screen draws the same content again — one show per session.
+        givenConfig(embeddedInApp())
+        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
 
-        interactor.recordShowLocally("ghost")
+        interactor.recordBlockShow("embedded-id", Milliseconds(1_000L), null)
+        interactor.recordBlockShow("embedded-id", Milliseconds(1_000L), null)
 
+        verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() = runTest {
+        givenConfig(embeddedInApp().copy(frequency = Frequency(Frequency.Delay.Unlimited)))
+        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
+
+        interactor.recordBlockShow("embedded-id", Milliseconds(0L), null)
+
+        verify { inAppRepository.sendInAppShown(any(), any(), any()) }
         verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
         verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
+    }
+
+    @Test
+    fun `recordBlockShow ignores an unknown id`() = runTest {
+        givenConfig(embeddedInApp())
+
+        interactor.recordBlockShow("ghost", Milliseconds(0L), null)
+
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
     }
 
     @Test

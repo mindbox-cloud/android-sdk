@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingDataWrapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -224,13 +225,28 @@ internal class InAppInteractorImpl(
     private suspend fun findInAppById(inAppId: String): InApp? =
         mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
 
-    override suspend fun recordShowLocally(inAppId: String) {
+    override suspend fun recordBlockShow(
+        inAppId: String,
+        timeToDisplay: Milliseconds,
+        tags: Map<String, String>?,
+    ) {
         val inApp = findInAppById(inAppId)
             ?: run {
-                logI("No in-app with id $inAppId to count a show for")
+                logI("No in-app with id $inAppId to report a block show for")
                 return
             }
         recordShowCounters(inApp, timeProvider.currentTimestamp())
+        // A view the host recreated (a rotation, a return to the screen) draws the same content
+        // again; the funnel counts one show per session, and this set outlives the views — it is
+        // cleared with the session itself.
+        if (!sessionStorageManager.blockShowsReportedInSession.add(inAppId)) {
+            logI("Block of in-app $inAppId already reported its show this session")
+            return
+        }
+        // The operation is unconditional — it states what the user saw, and how often the in-app
+        // may appear has no bearing on whether it just did. Only the counters obey the frequency.
+        logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
+        inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }
 
     override fun saveShownInApp(
@@ -246,6 +262,9 @@ internal class InAppInteractorImpl(
                 return
             }
         recordShowCounters(inApp, timeStamp.toTimestamp())
+        // The cooldown measures how often the SDK interrupts on its own, so only an overlay show
+        // moves it: a block interrupts nothing, it is drawn where the host app put it.
+        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
     }
 
     private fun recordShowCounters(inApp: InApp, shownAt: Timestamp) {
@@ -256,7 +275,6 @@ internal class InAppInteractorImpl(
         logI("Counting a show of in-app ${inApp.id} (frequency ${inApp.frequency.delay})")
         inAppRepository.setInAppShown(inApp.id)
         inAppRepository.saveShownInApp(inApp.id, shownAt.ms)
-        inAppRepository.saveInAppStateChangeTime(shownAt)
     }
 
     override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
