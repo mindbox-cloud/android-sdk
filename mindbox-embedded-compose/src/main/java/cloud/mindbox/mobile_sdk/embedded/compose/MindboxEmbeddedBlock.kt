@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 
@@ -87,7 +88,9 @@ public fun MindboxEmbeddedBlock(
             modifier = (if (isCollapsed) Modifier.height(0.dp).then(modifier) else modifier).fillMaxWidth(),
             factory = { viewContext ->
                 MindboxEmbeddedBlockView(viewContext, placeSystemName).apply {
-                    setVisibilityObserver { isVisible -> isCollapsed = !isVisible }
+                    setAppearanceObserver { appearance ->
+                        isCollapsed = appearance == MindboxEmbeddedBlockAppearance.COLLAPSED
+                    }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
                             override fun onLoad(view: MindboxEmbeddedBlockView) {

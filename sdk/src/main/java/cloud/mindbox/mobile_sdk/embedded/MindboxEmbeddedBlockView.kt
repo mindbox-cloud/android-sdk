@@ -69,7 +69,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     public val placeSystemName: String? = placeSystemName.orNullIfBlank()
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
-    private var visibilityObserver: ((Boolean) -> Unit)? = null
+    private var appearanceObserver: ((MindboxEmbeddedBlockAppearance) -> Unit)? = null
     private var placeholderView: View? = null
     private var errorView: View? = null
     private val defaultPlaceholder by lazy { EmbeddedBlockDefaultViews.placeholder(context) }
@@ -86,6 +86,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var deliveredEvent: BlockEvent? = null
     private var isDeliveryScheduled = false
     private var shownContent: View? = null
+
+    /** What the container shows right now: the one source for both its visibility and its report. */
+    private var shownAppearance = MindboxEmbeddedBlockAppearance.PLACEHOLDER
     private var isContentStarted = false
 
     /** What the window callbacks last said. Attached and visible is the only combination that counts. */
@@ -162,9 +165,17 @@ public class MindboxEmbeddedBlockView internal constructor(
         errorView = view
     }
 
+    /**
+     * Reports how the block occupies its place, for wrappers that lay it out themselves instead of
+     * letting the block set its own visibility — see [MindboxEmbeddedBlockAppearance].
+     *
+     * The current value arrives right away on subscribing: a wrapper that comes after the outcome
+     * cannot miss what the block already decided.
+     */
     @InternalMindboxApi
-    public fun setVisibilityObserver(observer: ((isVisible: Boolean) -> Unit)?) {
-        visibilityObserver = observer
+    public fun setAppearanceObserver(observer: ((MindboxEmbeddedBlockAppearance) -> Unit)?) {
+        appearanceObserver = observer
+        loggingRunCatching { observer?.invoke(shownAppearance) }
     }
 
     /**
@@ -316,18 +327,27 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
         }
 
-        applyDefaultVisibility(state)
+        applyAppearance(appearanceFor(state))
         scheduleDelivery()
     }
 
-    private fun applyDefaultVisibility(state: EmbeddedBlockState) {
-        val isVisible = when {
-            state is EmbeddedBlockState.Empty -> false
-            state.nothingToShow -> hasCustomErrorView
-            else -> true
-        }
-        visibility = if (isVisible) VISIBLE else GONE
-        loggingRunCatching { visibilityObserver?.invoke(isVisible) }
+    private fun appearanceFor(state: EmbeddedBlockState): MindboxEmbeddedBlockAppearance = when (state) {
+        is EmbeddedBlockState.Loading -> MindboxEmbeddedBlockAppearance.PLACEHOLDER
+        is EmbeddedBlockState.Ready -> MindboxEmbeddedBlockAppearance.CONTENT
+        // A failure is shown only to a host that opted in explicitly; for the rest the block collapses.
+        is EmbeddedBlockState.Failed ->
+            if (hasCustomErrorView) {
+                MindboxEmbeddedBlockAppearance.ERROR
+            } else {
+                MindboxEmbeddedBlockAppearance.COLLAPSED
+            }
+        is EmbeddedBlockState.Empty -> MindboxEmbeddedBlockAppearance.COLLAPSED
+    }
+
+    private fun applyAppearance(appearance: MindboxEmbeddedBlockAppearance) {
+        shownAppearance = appearance
+        visibility = if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) GONE else VISIBLE
+        loggingRunCatching { appearanceObserver?.invoke(appearance) }
     }
 
     private fun currentPlaceholder(): View = placeholderView ?: defaultPlaceholder

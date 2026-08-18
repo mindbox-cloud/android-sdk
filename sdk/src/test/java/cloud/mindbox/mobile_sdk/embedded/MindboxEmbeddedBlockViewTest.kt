@@ -732,6 +732,66 @@ class MindboxEmbeddedBlockViewTest {
 
     @OptIn(InternalMindboxApi::class)
     @Test
+    fun `the wrapper hears what the block shows, not what happened`() {
+        val seen = mutableListOf<MindboxEmbeddedBlockAppearance>()
+        val view = attachedView()
+        view.setAppearanceObserver { seen.add(it) }
+
+        provider.readyView = View(activity)
+        provider.report(EmbeddedBlockState.Ready)
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // The first value is the snapshot handed out on subscribing.
+        assertEquals(
+            listOf(
+                MindboxEmbeddedBlockAppearance.PLACEHOLDER,
+                MindboxEmbeddedBlockAppearance.CONTENT,
+                MindboxEmbeddedBlockAppearance.COLLAPSED,
+            ),
+            seen,
+        )
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `a wrapper subscribing after the outcome is told where the block stands`() {
+        val view = attachedView()
+        provider.report(EmbeddedBlockState.Empty)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val seen = mutableListOf<MindboxEmbeddedBlockAppearance>()
+        view.setAppearanceObserver { seen.add(it) }
+
+        // Without the snapshot a wrapper that came late would hold the place of a block that is not
+        // there — the container already collapsed, and nothing is going to say so a second time.
+        assertEquals(listOf(MindboxEmbeddedBlockAppearance.COLLAPSED), seen)
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
+    fun `the reported appearance follows the error view opt-in`() {
+        val failed = blockView()
+        failed.setErrorView(View(activity))
+        attach(failed)
+        val failedSeen = mutableListOf<MindboxEmbeddedBlockAppearance>()
+        failed.setAppearanceObserver { failedSeen.add(it) }
+
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(MindboxEmbeddedBlockAppearance.ERROR, failedSeen.last())
+
+        // An empty place collapses whatever the host set: the rule is the container's, and the
+        // wrapper sees only its answer.
+        provider.report(EmbeddedBlockState.Empty)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(MindboxEmbeddedBlockAppearance.COLLAPSED, failedSeen.last())
+    }
+
+    @OptIn(InternalMindboxApi::class)
+    @Test
     fun `release frees the content through the controller`() {
         val view = attachedView()
         (view.parent as LinearLayout).removeView(view)
