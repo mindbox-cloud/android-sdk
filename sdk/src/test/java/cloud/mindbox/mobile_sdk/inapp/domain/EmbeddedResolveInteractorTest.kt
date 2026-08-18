@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -25,6 +26,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.verify
@@ -472,6 +474,32 @@ class EmbeddedResolveInteractorTest {
         )
 
         assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("story-1")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds fetches the targeting dependencies before checking`() = runTest {
+        // A segment-targeted story is answerable only from fetched data. The feed question is
+        // the only path that ever evaluates a directCall story's targeting, so it has to fetch
+        // for itself — the session status and the repository mutexes keep it one network trip.
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } just runs
+        every { targeting.checkTargeting(any()) } returns true
+        givenConfig(modalInApp(id = "story-1").copy(targeting = targeting))
+
+        assertEquals(listOf("story-1"), interactor.filterShowableInAppIds(listOf("story-1")))
+        coVerify(exactly = 1) { targeting.fetchTargetingInfo(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds cuts the id whose dependencies could not be fetched`() = runTest {
+        // Fail closed: a fetch that failed leaves the targeting unverifiable, and unverified
+        // is never "allowed".
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("offline")
+        givenConfig(modalInApp(id = "story-1").copy(targeting = targeting))
+
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("story-1")))
+        verify(exactly = 0) { targeting.checkTargeting(any()) }
     }
 
     @Test

@@ -221,9 +221,12 @@ internal class InAppInteractorImpl(
                 logI("Requested id $id is blocked by its frequency, cutting it")
                 return@filter false
             }
-            runCatching { inApp.targeting.checkTargeting(placeRequestTargetingData) }
+            runCatching {
+                inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
+                inApp.targeting.checkTargeting(placeRequestTargetingData)
+            }
                 .getOrElse { error ->
-                    logI("Requested id $id targeting could not be checked without network ($error), cutting it")
+                    logI("Requested id $id targeting could not be checked ($error), cutting it")
                     false
                 }
                 .also { matches -> if (!matches) logI("Requested id $id targeting did not match, cutting it") }
