@@ -30,6 +30,9 @@ internal class InAppValidatorTest {
     @MockK
     private lateinit var snackbarValidator: SnackbarValidator
 
+    @MockK
+    private lateinit var embeddedVariantValidator: EmbeddedVariantValidator
+
     @OverrideMockKs
     private lateinit var inAppValidator: InAppValidatorImpl
 
@@ -102,7 +105,7 @@ internal class InAppValidatorTest {
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
         inAppValidator =
-            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator, mockk())
+            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator, mockk(), mockk())
 
         every {
             modalWindowValidator.isValid(any())
@@ -137,7 +140,8 @@ internal class InAppValidatorTest {
             sdkVersionValidator = sdkVersionValidator,
             modalWindowValidator = modalWindowValidator,
             snackbarValidator = snackbarValidator,
-            mockk()
+            frequencyValidator = mockk(),
+            embeddedVariantValidator = mockk()
         )
         every {
             modalWindowValidator.isValid(any())

@@ -122,15 +122,6 @@ internal object MindboxEventManager {
         return InAppEventType.AppStartup
     }
 
-    fun embeddedPlaceRequested(placeSystemName: String): Unit = loggingRunCatching {
-        val isEmitted = eventFlow.tryEmit(InAppEventType.EmbeddedPlaceRequested(placeSystemName))
-        if (isEmitted) {
-            mindboxLogI("[EmbeddedBlock] Place '$placeSystemName' requested content")
-        } else {
-            mindboxLogW("[EmbeddedBlock] Place '$placeSystemName' request dropped: the event buffer is full")
-        }
-    }
-
     private fun asyncOperation(
         context: Context,
         event: Event,

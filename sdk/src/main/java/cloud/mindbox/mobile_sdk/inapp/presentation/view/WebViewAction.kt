@@ -72,6 +72,18 @@ public enum class WebViewAction {
 
     @SerializedName("motion.event")
     MOTION_EVENT,
+
+    @SerializedName("checkInappsTargeting")
+    CHECK_INAPPS_TARGETING,
+
+    @SerializedName("contentRendered")
+    CONTENT_RENDERED,
+
+    @SerializedName("showInApp")
+    SHOW_IN_APP,
+
+    @SerializedName("initDataUpdated")
+    INIT_DATA_UPDATED,
 }
 
 @InternalMindboxApi

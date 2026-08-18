@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.utils
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 
 internal object Constants {
-    internal const val SDK_VERSION_NUMERIC = 12
+    internal const val SDK_VERSION_NUMERIC = 13
     internal const val TYPE_JSON_NAME = "\$type"
     internal const val POST_NOTIFICATION = "android.permission.POST_NOTIFICATIONS"
     internal const val NOTIFICATION_SETTINGS = "android.settings.APP_NOTIFICATION_SETTINGS"
@@ -14,5 +14,9 @@ internal object Constants {
 
     internal object WebView {
         internal val readyTimeout = Milliseconds(7_000L)
+    }
+
+    internal object Embedded {
+        internal val defaultConfigTimeout = Milliseconds(30_000L)
     }
 }

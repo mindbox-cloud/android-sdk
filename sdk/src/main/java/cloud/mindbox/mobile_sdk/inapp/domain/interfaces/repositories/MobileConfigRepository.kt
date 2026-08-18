@@ -5,8 +5,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import kotlinx.coroutines.flow.Flow
 
 internal interface MobileConfigRepository {
+    fun listenConfigUpdates(): Flow<Unit>
 
     suspend fun fetchMobileConfig()
 

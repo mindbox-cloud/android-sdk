@@ -4,20 +4,29 @@ import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.isAllowedByFrequency
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingDataWrapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.countsShows
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.allAllow
@@ -41,6 +50,11 @@ internal class InAppInteractorImpl(
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
+    // A page request is not an operation: with the synthetic event name and no body,
+    // operation-node targetings never match — "no operation is happening right now".
+    private val placeRequestTargetingData =
+        TargetingDataWrapper(InAppEventType.EmbeddedPlaceRequested.EVENT_NAME)
+
     override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
@@ -50,8 +64,7 @@ internal class InAppInteractorImpl(
                         inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
                     }
                 }
-                val inAppIds = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
-                inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
+                abTestFilteredInApps(inApps).also { filteredInApps ->
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
                 }
             }.also { unShownInApps ->
@@ -68,19 +81,23 @@ internal class InAppInteractorImpl(
                 mindboxLogD("Event triggered: ${event.name}")
             }.map { event ->
                 val triggerTimeMillis = timeProvider.currentTimestamp()
-                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
-                    inAppFrequencyManager.filterInAppsFrequency(it)
+                val candidates = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
+                    .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
+                val inApp: InApp? = chooseAmongCandidates(
+                    logLabel = "Event '${event.name}'",
+                    candidates = candidates,
+                    triggerEvent = event,
+                    selectVariant = { candidate -> candidate.firstOverlayVariant() }
+                )?.also { winner ->
+                    inAppProcessingManager.sendTargetedInApp(winner, event)
+                    inAppRepository.saveTargetedInAppWithEvent(
+                        inAppId = winner.id,
+                        event.hashCode()
+                    )
                 }
-                mindboxLogI("Event: ${event.name} combined with $filteredInApps")
-                val prioritySortedInApps = filteredInApps.sortByPriority()
-                val inApp: InApp? = inAppProcessingManager.chooseInAppToShow(
-                    prioritySortedInApps,
-                    event
-                ).also {
-                    inAppTargetingChannel.send(event)
-                    if (event == InAppEventType.AppStartup) {
-                        InitializeLock.complete(InitializeLock.State.APP_STARTED)
-                    }
+                inAppTargetingChannel.send(event)
+                if (event == InAppEventType.AppStartup) {
+                    InitializeLock.complete(InitializeLock.State.APP_STARTED)
                 }
                 inApp?.let {
                     sessionStorageManager.inAppTriggerEvent = event
@@ -94,16 +111,167 @@ internal class InAppInteractorImpl(
             .filterNotNull()
     }
 
-    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean {
-        val isAllowedByFrequency = inAppFrequencyManager.filterInAppsFrequency(listOf(inApp)).isNotEmpty()
-        if (!isAllowedByFrequency) {
-            return false
-        }
-        return inApp.isPriority || allAllow(
-            maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker
+    override suspend fun selectInAppForPlace(
+        placeSystemName: String,
+        triggerEvent: InAppEventType,
+    ): InAppType.Embedded? {
+        val requestedPlace = placeSystemName.trim()
+        val inApps = mobileConfigRepository.getInAppsSection()
+        inAppRepository.saveCurrentSessionInApps(inApps)
+        // The same chain as the event path: the display style does not change "when to show".
+        val candidates = abTestFilteredInApps(inApps)
+            .let { inAppFilteringManager.filterEmbeddedInAppsByPlace(it, requestedPlace) }
+        val winner = chooseAmongCandidates(
+            logLabel = "Place '$requestedPlace'",
+            candidates = candidates,
+            triggerEvent = triggerEvent,
+            selectVariant = { candidate ->
+                candidate.form.variants
+                    .filterIsInstance<InAppType.Embedded>()
+                    .firstOrNull { variant -> variant.placeSystemName == requestedPlace }
+            }
         )
+            ?: run {
+                logI("Place '$requestedPlace': nothing to show")
+                return null
+            }
+
+        if (!areShowLimitsAllowed(winner)) {
+            logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
+            return null
+        }
+        // Place resolves repeat for reasons that offer nothing new — the block reappears, a config
+        // lands, an operation passes by — so the winner is offered once per session, and only once
+        // it has actually been given the place (after the limits).
+        if (sessionStorageManager.placeTargetingReportedInSession.add(winner.id)) {
+            inAppProcessingManager.sendTargetedInApp(winner)
+        } else {
+            logI("Place '$requestedPlace': in-app ${winner.id} already sent its targeting this session")
+        }
+        return winner.form.variants
+            .filterIsInstance<InAppType.Embedded>()
+            .firstOrNull { variant -> variant.placeSystemName == requestedPlace }
+    }
+
+    private suspend fun abTestFilteredInApps(inApps: List<InApp>): List<InApp> =
+        inAppFilteringManager.filterABTestsInApps(inApps, inAppABTestLogic.getInAppsPool(inApps.map { it.id }))
+
+    private suspend fun chooseAmongCandidates(
+        logLabel: String,
+        candidates: List<InApp>,
+        triggerEvent: InAppEventType,
+        selectVariant: (InApp) -> InAppType?,
+    ): InApp? {
+        val showable = inAppFilteringManager.filterOutDirectCallInApps(candidates)
+            .let { inAppFrequencyManager.filterInAppsFrequency(it) }
+        logI("$logLabel: ${showable.size} candidate(s) after filtering: ${showable.map { it.id }}")
+        return inAppProcessingManager.chooseInAppToShow(showable.sortByPriority(), triggerEvent, selectVariant)
+    }
+
+    override fun listenConfigUpdates(): Flow<Unit> = mobileConfigRepository.listenConfigUpdates()
+
+    override fun listenEmbeddedPlaceEvents(): Flow<EmbeddedPlaceEvent> = flow {
+        inAppRepository.listenLiveInAppEvents()
+            .filter { event ->
+                event is InAppEventType.OrdinalEvent && inAppEventManager.isValidInAppEvent(event)
+            }
+            .collect { event ->
+                inAppRepository.getOperationalInAppsByOperation(event.name)
+                    .flatMap { inApp -> inApp.form.variants.filterIsInstance<InAppType.Embedded>() }
+                    .map { variant -> variant.placeSystemName }
+                    .toSet()
+                    .forEach { place ->
+                        logI("Operation '${event.name}' matched embedded place '$place'")
+                        emit(EmbeddedPlaceEvent(placeSystemName = place, triggerEvent = event))
+                    }
+            }
+    }
+
+    override suspend fun getInAppById(inAppId: String): InAppType? {
+        val inApp = findInAppById(inAppId)
+            ?: run {
+                logI("No in-app with id $inAppId to resolve content for")
+                return null
+            }
+        val variant = inApp.form.variants.firstOrNull()
+        if (variant is InAppType.Embedded) {
+            logI("In-app $inAppId is embedded and is never shown as an overlay")
+            return null
+        }
+        return variant
+    }
+
+    override suspend fun filterShowableInAppIds(inAppIds: List<String>): List<String> {
+        if (inAppIds.isEmpty()) return emptyList()
+        val inApps = mobileConfigRepository.getInAppsSection()
+        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
+        val showableById = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
+            .distinctBy { inApp -> inApp.id }
+            .associateBy { inApp -> inApp.id }
+        return inAppIds.filter { id ->
+            val inApp = showableById[id] ?: run {
+                logI("Requested id $id is not in the config (or filtered by sdkVersion/ab-tests), cutting it")
+                return@filter false
+            }
+            if (inApp.firstOverlayVariant() == null) {
+                logI("Requested id $id has no overlay variant to draw, cutting it (no feed inside a feed)")
+                return@filter false
+            }
+            if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) {
+                logI("Requested id $id is blocked by its frequency, cutting it")
+                return@filter false
+            }
+            runCatching {
+                inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
+                inApp.targeting.checkTargeting(placeRequestTargetingData)
+            }
+                .getOrElse { error ->
+                    logI("Requested id $id targeting could not be checked ($error), cutting it")
+                    false
+                }
+                .also { matches -> if (!matches) logI("Requested id $id targeting did not match, cutting it") }
+        }.onEach { id ->
+            inAppProcessingManager.sendTargetedInApp(showableById.getValue(id))
+        }
+    }
+
+    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean =
+        inAppFrequencyManager.isAllowedByFrequency(inApp) && areShowLimitsAllowed(inApp)
+
+    override fun areShowLimitsAllowed(inApp: InApp): Boolean =
+        inApp.isPriority ||
+            inApp.frequency.delay is Frequency.Delay.Unlimited ||
+            allAllow(
+                maxInappsPerSessionLimitChecker,
+                maxInappsPerDayLimitChecker,
+                minIntervalBetweenShowsLimitChecker
+            )
+
+    private suspend fun findInAppById(inAppId: String): InApp? =
+        mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
+
+    override suspend fun recordBlockShow(
+        inAppId: String,
+        timeToDisplay: Milliseconds,
+        tags: Map<String, String>?,
+    ) {
+        val inApp = findInAppById(inAppId)
+            ?: run {
+                logI("No in-app with id $inAppId to report a block show for")
+                return
+            }
+        recordShowCounters(inApp, timeProvider.currentTimestamp())
+        // A view the host recreated (a rotation, a return to the screen) draws the same content
+        // again; the funnel counts one show per session, and this set outlives the views — it is
+        // cleared with the session itself.
+        if (!sessionStorageManager.blockShowsReportedInSession.add(inAppId)) {
+            logI("Block of in-app $inAppId already reported its show this session")
+            return
+        }
+        // The operation is unconditional — it states what the user saw, and how often the in-app
+        // may appear has no bearing on whether it just did. Only the counters obey the frequency.
+        logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
+        inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }
 
     override fun saveShownInApp(
@@ -112,10 +280,29 @@ internal class InAppInteractorImpl(
         timeToDisplay: String,
         tags: Map<String, String>?
     ) {
-        inAppRepository.setInAppShown(id)
         inAppRepository.sendInAppShown(id, timeToDisplay, tags)
-        inAppRepository.saveShownInApp(id, timeStamp)
-        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
+        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == id }
+            ?: run {
+                logI("No in-app with id $id in the current session to count a show for")
+                return
+            }
+        recordShowCounters(inApp, timeStamp.toTimestamp())
+        // The cooldown measures how often the SDK interrupts on its own. Only an overlay show
+        // moves it (a block interrupts nothing), and an unlimited show does not move it either —
+        // unlimited is outside the show accounting in both directions.
+        if (inApp.countsShows()) {
+            inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
+        }
+    }
+
+    private fun recordShowCounters(inApp: InApp, shownAt: Timestamp) {
+        if (!inApp.countsShows()) {
+            logI("In-app ${inApp.id} has unlimited frequency, nothing to count")
+            return
+        }
+        logI("Counting a show of in-app ${inApp.id} (frequency ${inApp.frequency.delay})")
+        inAppRepository.setInAppShown(inApp.id)
+        inAppRepository.saveShownInApp(inApp.id, shownAt.ms)
     }
 
     override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
@@ -129,6 +316,8 @@ internal class InAppInteractorImpl(
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
         inAppTargetingChannel.receiveAsFlow().collect { event ->
             val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
+                .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+                .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
@@ -136,10 +325,6 @@ internal class InAppInteractorImpl(
                 }
             }
         }
-    }
-
-    override fun setInAppShown(inAppId: String) {
-        inAppRepository.setInAppShown(inAppId)
     }
 
     override suspend fun fetchMobileConfig() {
@@ -155,9 +340,13 @@ internal class InAppInteractorImpl(
         return inAppRepository.isTimeDelayInapp(inAppId)
     }
 
-    override fun saveInAppDismissTime() {
+    override fun saveInAppDismissTime(inApp: InApp) {
         val timeStamp = timeProvider.currentTimestamp()
         mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
+        if (!inApp.countsShows()) {
+            logI("In-app ${inApp.id} is unlimited, the dismiss does not move the cooldown")
+            return
+        }
         inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
     }
 }

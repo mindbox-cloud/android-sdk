@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -237,6 +238,35 @@ class InAppInteractorImplTest {
     }
 
     @Test
+    fun `event winner sends its targeting and records the event`() = runTest {
+        val winner = InAppStub.getInApp().copy(
+            id = "winner",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getModalWindow().copy(inAppId = "winner"))
+            )
+        )
+        coEvery { mobileConfigRepository.getInAppsSection() } returns listOf(winner)
+        every { inAppFilteringManager.filterUnShownInAppsByEvent(any(), any()) } returns listOf(winner)
+        every { inAppFilteringManager.filterOutNonOverlayInApps(any()) } answers { firstArg() }
+        every { inAppFilteringManager.filterOutDirectCallInApps(any()) } answers { firstArg() }
+        coEvery { inAppFrequencyManager.filterInAppsFrequency(any()) } answers { firstArg() }
+        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } returns winner
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+
+        interactor.processEventAndConfig().test {
+            awaitItem()
+            coVerify(exactly = 1) {
+                inAppProcessingManager.sendTargetedInApp(winner, InAppEventType.AppStartup)
+            }
+            verify(exactly = 1) {
+                inAppRepository.saveTargetedInAppWithEvent(winner.id, InAppEventType.AppStartup.hashCode())
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `areShowAndFrequencyLimitsAllowed returns true when all checks pass for non-priority in-app`() {
         val testInApp = InAppStub.getInApp().copy(isPriority = false)
 
@@ -271,6 +301,30 @@ class InAppInteractorImplTest {
         assertEquals(true, result)
 
         verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
+        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
+        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
+    }
+
+    @Test
+    fun `areShowAndFrequencyLimitsAllowed lets an unlimited in-app skip the show limits entirely`() {
+        // The unlimited rule, second half (iOS decision 14.08, mirrored): unlimited neither
+        // writes the show records nor obeys the limits — session, day and interval are not
+        // even checked for it.
+        val testInApp = InAppStub.getInApp().copy(
+            isPriority = false,
+            frequency = Frequency(Frequency.Delay.Unlimited)
+        )
+
+        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
+
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { maxInappsPerDayLimitChecker.check() } returns false
+        every { minIntervalBetweenShowsLimitChecker.check() } returns false
+
+        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
+
+        assertEquals(true, result)
         verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
         verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
         verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }

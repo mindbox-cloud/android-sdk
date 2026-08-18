@@ -295,6 +295,64 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
+    fun `choose inApp to show leaves the winner targeting to the caller`() = runTest {
+        val winner = InAppStub.getInApp().copy(
+            id = "winner",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getModalWindow().copy(inAppId = "winner"))
+            )
+        )
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(winner), event)
+
+        assertEquals(winner, actualResult)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
+        verify(exactly = 0) { mockInAppRepository.saveTargetedInAppWithEvent(any(), any()) }
+    }
+
+    @Test
+    fun `choose inApp to show fetches the variant the caller picked`() = runTest {
+        val mixed = InAppStub.getInApp().copy(
+            id = "mixed",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = "mixed"),
+                    InAppStub.getModalWindow().copy(inAppId = "mixed")
+                )
+            )
+        )
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(mixed), event) { inApp ->
+            inApp.form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+        }
+
+        assertEquals(mixed, actualResult)
+        coVerify {
+            mockkInAppContentFetcher.fetchContent("mixed", match { it is InAppType.ModalWindow })
+        }
+    }
+
+    @Test
+    fun `choose inApp to show skips a candidate whose variant the caller cannot render`() = runTest {
+        val embeddedOnly = InAppStub.getInApp().copy(
+            id = "embedded-only",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getEmbedded().copy(inAppId = "embedded-only"))
+            )
+        )
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(embeddedOnly), event) { inApp ->
+            inApp.form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+        }
+
+        assertNull(actualResult)
+        coVerify(exactly = 0) { mockkInAppContentFetcher.fetchContent(any(), any()) }
+    }
+
+    @Test
     fun `choose inApp to show chooses WebView inApp when targeting matches`() = runTest {
         val validId = "webview-valid-id"
         val expectedResult = InAppStub.getInApp().copy(

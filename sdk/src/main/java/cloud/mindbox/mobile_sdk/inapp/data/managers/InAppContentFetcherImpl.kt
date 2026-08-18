@@ -20,6 +20,10 @@ internal class InAppContentFetcherImpl(
                 // do nothing
             }
 
+            is InAppType.Embedded -> {
+                // Nothing to prefetch: the page pulls its own content, like InAppType.WebView.
+            }
+
             is InAppType.ModalWindow -> {
                 formVariant.layers.filterIsInstance<Layer.ImageLayer>()
                     .forEach { layer ->

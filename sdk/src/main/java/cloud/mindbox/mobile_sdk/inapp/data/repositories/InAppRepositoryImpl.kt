@@ -11,9 +11,14 @@ import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 internal class InAppRepositoryImpl(
@@ -40,21 +45,15 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveTargetedInAppWithEvent(inAppId: String, eventHashcode: Int) {
-        sessionStorageManager.shownInAppIdsWithEvents[inAppId] =
-            sessionStorageManager.shownInAppIdsWithEvents.getOrElse(inAppId) {
-                mutableSetOf()
-            }.apply {
-                add(eventHashcode)
-            }
+        sessionStorageManager.shownInAppIdsWithEvents
+            .getOrPut(inAppId) { newConcurrentSet() }
+            .add(eventHashcode)
     }
 
     override fun saveUnShownOperationalInApp(operation: String, inApp: InApp) {
-        sessionStorageManager.unShownOperationalInApps[operation] =
-            sessionStorageManager.unShownOperationalInApps.getOrElse(operation) {
-                mutableListOf()
-            }.apply {
-                add(inApp)
-            }
+        sessionStorageManager.unShownOperationalInApps
+            .getOrPut(operation) { CopyOnWriteArrayList() }
+            .add(inApp)
     }
 
     override fun getUnShownOperationalInAppsByOperation(operation: String): List<InApp> {
@@ -62,12 +61,9 @@ internal class InAppRepositoryImpl(
     }
 
     override fun saveOperationalInApp(operation: String, inApp: InApp) {
-        sessionStorageManager.operationalInApps[operation] =
-            sessionStorageManager.operationalInApps.getOrElse(operation) {
-                mutableListOf()
-            }.apply {
-                add(inApp)
-            }
+        sessionStorageManager.operationalInApps
+            .getOrPut(operation) { CopyOnWriteArrayList() }
+            .add(inApp)
     }
 
     override fun getOperationalInAppsByOperation(operation: String): List<InApp> {
@@ -82,6 +78,12 @@ internal class InAppRepositoryImpl(
         return MindboxEventManager.eventFlow
     }
 
+    override fun listenLiveInAppEvents(): Flow<InAppEventType> = flow {
+        val events = MindboxEventManager.eventFlow
+        emitAll(events.drop(events.replayCache.size))
+    }
+
+    @Synchronized
     override fun saveShownInApp(id: String, timeStamp: Long) {
         val currentShownInApps = getShownInApps()
         val currentTime = timeProvider.currentTimeMillis()

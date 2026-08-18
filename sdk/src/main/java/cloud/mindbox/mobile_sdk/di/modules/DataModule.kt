@@ -39,6 +39,7 @@ import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.utils.*
@@ -264,9 +265,13 @@ internal fun DataModule(
             sdkVersionValidator = sdkVersionValidator,
             modalWindowValidator = modalWindowValidator,
             snackbarValidator = snackbarValidator,
-            frequencyValidator = frequencyValidator
+            frequencyValidator = frequencyValidator,
+            embeddedVariantValidator = embeddedVariantValidator
         )
     }
+
+    override val embeddedVariantValidator: EmbeddedVariantValidator
+        get() = EmbeddedVariantValidator(webViewLayerValidator = webViewLayerValidator)
 
     override val abTestValidator: ABTestValidator by lazy { ABTestValidator(sdkVersionValidator) }
 
@@ -352,6 +357,19 @@ internal fun DataModule(
                     ).registerSubtype(
                         FrequencyDto.FrequencyPeriodicDto::class.java,
                         FrequencyDto.FrequencyPeriodicDto.FREQUENCY_PERIODIC_JSON_NAME
+                    ).registerSubtype(
+                        FrequencyDto.FrequencyUnlimitedDto::class.java,
+                        FrequencyDto.FrequencyUnlimitedDto.FREQUENCY_UNLIMITED_JSON_NAME
+                    )
+            ).registerTypeAdapterFactory(
+                RuntimeTypeAdapterFactory
+                    .of(
+                        DisplayConditionsDto::class.java,
+                        Constants.TYPE_JSON_NAME,
+                        true
+                    ).registerSubtype(
+                        DisplayConditionsDto.DirectCallDto::class.java,
+                        DisplayConditionsDto.DirectCallDto.DIRECT_CALL_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
@@ -365,6 +383,9 @@ internal fun DataModule(
                     ).registerSubtype(
                         PayloadBlankDto.SnackBarBlankDto::class.java,
                         PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                    ).registerSubtype(
+                        PayloadBlankDto.EmbeddedBlankDto::class.java,
+                        PayloadDto.EmbeddedDto.EMBEDDED_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory
@@ -422,6 +443,9 @@ internal fun DataModule(
                     ).registerSubtype(
                         PayloadDto.SnackbarDto::class.java,
                         PayloadDto.SnackbarDto.SNACKBAR_JSON_NAME
+                    ).registerSubtype(
+                        PayloadDto.EmbeddedDto::class.java,
+                        PayloadDto.EmbeddedDto.EMBEDDED_JSON_NAME
                     )
             ).registerTypeAdapterFactory(
                 RuntimeTypeAdapterFactory

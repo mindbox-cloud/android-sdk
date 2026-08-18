@@ -27,6 +27,8 @@ internal interface InAppRepository {
 
     fun listenInAppEvents(): Flow<InAppEventType>
 
+    fun listenLiveInAppEvents(): Flow<InAppEventType>
+
     fun saveShownInApp(id: String, timeStamp: Long)
 
     fun sendInAppShown(inAppId: String, timeToDisplay: String, tags: Map<String, String>?)

@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.utils.Constants
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -50,7 +51,7 @@ internal class DataCollector(
             KEY_VERSION to Provider.string(configuration.versionName),
         ).apply {
             params.forEach { (key, value) ->
-                put(key, Provider.string(value))
+                put(key, Provider.jsonStructureOrString(value))
             }
         }
     }
@@ -120,6 +121,14 @@ internal class DataCollector(
                         addProperty(key, value)
                     }
                 }
+            }
+
+            fun jsonStructureOrString(value: String?) = Provider {
+                if (value.isNullOrBlank()) return@Provider null
+                runCatching { JsonParser.parseString(value) }
+                    .getOrNull()
+                    ?.takeIf { parsed -> parsed.isJsonObject || parsed.isJsonArray }
+                    ?: JsonPrimitive(value)
             }
         }
     }

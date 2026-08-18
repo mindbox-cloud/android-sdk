@@ -16,4 +16,10 @@ internal interface InAppFilteringManager {
     fun filterInAppsByEvent(inApps: List<InApp>, event: InAppEventType): List<InApp>
 
     fun filterABTestsInApps(inApps: List<InApp>, abtestsInAppsPool: Collection<String>): List<InApp>
+
+    fun filterEmbeddedInAppsByPlace(inApps: List<InApp>, placeSystemName: String): List<InApp>
+
+    fun filterOutNonOverlayInApps(inApps: List<InApp>): List<InApp>
+
+    fun filterOutDirectCallInApps(inApps: List<InApp>): List<InApp>
 }

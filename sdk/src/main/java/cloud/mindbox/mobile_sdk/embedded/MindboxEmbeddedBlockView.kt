@@ -19,6 +19,8 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
 
@@ -26,8 +28,8 @@ import kotlin.math.abs
  * A drop-in container for an embedded Mindbox block.
  *
  * The host marks a *place* by [placeSystemName] and never learns what goes into it — the mobile
- * config decides through its `inlineBlocks` section and can change it without an app release.
- * Blocks sharing a place work independently.
+ * config decides through an in-app with an `embedded` form variant bound to that place, and can
+ * change it without an app release. Blocks sharing a place work independently.
  *
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
@@ -43,7 +45,9 @@ import kotlin.math.abs
  *
  * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
  * The block owns its behavior too — visible while loading and while showing content, `GONE`
- * when the place ends up without content, unless [setErrorView] keeps it in place.
+ * when the place ends up without content, unless [setErrorView] keeps it in place. A block that
+ * has collapsed does not reopen its space for the retry's placeholder — only content expands it
+ * back, so the host layout is not jerked on every pass across the screen.
  * [setListener] only observes: callbacks arrive after the block already acted.
  */
 public class MindboxEmbeddedBlockView internal constructor(
@@ -51,8 +55,11 @@ public class MindboxEmbeddedBlockView internal constructor(
     attrs: AttributeSet?,
     placeSystemName: String?,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
-        resolveFactory = { EmbeddedBlockContentFactory.resolve(context, placeSystemName.orNullIfBlank()) },
         placeSystemName = placeSystemName.orNullIfBlank(),
+        configTimeout = readConfigTimeout(context, attrs),
+        providerFactory = { content, attemptStartedAt ->
+            EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
+        },
     ),
 ) : FrameLayout(context, attrs) {
 
@@ -85,6 +92,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private var deliveredEvent: BlockEvent? = null
     private var isDeliveryScheduled = false
+    private var hasCollapsed = false
     private var shownContent: View? = null
     private var isContentStarted = false
     private var observedLifecycle: Lifecycle? = null
@@ -273,7 +281,13 @@ public class MindboxEmbeddedBlockView internal constructor(
     private fun applyDefaultVisibility(state: EmbeddedBlockState) {
         val isVisible = when {
             state.nothingToShow -> hasCustomErrorView
+            state is EmbeddedBlockState.Loading -> !hasCollapsed
             else -> true
+        }
+        hasCollapsed = when {
+            state is EmbeddedBlockState.Ready -> false
+            state.nothingToShow -> !isVisible
+            else -> hasCollapsed
         }
         visibility = if (isVisible) VISIBLE else GONE
         loggingRunCatching { visibilityObserver?.invoke(isVisible) }
@@ -338,3 +352,17 @@ private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String?
         values.recycle()
     }
 }
+
+private fun readConfigTimeout(context: Context, attrs: AttributeSet?): Milliseconds =
+    loggingRunCatching(defaultValue = Constants.Embedded.defaultConfigTimeout) {
+        val default = context.resources.getInteger(R.integer.mindbox_embedded_block_timeout_ms)
+        if (attrs == null) return@loggingRunCatching Milliseconds(default.toLong())
+        val values = context.obtainStyledAttributes(attrs, R.styleable.MindboxEmbeddedBlockView)
+        try {
+            Milliseconds(
+                values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxTimeoutMs, default).toLong()
+            )
+        } finally {
+            values.recycle()
+        }
+    }

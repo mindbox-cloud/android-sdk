@@ -3,9 +3,11 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
@@ -15,19 +17,28 @@ private typealias SessionExpirationListener = () -> Unit
 
 internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
-    var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
-    var unShownOperationalInApps: HashMap<String, MutableList<InApp>> = HashMap()
-    var operationalInApps: HashMap<String, MutableList<InApp>> = hashMapOf()
-    var inAppMessageShownInSession: MutableList<String> = mutableListOf()
+    @Volatile var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
+    var unShownOperationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
+    var operationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
+    var inAppMessageShownInSession: MutableList<String> = CopyOnWriteArrayList()
+
+    /**
+     * In-apps whose embedded block has already reported `Inapp.Show` this session. Separate from
+     * [inAppMessageShownInSession]: that one is not written for `unlimited`, while the show
+     * operation ships once per session whatever the frequency.
+     */
+    val blockShowsReportedInSession: MutableSet<String> = newConcurrentSet()
+    val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-    var inAppProductSegmentations: HashMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
-        HashMap()
-    var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = mutableMapOf()
-    var lastTargetingErrors: MutableMap<TargetingErrorKey, String> = mutableMapOf()
-    var currentSessionInApps: List<InApp> = emptyList()
-    var shownInAppIdsWithEvents = mutableMapOf<String, MutableSet<Int>>()
+    var inAppProductSegmentations: MutableMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
+        ConcurrentHashMap()
+    var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = ConcurrentHashMap()
+    var lastTargetingErrors: MutableMap<TargetingErrorKey, String> = ConcurrentHashMap()
+
+    @Volatile var currentSessionInApps: List<InApp> = emptyList()
+    var shownInAppIdsWithEvents: ConcurrentHashMap<String, MutableSet<Int>> = ConcurrentHashMap()
     var configFetchingError: Boolean = false
     var sessionTime: Duration = 0L.milliseconds
     var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
@@ -81,6 +92,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         unShownOperationalInApps.clear()
         operationalInApps.clear()
         inAppMessageShownInSession.clear()
+        blockShowsReportedInSession.clear()
+        placeTargetingReportedInSession.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

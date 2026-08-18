@@ -27,8 +27,8 @@ import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlockUsage
-import cloud.mindbox.mobile_sdk.embedded.mock.TempEmbeddedBlocksMockConfigSection
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -62,6 +62,8 @@ internal class MobileConfigRepositoryImpl(
 
     private val configState = MutableStateFlow<InAppConfig?>(null)
 
+    private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     init {
         Mindbox.mindboxScope.launch {
             MindboxPreferences.inAppConfigFlow
@@ -73,16 +75,8 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun fetchMobileConfig() {
         val configuration = DbManager.listenConfigurations().first()
-        // TODO(MOBILE-324): temporary, must not reach develop — the backend does not send the
-        //  inlineBlocks section yet; drop the inject() wrapper together with the mock page once
-        //  the real contract lands. This is the one place where the temporary code reaches into a
-        //  file that is not itself temporary, so it reports itself even in a release build: the
-        //  wrapper being here at all is what has to go, whether or not it injects anything.
-        TempEmbeddedBlockUsage.report("temporary mock config injection still wrapping fetchMobileConfig()")
-        MindboxPreferences.inAppConfig = TempEmbeddedBlocksMockConfigSection.inject(
-            gatewayManager.fetchMobileConfig(
-                configuration = configuration
-            )
+        MindboxPreferences.inAppConfig = gatewayManager.fetchMobileConfig(
+            configuration = configuration
         )
         MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
     }
@@ -117,12 +111,15 @@ internal class MobileConfigRepositoryImpl(
             featureToggleManager.applyToggles(config = filteredConfig)
             persistOperationsDomain(filteredConfig)
             configState.value = updatedInAppConfig
+            configUpdates.tryEmit(Unit)
             // Prewarm stage 2: warm what the config's webview in-apps will need
             // (or release the warm instance when the config proves there are none).
             inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
             mindboxLogI(message = "Providing config: $updatedInAppConfig")
         }
     }
+
+    override fun listenConfigUpdates(): Flow<Unit> = configUpdates
 
     override suspend fun getMonitoringSection() = getConfig().monitoring
 
@@ -165,6 +162,9 @@ internal class MobileConfigRepositoryImpl(
                     frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting
+                    ),
+                    displayConditionsDto = mobileConfigSerializationManager.deserializeToDisplayConditionsDto(
+                        inAppDtoBlank.displayConditions
                     )
                 )
             }?.filter { inAppDto ->
