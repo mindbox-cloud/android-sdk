@@ -32,7 +32,7 @@ import kotlin.math.abs
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
  * default one or the host's own ([setPlaceholderView]). When the place ends up without content the
- * block hides itself, unless the host gave it a view to show instead ([setErrorView]).
+ * block hides itself; a failure can be shown instead ([setErrorView]), an empty place cannot.
  *
  * ```xml
  * <cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
@@ -43,7 +43,7 @@ import kotlin.math.abs
  *
  * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
  * The block owns its behavior too — visible while loading and while showing content, `GONE`
- * when the place ends up without content, unless [setErrorView] keeps it in place.
+ * when the place ends up without content, unless a failure has [setErrorView] to show.
  * [setListener] only observes: callbacks arrive after the block already acted.
  */
 public class MindboxEmbeddedBlockView internal constructor(
@@ -148,8 +148,12 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     /**
-     * The view for a place that ended up without content. Setting it also keeps the block
-     * visible instead of the default collapse. Fills the whole block frame.
+     * The view for a block whose content failed. Setting it also keeps the block visible instead of
+     * the default collapse. Fills the whole block frame.
+     *
+     * Applies to failures only. An empty place — one the config has nothing for — always collapses
+     * and never shows this view: it is a request to keep the place through a failure, not permission
+     * to fill a place that was never meant to be there.
      *
      * Applies from the next outcome on: a block that already collapsed stays collapsed until
      * its content reloads.
@@ -300,7 +304,11 @@ public class MindboxEmbeddedBlockView internal constructor(
 
             is EmbeddedBlockState.Empty -> {
                 mindboxLogI("[EmbeddedBlock] Nothing to show for this place")
-                showErrorView()
+                // An empty place shows no error view, the host's own included: a custom error view is
+                // a request to keep the place through a failure, not permission to fill a place the
+                // config never meant to be there. So the block collapses, and the host reads it as
+                // the same non-show a failure is.
+                clearContent()
             }
             is EmbeddedBlockState.Failed -> {
                 mindboxLogI("[EmbeddedBlock] Content failed, showing the error state")
@@ -314,6 +322,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun applyDefaultVisibility(state: EmbeddedBlockState) {
         val isVisible = when {
+            state is EmbeddedBlockState.Empty -> false
             state.nothingToShow -> hasCustomErrorView
             else -> true
         }

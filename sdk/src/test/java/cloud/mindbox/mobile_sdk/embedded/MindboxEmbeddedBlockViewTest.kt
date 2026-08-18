@@ -332,7 +332,7 @@ class MindboxEmbeddedBlockViewTest {
     }
 
     @Test
-    fun `a custom error view keeps the block visible on an empty place too`() {
+    fun `an empty place collapses even when the host set an error view`() {
         val custom = View(activity)
         val view = blockView()
         view.setErrorView(custom)
@@ -341,8 +341,11 @@ class MindboxEmbeddedBlockViewTest {
         provider.report(EmbeddedBlockState.Empty)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(View.VISIBLE, view.visibility)
-        assertSame(custom, shownChild(view))
+        // A custom error view is a request to keep the place through a failure, not permission to
+        // fill a place the config never meant to be there: an empty place always gives its space
+        // back, and the host's error view is not shown in it.
+        assertEquals(View.GONE, view.visibility)
+        assertNull(shownChild(view))
     }
 
     @Test
