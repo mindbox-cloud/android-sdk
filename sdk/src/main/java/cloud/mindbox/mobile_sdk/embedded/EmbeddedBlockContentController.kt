@@ -27,6 +27,16 @@ internal class EmbeddedBlockContentController(
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 
+    /**
+     * A genuinely new cycle has begun: the content the block had is gone and is being asked for again.
+     *
+     * Told apart from a plain [start] on purpose. A block coming back on screen restarts the content it
+     * already has, which is not a new attempt at anything — the page that failed is still the page.
+     * A refresh replaces the content itself, so whatever the block decided about the old one no longer
+     * holds.
+     */
+    var onRefresh: (() -> Unit)? = null
+
     val contentView: View?
         get() = provider?.contentView
 
@@ -56,11 +66,8 @@ internal class EmbeddedBlockContentController(
     // very same instance.
     private val onSessionExpired: () -> Unit = {
         mainHandler.post {
-            if (!isReleased) {
-                mindboxLogI("[EmbeddedBlock] New session, dropping the block content")
-                dropProvider()
-                if (isStarted) start()
-            }
+            mindboxLogI("[EmbeddedBlock] New session, dropping the block content")
+            refresh()
         }
     }
 
@@ -80,6 +87,20 @@ internal class EmbeddedBlockContentController(
         current.onStateChange = { state -> report(state) }
         scheduleTimeout()
         current.start()
+    }
+
+    /**
+     * Asks the place for its content from scratch: what the block has is dropped, the resolution runs
+     * again, and the budget starts whole.
+     *
+     * The one way back into the full cycle for a block that already settled — a new session today, an
+     * update pushed to the SDK tomorrow. Merely returning to the screen is not this.
+     */
+    fun refresh() {
+        if (isReleased) return
+        dropProvider()
+        onRefresh?.invoke()
+        if (isStarted) start()
     }
 
     fun pause() {
@@ -165,6 +186,10 @@ internal class EmbeddedBlockContentController(
         resetTimeout()
         provider?.release()
         provider = null
+        // Nothing is reported about content that no longer exists. Kept, it would swallow the first
+        // state of the replacement as a repeat — so a place that fails again after a refresh would
+        // leave the container thinking the refresh is still under way.
+        lastReportedState = null
     }
 
     private fun resolveProvider(): EmbeddedContentProvider? {

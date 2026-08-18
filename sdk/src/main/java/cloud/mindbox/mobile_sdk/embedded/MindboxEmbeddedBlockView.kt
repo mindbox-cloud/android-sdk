@@ -89,6 +89,22 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     /** What the container shows right now: the one source for both its visibility and its report. */
     private var shownAppearance = MindboxEmbeddedBlockAppearance.PLACEHOLDER
+
+    /**
+     * Whether the block has already settled on a place without content — collapsed, or showing the
+     * host's error view.
+     *
+     * A settled block keeps what it shows. Coming back to the screen is not a reload: the page behind
+     * the place is the same one that already failed, so it would answer the same way — and in the
+     * meantime the host would watch the layout jump and a placeholder flash on every pass across the
+     * screen, to show nothing in the end. That holds for the error view just as much as for a
+     * collapse: a screen replaced by a placeholder and then by itself again is the same flicker.
+     *
+     * Two things end it: content that actually appeared, and a real refresh of the content
+     * ([EmbeddedBlockContentController.refresh]) — that one asks the place anew and is entitled to the
+     * full cycle, placeholder included.
+     */
+    private var hasSettled = false
     private var isContentStarted = false
 
     /** What the window callbacks last said. Attached and visible is the only combination that counts. */
@@ -112,6 +128,9 @@ public class MindboxEmbeddedBlockView internal constructor(
         clipToPadding = true
         setBackgroundColor(Color.TRANSPARENT)
         contentController.onStateChange = { newState -> state = newState }
+        // A refresh asks the place for its content again, so whatever the block showed before it —
+        // including a collapse — no longer decides anything.
+        contentController.onRefresh = { hasSettled = false }
         showContent(currentPlaceholder())
         warnIfPlaceIsMissing()
     }
@@ -297,42 +316,50 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun applyState(state: EmbeddedBlockState) {
-        when (state) {
-            is EmbeddedBlockState.Ready -> {
-                val readyContent = contentController.contentView
-                if (readyContent == null) {
-                    mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
-                    this.state = EmbeddedBlockState.Failed
-                    return
-                }
-                mindboxLogI("[EmbeddedBlock] Content ready")
-                showContent(readyContent)
-            }
-            is EmbeddedBlockState.Loading -> {
-                mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
-                showContent(currentPlaceholder())
-            }
-
-            is EmbeddedBlockState.Empty -> {
-                mindboxLogI("[EmbeddedBlock] Nothing to show for this place")
-                // An empty place shows no error view, the host's own included: a custom error view is
-                // a request to keep the place through a failure, not permission to fill a place the
-                // config never meant to be there. So the block collapses, and the host reads it as
-                // the same non-show a failure is.
-                clearContent()
-            }
-            is EmbeddedBlockState.Failed -> {
-                mindboxLogI("[EmbeddedBlock] Content failed, showing the error state")
-                showErrorView()
-            }
+        if (state is EmbeddedBlockState.Ready && contentController.contentView == null) {
+            mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
+            this.state = EmbeddedBlockState.Failed
+            return
         }
 
-        applyAppearance(appearanceFor(state))
+        // The appearance decides what is shown, and the state only decides the appearance. Driving the
+        // shown view off the state directly would mean deciding twice — and a loading block that stays
+        // collapsed would end up holding a placeholder it never shows.
+        val appearance = appearanceFor(state)
+        showLayerFor(appearance)
+        applyAppearance(appearance)
         scheduleDelivery()
     }
 
+    /** The one view the block shows for this appearance — nothing at all when it takes no space. */
+    private fun showLayerFor(appearance: MindboxEmbeddedBlockAppearance) {
+        when (appearance) {
+            MindboxEmbeddedBlockAppearance.PLACEHOLDER -> {
+                mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
+                showContent(currentPlaceholder())
+            }
+            MindboxEmbeddedBlockAppearance.CONTENT -> {
+                mindboxLogI("[EmbeddedBlock] Content ready")
+                contentController.contentView?.let { showContent(it) } ?: clearContent()
+            }
+            MindboxEmbeddedBlockAppearance.ERROR -> {
+                mindboxLogI("[EmbeddedBlock] Content failed, showing the error state")
+                showErrorView()
+            }
+            MindboxEmbeddedBlockAppearance.COLLAPSED -> {
+                mindboxLogI("[EmbeddedBlock] Nothing to show, the block gives its space back")
+                clearContent()
+            }
+        }
+    }
+
     private fun appearanceFor(state: EmbeddedBlockState): MindboxEmbeddedBlockAppearance = when (state) {
-        is EmbeddedBlockState.Loading -> MindboxEmbeddedBlockAppearance.PLACEHOLDER
+        // A block that already settled keeps what it shows while it merely tries again: returning to
+        // the screen is not a reload, and an attempt that is about to fail the same way earns neither
+        // the space the host reclaimed nor a placeholder over the error screen. Only a refresh clears
+        // this.
+        is EmbeddedBlockState.Loading ->
+            if (hasSettled) shownAppearance else MindboxEmbeddedBlockAppearance.PLACEHOLDER
         is EmbeddedBlockState.Ready -> MindboxEmbeddedBlockAppearance.CONTENT
         // A failure is shown only to a host that opted in explicitly; for the rest the block collapses.
         is EmbeddedBlockState.Failed ->
@@ -341,11 +368,19 @@ public class MindboxEmbeddedBlockView internal constructor(
             } else {
                 MindboxEmbeddedBlockAppearance.COLLAPSED
             }
+        // An empty place shows no error view, the host's own included: a custom error view is a
+        // request to keep the place through a failure, not permission to fill a place the config never
+        // meant to be there.
         is EmbeddedBlockState.Empty -> MindboxEmbeddedBlockAppearance.COLLAPSED
     }
 
     private fun applyAppearance(appearance: MindboxEmbeddedBlockAppearance) {
         shownAppearance = appearance
+        if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED ||
+            appearance == MindboxEmbeddedBlockAppearance.ERROR
+        ) {
+            hasSettled = true
+        }
         visibility = if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) GONE else VISIBLE
         loggingRunCatching { appearanceObserver?.invoke(appearance) }
     }

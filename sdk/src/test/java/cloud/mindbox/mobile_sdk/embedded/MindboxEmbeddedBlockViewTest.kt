@@ -349,17 +349,84 @@ class MindboxEmbeddedBlockViewTest {
     }
 
     @Test
-    fun `a fresh loading shows a previously hidden block again`() {
+    fun `a hidden block stays hidden while it merely tries again`() {
         val view = attachedView()
         provider.report(EmbeddedBlockState.Failed)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(View.GONE, view.visibility)
 
-        // A new session reload: the content goes back to Loading — the block must come back.
+        // Back on screen, the same content starts again and goes through Loading. That is not a
+        // reload: the page that failed is still the page, so the space the host reclaimed stays
+        // reclaimed and no placeholder flashes in it.
+        provider.report(EmbeddedBlockState.Loading)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(View.GONE, view.visibility)
+        assertNull("a collapsed block holds no layer", shownChild(view))
+    }
+
+    @Test
+    fun `a refresh brings a hidden block back`() {
+        // A resolution per call, as in production: a refresh drops the content it had and the factory
+        // builds a new page, which starts from Loading. Handing the same provider back would replay
+        // its old failure instead and prove nothing.
+        val providers = mutableListOf<FakeProvider>()
+        val controller = EmbeddedBlockContentController(
+            resolveFactory = {
+                EmbeddedContentResolution.Content(FakeProvider().also { providers.add(it) })
+            },
+            placeSystemName = "test-place",
+            readyTimeout = Milliseconds(10_000L),
+        )
+        val view = MindboxEmbeddedBlockView(activity, null, "test-place", controller)
+        attach(view)
+        providers.last().report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(View.GONE, view.visibility)
+
+        // The one thing that is a new cycle: the content is asked for from scratch. Only then is the
+        // block entitled to take its place back and show a placeholder while it waits.
+        controller.refresh()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(2, providers.size)
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue("the placeholder is back", shownChild(view) != null)
+    }
+
+    @Test
+    fun `a shown error view stays put while the block merely tries again`() {
+        val view = attachedView()
+        val errorView = View(activity)
+        view.setErrorView(errorView)
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertSame(errorView, shownChild(view))
+
+        // Back on screen the same content starts again and goes through Loading. Swapping the host's
+        // error screen for a placeholder here would flash it away and put it straight back.
         provider.report(EmbeddedBlockState.Loading)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(View.VISIBLE, view.visibility)
+        assertSame(errorView, shownChild(view))
+    }
+
+    @Test
+    fun `content that actually appears expands a hidden block`() {
+        val view = attachedView()
+        provider.report(EmbeddedBlockState.Failed)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(View.GONE, view.visibility)
+
+        // The collapse holds back a placeholder, never content: if the page does render after all,
+        // the block is shown — that is the whole point of it having a place at all.
+        provider.readyView = View(activity)
+        provider.report(EmbeddedBlockState.Ready)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertSame(provider.readyView, shownChild(view))
     }
 
     @Test
