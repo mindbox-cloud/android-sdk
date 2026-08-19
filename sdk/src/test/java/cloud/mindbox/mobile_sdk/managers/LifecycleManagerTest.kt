@@ -196,15 +196,14 @@ internal class LifecycleManagerTest {
     }
 
     @Test
-    fun `repeated onNewIntent with same intent sends DIRECT on second call`() {
+    fun `repeated onNewIntent with same intent is a no-op on second call (MOBILE-393)`() {
         val manager = createManagerNoCallbacks()
         listenTrackVisit(manager)
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
         manager.onNewIntent(intent)
         manager.onNewIntent(intent)
-        assertEquals(2, trackVisitEvents.size)
+        assertEquals("duplicate call must not send a second, DIRECT-downgraded visit", 1, trackVisitEvents.size)
         assertEquals(LINK, trackVisitEvents[0].first)
-        assertEquals(DIRECT, trackVisitEvents[1].first)
     }
 
     // endregion
@@ -712,14 +711,13 @@ internal class LifecycleManagerTest {
     }
 
     @Test
-    fun `onNewIntent sends DIRECT on second call with same intent`() {
+    fun `onNewIntent second call with same intent sends nothing (MOBILE-393)`() {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
         val manager = createManager()
         manager.onNewIntent(intent)
         trackVisitEvents.clear()
         manager.onNewIntent(intent)
-        assertEquals(1, trackVisitEvents.size)
-        assertEquals(DIRECT, trackVisitEvents[0].first)
+        assertEquals("duplicate call must not send a second, DIRECT-downgraded visit", 0, trackVisitEvents.size)
     }
 
     @Test
@@ -826,8 +824,8 @@ internal class LifecycleManagerTest {
 
     @Test
     fun `deeplink source derived from stored intent state on late callbacks set`() {
-        // Source (LINK) and URL are re-computed from currentIntent/intentChanged at dispatch time,
-        // not stored as parameters — same as iOS deriving visit info from stored state.
+        // Source (LINK) and URL are captured when the visit is deferred and replayed as-is
+        // at dispatch time (see MOBILE-393 region below for why they aren't recomputed).
         val manager = createManagerNoCallbacks(isAppInBackground = true)
         val owner = mockOwner()
         val url = "https://example.com/promo"
@@ -1021,6 +1019,120 @@ internal class LifecycleManagerTest {
     }
 
     // endregion
+
+    // region — MOBILE-393: pending source must not be downgraded by a repeated onNewIntent
+    //
+    // Regression: a wrapper (Flutter/RN) replays the same launch intent through onNewIntent
+    // before Mindbox.init() completes. That replay recomputes intentChanged as false (the hash
+    // was already consumed) and would compute DIRECT — but the push/link source captured while
+    // the visit was pending must win over that later recomputation.
+
+    @Test
+    fun `repeated onNewIntent with same push intent before init does not downgrade pending source`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val owner = mockOwner()
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        // onActivityStarted (before init): consumes the intent hash, defers the visit
+        manager.onActivityStarted(buildActivityA(intent))
+        manager.onStateChanged(owner, Lifecycle.Event.ON_START)
+        assertEquals("no dispatch yet — callbacks not set", 0, trackVisitEvents.size)
+
+        // Wrapper replays the same launch intent via onNewIntent before init completes
+        manager.onNewIntent(intent)
+
+        // Mindbox.init() sets callbacks — pending visit must dispatch as PUSH, not DIRECT
+        listenTrackVisit(manager)
+        assertEquals(1, trackVisitEvents.size)
+        assertEquals(PUSH, trackVisitEvents[0].first)
+    }
+
+    @Test
+    fun `wrapper replaying launch intent via onNewIntent after init does not send a DIRECT visit`() {
+        // The actual production scenario: SDK already initialized (callbacks live), the
+        // Activity lifecycle already dispatched the correct PUSH visit via onActivityStarted,
+        // and the RN/Flutter wrapper's integration also calls Mindbox.onNewIntent(intent) for the
+        // same launch intent (documented pattern — must keep working without an app-side change).
+        val manager = createManager()
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        manager.onActivityStarted(buildActivityA(intent))
+        assertEquals(1, trackVisitEvents.size)
+        assertEquals(PUSH, trackVisitEvents[0].first)
+
+        manager.onNewIntent(intent)
+
+        assertEquals(
+            "duplicate onNewIntent for the already-tracked launch intent must not add a DIRECT visit",
+            1,
+            trackVisitEvents.size,
+        )
+    }
+
+    @Test
+    fun `repeated onNewIntent with same deeplink intent before init does not downgrade pending source`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val owner = mockOwner()
+        val url = "https://example.com/promo"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+
+        manager.onActivityStarted(buildActivityA(intent))
+        manager.onStateChanged(owner, Lifecycle.Event.ON_START)
+        assertEquals(0, trackVisitEvents.size)
+
+        manager.onNewIntent(intent)
+
+        listenTrackVisit(manager)
+        assertEquals(1, trackVisitEvents.size)
+        assertEquals(LINK, trackVisitEvents[0].first)
+        assertEquals(url, trackVisitEvents[0].second)
+    }
+
+    @Test
+    fun `deferred push visit dispatched when init lands before the first onActivityStarted`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        manager.onNewIntent(intent)
+        listenTrackVisit(manager)
+
+        assertEquals("captured visit must not be dropped", 1, trackVisitEvents.size)
+        assertEquals(PUSH, trackVisitEvents[0].first)
+    }
+
+    @Test
+    fun `deferred deeplink visit keeps its url when init lands before the first onActivityStarted`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val url = "https://example.com/promo"
+
+        manager.onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        listenTrackVisit(manager)
+
+        assertEquals(1, trackVisitEvents.size)
+        assertEquals(LINK, trackVisitEvents[0].first)
+        assertEquals(url, trackVisitEvents[0].second)
+    }
+
+    @Test
+    fun `reinit visit is not replayed with the source captured for an earlier visit`() {
+        val manager = createManagerNoCallbacks(isAppInBackground = true)
+        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+
+        manager.onNewIntent(intent)
+        listenTrackVisit(manager)
+        manager.onActivityStarted(buildActivityA(intent))
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+        trackVisitEvents.clear()
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+
+        assertEquals("reinit must send exactly one visit", 1, trackVisitEvents.size)
+        assertEquals(
+            "reinit source must be recomputed, not the stale source of the earlier visit",
+            DIRECT,
+            trackVisitEvents[0].first,
+        )
+    }
 }
 
 private fun assertSame(expected: Any, actual: Any) {

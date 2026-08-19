@@ -22,7 +22,7 @@ internal class MonitoringValidatorTest {
         assertTrue(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "123", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "123", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -32,7 +32,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -42,27 +42,27 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
             )
         )
     }
 
     @Test
-    fun `monitoring validation deviceId error empty string`() {
+    fun `monitoring validation target error empty string`() {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "asd", target = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
             )
         )
     }
 
     @Test
-    fun `monitoring validation deviceId error null`() {
+    fun `monitoring validation target error null`() {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "", from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "asd", target = null, from = "2023-01-15T00:00:00", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -72,7 +72,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "123", deviceId = "abvc", from = "", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "123", target = "334db432a8f72f64a89664682f7bc032", from = "", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -82,7 +82,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "123", deviceId = "abvc", from = "", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "123", target = "334db432a8f72f64a89664682f7bc032", from = "", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -92,7 +92,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "123", deviceId = "abvc", from = "null", to = "2023-01-30T00:00:00")
+                    .copy(requestId = "123", target = "334db432a8f72f64a89664682f7bc032", from = "null", to = "2023-01-30T00:00:00")
             )
         )
     }
@@ -102,7 +102,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "")
+                    .copy(requestId = "asd", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "")
             )
         )
     }
@@ -112,7 +112,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "")
+                    .copy(requestId = "asd", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "")
             )
         )
     }
@@ -122,7 +122,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "abc")
+                    .copy(requestId = "asd", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "abc")
             )
         )
     }
@@ -132,7 +132,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "abvc", from = "1970-01-01T00:00:00", to = "2023-01-15T00:00:00")
+                    .copy(requestId = "asd", target = "334db432a8f72f64a89664682f7bc032", from = "1970-01-01T00:00:00", to = "2023-01-15T00:00:00")
             )
         )
     }
@@ -142,7 +142,7 @@ internal class MonitoringValidatorTest {
         assertFalse(
             monitoringValidator.validateLogRequestDtoBlank(
                 LogRequestStub.getLogRequestDtoBlank()
-                    .copy(requestId = "asd", deviceId = "abvc", from = "2023-01-15T00:00:00", to = "1970-01-01T00:00:00")
+                    .copy(requestId = "asd", target = "334db432a8f72f64a89664682f7bc032", from = "2023-01-15T00:00:00", to = "1970-01-01T00:00:00")
             )
         )
     }

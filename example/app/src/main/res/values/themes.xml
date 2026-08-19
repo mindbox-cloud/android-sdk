@@ -1,9 +1,43 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.MindboxAndroidSdkExample" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Status bar: green background, white icons -->
+        <item name="android:statusBarColor">@color/mindbox_green_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+
+        <!-- Primary — Mindbox dark green for good contrast on white -->
+        <item name="colorPrimary">@color/mindbox_green_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/mindbox_green_container</item>
+        <item name="colorOnPrimaryContainer">@color/mindbox_on_green_container</item>
+
+        <!-- Secondary — Mindbox green -->
+        <item name="colorSecondary">@color/mindbox_green</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/mindbox_green_container</item>
+        <item name="colorOnSecondaryContainer">@color/mindbox_on_green_container</item>
+
+        <!-- Tertiary — light green (Push & In-App product color) -->
+        <item name="colorTertiary">@color/mindbox_green_light</item>
+        <item name="colorOnTertiary">@color/mindbox_on_green_container</item>
+
+        <!-- Surfaces -->
+        <item name="android:colorBackground">@color/mindbox_background</item>
+        <item name="colorSurface">@color/mindbox_surface</item>
+        <item name="colorOnSurface">@color/mindbox_text_primary</item>
+        <item name="colorSurfaceVariant">@color/mindbox_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/mindbox_text_secondary</item>
+
+        <!-- Outline for borders -->
+        <item name="colorOutline">@color/mindbox_outline</item>
+        <item name="colorOutlineVariant">@color/mindbox_surface_variant</item>
     </style>
 
     <style name="Theme.MindboxAndroidSdkExample" parent="Base.Theme.MindboxAndroidSdkExample" />
+
+    <style name="TextAppearance.MindboxToolbar" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
 </resources>

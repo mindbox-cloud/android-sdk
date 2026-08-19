@@ -2,5 +2,29 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="mindbox_default_notification_color">#FF000000</color>
+    <color name="mindbox_default_notification_color">#39AA5D</color>
+
+    <!-- Mindbox brand palette -->
+    <color name="mindbox_green">#39AA5D</color>
+    <color name="mindbox_green_dark">#268644</color>
+    <color name="mindbox_green_light">#56D67F</color>
+    <color name="mindbox_green_container">#C8F5D8</color>
+    <color name="mindbox_on_green_container">#002111</color>
+
+    <!-- Light surfaces -->
+    <color name="mindbox_background">#F0F3F6</color>
+    <color name="mindbox_surface">#FFFFFF</color>
+    <color name="mindbox_surface_variant">#E2E8EF</color>
+    <color name="mindbox_outline">#B4BECA</color>
+
+    <!-- Text -->
+    <color name="mindbox_text_primary">#292B32</color>
+    <color name="mindbox_text_secondary">#757987</color>
+
+    <!-- Dark surfaces -->
+    <color name="mindbox_dark_background">#0C0D10</color>
+    <color name="mindbox_dark_surface">#1A1B1F</color>
+    <color name="mindbox_dark_surface_variant">#36373F</color>
+    <color name="mindbox_dark_outline">#4A4F5A</color>
+    <color name="mindbox_dark_on_surface">#E2E8EF</color>
 </resources>

@@ -53,6 +53,27 @@ internal object SdkValidation {
         return host.isNotBlank() && isDomainValid(host)
     }
 
+    /**
+     * Path-prefix rule for [isValidOperationsDomain]: zero or more non-empty segments made
+     * of unreserved URL characters or complete `%XX` percent-encoded octets. Query, fragment,
+     * empty segments, and a bare/incomplete `%` (not followed by two hex digits) do not
+     * match — an incomplete escape passes this far but corrupts (or fails) URL building at
+     * request time, so it must be rejected at validation, not discovered later at runtime.
+     */
+    private val PATH_PREFIX_REGEX = Regex("^(?:/(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})+)*$")
+
+    /**
+     * Returns true if [value] is a valid operations domain: a host optionally followed by
+     * a path prefix (e.g. "domain.com/api/v2"). Accepts optional http:// or https:// prefix
+     * and optional trailing slash. Query, fragment and empty path segments are rejected.
+     */
+    fun isValidOperationsDomain(value: String): Boolean {
+        val hostAndPath = extractHost(value)
+        val host = hostAndPath.substringBefore('/')
+        if (host.isBlank() || !isDomainValid(host)) return false
+        return PATH_PREFIX_REGEX.matches(hostAndPath.removePrefix(host))
+    }
+
     fun validateConfiguration(
         domain: String,
         endpointId: String,
@@ -84,7 +105,7 @@ internal object SdkValidation {
                 add(Error.INVALID_INSTALLATION_ID)
             }
 
-            if (operationsDomain != null && !isValidDomain(operationsDomain)) {
+            if (operationsDomain != null && !isValidOperationsDomain(operationsDomain)) {
                 add(Error.INVALID_OPERATIONS_DOMAIN)
             }
         }

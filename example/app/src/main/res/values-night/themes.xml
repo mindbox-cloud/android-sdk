@@ -1,7 +1,36 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.MindboxAndroidSdkExample" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <!-- Status bar: dark background, white icons -->
+        <item name="android:statusBarColor">@color/mindbox_dark_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+
+        <!-- Primary — light green on dark for good contrast -->
+        <item name="colorPrimary">@color/mindbox_green_light</item>
+        <item name="colorOnPrimary">@color/mindbox_on_green_container</item>
+        <item name="colorPrimaryContainer">@color/mindbox_green_dark</item>
+        <item name="colorOnPrimaryContainer">@color/mindbox_green_container</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">@color/mindbox_green</item>
+        <item name="colorOnSecondary">@color/mindbox_dark_background</item>
+        <item name="colorSecondaryContainer">@color/mindbox_green_dark</item>
+        <item name="colorOnSecondaryContainer">@color/mindbox_green_container</item>
+
+        <!-- Tertiary -->
+        <item name="colorTertiary">@color/mindbox_green_light</item>
+        <item name="colorOnTertiary">@color/mindbox_dark_background</item>
+
+        <!-- Surfaces -->
+        <item name="android:colorBackground">@color/mindbox_dark_background</item>
+        <item name="colorSurface">@color/mindbox_dark_surface</item>
+        <item name="colorOnSurface">@color/mindbox_dark_on_surface</item>
+        <item name="colorSurfaceVariant">@color/mindbox_dark_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/mindbox_text_secondary</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">@color/mindbox_dark_outline</item>
+        <item name="colorOutlineVariant">@color/mindbox_dark_surface_variant</item>
     </style>
+
+    <style name="Theme.MindboxAndroidSdkExample" parent="Base.Theme.MindboxAndroidSdkExample" />
 </resources>

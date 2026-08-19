@@ -21,16 +21,30 @@ if (examplePropertiesFile.exists()) {
     }
 }
 
+
+def exampleVersionName = EXAMPLE_VERSION_NAME_FALLBACK
+def sdkPropertiesFile = rootProject.file("../gradle.properties")
+if (sdkPropertiesFile.exists()) {
+    def sdkProperties = new Properties()
+    sdkPropertiesFile.withInputStream { stream ->
+        sdkProperties.load(stream)
+    }
+    exampleVersionName = sdkProperties.getProperty('SDK_VERSION_NAME', exampleVersionName)
+}
+
 android {
     namespace 'com.mindbox.example'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.mindbox.example"
         minSdk 21
-        targetSdk 35
-        versionCode 8
-        versionName "2.15.2"
+        targetSdk 36
+        versionCode EXAMPLE_VERSION_CODE.toInteger()
+        // versionName is taken from SDK_VERSION_NAME in the android-sdk repo root
+        // gradle.properties; if it cannot be read (e.g. the example is built outside
+        // the repo), it falls back to EXAMPLE_VERSION_NAME_FALLBACK.
+        versionName exampleVersionName
         multiDexEnabled true
 
         buildConfigField "String", "MINDBOX_DOMAIN", "\"${exampleProperties.getProperty('mindbox.domain', '')}\""
@@ -46,11 +60,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
-    viewBinding {
-        enabled = true
-    }
     buildFeatures {
         buildConfig = true
+        compose = true
+    }
+    composeOptions {
+        // Compose compiler compatible with Kotlin 1.9.22
+        kotlinCompilerExtensionVersion = '1.5.10'
     }
     signingConfigs {
         debug {
@@ -95,7 +111,17 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.2'
+    // Coil for async image loading in Compose
+    implementation 'io.coil-kt:coil-compose:2.6.0'
 
     // Push services
     implementation platform('com.google.firebase:firebase-bom:32.7.1')
@@ -107,7 +133,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
 
     // Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.15.3'
+    implementation 'cloud.mindbox:mobile-sdk:2.15.4'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
     implementation 'cloud.mindbox:mindbox-rustore'

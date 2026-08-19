@@ -39,6 +39,16 @@ class MonitoringMobileConfigSerializationManagerTest {
     }
 
     @Test
+    fun monitoringConfig_withOldDeviceUuidFormat_shouldParseWithNullTarget() {
+        val json = getJson("ConfigParsing/Monitoring/MonitoringLogsOldDeviceUuidFormat.json")
+        val config = manager.deserializeMonitoring(json)!!
+
+        assertEquals(2, config.logs?.size)
+        assertNull(config.logs?.first()?.target)
+        assertEquals("248eccb79da2bbca61c133c59e4a1516", config.logs?.last()?.target)
+    }
+
+    @Test
     fun monitoringConfig_withLogsError_shouldSetMonitoringToNull() {
         // Key is `logsTests` instead of `logs`
         val json = getJson("ConfigParsing/Monitoring/MonitoringLogsError.json")
@@ -78,7 +88,7 @@ class MonitoringMobileConfigSerializationManagerTest {
 
     @Test
     fun monitoringConfig_withLogsTwoElementsError_shouldParseSuccessfullyRemainsElements() {
-        // Key is `request` instead `requestId` and key is `device` instead of `deviceUUID`
+        // Key is `request` instead of `requestId` and key is `toTest` instead of `to`
         mockkObject(MindboxLoggerImpl)
 
         val json = getJson("ConfigParsing/Monitoring/MonitoringLogsTwoElementsError.json")
