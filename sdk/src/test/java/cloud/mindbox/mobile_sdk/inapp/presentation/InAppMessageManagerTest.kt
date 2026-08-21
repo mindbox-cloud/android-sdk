@@ -5,12 +5,15 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import com.google.gson.JsonPrimitive
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sortByPriority
@@ -466,5 +469,78 @@ internal class InAppMessageManagerTest {
         assertEquals(null, capturedTags)
         capturedCallbacks!!.onInAppClick.onClick()
         verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(inAppMessage.inAppId, null) }
+    }
+
+    private fun TestScope.createManager(): InAppMessageManagerImpl = InAppMessageManagerImpl(
+        inAppMessageViewDisplayer,
+        inAppMessageInteractor,
+        StandardTestDispatcher(testScheduler),
+        monitoringRepository,
+        sessionStorageManager,
+        userVisitManager,
+        inAppMessageDelayedManager,
+        timeProvider,
+        featureToggleManager
+    )
+
+    @Test
+    fun `showInAppById presents the variant now with its tags and the caller params`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id", tags = mapOf("key" to "value"))
+        val variant = inApp.form.variants.first()
+        val extraParams = mapOf("title" to JsonPrimitive("Сториз 1"))
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
+        } just runs
+
+        createManager().showInAppById("tap-id", extraParams)
+        advanceUntilIdle()
+
+        verify(exactly = 1) {
+            inAppMessageViewDisplayer.showInAppMessageNow(
+                variant,
+                any(),
+                any(),
+                mapOf("key" to "value"),
+                extraParams
+            )
+        }
+    }
+
+    @Test
+    fun `showInAppById wires the ordinary show and dismiss accounting`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any()) } just runs
+        every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+
+        createManager().showInAppById("tap-id", emptyMap())
+        advanceUntilIdle()
+
+        callbacks.captured.onInAppShown.onShown()
+        verify(exactly = 1) { inAppMessageInteractor.saveShownInApp(variant.inAppId, 100L, any(), null) }
+        callbacks.captured.onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp) }
+        callbacks.captured.onInAppClick.onClick()
+        verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(variant.inAppId, null) }
+    }
+
+    @Test
+    fun `showInAppById for an id nothing resolves shows nothing`() = runTest {
+        coEvery { inAppMessageInteractor.getInAppToShowById("missing") } returns null
+
+        createManager().showInAppById("missing", emptyMap())
+        advanceUntilIdle()
+
+        verify(exactly = 0) {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
+        }
     }
 }

@@ -44,7 +44,7 @@ import org.junit.Test
 
 /**
  * The MOBILE-333 resolve trio: content for a place (pull and push), content by id for the
- * future direct call, and the feed answer to `checkInappsTargeting`. Presentation limits and
+ * future direct call, and the feed answer to `filterShowableInapps`. Presentation limits and
  * the lock are structurally absent from these paths — the paired negative tests pin that.
  */
 @ExperimentalCoroutinesApi
@@ -367,45 +367,35 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `getInAppById returns content for known id`() = runTest {
-        givenConfig(modalInApp(id = "known"))
-
-        assertEquals(
-            InAppStub.getInApp().form.variants.first(),
-            interactor.getInAppById("known")
-        )
-    }
-
-    @Test
-    fun `getInAppById ignores every restriction`() = runTest {
+    fun `getInAppToShowById ignores every restriction`() = runTest {
         // directCall, already shown, whatever frequency — a drawn circle must open.
         givenConfig(
             modalInApp(id = "restricted").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         )
         every { inAppRepository.getShownInApps() } returns mapOf("restricted" to listOf(1L))
 
-        val content = interactor.getInAppById("restricted")
+        val content = interactor.getInAppToShowById("restricted")?.variant
 
         assertEquals(InAppStub.getInApp().form.variants.first(), content)
     }
 
     @Test
-    fun `getInAppById does not check ab pool`() = runTest {
+    fun `getInAppToShowById does not check ab pool`() = runTest {
         givenConfig(modalInApp(id = "outside-pool"))
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
 
         assertEquals(
             InAppStub.getInApp().form.variants.first(),
-            interactor.getInAppById("outside-pool")
+            interactor.getInAppToShowById("outside-pool")?.variant
         )
         coVerify(exactly = 0) { inAppABTestLogic.getInAppsPool(any()) }
     }
 
     @Test
-    fun `getInAppById does not check show limits or lock`() = runTest {
+    fun `getInAppToShowById does not check show limits or lock`() = runTest {
         givenConfig(modalInApp(id = "known"))
 
-        interactor.getInAppById("known")
+        interactor.getInAppToShowById("known")
 
         verify { maxInappsPerSessionLimitChecker wasNot Called }
         verify { maxInappsPerDayLimitChecker wasNot Called }
@@ -413,21 +403,46 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `getInAppById returns null for unknown id`() = runTest {
+    fun `getInAppToShowById returns null for unknown id`() = runTest {
         givenConfig(modalInApp(id = "known"))
 
-        assertNull(interactor.getInAppById("unknown"))
+        assertNull(interactor.getInAppToShowById("unknown"))
     }
 
     @Test
-    fun `getInAppById returns null for embedded in-app`() = runTest {
+    fun `getInAppToShowById returns the owning in-app with its variant`() = runTest {
+        val inApp = modalInApp(id = "known")
+        givenConfig(inApp)
+
+        val toShow = interactor.getInAppToShowById("known")!!
+
+        assertEquals(inApp, toShow.inApp)
+        assertEquals(inApp.form.variants.first(), toShow.variant)
+    }
+
+    @Test
+    fun `getInAppToShowById returns null for an embedded in-app`() = runTest {
         givenConfig(embeddedInApp(id = "embedded-id"))
 
-        assertNull(interactor.getInAppById("embedded-id"))
+        assertNull(interactor.getInAppToShowById("embedded-id"))
     }
 
     @Test
-    fun `getInAppById picks first when config has duplicate ids`() = runTest {
+    fun `getInAppToShowById picks the overlay variant of a mixed form`() = runTest {
+        val modal = modalInApp(id = "mixed")
+        val embeddedVariant = embeddedInApp(id = "mixed").form.variants.first()
+        givenConfig(
+            modal.copy(form = Form(variants = listOf(embeddedVariant, modal.form.variants.first())))
+        )
+
+        assertEquals(
+            modal.form.variants.first(),
+            interactor.getInAppToShowById("mixed")?.variant
+        )
+    }
+
+    @Test
+    fun `getInAppToShowById picks first when config has duplicate ids`() = runTest {
         // Ids are not unique across sdkVersion ranges; the section is already version-filtered,
         // so the first match is the right one.
         val first = modalInApp(id = "dup")
@@ -437,7 +452,7 @@ class EmbeddedResolveInteractorTest {
         )
         givenConfig(first, second)
 
-        assertEquals(first.form.variants.first(), interactor.getInAppById("dup"))
+        assertEquals(first.form.variants.first(), interactor.getInAppToShowById("dup")?.variant)
     }
 
     @Test

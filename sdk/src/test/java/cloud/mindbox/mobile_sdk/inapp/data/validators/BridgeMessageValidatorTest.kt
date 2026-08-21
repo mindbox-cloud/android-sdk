@@ -42,10 +42,17 @@ class BridgeMessageValidatorTest {
     }
 
     @Test
-    fun `isValid returns false for unsupported version`() {
-        val message: BridgeMessage.Request = createRequest(version = BridgeMessage.VERSION + 1)
+    fun `isValid returns false for a version older than the bridge`() {
+        val message: BridgeMessage.Request = createRequest(version = BridgeMessage.VERSION - 1)
         val actualResult: Boolean = validator.isValid(message)
         assertFalse(actualResult)
+    }
+
+    @Test
+    fun `isValid returns true for a version newer than the bridge`() {
+        val message: BridgeMessage.Request = createRequest(version = BridgeMessage.VERSION + 1)
+        val actualResult: Boolean = validator.isValid(message)
+        assertTrue(actualResult)
     }
 
     @Test

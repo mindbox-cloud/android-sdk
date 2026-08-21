@@ -180,7 +180,7 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
         coVerify(exactly = 1) { interactor.listenEmbeddedPlaceEvents() }
         coVerify(exactly = 1) { interactor.listenConfigUpdates() }
-        coVerify(exactly = 0) { interactor.getInAppById(any()) }
+        coVerify(exactly = 0) { interactor.getInAppToShowById(any()) }
         coVerify(exactly = 0) { interactor.filterShowableInAppIds(any()) }
     }
 

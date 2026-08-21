@@ -6,11 +6,14 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +35,10 @@ class DataCollectorParamsTest {
         every { getPhotoLibraryPermissionStatus() } returns PermissionStatus.DENIED
     }
 
-    private fun collect(params: Map<String, String>): JsonObject {
+    private fun collect(
+        params: Map<String, String>,
+        extraParams: Map<String, JsonElement> = emptyMap(),
+    ): JsonObject {
         val configuration: Configuration = mockk(relaxed = true) {
             every { endpointId } returns "endpoint-id"
             every { versionName } returns "1.0"
@@ -42,7 +48,7 @@ class DataCollectorParamsTest {
             sessionStorageManager = mockk<SessionStorageManager>(relaxed = true),
             permissionManager = permissionManager,
             configuration = configuration,
-            params = params,
+            params = DataCollector.mergedParams(config = params, fromCaller = extraParams),
             inAppInsets = InAppInsets(),
             gson = Gson(),
             inAppId = "in-app-id",
@@ -85,5 +91,45 @@ class DataCollectorParamsTest {
         val payload = collect(mapOf("broken" to """{"unclosed": """))
 
         assertTrue(payload.get("broken").asJsonPrimitive.isString)
+    }
+
+    @Test
+    fun `the in-app id is sent under the contract spelling only`() {
+        val payload = collect(emptyMap())
+
+        // Cut hard, in sync with iOS: the page that reads `inappId` ships before any SDK release.
+        assertEquals("in-app-id", payload.get("inappId").asString)
+        assertNull(payload.get("inAppId"))
+    }
+
+    @Test
+    fun `extra params overwrite the sdk keys and the config params alike`() {
+        val payload = collect(
+            params = mapOf("formId" to "73379"),
+            extraParams = mapOf(
+                "formId" to JsonPrimitive(42),
+                "inappId" to JsonPrimitive("caller-wins"),
+            ),
+        )
+
+        assertEquals(42, payload.get("formId").asInt)
+        assertEquals("caller-wins", payload.get("inappId").asString)
+    }
+
+    @Test
+    fun `extra param values keep their json types`() {
+        val record = JsonParser.parseString("""{"title":"Сториз 1","rank":3}""")
+        val payload = collect(
+            params = emptyMap(),
+            extraParams = mapOf(
+                "record" to record,
+                "count" to JsonPrimitive(5),
+                "enabled" to JsonPrimitive(true),
+            ),
+        )
+
+        assertEquals(record, payload.get("record"))
+        assertEquals(5, payload.get("count").asInt)
+        assertTrue(payload.get("enabled").asBoolean)
     }
 }
