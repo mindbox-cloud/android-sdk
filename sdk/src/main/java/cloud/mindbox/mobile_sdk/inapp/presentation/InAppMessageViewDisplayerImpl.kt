@@ -179,12 +179,18 @@ internal class InAppMessageViewDisplayerImpl(
             return
         }
         if (isInAppActive()) {
-            loggingRunCatching {
-                currentHolder?.wrapper?.inAppActionCallbacks?.onInAppDismiss?.onDismiss()
+            currentHolder?.let { holder ->
+                loggingRunCatching {
+                    inAppCallback.onInAppDismissed(holder.wrapper.inAppType.inAppId)
+                    holder.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
+                }
             }
         }
         pausedHolder?.let { paused ->
-            loggingRunCatching { paused.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss() }
+            loggingRunCatching {
+                inAppCallback.onInAppDismissed(paused.wrapper.inAppType.inAppId)
+                paused.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
+            }
         }
         closeInApp()
         mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown on request, past the queue and its limits")

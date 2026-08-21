@@ -115,6 +115,27 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
+    fun `the replaced show reaches the registered app callback as dismissed`() {
+        givenForegroundActivity()
+        val appCallback = mockk<InAppCallback>(relaxUnitFun = true)
+        displayer.registerInAppCallback(appCallback)
+        val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
+        setCurrentHolder(activeHolder(dismiss))
+
+        displayer.showInAppMessageNow(
+            inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
+            inAppActionCallbacks = noCallbacks,
+        )
+
+        // The same order the ordinary close keeps: the app hears about the dismissal first,
+        // the internal accounting follows.
+        verifyOrder {
+            appCallback.onInAppDismissed("active-id")
+            dismiss.onDismiss()
+        }
+    }
+
+    @Test
     fun `a paused show gets the same honest dismiss accounting`() {
         givenForegroundActivity()
         val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)

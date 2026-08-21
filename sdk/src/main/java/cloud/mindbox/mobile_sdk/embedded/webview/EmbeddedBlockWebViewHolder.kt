@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
+import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.gatedTags
@@ -108,7 +109,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private val commonBridgeActionsLazy = lazy {
         WebViewCommonBridgeActions(object : WebViewBridgeHost {
-            override val hostActivity: Activity? get() = webViewController?.view?.context?.safeAs<Activity>()
+            override val hostActivity: Activity? get() = webViewController?.view?.context?.findActivity()
             override val hostTags: Map<String, String>? get() = gatedTags()
             override val hostPage: MindboxWebPage get() = this@EmbeddedBlockWebViewHolder
 

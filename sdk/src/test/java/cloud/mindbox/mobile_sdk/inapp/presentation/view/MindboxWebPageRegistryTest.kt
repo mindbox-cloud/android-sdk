@@ -97,26 +97,27 @@ internal class MindboxWebPageRegistryTest {
     }
 
     @Test
-    fun `a page the owner let go is swept and no longer receives`() {
+    fun `a page the owner let go is collected - the registry holds no strong reference`() {
         var collectible: RecordingPage? = RecordingPage()
         val survivor = RecordingPage()
         registry.register(collectible!!)
         registry.register(survivor)
 
+        val pageRef = java.lang.ref.WeakReference(collectible)
         collectible = null
-        awaitCollected()
+        awaitCollected(pageRef)
 
+        assertEquals(null, pageRef.get())
         registry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, "{}", excludingAuthor = null)
         assertEquals(1, survivor.received.size)
     }
 
     /** Entries are weak; give the collector a bounded number of chances to prove it. */
-    private fun awaitCollected() {
-        val probe = java.lang.ref.WeakReference(Any())
+    private fun awaitCollected(ref: java.lang.ref.WeakReference<*>) {
         repeat(20) {
             System.gc()
             System.runFinalization()
-            if (probe.get() == null) return
+            if (ref.get() == null) return
             Thread.sleep(50)
         }
     }

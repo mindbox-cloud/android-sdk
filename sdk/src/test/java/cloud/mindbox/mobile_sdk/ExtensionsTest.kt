@@ -28,6 +28,18 @@ import java.util.Queue
 @RunWith(RobolectricTestRunner::class)
 internal class ExtensionsTest {
 
+    @org.junit.Test
+    fun `findActivity unwraps the wrapper chain to the hosting activity`() {
+        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).get()
+        val themed = android.view.ContextThemeWrapper(activity, 0)
+
+        org.junit.Assert.assertSame(activity, themed.findActivity())
+        org.junit.Assert.assertSame(activity, activity.findActivity())
+        org.junit.Assert.assertNull(
+            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().findActivity()
+        )
+    }
+
     @Before
     fun onTestStart() {
         AndroidThreeTen.init(ApplicationProvider.getApplicationContext())

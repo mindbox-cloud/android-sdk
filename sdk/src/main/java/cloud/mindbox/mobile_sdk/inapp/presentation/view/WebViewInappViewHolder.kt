@@ -105,7 +105,7 @@ internal class WebViewInAppViewHolder(
 
     private val commonBridgeActionsLazy = lazy {
         WebViewCommonBridgeActions(object : WebViewBridgeHost {
-            override val hostActivity: Activity? get() = webViewController?.view?.context?.safeAs<Activity>()
+            override val hostActivity: Activity? get() = webViewController?.view?.context?.findActivity()
             override val hostTags: Map<String, String>? get() = wrapper.tags
             override val hostPage: MindboxWebPage get() = this@WebViewInAppViewHolder
 
