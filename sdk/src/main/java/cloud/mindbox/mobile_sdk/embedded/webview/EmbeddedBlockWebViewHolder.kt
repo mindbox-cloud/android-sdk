@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,7 @@ import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.gatedTags
+import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
@@ -23,10 +25,15 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.DataCollector
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppInsets
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPage
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewActionHandlers
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLocalStateStore
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewBridgeHost
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewCommonBridgeActions
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewNoCacheRetryPolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.fromBridgeMessage
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeErrorPayload
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.webview.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
@@ -43,6 +50,7 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
 import com.google.gson.Gson
 import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
@@ -60,7 +68,7 @@ internal class EmbeddedBlockWebViewHolder(
     @Volatile private var layer: Layer.WebViewLayer,
     private val context: Context,
     private val attemptStartedAt: Timestamp,
-) : EmbeddedUpdatableContentProvider {
+) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
     override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 
@@ -94,8 +102,30 @@ internal class EmbeddedBlockWebViewHolder(
     private val appContext by mindboxInject { appContext }
     private val timeProvider by mindboxInject { timeProvider }
     private val featureToggleManager: FeatureToggleManager by mindboxInject { featureToggleManager }
+    private val inAppMessageManager by mindboxInject { inAppMessageManager }
+    private val webPageRegistry: MindboxWebPageRegistry by mindboxInject { webPageRegistry }
     private val messageValidator: BridgeMessageValidator by lazy { BridgeMessageValidator() }
-    private val localStateStore: WebViewLocalStateStore by lazy { WebViewLocalStateStore(appContext) }
+
+    private val commonBridgeActionsLazy = lazy {
+        WebViewCommonBridgeActions(object : WebViewBridgeHost {
+            override val hostActivity: Activity? get() = webViewController?.view?.context?.safeAs<Activity>()
+            override val hostTags: Map<String, String>? get() = gatedTags()
+            override val hostPage: MindboxWebPage get() = this@EmbeddedBlockWebViewHolder
+
+            override val isUserPresent: Boolean get() = this@EmbeddedBlockWebViewHolder.isUserPresent
+
+            override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
+                val controller = webViewController ?: return
+                sendActionInternal(controller, message, onError)
+            }
+
+            override val closeCapability: ((BridgeMessage.Request) -> String)? = null
+            override val hideCapability: (() -> String)? = null
+        })
+    }
+    private val commonBridgeActions: WebViewCommonBridgeActions by commonBridgeActionsLazy
+
+    @Volatile private var isRegisteredForBroadcasts = false
 
     private val noCacheRetryPolicy: WebViewNoCacheRetryPolicy = WebViewNoCacheRetryPolicy {
         webViewCachePolicy.isCacheEnabled
@@ -104,6 +134,8 @@ internal class EmbeddedBlockWebViewHolder(
     @Volatile private var hasPageAnswered = false
 
     @Volatile private var didAccountForShow = false
+
+    private val isUserPresent: Boolean get() = isActive && !isReleased
 
     override fun start() {
         if (isReleased) return
@@ -123,6 +155,10 @@ internal class EmbeddedBlockWebViewHolder(
     override fun release() {
         isActive = false
         isReleased = true
+        unregisterFromBroadcasts()
+        if (commonBridgeActionsLazy.isInitialized()) {
+            commonBridgeActions.tearDown()
+        }
         cancelPendingResponses("Embedded block content is released")
         webViewController?.let { controller ->
             controller.setEventListener(null)
@@ -168,7 +204,7 @@ internal class EmbeddedBlockWebViewHolder(
 
             controller.setJsBridge(bridge = { json ->
                 mindboxLogI("SDK <- receive message $json")
-                val message = gson.fromJson<BridgeMessage>(json).getOrNull()
+                val message = gson.fromBridgeMessage(json)
                 if (!messageValidator.isValid(message)) {
                     return@setJsBridge
                 }
@@ -250,33 +286,50 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun createActionHandlers(configuration: Configuration): WebViewActionHandlers {
         return WebViewActionHandlers().apply {
+            commonBridgeActions.register(this)
             registerSuspend(WebViewAction.READY) { handleReadyAction(configuration) }
             register(WebViewAction.INIT) {
                 hasPageAnswered = true
                 BridgeMessage.EMPTY_PAYLOAD
             }
-            register(WebViewAction.LOG) { message ->
-                mindboxLogI("JS: ${message.payload}")
-                BridgeMessage.EMPTY_PAYLOAD
-            }
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
             register(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
-            registerSuspend(WebViewAction.CHECK_INAPPS_TARGETING, ::handleCheckInappsTargetingAction)
-            registerSuspend(WebViewAction.LOCAL_STATE_GET) { message ->
-                localStateStore.getState(message.payload ?: BridgeMessage.EMPTY_PAYLOAD)
-            }
-            registerSuspend(WebViewAction.LOCAL_STATE_SET) { message ->
-                localStateStore.setState(message.payload ?: BridgeMessage.EMPTY_PAYLOAD)
-            }
-            registerSuspend(WebViewAction.LOCAL_STATE_INIT) { message ->
-                localStateStore.initState(message.payload ?: BridgeMessage.EMPTY_PAYLOAD)
-            }
+            registerSuspend(WebViewAction.FILTER_SHOWABLE_INAPPS, ::handleFilterShowableInappsAction)
         }
     }
 
     private fun handleReadyAction(configuration: Configuration): String {
         hasPageAnswered = true
+        registerForBroadcasts()
         return startPayload(configuration)
+    }
+
+    private fun registerForBroadcasts() {
+        if (isRegisteredForBroadcasts) return
+        isRegisteredForBroadcasts = true
+        webPageRegistry.register(this)
+    }
+
+    private fun unregisterFromBroadcasts() {
+        if (!isRegisteredForBroadcasts) return
+        isRegisteredForBroadcasts = false
+        webPageRegistry.unregister(this)
+    }
+
+    override fun push(action: WebViewAction, payload: String) {
+        if (isReleased) return
+        val controller = webViewController ?: return
+        Mindbox.mindboxScope.launch {
+            loggingRunCatchingSuspending {
+                val response = withTimeoutOrNull(Constants.WebView.readyTimeout.interval) {
+                    sendActionAndAwaitResponse(controller, BridgeMessage.createAction(action, payload))
+                }
+                mindboxLogI(
+                    "[EmbeddedBlock] push '$action' " +
+                        (if (response != null) "confirmed" else "was not confirmed") + " by the page"
+                )
+            }
+        }
     }
 
     private fun startPayload(configuration: Configuration): String = DataCollector(
@@ -285,12 +338,12 @@ internal class EmbeddedBlockWebViewHolder(
         permissionManager = permissionManager,
         gson = gson,
         configuration = configuration,
-        params = layer.params,
+        params = DataCollector.mergedParams(config = layer.params),
         inAppInsets = InAppInsets(),
         inAppId = inAppId,
     ).get()
 
-    private suspend fun handleCheckInappsTargetingAction(message: BridgeMessage.Request): String {
+    private suspend fun handleFilterShowableInappsAction(message: BridgeMessage.Request): String {
         val askedIds = runCatching {
             gson.fromJson(message.payload, JsonObject::class.java)?.get("inappIds") as? JsonArray
         }.getOrNull() ?: throw IllegalArgumentException("no 'inappIds' array in the payload")
@@ -306,7 +359,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         val showableIds = inAppInteractor.filterShowableInAppIds(requestedIds)
         mindboxLogI(
-            "[EmbeddedBlock] checkInappsTargeting: ${requestedIds.size} id(s) asked, " +
+            "[EmbeddedBlock] filterShowableInapps: ${requestedIds.size} id(s) asked, " +
                 "${showableIds.size} allowed"
         )
         return gson.toJson(InAppIdsPayload(showableIds))
@@ -376,8 +429,29 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun handleShowInAppAction(message: BridgeMessage.Request): String {
-        mindboxLogI("[EmbeddedBlock] Circle tap received: ${message.payload}. The show ships with the JS bridge task")
-        return BridgeMessage.EMPTY_PAYLOAD
+        check(isUserPresent) { "Nobody is looking at this page" }
+        val payload = gson.fromJson<JsonObject>(message.payload).getOrNull()
+            ?: throw IllegalArgumentException(SHOW_IN_APP_INVALID_PAYLOAD)
+        val requestedId = payload.getOrNull(SHOW_IN_APP_ID_FIELD)
+            ?.takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
+            ?.asString
+        require(!requestedId.isNullOrEmpty()) { SHOW_IN_APP_INVALID_PAYLOAD }
+        val extraParams: Map<String, JsonElement> =
+            payload.getOrNull(SHOW_IN_APP_PARAMS_FIELD).safeAs<JsonObject>()
+                ?.entrySet()?.associate { (key, value) -> key to value }
+                ?: emptyMap()
+        mindboxLogI(
+            "[EmbeddedBlock] showInApp: inappId=$requestedId" +
+                " index=${payload.getOrNull(SHOW_IN_APP_INDEX_FIELD)}" +
+                " sourceInappId=${payload.getOrNull(SHOW_IN_APP_SOURCE_FIELD)}" +
+                " with ${extraParams.size} param(s)"
+        )
+        if (lastState != EmbeddedBlockState.Loading && lastState != EmbeddedBlockState.Ready) {
+            mindboxLogI("[EmbeddedBlock] Ignored a show request from a block that is not shown")
+            return BridgeMessage.SUCCESS_PAYLOAD
+        }
+        inAppMessageManager.showInAppById(requestedId, extraParams)
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
@@ -491,9 +565,7 @@ internal class EmbeddedBlockWebViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val json: String = runCatching {
-            gson.toJson(ErrorPayload(error = requireNotNull(error.message)))
-        }.getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+        val json: String = gson.toBridgeErrorPayload(error)
         mindboxLogW("[EmbeddedBlock] Error response for ${message.action}: $json")
         sendActionInternal(controller, BridgeMessage.createErrorAction(message, json))
     }
@@ -534,13 +606,12 @@ internal class EmbeddedBlockWebViewHolder(
         val inappIds: List<String>?,
     )
 
-    private data class ErrorPayload(
-        @SerializedName("error")
-        val error: String,
-    )
-
     private companion object {
         private const val SHOW_IN_APP_ID_FIELD = "inappId"
+        private const val SHOW_IN_APP_PARAMS_FIELD = "params"
+        private const val SHOW_IN_APP_INDEX_FIELD = "index"
+        private const val SHOW_IN_APP_SOURCE_FIELD = "sourceInappId"
+        private const val SHOW_IN_APP_INVALID_PAYLOAD = "Invalid payload: missing or empty 'inappId'"
         private const val JS_RETURN = "true"
         private const val JS_BRIDGE = "window.bridgeMessagesHandlers.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"

@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
@@ -57,6 +58,7 @@ internal interface PresentationModule : MindboxModule {
     val inAppMessageManager: InAppMessageManager
     val clipboardManager: ClipboardManager
     val activityManager: ActivityManager
+    val webPageRegistry: MindboxWebPageRegistry
     val embeddedBlocksRegistry: EmbeddedBlocksRegistry
 
     /** The registry only if a block has already asked for it — never creates one. */

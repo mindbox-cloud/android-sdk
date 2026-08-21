@@ -1,7 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
@@ -73,8 +77,11 @@ public enum class WebViewAction {
     @SerializedName("motion.event")
     MOTION_EVENT,
 
-    @SerializedName("checkInappsTargeting")
-    CHECK_INAPPS_TARGETING,
+    @SerializedName("filterShowableInapps")
+    FILTER_SHOWABLE_INAPPS,
+
+    @SerializedName("localState.changed")
+    LOCAL_STATE_CHANGED,
 
     @SerializedName("contentRendered")
     CONTENT_RENDERED,
@@ -160,6 +167,32 @@ public sealed class BridgeMessage {
             )
     }
 }
+
+internal fun Gson.fromBridgeMessage(json: String): BridgeMessage? = fromJson<JsonObject>(json)
+    .getOrNull()
+    ?.also { envelope ->
+        val payload = envelope.getOrNull("payload")
+        if (payload != null && (payload.isJsonObject || payload.isJsonArray)) {
+            envelope.addProperty("payload", payload.toString())
+        }
+    }
+    ?.let { envelope -> fromJson<BridgeMessage>(envelope).getOrNull() }
+
+/**
+ * The one error-payload rule for every surface: a sync-operation failure already carries the
+ * structural payload the page's tracker dispatches on and must pass through untouched — running
+ * it through [Gson.toJson] again would double-encode it.
+ */
+internal fun Gson.toBridgeErrorPayload(error: Throwable): String = when (error) {
+    is WebViewSyncOperationException -> error.payloadJson
+    else -> runCatching { toJson(BridgeErrorPayload(error = requireNotNull(error.message))) }
+        .getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+}
+
+private data class BridgeErrorPayload(
+    @SerializedName("error")
+    val error: String,
+)
 
 @InternalMindboxApi
 internal typealias BridgeMessageHandler = (BridgeMessage.Request) -> String

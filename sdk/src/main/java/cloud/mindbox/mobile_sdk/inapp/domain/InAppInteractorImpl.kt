@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
@@ -187,18 +188,17 @@ internal class InAppInteractorImpl(
             }
     }
 
-    override suspend fun getInAppById(inAppId: String): InAppType? {
+    override suspend fun getInAppToShowById(inAppId: String): InAppToShow? {
         val inApp = findInAppById(inAppId)
             ?: run {
                 logI("No in-app with id $inAppId to resolve content for")
                 return null
             }
-        val variant = inApp.form.variants.firstOrNull()
-        if (variant is InAppType.Embedded) {
-            logI("In-app $inAppId is embedded and is never shown as an overlay")
+        val variant = inApp.firstOverlayVariant() ?: run {
+            logE("In-app $inAppId is drawn inside the host layout and is never shown as an overlay")
             return null
         }
-        return variant
+        return InAppToShow(inApp, variant)
     }
 
     override suspend fun filterShowableInAppIds(inAppIds: List<String>): List<String> {

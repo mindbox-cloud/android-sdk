@@ -23,7 +23,7 @@ internal class DataCollector(
     private val sessionStorageManager: SessionStorageManager,
     private val permissionManager: PermissionManager,
     private val configuration: Configuration,
-    private val params: Map<String, String>,
+    private val params: Map<String, JsonElement>,
     private val inAppInsets: InAppInsets,
     private val gson: Gson,
     private val inAppId: String,
@@ -51,7 +51,7 @@ internal class DataCollector(
             KEY_VERSION to Provider.string(configuration.versionName),
         ).apply {
             params.forEach { (key, value) ->
-                put(key, Provider.jsonStructureOrString(value))
+                put(key, Provider { value })
             }
         }
     }
@@ -60,7 +60,7 @@ internal class DataCollector(
         private const val KEY_DEVICE_UUID = "deviceUUID"
         private const val KEY_ENDPOINT_ID = "endpointId"
         private const val KEY_FIRST_INITIALIZATION_TIME = "firstInitializationDateTime"
-        private const val KEY_IN_APP_ID = "inAppId"
+        private const val KEY_IN_APP_ID = "inappId"
         private const val KEY_INSETS = "insets"
         private const val KEY_LOCALE = "locale"
         private const val KEY_OPERATION_BODY = "operationBody"
@@ -84,6 +84,16 @@ internal class DataCollector(
         private const val VALUE_PLATFORM = "android"
         private const val VALUE_THEME_DARK = "dark"
         private const val VALUE_THEME_LIGHT = "light"
+
+        fun mergedParams(
+            config: Map<String, String>,
+            fromCaller: Map<String, JsonElement> = emptyMap(),
+        ): Map<String, JsonElement> = buildMap {
+            config.forEach { (key, value) ->
+                Provider.jsonStructureOrString(value).get()?.let { element -> put(key, element) }
+            }
+            putAll(fromCaller)
+        }
     }
 
     internal fun interface Provider {
@@ -97,30 +107,6 @@ internal class DataCollector(
 
             fun number(value: Number) = Provider {
                 JsonPrimitive(value)
-            }
-
-            fun objectIntParams(vararg pairs: Pair<String, Int>) = Provider {
-                JsonObject().apply {
-                    pairs.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
-            }
-
-            fun objectStringParams(vararg pairs: Pair<String, String?>) = Provider {
-                JsonObject().apply {
-                    pairs.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
-            }
-
-            fun objectStringParams(map: Map<String, String>) = Provider {
-                JsonObject().apply {
-                    map.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
             }
 
             fun jsonStructureOrString(value: String?) = Provider {

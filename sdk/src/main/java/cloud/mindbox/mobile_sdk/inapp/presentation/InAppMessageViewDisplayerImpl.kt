@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import com.google.gson.JsonElement
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -160,6 +161,42 @@ internal class InAppMessageViewDisplayerImpl(
                 )
             }
         }
+    }
+
+    override fun showInAppMessageNow(
+        inAppType: InAppType,
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit,
+        tags: Map<String, String>?,
+        extraParams: Map<String, JsonElement>,
+    ) {
+        if (!isUiPresent()) {
+            inAppFailureTracker.sendPresentationFailure(
+                inAppId = inAppType.inAppId,
+                errorDescription = "No foreground activity to present the requested in-app on",
+                tags = tags
+            )
+            return
+        }
+        if (isInAppActive()) {
+            loggingRunCatching {
+                currentHolder?.wrapper?.inAppActionCallbacks?.onInAppDismiss?.onDismiss()
+            }
+        }
+        pausedHolder?.let { paused ->
+            loggingRunCatching { paused.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss() }
+        }
+        closeInApp()
+        mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown on request, past the queue and its limits")
+        showInAppMessage(
+            InAppTypeWrapper(
+                inAppType = inAppType,
+                inAppActionCallbacks = inAppActionCallbacks,
+                onRenderStart = onRenderStart,
+                tags = tags,
+                extraParams = extraParams,
+            )
+        )
     }
 
     private fun showInAppMessage(
