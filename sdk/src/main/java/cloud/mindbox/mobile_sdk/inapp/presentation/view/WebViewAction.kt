@@ -3,10 +3,12 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CancellationException
 import java.util.UUID
 
 @InternalMindboxApi
@@ -200,6 +202,36 @@ internal typealias BridgeMessageHandler = (BridgeMessage.Request) -> String
 @InternalMindboxApi
 internal typealias BridgeSuspendMessageHandler = suspend (BridgeMessage.Request) -> String
 
+internal const val NOBODY_LOOKING_ERROR: String = "Nobody is looking at this page"
+
+internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
+    get() = when (this) {
+        WebViewAction.INIT,
+        WebViewAction.CLICK,
+        WebViewAction.CLOSE,
+        WebViewAction.HIDE,
+        WebViewAction.BACK,
+        WebViewAction.LOG,
+        WebViewAction.ALERT,
+        WebViewAction.TOAST,
+        WebViewAction.MOTION_STOP,
+        WebViewAction.CONTENT_RENDERED -> true
+
+        else -> false
+    }
+
+internal val WebViewAction.requiresUserPresence: Boolean
+    get() = when (this) {
+        WebViewAction.OPEN_LINK,
+        WebViewAction.SETTINGS_OPEN,
+        WebViewAction.PERMISSION_REQUEST,
+        WebViewAction.HAPTIC,
+        WebViewAction.MOTION_START,
+        WebViewAction.SHOW_IN_APP -> true
+
+        else -> false
+    }
+
 @InternalMindboxApi
 internal class WebViewActionHandlers {
 
@@ -220,21 +252,47 @@ internal class WebViewActionHandlers {
         suspendHandlersByActionValue[actionValue] = handler
     }
 
-    fun hasSuspendHandler(actionValue: WebViewAction): Boolean {
-        return suspendHandlersByActionValue.containsKey(actionValue)
-    }
+    fun handler(actionValue: WebViewAction): BridgeMessageHandler? = handlersByActionValue[actionValue]
 
-    fun handleRequest(message: BridgeMessage.Request): Result<String> {
-        return runCatching {
-            handlersByActionValue[message.action]?.invoke(message)
-                ?: throw IllegalArgumentException("No handler for action ${message.action}")
-        }
-    }
+    fun suspendHandler(actionValue: WebViewAction): BridgeSuspendMessageHandler? =
+        suspendHandlersByActionValue[actionValue]
+}
 
-    suspend fun handleRequestSuspend(message: BridgeMessage.Request): Result<String> {
-        return runCatching {
-            suspendHandlersByActionValue[message.action]?.invoke(message)
-                ?: throw IllegalArgumentException("No suspend handler for action ${message.action}")
+internal fun WebViewActionHandlers.dispatch(
+    message: BridgeMessage.Request,
+    isUserPresent: Boolean,
+    isAlive: () -> Boolean = { true },
+    launchSuspending: (suspend () -> Unit) -> Unit,
+    respond: (String) -> Unit,
+    refuse: (Throwable) -> Unit,
+) {
+    val suspending = suspendHandler(message.action)
+    val blocking = handler(message.action)
+    if (suspending == null && blocking == null) {
+        if (message.action.isAcknowledgedWhenUnserved) {
+            mindboxLogI("[WebView] Bridge: '${message.action}' is not served on this surface, acknowledging it")
+            respond(BridgeMessage.SUCCESS_PAYLOAD)
+        } else {
+            refuse(IllegalArgumentException("Action ${message.action} is not served on this surface"))
         }
+        return
+    }
+    if (message.action.requiresUserPresence && !isUserPresent) {
+        refuse(IllegalStateException(NOBODY_LOOKING_ERROR))
+        return
+    }
+    when {
+        suspending != null -> launchSuspending {
+            if (!isAlive()) return@launchSuspending
+            runCatching { suspending(message) }
+                .onSuccess(respond)
+                .onFailure { error ->
+                    // A cancelled scope is teardown, not an answer the page is waiting for.
+                    if (error is CancellationException) throw error
+                    refuse(error)
+                }
+        }
+
+        blocking != null -> runCatching { blocking(message) }.fold(respond, refuse)
     }
 }

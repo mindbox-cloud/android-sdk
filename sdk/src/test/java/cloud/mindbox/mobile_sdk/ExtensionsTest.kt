@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.convertToIso8601String
@@ -16,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.threeten.bp.Instant
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneId
@@ -28,21 +31,19 @@ import java.util.Queue
 @RunWith(RobolectricTestRunner::class)
 internal class ExtensionsTest {
 
-    @org.junit.Test
-    fun `findActivity unwraps the wrapper chain to the hosting activity`() {
-        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).get()
-        val themed = android.view.ContextThemeWrapper(activity, 0)
-
-        org.junit.Assert.assertSame(activity, themed.findActivity())
-        org.junit.Assert.assertSame(activity, activity.findActivity())
-        org.junit.Assert.assertNull(
-            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().findActivity()
-        )
-    }
-
     @Before
     fun onTestStart() {
         AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
+
+    @Test
+    fun `findActivity unwraps the wrapper chain to the hosting activity`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).get()
+        val themed = ContextThemeWrapper(activity, 0)
+
+        assertSame(activity, themed.findActivity())
+        assertSame(activity, activity.findActivity())
+        assertNull(ApplicationProvider.getApplicationContext<Context>().findActivity())
     }
 
     @Test

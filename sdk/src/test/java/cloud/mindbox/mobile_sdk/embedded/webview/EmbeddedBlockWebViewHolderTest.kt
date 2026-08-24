@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Timestamp
@@ -609,9 +610,9 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `sync operation answers the page with the operation response`() {
-        mockkObject(cloud.mindbox.mobile_sdk.managers.MindboxEventManager)
+        mockkObject(MindboxEventManager)
         every {
-            cloud.mindbox.mobile_sdk.managers.MindboxEventManager.syncOperation(any(), any(), any(), any())
+            MindboxEventManager.syncOperation(any(), any(), any(), any())
         } answers {
             thirdArg<(String) -> Unit>().invoke("""{"status":"Success"}""")
         }
@@ -622,14 +623,14 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("Success", lastOutgoingPayload()!!.get("status").asString)
-        unmockkObject(cloud.mindbox.mobile_sdk.managers.MindboxEventManager)
+        unmockkObject(MindboxEventManager)
     }
 
     @Test
     fun `async operation from the block reaches the event manager`() {
-        mockkObject(cloud.mindbox.mobile_sdk.managers.MindboxEventManager)
+        mockkObject(MindboxEventManager)
         every {
-            cloud.mindbox.mobile_sdk.managers.MindboxEventManager.asyncOperation(any(), any(), any<String>())
+            MindboxEventManager.asyncOperation(any(), any(), any<String>())
         } just runs
         startAndAwaitPageLoad()
 
@@ -639,9 +640,9 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "asyncOperation" }
 
         verify(exactly = 1) {
-            cloud.mindbox.mobile_sdk.managers.MindboxEventManager.asyncOperation(any(), "op.name", any<String>())
+            MindboxEventManager.asyncOperation(any(), "op.name", any<String>())
         }
-        unmockkObject(cloud.mindbox.mobile_sdk.managers.MindboxEventManager)
+        unmockkObject(MindboxEventManager)
     }
 
     @Test
@@ -677,14 +678,27 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `unknown page action is answered with an error and ignored`() {
+    fun `an action the block does not perform is acknowledged, not refused`() {
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "click", payload = "{}"))
         await { lastOutgoingMessage()?.get("action")?.asString == "click" }
 
-        // The overlay protocol's click means nothing to the block: an error response goes
-        // back and no state changes.
+        // In sync with iOS: a block has no window to click through, and "nothing to do here" is
+        // an outcome the page carries on from. Nothing about the block changes.
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
+    }
+
+    @Test
+    fun `a question the block cannot answer is refused by name`() {
+        startAndAwaitPageLoad()
+
+        // `close` a block would acknowledge; an operation it cannot run is a different half of the
+        // rule — the page hears a refusal instead of a success it would take for done.
+        postFromPage(request(action = "navigationIntercepted", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "navigationIntercepted" }
+
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
     }

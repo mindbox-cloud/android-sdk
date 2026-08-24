@@ -9,6 +9,7 @@ internal data class InAppTypeWrapper<out T : InAppType>(
     val onRenderStart: () -> Unit,
     val tags: Map<String, String>? = null,
     val extraParams: Map<String, JsonElement> = emptyMap(),
+    val isRequestedShow: Boolean = false,
 )
 
 internal fun interface OnInAppClick {

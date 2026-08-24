@@ -1,5 +1,9 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import android.app.Activity
+import android.app.Application
+import android.widget.FrameLayout
+import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -20,6 +24,8 @@ import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
 import io.mockk.verifyOrder
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -86,12 +92,31 @@ internal class InAppMessageViewDisplayerShowNowTest {
     private fun givenForegroundActivity() {
         setPrivateField(
             "currentActivity",
-            mockk<android.app.Activity> {
+            mockk<Activity> {
                 every { isFinishing } returns false
                 every { window } returns null
             }
         )
     }
+
+    /** A live activity with a real root to draw into — the presentation actually runs. */
+    private fun givenForegroundActivityWithRoot(): FrameLayout {
+        val root = FrameLayout(ApplicationProvider.getApplicationContext<Application>())
+        setPrivateField(
+            "currentActivity",
+            mockk<Activity> {
+                every { isFinishing } returns false
+                every { window } returns mockk { every { decorView } returns root }
+            }
+        )
+        return root
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun queuedInApps(): List<InAppTypeWrapper<InAppType>> =
+        InAppMessageViewDisplayerImpl::class.java.getDeclaredField("inAppQueue")
+            .apply { isAccessible = true }
+            .get(displayer) as List<InAppTypeWrapper<InAppType>>
 
     @Test
     fun `an active show is dismissed with its real dismiss accounting before the new one presents`() {
@@ -183,6 +208,48 @@ internal class InAppMessageViewDisplayerShowNowTest {
         verify(exactly = 0) { dismiss.onDismiss() }
         verify(exactly = 0) { holder.onClose() }
         verify { failureTracker.sendFailure("tapped-id", FailureReason.PRESENTATION_FAILED, any(), any()) }
+    }
+
+    @Test
+    fun `the requested in-app reaches presentation on a real root`() {
+        // The other cases here prove the show only by the failure that follows it. This one gives
+        // the activity something to draw into: the requested in-app starts rendering, and the
+        // "nowhere to draw" branch is not the reason anything happened.
+        givenForegroundActivityWithRoot()
+        var rendered = false
+
+        displayer.showInAppMessageNow(
+            inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
+            inAppActionCallbacks = noCallbacks,
+            onRenderStart = { rendered = true },
+        )
+
+        assertTrue(rendered)
+        verify(exactly = 0) {
+            failureTracker.sendFailure(any(), any(), match { details -> details.contains("currentRoot is null") }, any())
+        }
+    }
+
+    @Test
+    fun `the requested show empties the queue, and that is the decision`() {
+        // `showInAppMessageNow` goes through `closeInApp()`, which drops whatever the pipeline had
+        // queued behind the active show. Pinned as a conscious trade-off, not an accident: an
+        // in-app surfacing on top of the story the user has just opened would be worse than a
+        // queue that was cleared when they asked for something else.
+        givenForegroundActivity()
+        setCurrentHolder(activeHolder(mockk(relaxUnitFun = true)))
+        displayer.tryShowInAppMessage(
+            inAppType = InAppStub.getModalWindow().copy(inAppId = "queued-id"),
+            inAppActionCallbacks = noCallbacks,
+        )
+        assertEquals(listOf("queued-id"), queuedInApps().map { it.inAppType.inAppId })
+
+        displayer.showInAppMessageNow(
+            inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
+            inAppActionCallbacks = noCallbacks,
+        )
+
+        assertTrue(queuedInApps().isEmpty())
     }
 
     @Test

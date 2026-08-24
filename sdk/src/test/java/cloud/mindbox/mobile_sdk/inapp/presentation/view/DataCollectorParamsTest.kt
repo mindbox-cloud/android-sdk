@@ -5,6 +5,10 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.utils.Constants
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -38,6 +42,8 @@ class DataCollectorParamsTest {
     private fun collect(
         params: Map<String, String>,
         extraParams: Map<String, JsonElement> = emptyMap(),
+        operation: InAppEventType.OrdinalEvent? = null,
+        session: SessionStorageManager = mockk(relaxed = true),
     ): JsonObject {
         val configuration: Configuration = mockk(relaxed = true) {
             every { endpointId } returns "endpoint-id"
@@ -45,13 +51,14 @@ class DataCollectorParamsTest {
         }
         val payload = DataCollector(
             appContext = ApplicationProvider.getApplicationContext(),
-            sessionStorageManager = mockk<SessionStorageManager>(relaxed = true),
+            sessionStorageManager = session,
             permissionManager = permissionManager,
             configuration = configuration,
             params = DataCollector.mergedParams(config = params, fromCaller = extraParams),
             inAppInsets = InAppInsets(),
             gson = Gson(),
             inAppId = "in-app-id",
+            operation = operation,
         ).get()
         return JsonParser.parseString(payload).asJsonObject
     }
@@ -114,6 +121,56 @@ class DataCollectorParamsTest {
 
         assertEquals(42, payload.get("formId").asInt)
         assertEquals("caller-wins", payload.get("inappId").asString)
+    }
+
+    @Test
+    fun `the keys the sdk measures cannot be dictated by params`() {
+        // In sync with iOS: what the page is told about the operation and the visit is measured
+        // here, so a config that names those keys must not be able to rewrite them.
+        val session = SessionStorageManager(mockk(relaxed = true)).apply {
+            lastTrackVisitData = TrackVisitData(
+                ianaTimeZone = "Europe/Moscow",
+                endpointId = "endpoint-id",
+                source = "link",
+                requestUrl = "https://mindbox.cloud/path",
+                sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
+            )
+        }
+        val payload = collect(
+            params = mapOf(
+                "operationName" to "FakeOperation",
+                "trackVisitSource" to "fake-source",
+                "trackVisitRequestUrl" to "https://evil.example/path",
+            ),
+            extraParams = mapOf("operationBody" to JsonPrimitive("fake-body")),
+            operation = InAppEventType.OrdinalEvent(
+                eventType = EventType.AsyncOperation("RealOperation"),
+                body = """{"real":true}""",
+            ),
+            session = session,
+        )
+
+        assertEquals("RealOperation", payload.get("operationName").asString)
+        assertEquals("""{"real":true}""", payload.get("operationBody").asString)
+        assertEquals("link", payload.get("trackVisitSource").asString)
+        assertEquals("https://mindbox.cloud/path", payload.get("trackVisitRequestUrl").asString)
+    }
+
+    @Test
+    fun `a show with no operation behind it tells the page about none`() {
+        // The block and the requested show pass `null`, and the session's last trigger — which
+        // belongs to somebody else's in-app — stays out of the payload.
+        val session = SessionStorageManager(mockk(relaxed = true)).apply {
+            inAppTriggerEvent = InAppEventType.OrdinalEvent(
+                eventType = EventType.AsyncOperation("SomebodyElsesOperation"),
+                body = """{"not":"ours"}""",
+            )
+        }
+
+        val payload = collect(params = emptyMap(), operation = null, session = session)
+
+        assertNull(payload.get("operationName"))
+        assertNull(payload.get("operationBody"))
     }
 
     @Test

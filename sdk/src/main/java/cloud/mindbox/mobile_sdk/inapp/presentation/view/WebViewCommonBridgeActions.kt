@@ -56,15 +56,15 @@ internal class WebViewCommonBridgeActions(
         handlers.apply {
             register(WebViewAction.LOG) { message ->
                 mindboxLogI("JS: ${message.payload}")
-                BridgeMessage.EMPTY_PAYLOAD
+                BridgeMessage.SUCCESS_PAYLOAD
             }
             register(WebViewAction.ASYNC_OPERATION, ::handleAsyncOperationAction)
             registerSuspend(WebViewAction.SYNC_OPERATION, ::handleSyncOperationAction)
-            register(WebViewAction.OPEN_LINK) { message -> requiringUserPresence { handleOpenLinkAction(message) } }
-            register(WebViewAction.SETTINGS_OPEN) { message -> requiringUserPresence { handleSettingsOpenAction(message) } }
-            registerSuspend(WebViewAction.PERMISSION_REQUEST) { message -> requiringUserPresence { handlePermissionAction(message) } }
-            register(WebViewAction.HAPTIC) { message -> requiringUserPresence { handleHapticAction(message) } }
-            register(WebViewAction.MOTION_START) { message -> requiringUserPresence { handleMotionStartAction(message) } }
+            register(WebViewAction.OPEN_LINK, ::handleOpenLinkAction)
+            register(WebViewAction.SETTINGS_OPEN, ::handleSettingsOpenAction)
+            registerSuspend(WebViewAction.PERMISSION_REQUEST, ::handlePermissionAction)
+            register(WebViewAction.HAPTIC, ::handleHapticAction)
+            register(WebViewAction.MOTION_START, ::handleMotionStartAction)
             register(WebViewAction.MOTION_STOP) { handleMotionStopAction() }
             registerSuspend(WebViewAction.LOCAL_STATE_GET) { message ->
                 localStateStore.getState(message.payload ?: BridgeMessage.EMPTY_PAYLOAD)
@@ -95,14 +95,9 @@ internal class WebViewCommonBridgeActions(
         motionService?.stopMonitoring()
     }
 
-    private inline fun <T> requiringUserPresence(block: () -> T): T {
-        check(host.isUserPresent) { "Nobody is looking at this page" }
-        return block()
-    }
-
     private fun handleAsyncOperationAction(message: BridgeMessage.Request): String {
         operationExecutor.executeAsyncOperation(appContext, message.payload, host.hostTags)
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
@@ -153,9 +148,9 @@ internal class WebViewCommonBridgeActions(
 
     private fun handleHapticAction(message: BridgeMessage.Request): String {
         val request = parseHapticRequest(message.payload)
-        if (!hapticRequestValidator.isValid(request)) return BridgeMessage.EMPTY_PAYLOAD
+        if (!hapticRequestValidator.isValid(request)) return BridgeMessage.SUCCESS_PAYLOAD
         hapticFeedbackExecutor.execute(request = request)
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private suspend fun handleLocalStateSetAction(message: BridgeMessage.Request): String {

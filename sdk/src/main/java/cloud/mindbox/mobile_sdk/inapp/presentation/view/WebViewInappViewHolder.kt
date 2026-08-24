@@ -36,6 +36,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
@@ -237,6 +238,11 @@ internal class WebViewInAppViewHolder(
             params = DataCollector.mergedParams(config = params, fromCaller = wrapper.extraParams),
             inAppInsets = insets,
             inAppId = inAppId,
+            operation = if (wrapper.isRequestedShow) {
+                null
+            } else {
+                sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent
+            },
         ).get()
     }
 
@@ -534,23 +540,17 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleRequest(message: BridgeMessage.Request, controller: WebViewController, handlers: WebViewActionHandlers) {
-        if (handlers.hasSuspendHandler(message.action)) {
-            Mindbox.mindboxScope.launch {
-                val responsePayload: String = handlers.handleRequestSuspend(message)
-                    .getOrElse { error ->
-                        sendErrorResponse(message = message, error = error, controller = controller)
-                        return@launch
-                    }
-                sendSuccessResponse(message = message, responsePayload = responsePayload, controller = controller)
-            }
-            return
-        }
-        val responsePayload: String = handlers.handleRequest(message)
-            .getOrElse { error ->
+        handlers.dispatch(
+            message = message,
+            isUserPresent = true,
+            launchSuspending = { handle -> Mindbox.mindboxScope.launch { handle() } },
+            respond = { payload ->
+                sendSuccessResponse(message = message, responsePayload = payload, controller = controller)
+            },
+            refuse = { error ->
                 sendErrorResponse(message = message, error = error, controller = controller)
-                return
-            }
-        sendSuccessResponse(message = message, responsePayload = responsePayload, controller = controller)
+            },
+        )
     }
 
     private fun sendSuccessResponse(

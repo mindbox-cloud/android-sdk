@@ -9,6 +9,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.lang.ref.WeakReference
 
 internal class MindboxWebPageRegistryTest {
 
@@ -103,7 +104,7 @@ internal class MindboxWebPageRegistryTest {
         registry.register(collectible!!)
         registry.register(survivor)
 
-        val pageRef = java.lang.ref.WeakReference(collectible)
+        val pageRef = WeakReference(collectible)
         collectible = null
         awaitCollected(pageRef)
 
@@ -113,7 +114,7 @@ internal class MindboxWebPageRegistryTest {
     }
 
     /** Entries are weak; give the collector a bounded number of chances to prove it. */
-    private fun awaitCollected(ref: java.lang.ref.WeakReference<*>) {
+    private fun awaitCollected(ref: WeakReference<*>) {
         repeat(20) {
             System.gc()
             System.runFinalization()

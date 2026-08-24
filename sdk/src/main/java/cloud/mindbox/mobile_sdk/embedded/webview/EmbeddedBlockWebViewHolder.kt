@@ -33,6 +33,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewActionHandlers
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewBridgeHost
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewCommonBridgeActions
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewNoCacheRetryPolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.dispatch
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.fromBridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeErrorPayload
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
@@ -291,7 +292,7 @@ internal class EmbeddedBlockWebViewHolder(
             registerSuspend(WebViewAction.READY) { handleReadyAction(configuration) }
             register(WebViewAction.INIT) {
                 hasPageAnswered = true
-                BridgeMessage.EMPTY_PAYLOAD
+                BridgeMessage.SUCCESS_PAYLOAD
             }
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
             register(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
@@ -306,6 +307,7 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun registerForBroadcasts() {
+        if (isReleased) return
         if (isRegisteredForBroadcasts) return
         isRegisteredForBroadcasts = true
         webPageRegistry.register(this)
@@ -342,6 +344,7 @@ internal class EmbeddedBlockWebViewHolder(
         params = DataCollector.mergedParams(config = layer.params),
         inAppInsets = InAppInsets(),
         inAppId = inAppId,
+        operation = null,
     ).get()
 
     private suspend fun handleFilterShowableInappsAction(message: BridgeMessage.Request): String {
@@ -383,11 +386,11 @@ internal class EmbeddedBlockWebViewHolder(
         mindboxLogI("[EmbeddedBlock] Page rendered $count feed element(s)")
         if (count == 0) {
             report(EmbeddedBlockState.Empty)
-            return BridgeMessage.EMPTY_PAYLOAD
+            return BridgeMessage.SUCCESS_PAYLOAD
         }
         report(EmbeddedBlockState.Ready)
         accountForShow()
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     /** JS numbers arrive as [Int] or [Double]; a whole [Double] is still a count of items. */
@@ -430,7 +433,6 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun handleShowInAppAction(message: BridgeMessage.Request): String {
-        check(isUserPresent) { "Nobody is looking at this page" }
         val payload = gson.fromJson<JsonObject>(message.payload).getOrNull()
             ?: throw IllegalArgumentException(SHOW_IN_APP_INVALID_PAYLOAD)
         val requestedId = payload.getOrNull(SHOW_IN_APP_ID_FIELD)
@@ -533,24 +535,17 @@ internal class EmbeddedBlockWebViewHolder(
         controller: WebViewController,
         handlers: WebViewActionHandlers,
     ) {
-        if (handlers.hasSuspendHandler(message.action)) {
-            Mindbox.mindboxScope.launch {
-                val responsePayload: String = handlers.handleRequestSuspend(message)
-                    .getOrElse { error ->
-                        sendErrorResponse(message, error, controller)
-                        return@launch
-                    }
-                sendSuccessResponse(message, responsePayload, controller)
-            }
-            return
-        }
-        val responsePayload: String = handlers.handleRequest(message)
-            .getOrElse { error ->
+        handlers.dispatch(
+            message = message,
+            isUserPresent = isUserPresent,
+            isAlive = { !isReleased },
+            launchSuspending = { handle -> Mindbox.mindboxScope.launch { handle() } },
+            respond = { payload -> sendSuccessResponse(message, payload, controller) },
+            refuse = { error ->
                 mindboxLogW("[EmbeddedBlock] Page action ${message.action} was refused: ${error.message}")
                 sendErrorResponse(message, error, controller)
-                return
-            }
-        sendSuccessResponse(message, responsePayload, controller)
+            },
+        )
     }
 
     private fun sendSuccessResponse(

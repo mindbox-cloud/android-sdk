@@ -27,6 +27,7 @@ internal class DataCollector(
     private val inAppInsets: InAppInsets,
     private val gson: Gson,
     private val inAppId: String,
+    private val operation: InAppEventType.OrdinalEvent?,
 ) {
 
     private val providers: MutableMap<String, Provider> by lazy {
@@ -38,23 +39,27 @@ internal class DataCollector(
             KEY_IN_APP_ID to Provider.string(inAppId),
             KEY_INSETS to createInsetsPayload(inAppInsets),
             KEY_LOCALE to Provider.string(resolveLocale()),
-            KEY_OPERATION_NAME to Provider.string((sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent)?.name),
-            KEY_OPERATION_BODY to Provider.string((sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent)?.body),
             KEY_PERMISSIONS to createPermissionsPayload(),
             KEY_PLATFORM to Provider.string(VALUE_PLATFORM),
             KEY_SDK_VERSION to Provider.string(BuildConfig.VERSION_NAME),
             KEY_SDK_VERSION_NUMERIC to Provider.string(Constants.SDK_VERSION_NUMERIC.toString()),
             KEY_THEME to Provider.string(resolveTheme()),
-            KEY_TRACK_VISIT_SOURCE to Provider.string(sessionStorageManager.lastTrackVisitData?.source),
-            KEY_TRACK_VISIT_REQUEST_URL to Provider.string(sessionStorageManager.lastTrackVisitData?.requestUrl),
             KEY_USER_VISIT_COUNT to Provider.string(MindboxPreferences.userVisitCount.toString()),
             KEY_VERSION to Provider.string(configuration.versionName),
         ).apply {
             params.forEach { (key, value) ->
                 put(key, Provider { value })
             }
+            putAll(sdkMeasuredKeys())
         }
     }
+
+    private fun sdkMeasuredKeys(): Map<String, Provider> = mapOf(
+        KEY_OPERATION_NAME to Provider.string(operation?.name),
+        KEY_OPERATION_BODY to Provider.string(operation?.body),
+        KEY_TRACK_VISIT_SOURCE to Provider.string(sessionStorageManager.lastTrackVisitData?.source),
+        KEY_TRACK_VISIT_REQUEST_URL to Provider.string(sessionStorageManager.lastTrackVisitData?.requestUrl),
+    )
 
     companion object Companion {
         private const val KEY_DEVICE_UUID = "deviceUUID"

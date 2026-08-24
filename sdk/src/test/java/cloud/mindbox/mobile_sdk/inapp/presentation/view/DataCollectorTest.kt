@@ -90,6 +90,7 @@ class DataCollectorTest {
             inAppInsets = InAppInsets(left = 1, top = 2, right = 3, bottom = 4),
             gson = gson,
             inAppId = "inapp-id",
+            operation = sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -151,6 +152,7 @@ class DataCollectorTest {
             inAppInsets = InAppInsets(),
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -199,6 +201,7 @@ class DataCollectorTest {
             inAppInsets = inAppInsets,
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload = dataCollector.get()
         val actualJson = JsonParser.parseString(actualPayload).asJsonObject

@@ -201,6 +201,7 @@ internal class InAppMessageViewDisplayerImpl(
                 onRenderStart = onRenderStart,
                 tags = tags,
                 extraParams = extraParams,
+                isRequestedShow = true,
             )
         )
     }

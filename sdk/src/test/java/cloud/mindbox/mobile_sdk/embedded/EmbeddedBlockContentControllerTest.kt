@@ -457,6 +457,42 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a block that drew nothing asks for its content again on return`() {
+        // The page answered `contentRendered {count: 0}` — every story was filtered out, expired
+        // or not targeted at this customer. None of those reasons outlives the screen, so the
+        // remembered "empty" must not either: iOS rebuilds here, and so do we.
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        val drewNothing = createdProviders.single()
+        drewNothing.onStateChange?.invoke(EmbeddedBlockState.Empty)
+        controller.pause()
+
+        controller.start()
+
+        assertEquals(1, drewNothing.releaseCount)
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `delivery of the same winner to a collapsed block rebuilds the content`() {
+        // For a collapsed block the same answer is news: nothing is on screen to deduplicate
+        // against, and only a rebuilt page can draw and report itself again.
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        val drewNothing = createdProviders.single()
+        drewNothing.onStateChange?.invoke(EmbeddedBlockState.Empty)
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(2, createdProviders.size)
+        assertEquals(1, drewNothing.releaseCount)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
     fun `provider factory crash degrades to failed instead of crashing the host`() {
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
