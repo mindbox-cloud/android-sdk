@@ -54,12 +54,16 @@ internal class DataCollector(
         }
     }
 
-    private fun sdkMeasuredKeys(): Map<String, Provider> = mapOf(
-        KEY_OPERATION_NAME to Provider.string(operation?.name),
-        KEY_OPERATION_BODY to Provider.string(operation?.body),
-        KEY_TRACK_VISIT_SOURCE to Provider.string(sessionStorageManager.lastTrackVisitData?.source),
-        KEY_TRACK_VISIT_REQUEST_URL to Provider.string(sessionStorageManager.lastTrackVisitData?.requestUrl),
-    )
+    private fun sdkMeasuredKeys(): Map<String, Provider> = buildMap {
+        putIfPresent(KEY_OPERATION_NAME, operation?.name)
+        putIfPresent(KEY_OPERATION_BODY, operation?.body)
+        putIfPresent(KEY_TRACK_VISIT_SOURCE, sessionStorageManager.lastTrackVisitData?.source)
+        putIfPresent(KEY_TRACK_VISIT_REQUEST_URL, sessionStorageManager.lastTrackVisitData?.requestUrl)
+    }
+
+    private fun MutableMap<String, Provider>.putIfPresent(key: String, value: String?) {
+        if (!value.isNullOrBlank()) put(key, Provider.string(value))
+    }
 
     companion object Companion {
         private const val KEY_DEVICE_UUID = "deviceUUID"

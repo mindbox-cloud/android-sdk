@@ -93,7 +93,12 @@ public enum class WebViewAction {
 
     @SerializedName("initDataUpdated")
     INIT_DATA_UPDATED,
+
+    @SerializedName(UNKNOWN_ACTION_WIRE_NAME)
+    UNKNOWN,
 }
+
+internal const val UNKNOWN_ACTION_WIRE_NAME: String = "unknown"
 
 @InternalMindboxApi
 public sealed class BridgeMessage {
@@ -177,6 +182,13 @@ internal fun Gson.fromBridgeMessage(json: String): BridgeMessage? = fromJson<Jso
         if (payload != null && (payload.isJsonObject || payload.isJsonArray)) {
             envelope.addProperty("payload", payload.toString())
         }
+        val action = envelope.getOrNull("action")
+        val isKnown = action != null &&
+            runCatching { fromJson(action, WebViewAction::class.java) }.getOrNull() != null
+        if (!isKnown) {
+            mindboxLogW("[WebView] Bridge: unknown action $action, answering it as unknown")
+            envelope.addProperty("action", UNKNOWN_ACTION_WIRE_NAME)
+        }
     }
     ?.let { envelope -> fromJson<BridgeMessage>(envelope).getOrNull() }
 
@@ -215,7 +227,8 @@ internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
         WebViewAction.ALERT,
         WebViewAction.TOAST,
         WebViewAction.MOTION_STOP,
-        WebViewAction.CONTENT_RENDERED -> true
+        WebViewAction.CONTENT_RENDERED,
+        WebViewAction.UNKNOWN -> true
 
         else -> false
     }

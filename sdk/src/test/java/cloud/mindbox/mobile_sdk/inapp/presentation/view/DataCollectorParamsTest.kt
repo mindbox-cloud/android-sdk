@@ -174,6 +174,20 @@ class DataCollectorParamsTest {
     }
 
     @Test
+    fun `a key the SDK has no value for is left to the configuration`() {
+        // The overwrite is there so a page cannot forge what the SDK measures. Where the SDK
+        // measures nothing there is nothing to forge, and taking the configuration's own value
+        // away would be the same kind of lie in the other direction — iOS keeps it, so do we.
+        val payload = collect(
+            params = mapOf("operationName" to "ConfiguredOperation"),
+            operation = null,
+            session = SessionStorageManager(mockk(relaxed = true)),
+        )
+
+        assertEquals("ConfiguredOperation", payload.get("operationName").asString)
+    }
+
+    @Test
     fun `extra param values keep their json types`() {
         val record = JsonParser.parseString("""{"title":"Сториз 1","rank":3}""")
         val payload = collect(

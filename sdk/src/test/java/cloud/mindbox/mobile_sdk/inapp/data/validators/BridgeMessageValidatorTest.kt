@@ -75,10 +75,11 @@ class BridgeMessageValidatorTest {
         type: String = BridgeMessage.TYPE_REQUEST,
         version: Int = BridgeMessage.VERSION,
         timestamp: Long = 1L,
+        action: WebViewAction = WebViewAction.INIT,
     ): BridgeMessage.Request {
         return BridgeMessage.Request(
             version = version,
-            action = WebViewAction.INIT,
+            action = action,
             payload = BridgeMessage.EMPTY_PAYLOAD,
             id = id,
             timestamp = timestamp,
@@ -90,5 +91,14 @@ class BridgeMessageValidatorTest {
         val field = target.javaClass.getDeclaredField(fieldName)
         field.isAccessible = true
         field.set(target, value)
+    }
+
+    @Test
+    fun `isValid returns true for an action this SDK does not know`() {
+        // The parser hands unknown wire names over as UNKNOWN so they can be answered; dropping
+        // them here would put the silence back one step earlier.
+        val message: BridgeMessage.Request = createRequest(action = WebViewAction.UNKNOWN)
+
+        assertTrue(validator.isValid(message))
     }
 }

@@ -276,7 +276,7 @@ internal class WebViewInAppViewHolder(
             mindboxView = mindboxView,
             controller = controller,
         )
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun handleClickAction(message: BridgeMessage.Request): String {
@@ -299,26 +299,26 @@ internal class WebViewInAppViewHolder(
             )
         }
         mindboxLogI("In-app completed by webview action with data: ${message.payload}")
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun handleCloseAction(message: BridgeMessage): String {
         inAppCallback.onInAppDismissed(wrapper.inAppType.inAppId)
         mindboxLogI("In-app dismissed by webview action ${message.action} with payload ${message.payload}")
         inAppController.close()
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun handleHideAction(): String {
         webViewController?.setVisibility(false)
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun handleToastAction(message: BridgeMessage.Request): String {
         webViewController?.view?.context?.let { context ->
             Toast.makeText(context, message.payload, Toast.LENGTH_LONG).show()
         }
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun handleAlertAction(message: BridgeMessage.Request): String {
@@ -328,7 +328,7 @@ internal class WebViewInAppViewHolder(
                 .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
                 .show()
         }
-        return BridgeMessage.EMPTY_PAYLOAD
+        return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private fun createWebViewController(layer: Layer.WebViewLayer): WebViewController {

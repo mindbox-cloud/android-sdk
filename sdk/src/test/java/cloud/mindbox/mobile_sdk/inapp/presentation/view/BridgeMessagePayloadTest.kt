@@ -93,4 +93,43 @@ internal class BridgeMessagePayloadTest {
         val json = JsonParser.parseString(gson.toJson(response)).asJsonObject
         assertEquals("""{"success":true}""", json.get("payload").asString)
     }
+
+    @Test
+    fun `an action this SDK does not know survives parsing as unknown`() {
+        // Gson writes null into the non-null action field for a name it has no constant for, and
+        // the message then dies in the validator with an NPE — before reaching the dispatcher whose
+        // whole job is to make sure the page hears something back.
+        val message = gson.fromBridgeMessage(
+            """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
+        )
+
+        assertEquals(WebViewAction.UNKNOWN, (message as BridgeMessage.Request).action)
+    }
+
+    @Test
+    fun `an unknown action is acknowledged rather than left unanswered`() {
+        var responded: String? = null
+        val message = gson.fromBridgeMessage(
+            """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
+        ) as BridgeMessage.Request
+
+        WebViewActionHandlers().dispatch(
+            message = message,
+            isUserPresent = true,
+            launchSuspending = {},
+            respond = { payload -> responded = payload },
+            refuse = { error -> throw error },
+        )
+
+        assertEquals(BridgeMessage.SUCCESS_PAYLOAD, responded)
+    }
+
+    @Test
+    fun `a missing action is answered too`() {
+        val message = gson.fromBridgeMessage(
+            """{"type":"request","payload":{},"id":"id-1","version":1,"timestamp":1}"""
+        )
+
+        assertEquals(WebViewAction.UNKNOWN, (message as BridgeMessage.Request).action)
+    }
 }
