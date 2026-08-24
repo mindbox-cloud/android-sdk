@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 
@@ -29,8 +30,9 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  *
  * The behavior mirrors the View one and belongs to the block itself: it is visible while
  * loading and showing content, and collapses to zero height when the place ends up without
- * content — unless the [error] slot is set: a custom error view is a request to keep the
- * place, so the block stays and shows it. The callbacks only report the outcome.
+ * content — unless it failed and the [error] slot is set: that slot is a request to show a
+ * failure, so the block stays and shows it. An empty place collapses either way. The callbacks
+ * only report the outcome.
  *
  * ```kotlin
  * MindboxEmbeddedBlock(
@@ -49,8 +51,8 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  * stayed in place showing it. Not necessarily a breakage: an empty place is a normal outcome.
  * Main thread.
  * @param placeholder Replaces the SDK's default loading placeholder. Fills the whole block frame.
- * @param error The view for a place without content. Setting it also keeps the block visible
- * instead of the default collapse. Fills the whole block frame.
+ * @param error The view for a block that failed. Setting it keeps the block visible instead of
+ * the default collapse; an empty place collapses regardless. Fills the whole block frame.
  */
 @OptIn(InternalMindboxApi::class)
 @Composable
@@ -70,7 +72,9 @@ public fun MindboxEmbeddedBlock(
     val context = LocalContext.current
 
     key(placeSystemName) {
-        var isCollapsed by remember { mutableStateOf(false) }
+        var appearance by remember {
+            mutableStateOf(MindboxEmbeddedBlockAppearance.PLACEHOLDER)
+        }
 
         val placeholderHost = remember(context) {
             lazy(LazyThreadSafetyMode.NONE) {
@@ -84,10 +88,16 @@ public fun MindboxEmbeddedBlock(
         }
 
         AndroidView(
-            modifier = (if (isCollapsed) Modifier.height(0.dp).then(modifier) else modifier).fillMaxWidth(),
+            modifier = (
+                if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) {
+                    Modifier.height(0.dp).then(modifier)
+                } else {
+                    modifier
+                }
+            ).fillMaxWidth(),
             factory = { viewContext ->
                 MindboxEmbeddedBlockView(viewContext, placeSystemName).apply {
-                    setVisibilityObserver { isVisible -> isCollapsed = !isVisible }
+                    setAppearanceObserver { shown -> appearance = shown }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
                             override fun onLoad(view: MindboxEmbeddedBlockView) {
