@@ -249,6 +249,11 @@ internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? 
     null
 }
 
+internal fun Context.findActivity(): Activity? =
+    generateSequence(this) { current -> current.safeAs<android.content.ContextWrapper>()?.baseContext }
+        .filterIsInstance<Activity>()
+        .firstOrNull()
+
 internal inline fun <reified T> Any?.safeAs(): T? {
     return this as? T
 }

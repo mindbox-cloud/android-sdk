@@ -99,8 +99,8 @@ internal class EmbeddedBlockContentController(
             return
         }
 
-        if (lastReportedState == EmbeddedBlockState.Failed) {
-            mindboxLogI("[EmbeddedBlock] Returning to a failed block, dropping its content")
+        if (lastReportedState?.nothingToShow == true) {
+            mindboxLogI("[EmbeddedBlock] Returning to a block with nothing on it, asking for its content again")
             dropProvider()
             appliedDescriptor = null
         }
@@ -180,14 +180,12 @@ internal class EmbeddedBlockContentController(
         val descriptor = descriptorOf(content.inAppId, layer)
         val current = provider
 
-        if (current != null && descriptor == appliedDescriptor &&
-            lastReportedState != EmbeddedBlockState.Failed
-        ) {
+        if (current != null && descriptor == appliedDescriptor && lastReportedState?.nothingToShow != true) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
             return
         }
-        if (lastReportedState == EmbeddedBlockState.Failed) {
-            mindboxLogI("[EmbeddedBlock] Delivery for a failed block '$placeSystemName', rebuilding the content")
+        if (lastReportedState?.nothingToShow == true) {
+            mindboxLogI("[EmbeddedBlock] Delivery for a collapsed block '$placeSystemName', rebuilding the content")
             recreateProvider(content)
             return
         }

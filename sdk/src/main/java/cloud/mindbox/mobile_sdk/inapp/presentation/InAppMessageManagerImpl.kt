@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
@@ -26,6 +27,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
+import com.google.gson.JsonElement
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -97,26 +99,64 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                var renderStartTime = Timestamp(0L)
                 val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs)
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
-                    onRenderStart = { renderStartTime = timeProvider.currentTimestamp() },
+                    onRenderStart = callbacks.onRenderStart,
                     tags = tags,
-                    inAppActionCallbacks = object : InAppActionCallbacks {
-                        override val onInAppClick = OnInAppClick {
-                            inAppInteractor.sendInAppClicked(inAppMessage.inAppId, tags)
-                        }
-                        override val onInAppShown = OnInAppShown {
-                            handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)
-                        }
-                        override val onInAppDismiss = OnInAppDismiss {
-                            inAppInteractor.saveInAppDismissTime(inApp)
-                        }
-                    }
+                    inAppActionCallbacks = callbacks
                 )
             }
+        }
+    }
+
+    override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>) {
+        inAppScope.launch {
+            val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
+                mindboxLogI("Nothing to show for in-app $inAppId")
+                return@launch
+            }
+            val (inApp, variant) = inAppToShow
+            val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+            val callbacks = ShowCallbacks(inApp, variant, tags, preparedTime = Milliseconds(0L))
+            withContext(Dispatchers.Main) {
+                inAppMessageViewDisplayer.showInAppMessageNow(
+                    inAppType = variant,
+                    onRenderStart = callbacks.onRenderStart,
+                    tags = tags,
+                    extraParams = extraParams,
+                    inAppActionCallbacks = callbacks
+                )
+            }
+        }
+    }
+
+    /**
+     * The one set of show/dismiss callbacks both overlay paths share: the queue and the page's
+     * tap must never drift apart in what a show writes down. The tap path carries no processing
+     * delay, so it passes a zero [preparedTime].
+     */
+    private inner class ShowCallbacks(
+        inApp: InApp,
+        variant: InAppType,
+        tags: Map<String, String>?,
+        preparedTime: Milliseconds,
+    ) : InAppActionCallbacks {
+
+        private var renderStartTime = Timestamp(0L)
+
+        val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
+
+        override val onInAppClick = OnInAppClick {
+            inAppInteractor.sendInAppClicked(variant.inAppId, tags)
+        }
+        override val onInAppShown = OnInAppShown {
+            handleInAppShown(renderStartTime, preparedTime, variant, tags)
+        }
+        override val onInAppDismiss = OnInAppDismiss {
+            inAppInteractor.saveInAppDismissTime(inApp)
         }
     }
 

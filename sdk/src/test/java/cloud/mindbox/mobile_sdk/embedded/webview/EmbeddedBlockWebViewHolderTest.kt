@@ -11,14 +11,19 @@ import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
+import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -27,6 +32,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import org.json.JSONTokener
 import org.junit.After
@@ -41,7 +47,7 @@ import org.robolectric.Shadows.shadowOf
 /**
  * The feed holder against the real stories-page protocol, driven through the real bridge
  * transport (`SdkBridge` js interface): `ready` answers with `stories` as a JSON array,
- * `checkInappsTargeting` returns the interactor's subset, `contentRendered {count}` is the
+ * `filterShowableInapps` returns the interactor's subset, `contentRendered {count}` is the
  * readiness signal, and `initDataUpdated` refreshes the feed without recreating the webview.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -52,6 +58,8 @@ class EmbeddedBlockWebViewHolderTest {
 
     private val gatewayManager: GatewayManager = mockk()
     private val inAppInteractor: InAppInteractor = mockk()
+    private val inAppMessageManager: InAppMessageManager = mockk(relaxUnitFun = true)
+    private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val permissionManager: PermissionManager = mockk {
         every { getCameraPermissionStatus() } returns PermissionStatus.DENIED
         every { getLocationPermissionStatus() } returns PermissionStatus.DENIED
@@ -75,6 +83,8 @@ class EmbeddedBlockWebViewHolderTest {
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
+            every { inAppMessageManager } returns this@EmbeddedBlockWebViewHolderTest.inAppMessageManager
+            every { webPageRegistry } returns this@EmbeddedBlockWebViewHolderTest.webPageRegistry
         }
         mockkObject(DbManager)
         every { DbManager.listenConfigurations() } returns flowOf(
@@ -180,13 +190,13 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `checkInappsTargeting returns subset from the interactor`() {
+    fun `filterShowableInapps returns subset from the interactor`() {
         coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1", "story-2")) } returns
             listOf("story-1")
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1","story-2"]}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+        postFromPage(request(action = "filterShowableInapps", payload = """{"inappIds":["story-1","story-2"]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "filterShowableInapps" }
 
         val payload = lastOutgoingPayload()!!
         assertEquals(1, payload.getAsJsonArray("inappIds").size())
@@ -194,11 +204,11 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `checkInappsTargeting without an inappIds array is refused with an error`() {
+    fun `filterShowableInapps without an inappIds array is refused with an error`() {
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = "{}"))
-        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+        postFromPage(request(action = "filterShowableInapps", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "filterShowableInapps" }
 
         // A refusal the page can retry, not an empty answer it would take for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
@@ -206,12 +216,12 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `checkInappsTargeting skips non-string ids and answers the rest`() {
+    fun `filterShowableInapps skips non-string ids and answers the rest`() {
         coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1")) } returns listOf("story-1")
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1",7]}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+        postFromPage(request(action = "filterShowableInapps", payload = """{"inappIds":["story-1",7]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "filterShowableInapps" }
 
         assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
         assertEquals("story-1", lastOutgoingPayload()!!.getAsJsonArray("inappIds").get(0).asString)
@@ -304,8 +314,8 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `showInApp from the page is acknowledged and reports nothing`() {
-        // The circle is not drawn yet: neither the show operation nor the local history may be
-        // spent on it. Both ship with the JS-bridge task, where the story actually opens.
+        // The ack says the request was handed over, never that a window opened: the block's own
+        // show accounting must not be spent on a tap.
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any()) } just runs
         startAndAwaitPageLoad()
 
@@ -315,7 +325,324 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
         coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `showInApp hands the id and the params to the show path`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(
+            request(
+                action = "showInApp",
+                payload = """{"inappId":"story-1","index":0,"sourceInappId":"feed-id","params":{"title":"Сториз 1","record":{"rank":3}}}"""
+            )
+        )
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        verify(exactly = 1) {
+            inAppMessageManager.showInAppById(
+                "story-1",
+                mapOf(
+                    "title" to JsonPrimitive("Сториз 1"),
+                    "record" to JsonParser.parseString("""{"rank":3}"""),
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `showInApp sent with an object payload works the same as a string one`() {
+        startAndAwaitPageLoad()
+
+        // The whole envelope is one JSON document: payload is a plain object, not a quoted string.
+        postFromPage(
+            """{"type":"request","action":"showInApp","payload":{"inappId":"story-1","params":{"a":1}},"id":"req-obj","version":1,"timestamp":1}"""
+        )
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        verify(exactly = 1) {
+            inAppMessageManager.showInAppById("story-1", mapOf("a" to JsonPrimitive(1)))
+        }
+    }
+
+    @Test
+    fun `showInApp without an inappId is refused with an error`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "showInApp", payload = """{"params":{}}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+    }
+
+    @Test
+    fun `showInApp from a paused block is refused - nobody is looking at the page`() {
+        startAndAwaitPageLoad()
+        holder.pause()
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"story-1"}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+    }
+
+    @Test
+    fun `showInApp from a failed attempt is acked and ignored`() {
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":-1}""", id = "bad"))
+        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"story-1"}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+    }
+
+    @Test
+    fun `the old checkInappsTargeting name is not spoken anymore`() {
+        // Cut hard, in sync with iOS: the action never shipped, so no installed SDK speaks it.
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1"]}"""))
+
+        coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any()) }
+        assertTrue(lastOutgoingMessage()?.get("action")?.asString != "checkInappsTargeting")
+    }
+
+    @Test
+    fun `the page joins the broadcast set on its first ready only`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "ready", payload = "{}", id = "ready-1"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "ready" }
+        postFromPage(request(action = "ready", payload = "{}", id = "ready-2"))
+
+        verify(exactly = 1) { webPageRegistry.register(holder) }
+    }
+
+    @Test
+    fun `release unregisters the page from broadcasts`() {
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "ready", payload = "{}", id = "ready-1"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "ready" }
+
+        holder.release()
+
+        verify(exactly = 1) { webPageRegistry.unregister(holder) }
+    }
+
+    @Test
+    fun `release before the first ready has nothing to unregister`() {
+        startAndAwaitPageLoad()
+
+        holder.release()
+
+        verify(exactly = 0) { webPageRegistry.unregister(any()) }
+    }
+
+    @Test
+    fun `local state set is broadcast to every other page`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(
+            request(action = "localState.set", payload = """{"data":{"inapp.completed.story-1":"rev-1"}}""")
+        )
+        await { lastOutgoingMessage()?.get("action")?.asString == "localState.set" }
+
+        // The author gets the ordinary answer; everyone else hears the change with the same payload.
+        val answer = lastOutgoingMessage()!!.get("payload").asString
+        verify(exactly = 1) {
+            webPageRegistry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, answer, holder)
+        }
+    }
+
+    @Test
+    fun `a pushed broadcast reaches the page as a request`() {
+        startAndAwaitPageLoad()
+
+        holder.push(WebViewAction.LOCAL_STATE_CHANGED, """{"data":{},"version":1}""")
+        await { lastOutgoingMessage()?.get("action")?.asString == "localState.changed" }
+
+        assertEquals("request", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `a released page drops the push`() {
+        startAndAwaitPageLoad()
+        val web = webView
+        holder.release()
+        val before = shadowOf(web).lastEvaluatedJavascript
+
+        holder.push(WebViewAction.LOCAL_STATE_CHANGED, "{}")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(before, shadowOf(web).lastEvaluatedJavascript)
+    }
+
+    @Test
+    fun `close and hide at the block are acked and ignored - there is no window`() {
+        startAndAwaitPageLoad()
+        val statesBefore = states.toList()
+
+        postFromPage(request(action = "close", payload = "{}", id = "close-1"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "close" }
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
+
+        postFromPage(request(action = "hide", payload = "{}", id = "hide-1"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "hide" }
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+
+        assertEquals(statesBefore, states.toList())
+    }
+
+    @Test
+    fun `actions taken on the user's behalf are refused when nobody is looking`() {
+        startAndAwaitPageLoad()
+        holder.pause()
+
+        listOf("openLink", "settings.open", "permission.request", "haptic", "motion.start")
+            .forEachIndexed { index, action ->
+                postFromPage(request(action = action, payload = "{}", id = "gated-$index"))
+                await { lastOutgoingMessage()?.get("action")?.asString == action }
+                assertEquals("error for $action", "error", lastOutgoingMessage()?.get("type")?.asString)
+            }
+    }
+
+    @Test
+    fun `openLink with an unusable payload is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "openLink", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "openLink" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `haptic with an unusable payload is swallowed with an empty answer`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "haptic", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "haptic" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `motion start without a usable gesture is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "motion.start", payload = """{"gestures":[]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `log from the page is acknowledged`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "log", payload = """"page says hi""""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "log" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `motion start with a known gesture but no sensors is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "motion.start", payload = """{"gestures":["shake"]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
+
+        // Robolectric offers no accelerometer: the page hears which gesture has no sensor.
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `motion stop is always acknowledged`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "motion.stop", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "motion.stop" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
+    }
+
+    @Test
+    fun `settings open with an unusable payload is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "settings.open", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "settings.open" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `permission request with an unknown type is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "permission.request", payload = """{"type":"unknown"}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "permission.request" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `local state init with a positive version is served from the store`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "localState.init", payload = """{"version":2,"data":{"k":"v"}}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "localState.init" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("v", lastOutgoingPayload()!!.getAsJsonObject("data").get("k").asString)
+    }
+
+    @Test
+    fun `sync operation answers the page with the operation response`() {
+        mockkObject(MindboxEventManager)
+        every {
+            MindboxEventManager.syncOperation(any(), any(), any(), any())
+        } answers {
+            thirdArg<(String) -> Unit>().invoke("""{"status":"Success"}""")
+        }
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "syncOperation", payload = """{"operation":"op.sync","body":{}}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "syncOperation" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("Success", lastOutgoingPayload()!!.get("status").asString)
+        unmockkObject(MindboxEventManager)
+    }
+
+    @Test
+    fun `async operation from the block reaches the event manager`() {
+        mockkObject(MindboxEventManager)
+        every {
+            MindboxEventManager.asyncOperation(any(), any(), any<String>())
+        } just runs
+        startAndAwaitPageLoad()
+
+        postFromPage(
+            request(action = "asyncOperation", payload = """{"operation":"op.name","body":{}}""")
+        )
+        await { lastOutgoingMessage()?.get("action")?.asString == "asyncOperation" }
+
+        verify(exactly = 1) {
+            MindboxEventManager.asyncOperation(any(), "op.name", any<String>())
+        }
+        unmockkObject(MindboxEventManager)
     }
 
     @Test
@@ -351,14 +678,27 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `unknown page action is answered with an error and ignored`() {
+    fun `an action the block does not perform is acknowledged, not refused`() {
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "close", payload = "{}"))
-        await { lastOutgoingMessage()?.get("action")?.asString == "close" }
+        postFromPage(request(action = "click", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "click" }
 
-        // The overlay protocol's close means nothing to the block: an error response goes
-        // back and no state changes.
+        // In sync with iOS: a block has no window to click through, and "nothing to do here" is
+        // an outcome the page carries on from. Nothing about the block changes.
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
+    }
+
+    @Test
+    fun `a question the block cannot answer is refused by name`() {
+        startAndAwaitPageLoad()
+
+        // `close` a block would acknowledge; an operation it cannot run is a different half of the
+        // rule — the page hears a refusal instead of a success it would take for done.
+        postFromPage(request(action = "navigationIntercepted", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "navigationIntercepted" }
+
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
     }

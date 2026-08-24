@@ -35,8 +35,8 @@ internal class BridgeMessageValidator : Validator<BridgeMessage?> {
                 return false
             }
 
-            if (item.version > BridgeMessage.VERSION) {
-                mindboxLogW("BridgeMessage version ${item.version} is not supported")
+            if (item.version < BridgeMessage.VERSION) {
+                mindboxLogW("BridgeMessage version ${item.version} is not supported, expected >= ${BridgeMessage.VERSION}")
                 return false
             }
         }.onFailure { error ->

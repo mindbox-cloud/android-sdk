@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.di.modules
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import kotlinx.coroutines.Dispatchers
 
 internal fun PresentationModule(
@@ -37,6 +38,10 @@ internal fun PresentationModule(
     }
     override val clipboardManager: ClipboardManager by lazy {
         ClipboardManagerImpl(context = appContext)
+    }
+
+    override val webPageRegistry: MindboxWebPageRegistry by lazy {
+        MindboxWebPageRegistry()
     }
 
     private val embeddedBlocksRegistryLazy: Lazy<EmbeddedBlocksRegistry> = lazy {

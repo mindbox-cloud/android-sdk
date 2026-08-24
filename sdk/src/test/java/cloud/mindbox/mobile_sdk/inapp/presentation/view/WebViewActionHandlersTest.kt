@@ -1,134 +1,156 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.*
-import org.junit.Assert.*
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * The dispatch rule every surface shares: one envelope per request, presence read before any
+ * handler runs, and an action the surface does not serve answered by that action's own rule.
+ */
 @OptIn(ExperimentalCoroutinesApi::class, InternalMindboxApi::class)
 class WebViewActionHandlersTest {
 
+    private var responded: String? = null
+    private var refused: Throwable? = null
+
+    private fun WebViewActionHandlers.dispatchInTest(
+        action: WebViewAction,
+        isUserPresent: Boolean = true,
+        isAlive: () -> Boolean = { true },
+    ) = dispatch(
+        message = createRequest(action),
+        isUserPresent = isUserPresent,
+        isAlive = isAlive,
+        launchSuspending = { handle -> runBlocking { handle() } },
+        respond = { payload -> responded = payload },
+        refuse = { error -> refused = error },
+    )
+
     @Test
-    fun `handleRequest returns payload from registered handler`() {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val expectedPayload: String = "payload"
-        val message: BridgeMessage.Request = createRequest(WebViewAction.INIT)
-        handlers.register(WebViewAction.INIT) { expectedPayload }
-        val actualResult: Result<String> = handlers.handleRequest(message)
-        assertTrue(actualResult.isSuccess)
-        assertEquals(expectedPayload, actualResult.getOrNull())
+    fun `a blocking handler answers with its own payload`() {
+        val handlers = WebViewActionHandlers()
+        handlers.register(WebViewAction.INIT) { "payload" }
+
+        handlers.dispatchInTest(WebViewAction.INIT)
+
+        assertEquals("payload", responded)
+        assertNull(refused)
     }
 
     @Test
-    fun `handleRequest returns failure when handler not registered`() {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val message: BridgeMessage.Request = createRequest(WebViewAction.INIT)
-        val actualResult: Result<String> = handlers.handleRequest(message)
-        assertTrue(actualResult.isFailure)
-    }
-
-    @Test
-    fun `handleRequestSuspend returns payload from registered suspend handler`() = runTest {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val expectedPayload: String = "payload"
-        val message: BridgeMessage.Request = createRequest(WebViewAction.READY)
-        handlers.registerSuspend(WebViewAction.READY) { expectedPayload }
-        val actualResult: Result<String> = handlers.handleRequestSuspend(message)
-        assertTrue(actualResult.isSuccess)
-        assertEquals(expectedPayload, actualResult.getOrNull())
-    }
-
-    @Test
-    fun `handleRequestSuspend returns failure when suspend handler not registered`() = runTest {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val message: BridgeMessage.Request = createRequest(WebViewAction.READY)
-        val actualResult: Result<String> = handlers.handleRequestSuspend(message)
-        assertTrue(actualResult.isFailure)
-    }
-
-    @Test
-    fun `hasSuspendHandler returns true when handler registered`() {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        handlers.registerSuspend(WebViewAction.READY) { BridgeMessage.EMPTY_PAYLOAD }
-        val actualResult: Boolean = handlers.hasSuspendHandler(WebViewAction.READY)
-        assertTrue(actualResult)
-    }
-
-    @Test
-    fun `hasSuspendHandler returns false when handler not registered`() {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val actualResult: Boolean = handlers.hasSuspendHandler(WebViewAction.READY)
-        assertFalse(actualResult)
-    }
-
-    @Test
-    fun `handleRequestSuspend completes after delay`() = runTest {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val expectedPayload: String = "delayed"
-        val message: BridgeMessage.Request = createRequest(WebViewAction.READY)
+    fun `a suspending handler answers through the launcher it was given`() {
+        val handlers = WebViewActionHandlers()
         handlers.registerSuspend(WebViewAction.READY) {
-            delay(100)
-            expectedPayload
+            delay(10)
+            "ready-payload"
         }
-        val dispatcher: TestDispatcher = StandardTestDispatcher(testScheduler)
-        val deferredResult: Deferred<Result<String>> =
-            async(dispatcher) { handlers.handleRequestSuspend(message) }
-        runCurrent()
-        assertFalse(deferredResult.isCompleted)
-        advanceTimeBy(99)
-        runCurrent()
-        assertFalse(deferredResult.isCompleted)
-        advanceTimeBy(1)
-        runCurrent()
-        assertTrue(deferredResult.isCompleted)
-        assertEquals(expectedPayload, deferredResult.await().getOrNull())
+
+        handlers.dispatchInTest(WebViewAction.READY)
+
+        assertEquals("ready-payload", responded)
     }
 
     @Test
-    fun `handleRequestSuspend processes multiple requests with different delays`() = runTest {
-        val handlers: WebViewActionHandlers = WebViewActionHandlers()
-        val firstPayload: String = "first"
-        val secondPayload: String = "second"
-        val firstMessage: BridgeMessage.Request = createRequest(WebViewAction.READY)
-        val secondMessage: BridgeMessage.Request = createRequest(WebViewAction.INIT)
-        handlers.registerSuspend(WebViewAction.READY) {
-            delay(50)
-            firstPayload
-        }
-        handlers.registerSuspend(WebViewAction.INIT) {
-            delay(150)
-            secondPayload
-        }
-        val dispatcher: TestDispatcher = StandardTestDispatcher(testScheduler)
-        val firstDeferred: Deferred<Result<String>> =
-            async(dispatcher) { handlers.handleRequestSuspend(firstMessage) }
-        val secondDeferred: Deferred<Result<String>> =
-            async(dispatcher) { handlers.handleRequestSuspend(secondMessage) }
-        runCurrent()
-        assertFalse(firstDeferred.isCompleted)
-        assertFalse(secondDeferred.isCompleted)
-        advanceTimeBy(50)
-        runCurrent()
-        assertTrue(firstDeferred.isCompleted)
-        assertFalse(secondDeferred.isCompleted)
-        advanceTimeBy(100)
-        runCurrent()
-        assertTrue(secondDeferred.isCompleted)
-        assertEquals(firstPayload, firstDeferred.await().getOrNull())
-        assertEquals(secondPayload, secondDeferred.await().getOrNull())
+    fun `an action registered both ways is served by its suspending handler`() {
+        val handlers = WebViewActionHandlers()
+        handlers.register(WebViewAction.READY) { "blocking" }
+        handlers.registerSuspend(WebViewAction.READY) { "suspending" }
+
+        handlers.dispatchInTest(WebViewAction.READY)
+
+        assertEquals("suspending", responded)
     }
 
-    private fun createRequest(action: WebViewAction): BridgeMessage.Request {
-        return BridgeMessage.Request(
-            version = BridgeMessage.VERSION,
-            action = action,
-            payload = BridgeMessage.EMPTY_PAYLOAD,
-            id = "request-id",
-            timestamp = 1L,
-        )
+    @Test
+    fun `an action the surface does not perform is acknowledged`() {
+        // A block has no window to close and nothing to click: "nothing to do here" is an outcome
+        // the page may carry on from, not a failure.
+        val handlers = WebViewActionHandlers()
+
+        handlers.dispatchInTest(WebViewAction.CLICK)
+
+        assertEquals(BridgeMessage.SUCCESS_PAYLOAD, responded)
+        assertNull(refused)
     }
+
+    @Test
+    fun `a question the surface cannot answer is refused, not left silent`() {
+        // Silence costs the page its own timeout and tells it nothing; an empty answer it would
+        // take for the truth.
+        val handlers = WebViewActionHandlers()
+
+        handlers.dispatchInTest(WebViewAction.FILTER_SHOWABLE_INAPPS)
+
+        assertNull(responded)
+        assertTrue(refused is IllegalArgumentException)
+        assertTrue(refused!!.message!!.contains(WebViewAction.FILTER_SHOWABLE_INAPPS.name))
+    }
+
+    @Test
+    fun `an action that needs the user is refused while nobody is looking`() {
+        val handlers = WebViewActionHandlers()
+        var ran = false
+        handlers.register(WebViewAction.OPEN_LINK) {
+            ran = true
+            BridgeMessage.SUCCESS_PAYLOAD
+        }
+
+        handlers.dispatchInTest(WebViewAction.OPEN_LINK, isUserPresent = false)
+
+        // Read before the handler, not inside it: the gate is the same wherever the action is served.
+        assertEquals(false, ran)
+        assertTrue(refused is IllegalStateException)
+        assertEquals(NOBODY_LOOKING_ERROR, refused?.message)
+    }
+
+    @Test
+    fun `an action that does not need the user runs while nobody is looking`() {
+        val handlers = WebViewActionHandlers()
+        handlers.register(WebViewAction.LOG) { "logged" }
+
+        handlers.dispatchInTest(WebViewAction.LOG, isUserPresent = false)
+
+        assertEquals("logged", responded)
+    }
+
+    @Test
+    fun `a handler that throws is refused with its own error`() {
+        val handlers = WebViewActionHandlers()
+        handlers.register(WebViewAction.SYNC_OPERATION) { throw IllegalStateException("boom") }
+
+        handlers.dispatchInTest(WebViewAction.SYNC_OPERATION)
+
+        assertNull(responded)
+        assertEquals("boom", refused?.message)
+    }
+
+    @Test
+    fun `a surface released while a suspending handler was in flight answers nothing`() {
+        // The page is gone and so is whoever would have received the answer; the holder must not
+        // speak for it.
+        val handlers = WebViewActionHandlers()
+        var alive = true
+        handlers.registerSuspend(WebViewAction.READY) { "ready-payload" }
+
+        handlers.dispatchInTest(WebViewAction.READY, isAlive = { alive.also { alive = false } })
+        responded = null
+        handlers.dispatchInTest(WebViewAction.READY, isAlive = { false })
+
+        assertNull(responded)
+        assertNull(refused)
+    }
+
+    private fun createRequest(action: WebViewAction): BridgeMessage.Request = BridgeMessage.Request(
+        version = BridgeMessage.VERSION,
+        action = action,
+        payload = BridgeMessage.EMPTY_PAYLOAD,
+        id = "request-id",
+        timestamp = 1L,
+    )
 }

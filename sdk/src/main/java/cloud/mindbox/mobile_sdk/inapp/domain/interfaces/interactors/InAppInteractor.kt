@@ -31,12 +31,12 @@ internal interface InAppInteractor {
     ): InAppType.Embedded?
 
     /**
-     * Content of the in-app with [inAppId] for a direct call: no restriction — frequency,
-     * limits, `displayConditions`, targeting, the A/B pool — is checked. A drawn circle must
-     * open. Returns `null` only for an unknown id, an id filtered out by `sdkVersion`, or an
-     * embedded in-app (never shown as an overlay). The show itself ships with the JS-bridge task.
+     * The in-app with [inAppId] and its overlay variant for a direct call: no restriction —
+     * frequency, limits, `displayConditions`, targeting, the A/B pool — is checked. A drawn
+     * circle must open. Returns `null` only for an unknown id, an id filtered out by
+     * `sdkVersion`, or a form with no overlay variant (embedded is drawn inside the host layout).
      */
-    suspend fun getInAppById(inAppId: String): InAppType?
+    suspend fun getInAppToShowById(inAppId: String): InAppToShow?
 
     /**
      * The push side of the blocks registry: every **live** operation (the replay cache is
@@ -49,7 +49,7 @@ internal interface InAppInteractor {
     fun listenEmbeddedPlaceEvents(): Flow<EmbeddedPlaceEvent>
 
     /**
-     * The single place where stories are cut: the answer to the page's `checkInappsTargeting`.
+     * The single place where stories are cut: the answer to the page's `filterShowableInapps`.
      * Keeps the ids whose in-apps exist in the version- and A/B-filtered list, pass the
      * frequency rule (an exhausted non-unlimited story loses its circle, `unlimited` always
      * passes — decision 17.08), match targeting (no network fetches — the page waits
@@ -100,3 +100,8 @@ internal interface InAppInteractor {
 
     fun areShowLimitsAllowed(inApp: InApp): Boolean
 }
+
+internal data class InAppToShow(
+    val inApp: InApp,
+    val variant: InAppType,
+)

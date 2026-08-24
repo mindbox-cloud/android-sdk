@@ -86,10 +86,11 @@ class DataCollectorTest {
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
             configuration = createConfiguration(endpointId = "endpoint-id", versionName = "1.2.3"),
-            params = mapOf("customKey" to "customValue"),
+            params = DataCollector.mergedParams(mapOf("customKey" to "customValue")),
             inAppInsets = InAppInsets(left = 1, top = 2, right = 3, bottom = 4),
             gson = gson,
             inAppId = "inapp-id",
+            operation = sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -147,10 +148,11 @@ class DataCollectorTest {
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
             configuration = createConfiguration(endpointId = "", versionName = "2.0.0"),
-            params = mapOf("endpointId" to "overridden-endpoint"),
+            params = DataCollector.mergedParams(mapOf("endpointId" to "overridden-endpoint")),
             inAppInsets = InAppInsets(),
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -199,6 +201,7 @@ class DataCollectorTest {
             inAppInsets = inAppInsets,
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload = dataCollector.get()
         val actualJson = JsonParser.parseString(actualPayload).asJsonObject
