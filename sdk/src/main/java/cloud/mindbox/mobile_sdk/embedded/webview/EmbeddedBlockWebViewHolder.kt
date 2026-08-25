@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(InternalMindboxApi::class)
 internal class EmbeddedBlockWebViewHolder(
@@ -147,7 +148,7 @@ internal class EmbeddedBlockWebViewHolder(
      * one — the same rule the show follows. Only the first is kept: the block reports the outcome it
      * came back to, and a silent page repeating itself adds nothing to that.
      */
-    @Volatile private var heldFailure: HeldFailure? = null
+    private val heldFailure = AtomicReference<HeldFailure?>(null)
 
     private data class HeldFailure(
         val failureReason: FailureReason,
@@ -190,7 +191,7 @@ internal class EmbeddedBlockWebViewHolder(
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
         }
-        heldFailure = null
+        heldFailure.set(null)
         cancelPendingResponses("Embedded block content is released")
         webViewController?.let { controller ->
             controller.setEventListener(null)
@@ -520,9 +521,11 @@ internal class EmbeddedBlockWebViewHolder(
                 "[EmbeddedBlock] $failureReason for $inAppId happened off screen, holding the " +
                     "report until the block is looked at"
             )
-            if (heldFailure == null) {
-                heldFailure = HeldFailure(failureReason, errorDescription, throwable)
-            }
+            heldFailure.compareAndSet(null, HeldFailure(failureReason, errorDescription, throwable))
+            // Failures come off mindboxScope while start() flips the block visible on the main
+            // thread: a start() between the check above and the hold has flushed before the failure
+            // was there. Re-check and flush; getAndSet keeps the report single whichever side wins.
+            if (isActive) flushHeldFailure()
             return
         }
         inAppFailureTracker.sendFailureWithContext(
@@ -535,8 +538,7 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun flushHeldFailure() {
-        val held = heldFailure ?: return
-        heldFailure = null
+        val held = heldFailure.getAndSet(null) ?: return
         inAppFailureTracker.sendFailureWithContext(
             inAppId = inAppId,
             failureReason = held.failureReason,
