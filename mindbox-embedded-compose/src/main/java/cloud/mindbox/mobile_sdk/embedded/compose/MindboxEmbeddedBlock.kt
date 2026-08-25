@@ -45,6 +45,9 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  * @param placeSystemName The place identifier matched against the config's `inlineBlocks`
  * section. Changing it recreates the block for the new place. Blocks with the same name work
  * independently, each with its own content.
+ * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty, in
+ * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
+ * place is: a new value given to a block already on screen is ignored.
  * @param onLoad The block is shown and visible. Main thread.
  * @param onFail The place ends up without content — the load failed or timed out, or the
  * config had nothing to put here. The block collapsed, or — if the [error] slot is set —
@@ -59,6 +62,7 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 public fun MindboxEmbeddedBlock(
     placeSystemName: String,
     modifier: Modifier = Modifier,
+    timeoutMs: Long? = null,
     onLoad: () -> Unit = {},
     onFail: () -> Unit = {},
     placeholder: (@Composable () -> Unit)? = null,
@@ -96,7 +100,7 @@ public fun MindboxEmbeddedBlock(
                 }
             ).fillMaxWidth(),
             factory = { viewContext ->
-                MindboxEmbeddedBlockView(viewContext, placeSystemName).apply {
+                MindboxEmbeddedBlockView(viewContext, placeSystemName, timeoutMs).apply {
                     setAppearanceObserver { shown -> appearance = shown }
                     setListener(
                         object : MindboxEmbeddedBlockListener {

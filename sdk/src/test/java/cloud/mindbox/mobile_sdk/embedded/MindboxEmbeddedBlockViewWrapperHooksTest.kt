@@ -65,7 +65,7 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
             activity,
             null,
             "main-screen-top",
-            EmbeddedBlockContentController(
+            contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> ReadyProvider(activity).also { provider = it } },
                 blocksRegistry = { blocksRegistry },

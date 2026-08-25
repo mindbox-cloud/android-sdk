@@ -55,7 +55,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
             activity,
             null,
             "main-screen-top",
-            EmbeddedBlockContentController(
+            contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> ReadyProvider(activity) },
                 blocksRegistry = { blocksRegistry },

@@ -56,9 +56,12 @@ public class MindboxEmbeddedBlockView internal constructor(
     context: Context,
     attrs: AttributeSet?,
     placeSystemName: String?,
+    configTimeout: Milliseconds? = null,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
-        configTimeout = readConfigTimeout(context, attrs),
+        // What the caller asked for, and only failing that what XML says: a block built in code has
+        // no attributes to read, and one built from XML has no caller to ask.
+        configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
         providerFactory = { content, attemptStartedAt ->
             EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
         },
@@ -71,10 +74,20 @@ public class MindboxEmbeddedBlockView internal constructor(
         attrs: AttributeSet? = null,
     ) : this(context, attrs, readPlaceSystemName(context, attrs))
 
+    /**
+     * Creates a block for [placeSystemName] in code, where there is no XML to carry the attributes.
+     *
+     * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
+     * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
+     * default of 30 s. An answer that arrives after that no longer expands the block; the next
+     * attempt starts when the block enters the window again.
+     */
+    @JvmOverloads
     public constructor(
         context: Context,
         placeSystemName: String,
-    ) : this(context, null, placeSystemName)
+        timeoutMs: Long? = null,
+    ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds))
 
     public val placeSystemName: String? = placeSystemName.orNullIfBlank()
     private var listener: MindboxEmbeddedBlockListener = DefaultListener

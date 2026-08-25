@@ -79,6 +79,63 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
+    fun `a timeout given in code is the one the block waits out`() {
+        // The wrapper path: no XML to carry `mindboxTimeoutMs`, so the budget comes as an argument.
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 5_000L)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(4L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        // Six seconds in — long past the five it was given, and long before the default thirty.
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
+    fun `a block given no timeout in code still reads the one from xml`() {
+        val attrs = Robolectric.buildAttributeSet()
+            .addAttribute(R.attr.mindboxPlaceSystemName, "main-screen-top")
+            .addAttribute(R.attr.mindboxTimeoutMs, "5000")
+            .build()
+
+        val view = MindboxEmbeddedBlockView(activity, attrs)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
+    fun `a non-positive timeout is not a budget, and the default stands`() {
+        // Honoured literally it would collapse every block before the config had a chance.
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 0L)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
     fun `a block without a place name hides itself`() {
         // XML without the attribute (or a programmatic view with no name): nothing to match
         // against the config — the block hides itself, never a crash.
