@@ -203,7 +203,8 @@ public class MindboxEmbeddedBlockView internal constructor(
      * A view set mid-failure swaps the error screen already shown, and `null` given while one is
      * shown takes the failure back down to a collapse — the space returns to the layout. What
      * neither does is expand a block that has already collapsed: reopening space the layout has
-     * reclaimed would make it jump, so such a view takes effect on the next load.
+     * reclaimed would make it jump, so such a view takes effect on a load that starts the cycle
+     * anew, never on the silent retry a return to the screen brings.
      */
     public fun setErrorView(view: View?) {
         errorView = view
@@ -425,12 +426,21 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
             is EmbeddedBlockState.Ready -> MindboxEmbeddedBlockAppearance.CONTENT
             // A failure is shown only to those who opted in explicitly; for the rest it collapses.
-            is EmbeddedBlockState.Failed ->
-                if (hasCustomErrorView) {
-                    MindboxEmbeddedBlockAppearance.ERROR
-                } else {
+            // A settled block keeps what it shows when the retry fails too: an error view given
+            // after the collapse must not reopen space the layout has reclaimed. The exception is
+            // the loading branch's one — an error view the host has taken away leaves nothing to
+            // draw, so the block collapses.
+            is EmbeddedBlockState.Failed -> when {
+                !hasSettled ->
+                    if (hasCustomErrorView) {
+                        MindboxEmbeddedBlockAppearance.ERROR
+                    } else {
+                        MindboxEmbeddedBlockAppearance.COLLAPSED
+                    }
+                shownAppearance == MindboxEmbeddedBlockAppearance.ERROR && !hasCustomErrorView ->
                     MindboxEmbeddedBlockAppearance.COLLAPSED
-                }
+                else -> shownAppearance
+            }
             // An empty place always collapses: a host cannot fill the space of a block that was
             // never meant to be there, however it drew its failures.
             is EmbeddedBlockState.Empty -> MindboxEmbeddedBlockAppearance.COLLAPSED
