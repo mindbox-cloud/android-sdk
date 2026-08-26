@@ -164,9 +164,6 @@ class MindboxEmbeddedBlockTest {
 
     @Test
     fun `a budget changed after creation is ignored, and said out loud`() {
-        // The factory runs once, so the budget is settled there. A value quietly dropped is the kind
-        // of thing a host debugs against the clock — the View has no such trap, its timeout being a
-        // constructor argument, but this composable takes the parameter on every recomposition.
         val timeout = mutableStateOf<Long?>(5_000)
 
         compose.setContent {
@@ -187,7 +184,6 @@ class MindboxEmbeddedBlockTest {
         assertTrue(said.single().contains("timeoutMs=60000"))
         assertTrue(said.single().contains("keeps 5000"))
 
-        // Said once per value, not once per frame: a recomposition on the same value adds nothing.
         compose.runOnUiThread { timeout.value = 60_000 }
         settle()
         assertEquals(1, timeoutWarnings().size)

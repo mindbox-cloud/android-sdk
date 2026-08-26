@@ -66,7 +66,6 @@ class EmbeddedBlockWebViewHolderTest {
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
 
-    /** What [SystemTimeProvider] would return: the tests move it by hand. */
     private var elapsed = 0L
     private val timeProvider: SystemTimeProvider = mockk {
         every { elapsedSince(any()) } answers { Milliseconds(elapsed) }
@@ -417,9 +416,6 @@ class EmbeddedBlockWebViewHolderTest {
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
     }
 
-    // Every other test asks with `filterShowableInapps`, so this is where the shipped pages'
-    // spelling proves it is answered identically — under the name it asked with, or the page does
-    // not recognise the answer as its own.
     @Test
     fun `the shipped checkInappsTargeting name is answered the same way`() {
         coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1", "story-2")) } returns
@@ -759,8 +755,6 @@ class EmbeddedBlockWebViewHolderTest {
         holder.pause()
         postFromPage(request(action = "contentRendered", payload = """{"count":"many"}"""))
 
-        // The backend hears about blocks the user was shown, and this page failed behind another
-        // screen.
         verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
 
         holder.start()
@@ -795,7 +789,6 @@ class EmbeddedBlockWebViewHolderTest {
         holder.pause()
         elapsed = 1_000L
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
-        // Two minutes on another screen, which is not time the user spent waiting for this page.
         elapsed = 121_000L
 
         holder.start()

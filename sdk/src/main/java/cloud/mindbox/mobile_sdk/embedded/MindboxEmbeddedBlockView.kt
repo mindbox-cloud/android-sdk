@@ -59,8 +59,6 @@ public class MindboxEmbeddedBlockView internal constructor(
     configTimeout: Milliseconds? = null,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
-        // What the caller asked for, and only failing that what XML says: a block built in code has
-        // no attributes to read, and one built from XML has no caller to ask.
         configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
         providerFactory = { content, attemptStartedAt ->
             EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
@@ -107,34 +105,10 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private var deliveredEvent: BlockEvent? = null
     private var isDeliveryScheduled = false
-
-    /**
-     * Whether the block has already settled on a place without content — collapsed, or showing the
-     * host's error view.
-     *
-     * A settled block keeps what it shows. A retry — and the block gets one on every return to the
-     * screen — is not a reload: the page behind the place is the one that already failed, so it
-     * answers the same way, while the host watches its layout jerk by the block's height and a
-     * placeholder flash on every pass across the screen, to show nothing in the end. That holds for
-     * the error view just as much as for a collapse.
-     *
-     * Ended by content that actually appeared.
-     */
     private var hasSettled = false
-
-    /** What the block shows right now — the one source for both its own visibility and the report. */
     private var shownAppearance = MindboxEmbeddedBlockAppearance.PLACEHOLDER
-
-    /**
-     * Whether the window shows the block. Tracked rather than read off `windowVisibility`: the
-     * callback carries the new value while the property still holds the old one.
-     */
     private var isWindowVisible = false
-
-    /** Whether the wrapper's host still shows the block. Nobody says otherwise until a wrapper does. */
     private var isHostVisible = true
-
-    /** Whether a wrapper has released the block: then it stays stopped whatever the window says. */
     private var isReleased = false
     private var shownContent: View? = null
     private var isContentStarted = false
@@ -208,11 +182,6 @@ public class MindboxEmbeddedBlockView internal constructor(
      */
     public fun setErrorView(view: View?) {
         errorView = view
-        // Re-decided rather than just swapped: whether a failure is shown at all depends on this
-        // view existing, so taking it away has to collapse the block and say so, not leave the old
-        // screen standing. What is on screen is the subject, not the state — a settled block goes on
-        // showing its error view while the attempt it gets on the way back loads — and a block that
-        // has already collapsed stays collapsed however this view changes.
         if (shownAppearance == MindboxEmbeddedBlockAppearance.ERROR) {
             applyState(state)
         }
@@ -277,18 +246,9 @@ public class MindboxEmbeddedBlockView internal constructor(
         updateContentActivity()
     }
 
-    /**
-     * Whether anybody is looking at the block. The window answers that for a native host; a wrapper
-     * whose app has a single window answers the rest through [setHostVisible], and a released block
-     * is not looked at by definition.
-     */
     private val isEffectivelyVisible: Boolean
         get() = isWindowVisible && isHostVisible && !isReleased
 
-    /**
-     * Three sources drive one switch — the window, the wrapper's host, a release — and each of them
-     * can repeat what another has already said, so the switch is idempotent.
-     */
     private fun updateContentActivity() {
         if (isEffectivelyVisible) startContent() else pauseContent()
     }
@@ -322,8 +282,6 @@ public class MindboxEmbeddedBlockView internal constructor(
         mindboxLogI("[EmbeddedBlock] Released by the host wrapper, freeing content")
         isReleased = true
         appearanceObserver = null
-        // A released block is not looked at, whatever the window says: the switch hears that here,
-        // or it would go on believing the content runs and pause a controller already released.
         updateContentActivity()
         detachFromHost()
         loggingRunCatching { contentController.release() }
@@ -371,17 +329,12 @@ public class MindboxEmbeddedBlockView internal constructor(
             return
         }
 
-        // Read before it is written: a settled block's answer for `Loading` is the appearance it
-        // already had.
         val appearance = appearanceFor(state)
         shownAppearance = appearance
         hasSettled = when (appearance) {
-            // A place without content, however it is drawn, is what the block settles on.
             MindboxEmbeddedBlockAppearance.COLLAPSED,
             MindboxEmbeddedBlockAppearance.ERROR,
             -> true
-            // And content that actually appeared ends it: from here the block is an ordinary one
-            // again, and the next load it really starts is entitled to its placeholder.
             MindboxEmbeddedBlockAppearance.CONTENT -> false
             MindboxEmbeddedBlockAppearance.PLACEHOLDER -> hasSettled
         }
@@ -391,8 +344,6 @@ public class MindboxEmbeddedBlockView internal constructor(
                 mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
                 showContent(currentPlaceholder())
             }
-            // The guard above already turned a `Ready` without a view into a failure, so there is
-            // one to show here; the null-safe call is what keeps that guarantee from being an `!!`.
             MindboxEmbeddedBlockAppearance.CONTENT -> {
                 mindboxLogI("[EmbeddedBlock] Content ready")
                 contentController.contentView?.let { showContent(it) }
@@ -414,10 +365,6 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun appearanceFor(state: EmbeddedBlockState): MindboxEmbeddedBlockAppearance =
         when (state) {
-            // A block that already settled keeps what it shows even while it loads anew: a retry
-            // earns neither the space the host has reclaimed nor a placeholder over the error view.
-            // What it does not keep is an error view the host has taken away in the meantime —
-            // there is nothing left to draw, so the block collapses.
             is EmbeddedBlockState.Loading -> when {
                 !hasSettled -> MindboxEmbeddedBlockAppearance.PLACEHOLDER
                 shownAppearance == MindboxEmbeddedBlockAppearance.ERROR && !hasCustomErrorView ->
@@ -425,11 +372,6 @@ public class MindboxEmbeddedBlockView internal constructor(
                 else -> shownAppearance
             }
             is EmbeddedBlockState.Ready -> MindboxEmbeddedBlockAppearance.CONTENT
-            // A failure is shown only to those who opted in explicitly; for the rest it collapses.
-            // A settled block keeps what it shows when the retry fails too: an error view given
-            // after the collapse must not reopen space the layout has reclaimed. The exception is
-            // the loading branch's one — an error view the host has taken away leaves nothing to
-            // draw, so the block collapses.
             is EmbeddedBlockState.Failed -> when {
                 !hasSettled ->
                     if (hasCustomErrorView) {
@@ -441,8 +383,6 @@ public class MindboxEmbeddedBlockView internal constructor(
                     MindboxEmbeddedBlockAppearance.COLLAPSED
                 else -> shownAppearance
             }
-            // An empty place always collapses: a host cannot fill the space of a block that was
-            // never meant to be there, however it drew its failures.
             is EmbeddedBlockState.Empty -> MindboxEmbeddedBlockAppearance.COLLAPSED
         }
 

@@ -84,11 +84,6 @@ public fun MindboxEmbeddedBlock(
             mutableStateOf(MindboxEmbeddedBlockAppearance.PLACEHOLDER)
         }
 
-        // The budget is settled when the block is built and cannot be talked out of it afterwards,
-        // and a value quietly dropped is the kind of thing a host debugs against the clock. The View
-        // has no such trap — its timeout is a constructor argument — but this composable takes the
-        // parameter on every recomposition, so it says what it does with a new one, as the Flutter
-        // widget does. Once per value, not per frame: the effect is keyed on it.
         val creationTimeoutMs = remember { timeoutMs }
         if (timeoutMs != creationTimeoutMs) {
             LaunchedEffect(timeoutMs) {

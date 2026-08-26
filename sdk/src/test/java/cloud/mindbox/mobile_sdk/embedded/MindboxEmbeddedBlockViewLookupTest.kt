@@ -80,7 +80,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a timeout given in code is the one the block waits out`() {
-        // The wrapper path: no XML to carry `mindboxTimeoutMs`, so the budget comes as an argument.
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 5_000L)
         val listener = RecordingListener()
         view.setListener(listener)
@@ -93,7 +92,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
 
-        // Six seconds in — long past the five it was given, and long before the default thirty.
         assertEquals(View.GONE, view.visibility)
         assertEquals(listOf("fail"), listener.events)
     }
@@ -118,7 +116,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a non-positive timeout is not a budget, and the default stands`() {
-        // Honoured literally it would collapse every block before the config had a chance.
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 0L)
         val listener = RecordingListener()
         view.setListener(listener)

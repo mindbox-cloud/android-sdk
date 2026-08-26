@@ -166,8 +166,6 @@ class MindboxEmbeddedBlockViewCollapseTest {
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
         idle()
 
-        // The retry failed the same way the block already settled on: the error view is remembered
-        // for a load that starts the cycle anew, not for a pass across the screen.
         assertEquals(View.GONE, view.visibility)
     }
 
@@ -181,13 +179,11 @@ class MindboxEmbeddedBlockViewCollapseTest {
         assertEquals(View.GONE, view.visibility)
         view.setErrorView(View(activity))
 
-        // Content that actually appeared ends the settlement — the block is an ordinary one again...
         leaveAndReturn(view)
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
         idle()
         assertEquals(View.VISIBLE, view.visibility)
 
-        // ...so the next failure is entitled to the error view the host gave meanwhile.
         lastProvider?.onStateChange?.invoke(EmbeddedBlockState.Failed)
         idle()
         assertEquals(View.VISIBLE, view.visibility)

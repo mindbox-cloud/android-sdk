@@ -15,12 +15,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 
-/**
- * What a wrapper sees and says: the appearance the block reports, and the host visibility it is
- * told about. A wrapper lays the block out itself, so it needs the decision the view would have
- * applied to its own `visibility` — and it has to be able to say that its screen went away when the
- * window cannot say it.
- */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewWrapperHooksTest {
 
@@ -83,13 +77,11 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    /** Resolves the place to content, which is what builds the provider. */
     private fun showContent() {
         blocksRegistry.lastHandle?.onContentResolved(InAppStub.getEmbedded() as InAppType.Embedded)
         idle()
     }
 
-    /** Fails the page behind a place that already resolved to content. */
     private fun failContent() {
         provider.onStateChange?.invoke(EmbeddedBlockState.Failed)
         idle()
@@ -102,8 +94,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         blocksRegistry.lastHandle?.onContentResolved(null)
         idle()
 
-        // The place settled before anybody subscribed, and its only report would otherwise be lost:
-        // a wrapper built after the outcome would sit on a loading screen forever.
         val seen = mutableListOf<MindboxEmbeddedBlockAppearance>()
         view.setAppearanceObserver { seen.add(it) }
 
@@ -135,8 +125,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         blocksRegistry.lastHandle?.onContentResolved(null)
         idle()
 
-        // An error view opts into showing a failure, not into filling a place that was never meant
-        // to hold anything.
         assertEquals(MindboxEmbeddedBlockAppearance.COLLAPSED, seen.last())
         assertEquals(View.GONE, view.visibility)
     }
@@ -155,7 +143,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         view.setHostVisible(true)
         idle()
 
-        // The window never changed — only the wrapper's word did, and it drives the same switch.
         assertTrue(provider.startCount > startsWhenShown)
     }
 
@@ -185,8 +172,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
 
         view.setErrorView(null)
 
-        // Whether a failure is shown at all is this view's doing, so taking it away is not a swap of
-        // screens — it is the block going back to the collapse it would have had, and saying so.
         assertEquals(MindboxEmbeddedBlockAppearance.COLLAPSED, seen.last())
         assertEquals(View.GONE, view.visibility)
     }
@@ -220,8 +205,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
 
         view.setErrorView(View(activity))
 
-        // Reopening space the layout has already reclaimed would make it jump: the view waits for
-        // the next load.
         assertEquals(MindboxEmbeddedBlockAppearance.COLLAPSED, seen.last())
         assertEquals(View.GONE, view.visibility)
     }
@@ -237,8 +220,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         failContent()
         assertEquals(MindboxEmbeddedBlockAppearance.ERROR, seen.last())
 
-        // Off the screen and back: the failed block drops its page and waits for a new answer, so
-        // the state is `Loading` again while the error view is still the thing on screen.
         dispatchWindowVisibility(view, View.GONE)
         idle()
         dispatchWindowVisibility(view, View.VISIBLE)
@@ -283,8 +264,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         view.release()
         idle()
 
-        // Released while the window still says it is shown: the switch has to hear it here, or it
-        // goes on believing the content runs and pauses a controller that is already released.
         assertEquals(1, provider.pauseCount)
     }
 
@@ -295,8 +274,6 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
 
         view.setAppearanceObserver { throw IllegalStateException("the channel is not ready yet") }
 
-        // The same callback is guarded everywhere else; the immediate call on subscribing cannot be
-        // the one place where a wrapper's exception takes the host down with it.
         val seen = mutableListOf<MindboxEmbeddedBlockAppearance>()
         view.setAppearanceObserver { seen.add(it) }
         assertEquals(1, seen.size)

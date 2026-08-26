@@ -141,13 +141,6 @@ internal class EmbeddedBlockWebViewHolder(
 
     private val isUserPresent: Boolean get() = isActive && !isReleased
 
-    /**
-     * A failure that happened behind another screen, held until somebody looks at the block.
-     *
-     * The backend hears about blocks the user was shown, and a page that failed off screen was not
-     * one — the same rule the show follows. Only the first is kept: the block reports the outcome it
-     * came back to, and a silent page repeating itself adds nothing to that.
-     */
     private val heldFailure = AtomicReference<HeldFailure?>(null)
 
     private data class HeldFailure(
@@ -156,13 +149,6 @@ internal class EmbeddedBlockWebViewHolder(
         val throwable: Throwable?,
     )
 
-    /**
-     * How long the page took to render, frozen where the render was reported.
-     *
-     * The show can be counted much later — a page that finished behind another screen is counted by
-     * the [start] that brings it back — and `timeToDisplay` measures the wait for the page, not the
-     * user's absence from the screen.
-     */
     @Volatile private var renderedTimeToDisplay: Milliseconds? = null
 
     override fun start() {
@@ -175,8 +161,6 @@ internal class EmbeddedBlockWebViewHolder(
             return
         }
         report(lastState)
-        // A page that rendered behind another screen is only shown now, so this is where its show
-        // is counted.
         if (lastState == EmbeddedBlockState.Ready) accountForShow()
     }
 
@@ -326,7 +310,6 @@ internal class EmbeddedBlockWebViewHolder(
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
             register(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
             registerSuspend(WebViewAction.FILTER_SHOWABLE_INAPPS, ::handleFilterShowableInappsAction)
-            // The same question under the name pages already shipped send — see CHECK_INAPPS_TARGETING.
             registerSuspend(WebViewAction.CHECK_INAPPS_TARGETING, ::handleFilterShowableInappsAction)
         }
     }
@@ -421,8 +404,6 @@ internal class EmbeddedBlockWebViewHolder(
         }
         renderedTimeToDisplay = timeProvider.elapsedSince(attemptStartedAt)
         report(EmbeddedBlockState.Ready)
-        // Only what somebody is looking at counts as shown; a page that rendered off screen is
-        // counted by the `start()` that brings it back.
         if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
     }
@@ -510,9 +491,6 @@ internal class EmbeddedBlockWebViewHolder(
         onContentPageLoaded(content)
     }
 
-    /**
-     * Sent when the block is on screen, held for the return when it is not — see [heldFailure].
-     */
     private fun sendFailure(
         failureReason: FailureReason,
         errorDescription: String,
@@ -524,9 +502,6 @@ internal class EmbeddedBlockWebViewHolder(
                     "report until the block is looked at"
             )
             heldFailure.compareAndSet(null, HeldFailure(failureReason, errorDescription, throwable))
-            // Failures come off mindboxScope while start() flips the block visible on the main
-            // thread: a start() between the check above and the hold has flushed before the failure
-            // was there. Re-check and flush; getAndSet keeps the report single whichever side wins.
             if (isActive) flushHeldFailure()
             return
         }
