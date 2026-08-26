@@ -13,12 +13,14 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowLog
 
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockTest {
@@ -159,4 +161,55 @@ class MindboxEmbeddedBlockTest {
 
         compose.onNodeWithTag("block").assertDoesNotExist()
     }
+
+    @Test
+    fun `a budget changed after creation is ignored, and said out loud`() {
+        // The factory runs once, so the budget is settled there. A value quietly dropped is the kind
+        // of thing a host debugs against the clock — the View has no such trap, its timeout being a
+        // constructor argument, but this composable takes the parameter on every recomposition.
+        val timeout = mutableStateOf<Long?>(5_000)
+
+        compose.setContent {
+            MindboxEmbeddedBlock(
+                placeSystemName = "main-screen-top",
+                modifier = Modifier.height(120.dp),
+                timeoutMs = timeout.value,
+            )
+        }
+        settle()
+        assertTrue(timeoutWarnings().isEmpty())
+
+        compose.runOnUiThread { timeout.value = 60_000 }
+        settle()
+
+        val said = timeoutWarnings()
+        assertEquals(1, said.size)
+        assertTrue(said.single().contains("timeoutMs=60000"))
+        assertTrue(said.single().contains("keeps 5000"))
+
+        // Said once per value, not once per frame: a recomposition on the same value adds nothing.
+        compose.runOnUiThread { timeout.value = 60_000 }
+        settle()
+        assertEquals(1, timeoutWarnings().size)
+    }
+
+    @Test
+    fun `a budget left alone says nothing`() {
+        compose.setContent {
+            MindboxEmbeddedBlock(
+                placeSystemName = "main-screen-top",
+                modifier = Modifier.height(120.dp),
+                timeoutMs = 5_000,
+            )
+        }
+        settle()
+        compose.runOnUiThread { compose.activity.setTitle("recompose") }
+        settle()
+
+        assertTrue(timeoutWarnings().isEmpty())
+    }
+
+    private fun timeoutWarnings(): List<String> = ShadowLog.getLogs()
+        .filter { log -> log.msg?.contains("was given timeoutMs=") == true }
+        .map { log -> log.msg }
 }

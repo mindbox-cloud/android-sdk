@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded.compose
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -14,10 +15,12 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
+import cloud.mindbox.mobile_sdk.logger.Level
 
 /**
  * An embedded Mindbox block as a composable.
@@ -47,7 +50,8 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  * independently, each with its own content.
  * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty, in
  * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
- * place is: a new value given to a block already on screen is ignored.
+ * place is: a new value given to a block already on screen is ignored, and the block says so in
+ * the log. Wrap the block in a `key()` of your own to build one on a different budget.
  * @param onLoad The block is shown and visible. Main thread.
  * @param onFail The place ends up without content — the load failed or timed out, or the
  * config had nothing to put here. The block collapsed, or — if the [error] slot is set —
@@ -78,6 +82,24 @@ public fun MindboxEmbeddedBlock(
     key(placeSystemName) {
         var appearance by remember {
             mutableStateOf(MindboxEmbeddedBlockAppearance.PLACEHOLDER)
+        }
+
+        // The budget is settled when the block is built and cannot be talked out of it afterwards,
+        // and a value quietly dropped is the kind of thing a host debugs against the clock. The View
+        // has no such trap — its timeout is a constructor argument — but this composable takes the
+        // parameter on every recomposition, so it says what it does with a new one, as the Flutter
+        // widget does. Once per value, not per frame: the effect is keyed on it.
+        val creationTimeoutMs = remember { timeoutMs }
+        if (timeoutMs != creationTimeoutMs) {
+            LaunchedEffect(timeoutMs) {
+                Mindbox.writeLog(
+                    "[EmbeddedBlock] Block '$placeSystemName' was given timeoutMs=$timeoutMs after " +
+                        "creation and keeps $creationTimeoutMs: the timeout is fixed when the block " +
+                        "is created. Wrap the block in a key() of your own to build one on a " +
+                        "different budget.",
+                    Level.WARN,
+                )
+            }
         }
 
         val placeholderHost = remember(context) {
