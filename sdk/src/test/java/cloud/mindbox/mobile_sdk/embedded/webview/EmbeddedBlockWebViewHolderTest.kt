@@ -417,15 +417,22 @@ class EmbeddedBlockWebViewHolderTest {
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
     }
 
+    // Every other test asks with `filterShowableInapps`, so this is where the shipped pages'
+    // spelling proves it is answered identically — under the name it asked with, or the page does
+    // not recognise the answer as its own.
     @Test
-    fun `the old checkInappsTargeting name is not spoken anymore`() {
-        // Cut hard, in sync with iOS: the action never shipped, so no installed SDK speaks it.
+    fun `the shipped checkInappsTargeting name is answered the same way`() {
+        coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1", "story-2")) } returns
+            listOf("story-1")
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1"]}"""))
+        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1","story-2"]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
 
-        coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any()) }
-        assertTrue(lastOutgoingMessage()?.get("action")?.asString != "checkInappsTargeting")
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+        val payload = lastOutgoingPayload()!!
+        assertEquals(1, payload.getAsJsonArray("inappIds").size())
+        assertEquals("story-1", payload.getAsJsonArray("inappIds").get(0).asString)
     }
 
     @Test
