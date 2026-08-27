@@ -113,6 +113,7 @@ internal class InAppMessageManagerImpl(
     }
 
     override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>) {
+        val tapTick = timeProvider.monotonicMillis()
         inAppScope.launch {
             val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
                 mindboxLogI("Nothing to show for in-app $inAppId")
@@ -120,7 +121,7 @@ internal class InAppMessageManagerImpl(
             }
             val (inApp, variant) = inAppToShow
             val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-            val callbacks = ShowCallbacks(inApp, variant, tags, preparedTime = Milliseconds(0L))
+            val callbacks = ShowCallbacks(inApp, variant, tags, preparedTime = timeProvider.monotonicElapsedSince(tapTick))
             withContext(Dispatchers.Main) {
                 inAppMessageViewDisplayer.showInAppMessageNow(
                     inAppType = variant,

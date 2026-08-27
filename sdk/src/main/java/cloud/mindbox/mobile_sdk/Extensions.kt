@@ -322,7 +322,9 @@ internal fun InApp.firstOverlayVariant(): InAppType? =
  * cooldown all exist to hold shows back, and an `unlimited` in-app is outside that accounting in
  * both directions — it records nothing, and nothing recorded restrains it.
  */
-internal fun InApp.countsShows(): Boolean = frequency.delay !is Frequency.Delay.Unlimited
+internal fun InApp.countsShows(): Boolean = frequency.countsShows()
+
+internal fun Frequency.countsShows(): Boolean = delay !is Frequency.Delay.Unlimited
 
 internal fun <T> newConcurrentSet(): MutableSet<T> =
     Collections.newSetFromMap(ConcurrentHashMap())
@@ -333,7 +335,11 @@ internal fun <T> newConcurrentSet(): MutableSet<T> =
  * decision is taken by the caller and passed in as [isTagsFeatureEnabled].
  */
 internal fun InApp.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
-    tags?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
+    tags.gatedTags(isTagsFeatureEnabled)
+
+/** The same gate for a tags snapshot that travels without its [InApp] (embedded content). */
+internal fun Map<String, String>?.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
+    this?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
 
 internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
     return peek()?.takeIf(predicate)?.let { poll() }
