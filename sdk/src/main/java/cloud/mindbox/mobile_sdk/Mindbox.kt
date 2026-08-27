@@ -1386,6 +1386,7 @@ public object Mindbox : MindboxLog {
         BackgroundWorkManager.cancelAllWork(context)
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()
+        MindboxDI.appModule.mobileConfigRepositoryIfCreated?.startListening()
         MindboxDI.appModule.embeddedBlocksRegistryIfCreated?.startListening()
     }
 

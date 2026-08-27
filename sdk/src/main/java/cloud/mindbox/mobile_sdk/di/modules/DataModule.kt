@@ -175,7 +175,13 @@ internal fun DataModule(
         )
     }
 
-    override val mobileConfigRepository: MobileConfigRepository by lazy {
+    override val mobileConfigRepository: MobileConfigRepository
+        get() = mobileConfigRepositoryLazy.value
+
+    override val mobileConfigRepositoryIfCreated: MobileConfigRepository?
+        get() = mobileConfigRepositoryLazy.takeIf { repository -> repository.isInitialized() }?.value
+
+    private val mobileConfigRepositoryLazy = lazy {
         MobileConfigRepositoryImpl(
             inAppMapper = inAppMapper,
             mobileConfigSerializationManager = mobileConfigSerializationManager,
