@@ -44,7 +44,7 @@ internal class EmbeddedBlockContentController(
     },
     private val hasConfig: () -> Boolean = {
         loggingRunCatching(defaultValue = false) {
-            MindboxDI.isInitialized() && MindboxDI.appModule.mobileConfigRepository.hasConfig()
+            MindboxDI.isInitialized() && MindboxDI.appModule.mobileConfigRepositoryIfCreated?.hasConfig() == true
         }
     },
 ) : EmbeddedBlockHandle {

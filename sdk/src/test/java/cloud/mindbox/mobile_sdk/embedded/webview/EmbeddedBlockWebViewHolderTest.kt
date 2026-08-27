@@ -37,6 +37,10 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import org.json.JSONTokener
 import org.junit.After
+import cloud.mindbox.mobile_sdk.Mindbox
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -261,6 +265,34 @@ class EmbeddedBlockWebViewHolderTest {
 
         // The block returned to the screen — the user sees the content now.
         verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+    }
+
+    @Test
+    fun `a show whose recording died with the sdk scope is retried when the block returns`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        val originalScope = Mindbox.mindboxScope
+        try {
+            startAndAwaitPageLoad()
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined).also { it.cancel() })
+
+            postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+            await { lastOutgoingMessage()?.get("action")?.asString == "contentRendered" }
+            verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
+
+            setMindboxScope(originalScope)
+            holder.pause()
+            holder.start()
+
+            verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+        } finally {
+            setMindboxScope(originalScope)
+        }
+    }
+
+    private fun setMindboxScope(scope: CoroutineScope) {
+        Mindbox::class.java.getDeclaredField("mindboxScope")
+            .apply { isAccessible = true }
+            .set(Mindbox, scope)
     }
 
     @Test

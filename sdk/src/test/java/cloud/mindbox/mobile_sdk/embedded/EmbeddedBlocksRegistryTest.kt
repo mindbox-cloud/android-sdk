@@ -344,6 +344,20 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an Error inside the resolve is delivered as nothing to show, not left to the budget`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } throws StackOverflowError()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
+    }
+
+    @Test
     fun `resolve failure while a winner waits out its delay keeps the running timer`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             EmbeddedResolveResult(content, Milliseconds(5_000L)) andThenThrows IllegalStateException("boom")
@@ -369,7 +383,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `pending is announced only to active handles`() {
+    fun `pending is announced to paused handles too so the delay leaves their clock`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             EmbeddedResolveResult(content, Milliseconds(5_000L))
         val active = RecordingHandle()
@@ -383,7 +397,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(1, active.pendingCount)
-        assertEquals(0, paused.pendingCount)
+        assertEquals(1, paused.pendingCount)
     }
 
     @Test

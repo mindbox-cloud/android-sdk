@@ -143,6 +143,33 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `the delay window leaves the attempt clock of a block that was off screen`() {
+        var clock = 1_000L
+        var receivedStart: Long? = null
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, startTick ->
+                receivedStart = startTick.interval
+                FakeProvider()
+            },
+            blocksRegistry = { blocksRegistry },
+            monotonicNow = { Milliseconds(clock) },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        controller.pause()
+
+        clock = 2_000L
+        blocksRegistry.lastHandle?.onContentPending()
+        clock = 7_000L
+        blocksRegistry.pushContent("main-screen-top", content)
+        clock = 8_000L
+        controller.start()
+
+        assertEquals(6_000L, receivedStart)
+    }
+
+    @Test
     fun `config timeout ships the anonymous ShowFailure`() {
         val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
         val controller = EmbeddedBlockContentController(

@@ -430,6 +430,8 @@ internal class EmbeddedBlockWebViewHolder(
             loggingRunCatchingSuspending {
                 inAppInteractor.recordBlockShow(placeSystemName, inAppId, frequency, timeToDisplay, gatedTags())
             }
+        }.invokeOnCompletion { cause ->
+            if (cause is CancellationException) didAccountForShow = false
         }
     }
 

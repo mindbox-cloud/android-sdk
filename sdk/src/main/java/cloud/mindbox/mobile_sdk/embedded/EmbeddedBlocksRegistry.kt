@@ -152,7 +152,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 )
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (error: Exception) {
+            } catch (error: Throwable) {
                 mindboxLogW("[EmbeddedBlock] Resolving place '$place' failed: $error")
                 Result.failure(error)
             }
@@ -235,7 +235,7 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun notifyPending(place: String) {
-        handlesByPlace[place]?.filter { handle -> handle.isActive }?.forEach { handle ->
+        handlesByPlace[place]?.toList()?.forEach { handle ->
             loggingRunCatching { handle.onContentPending() }
         }
     }
