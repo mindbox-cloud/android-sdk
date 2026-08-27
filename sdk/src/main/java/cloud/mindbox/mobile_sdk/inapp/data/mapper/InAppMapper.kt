@@ -280,6 +280,8 @@ internal class InAppMapper {
                                                 payloadDto.content?.background?.layers
                                                     ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()
                                             ),
+                                            frequency = Frequency(getDelay(inAppDto.frequency)),
+                                            tags = inAppDto.tags?.takeIf { it.isNotEmpty() },
                                         )
                                     }
 
