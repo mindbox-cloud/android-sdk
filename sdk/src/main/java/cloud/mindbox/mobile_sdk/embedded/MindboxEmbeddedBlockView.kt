@@ -95,7 +95,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     private val defaultPlaceholder by lazy { EmbeddedBlockDefaultViews.placeholder(context) }
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private enum class BlockEvent { LOADING, LOADED, FAILED }
+    private enum class BlockEvent { LOADED, FAILED }
 
     private var state: EmbeddedBlockState = EmbeddedBlockState.Loading
         set(value) {
@@ -409,10 +409,12 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun deliverPendingEvent(): Unit = loggingRunCatching {
         isDeliveryScheduled = false
+        // Loading is not an outcome, so the record of what was delivered is left alone: writing it
+        // down would make the outcome that follows look new even when it is the one already heard.
         val event = when {
             state is EmbeddedBlockState.Ready -> BlockEvent.LOADED
             state.nothingToShow -> BlockEvent.FAILED
-            else -> BlockEvent.LOADING
+            else -> return@loggingRunCatching
         }
         if (event == deliveredEvent) return@loggingRunCatching
 
@@ -420,7 +422,6 @@ public class MindboxEmbeddedBlockView internal constructor(
         when (event) {
             BlockEvent.LOADED -> listener.onLoad(this)
             BlockEvent.FAILED -> listener.onFail(this)
-            BlockEvent.LOADING -> Unit
         }
     }
 

@@ -177,6 +177,26 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
+    fun `a place that stays empty reports its outcome once across passes`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail"), listener.events)
+
+        // A second pass across the screen: the same empty place is the same outcome, not news.
+        (view.parent as LinearLayout).removeView(view)
+        shadowOf(Looper.getMainLooper()).idle()
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
     fun `the block behaves with no listener at all`() {
         // The show/hide behavior belongs to the block, not to the host's callbacks.
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
