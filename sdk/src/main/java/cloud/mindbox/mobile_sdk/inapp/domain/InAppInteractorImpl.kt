@@ -116,29 +116,28 @@ internal class InAppInteractorImpl(
         placeSystemName: String,
         triggerEvent: InAppEventType,
     ): InAppType.Embedded? {
-        val requestedPlace = placeSystemName.trim()
         val inApps = mobileConfigRepository.getInAppsSection()
         inAppRepository.saveCurrentSessionInApps(inApps)
         // The same chain as the event path: the display style does not change "when to show".
         val candidates = abTestFilteredInApps(inApps)
-            .let { inAppFilteringManager.filterEmbeddedInAppsByPlace(it, requestedPlace) }
+            .let { inAppFilteringManager.filterEmbeddedInAppsByPlace(it, placeSystemName) }
         val winner = chooseAmongCandidates(
-            logLabel = "Place '$requestedPlace'",
+            logLabel = "Place '$placeSystemName'",
             candidates = candidates,
             triggerEvent = triggerEvent,
             selectVariant = { candidate ->
                 candidate.form.variants
                     .filterIsInstance<InAppType.Embedded>()
-                    .firstOrNull { variant -> variant.placeSystemName == requestedPlace }
+                    .firstOrNull { variant -> variant.placeSystemName == placeSystemName }
             }
         )
             ?: run {
-                logI("Place '$requestedPlace': nothing to show")
+                logI("Place '$placeSystemName': nothing to show")
                 return null
             }
 
         if (!areShowLimitsAllowed(winner)) {
-            logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
+            logI("Place '$placeSystemName': in-app ${winner.id} is blocked by the show limits")
             return null
         }
         // Place resolves repeat for reasons that offer nothing new — the block reappears, a config
@@ -147,11 +146,11 @@ internal class InAppInteractorImpl(
         if (sessionStorageManager.placeTargetingReportedInSession.add(winner.id)) {
             inAppProcessingManager.sendTargetedInApp(winner)
         } else {
-            logI("Place '$requestedPlace': in-app ${winner.id} already sent its targeting this session")
+            logI("Place '$placeSystemName': in-app ${winner.id} already sent its targeting this session")
         }
         return winner.form.variants
             .filterIsInstance<InAppType.Embedded>()
-            .firstOrNull { variant -> variant.placeSystemName == requestedPlace }
+            .firstOrNull { variant -> variant.placeSystemName == placeSystemName }
     }
 
     private suspend fun abTestFilteredInApps(inApps: List<InApp>): List<InApp> =

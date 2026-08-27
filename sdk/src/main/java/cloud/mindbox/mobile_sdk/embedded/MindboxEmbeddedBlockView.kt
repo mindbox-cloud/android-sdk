@@ -58,7 +58,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     placeSystemName: String?,
     configTimeout: Milliseconds? = null,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
-        placeSystemName = placeSystemName.orNullIfBlank(),
+        placeSystemName = placeSystemName.orNullIfEmpty(),
         configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
         providerFactory = { content, attemptStartedAt ->
             EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
@@ -87,7 +87,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         timeoutMs: Long? = null,
     ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds))
 
-    public val placeSystemName: String? = placeSystemName.orNullIfBlank()
+    public val placeSystemName: String? = placeSystemName.orNullIfEmpty()
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
     private var appearanceObserver: ((MindboxEmbeddedBlockAppearance) -> Unit)? = null
     private var placeholderView: View? = null
@@ -447,7 +447,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 }
 
-private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
+private fun String?.orNullIfEmpty(): String? = this?.takeIf { it.isNotEmpty() }
 
 private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? {
     if (attrs == null) return null

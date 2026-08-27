@@ -167,13 +167,25 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `a blank place name is the same as none`() {
-        val view = MindboxEmbeddedBlockView(activity, "   ")
+    fun `an empty place name is the same as none`() {
+        val view = MindboxEmbeddedBlockView(activity, "")
 
         attach(view)
 
         assertEquals(View.GONE, view.visibility)
         assertNull(view.placeSystemName)
+    }
+
+    @Test
+    fun `a place name of spaces is a name like any other`() {
+        // Only emptiness is checked: the name goes to the config as it was given, padding and all,
+        // and a place nobody named that way simply never resolves.
+        val view = MindboxEmbeddedBlockView(activity, "   ")
+
+        attach(view)
+
+        assertEquals("   ", view.placeSystemName)
+        assertEquals(View.VISIBLE, view.visibility)
     }
 
     @Test
