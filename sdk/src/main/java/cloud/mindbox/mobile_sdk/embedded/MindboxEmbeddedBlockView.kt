@@ -14,8 +14,10 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -57,8 +59,14 @@ public class MindboxEmbeddedBlockView internal constructor(
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
         configTimeout = readConfigTimeout(context, attrs),
-        providerFactory = { content, attemptStartedAt ->
-            EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
+        providerFactory = { content, startTick ->
+            EmbeddedBlockContentFactory.createProvider(context, content, startTick)
+        },
+        failureTracker = {
+            loggingRunCatching(defaultValue = null) {
+                Mindbox.initComponents(context)
+                MindboxDI.appModule.inAppFailureTracker
+            }
         },
     ),
 ) : FrameLayout(context, attrs) {
@@ -125,14 +133,10 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     public fun setListener(listener: MindboxEmbeddedBlockListener?) {
         val next = listener ?: DefaultListener
-        // The same listener is not a new subscriber. A host rebinds it on every recycled row, and
-        // replaying an outcome it already heard would have it rebuild its layout again — which
-        // rebinds the listener again.
         if (next === this.listener) return
 
         this.listener = next
         if (listener == null) return
-        // A new subscriber has heard nothing yet, so the current outcome is still news to it.
         deliveredEvent = null
         scheduleDelivery()
     }

@@ -34,6 +34,7 @@ internal fun DomainModule(
             minIntervalBetweenShowsLimitChecker = minIntervalBetweenShowsLimitChecker,
             timeProvider = timeProvider,
             sessionStorageManager = sessionStorageManager,
+            inAppFailureTracker = inAppFailureTracker,
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {

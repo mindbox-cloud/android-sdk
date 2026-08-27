@@ -6,7 +6,7 @@ import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedBlockWebViewHolder
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
-import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 
 internal object EmbeddedBlockContentFactory {
 
@@ -14,7 +14,7 @@ internal object EmbeddedBlockContentFactory {
     fun createProvider(
         context: Context,
         content: InAppType.Embedded,
-        attemptStartedAt: Timestamp,
+        startTick: Milliseconds,
     ): EmbeddedContentProvider? {
         val layer = content.layers.filterIsInstance<Layer.WebViewLayer>().firstOrNull() ?: run {
             mindboxLogE("[EmbeddedBlock] Winner ${content.inAppId} has no webview layer")
@@ -22,9 +22,12 @@ internal object EmbeddedBlockContentFactory {
         }
         return EmbeddedBlockWebViewHolder(
             inAppId = content.inAppId,
+            placeSystemName = content.placeSystemName,
             layer = layer,
             context = context,
-            attemptStartedAt = attemptStartedAt,
+            frequency = content.frequency,
+            tags = content.tags,
+            startTick = startTick,
         )
     }
 }

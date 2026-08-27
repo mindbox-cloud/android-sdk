@@ -164,7 +164,7 @@ class WebViewCommonBridgeActionsTest {
         }
 
         // The author already holds the answer; everyone else learns without being asked — this is
-        // how a feed greys a ring while the story that wrote it is still on top.
+        // how a page dims an element while the in-app that wrote it is still on top.
         verify {
             webPageRegistry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, answer, excludingAuthor = host.hostPage)
         }

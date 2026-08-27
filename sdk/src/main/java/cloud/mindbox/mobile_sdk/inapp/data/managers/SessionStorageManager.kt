@@ -22,15 +22,16 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var operationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
     var inAppMessageShownInSession: MutableList<String> = CopyOnWriteArrayList()
 
-    /**
-     * In-apps whose embedded block has already reported `Inapp.Show` this session. Separate from
-     * [inAppMessageShownInSession]: that one is not written for `unlimited`, while the show
-     * operation ships once per session whatever the frequency.
-     */
-    val blockShowsReportedInSession: MutableSet<String> = newConcurrentSet()
+    val embeddedLastShownByPlace: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+
+    val embeddedLastTargetedByPlace: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+
     val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
-    /** Places whose exceeded wait budget already shipped this session — the fact goes out once. */
+    val embeddedDelaysWaitedOut: MutableSet<String> = newConcurrentSet()
+
+    val requestedInAppTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
+
     val waitBudgetReportedPlaces: MutableSet<String> = newConcurrentSet()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
@@ -95,8 +96,11 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         unShownOperationalInApps.clear()
         operationalInApps.clear()
         inAppMessageShownInSession.clear()
-        blockShowsReportedInSession.clear()
+        embeddedLastShownByPlace.clear()
+        embeddedLastTargetedByPlace.clear()
         placeTargetingReportedInSession.clear()
+        embeddedDelaysWaitedOut.clear()
+        requestedInAppTargetingReportedInSession.clear()
         waitBudgetReportedPlaces.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED

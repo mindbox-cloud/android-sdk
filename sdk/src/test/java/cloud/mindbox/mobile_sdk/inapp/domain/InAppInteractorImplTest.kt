@@ -110,7 +110,8 @@ class InAppInteractorImplTest {
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
             timeProvider,
-            sessionStorageManager
+            sessionStorageManager,
+            inAppFailureTracker
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
@@ -199,7 +200,8 @@ class InAppInteractorImplTest {
             maxInappsPerDayLimitChecker,
             minIntervalBetweenShowsLimitChecker,
             timeProvider,
-            sessionStorageManager
+            sessionStorageManager,
+            inAppFailureTracker
         )
 
         coEvery { mobileConfigRepository.getInAppsSection() } returns inAppsFromConfig

@@ -234,7 +234,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
     fun `the requested show empties the queue, and that is the decision`() {
         // `showInAppMessageNow` goes through `closeInApp()`, which drops whatever the pipeline had
         // queued behind the active show. Pinned as a conscious trade-off, not an accident: an
-        // in-app surfacing on top of the story the user has just opened would be worse than a
+        // in-app surfacing on top of the in-app the user has just opened would be worse than a
         // queue that was cleared when they asked for something else.
         givenForegroundActivity()
         setCurrentHolder(activeHolder(mockk(relaxUnitFun = true)))

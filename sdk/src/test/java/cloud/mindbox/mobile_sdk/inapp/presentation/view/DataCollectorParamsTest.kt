@@ -24,8 +24,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * AC35: a config param whose value is JSON must reach the page as a structure — the stories
- * page checks `Array.isArray(stories)` and silently draws nothing for a string. Plain string
+ * AC35: a config param whose value is JSON must reach the page as a structure — the
+ * page checks `Array.isArray(items)` and silently draws nothing for a string. Plain string
  * params keep their type (the regression pair).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -64,14 +64,14 @@ class DataCollectorParamsTest {
     }
 
     @Test
-    fun `stories value that is a json array is sent as an array`() {
-        val payload = collect(mapOf("stories" to """[{"inAppId":"story-1"},{"inAppId":"story-2"}]"""))
+    fun `items value that is a json array is sent as an array`() {
+        val payload = collect(mapOf("items" to """[{"inAppId":"inapp-1"},{"inAppId":"inapp-2"}]"""))
 
-        assertTrue(payload.get("stories").isJsonArray)
-        assertEquals(2, payload.getAsJsonArray("stories").size())
+        assertTrue(payload.get("items").isJsonArray)
+        assertEquals(2, payload.getAsJsonArray("items").size())
         assertEquals(
-            "story-1",
-            payload.getAsJsonArray("stories").get(0).asJsonObject.get("inAppId").asString
+            "inapp-1",
+            payload.getAsJsonArray("items").get(0).asJsonObject.get("inAppId").asString
         )
     }
 
@@ -189,7 +189,7 @@ class DataCollectorParamsTest {
 
     @Test
     fun `extra param values keep their json types`() {
-        val record = JsonParser.parseString("""{"title":"Сториз 1","rank":3}""")
+        val record = JsonParser.parseString("""{"title":"Заголовок 1","rank":3}""")
         val payload = collect(
             params = emptyMap(),
             extraParams = mapOf(

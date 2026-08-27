@@ -95,7 +95,7 @@ class EmbeddedVariantValidatorTest {
 
     @Test
     fun `params are not validated`() {
-        // Whatever is inside params — missing stories, junk values — the variant stays valid.
+        // Whatever is inside params — missing keys, junk values — the variant stays valid.
         val layer = valid.content!!.background!!.layers!!
             .single() as BackgroundDto.LayerDto.WebViewLayerDto
         val variant = valid.copy(

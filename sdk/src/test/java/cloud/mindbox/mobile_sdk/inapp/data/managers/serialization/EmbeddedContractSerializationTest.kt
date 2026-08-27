@@ -64,9 +64,9 @@ class EmbeddedContractSerializationTest {
                     "placeSystemName":"main-screen-top",
                     "content":{"background":{"layers":[{
                         "${'$'}type":"webview",
-                        "baseUrl":"https://feed.local/base",
-                        "contentUrl":"https://feed.local/stories.html",
-                        "params":{"stories":[{"inAppId":"story-1"}]}
+                        "baseUrl":"https://blocks.local/base",
+                        "contentUrl":"https://blocks.local/items.html",
+                        "params":{"items":[{"inAppId":"inapp-1"}]}
                     }]}}
                 }]}
                 """.trimIndent()
@@ -78,11 +78,11 @@ class EmbeddedContractSerializationTest {
         assertEquals("main-screen-top", variant.placeSystemName)
         assertEquals(1, variant.content?.background?.layers?.size)
         // Structured param values survive as JSON strings and are re-hydrated on the way to
-        // the page — the feed must receive `stories` as an array.
+        // the page — it must receive `items` as an array.
         assertEquals(
-            """[{"inAppId":"story-1"}]""",
+            """[{"inAppId":"inapp-1"}]""",
             variant.content?.background?.layers?.filterIsInstance<cloud.mindbox.mobile_sdk.inapp.data.dto.BackgroundDto.LayerDto.WebViewLayerDto>()
-                ?.single()?.params?.get("stories")
+                ?.single()?.params?.get("items")
         )
     }
 

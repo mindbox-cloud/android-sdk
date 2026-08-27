@@ -109,6 +109,12 @@ class SessionStorageManagerTest {
             operationalInApps["test"] = mutableListOf(mockk())
             inAppMessageShownInSession.add("test1")
             inAppMessageShownInSession.add("test2")
+            embeddedLastShownByPlace["main-screen-top"] = "in-app-1"
+            embeddedLastTargetedByPlace["main-screen-top"] = "in-app-2"
+            placeTargetingReportedInSession.add("in-app-3")
+            requestedInAppTargetingReportedInSession.add("host|inapp")
+            embeddedDelaysWaitedOut.add("main-screen-top|in-app-1")
+            waitBudgetReportedPlaces.add("main-screen-top")
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
@@ -129,6 +135,13 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.operationalInApps.isEmpty())
         assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+        // The block-event memory dies with the session, every cell together.
+        assertTrue(sessionStorageManager.embeddedLastShownByPlace.isEmpty())
+        assertTrue(sessionStorageManager.embeddedLastTargetedByPlace.isEmpty())
+        assertTrue(sessionStorageManager.placeTargetingReportedInSession.isEmpty())
+        assertTrue(sessionStorageManager.requestedInAppTargetingReportedInSession.isEmpty())
+        assertTrue(sessionStorageManager.embeddedDelaysWaitedOut.isEmpty())
+        assertTrue(sessionStorageManager.waitBudgetReportedPlaces.isEmpty())
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
         assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
         assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())

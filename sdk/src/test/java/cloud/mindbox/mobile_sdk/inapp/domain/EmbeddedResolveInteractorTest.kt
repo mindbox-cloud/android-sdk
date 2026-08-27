@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -44,7 +45,7 @@ import org.junit.Test
 
 /**
  * The MOBILE-333 resolve trio: content for a place (pull and push), content by id for the
- * future direct call, and the feed answer to `filterShowableInapps`. Presentation limits and
+ * future direct call, and the dictionary answer to `filterShowableInapps`. Presentation limits and
  * the lock are structurally absent from these paths — the paired negative tests pin that.
  */
 @ExperimentalCoroutinesApi
@@ -80,6 +81,9 @@ class EmbeddedResolveInteractorTest {
     @RelaxedMockK
     private lateinit var sessionStorageManager: SessionStorageManager
 
+    @RelaxedMockK
+    private lateinit var inAppFailureTracker: InAppFailureTracker
+
     private lateinit var frequencyManager: InAppFrequencyManagerImpl
 
     private lateinit var interactor: InAppInteractorImpl
@@ -104,12 +108,18 @@ class EmbeddedResolveInteractorTest {
             minIntervalBetweenShowsLimitChecker = minIntervalBetweenShowsLimitChecker,
             timeProvider = timeProvider,
             sessionStorageManager = sessionStorageManager,
+            inAppFailureTracker = inAppFailureTracker,
         )
         every { timeProvider.currentTimestamp() } returns now
         every { inAppRepository.getShownInApps() } returns emptyMap()
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
         every { sessionStorageManager.placeTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
+        every { sessionStorageManager.requestedInAppTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
+        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap()
+        every { sessionStorageManager.embeddedLastTargetedByPlace } returns ConcurrentHashMap()
+        every { sessionStorageManager.embeddedDelaysWaitedOut } returns ConcurrentHashMap.newKeySet()
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
         every { maxInappsPerSessionLimitChecker.check() } returns true
         every { maxInappsPerDayLimitChecker.check() } returns true
         every { minIntervalBetweenShowsLimitChecker.check() } returns true
@@ -153,7 +163,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace returns embedded content for known place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
 
         assertEquals("embedded-id", content?.inAppId)
         assertEquals(place, content?.placeSystemName)
@@ -173,17 +183,42 @@ class EmbeddedResolveInteractorTest {
             embeddedInApp(id = "priority", isPriority = true),
         )
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
 
         assertEquals("priority", content?.inAppId)
     }
 
     @Test
-    fun `selectInAppForPlace does not delay content when winner has delayTime`() = runTest {
+    fun `selectInAppForPlace hands the winner delayTime to the caller instead of waiting`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        // The content comes back right away — there is nothing to wait with on the pull path.
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.inAppId)
+        // The resolve itself never waits: the registry owns the delay.
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals("embedded-id", result?.variant?.inAppId)
+        assertEquals(7_200_000L, result?.delayTime?.interval)
+    }
+
+    @Test
+    fun `selectInAppForPlace hands out no delay once the winner waited it out this session`() = runTest {
+        givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
+
+        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id")
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals("embedded-id", result?.variant?.inAppId)
+        assertNull(result?.delayTime)
+    }
+
+    @Test
+    fun `a waited-out delay is per place and per in-app`() = runTest {
+        givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
+
+        interactor.markEmbeddedDelayWaitedOut("other-place", "embedded-id")
+        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app")
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals(7_200_000L, result?.delayTime?.interval)
     }
 
     @Test
@@ -194,11 +229,13 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace skips candidate outside ab pool`() = runTest {
+    fun `selectInAppForPlace shows nothing outside the ab pool but still sends its targeting`() = runTest {
+        // The cut A/B branch keeps its funnel denominator: no show, yet the offer goes out.
         givenConfig(embeddedInApp())
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
 
         assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" }) }
     }
 
     @Test
@@ -206,24 +243,26 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("embedded-id")
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
     }
 
     @Test
     fun `selectInAppForPlace filters by frequency like every other path`() = runTest {
         givenConfig(embeddedInApp())
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
         verify(exactly = 1) { frequencyManager.filterInAppsFrequency(any()) }
     }
 
     @Test
     fun `selectInAppForPlace skips a candidate its frequency already blocks`() = runTest {
         // A lifetime-frequency block that has been shown before is done — exactly like a modal.
+        // Its offer still ships: the frequency holds the show back, not the funnel.
         givenConfig(embeddedInApp())
         every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
 
         assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
     @Test
@@ -250,7 +289,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp(isPriority = true))
         every { maxInappsPerDayLimitChecker.check() } returns false
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
     }
 
     @Test
@@ -263,18 +302,18 @@ class EmbeddedResolveInteractorTest {
         every { maxInappsPerSessionLimitChecker.check() } returns false
         every { minIntervalBetweenShowsLimitChecker.check() } returns false
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
         verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
     }
 
     @Test
     fun `targeting catch-up never covers directCall in-apps`() = runTest {
-        // iOS decision 14.08, mirrored: a story answers no event, so the catch-up must not
+        // iOS decision 14.08, mirrored: a direct-call in-app answers no event, so the catch-up must not
         // send Inapp.Targeting for it — that would inflate the funnel on every start. Its
         // targeting ships once, with the explicit show.
-        val story = modalInApp(id = "story").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+        val directCall = modalInApp(id = "direct-call").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         val ordinary = modalInApp(id = "ordinary")
-        givenConfig(story, ordinary)
+        givenConfig(directCall, ordinary)
         coEvery { inAppRepository.getTargetedInApps() } returns emptyMap()
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
@@ -284,7 +323,7 @@ class EmbeddedResolveInteractorTest {
         advanceUntilIdle()
         job.cancel()
 
-        coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(story, any()) }
+        coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(directCall, any()) }
         coVerify(atLeast = 1) { inAppProcessingManager.sendTargetedInApp(ordinary, any()) }
     }
 
@@ -327,18 +366,20 @@ class EmbeddedResolveInteractorTest {
         val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
         val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
-        assertEquals("embedded-id", first?.inAppId)
-        assertEquals("embedded-id", second?.inAppId)
+        assertEquals("embedded-id", first?.variant?.inAppId)
+        assertEquals("embedded-id", second?.variant?.inAppId)
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
     @Test
-    fun `selectInAppForPlace sends no targeting for a winner the show limits block`() = runTest {
+    fun `selectInAppForPlace sends the winner targeting even when the show limits block it`() = runTest {
+        // Parity with the overlay: the offer is reported before the budgets decide whether it
+        // may actually appear — and the blocked pass consumes the winner's offer slot.
         givenConfig(embeddedInApp())
         every { maxInappsPerSessionLimitChecker.check() } returns false
 
         assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
-        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
 
         every { maxInappsPerSessionLimitChecker.check() } returns true
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
@@ -346,9 +387,115 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `selectInAppForPlace sends targeting for the losers once per session and pairs the winner with its slot`() = runTest {
+        // Two candidates matched: one wins the place, the loser still keeps its denominator.
+        givenConfig(
+            embeddedInApp(id = "winner", isPriority = true),
+            embeddedInApp(id = "loser"),
+        )
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        // The loser goes through the once-per-session set, the winner through the "last
+        // targeted" slot: one event each however many times the place re-resolves.
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "winner" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "loser" }) }
+    }
+
+    @Test
+    fun `a winner that loses a later pass to a stronger candidate is not targeted again`() = runTest {
+        givenConfig(
+            embeddedInApp(id = "usual"),
+            embeddedInApp(id = "stronger", isPriority = true),
+        )
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "stronger" }, any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "stronger" }, any()) } returns true
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "usual" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "stronger" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace targets the winner again on every change of the winner, 1 to 2 to 1`() = runTest {
+        val first = embeddedInApp(id = "first")
+        val second = embeddedInApp(id = "second")
+
+        givenConfig(first)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        givenConfig(second)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        givenConfig(first)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        // The slot compares with the last targeted, not with a session set: the return counts.
+        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "first" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "second" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends no targeting for a candidate whose targeting did not match`() = runTest {
+        givenConfig(embeddedInApp(id = "matched"), embeddedInApp(id = "unmatched"))
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "unmatched" }, any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "matched" }) }
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "unmatched" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace ships the collected failures only when the place stays empty`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppFailureTracker.sendCollectedFailures() }
+        verify(exactly = 0) { inAppFailureTracker.clearFailures() }
+    }
+
+    @Test
+    fun `selectInAppForPlace drops the pass failures once somebody won the place`() = runTest {
+        // Parity with the overlay pass: a winner — even one the limits then hold back — answers
+        // "why nothing was shown", so the buffer of the pass is discarded, not sent.
+        givenConfig(embeddedInApp())
+        every { maxInappsPerSessionLimitChecker.check() } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppFailureTracker.clearFailures() }
+        verify(exactly = 0) { inAppFailureTracker.sendCollectedFailures() }
+    }
+
+    @Test
+    fun `selectInAppForPlace never evaluates a directCall candidate`() = runTest {
+        givenConfig(embeddedInApp(id = "direct").copy(displayConditions = DisplayConditions.DIRECT_CALL))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), any()) }
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends targeting for the same id again for a different host`() = runTest {
+        // The pair is host + id: the same in-app proposed by two different hosts is two offers.
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+        interactor.filterShowableInAppIds("other-host", listOf("inapp-1"))
+
+        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
     fun `place resolve with an operation trigger dedups with the pull`() = runTest {
         givenConfig(embeddedInApp())
-        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
 
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
         interactor.selectInAppForPlace(place, triggerEvent = operation)
@@ -359,16 +506,16 @@ class EmbeddedResolveInteractorTest {
     @Test
     fun `selectInAppForPlace passes the push trigger to the selection`() = runTest {
         givenConfig(embeddedInApp())
-        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
 
         interactor.selectInAppForPlace(place, triggerEvent = operation)
 
-        coVerify { inAppProcessingManager.chooseInAppToShow(any(), operation, any()) }
+        coVerify { inAppProcessingManager.matchesTargeting(any(), operation) }
     }
 
     @Test
     fun `getInAppToShowById ignores every restriction`() = runTest {
-        // directCall, already shown, whatever frequency — a drawn circle must open.
+        // directCall, already shown, whatever frequency — a drawn element must open.
         givenConfig(
             modalInApp(id = "restricted").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         )
@@ -457,51 +604,51 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds picks the first duplicate id like the direct call does`() = runTest {
-        // Two in-apps share an id across sdkVersion ranges: the circle decision and the tap
+        // Two in-apps share an id across sdkVersion ranges: the dictionary decision and the tap
         // must talk about the same in-app — the first one.
         givenConfig(modalInApp(id = "dup"), modalInApp(id = "dup"))
 
-        assertEquals(listOf("dup"), interactor.filterShowableInAppIds(listOf("dup")))
+        assertEquals(listOf("dup"), interactor.filterShowableInAppIds("host-form", listOf("dup")))
     }
 
     @Test
     fun `filterShowableInAppIds keeps all valid ids`() = runTest {
-        givenConfig(modalInApp(id = "story-1"), modalInApp(id = "story-2"))
+        givenConfig(modalInApp(id = "inapp-1"), modalInApp(id = "inapp-2"))
 
         assertEquals(
-            listOf("story-1", "story-2"),
-            interactor.filterShowableInAppIds(listOf("story-1", "story-2"))
+            listOf("inapp-1", "inapp-2"),
+            interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-2"))
         )
     }
 
     @Test
     fun `filterShowableInAppIds cuts unknown id`() = runTest {
-        givenConfig(modalInApp(id = "story-1"))
+        givenConfig(modalInApp(id = "inapp-1"))
 
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("ghost")))
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("ghost")))
     }
 
     @Test
     fun `filterShowableInAppIds cuts id with unmatched targeting`() = runTest {
-        // An operation node never matches the feed answer — no operation is happening.
+        // An operation node never matches the dictionary answer — no operation is happening.
         givenConfig(
-            modalInApp(id = "story-1").copy(targeting = InAppStub.getTargetingOperationNode())
+            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
         )
 
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
     }
 
     @Test
     fun `filterShowableInAppIds fetches the targeting dependencies before checking`() = runTest {
-        // A segment-targeted story is answerable only from fetched data. The feed question is
-        // the only path that ever evaluates a directCall story's targeting, so it has to fetch
+        // A segment-targeted in-app is answerable only from fetched data. The dictionary question is
+        // the only path that ever evaluates a directCall in-app's targeting, so it has to fetch
         // for itself — the session status and the repository mutexes keep it one network trip.
         val targeting = mockk<TreeTargeting>()
         coEvery { targeting.fetchTargetingInfo(any()) } just runs
         every { targeting.checkTargeting(any()) } returns true
-        givenConfig(modalInApp(id = "story-1").copy(targeting = targeting))
+        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
 
-        assertEquals(listOf("story-1"), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
         coVerify(exactly = 1) { targeting.fetchTargetingInfo(any()) }
     }
 
@@ -511,49 +658,50 @@ class EmbeddedResolveInteractorTest {
         // is never "allowed".
         val targeting = mockk<TreeTargeting>()
         coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("offline")
-        givenConfig(modalInApp(id = "story-1").copy(targeting = targeting))
+        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
 
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
         verify(exactly = 0) { targeting.checkTargeting(any()) }
     }
 
     @Test
     fun `filterShowableInAppIds cuts an id its frequency already blocks`() = runTest {
         // The frequency rule is the same on every selection path: the stub frequency is
-        // once/lifetime, and a recorded show exhausts it — the circle is not proposed.
-        givenConfig(modalInApp(id = "story-1"))
-        every { inAppRepository.getShownInApps() } returns mapOf("story-1" to listOf(1L))
+        // once/lifetime, and a recorded show exhausts it — the id is not proposed.
+        givenConfig(modalInApp(id = "inapp-1"))
+        every { inAppRepository.getShownInApps() } returns mapOf("inapp-1" to listOf(1L))
 
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds(listOf("story-1")))
-        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        // The exhausted frequency holds the id out of the answer, not out of the funnel.
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
     @Test
     fun `filterShowableInAppIds keeps an unlimited id regardless of show history`() = runTest {
         givenConfig(
-            modalInApp(id = "story-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
+            modalInApp(id = "inapp-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
         )
-        every { inAppRepository.getShownInApps() } returns mapOf("story-1" to listOf(1L))
+        every { inAppRepository.getShownInApps() } returns mapOf("inapp-1" to listOf(1L))
 
-        assertEquals(listOf("story-1"), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
     }
 
     @Test
     fun `filterShowableInAppIds does not check the show limits`() = runTest {
-        // The limits belong to the overlay show; the feed shows nothing itself.
-        givenConfig(modalInApp(id = "story-1"))
+        // The limits belong to the overlay show; the dictionary shows nothing itself.
+        givenConfig(modalInApp(id = "inapp-1"))
         every { maxInappsPerSessionLimitChecker.check() } returns false
 
-        assertEquals(listOf("story-1"), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
     }
 
     @Test
     fun `filterShowableInAppIds cuts id of embedded in-app`() = runTest {
-        givenConfig(embeddedInApp(id = "feed-itself"), modalInApp(id = "story-1"))
+        givenConfig(embeddedInApp(id = "embedded-itself"), modalInApp(id = "inapp-1"))
 
         assertEquals(
-            listOf("story-1"),
-            interactor.filterShowableInAppIds(listOf("feed-itself", "story-1"))
+            listOf("inapp-1"),
+            interactor.filterShowableInAppIds("host-form", listOf("embedded-itself", "inapp-1"))
         )
     }
 
@@ -564,50 +712,64 @@ class EmbeddedResolveInteractorTest {
 
         assertEquals(
             listOf("in-pool"),
-            interactor.filterShowableInAppIds(listOf("in-pool", "out-of-pool"))
+            interactor.filterShowableInAppIds("host-form", listOf("in-pool", "out-of-pool"))
         )
     }
 
     @Test
     fun `filterShowableInAppIds does not check directCall`() = runTest {
-        // directCall is the standard marker of a story — checking it would empty the feed.
+        // directCall is the standard marker of a dictionary-drawn in-app — checking it would empty the answer.
         givenConfig(
-            modalInApp(id = "story-1").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+            modalInApp(id = "inapp-1").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         )
 
-        assertEquals(listOf("story-1"), interactor.filterShowableInAppIds(listOf("story-1")))
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
     }
 
     @Test
-    fun `filterShowableInAppIds sends targeting for every allowed id`() = runTest {
-        givenConfig(modalInApp(id = "story-1"), modalInApp(id = "story-2"), modalInApp(id = "cut"))
-        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("story-1", "story-2")
+    fun `filterShowableInAppIds sends targeting for every asked id that matches, the ab-cut included`() = runTest {
+        // The answer is cut by the pool; the offer is not — the cut branch keeps its denominator.
+        givenConfig(modalInApp(id = "inapp-1"), modalInApp(id = "inapp-2"), modalInApp(id = "cut"))
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("inapp-1", "inapp-2")
 
-        interactor.filterShowableInAppIds(listOf("story-1", "story-2", "cut"))
+        val answer = interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-2", "cut"))
 
-        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "story-1" }) }
-        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "story-2" }) }
-        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(any()) }
+        assertEquals(listOf("inapp-1", "inapp-2"), answer)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "inapp-1" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "inapp-2" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "cut" }) }
+        verify(exactly = 3) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
     @Test
-    fun `filterShowableInAppIds sends targeting again on every answer`() = runTest {
-        // The funnel counts the proposed circles: no dedup, every answer sends again.
-        givenConfig(modalInApp(id = "story-1"))
+    fun `filterShowableInAppIds sends targeting once per host and id pair a session`() = runTest {
+        // A repeated answer offers nothing new: one Inapp.Targeting per host|id pair.
+        givenConfig(modalInApp(id = "inapp-1"))
 
-        interactor.filterShowableInAppIds(listOf("story-1"))
-        interactor.filterShowableInAppIds(listOf("story-1"))
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
 
-        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(any()) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends one targeting for a duplicated id and mirrors the duplicate`() = runTest {
+        // The answer mirrors the request — the page owns its list's shape; the event is one.
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        val answer = interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-1"))
+
+        assertEquals(listOf("inapp-1", "inapp-1"), answer)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
     @Test
     fun `filterShowableInAppIds sends no targeting for a cut id`() = runTest {
         givenConfig(
-            modalInApp(id = "story-1").copy(targeting = InAppStub.getTargetingOperationNode())
+            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
         )
 
-        interactor.filterShowableInAppIds(listOf("story-1", "ghost"))
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "ghost"))
 
         verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
@@ -660,54 +822,58 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `recordBlockShow sends the Inapp Show and counts the show`() = runTest {
-        givenConfig(embeddedInApp())
-        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
-
-        interactor.recordBlockShow("embedded-id", Milliseconds(1_500L), mapOf("a" to "b"))
+    fun `recordBlockShow sends the Inapp Show, counts the show and moves the cooldown`() {
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"))
 
         verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
         verify { inAppRepository.setInAppShown("embedded-id") }
+        verify { inAppRepository.saveShownInApp("embedded-id", now.ms) }
+        // Parity in both directions: a counted block show also moves the shared cooldown.
+        verify { inAppRepository.saveInAppStateChangeTime(now) }
     }
 
     @Test
-    fun `recordBlockShow sends the Inapp Show once per session`() = runTest {
-        // A rotation or a return to the screen draws the same content again — one show per session.
-        givenConfig(embeddedInApp())
-        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
-
-        interactor.recordBlockShow("embedded-id", Milliseconds(1_000L), null)
-        interactor.recordBlockShow("embedded-id", Milliseconds(1_000L), null)
+    fun `recordBlockShow stays silent while the place slot holds the same content`() {
+        // A rotation or a recreated page draws the same content again — no second pair, no
+        // second count. A changed in-app writes the slot over and speaks again.
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
 
         verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
+        verify(exactly = 1) { inAppRepository.setInAppShown(any()) }
+
+        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
+
+        // 1 -> 2 -> 1 is three shows: the slot compares with the last shown, not a session set.
+        verify(exactly = 3) { inAppRepository.sendInAppShown(any(), any(), any()) }
     }
 
     @Test
-    fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() = runTest {
-        givenConfig(embeddedInApp().copy(frequency = Frequency(Frequency.Delay.Unlimited)))
-        every { sessionStorageManager.blockShowsReportedInSession } returns mutableSetOf()
-
-        interactor.recordBlockShow("embedded-id", Milliseconds(0L), null)
+    fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() {
+        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null)
 
         verify { inAppRepository.sendInAppShown(any(), any(), any()) }
         verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
         verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
+        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
     }
 
     @Test
-    fun `recordBlockShow ignores an unknown id`() = runTest {
-        givenConfig(embeddedInApp())
+    fun `recordBlockShow needs no config - the snapshot carries everything`() {
+        // The config may have moved on since the resolve — the user still saw this content.
+        coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
 
-        interactor.recordBlockShow("ghost", Milliseconds(0L), null)
+        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null)
 
-        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+        verify(exactly = 1) { inAppRepository.sendInAppShown("gone-from-config", any(), any()) }
     }
 
     @Test
     fun `live operation matched to an embedded place emits a place event`() = runTest {
         val embedded = embeddedInApp()
         givenConfig(embedded)
-        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         every { inAppRepository.listenLiveInAppEvents() } returns flowOf(operation)
         every { inAppRepository.getOperationalInAppsByOperation(operation.name) } returns listOf(embedded)
 
@@ -760,7 +926,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace hands out the embedded variant of a mixed form`() = runTest {
         givenConfig(mixedInApp())
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
 
         assertEquals("mixed-id", content?.inAppId)
         assertEquals(place, content?.placeSystemName)
@@ -770,7 +936,7 @@ class EmbeddedResolveInteractorTest {
     fun `filterShowableInAppIds keeps an id whose form also has an overlay variant`() = runTest {
         givenConfig(mixedInApp())
 
-        val result = interactor.filterShowableInAppIds(listOf("mixed-id"))
+        val result = interactor.filterShowableInAppIds("host-form", listOf("mixed-id"))
 
         assertEquals(listOf("mixed-id"), result)
     }
