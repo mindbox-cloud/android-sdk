@@ -280,6 +280,46 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
     }
 
     @Test
+    fun `a released block takes no new listener`() {
+        val view = buildView()
+        attach(view)
+        showContent()
+        view.release()
+        idle()
+
+        val heard = mutableListOf<String>()
+        view.setListener(
+            object : MindboxEmbeddedBlockListener {
+                override fun onLoad(view: MindboxEmbeddedBlockView) {
+                    heard.add("load")
+                }
+
+                override fun onFail(view: MindboxEmbeddedBlockView) {
+                    heard.add("fail")
+                }
+            },
+        )
+        idle()
+
+        assertTrue(heard.isEmpty())
+    }
+
+    @Test
+    fun `a released block takes no new appearance observer`() {
+        val view = buildView()
+        attach(view)
+        showContent()
+        view.release()
+        idle()
+
+        val seen = mutableListOf<MindboxEmbeddedBlockAppearance>()
+        view.setAppearanceObserver { appearance -> seen.add(appearance) }
+        idle()
+
+        assertTrue(seen.isEmpty())
+    }
+
+    @Test
     fun `a released block stays stopped even when the window says it is shown`() {
         val view = buildView()
         attach(view)

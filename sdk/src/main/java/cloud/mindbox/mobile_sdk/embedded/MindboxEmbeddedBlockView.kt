@@ -141,6 +141,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     public fun setListener(listener: MindboxEmbeddedBlockListener?) {
+        if (isReleased) return
+
         val next = listener ?: DefaultListener
         // The same listener is not a new subscriber. A host rebinds it on every recycled row, and
         // replaying an outcome it already heard would have it rebuild its layout again — which
@@ -196,6 +198,8 @@ public class MindboxEmbeddedBlockView internal constructor(
      */
     @InternalMindboxApi
     public fun setAppearanceObserver(observer: ((MindboxEmbeddedBlockAppearance) -> Unit)?) {
+        if (isReleased) return
+
         appearanceObserver = observer
         loggingRunCatching { observer?.invoke(shownAppearance) }
     }
@@ -268,6 +272,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun observeHostDestruction(): Unit = loggingRunCatching {
+        if (isReleased) return@loggingRunCatching
         val lifecycle = findViewTreeLifecycleOwner()?.lifecycle ?: return@loggingRunCatching
         if (lifecycle === observedLifecycle) return@loggingRunCatching
         observedLifecycle?.removeObserver(hostDestroyObserver)
@@ -275,6 +280,18 @@ public class MindboxEmbeddedBlockView internal constructor(
         lifecycle.addObserver(hostDestroyObserver)
     }
 
+    /**
+     * Stops the block for good: the content stops, the host screen is no longer observed, the
+     * listener is dropped, and the block does not start again even while it stays in a window.
+     *
+     * For wrappers whose own object graph dies before the view leaves the window — a platform-view
+     * factory keeps the view for as long as the platform sees fit, and the block should stop when
+     * the screen is gone rather than when the last reference is. A host application needs nothing:
+     * a block that leaves the window pauses itself, and the destruction of the host screen frees it.
+     *
+     * One way only: a released block stays released, and [setListener] and [setAppearanceObserver]
+     * on it do nothing.
+     */
     @InternalMindboxApi
     public fun release() {
         if (isReleased) return
