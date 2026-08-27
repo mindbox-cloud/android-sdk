@@ -10,7 +10,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Timestamp
-import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowError
 import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -133,11 +133,11 @@ internal class InAppRepositoryImpl(
         }
     }
 
-    override fun sendInAppShowFailure(failures: List<InAppShowFailure>) {
-        failures
+    override fun sendInAppShowErrors(errors: List<InAppShowError>) {
+        errors
             .takeIf { it.isNotEmpty() }
             ?.let {
-                inAppSerializationManager.serializeToInAppShowFailuresString(failures)
+                inAppSerializationManager.serializeToInAppShowErrorsString(errors)
                     .takeIf { it.isNotBlank() }
                     ?.let { operationBody ->
                         MindboxEventManager.inAppShowFailure(context, operationBody)

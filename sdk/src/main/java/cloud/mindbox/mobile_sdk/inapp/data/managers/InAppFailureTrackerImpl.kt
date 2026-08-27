@@ -4,8 +4,12 @@ import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -15,7 +19,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 internal class InAppFailureTrackerImpl(
     private val timeProvider: TimeProvider,
     private val inAppRepository: InAppRepository,
-    private val featureToggleManager: FeatureToggleManager
+    private val featureToggleManager: FeatureToggleManager,
+    private val sessionStorageManager: SessionStorageManager,
 ) : InAppFailureTracker {
 
     private val failures = CopyOnWriteArrayList<InAppShowFailure>()
@@ -32,7 +37,7 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failures")
             return
         }
-        inAppRepository.sendInAppShowFailure(failures.toList())
+        inAppRepository.sendInAppShowErrors(failures.toList())
         failures.clear()
     }
 
@@ -41,7 +46,7 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failure")
             return
         }
-        inAppRepository.sendInAppShowFailure(listOf(failure))
+        inAppRepository.sendInAppShowErrors(listOf(failure))
     }
 
     override fun sendFailure(
@@ -91,6 +96,31 @@ internal class InAppFailureTrackerImpl(
 
     override fun clearFailures() {
         failures.clear()
+    }
+
+    override fun sendWaitBudgetExceeded(placeSystemName: String, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
+            mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send wait budget failure")
+            return
+        }
+        if (!sessionStorageManager.waitBudgetReportedPlaces.add(placeSystemName)) {
+            mindboxLogI("Place '$placeSystemName' already reported its exceeded wait budget this session")
+            return
+        }
+        mindboxLogI("The SDK stayed silent past the block's budget, sending the place-named failure")
+        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
+            .convertToZonedDateTimeAtUTC()
+            .convertToString()
+        inAppRepository.sendInAppShowErrors(
+            listOf(
+                EmbeddedBlockShowFailure(
+                    placeSystemName = placeSystemName,
+                    failureReason = FailureReason.WAIT_BUDGET_EXCEEDED,
+                    errorDetails = "phase=${phase.wireName}; waited=${waitedFor.interval.millisToTimeSpan()}",
+                    dateTimeUtc = timestamp,
+                )
+            )
+        )
     }
 
     companion object {

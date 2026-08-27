@@ -20,4 +20,6 @@ internal interface InAppProcessingManager {
 
     /** Sends `Inapp.Targeting` without re-checking anything: the caller has already matched targeting. */
     fun sendTargetedInApp(inApp: InApp)
+
+    suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean
 }

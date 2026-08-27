@@ -210,6 +210,58 @@ internal class InAppProcessingManagerImpl(
         )
     }
 
+    override suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean {
+        val data = getTargetingData(triggerEvent)
+        val tags = inApp.gatedTags(isTagsFeatureEnabled())
+        var isTargetingErrorOccurred = false
+        var targetingCheck = false
+        runCatching {
+            inApp.targeting.fetchTargetingInfo(data)
+            targetingCheck = inApp.targeting.checkTargeting(data)
+        }.onFailure { throwable ->
+            when (throwable) {
+                is GeoError -> {
+                    isTargetingErrorOccurred = true
+                    inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
+                    if (throwable.shouldTrackTargetingError()) {
+                        inAppTargetingErrorRepository.saveError(
+                            key = TargetingErrorKey.Geo,
+                            error = throwable
+                        )
+                    }
+                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                }
+
+                is CustomerSegmentationError -> {
+                    isTargetingErrorOccurred = true
+                    inAppSegmentationRepository.setCustomerSegmentationStatus(
+                        CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+                    )
+                    if (throwable.shouldTrackTargetingError()) {
+                        inAppTargetingErrorRepository.saveError(
+                            key = TargetingErrorKey.CustomerSegmentation,
+                            error = throwable
+                        )
+                    }
+                    handleCustomerSegmentationErrorLog(throwable)
+                }
+
+                else -> {
+                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                    inAppFailureTracker.sendFailure(
+                        inAppId = inApp.id,
+                        failureReason = FailureReason.UNKNOWN_ERROR,
+                        errorDetails = "Unknown exception when checking target ${throwable.message}. ${throwable.cause?.getVolleyErrorDetails() ?: "volleyError=null"}",
+                        tags = tags
+                    )
+                }
+            }
+        }
+        if (isTargetingErrorOccurred) return matchesTargeting(inApp, triggerEvent)
+        trackTargetingErrorIfAny(inApp, data, tags)
+        return targetingCheck
+    }
+
     private fun getTargetingData(triggerEvent: InAppEventType): TargetingData {
         val ordinalEvent = triggerEvent as? InAppEventType.OrdinalEvent
 

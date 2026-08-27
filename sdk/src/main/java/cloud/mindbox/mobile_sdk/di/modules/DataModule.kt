@@ -241,7 +241,8 @@ internal fun DataModule(
         InAppFailureTrackerImpl(
             timeProvider = timeProvider,
             inAppRepository = inAppRepository,
-            featureToggleManager = featureToggleManager
+            featureToggleManager = featureToggleManager,
+            sessionStorageManager = sessionStorageManager,
         )
     }
 

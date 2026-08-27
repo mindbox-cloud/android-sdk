@@ -146,6 +146,32 @@ class InAppRepositoryTest {
     }
 
     @Test
+    fun `send in app show errors ships the serialized errors body`() {
+        val serializedString = """{"errors":[{}]}"""
+        every { inAppSerializationManager.serializeToInAppShowErrorsString(any()) } returns serializedString
+
+        inAppRepository.sendInAppShowErrors(
+            listOf(
+                cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure(
+                    placeSystemName = "main-screen-top",
+                    failureReason = cloud.mindbox.mobile_sdk.models.operation.request.FailureReason.WAIT_BUDGET_EXCEEDED,
+                    errorDetails = null,
+                    dateTimeUtc = "2024-02-10T00:00:00Z"
+                )
+            )
+        )
+
+        verify(exactly = 1) { MindboxEventManager.inAppShowFailure(context, serializedString) }
+    }
+
+    @Test
+    fun `send in app show errors sends nothing for an empty list`() {
+        inAppRepository.sendInAppShowErrors(emptyList())
+
+        verify(exactly = 0) { MindboxEventManager.inAppShowFailure(any(), any()) }
+    }
+
+    @Test
     fun `send in app clicked success`() {
         val testInAppId = "testInAppId"
         val tags = mapOf("templateType" to "Popup")

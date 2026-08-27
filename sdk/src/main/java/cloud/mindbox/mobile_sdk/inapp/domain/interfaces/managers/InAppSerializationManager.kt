@@ -1,6 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers
 
-import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowError
 
 internal interface InAppSerializationManager {
 
@@ -14,7 +14,7 @@ internal interface InAppSerializationManager {
 
     fun serializeToInAppClickActionString(inAppId: String, tags: Map<String, String>?): String
 
-    fun serializeToInAppShowFailuresString(inAppShowFailures: List<InAppShowFailure>): String
+    fun serializeToInAppShowErrorsString(inAppShowErrors: List<InAppShowError>): String
 
     fun deserializeToShownInApps(shownInApps: String): Set<String>
 }

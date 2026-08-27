@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppErrorsWrapper
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppClickRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
@@ -193,26 +193,46 @@ internal class InAppSerializationManagerTest {
     }
 
     @Test
-    fun `serializeToInAppShowFailuresString returns valid JSON string`() {
-        val inAppShowFailures = listOf(
+    fun `serializeToInAppShowErrorsString pins the polymorphic errors contract`() {
+        val errors = listOf(
             InAppShowFailure(
                 inAppId = inAppId,
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDetails = "error",
+                dateTimeUtc = "2024-02-10T00:00:00Z",
+                tags = mapOf("templateType" to "Popup")
+            ),
+            cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure(
+                placeSystemName = "main-screen-top",
+                failureReason = FailureReason.WAIT_BUDGET_EXCEEDED,
+                errorDetails = "phase=config_missing; waited=00:00:30.0000000",
                 dateTimeUtc = "2024-02-10T00:00:00Z"
             )
         )
-        val expectedJson = Gson().toJson(InAppFailuresWrapper(inAppShowFailures))
 
-        val actualJson = inAppSerializationManager.serializeToInAppShowFailuresString(inAppShowFailures)
+        val actual = com.google.gson.JsonParser.parseString(
+            inAppSerializationManager.serializeToInAppShowErrorsString(errors)
+        ).asJsonObject
 
-        assertEquals(expectedJson, actualJson)
+        // One polymorphic array; the legacy `failures` never ships again.
+        val expected = com.google.gson.JsonParser.parseString(
+            """
+            {"errors":[
+              {"inappId":"validInAppId","failureReason":"presentation_failed","errorDetails":"error",
+               "dateTimeUtc":"2024-02-10T00:00:00Z","tags":{"templateType":"Popup"},"${'$'}type":"inappShowFailure"},
+              {"placeSystemName":"main-screen-top","failureReason":"wait_budget_exceeded",
+               "errorDetails":"phase=config_missing; waited=00:00:30.0000000",
+               "dateTimeUtc":"2024-02-10T00:00:00Z","${'$'}type":"embeddedBlockShowFailure"}
+            ]}
+            """.trimIndent()
+        ).asJsonObject
+        assertEquals(expected, actual)
     }
 
     @Test
-    fun `serializeToInAppShowFailuresString returns empty string when exception occurs`() {
+    fun `serializeToInAppShowErrorsString returns empty string when exception occurs`() {
         val gson: Gson = mockk()
-        val inAppShowFailures = listOf(
+        val inAppShowErrors = listOf(
             InAppShowFailure(
                 inAppId = inAppId,
                 failureReason = FailureReason.UNKNOWN_ERROR,
@@ -221,11 +241,11 @@ internal class InAppSerializationManagerTest {
             )
         )
         every {
-            gson.toJson(any<InAppFailuresWrapper>(), object : TypeToken<InAppFailuresWrapper>() {}.type)
+            gson.toJson(any<InAppErrorsWrapper>(), object : TypeToken<InAppErrorsWrapper>() {}.type)
         } throws RuntimeException("Serialization error")
         inAppSerializationManager = InAppSerializationManagerImpl(gson)
 
-        val actualJson = inAppSerializationManager.serializeToInAppShowFailuresString(inAppShowFailures)
+        val actualJson = inAppSerializationManager.serializeToInAppShowErrorsString(inAppShowErrors)
 
         assertEquals("", actualJson)
     }
