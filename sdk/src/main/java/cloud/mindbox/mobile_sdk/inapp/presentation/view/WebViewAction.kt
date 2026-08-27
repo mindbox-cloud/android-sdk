@@ -82,20 +82,6 @@ public enum class WebViewAction {
     @SerializedName("filterShowableInapps")
     FILTER_SHOWABLE_INAPPS,
 
-    /**
-     * The same question as [FILTER_SHOWABLE_INAPPS] under the name pages already shipped send.
-     *
-     * A second constant and not a Gson `alternate`: `alternate` is read-only, so the answer would go
-     * back named `filterShowableInapps` while the page waits for one to the name it asked under —
-     * and an answer the page does not recognise is the same silence as none. An unanswered question
-     * is a page that renders an empty feed, then a `contentRendered: 0`, then a block that collapses
-     * and reports an empty place for no reason of its own.
-     *
-     * Both spellings are answered until the web side settles on one, in sync with iOS.
-     */
-    @SerializedName("checkInappsTargeting")
-    CHECK_INAPPS_TARGETING,
-
     @SerializedName("localState.changed")
     LOCAL_STATE_CHANGED,
 

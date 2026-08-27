@@ -417,18 +417,13 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `the shipped checkInappsTargeting name is answered the same way`() {
-        coEvery { inAppInteractor.filterShowableInAppIds(listOf("story-1", "story-2")) } returns
-            listOf("story-1")
+    fun `the old checkInappsTargeting name is not spoken anymore`() {
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1","story-2"]}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "checkInappsTargeting" }
+        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["story-1"]}"""))
 
-        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
-        val payload = lastOutgoingPayload()!!
-        assertEquals(1, payload.getAsJsonArray("inappIds").size())
-        assertEquals("story-1", payload.getAsJsonArray("inappIds").get(0).asString)
+        coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any()) }
+        assertTrue(lastOutgoingMessage()?.get("action")?.asString != "checkInappsTargeting")
     }
 
     @Test

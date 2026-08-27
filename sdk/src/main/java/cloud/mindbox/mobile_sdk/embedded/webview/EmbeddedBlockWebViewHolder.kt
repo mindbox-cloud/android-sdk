@@ -310,7 +310,6 @@ internal class EmbeddedBlockWebViewHolder(
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
             register(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
             registerSuspend(WebViewAction.FILTER_SHOWABLE_INAPPS, ::handleFilterShowableInappsAction)
-            registerSuspend(WebViewAction.CHECK_INAPPS_TARGETING, ::handleFilterShowableInappsAction)
         }
     }
 
