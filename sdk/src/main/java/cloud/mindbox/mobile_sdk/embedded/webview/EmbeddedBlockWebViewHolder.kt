@@ -71,8 +71,8 @@ internal class EmbeddedBlockWebViewHolder(
     private val placeSystemName: String,
     @Volatile private var layer: Layer.WebViewLayer,
     private val context: Context,
-    private val frequency: Frequency,
-    private val tags: Map<String, String>?,
+    @Volatile private var frequency: Frequency,
+    @Volatile private var tags: Map<String, String>?,
     private val startTick: Milliseconds,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
@@ -175,6 +175,11 @@ internal class EmbeddedBlockWebViewHolder(
             controller.destroy()
         }
         webViewController = null
+    }
+
+    override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) {
+        this.frequency = frequency
+        this.tags = tags
     }
 
     override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {

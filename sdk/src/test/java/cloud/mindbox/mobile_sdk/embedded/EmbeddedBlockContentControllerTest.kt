@@ -573,6 +573,53 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a re-resolve that changes only frequency or tags refreshes the snapshot without a rebuild`() {
+        var snapshotFrequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency? = null
+        var snapshotTags: Map<String, String>? = null
+        var builtPages = 0
+        val updatableProvider = object : EmbeddedUpdatableContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+
+            override fun start() {
+                onStateChange?.invoke(EmbeddedBlockState.Ready)
+            }
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) {
+                snapshotFrequency = frequency
+                snapshotTags = tags
+            }
+
+            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, _ -> updatableProvider.also { builtPages++ } },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        val changed = content.copy(
+            frequency = cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency(
+                cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency.Delay.OneTimePerSession
+            ),
+            tags = mapOf("a" to "b"),
+        )
+        blocksRegistry.pushContent("main-screen-top", changed)
+
+        assertEquals(1, builtPages)
+        assertEquals(changed.frequency, snapshotFrequency)
+        assertEquals(mapOf("a" to "b"), snapshotTags)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
     fun `same winner with new params updates the content in place`() {
         var updatedParams: Map<String, String>? = null
         val updatableProvider = object : EmbeddedUpdatableContentProvider {
@@ -586,6 +633,8 @@ class EmbeddedBlockContentControllerTest {
             override fun pause() = Unit
 
             override fun release() = Unit
+
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
@@ -640,6 +689,8 @@ class EmbeddedBlockContentControllerTest {
             override fun pause() = Unit
 
             override fun release() = Unit
+
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params

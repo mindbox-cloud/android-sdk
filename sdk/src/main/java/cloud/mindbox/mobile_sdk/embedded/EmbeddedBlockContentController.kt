@@ -234,6 +234,7 @@ internal class EmbeddedBlockContentController(
 
         if (current != null && descriptor == appliedDescriptor && lastReportedState?.nothingToShow != true) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
+            refreshMetricsSnapshot(current, content)
             return
         }
         if (lastReportedState?.nothingToShow == true) {
@@ -246,6 +247,7 @@ internal class EmbeddedBlockContentController(
             lastReportedState == EmbeddedBlockState.Ready
         ) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} with new params, updating the content in place")
+            refreshMetricsSnapshot(current, content)
             val epoch = ++updateEpoch
             runCatching {
                 current.updateParams(layer.params) { isUpdated ->
@@ -267,6 +269,15 @@ internal class EmbeddedBlockContentController(
             return
         }
         recreateProvider(content)
+    }
+
+    private fun refreshMetricsSnapshot(current: EmbeddedContentProvider, content: InAppType.Embedded) {
+        if (current !is EmbeddedUpdatableContentProvider) return
+        val applied = appliedContent
+        if (applied != null && applied.frequency == content.frequency && applied.tags == content.tags) return
+        mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId}: the config changed its frequency/tags, refreshing the snapshot")
+        loggingRunCatching { current.refreshMetricsSnapshot(content.frequency, content.tags) }
+        appliedContent = content
     }
 
     private fun recreateProvider(content: InAppType.Embedded) {

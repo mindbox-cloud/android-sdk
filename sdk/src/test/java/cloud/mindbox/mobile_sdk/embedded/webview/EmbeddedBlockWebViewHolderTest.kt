@@ -355,6 +355,20 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `the show is accounted with the refreshed snapshot`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        val refreshed = Frequency(Frequency.Delay.OneTimePerSession)
+        holder.refreshMetricsSnapshot(refreshed, mapOf("k" to "v"))
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", refreshed, any(), any())
+        }
+    }
+
+    @Test
     fun `the show is reported once per content instance`() {
         every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
         startAndAwaitPageLoad()
