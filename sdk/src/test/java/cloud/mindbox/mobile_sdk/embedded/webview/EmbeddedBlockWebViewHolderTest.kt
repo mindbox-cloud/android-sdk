@@ -381,6 +381,56 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a repeated contentRendered with a zero count does not un-show a shown block`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "again"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "again" }
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+    }
+
+    @Test
+    fun `a repeated contentRendered without a readable count is ignored once the block is shown`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":"many"}""", id = "again"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "again" }
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+        verify(exactly = 0) {
+            MindboxDI.appModule.inAppFailureTracker.sendFailure(any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `a data push reopens the window for the page's next report`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+
+        holder.updateParams(mapOf("items" to "[]")) {}
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+        val push = lastOutgoingMessage()!!
+        postFromPage(
+            """{"type":"response","action":"initDataUpdated","payload":"{\"success\":true}",""" +
+                """"id":${push.get("id")},"version":1,"timestamp":2}"""
+        )
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-push"))
+
+        await { states.lastOrNull() == EmbeddedBlockState.Empty }
+    }
+
+    @Test
     fun `showInApp from the page is acknowledged and reports nothing`() {
         // The ack says the request was handed over, never that a window opened: the block's own
         // show accounting must not be spent on a tap.

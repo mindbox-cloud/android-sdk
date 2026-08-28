@@ -141,6 +141,8 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var didAccountForShow = false
 
+    @Volatile private var didReportShownContent = false
+
     private val isUserPresent: Boolean get() = isActive && !isReleased
 
     override fun start() {
@@ -188,6 +190,7 @@ internal class EmbeddedBlockWebViewHolder(
             return
         }
         layer = layer.copy(params = params)
+        didReportShownContent = false
         Mindbox.mindboxScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val payload = startPayload(configuration)
@@ -382,6 +385,10 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
+        if (didReportShownContent) {
+            mindboxLogI("[EmbeddedBlock] The page reported itself again with nothing asked of it, ignoring: the block is already shown")
+            return BridgeMessage.SUCCESS_PAYLOAD
+        }
         val raw: Any? = runCatching {
             JSONObject(message.payload ?: BridgeMessage.EMPTY_PAYLOAD).get("count")
         }.getOrNull()
@@ -395,6 +402,7 @@ internal class EmbeddedBlockWebViewHolder(
             report(EmbeddedBlockState.Empty)
             return BridgeMessage.SUCCESS_PAYLOAD
         }
+        didReportShownContent = true
         report(EmbeddedBlockState.Ready)
         accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
@@ -472,6 +480,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         lastLoadedContent = content
         hasPageAnswered = false
+        didReportShownContent = false
         controller.loadContent(content)
     }
 
