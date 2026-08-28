@@ -38,7 +38,7 @@ internal data class InAppShowFailure(
     val dateTimeUtc: String,
     @SerializedName("tags")
     val tags: Map<String, String>? = null,
-    @SerializedName("\$type")
+    @SerializedName("${"$"}type")
     val type: String = INAPP_SHOW_FAILURE_TYPE
 ) : InAppShowError {
     internal companion object {
@@ -55,7 +55,7 @@ internal data class EmbeddedBlockShowFailure(
     val errorDetails: String?,
     @SerializedName("dateTimeUtc")
     val dateTimeUtc: String,
-    @SerializedName("\$type")
+    @SerializedName("${"$"}type")
     val type: String = EMBEDDED_BLOCK_SHOW_FAILURE_TYPE
 ) : InAppShowError {
     internal companion object {

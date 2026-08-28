@@ -97,7 +97,7 @@ internal class InAppProcessingManagerImpl(
                                         error = throwable
                                     )
                                 }
-                                MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                                mindboxLogE("Error fetching geo", throwable)
                             }
 
                             is CustomerSegmentationError -> {
@@ -115,7 +115,7 @@ internal class InAppProcessingManagerImpl(
                             }
 
                             else -> {
-                                MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                                mindboxLogE(throwable.message ?: "", throwable)
                                 inAppFailureTracker.sendFailure(
                                     inAppId = inApp.id,
                                     failureReason = FailureReason.UNKNOWN_ERROR,
@@ -229,7 +229,7 @@ internal class InAppProcessingManagerImpl(
                             error = throwable
                         )
                     }
-                    MindboxLoggerImpl.e(this, "Error fetching geo", throwable)
+                    mindboxLogE("Error fetching geo", throwable)
                 }
 
                 is CustomerSegmentationError -> {
@@ -247,7 +247,7 @@ internal class InAppProcessingManagerImpl(
                 }
 
                 else -> {
-                    MindboxLoggerImpl.e(this, throwable.message ?: "", throwable)
+                    mindboxLogE(throwable.message ?: "", throwable)
                     inAppFailureTracker.sendFailure(
                         inAppId = inApp.id,
                         failureReason = FailureReason.UNKNOWN_ERROR,
