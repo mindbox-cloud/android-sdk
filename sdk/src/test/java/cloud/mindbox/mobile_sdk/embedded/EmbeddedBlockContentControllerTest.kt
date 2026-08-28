@@ -170,6 +170,30 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a padded place name is normalized for the registry and the failure report`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "  main-screen-top  ",
+            configTimeout = Milliseconds(50L),
+            providerFactory = { _, _ -> FakeProvider() },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
+        io.mockk.verify(exactly = 1) {
+            tracker.sendWaitBudgetExceeded(
+                "main-screen-top",
+                Milliseconds(50L),
+                cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
+            )
+        }
+    }
+
+    @Test
     fun `config timeout ships the anonymous ShowFailure`() {
         val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
         val controller = EmbeddedBlockContentController(

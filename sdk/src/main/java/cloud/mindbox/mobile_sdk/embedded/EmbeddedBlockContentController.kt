@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.onEach
 import java.io.Closeable
 
 internal class EmbeddedBlockContentController(
-    private val placeSystemName: String? = null,
+    placeSystemName: String? = null,
     configTimeout: Milliseconds = Constants.Embedded.defaultConfigTimeout,
     private val readyTimeout: Milliseconds = Constants.WebView.readyTimeout,
     private val providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider?,
@@ -48,6 +48,8 @@ internal class EmbeddedBlockContentController(
         }
     },
 ) : EmbeddedBlockHandle {
+
+    private val placeSystemName: String? = placeSystemName?.trim()?.takeIf { it.isNotEmpty() }
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 

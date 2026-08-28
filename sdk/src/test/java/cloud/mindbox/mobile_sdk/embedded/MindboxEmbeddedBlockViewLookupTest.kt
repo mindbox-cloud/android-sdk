@@ -24,6 +24,14 @@ import java.time.Duration
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewLookupTest {
 
+    @org.junit.Test
+    fun `a place name with surrounding whitespace is normalized at the view boundary`() {
+        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        val view = MindboxEmbeddedBlockView(activity, "  main-screen-top  ")
+
+        org.junit.Assert.assertEquals("main-screen-top", view.placeSystemName)
+    }
+
     private class RecordingListener : MindboxEmbeddedBlockListener {
         val events = mutableListOf<String>()
 

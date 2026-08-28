@@ -345,7 +345,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 }
 
-private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
+private fun String?.orNullIfBlank(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
 private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? {
     if (attrs == null) return null
