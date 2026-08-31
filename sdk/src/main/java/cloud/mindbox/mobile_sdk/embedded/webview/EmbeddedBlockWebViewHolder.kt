@@ -58,9 +58,15 @@ import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
@@ -75,6 +81,7 @@ internal class EmbeddedBlockWebViewHolder(
     @Volatile private var frequency: Frequency,
     @Volatile private var tags: Map<String, String>?,
     private val startTick: Milliseconds,
+    private val ackBudget: Milliseconds = Constants.WebView.readyTimeout,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
     override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
@@ -84,7 +91,9 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var webViewController: WebViewController? = null
 
-    @Volatile private var isActive = false
+    private val presence = MutableStateFlow(false)
+
+    private val isActive: Boolean get() = presence.value
 
     @Volatile private var isReleased = false
 
@@ -157,9 +166,11 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var renderedTimeToDisplay: Milliseconds? = null
 
+    @Volatile private var pendingAckJob: Job? = null
+
     override fun start() {
         if (isReleased) return
-        isActive = true
+        presence.value = true
         flushHeldFailure()
         if (!isLoadRequested) {
             isLoadRequested = true
@@ -171,12 +182,13 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     override fun pause() {
-        isActive = false
+        presence.value = false
     }
 
     override fun release() {
-        isActive = false
+        presence.value = false
         isReleased = true
+        pendingAckJob?.cancel()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
@@ -203,15 +215,21 @@ internal class EmbeddedBlockWebViewHolder(
         }
         layer = layer.copy(params = params)
         didReportShownContent = false
-        Mindbox.mindboxScope.launch {
+        pendingAckJob?.cancel()
+        pendingAckJob = Mindbox.mindboxScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val payload = startPayload(configuration)
             val isUpdated = runCatching {
-                withTimeoutOrNull(Constants.WebView.readyTimeout.interval) {
-                    sendActionAndAwaitResponse(
-                        controller,
-                        BridgeMessage.createAction(WebViewAction.INIT_DATA_UPDATED, payload)
-                    )
+                coroutineScope {
+                    val answer = async {
+                        sendActionAndAwaitResponse(
+                            controller,
+                            BridgeMessage.createAction(WebViewAction.INIT_DATA_UPDATED, payload)
+                        )
+                    }
+                    val response = answer.awaitWithForegroundBudget(ackBudget)
+                    if (response == null) answer.cancel()
+                    response
                 }
             }.getOrNull() != null
             mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=$isUpdated")
@@ -555,6 +573,42 @@ internal class EmbeddedBlockWebViewHolder(
     private fun report(state: EmbeddedBlockState) {
         lastState = state
         if (isActive) onStateChange?.invoke(state)
+    }
+
+    private suspend fun <T> Deferred<T>.awaitWithForegroundBudget(budget: Milliseconds): T? {
+        var remaining = budget
+        while (true) {
+            if (!presence.value) {
+                if (settlesBeforePresenceTurns(lookedAt = true)) return await()
+                mindboxLogI(
+                    "[EmbeddedBlock] Back on screen with a data push still unconfirmed — " +
+                        "waiting out the remaining ${remaining.interval}ms"
+                )
+                continue
+            }
+            if (remaining.interval <= 0L) return null
+            val spendStartedTick = timeProvider.monotonicMillis()
+            when (withTimeoutOrNull(remaining.interval) { settlesBeforePresenceTurns(lookedAt = false) }) {
+                null -> return null
+                true -> return await()
+                false -> remaining = Milliseconds(
+                    (remaining.interval - timeProvider.monotonicElapsedSince(spendStartedTick).interval)
+                        .coerceAtLeast(0L)
+                )
+            }
+        }
+    }
+
+    private suspend fun Job.settlesBeforePresenceTurns(lookedAt: Boolean): Boolean = coroutineScope {
+        val presenceTurned = async { presence.first { isLookedAt -> isLookedAt == lookedAt } }
+        try {
+            select {
+                this@settlesBeforePresenceTurns.onJoin { true }
+                presenceTurned.onJoin { false }
+            }
+        } finally {
+            presenceTurned.cancel()
+        }
     }
 
     private suspend fun sendActionAndAwaitResponse(

@@ -45,6 +45,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -73,6 +74,7 @@ class EmbeddedBlockWebViewHolderTest {
     private var elapsed = 0L
     private val timeProvider: SystemTimeProvider = mockk {
         every { elapsedSince(any()) } answers { Milliseconds(elapsed) }
+        every { monotonicMillis() } answers { Milliseconds(elapsed) }
         every { monotonicElapsedSince(any()) } answers { Milliseconds(elapsed) }
     }
     private val permissionManager: PermissionManager = mockk {
@@ -804,6 +806,110 @@ class EmbeddedBlockWebViewHolderTest {
         await { updateResult != null }
         assertEquals(true, updateResult)
         assertTrue(viewBeforeUpdate === webView)
+    }
+
+    private fun rebuildHolder(ackBudget: Milliseconds) {
+        holder.release()
+        states.clear()
+        holder = EmbeddedBlockWebViewHolder(
+            inAppId = "embedded-id",
+            placeSystemName = "main-screen-top",
+            layer = InAppStub.getEmbeddedWebViewLayer(),
+            context = application,
+            frequency = Frequency(Frequency.Delay.Unlimited),
+            tags = null,
+            startTick = Milliseconds(0L),
+            ackBudget = ackBudget,
+        )
+        holder.onStateChange = { state -> states.add(state) }
+    }
+
+    private fun answerDataPush(id: com.google.gson.JsonElement) {
+        postFromPage(
+            """{"type":"response","action":"initDataUpdated","payload":"{\"success\":true}",""" +
+                """"id":$id,"version":1,"timestamp":2}"""
+        )
+    }
+
+    @Test
+    fun `a data push confirmed off screen still succeeds`() {
+        startAndAwaitPageLoad()
+        holder.pause()
+
+        var updateResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+        answerDataPush(lastOutgoingMessage()!!.get("id"))
+
+        await { updateResult != null }
+        assertEquals(true, updateResult)
+    }
+
+    @Test
+    fun `a data push does not spend its ack budget off screen`() {
+        rebuildHolder(ackBudget = Milliseconds(1_000L))
+        startAndAwaitPageLoad()
+        holder.pause()
+
+        var updateResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+        val push = lastOutgoingMessage()!!
+
+        Thread.sleep(2_000L)
+        assertNull(updateResult)
+
+        holder.start()
+        answerDataPush(push.get("id"))
+
+        await { updateResult != null }
+        assertEquals(true, updateResult)
+    }
+
+    @Test
+    fun `the ack budget is spent by watched time and survives a pause`() {
+        rebuildHolder(ackBudget = Milliseconds(1_000L))
+        startAndAwaitPageLoad()
+
+        var updateResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+        holder.pause()
+        Thread.sleep(2_000L)
+        assertNull(updateResult)
+
+        holder.start()
+
+        await { updateResult != null }
+        assertEquals(false, updateResult)
+    }
+
+    @Test
+    fun `a second data push abandons the first wait`() {
+        startAndAwaitPageLoad()
+
+        var firstResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> firstResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+        var secondResult: Boolean? = null
+        holder.updateParams(mapOf("items" to """[{"inAppId":"inapp-2"}]""")) { isUpdated ->
+            secondResult = isUpdated
+        }
+        await { firstResult != null }
+        assertEquals(false, firstResult)
+
+        await {
+            lastOutgoingPayload()?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("inAppId")?.asString == "inapp-2"
+            } == true
+        }
+        answerDataPush(lastOutgoingMessage()!!.get("id"))
+
+        await { secondResult != null }
+        assertEquals(true, secondResult)
     }
 
     @Test
