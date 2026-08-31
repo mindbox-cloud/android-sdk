@@ -217,33 +217,37 @@ class MindboxTest {
     fun `firstInitialization call appInfoUpdate`() = runTest {
         val uuid = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
         mockkStatic(UUID::class)
-        every { UUID.randomUUID() } returns uuid
-        coEvery { firstProvider.getAdsIdentification(context) } returns "adsId"
-        coEvery { secondProvider.getAdsIdentification(context) } returns "adsId"
-        coEvery { thirdProvider.getAdsIdentification(context) } returns "adsId"
-        every { MindboxPreferences.pushTokens } returns mapOf()
+        try {
+            every { UUID.randomUUID() } returns uuid
+            coEvery { firstProvider.getAdsIdentification(context) } returns "adsId"
+            coEvery { secondProvider.getAdsIdentification(context) } returns "adsId"
+            coEvery { thirdProvider.getAdsIdentification(context) } returns "adsId"
+            every { MindboxPreferences.pushTokens } returns mapOf()
 
-        Mindbox.firstInitialization(context, mockk(relaxed = true))
+            Mindbox.firstInitialization(context, mockk(relaxed = true))
 
-        verify(exactly = 1) {
-            MindboxEventManager.appInstalled(
-                context,
-                InitData(
-                    isNotificationsEnabled = true,
-                    externalDeviceUUID = "",
-                    instanceId = uuid.toString(),
-                    version = 0,
-                    subscribe = false,
-                    installationId = "",
-                    ianaTimeZone = null,
-                    tokens = listOf(
-                        TokenData(token = "tokenFCM", notificationProvider = "FCM"),
-                        TokenData(token = "tokenHMS", notificationProvider = "HMS"),
-                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+            verify(exactly = 1) {
+                MindboxEventManager.appInstalled(
+                    context,
+                    InitData(
+                        isNotificationsEnabled = true,
+                        externalDeviceUUID = "",
+                        instanceId = uuid.toString(),
+                        version = 0,
+                        subscribe = false,
+                        installationId = "",
+                        ianaTimeZone = null,
+                        tokens = listOf(
+                            TokenData(token = "tokenFCM", notificationProvider = "FCM"),
+                            TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+                            TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+                        ),
                     ),
-                ),
-                any()
-            )
+                    any()
+                )
+            }
+        } finally {
+            unmockkStatic(UUID::class)
         }
     }
 
