@@ -53,14 +53,13 @@ internal class InAppFilteringManagerImpl(
         inApps: List<InApp>,
         placeSystemName: String
     ): List<InApp> {
-        val requestedPlace = placeSystemName.trim()
         return inApps.filter { inApp ->
             inApp.embeddedVariants().any { variant ->
-                val matches = variant.placeSystemName == requestedPlace
-                if (!matches && variant.placeSystemName.equals(requestedPlace, ignoreCase = true)) {
+                val matches = variant.placeSystemName == placeSystemName
+                if (!matches && variant.placeSystemName.equals(placeSystemName, ignoreCase = true)) {
                     mindboxLogW(
                         "Place names differ only in letter case: config has " +
-                            "'${variant.placeSystemName}', the block asked for '$requestedPlace'. " +
+                            "'${variant.placeSystemName}', the block asked for '$placeSystemName'. " +
                             "The comparison is case-sensitive, the candidate is skipped"
                     )
                 }

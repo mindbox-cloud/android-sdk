@@ -79,6 +79,60 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
+    fun `a timeout given in code is the one the block waits out`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 5_000L)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(4L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
+    fun `a block given no timeout in code still reads the one from xml`() {
+        val attrs = Robolectric.buildAttributeSet()
+            .addAttribute(R.attr.mindboxPlaceSystemName, "main-screen-top")
+            .addAttribute(R.attr.mindboxTimeoutMs, "5000")
+            .build()
+
+        val view = MindboxEmbeddedBlockView(activity, attrs)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
+    fun `a non-positive timeout is not a budget, and the default stands`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 0L)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail"), listener.events)
+    }
+
+    @Test
     fun `a block without a place name hides itself`() {
         // XML without the attribute (or a programmatic view with no name): nothing to match
         // against the config — the block hides itself, never a crash.
@@ -113,13 +167,45 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `a blank place name is the same as none`() {
-        val view = MindboxEmbeddedBlockView(activity, "   ")
+    fun `an empty place name is the same as none`() {
+        val view = MindboxEmbeddedBlockView(activity, "")
 
         attach(view)
 
         assertEquals(View.GONE, view.visibility)
         assertNull(view.placeSystemName)
+    }
+
+    @Test
+    fun `a place name of spaces is a name like any other`() {
+        // Only emptiness is checked: the name goes to the config as it was given, padding and all,
+        // and a place nobody named that way simply never resolves.
+        val view = MindboxEmbeddedBlockView(activity, "   ")
+
+        attach(view)
+
+        assertEquals("   ", view.placeSystemName)
+        assertEquals(View.VISIBLE, view.visibility)
+    }
+
+    @Test
+    fun `a place that stays empty reports its outcome once across passes`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail"), listener.events)
+
+        // A second pass across the screen: the same empty place is the same outcome, not news.
+        (view.parent as LinearLayout).removeView(view)
+        shadowOf(Looper.getMainLooper()).idle()
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail"), listener.events)
     }
 
     @Test

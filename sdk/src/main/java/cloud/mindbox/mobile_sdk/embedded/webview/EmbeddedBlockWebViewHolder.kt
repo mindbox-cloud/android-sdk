@@ -44,6 +44,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
@@ -63,6 +64,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(InternalMindboxApi::class)
 internal class EmbeddedBlockWebViewHolder(
@@ -139,15 +141,27 @@ internal class EmbeddedBlockWebViewHolder(
 
     private val isUserPresent: Boolean get() = isActive && !isReleased
 
+    private val heldFailure = AtomicReference<HeldFailure?>(null)
+
+    private data class HeldFailure(
+        val failureReason: FailureReason,
+        val errorDescription: String,
+        val throwable: Throwable?,
+    )
+
+    @Volatile private var renderedTimeToDisplay: Milliseconds? = null
+
     override fun start() {
         if (isReleased) return
         isActive = true
+        flushHeldFailure()
         if (!isLoadRequested) {
             isLoadRequested = true
             load()
             return
         }
         report(lastState)
+        if (lastState == EmbeddedBlockState.Ready) accountForShow()
     }
 
     override fun pause() {
@@ -161,6 +175,7 @@ internal class EmbeddedBlockWebViewHolder(
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
         }
+        heldFailure.set(null)
         cancelPendingResponses("Embedded block content is released")
         webViewController?.let { controller ->
             controller.setEventListener(null)
@@ -265,12 +280,10 @@ internal class EmbeddedBlockWebViewHolder(
                         "description=${error.description}, url=${error.url}"
                 )
                 if (error.isForMainFrame == true) {
-                    inAppFailureTracker.sendFailureWithContext(
-                        inAppId = inAppId,
+                    sendFailure(
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
                         errorDescription = "Embedded block WebView error: code=${error.code}, " +
                             "description=${error.description}, url=${error.url}",
-                        tags = null
                     )
                     report(EmbeddedBlockState.Failed)
                 }
@@ -388,8 +401,9 @@ internal class EmbeddedBlockWebViewHolder(
             report(EmbeddedBlockState.Empty)
             return BridgeMessage.SUCCESS_PAYLOAD
         }
+        renderedTimeToDisplay = timeProvider.elapsedSince(attemptStartedAt)
         report(EmbeddedBlockState.Ready)
-        accountForShow()
+        if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
@@ -407,11 +421,9 @@ internal class EmbeddedBlockWebViewHolder(
      */
     private fun refusedContentReport(reason: String): Throwable {
         mindboxLogE("[EmbeddedBlock] contentRendered refused: $reason")
-        inAppFailureTracker.sendFailureWithContext(
-            inAppId = inAppId,
+        sendFailure(
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "The embedded block page reported contentRendered with an unusable payload: $reason",
-            tags = null
         )
         report(EmbeddedBlockState.Failed)
         return IllegalArgumentException(reason)
@@ -424,7 +436,7 @@ internal class EmbeddedBlockWebViewHolder(
     private fun accountForShow() {
         if (didAccountForShow) return
         didAccountForShow = true
-        val timeToDisplay = timeProvider.elapsedSince(attemptStartedAt)
+        val timeToDisplay = renderedTimeToDisplay ?: timeProvider.elapsedSince(attemptStartedAt)
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
                 inAppInteractor.recordBlockShow(inAppId, timeToDisplay, gatedTags())
@@ -478,13 +490,45 @@ internal class EmbeddedBlockWebViewHolder(
         onContentPageLoaded(content)
     }
 
-    private fun reportLoadFailure(description: String, throwable: Throwable?) {
+    private fun sendFailure(
+        failureReason: FailureReason,
+        errorDescription: String,
+        throwable: Throwable? = null,
+    ) {
+        if (!isActive) {
+            mindboxLogI(
+                "[EmbeddedBlock] $failureReason for $inAppId happened off screen, holding the " +
+                    "report until the block is looked at"
+            )
+            heldFailure.compareAndSet(null, HeldFailure(failureReason, errorDescription, throwable))
+            if (isActive) flushHeldFailure()
+            return
+        }
         inAppFailureTracker.sendFailureWithContext(
             inAppId = inAppId,
+            failureReason = failureReason,
+            errorDescription = errorDescription,
+            throwable = throwable,
+            tags = null
+        )
+    }
+
+    private fun flushHeldFailure() {
+        val held = heldFailure.getAndSet(null) ?: return
+        inAppFailureTracker.sendFailureWithContext(
+            inAppId = inAppId,
+            failureReason = held.failureReason,
+            errorDescription = held.errorDescription,
+            throwable = held.throwable,
+            tags = null
+        )
+    }
+
+    private fun reportLoadFailure(description: String, throwable: Throwable?) {
+        sendFailure(
             failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
             errorDescription = description,
             throwable = throwable,
-            tags = null
         )
         webViewController?.executeOnViewThread { report(EmbeddedBlockState.Failed) }
             ?: mainHandler.post { if (!isReleased) report(EmbeddedBlockState.Failed) }

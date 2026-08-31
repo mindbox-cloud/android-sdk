@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded.compose
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -14,9 +15,12 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
+import cloud.mindbox.mobile_sdk.logger.Level
 
 /**
  * An embedded Mindbox block as a composable.
@@ -29,8 +33,9 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  *
  * The behavior mirrors the View one and belongs to the block itself: it is visible while
  * loading and showing content, and collapses to zero height when the place ends up without
- * content — unless the [error] slot is set: a custom error view is a request to keep the
- * place, so the block stays and shows it. The callbacks only report the outcome.
+ * content — unless it failed and the [error] slot is set: that slot is a request to show a
+ * failure, so the block stays and shows it. An empty place collapses either way. The callbacks
+ * only report the outcome.
  *
  * ```kotlin
  * MindboxEmbeddedBlock(
@@ -43,20 +48,25 @@ import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
  * @param placeSystemName The place identifier matched against the config's `inlineBlocks`
  * section. Changing it recreates the block for the new place. Blocks with the same name work
  * independently, each with its own content.
+ * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty, in
+ * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
+ * place is: a new value given to a block already on screen is ignored, and the block says so in
+ * the log. Wrap the block in a `key()` of your own to build one on a different budget.
  * @param onLoad The block is shown and visible. Main thread.
  * @param onFail The place ends up without content — the load failed or timed out, or the
  * config had nothing to put here. The block collapsed, or — if the [error] slot is set —
  * stayed in place showing it. Not necessarily a breakage: an empty place is a normal outcome.
  * Main thread.
  * @param placeholder Replaces the SDK's default loading placeholder. Fills the whole block frame.
- * @param error The view for a place without content. Setting it also keeps the block visible
- * instead of the default collapse. Fills the whole block frame.
+ * @param error The view for a block that failed. Setting it keeps the block visible instead of
+ * the default collapse; an empty place collapses regardless. Fills the whole block frame.
  */
 @OptIn(InternalMindboxApi::class)
 @Composable
 public fun MindboxEmbeddedBlock(
     placeSystemName: String,
     modifier: Modifier = Modifier,
+    timeoutMs: Long? = null,
     onLoad: () -> Unit = {},
     onFail: () -> Unit = {},
     placeholder: (@Composable () -> Unit)? = null,
@@ -70,7 +80,22 @@ public fun MindboxEmbeddedBlock(
     val context = LocalContext.current
 
     key(placeSystemName) {
-        var isCollapsed by remember { mutableStateOf(false) }
+        var appearance by remember {
+            mutableStateOf(MindboxEmbeddedBlockAppearance.PLACEHOLDER)
+        }
+
+        val creationTimeoutMs = remember { timeoutMs }
+        if (timeoutMs != creationTimeoutMs) {
+            LaunchedEffect(timeoutMs) {
+                Mindbox.writeLog(
+                    "[EmbeddedBlock] Block '$placeSystemName' was given timeoutMs=$timeoutMs after " +
+                        "creation and keeps $creationTimeoutMs: the timeout is fixed when the block " +
+                        "is created. Wrap the block in a key() of your own to build one on a " +
+                        "different budget.",
+                    Level.WARN,
+                )
+            }
+        }
 
         val placeholderHost = remember(context) {
             lazy(LazyThreadSafetyMode.NONE) {
@@ -84,10 +109,16 @@ public fun MindboxEmbeddedBlock(
         }
 
         AndroidView(
-            modifier = (if (isCollapsed) Modifier.height(0.dp).then(modifier) else modifier).fillMaxWidth(),
+            modifier = (
+                if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) {
+                    Modifier.height(0.dp).then(modifier)
+                } else {
+                    modifier
+                }
+            ).fillMaxWidth(),
             factory = { viewContext ->
-                MindboxEmbeddedBlockView(viewContext, placeSystemName).apply {
-                    setVisibilityObserver { isVisible -> isCollapsed = !isVisible }
+                MindboxEmbeddedBlockView(viewContext, placeSystemName, timeoutMs).apply {
+                    setAppearanceObserver { shown -> appearance = shown }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
                             override fun onLoad(view: MindboxEmbeddedBlockView) {

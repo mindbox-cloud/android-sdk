@@ -34,7 +34,8 @@ import kotlin.math.abs
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
  * default one or the host's own ([setPlaceholderView]). When the place ends up without content the
- * block hides itself, unless the host gave it a view to show instead ([setErrorView]).
+ * block hides itself; a failure can be shown instead of hidden if the host gave it a view for one
+ * ([setErrorView]).
  *
  * ```xml
  * <cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
@@ -45,7 +46,8 @@ import kotlin.math.abs
  *
  * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
  * The block owns its behavior too — visible while loading and while showing content, `GONE`
- * when the place ends up without content, unless [setErrorView] keeps it in place. A block that
+ * when the place ends up without content: always for an empty place, and for a failure unless
+ * [setErrorView] keeps it in place. A block that
  * has collapsed does not reopen its space for the retry's placeholder — only content expands it
  * back, so the host layout is not jerked on every pass across the screen.
  * [setListener] only observes: callbacks arrive after the block already acted.
@@ -54,9 +56,10 @@ public class MindboxEmbeddedBlockView internal constructor(
     context: Context,
     attrs: AttributeSet?,
     placeSystemName: String?,
+    configTimeout: Milliseconds? = null,
     private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
-        placeSystemName = placeSystemName.orNullIfBlank(),
-        configTimeout = readConfigTimeout(context, attrs),
+        placeSystemName = placeSystemName.orNullIfEmpty(),
+        configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
         providerFactory = { content, attemptStartedAt ->
             EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
         },
@@ -69,20 +72,30 @@ public class MindboxEmbeddedBlockView internal constructor(
         attrs: AttributeSet? = null,
     ) : this(context, attrs, readPlaceSystemName(context, attrs))
 
+    /**
+     * Creates a block for [placeSystemName] in code, where there is no XML to carry the attributes.
+     *
+     * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
+     * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
+     * default of 30 s. An answer that arrives after that no longer expands the block; the next
+     * attempt starts when the block enters the window again.
+     */
+    @JvmOverloads
     public constructor(
         context: Context,
         placeSystemName: String,
-    ) : this(context, null, placeSystemName)
+        timeoutMs: Long? = null,
+    ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds))
 
-    public val placeSystemName: String? = placeSystemName.orNullIfBlank()
+    public val placeSystemName: String? = placeSystemName.orNullIfEmpty()
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
-    private var visibilityObserver: ((Boolean) -> Unit)? = null
+    private var appearanceObserver: ((MindboxEmbeddedBlockAppearance) -> Unit)? = null
     private var placeholderView: View? = null
     private var errorView: View? = null
     private val defaultPlaceholder by lazy { EmbeddedBlockDefaultViews.placeholder(context) }
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private enum class BlockEvent { LOADING, LOADED, FAILED }
+    private enum class BlockEvent { LOADED, FAILED }
 
     private var state: EmbeddedBlockState = EmbeddedBlockState.Loading
         set(value) {
@@ -92,7 +105,11 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private var deliveredEvent: BlockEvent? = null
     private var isDeliveryScheduled = false
-    private var hasCollapsed = false
+    private var hasSettled = false
+    private var shownAppearance = MindboxEmbeddedBlockAppearance.PLACEHOLDER
+    private var isWindowVisible = false
+    private var isHostVisible = true
+    private var isReleased = false
     private var shownContent: View? = null
     private var isContentStarted = false
     private var observedLifecycle: Lifecycle? = null
@@ -124,6 +141,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     public fun setListener(listener: MindboxEmbeddedBlockListener?) {
+        if (isReleased) return
+
         val next = listener ?: DefaultListener
         // The same listener is not a new subscriber. A host rebinds it on every recycled row, and
         // replaying an outcome it already heard would have it rebuild its layout again — which
@@ -145,23 +164,68 @@ public class MindboxEmbeddedBlockView internal constructor(
      */
     public fun setPlaceholderView(view: View?) {
         placeholderView = view
-        if (state is EmbeddedBlockState.Loading) showContent(currentPlaceholder())
+        if (shownAppearance == MindboxEmbeddedBlockAppearance.PLACEHOLDER) {
+            showContent(currentPlaceholder())
+        }
     }
 
     /**
-     * The view for a place that ended up without content. Setting it also keeps the block
-     * visible instead of the default collapse. Fills the whole block frame.
+     * The view for a block that failed. Setting it opts into showing the failure instead of the
+     * default collapse: the block keeps its place and shows this view. Fills the whole block frame.
      *
-     * Applies from the next outcome on: a block that already collapsed stays collapsed until
-     * its content reloads.
+     * Applies to failures only — an empty place always collapses, so a host cannot fill the space
+     * of a block that was never meant to be there.
+     *
+     * A view set mid-failure swaps the error screen already shown, and `null` given while one is
+     * shown takes the failure back down to a collapse — the space returns to the layout. What
+     * neither does is expand a block that has already collapsed: reopening space the layout has
+     * reclaimed would make it jump, so such a view takes effect on a load that starts the cycle
+     * anew, never on the silent retry a return to the screen brings.
      */
     public fun setErrorView(view: View?) {
         errorView = view
+        if (shownAppearance == MindboxEmbeddedBlockAppearance.ERROR) {
+            applyState(state)
+        }
     }
 
+    /**
+     * Reports how the block occupies its place, for wrappers that lay it out themselves instead of
+     * relying on this view's own `visibility` — see [MindboxEmbeddedBlockAppearance].
+     *
+     * The current value arrives right away on subscribing: a wrapper that comes after the outcome
+     * cannot miss what the block already decided.
+     */
     @InternalMindboxApi
-    public fun setVisibilityObserver(observer: ((isVisible: Boolean) -> Unit)?) {
-        visibilityObserver = observer
+    public fun setAppearanceObserver(observer: ((MindboxEmbeddedBlockAppearance) -> Unit)?) {
+        if (isReleased) return
+
+        appearanceObserver = observer
+        loggingRunCatching { observer?.invoke(shownAppearance) }
+    }
+
+    /**
+     * Tells the block whether the host still shows it — a second source for the same input as
+     * window visibility: the content runs while the window shows it and the host says so.
+     *
+     * For wrappers whose whole app lives in one window. In Flutter every screen shares it, so
+     * leaving a screen never takes the block out of a window: the block would keep waiting — and
+     * spending its budget — on a screen nobody is looking at, and could collapse before the user
+     * ever got there. `true` by default, so a wrapper that says nothing behaves as before.
+     *
+     * A pause, not a reset: a block hidden mid-load keeps the page it has and the remainder of its
+     * budget; shown again, it counts that remainder down instead of starting the budget anew.
+     */
+    @InternalMindboxApi
+    public fun setHostVisible(visible: Boolean) {
+        if (isHostVisible == visible) return
+
+        isHostVisible = visible
+        mindboxLogI(
+            "[EmbeddedBlock] Block '$placeSystemName' was ${if (visible) "shown" else "hidden"} " +
+                "by the host wrapper",
+        )
+        updateContentActivity()
     }
 
     private val hasCustomErrorView: Boolean
@@ -170,17 +234,27 @@ public class MindboxEmbeddedBlockView internal constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         observeHostDestruction()
-        if (windowVisibility == VISIBLE) startContent()
+        isWindowVisible = windowVisibility == VISIBLE
+        updateContentActivity()
     }
 
     override fun onDetachedFromWindow() {
-        pauseContent()
+        isWindowVisible = false
+        updateContentActivity()
         super.onDetachedFromWindow()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (visibility == VISIBLE) startContent() else pauseContent()
+        isWindowVisible = visibility == VISIBLE
+        updateContentActivity()
+    }
+
+    private val isEffectivelyVisible: Boolean
+        get() = isWindowVisible && isHostVisible && !isReleased
+
+    private fun updateContentActivity() {
+        if (isEffectivelyVisible) startContent() else pauseContent()
     }
 
     private fun startContent() {
@@ -198,6 +272,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun observeHostDestruction(): Unit = loggingRunCatching {
+        if (isReleased) return@loggingRunCatching
         val lifecycle = findViewTreeLifecycleOwner()?.lifecycle ?: return@loggingRunCatching
         if (lifecycle === observedLifecycle) return@loggingRunCatching
         observedLifecycle?.removeObserver(hostDestroyObserver)
@@ -205,9 +280,26 @@ public class MindboxEmbeddedBlockView internal constructor(
         lifecycle.addObserver(hostDestroyObserver)
     }
 
+    /**
+     * Stops the block for good: the content stops, the host screen is no longer observed, the
+     * listener is dropped, and the block does not start again even while it stays in a window.
+     *
+     * For wrappers whose own object graph dies before the view leaves the window — a platform-view
+     * factory keeps the view for as long as the platform sees fit, and the block should stop when
+     * the screen is gone rather than when the last reference is. A host application needs nothing:
+     * a block that leaves the window pauses itself, and the destruction of the host screen frees it.
+     *
+     * One way only: a released block stays released, and [setListener] and [setAppearanceObserver]
+     * on it do nothing.
+     */
     @InternalMindboxApi
     public fun release() {
+        if (isReleased) return
+
         mindboxLogI("[EmbeddedBlock] Released by the host wrapper, freeing content")
+        isReleased = true
+        appearanceObserver = null
+        updateContentActivity()
         detachFromHost()
         loggingRunCatching { contentController.release() }
     }
@@ -248,57 +340,70 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun applyState(state: EmbeddedBlockState) {
-        when (state) {
-            is EmbeddedBlockState.Ready -> {
-                val readyContent = contentController.contentView
-                if (readyContent == null) {
-                    mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
-                    this.state = EmbeddedBlockState.Failed
-                    return
-                }
-                mindboxLogI("[EmbeddedBlock] Content ready")
-                showContent(readyContent)
-            }
-            is EmbeddedBlockState.Loading -> {
+        if (state is EmbeddedBlockState.Ready && contentController.contentView == null) {
+            mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
+            this.state = EmbeddedBlockState.Failed
+            return
+        }
+
+        val appearance = appearanceFor(state)
+        shownAppearance = appearance
+        hasSettled = when (appearance) {
+            MindboxEmbeddedBlockAppearance.COLLAPSED,
+            MindboxEmbeddedBlockAppearance.ERROR,
+            -> true
+            MindboxEmbeddedBlockAppearance.CONTENT -> false
+            MindboxEmbeddedBlockAppearance.PLACEHOLDER -> hasSettled
+        }
+
+        when (appearance) {
+            MindboxEmbeddedBlockAppearance.PLACEHOLDER -> {
                 mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
                 showContent(currentPlaceholder())
             }
-
-            is EmbeddedBlockState.Empty -> {
-                mindboxLogI("[EmbeddedBlock] Nothing to show for this place")
-                showErrorView()
+            MindboxEmbeddedBlockAppearance.CONTENT -> {
+                mindboxLogI("[EmbeddedBlock] Content ready")
+                contentController.contentView?.let { showContent(it) }
             }
-            is EmbeddedBlockState.Failed -> {
-                mindboxLogI("[EmbeddedBlock] Content failed, showing the error state")
-                showErrorView()
+            MindboxEmbeddedBlockAppearance.ERROR -> {
+                mindboxLogI("[EmbeddedBlock] Content failed, showing the host's error view")
+                errorView?.let { showContent(it) }
+            }
+            MindboxEmbeddedBlockAppearance.COLLAPSED -> {
+                mindboxLogI("[EmbeddedBlock] Nothing to show for this place, collapsing")
+                clearContent()
             }
         }
 
-        applyDefaultVisibility(state)
+        visibility = if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) GONE else VISIBLE
+        loggingRunCatching { appearanceObserver?.invoke(appearance) }
         scheduleDelivery()
     }
 
-    private fun applyDefaultVisibility(state: EmbeddedBlockState) {
-        val isVisible = when {
-            state.nothingToShow -> hasCustomErrorView
-            state is EmbeddedBlockState.Loading -> !hasCollapsed
-            else -> true
+    private fun appearanceFor(state: EmbeddedBlockState): MindboxEmbeddedBlockAppearance =
+        when (state) {
+            is EmbeddedBlockState.Loading -> when {
+                !hasSettled -> MindboxEmbeddedBlockAppearance.PLACEHOLDER
+                shownAppearance == MindboxEmbeddedBlockAppearance.ERROR && !hasCustomErrorView ->
+                    MindboxEmbeddedBlockAppearance.COLLAPSED
+                else -> shownAppearance
+            }
+            is EmbeddedBlockState.Ready -> MindboxEmbeddedBlockAppearance.CONTENT
+            is EmbeddedBlockState.Failed -> when {
+                !hasSettled ->
+                    if (hasCustomErrorView) {
+                        MindboxEmbeddedBlockAppearance.ERROR
+                    } else {
+                        MindboxEmbeddedBlockAppearance.COLLAPSED
+                    }
+                shownAppearance == MindboxEmbeddedBlockAppearance.ERROR && !hasCustomErrorView ->
+                    MindboxEmbeddedBlockAppearance.COLLAPSED
+                else -> shownAppearance
+            }
+            is EmbeddedBlockState.Empty -> MindboxEmbeddedBlockAppearance.COLLAPSED
         }
-        hasCollapsed = when {
-            state is EmbeddedBlockState.Ready -> false
-            state.nothingToShow -> !isVisible
-            else -> hasCollapsed
-        }
-        visibility = if (isVisible) VISIBLE else GONE
-        loggingRunCatching { visibilityObserver?.invoke(isVisible) }
-    }
 
     private fun currentPlaceholder(): View = placeholderView ?: defaultPlaceholder
-
-    private fun showErrorView() {
-        val view = errorView
-        if (view == null) clearContent() else showContent(view)
-    }
 
     private fun showContent(content: View): Unit = loggingRunCatching {
         if (content === shownContent) return@loggingRunCatching
@@ -321,10 +426,12 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun deliverPendingEvent(): Unit = loggingRunCatching {
         isDeliveryScheduled = false
+        // Loading is not an outcome, so the record of what was delivered is left alone: writing it
+        // down would make the outcome that follows look new even when it is the one already heard.
         val event = when {
             state is EmbeddedBlockState.Ready -> BlockEvent.LOADED
             state.nothingToShow -> BlockEvent.FAILED
-            else -> BlockEvent.LOADING
+            else -> return@loggingRunCatching
         }
         if (event == deliveredEvent) return@loggingRunCatching
 
@@ -332,7 +439,6 @@ public class MindboxEmbeddedBlockView internal constructor(
         when (event) {
             BlockEvent.LOADED -> listener.onLoad(this)
             BlockEvent.FAILED -> listener.onFail(this)
-            BlockEvent.LOADING -> Unit
         }
     }
 
@@ -341,7 +447,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 }
 
-private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
+private fun String?.orNullIfEmpty(): String? = this?.takeIf { it.isNotEmpty() }
 
 private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? {
     if (attrs == null) return null

@@ -275,7 +275,7 @@ internal class InAppMapper {
                                     is PayloadDto.EmbeddedDto -> {
                                         InAppType.Embedded(
                                             inAppId = inAppDto.id,
-                                            placeSystemName = payloadDto.placeSystemName!!.trim(),
+                                            placeSystemName = payloadDto.placeSystemName!!,
                                             layers = mapBackgroundLayers(
                                                 payloadDto.content?.background?.layers
                                                     ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()

@@ -78,7 +78,7 @@ class EmbeddedMapperTest {
     }
 
     @Test
-    fun `place system name is trimmed on mapping`() {
+    fun `place system name is mapped as it is`() {
         val dto = baseDto.copy(
             form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  main-screen-top  ")))
         )
@@ -86,7 +86,7 @@ class EmbeddedMapperTest {
         val variant = mapper.mapToInAppConfig(config(dto)).inApps.single()
             .form.variants.single() as InAppType.Embedded
 
-        assertEquals("main-screen-top", variant.placeSystemName)
+        assertEquals("  main-screen-top  ", variant.placeSystemName)
     }
 
     @Test
