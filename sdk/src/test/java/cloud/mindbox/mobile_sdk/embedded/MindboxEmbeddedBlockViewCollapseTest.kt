@@ -47,17 +47,33 @@ class MindboxEmbeddedBlockViewCollapseTest {
         override fun release() = Unit
     }
 
+    private class FailingProvider(context: Activity) : EmbeddedContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View = View(context)
+
+        override fun start() {
+            onStateChange?.invoke(EmbeddedBlockState.Failed)
+        }
+
+        override fun pause() = Unit
+
+        override fun release() = Unit
+    }
+
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     private val blocksRegistry = FakeBlocksRegistry()
+    private var lastProvider: EmbeddedContentProvider? = null
 
-    private fun buildView(): MindboxEmbeddedBlockView =
+    private fun buildView(
+        provider: () -> EmbeddedContentProvider = { ReadyProvider(activity) },
+    ): MindboxEmbeddedBlockView =
         MindboxEmbeddedBlockView(
             activity,
             null,
             "main-screen-top",
-            EmbeddedBlockContentController(
+            contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
-                providerFactory = { _, _ -> ReadyProvider(activity) },
+                providerFactory = { _, _ -> provider().also { lastProvider = it } },
                 blocksRegistry = { blocksRegistry },
             ),
         )
@@ -133,6 +149,42 @@ class MindboxEmbeddedBlockViewCollapseTest {
         assertEquals(View.GONE, view.visibility)
 
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+    }
+
+    @Test
+    fun `an error view given after the collapse does not reopen the space when the retry fails too`() {
+        val view = buildView(provider = { FailingProvider(activity) })
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        assertEquals(View.GONE, view.visibility)
+
+        view.setErrorView(View(activity))
+        leaveAndReturn(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun `an error view given after the collapse shows once content has started the cycle anew`() {
+        val providers = ArrayDeque(listOf(FailingProvider(activity), ReadyProvider(activity)))
+        val view = buildView(provider = { providers.removeFirst() })
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        assertEquals(View.GONE, view.visibility)
+        view.setErrorView(View(activity))
+
+        leaveAndReturn(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        lastProvider?.onStateChange?.invoke(EmbeddedBlockState.Failed)
         idle()
         assertEquals(View.VISIBLE, view.visibility)
     }

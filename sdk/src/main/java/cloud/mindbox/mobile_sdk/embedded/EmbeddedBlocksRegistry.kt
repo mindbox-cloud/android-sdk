@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.Closeable
+import java.lang.ref.WeakReference
 
 /**
  * One registered block: how the registry talks back to a view.
@@ -49,7 +50,10 @@ internal class EmbeddedBlocksRegistryImpl(
     private val scopeProvider: () -> CoroutineScope = { Mindbox.mindboxScope },
 ) : EmbeddedBlocksRegistry {
 
-    private val handlesByPlace = mutableMapOf<String, MutableList<EmbeddedBlockHandle>>()
+    // Weak on purpose: a host with no lifecycle owner to say goodbye — a plain Dialog, a
+    // PopupWindow, an app that swaps views itself — only lets its block go, and a strong entry in
+    // this process-wide map would keep the block, its view and the Activity behind it alive.
+    private val handlesByPlace = mutableMapOf<String, MutableList<WeakReference<EmbeddedBlockHandle>>>()
     private val resolvingPlaces = mutableSetOf<String>()
 
     private val reResolveQueuedPlaces = mutableMapOf<String, InAppEventType?>()
@@ -98,16 +102,15 @@ internal class EmbeddedBlocksRegistryImpl(
         val place = placeSystemName.trim()
         runOnMain {
             restartChannelsIfDead()
-            handlesByPlace.getOrPut(place) { mutableListOf() }.add(handle)
+            handlesByPlace.getOrPut(place) { mutableListOf() }.add(WeakReference(handle))
             mindboxLogI("[EmbeddedBlock] Block registered for place '$place'")
         }
         return Closeable {
             runOnMain {
-                handlesByPlace[place]?.remove(handle)
-                if (handlesByPlace[place]?.isEmpty() == true) {
-                    handlesByPlace.remove(place)
-                    reResolveQueuedPlaces.remove(place)
+                handlesByPlace[place]?.removeAll { reference ->
+                    reference.get().let { registered -> registered === handle || registered == null }
                 }
+                forgetPlaceIfEmpty(place)
                 mindboxLogI("[EmbeddedBlock] Block unregistered from place '$place'")
             }
         }
@@ -121,9 +124,25 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
+    private fun liveHandles(place: String): List<EmbeddedBlockHandle> {
+        val references = handlesByPlace[place] ?: return emptyList()
+        val handles = references.mapNotNull { reference -> reference.get() }
+        if (handles.size != references.size) {
+            references.removeAll { reference -> reference.get() == null }
+            forgetPlaceIfEmpty(place)
+        }
+        return handles
+    }
+
+    private fun forgetPlaceIfEmpty(place: String) {
+        if (handlesByPlace[place]?.isEmpty() != true) return
+        handlesByPlace.remove(place)
+        reResolveQueuedPlaces.remove(place)
+    }
+
     private fun onPlaceEvent(place: String, triggerEvent: InAppEventType) {
-        val handles = handlesByPlace[place]
-        if (handles.isNullOrEmpty()) {
+        val handles = liveHandles(place)
+        if (handles.isEmpty()) {
             mindboxLogI("[EmbeddedBlock] Operation matched place '$place' but no block is registered, dropping")
             return
         }
@@ -176,12 +195,16 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun invalidateAll(reason: String) {
-        handlesByPlace.forEach { (place, handles) ->
-            if (handles.any { handle -> handle.isActive }) {
-                mindboxLogI("[EmbeddedBlock] Re-resolving place '$place' ($reason)")
-                resolvePlace(place)
-            } else {
-                mindboxLogI("[EmbeddedBlock] Place '$place' is paused, nowhere to display — skipping ($reason)")
+        handlesByPlace.keys.toList().forEach { place ->
+            val handles = liveHandles(place)
+            when {
+                handles.isEmpty() -> Unit
+                handles.any { handle -> handle.isActive } -> {
+                    mindboxLogI("[EmbeddedBlock] Re-resolving place '$place' ($reason)")
+                    resolvePlace(place)
+                }
+                else ->
+                    mindboxLogI("[EmbeddedBlock] Place '$place' is paused, nowhere to display — skipping ($reason)")
             }
         }
     }
@@ -235,18 +258,18 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun notifyPending(place: String) {
-        handlesByPlace[place]?.toList()?.forEach { handle ->
+        liveHandles(place).forEach { handle ->
             loggingRunCatching { handle.onContentPending() }
         }
     }
 
     private fun deliver(place: String, content: InAppType.Embedded?) {
-        val handles = handlesByPlace[place]
-        if (handles.isNullOrEmpty()) {
+        val handles = liveHandles(place)
+        if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")
             return
         }
-        handles.toList().forEach { handle ->
+        handles.forEach { handle ->
             loggingRunCatching { handle.onContentResolved(content) }
         }
     }

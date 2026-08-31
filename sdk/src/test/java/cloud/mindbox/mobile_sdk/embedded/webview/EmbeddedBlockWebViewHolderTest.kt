@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
@@ -22,6 +23,8 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
@@ -65,6 +68,13 @@ class EmbeddedBlockWebViewHolderTest {
     private val inAppInteractor: InAppInteractor = mockk()
     private val inAppMessageManager: InAppMessageManager = mockk(relaxUnitFun = true)
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
+    private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
+
+    private var elapsed = 0L
+    private val timeProvider: SystemTimeProvider = mockk {
+        every { elapsedSince(any()) } answers { Milliseconds(elapsed) }
+        every { monotonicElapsedSince(any()) } answers { Milliseconds(elapsed) }
+    }
     private val permissionManager: PermissionManager = mockk {
         every { getCameraPermissionStatus() } returns PermissionStatus.DENIED
         every { getLocationPermissionStatus() } returns PermissionStatus.DENIED
@@ -85,6 +95,8 @@ class EmbeddedBlockWebViewHolderTest {
             every { inAppInteractor } returns this@EmbeddedBlockWebViewHolderTest.inAppInteractor
             every { permissionManager } returns this@EmbeddedBlockWebViewHolderTest.permissionManager
             every { appContext } returns application
+            every { inAppFailureTracker } returns this@EmbeddedBlockWebViewHolderTest.inAppFailureTracker
+            every { timeProvider } returns this@EmbeddedBlockWebViewHolderTest.timeProvider
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
@@ -524,7 +536,6 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `the old checkInappsTargeting name is not spoken anymore`() {
-        // Cut hard, in sync with iOS: the action never shipped, so no installed SDK speaks it.
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["inapp-1"]}"""))
@@ -847,6 +858,57 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "localState.get" }
 
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+    }
+
+    @Test
+    fun `a refusal off screen is held until the block comes back`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        holder.pause()
+        postFromPage(request(action = "contentRendered", payload = """{"count":"many"}"""))
+
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+
+        holder.start()
+
+        verify(exactly = 1) {
+            inAppFailureTracker.sendFailure("embedded-id", FailureReason.PRESENTATION_FAILED, any(), any())
+        }
+    }
+
+    @Test
+    fun `a page that rendered off screen counts its show when the block comes back`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        holder.pause()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
+
+        holder.start()
+
+        coVerify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `the counted show carries the time the render took, not the time off screen`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+
+        holder.pause()
+        elapsed = 1_000L
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        elapsed = 121_000L
+
+        holder.start()
+
+        coVerify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), Milliseconds(1_000L), any())
+        }
     }
 
     @Test

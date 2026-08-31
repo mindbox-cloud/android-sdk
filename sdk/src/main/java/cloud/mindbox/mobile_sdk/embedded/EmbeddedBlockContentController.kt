@@ -33,7 +33,9 @@ internal class EmbeddedBlockContentController(
     private val readyTimeout: Milliseconds = Constants.WebView.readyTimeout,
     private val providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider?,
     private val blocksRegistry: () -> EmbeddedBlocksRegistry? = {
-        if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlocksRegistry else null
+        loggingRunCatching(defaultValue = null) {
+            if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlocksRegistry else null
+        }
     },
     private val monotonicNow: () -> Milliseconds = { Milliseconds(SystemClock.elapsedRealtime()) },
     private val failureTracker: () -> InAppFailureTracker? = {

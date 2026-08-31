@@ -21,11 +21,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import java.lang.ref.WeakReference
 
 /**
  * The central controller is deliberately dumb: a registry and a router. Both directions call
@@ -135,6 +137,36 @@ class EmbeddedBlocksRegistryTest {
 
         assertTrue(handle.received.isEmpty())
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+    }
+
+    @Test
+    fun `a block whose host is gone stops holding its place`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
+        val controller = controller()
+        var handle: RecordingHandle? = RecordingHandle()
+        val handleReference = WeakReference<EmbeddedBlockHandle>(handle)
+        controller.register(place, handle!!)
+        idleMain()
+
+        // A host without a lifecycle owner never says goodbye — it only lets the block go. The
+        // registry must not be what keeps it, and the Activity behind it, in this process.
+        handle = null
+        awaitCollection(handleReference)
+
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+    }
+
+    private fun awaitCollection(reference: WeakReference<*>) {
+        repeat(50) {
+            if (reference.get() == null) return
+            System.gc()
+            System.runFinalization()
+            Thread.sleep(10L)
+        }
+        assertNull("the registry is still holding the handle of a host that is gone", reference.get())
     }
 
     @Test

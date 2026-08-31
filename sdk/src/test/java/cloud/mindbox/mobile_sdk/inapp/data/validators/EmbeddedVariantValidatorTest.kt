@@ -41,6 +41,11 @@ class EmbeddedVariantValidatorTest {
     @Test
     fun `missing place system name is invalid`() {
         assertFalse(validator.isValid(valid.copy(placeSystemName = null)))
+        assertFalse(validator.isValid(valid.copy(placeSystemName = "")))
+    }
+
+    @Test
+    fun `a place system name of spaces is not a name`() {
         assertFalse(validator.isValid(valid.copy(placeSystemName = "   ")))
     }
 
