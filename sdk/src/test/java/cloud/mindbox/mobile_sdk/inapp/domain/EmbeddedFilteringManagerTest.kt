@@ -36,12 +36,12 @@ class EmbeddedFilteringManagerTest {
     }
 
     @Test
-    fun `place comparison takes the padding as part of the name`() {
+    fun `place comparison trims whitespace on both sides`() {
         val embedded = embeddedInApp()
 
         val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded), "  main-screen-top  ")
 
-        assertTrue(result.isEmpty())
+        assertEquals(listOf(embedded), result)
     }
 
     @Test

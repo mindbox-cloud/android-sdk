@@ -275,11 +275,13 @@ internal class InAppMapper {
                                     is PayloadDto.EmbeddedDto -> {
                                         InAppType.Embedded(
                                             inAppId = inAppDto.id,
-                                            placeSystemName = payloadDto.placeSystemName!!,
+                                            placeSystemName = payloadDto.placeSystemName!!.trim(),
                                             layers = mapBackgroundLayers(
                                                 payloadDto.content?.background?.layers
                                                     ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()
                                             ),
+                                            frequency = Frequency(getDelay(inAppDto.frequency)),
+                                            tags = inAppDto.tags?.takeIf { it.isNotEmpty() },
                                         )
                                     }
 

@@ -18,17 +18,17 @@ internal class BridgeMessagePayloadTest {
 
     @Test
     fun `string payload passes through unchanged`() {
-        val message = request(""""{\"inappId\":\"story-1\"}"""")
+        val message = request(""""{\"inappId\":\"inapp-1\"}"""")
 
-        assertEquals("""{"inappId":"story-1"}""", message.payload)
+        assertEquals("""{"inappId":"inapp-1"}""", message.payload)
     }
 
     @Test
     fun `object payload is kept as its json text`() {
-        val message = request("""{"inappId":"story-1","params":{"a":1}}""")
+        val message = request("""{"inappId":"inapp-1","params":{"a":1}}""")
 
         assertEquals(
-            JsonParser.parseString("""{"inappId":"story-1","params":{"a":1}}"""),
+            JsonParser.parseString("""{"inappId":"inapp-1","params":{"a":1}}"""),
             JsonParser.parseString(message.payload!!)
         )
     }

@@ -4,10 +4,13 @@ import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
@@ -46,13 +49,12 @@ internal class InAppInteractorImpl(
     private val maxInappsPerDayLimitChecker: Checker,
     private val minIntervalBetweenShowsLimitChecker: Checker,
     private val timeProvider: TimeProvider,
-    private val sessionStorageManager: SessionStorageManager
+    private val sessionStorageManager: SessionStorageManager,
+    private val inAppFailureTracker: InAppFailureTracker,
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    // A page request is not an operation: with the synthetic event name and no body,
-    // operation-node targetings never match — "no operation is happening right now".
     private val placeRequestTargetingData =
         TargetingDataWrapper(InAppEventType.EmbeddedPlaceRequested.EVENT_NAME)
 
@@ -61,7 +63,15 @@ internal class InAppInteractorImpl(
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
                 for (inApp in inApps) {
-                    for (operation in inApp.targeting.getOperationsSet()) {
+                    val operations = inApp.targeting.getOperationsSet()
+                    if (inApp.displayConditions == DisplayConditions.DIRECT_CALL && operations.isNotEmpty()) {
+                        logW(
+                            "In-app ${inApp.id} is direct-call only but its targeting listens to " +
+                                "operations $operations: a dead combination — it never shows by " +
+                                "the operation and never sends its targeting"
+                        )
+                    }
+                    for (operation in operations) {
                         inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
                     }
                 }
@@ -115,43 +125,75 @@ internal class InAppInteractorImpl(
     override suspend fun selectInAppForPlace(
         placeSystemName: String,
         triggerEvent: InAppEventType,
-    ): InAppType.Embedded? {
+    ): EmbeddedResolveResult? {
+        val requestedPlace = placeSystemName.trim()
         val inApps = mobileConfigRepository.getInAppsSection()
         inAppRepository.saveCurrentSessionInApps(inApps)
-        // The same chain as the event path: the display style does not change "when to show".
-        val candidates = abTestFilteredInApps(inApps)
-            .let { inAppFilteringManager.filterEmbeddedInAppsByPlace(it, placeSystemName) }
-        val winner = chooseAmongCandidates(
-            logLabel = "Place '$placeSystemName'",
-            candidates = candidates,
-            triggerEvent = triggerEvent,
-            selectVariant = { candidate ->
-                candidate.form.variants
-                    .filterIsInstance<InAppType.Embedded>()
-                    .firstOrNull { variant -> variant.placeSystemName == placeSystemName }
-            }
-        )
-            ?: run {
-                logI("Place '$placeSystemName': nothing to show")
-                return null
-            }
+        val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, requestedPlace)
+            .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+        val matched = candidates.filter { candidate ->
+            inAppProcessingManager.matchesTargeting(candidate, triggerEvent)
+        }
+        logI("Place '$requestedPlace': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
+        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
+        val winner = inAppFilteringManager.filterABTestsInApps(matched, inAppsPool)
+            .let { inAppFrequencyManager.filterInAppsFrequency(it) }
+            .sortByPriority()
+            .firstOrNull { candidate -> candidate.embeddedVariantFor(requestedPlace) != null }
 
-        if (!areShowLimitsAllowed(winner)) {
-            logI("Place '$placeSystemName': in-app ${winner.id} is blocked by the show limits")
+        sendPlaceTargetings(requestedPlace, matched, winner)
+        if (winner == null) {
+            logI("Place '$requestedPlace': nothing to show")
+            inAppFailureTracker.sendCollectedFailures()
             return null
         }
-        // Place resolves repeat for reasons that offer nothing new — the block reappears, a config
-        // lands, an operation passes by — so the winner is offered once per session, and only once
-        // it has actually been given the place (after the limits).
-        if (sessionStorageManager.placeTargetingReportedInSession.add(winner.id)) {
-            inAppProcessingManager.sendTargetedInApp(winner)
-        } else {
-            logI("Place '$placeSystemName': in-app ${winner.id} already sent its targeting this session")
+        inAppFailureTracker.clearFailures()
+        if (!areShowLimitsAllowed(winner)) {
+            logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
+            return null
         }
-        return winner.form.variants
-            .filterIsInstance<InAppType.Embedded>()
-            .firstOrNull { variant -> variant.placeSystemName == placeSystemName }
+        val variant = winner.embeddedVariantFor(requestedPlace) ?: return null
+        val delayTime = winner.delayTime?.takeIf { delay ->
+            delay.interval > 0 && waitedOutDelayKey(requestedPlace, winner.id) !in sessionStorageManager.embeddedDelaysWaitedOut
+        }
+        if (winner.delayTime != null && delayTime == null) {
+            logI("Place '$requestedPlace': in-app ${winner.id} waits no delay (already waited out this session or zero)")
+        }
+        return EmbeddedResolveResult(
+            variant = variant,
+            delayTime = delayTime,
+        )
     }
+
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: String, inAppId: String) {
+        sessionStorageManager.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName.trim(), inAppId))
+    }
+
+    private fun waitedOutDelayKey(place: String, inAppId: String): String = "$place|$inAppId"
+
+    private fun sendPlaceTargetings(place: String, matched: List<InApp>, winner: InApp?) {
+        for (inApp in matched) {
+            if (inApp.id == winner?.id) {
+                if (sessionStorageManager.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
+                    logI("Place '$place': winner ${inApp.id} is the last targeted here, no second targeting")
+                } else {
+                    sessionStorageManager.placeTargetingReportedInSession.add(inApp.id)
+                    inAppProcessingManager.sendTargetedInApp(inApp)
+                }
+            } else {
+                if (sessionStorageManager.placeTargetingReportedInSession.add(inApp.id)) {
+                    inAppProcessingManager.sendTargetedInApp(inApp)
+                } else {
+                    logI("Place '$place': in-app ${inApp.id} already sent its targeting this session")
+                }
+            }
+        }
+    }
+
+    private fun InApp.embeddedVariantFor(place: String): InAppType.Embedded? =
+        form.variants
+            .filterIsInstance<InAppType.Embedded>()
+            .firstOrNull { variant -> variant.placeSystemName == place }
 
     private suspend fun abTestFilteredInApps(inApps: List<InApp>): List<InApp> =
         inAppFilteringManager.filterABTestsInApps(inApps, inAppABTestLogic.getInAppsPool(inApps.map { it.id }))
@@ -200,39 +242,61 @@ internal class InAppInteractorImpl(
         return InAppToShow(inApp, variant)
     }
 
-    override suspend fun filterShowableInAppIds(inAppIds: List<String>): List<String> {
+    override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String> {
         if (inAppIds.isEmpty()) return emptyList()
         val inApps = mobileConfigRepository.getInAppsSection()
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
-        val showableById = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
-            .distinctBy { inApp -> inApp.id }
-            .associateBy { inApp -> inApp.id }
-        return inAppIds.filter { id ->
-            val inApp = showableById[id] ?: run {
-                logI("Requested id $id is not in the config (or filtered by sdkVersion/ab-tests), cutting it")
-                return@filter false
+        val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
+            .map { inApp -> inApp.id }
+            .toSet()
+        val fullById = inApps.distinctBy { inApp -> inApp.id }.associateBy { inApp -> inApp.id }
+        val matchedById = mutableMapOf<String, Boolean>()
+        for (id in inAppIds.distinct()) {
+            val inApp = fullById[id]
+            if (inApp == null) {
+                logI("Requested id $id is not in the config (or filtered by sdkVersion), cutting it")
+                continue
             }
             if (inApp.firstOverlayVariant() == null) {
-                logI("Requested id $id has no overlay variant to draw, cutting it (no feed inside a feed)")
+                logI("Requested id $id has no overlay variant to draw, cutting it")
+                continue
+            }
+            matchedById[id] = matchesRequestedTargeting(inApp)
+        }
+        sendRequestedTargetings(hostInAppId, fullById, matchedById)
+        return inAppIds.filter { id ->
+            if (matchedById[id] != true) return@filter false
+            if (id !in showableIds) {
+                logI("Requested id $id is filtered by ab-tests, cutting it")
                 return@filter false
             }
-            if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) {
+            if (!inAppFrequencyManager.isAllowedByFrequency(fullById.getValue(id))) {
                 logI("Requested id $id is blocked by its frequency, cutting it")
                 return@filter false
             }
-            runCatching {
-                inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
-                inApp.targeting.checkTargeting(placeRequestTargetingData)
-            }
-                .getOrElse { error ->
-                    logI("Requested id $id targeting could not be checked ($error), cutting it")
-                    false
-                }
-                .also { matches -> if (!matches) logI("Requested id $id targeting did not match, cutting it") }
-        }.onEach { id ->
-            inAppProcessingManager.sendTargetedInApp(showableById.getValue(id))
+            true
         }
     }
+
+    private fun sendRequestedTargetings(hostInAppId: String, fullById: Map<String, InApp>, matchedById: Map<String, Boolean>) {
+        for ((id, matches) in matchedById) {
+            if (!matches) continue
+            if (sessionStorageManager.requestedInAppTargetingReportedInSession.add("$hostInAppId|$id")) {
+                inAppProcessingManager.sendTargetedInApp(fullById.getValue(id))
+            }
+        }
+    }
+
+    private suspend fun matchesRequestedTargeting(inApp: InApp): Boolean =
+        runCatching {
+            inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
+            inApp.targeting.checkTargeting(placeRequestTargetingData)
+        }
+            .getOrElse { error ->
+                logI("Requested id ${inApp.id} targeting could not be checked ($error), cutting it")
+                false
+            }
+            .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
     override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean =
         inAppFrequencyManager.isAllowedByFrequency(inApp) && areShowLimitsAllowed(inApp)
@@ -249,26 +313,27 @@ internal class InAppInteractorImpl(
     private suspend fun findInAppById(inAppId: String): InApp? =
         mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
 
-    override suspend fun recordBlockShow(
+    override fun recordBlockShow(
+        placeSystemName: String,
         inAppId: String,
+        frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
     ) {
-        val inApp = findInAppById(inAppId)
-            ?: run {
-                logI("No in-app with id $inAppId to report a block show for")
-                return
-            }
-        recordShowCounters(inApp, timeProvider.currentTimestamp())
-        // A view the host recreated (a rotation, a return to the screen) draws the same content
-        // again; the funnel counts one show per session, and this set outlives the views — it is
-        // cleared with the session itself.
-        if (!sessionStorageManager.blockShowsReportedInSession.add(inAppId)) {
-            logI("Block of in-app $inAppId already reported its show this session")
+        val place = placeSystemName.trim()
+        val lastShown = sessionStorageManager.embeddedLastShownByPlace.put(place, inAppId)
+        if (lastShown == inAppId) {
+            logI("Place '$place': the block re-drew in-app $inAppId it already showed, nothing to report")
             return
         }
-        // The operation is unconditional — it states what the user saw, and how often the in-app
-        // may appear has no bearing on whether it just did. Only the counters obey the frequency.
+        if (frequency.countsShows()) {
+            logI("Counting a show of in-app $inAppId (frequency ${frequency.delay})")
+            inAppRepository.setInAppShown(inAppId)
+            inAppRepository.saveShownInApp(inAppId, timeProvider.currentTimestamp().ms)
+            inAppRepository.saveInAppStateChangeTime(timeProvider.currentTimestamp())
+        } else {
+            logI("In-app $inAppId has unlimited frequency, nothing to count")
+        }
         logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }
@@ -286,9 +351,6 @@ internal class InAppInteractorImpl(
                 return
             }
         recordShowCounters(inApp, timeStamp.toTimestamp())
-        // The cooldown measures how often the SDK interrupts on its own. Only an overlay show
-        // moves it (a block interrupts nothing), and an unlimited show does not move it either —
-        // unlimited is outside the show accounting in both directions.
         if (inApp.countsShows()) {
             inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
         }

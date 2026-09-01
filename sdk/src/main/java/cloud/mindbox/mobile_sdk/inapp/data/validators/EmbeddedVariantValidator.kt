@@ -20,7 +20,7 @@ internal class EmbeddedVariantValidator(
             )
             return false
         }
-        if (item.placeSystemName.isNullOrEmpty()) {
+        if (item.placeSystemName.isNullOrBlank()) {
             mindboxLogW("InApp is invalid. Embedded variant has no placeSystemName")
             return false
         }

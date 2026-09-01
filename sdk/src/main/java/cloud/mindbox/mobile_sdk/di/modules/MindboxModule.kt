@@ -70,6 +70,9 @@ internal interface DataModule : MindboxModule {
     val inAppImageSizeStorage: InAppImageSizeStorage
     val sessionStorageManager: SessionStorageManager
     val mobileConfigRepository: MobileConfigRepository
+
+    /** The repository only if something already asked for it — never creates one. */
+    val mobileConfigRepositoryIfCreated: MobileConfigRepository?
     val mobileConfigSerializationManager: MobileConfigSerializationManager
     val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager
     val webViewCachePolicy: InAppWebViewCachePolicy

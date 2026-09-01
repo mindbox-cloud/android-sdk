@@ -63,7 +63,10 @@ internal class InAppMessageManagerTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val timeProvider = mockk<SystemTimeProvider>()
+    private val timeProvider = mockk<SystemTimeProvider> {
+        every { monotonicMillis() } returns Milliseconds(0L)
+        every { monotonicElapsedSince(any()) } returns Milliseconds(0L)
+    }
 
     private val featureToggleManager = mockk<FeatureToggleManager>()
 

@@ -315,16 +315,18 @@ internal class InAppStub {
         )
 
         fun getEmbeddedWebViewLayer() = Layer.WebViewLayer(
-            baseUrl = "https://feed.local/base",
-            contentUrl = "https://feed.local/stories.html",
+            baseUrl = "https://blocks.local/base",
+            contentUrl = "https://blocks.local/items.html",
             type = "webview",
-            params = mapOf("stories" to "[{\"inAppId\":\"story-1\"}]")
+            params = mapOf("items" to "[{\"inAppId\":\"inapp-1\"}]")
         )
 
         fun getEmbedded() = InAppType.Embedded(
             inAppId = "embedded-id",
             placeSystemName = "main-screen-top",
-            layers = listOf(getEmbeddedWebViewLayer())
+            layers = listOf(getEmbeddedWebViewLayer()),
+            frequency = Frequency(Frequency.Delay.Unlimited),
+            tags = null,
         )
 
         fun getEmbeddedDto() = PayloadDto.EmbeddedDto(
@@ -332,10 +334,10 @@ internal class InAppStub {
                 background = BackgroundDto(
                     layers = listOf(
                         BackgroundDto.LayerDto.WebViewLayerDto(
-                            baseUrl = "https://feed.local/base",
-                            contentUrl = "https://feed.local/stories.html",
+                            baseUrl = "https://blocks.local/base",
+                            contentUrl = "https://blocks.local/items.html",
                             type = "webview",
-                            params = mapOf("stories" to "[]")
+                            params = mapOf("items" to "[]")
                         )
                     )
                 )

@@ -2,9 +2,15 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.gatedTags
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
@@ -12,7 +18,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
-import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -22,15 +28,30 @@ import kotlinx.coroutines.flow.onEach
 import java.io.Closeable
 
 internal class EmbeddedBlockContentController(
-    private val placeSystemName: String? = null,
+    placeSystemName: String? = null,
     configTimeout: Milliseconds = Constants.Embedded.defaultConfigTimeout,
     private val readyTimeout: Milliseconds = Constants.WebView.readyTimeout,
-    private val providerFactory: (InAppType.Embedded, Timestamp) -> EmbeddedContentProvider?,
+    private val providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider?,
     private val blocksRegistry: () -> EmbeddedBlocksRegistry? = {
-        if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlocksRegistry else null
+        loggingRunCatching(defaultValue = null) {
+            if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlocksRegistry else null
+        }
     },
-    private val now: () -> Timestamp = { Timestamp(System.currentTimeMillis()) },
+    private val monotonicNow: () -> Milliseconds = { Milliseconds(SystemClock.elapsedRealtime()) },
+    private val failureTracker: () -> InAppFailureTracker? = {
+        if (MindboxDI.isInitialized()) MindboxDI.appModule.inAppFailureTracker else null
+    },
+    private val isTagsFeatureEnabled: () -> Boolean = {
+        MindboxDI.isInitialized() && MindboxDI.appModule.featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE)
+    },
+    private val hasConfig: () -> Boolean = {
+        loggingRunCatching(defaultValue = false) {
+            MindboxDI.isInitialized() && MindboxDI.appModule.mobileConfigRepositoryIfCreated?.hasConfig() == true
+        }
+    },
 ) : EmbeddedBlockHandle {
+
+    private val placeSystemName: String? = placeSystemName?.trim()?.takeIf { it.isNotEmpty() }
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 
@@ -38,11 +59,12 @@ internal class EmbeddedBlockContentController(
         get() = provider?.contentView
 
     override val isActive: Boolean
-        get() = isStarted && !isReleased
+        get() = isStarted && !isReleased && !hasGivenUp
 
     private var provider: EmbeddedContentProvider? = null
     private var isStarted = false
     private var isReleased = false
+    private var hasGivenUp = false
     private var lastReportedState: EmbeddedBlockState? = null
 
     private var registration: Closeable? = null
@@ -53,6 +75,9 @@ internal class EmbeddedBlockContentController(
 
     /** What the shown page was built from — the "same content" dedup key. */
     private var appliedDescriptor: PageDescriptor? = null
+
+    /** The snapshot of the applied content — the failure events' id and tags come from it. */
+    private var appliedContent: InAppType.Embedded? = null
 
     /**
      * The applied content, split the way the dedup needs it: [isSamePage] is the page's identity —
@@ -79,21 +104,23 @@ internal class EmbeddedBlockContentController(
 
     private var updateEpoch = 0
 
-    /** When the user started waiting for the current attempt — the base of `timeToDisplay`. */
-    private var attemptStartedAt: Timestamp? = null
+    private var attemptStartTick: Milliseconds? = null
+
+    private var pendingSinceTick: Milliseconds? = null
+
+    private var hasPendingDelivery = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val configWaitDuration: Milliseconds = sanitizedConfigTimeout(configTimeout, placeSystemName)
 
-    // The budgets count the user's waiting time: paused with the block, the remainder preserved,
-    // the full budget restored only by a new attempt.
     private val configBudget = EmbeddedBlockWaitBudget(configWaitDuration, mainHandler) { onConfigTimeout() }
     private val readyBudget = EmbeddedBlockWaitBudget(readyTimeout, mainHandler) { onReadyTimeout() }
 
     fun start() {
         if (isReleased) return
         isStarted = true
+        hasGivenUp = false
         val place = placeSystemName ?: run {
             report(EmbeddedBlockState.Empty)
             return
@@ -154,7 +181,18 @@ internal class EmbeddedBlockContentController(
 
     override fun onContentResolved(content: InAppType.Embedded?) {
         if (isReleased) return
+        if (hasGivenUp) {
+            mindboxLogI(
+                "[EmbeddedBlock] Content for '$placeSystemName' arrived after the block gave up " +
+                    "waiting, dropping it; the next appearance on screen asks afresh"
+            )
+            return
+        }
         configBudget.reset()
+        // The pending window closes at the delivery, not at the application: a delivery deferred
+        // while the block is off screen keeps the off-screen span inside the measure — only the
+        // campaign's delay leaves it.
+        settlePendingWindow()
         if (!isActive) {
             mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
             pendingContent = content
@@ -164,11 +202,29 @@ internal class EmbeddedBlockContentController(
         applyResolved(content)
     }
 
+    override fun onContentPending() {
+        if (isReleased || hasGivenUp) return
+        configBudget.reset()
+        hasPendingDelivery = true
+        pendingSinceTick = pendingSinceTick ?: monotonicNow()
+    }
+
+    private fun settlePendingWindow() {
+        hasPendingDelivery = false
+        pendingSinceTick?.let { pendingSince ->
+            attemptStartTick = attemptStartTick?.let { started ->
+                Milliseconds(started.interval + (monotonicNow().interval - pendingSince.interval))
+            }
+        }
+        pendingSinceTick = null
+    }
+
     private fun applyResolved(content: InAppType.Embedded?) {
         if (content == null) {
             mindboxLogI("[EmbeddedBlock] Nothing to show for place '$placeSystemName'")
             dropProvider()
             appliedDescriptor = null
+            appliedContent = null
             report(EmbeddedBlockState.Empty)
             return
         }
@@ -182,6 +238,7 @@ internal class EmbeddedBlockContentController(
 
         if (current != null && descriptor == appliedDescriptor && lastReportedState?.nothingToShow != true) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
+            refreshMetricsSnapshot(current, content)
             return
         }
         if (lastReportedState?.nothingToShow == true) {
@@ -194,6 +251,7 @@ internal class EmbeddedBlockContentController(
             lastReportedState == EmbeddedBlockState.Ready
         ) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} with new params, updating the content in place")
+            refreshMetricsSnapshot(current, content)
             val epoch = ++updateEpoch
             runCatching {
                 current.updateParams(layer.params) { isUpdated ->
@@ -201,6 +259,7 @@ internal class EmbeddedBlockContentController(
                         if (isReleased || provider !== current || epoch != updateEpoch) return@post
                         if (isUpdated) {
                             appliedDescriptor = descriptor
+                            appliedContent = content
                         } else {
                             mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
                             recreateProvider(content)
@@ -216,15 +275,22 @@ internal class EmbeddedBlockContentController(
         recreateProvider(content)
     }
 
+    private fun refreshMetricsSnapshot(current: EmbeddedContentProvider, content: InAppType.Embedded) {
+        if (current !is EmbeddedUpdatableContentProvider) return
+        val applied = appliedContent
+        if (applied != null && applied.frequency == content.frequency && applied.tags == content.tags) return
+        mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId}: the config changed its frequency/tags, refreshing the snapshot")
+        loggingRunCatching { current.refreshMetricsSnapshot(content.frequency, content.tags) }
+        appliedContent = content
+    }
+
     private fun recreateProvider(content: InAppType.Embedded) {
         dropProvider()
-        // A revival or a replacement is a new attempt; the first content of an attempt keeps the
-        // clock that started with the resolve, so the wait for the answer stays in the measure.
         if (lastReportedState != EmbeddedBlockState.Loading) {
-            attemptStartedAt = now()
+            attemptStartTick = monotonicNow()
         }
-        val startedAt = attemptStartedAt ?: now().also { freshStart -> attemptStartedAt = freshStart }
-        val created = loggingRunCatching(defaultValue = null) { providerFactory(content, startedAt) } ?: run {
+        val startTick = attemptStartTick ?: monotonicNow().also { freshStart -> attemptStartTick = freshStart }
+        val created = loggingRunCatching(defaultValue = null) { providerFactory(content, startTick) } ?: run {
             mindboxLogE("[EmbeddedBlock] Could not build content for ${content.inAppId}, reporting failure")
             report(EmbeddedBlockState.Failed)
             return
@@ -232,10 +298,9 @@ internal class EmbeddedBlockContentController(
         provider = created
         appliedDescriptor =
             descriptorOf(content.inAppId, content.layers.filterIsInstance<Layer.WebViewLayer>().first())
+        appliedContent = content
         created.onStateChange = { state -> report(state) }
         if (isStarted) {
-            // The answer arrived and a page is being built: the wait changes its nature, so the
-            // budget starts over with the page's own — shorter — patience.
             readyBudget.reset()
             readyBudget.armIfNeeded()
             runCatching { created.start() }.onFailure { error ->
@@ -248,10 +313,8 @@ internal class EmbeddedBlockContentController(
 
     private fun report(state: EmbeddedBlockState) {
         if (state !is EmbeddedBlockState.Loading) {
-            // The attempt is over, with an outcome: the page budget and the attempt clock restart
-            // with the next one.
             readyBudget.reset()
-            attemptStartedAt = null
+            attemptStartTick = null
         }
         if (state == lastReportedState) return
         lastReportedState = state
@@ -293,10 +356,9 @@ internal class EmbeddedBlockContentController(
         loggingRunCatching { job.cancel() }
     }
 
-    /** The wait for the first answer begins: the shimmer, the config budget and the attempt clock. */
     private fun beginWaitingForContent() {
         report(EmbeddedBlockState.Loading)
-        attemptStartedAt = attemptStartedAt ?: now()
+        attemptStartTick = attemptStartTick ?: monotonicNow()
         if (!hasEverResolved()) {
             configBudget.armIfNeeded()
         }
@@ -305,13 +367,23 @@ internal class EmbeddedBlockContentController(
     private fun onConfigTimeout() {
         if (isReleased || hasEverResolved()) return
         mindboxLogW(
-            "[EmbeddedBlock] No config within ${configWaitDuration.interval}ms of waiting for " +
-                "'$placeSystemName', collapsing; a late config still expands the block"
+            "[EmbeddedBlock] No answer within ${configWaitDuration.interval}ms of waiting for " +
+                "'$placeSystemName', collapsing; a later answer is dropped, the next appearance " +
+                "on screen asks afresh"
         )
+        hasGivenUp = true
+        configBudget.reset()
+        placeSystemName?.let { place ->
+            failureTracker()?.let { tracker ->
+                val phase = if (hasConfig()) WaitBudgetPhase.RESOLVE_PENDING else WaitBudgetPhase.CONFIG_MISSING
+                loggingRunCatching { tracker.sendWaitBudgetExceeded(place, configWaitDuration, phase) }
+            }
+        }
         report(EmbeddedBlockState.Empty)
     }
 
-    private fun hasEverResolved(): Boolean = provider != null || hasPendingContent || appliedDescriptor != null
+    private fun hasEverResolved(): Boolean =
+        provider != null || hasPendingContent || appliedDescriptor != null || hasPendingDelivery
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
@@ -319,6 +391,20 @@ internal class EmbeddedBlockContentController(
             "[EmbeddedBlock] Page for '$placeSystemName' stayed silent for " +
                 "${readyTimeout.interval}ms of waiting, reporting failure",
         )
+        appliedContent?.let { content ->
+            failureTracker()?.let { tracker ->
+                loggingRunCatching {
+                    tracker.sendFailureWithContext(
+                        inAppId = content.inAppId,
+                        failureReason = FailureReason.PRESENTATION_FAILED,
+                        errorDescription = "The embedded block page stayed silent for " +
+                            "${readyTimeout.interval}ms after the content was handed to it",
+                        tags = content.tags.gatedTags(isTagsFeatureEnabled()),
+                    )
+                }
+            }
+        }
+        hasGivenUp = true
         loggingRunCatching { provider?.pause() }
         report(EmbeddedBlockState.Failed)
     }
@@ -330,7 +416,6 @@ internal class EmbeddedBlockContentController(
     }
 
     private companion object {
-        /** A non-positive timeout would collapse every block before the config had a chance. */
         fun sanitizedConfigTimeout(requested: Milliseconds, place: String?): Milliseconds {
             if (requested.interval > 0) return requested
             mindboxLogE(

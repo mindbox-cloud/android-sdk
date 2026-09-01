@@ -3,7 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedBlockWebViewHolder
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -14,11 +14,11 @@ import org.robolectric.RobolectricTestRunner
 class EmbeddedBlockContentFactoryTest {
 
     @Test
-    fun `resolved embedded content becomes a feed webview holder`() {
+    fun `resolved embedded content becomes a block webview holder`() {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded(),
-            attemptStartedAt = Timestamp(0L),
+            startTick = Milliseconds(0L),
         )
 
         assertTrue(provider is EmbeddedBlockWebViewHolder)
@@ -29,7 +29,7 @@ class EmbeddedBlockContentFactoryTest {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded().copy(layers = emptyList()),
-            attemptStartedAt = Timestamp(0L),
+            startTick = Milliseconds(0L),
         )
 
         assertNull(provider)

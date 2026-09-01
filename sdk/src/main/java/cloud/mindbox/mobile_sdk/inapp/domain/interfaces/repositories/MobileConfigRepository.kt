@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.Flow
 internal interface MobileConfigRepository {
     fun listenConfigUpdates(): Flow<Unit>
 
+    fun startListening()
+
+    fun hasConfig(): Boolean
+
     suspend fun fetchMobileConfig()
 
     suspend fun getInAppsSection(): List<InApp>

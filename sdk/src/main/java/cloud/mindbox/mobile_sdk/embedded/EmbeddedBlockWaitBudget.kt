@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded
 import android.os.Handler
 import android.os.SystemClock
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 
 internal class EmbeddedBlockWaitBudget(
     private val duration: Milliseconds,
@@ -17,7 +18,7 @@ internal class EmbeddedBlockWaitBudget(
     private val expireRunnable = Runnable {
         resumedAt = null
         consumedMs = duration.interval
-        onExpire()
+        loggingRunCatching { onExpire() }
     }
 
     private val remainingMs: Long

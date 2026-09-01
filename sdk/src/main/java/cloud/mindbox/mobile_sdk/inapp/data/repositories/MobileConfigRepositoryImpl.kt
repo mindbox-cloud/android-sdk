@@ -27,6 +27,7 @@ import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,8 +65,15 @@ internal class MobileConfigRepositoryImpl(
 
     private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    private var configSubscription: Job? = null
+
     init {
-        Mindbox.mindboxScope.launch {
+        startListening()
+    }
+
+    override fun startListening() {
+        if (configSubscription?.isActive == true) return
+        configSubscription = Mindbox.mindboxScope.launch {
             MindboxPreferences.inAppConfigFlow
                 .collectLatest { configString ->
                     processConfigUpdate(configString)
@@ -120,6 +128,8 @@ internal class MobileConfigRepositoryImpl(
     }
 
     override fun listenConfigUpdates(): Flow<Unit> = configUpdates
+
+    override fun hasConfig(): Boolean = configState.value != null
 
     override suspend fun getMonitoringSection() = getConfig().monitoring
 

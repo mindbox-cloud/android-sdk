@@ -45,8 +45,8 @@ class EmbeddedVariantValidatorTest {
     }
 
     @Test
-    fun `a place system name of spaces is a name`() {
-        assertTrue(validator.isValid(valid.copy(placeSystemName = "   ")))
+    fun `a place system name of spaces is not a name`() {
+        assertFalse(validator.isValid(valid.copy(placeSystemName = "   ")))
     }
 
     @Test
@@ -100,7 +100,7 @@ class EmbeddedVariantValidatorTest {
 
     @Test
     fun `params are not validated`() {
-        // Whatever is inside params — missing stories, junk values — the variant stays valid.
+        // Whatever is inside params — missing keys, junk values — the variant stays valid.
         val layer = valid.content!!.background!!.layers!!
             .single() as BackgroundDto.LayerDto.WebViewLayerDto
         val variant = valid.copy(

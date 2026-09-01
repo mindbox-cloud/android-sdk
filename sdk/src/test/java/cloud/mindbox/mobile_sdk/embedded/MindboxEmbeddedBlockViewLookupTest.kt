@@ -24,6 +24,14 @@ import java.time.Duration
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewLookupTest {
 
+    @org.junit.Test
+    fun `a place name with surrounding whitespace is normalized at the view boundary`() {
+        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        val view = MindboxEmbeddedBlockView(activity, "  main-screen-top  ")
+
+        org.junit.Assert.assertEquals("main-screen-top", view.placeSystemName)
+    }
+
     private class RecordingListener : MindboxEmbeddedBlockListener {
         val events = mutableListOf<String>()
 
@@ -177,15 +185,13 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `a place name of spaces is a name like any other`() {
-        // Only emptiness is checked: the name goes to the config as it was given, padding and all,
-        // and a place nobody named that way simply never resolves.
+    fun `a blank place name is the same as none`() {
         val view = MindboxEmbeddedBlockView(activity, "   ")
 
         attach(view)
 
-        assertEquals("   ", view.placeSystemName)
-        assertEquals(View.VISIBLE, view.visibility)
+        assertNull(view.placeSystemName)
+        assertEquals(View.GONE, view.visibility)
     }
 
     @Test

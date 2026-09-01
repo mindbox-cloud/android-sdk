@@ -104,15 +104,281 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `content arriving after the timeout still expands the block`() {
+    fun `pending winner disarms the waiting budget and keeps the skeleton`() {
+        // A delayed winner is the SDK's answer, not its silence: the 30s budget stands down
+        // while the block stays in the loading state until the delivery.
+        val controller = controller(configTimeout = Milliseconds(30_000L))
+        controller.start()
+
+        blocksRegistry.lastHandle?.onContentPending()
+        idleFor(Duration.ofMillis(30_001L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+    }
+
+    @Test
+    fun `the delay window leaves the attempt clock`() {
+        var clock = 1_000L
+        var receivedStart: Long? = null
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, startTick ->
+                receivedStart = startTick.interval
+                FakeProvider()
+            },
+            blocksRegistry = { blocksRegistry },
+            monotonicNow = { Milliseconds(clock) },
+        ).apply { onStateChange = { state -> states.add(state) } }
+
+        controller.start()
+        // The campaign's delay begins at 2s and delivers at 7s: those five seconds are the
+        // campaign's choice, not the user's wait for the SDK — the clock base slides past them.
+        clock = 2_000L
+        blocksRegistry.lastHandle?.onContentPending()
+        clock = 7_000L
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(6_000L, receivedStart)
+    }
+
+    @Test
+    fun `the delay window leaves the attempt clock of a block that was off screen`() {
+        var clock = 1_000L
+        var receivedStart: Long? = null
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, startTick ->
+                receivedStart = startTick.interval
+                FakeProvider()
+            },
+            blocksRegistry = { blocksRegistry },
+            monotonicNow = { Milliseconds(clock) },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        controller.pause()
+
+        clock = 2_000L
+        blocksRegistry.lastHandle?.onContentPending()
+        clock = 7_000L
+        blocksRegistry.pushContent("main-screen-top", content)
+        clock = 8_000L
+        controller.start()
+
+        assertEquals(6_000L, receivedStart)
+    }
+
+    @Test
+    fun `a padded place name is normalized for the registry and the failure report`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "  main-screen-top  ",
+            configTimeout = Milliseconds(50L),
+            providerFactory = { _, _ -> FakeProvider() },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
+        io.mockk.verify(exactly = 1) {
+            tracker.sendWaitBudgetExceeded(
+                "main-screen-top",
+                Milliseconds(50L),
+                cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
+            )
+        }
+    }
+
+    @Test
+    fun `config timeout ships the anonymous ShowFailure`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(50L),
+            providerFactory = { _, _ -> FakeProvider() },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+
+        idleFor(Duration.ofMillis(51L))
+
+        // The SDK stayed silent for the whole budget: the fact ships with no in-app to name.
+        io.mockk.verify(exactly = 1) {
+            tracker.sendWaitBudgetExceeded(
+                "main-screen-top",
+                Milliseconds(50L),
+                cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
+            )
+        }
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+    }
+
+    @Test
+    fun `a config present but a silent resolve ships the resolve_pending phase`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(50L),
+            providerFactory = { _, _ -> FakeProvider() },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+            hasConfig = { true },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+
+        idleFor(Duration.ofMillis(51L))
+
+        io.mockk.verify(exactly = 1) {
+            tracker.sendWaitBudgetExceeded(
+                "main-screen-top",
+                Milliseconds(50L),
+                cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.RESOLVE_PENDING,
+            )
+        }
+    }
+
+    @Test
+    fun `a page silent past its budget ships presentation_failed with the snapshot tags`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val silentProvider = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+
+            override fun start() = Unit
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            readyTimeout = Milliseconds(100L),
+            providerFactory = { _, _ -> silentProvider },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+            isTagsFeatureEnabled = { true },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content.copy(tags = mapOf("a" to "b")))
+        idleFor(Duration.ofMillis(101L))
+
+        io.mockk.verify(exactly = 1) {
+            tracker.sendFailure(
+                inAppId = "embedded-id",
+                failureReason = cloud.mindbox.mobile_sdk.models.operation.request.FailureReason.PRESENTATION_FAILED,
+                errorDetails = any(),
+                tags = mapOf("a" to "b"),
+            )
+        }
+        assertEquals(EmbeddedBlockState.Failed, states.last())
+    }
+
+    @Test
+    fun `an armed pending delivery keeps the budget quiet across leave and return`() {
+        val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(50L),
+            providerFactory = { _, _ -> FakeProvider() },
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.lastHandle?.onContentPending()
+
+        // The block leaves and returns while the winner waits out its delay: the SDK has
+        // answered — the re-armed budget must not fire a false "the SDK stayed silent".
+        controller.pause()
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        io.mockk.verify(exactly = 0) { tracker.sendWaitBudgetExceeded(any(), any(), any()) }
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+    }
+
+    @Test
+    fun `content arriving after the timeout is dropped and the block stays collapsed`() {
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
         idleFor(Duration.ofMillis(30_001L))
         assertEquals(EmbeddedBlockState.Empty, states.last())
 
+        blocksRegistry.lastHandle?.onContentPending()
         blocksRegistry.pushContent("main-screen-top", content)
 
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertTrue(createdProviders.isEmpty())
+    }
+
+    @Test
+    fun `a block that gave up waiting is inactive for the registry until it comes back`() {
+        val controller = controller(configTimeout = Milliseconds(30_000L))
+        controller.start()
+        assertEquals(true, blocksRegistry.lastHandle?.isActive)
+
+        idleFor(Duration.ofMillis(30_001L))
+        assertEquals(false, blocksRegistry.lastHandle?.isActive)
+
+        controller.pause()
+        controller.start()
+
+        assertEquals(true, blocksRegistry.lastHandle?.isActive)
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `returning after the timeout asks afresh with the whole budget`() {
+        val controller = controller(configTimeout = Milliseconds(50L))
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        controller.pause()
+
+        controller.start()
+        idleFor(Duration.ofMillis(40L))
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+
+        blocksRegistry.pushContent("main-screen-top", content)
         assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `a page silent past its budget gives the block up until it comes back`() {
+        var builtPages = 0
+        val silentProvider = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+
+            override fun start() = Unit
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            readyTimeout = Milliseconds(100L),
+            providerFactory = { _, _ -> silentProvider.also { builtPages++ } },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        idleFor(Duration.ofMillis(101L))
+        assertEquals(EmbeddedBlockState.Failed, states.last())
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(1, builtPages)
+        assertEquals(false, blocksRegistry.lastHandle?.isActive)
+        assertEquals(EmbeddedBlockState.Failed, states.last())
     }
 
     @Test
@@ -304,12 +570,12 @@ class EmbeddedBlockContentControllerTest {
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { _, attemptStartedAt ->
-                receivedStart = attemptStartedAt.ms
+            providerFactory = { _, startTick ->
+                receivedStart = startTick.interval
                 FakeProvider()
             },
             blocksRegistry = { blocksRegistry },
-            now = { cloud.mindbox.mobile_sdk.models.Timestamp(clock) },
+            monotonicNow = { Milliseconds(clock) },
         ).apply { onStateChange = { state -> states.add(state) } }
 
         controller.start()
@@ -331,6 +597,53 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a re-resolve that changes only frequency or tags refreshes the snapshot without a rebuild`() {
+        var snapshotFrequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency? = null
+        var snapshotTags: Map<String, String>? = null
+        var builtPages = 0
+        val updatableProvider = object : EmbeddedUpdatableContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+
+            override fun start() {
+                onStateChange?.invoke(EmbeddedBlockState.Ready)
+            }
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) {
+                snapshotFrequency = frequency
+                snapshotTags = tags
+            }
+
+            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            providerFactory = { _, _ -> updatableProvider.also { builtPages++ } },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        val changed = content.copy(
+            frequency = cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency(
+                cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency.Delay.OneTimePerSession
+            ),
+            tags = mapOf("a" to "b"),
+        )
+        blocksRegistry.pushContent("main-screen-top", changed)
+
+        assertEquals(1, builtPages)
+        assertEquals(changed.frequency, snapshotFrequency)
+        assertEquals(mapOf("a" to "b"), snapshotTags)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
     fun `same winner with new params updates the content in place`() {
         var updatedParams: Map<String, String>? = null
         val updatableProvider = object : EmbeddedUpdatableContentProvider {
@@ -344,6 +657,8 @@ class EmbeddedBlockContentControllerTest {
             override fun pause() = Unit
 
             override fun release() = Unit
+
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
@@ -360,11 +675,11 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.pushContent("main-screen-top", content)
 
         val refreshedLayer = (content.layers.single() as Layer.WebViewLayer)
-            .copy(params = mapOf("stories" to "[]"))
+            .copy(params = mapOf("items" to "[]"))
         blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(refreshedLayer)))
 
         // The webview stays; only the new params travel over the bridge.
-        assertEquals(mapOf("stories" to "[]"), updatedParams)
+        assertEquals(mapOf("items" to "[]"), updatedParams)
     }
 
     @Test
@@ -399,6 +714,8 @@ class EmbeddedBlockContentControllerTest {
 
             override fun release() = Unit
 
+            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
+
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
                 onResult(true)
@@ -416,7 +733,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.pushContent("main-screen-top", content)
 
         val movedLayer = (content.layers.single() as Layer.WebViewLayer)
-            .copy(contentUrl = "https://static.example/another-page.html", params = mapOf("stories" to "[]"))
+            .copy(contentUrl = "https://static.example/another-page.html", params = mapOf("items" to "[]"))
         blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(movedLayer)))
 
         assertEquals(2, updatables.size)
@@ -458,7 +775,7 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `a block that drew nothing asks for its content again on return`() {
-        // The page answered `contentRendered {count: 0}` — every story was filtered out, expired
+        // The page answered `contentRendered {count: 0}` — every element was filtered out, expired
         // or not targeted at this customer. None of those reasons outlives the screen, so the
         // remembered "empty" must not either: iOS rebuilds here, and so do we.
         val controller = controller()
