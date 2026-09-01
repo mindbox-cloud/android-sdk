@@ -249,6 +249,26 @@ public class MindboxEmbeddedBlockView internal constructor(
         super.onLayout(changed, left, top, right, bottom)
     }
 
+    override fun setPadding(
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int
+    ) {
+        super.setPadding(left, top, right, bottom)
+        shownContent?.let(::placeContentInFrame)
+    }
+
+    override fun setPaddingRelative(
+        start: Int,
+        top: Int,
+        end: Int,
+        bottom: Int
+    ) {
+        super.setPaddingRelative(start, top, end, bottom)
+        shownContent?.let(::placeContentInFrame)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         shownContent?.let(::placeContentInFrame)

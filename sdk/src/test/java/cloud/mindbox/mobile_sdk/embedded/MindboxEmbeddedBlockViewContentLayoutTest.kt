@@ -221,13 +221,33 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         idle()
         assertEquals(0, content.width)
 
-        // Back in the window with the frame it had — and no pass from the host.
+        // The block has its frame back while the content is still unmeasured inside it — the state
+        // a reactivated node comes back in. Restoring the frame is a layout of its own, so the
+        // content is put back to nothing after it: what has to heal this is the reattachment.
         view.layout(0, 0, FRAME_WIDTH, FRAME_HEIGHT)
+        content.layout(0, 0, 0, 0)
         host.addView(view, FRAME_WIDTH, FRAME_HEIGHT)
         idle()
 
         assertEquals(FRAME_WIDTH, content.width)
         assertEquals(FRAME_HEIGHT, content.height)
+    }
+
+    @Test
+    fun `padding given after the content is shown moves it without another host pass`() {
+        val view = buildView()
+        attachAndLayOut(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        val content = lastProvider?.contentView
+
+        view.setPadding(PADDING, PADDING, PADDING, PADDING)
+        idle()
+
+        assertEquals(FRAME_WIDTH - 2 * PADDING, content?.width)
+        assertEquals(FRAME_HEIGHT - 2 * PADDING, content?.height)
+        assertEquals(PADDING, content?.left)
+        assertEquals(PADDING, content?.top)
     }
 
     @Test
