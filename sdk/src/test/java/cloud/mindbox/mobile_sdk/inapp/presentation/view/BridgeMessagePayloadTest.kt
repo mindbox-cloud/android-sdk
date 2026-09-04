@@ -5,6 +5,7 @@ import com.google.gson.JsonParser
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 internal class BridgeMessagePayloadTest {
@@ -107,8 +108,9 @@ internal class BridgeMessagePayloadTest {
     }
 
     @Test
-    fun `an unknown action is acknowledged rather than left unanswered`() {
+    fun `an unknown action is refused, not falsely acknowledged`() {
         var responded: String? = null
+        var refused: Throwable? = null
         val message = gson.fromBridgeMessage(
             """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
         ) as BridgeMessage.Request
@@ -118,10 +120,11 @@ internal class BridgeMessagePayloadTest {
             isUserPresent = true,
             launchSuspending = {},
             respond = { payload -> responded = payload },
-            refuse = { error -> throw error },
+            refuse = { error -> refused = error },
         )
 
-        assertEquals(BridgeMessage.SUCCESS_PAYLOAD, responded)
+        assertNull(responded)
+        assertTrue(refused is IllegalArgumentException)
     }
 
     @Test
