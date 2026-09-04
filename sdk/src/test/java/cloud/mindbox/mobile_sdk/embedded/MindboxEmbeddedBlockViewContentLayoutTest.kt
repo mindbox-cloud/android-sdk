@@ -29,6 +29,8 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
 
         override fun onBlockAppeared(placeSystemName: String) = Unit
 
+        override fun onBlockContentDropped(placeSystemName: String) = Unit
+
         override fun startListening() = Unit
     }
 
