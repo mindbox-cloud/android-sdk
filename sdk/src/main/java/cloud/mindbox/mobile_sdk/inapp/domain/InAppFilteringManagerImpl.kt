@@ -81,7 +81,15 @@ internal class InAppFilteringManagerImpl(
         }
 
     override fun filterOutDirectCallInApps(inApps: List<InApp>): List<InApp> =
-        inApps.filterNot { inApp -> inApp.displayConditions == DisplayConditions.DIRECT_CALL }
+        inApps.filter { inApp ->
+            (inApp.displayConditions != DisplayConditions.DIRECT_CALL).also { keep ->
+                if (!keep) {
+                    mindboxLogI(
+                        "InApp with id = ${inApp.id} is direct-call only, cutting it from the candidates"
+                    )
+                }
+            }
+        }
 
     private fun InApp.embeddedVariants(): List<InAppType.Embedded> =
         form.variants.filterIsInstance<InAppType.Embedded>()
