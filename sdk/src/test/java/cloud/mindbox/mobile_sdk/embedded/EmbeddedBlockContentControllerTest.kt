@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import org.junit.Assert.assertFalse
 import android.os.Looper
 import android.view.View
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
@@ -24,6 +25,12 @@ import java.time.Duration
 class EmbeddedBlockContentControllerTest {
 
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
+        val droppedPlaces = mutableListOf<String>()
+
+        override fun onBlockContentDropped(placeSystemName: String) {
+            droppedPlaces.add(placeSystemName)
+        }
+
         val appearedPlaces = mutableListOf<String>()
         var lastHandle: EmbeddedBlockHandle? = null
 
@@ -859,5 +866,49 @@ class EmbeddedBlockContentControllerTest {
 
         // No assertion beyond survival: the listener crash is logged, never rethrown.
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    // ---- the place's hold in the show budgets: held while content is loading or shown, given back once the content is dropped ----
+
+    @Test
+    fun `a block holds content from the delivery until it shows, and lets go on Failed or Empty`() {
+        val controller = controller()
+        controller.start()
+        assertTrue(controller.isHoldingContent) // Loading: the attempt is on
+
+        blocksRegistry.pushContent("main-screen-top", content)
+        assertTrue(controller.isHoldingContent) // Ready (FakeProvider reports Ready on start)
+        assertEquals(emptyList<String>(), blocksRegistry.droppedPlaces)
+
+        createdProviders.last().onStateChange?.invoke(EmbeddedBlockState.Failed)
+        assertFalse(controller.isHoldingContent)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `nothing to show drops the content for the place, and so does releasing the block`() {
+        val controller = controller()
+        controller.start()
+
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+
+        controller.release()
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `content arriving after the block gave up is dropped and the registry is told`() {
+        val controller = controller(configTimeout = Milliseconds(30_000L))
+        controller.start()
+        idleFor(Duration.ofMillis(30_001L))
+        val droppedByTimeout = blocksRegistry.droppedPlaces.size
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        // The registry reserved for this delivery; the drop must hand the hold back.
+        assertEquals(droppedByTimeout + 1, blocksRegistry.droppedPlaces.size)
+        assertFalse(controller.isHoldingContent)
+        assertEquals(0, createdProviders.size)
     }
 }

@@ -25,13 +25,10 @@ internal interface EmbeddedBlockHandle {
 
     val isActive: Boolean
 
+    val isHoldingContent: Boolean
+
     fun onContentResolved(content: InAppType.Embedded?)
 
-    /**
-     * A winner exists but its `delayTime` has not elapsed: the SDK has answered — the waiting
-     * budget stands down and the delay leaves the show's `timeToDisplay` — while the block
-     * keeps its loading skeleton until the delivery.
-     */
     fun onContentPending() {}
 }
 
@@ -40,6 +37,8 @@ internal interface EmbeddedBlocksRegistry {
     fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable
 
     fun onBlockAppeared(placeSystemName: String)
+
+    fun onBlockContentDropped(placeSystemName: String)
 
     fun startListening()
 }
@@ -134,10 +133,20 @@ internal class EmbeddedBlocksRegistryImpl(
         return handles
     }
 
+    override fun onBlockContentDropped(placeSystemName: String) {
+        val place = placeSystemName.trim()
+        runOnMain {
+            if (liveHandles(place).none { handle -> handle.isHoldingContent }) {
+                inAppInteractor.releasePlaceShow(place)
+            }
+        }
+    }
+
     private fun forgetPlaceIfEmpty(place: String) {
         if (handlesByPlace[place]?.isEmpty() != true) return
         handlesByPlace.remove(place)
         reResolveQueuedPlaces.remove(place)
+        inAppInteractor.releasePlaceShow(place)
     }
 
     private fun onPlaceEvent(place: String, triggerEvent: InAppEventType) {
@@ -267,10 +276,24 @@ internal class EmbeddedBlocksRegistryImpl(
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")
+            inAppInteractor.releasePlaceShow(place)
             return
         }
+        // The hold is taken here, where the content really goes to the blocks — after any delay,
+        // not at the resolve — so the check and the spend are one step against the overlay.
+        val delivered = content?.takeIf { winner ->
+            inAppInteractor.reservePlaceShow(place, winner).also { reserved ->
+                if (!reserved) {
+                    mindboxLogI(
+                        "[EmbeddedBlock] In-app ${winner.inAppId} won place '$place' but the show " +
+                            "budgets are spent, the place stays empty"
+                    )
+                }
+            }
+        }
+        if (delivered == null) inAppInteractor.releasePlaceShow(place)
         handles.forEach { handle ->
-            loggingRunCatching { handle.onContentResolved(content) }
+            loggingRunCatching { handle.onContentResolved(delivered) }
         }
     }
 

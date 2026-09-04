@@ -23,3 +23,8 @@ internal fun interface OnInAppShown {
 internal fun interface OnInAppDismiss {
     fun onDismiss()
 }
+
+/** The candidate handed to the displayer will never be presented: dropped from the queue, refused as a duplicate, or failed to draw. */
+internal fun interface OnInAppNotShown {
+    fun onNotShown()
+}

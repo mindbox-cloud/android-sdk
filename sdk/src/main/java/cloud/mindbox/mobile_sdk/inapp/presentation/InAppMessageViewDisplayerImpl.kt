@@ -105,7 +105,16 @@ internal class InAppMessageViewDisplayerImpl(
                 showInAppMessage(it)
             }
         }
+        discardQueue()
+    }
+
+    private fun discardQueue() {
+        inAppQueue.forEach { queued -> notifyNotShown(queued) }
         inAppQueue.clear()
+    }
+
+    private fun notifyNotShown(wrapper: InAppTypeWrapper<InAppType>) {
+        loggingRunCatching { wrapper.inAppActionCallbacks.onInAppNotShown.onNotShown() }
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -151,6 +160,7 @@ internal class InAppMessageViewDisplayerImpl(
                 mindboxLogI(
                     "In-app with id ${inAppType.inAppId} is not added to showing queue as duplicate"
                 )
+                notifyNotShown(wrapper)
             } else if (inAppQueue.addUnique(wrapper) { it.inAppType.inAppId == wrapper.inAppType.inAppId }) {
                 mindboxLogI(
                     "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later"
@@ -159,6 +169,7 @@ internal class InAppMessageViewDisplayerImpl(
                 mindboxLogW(
                     "In-app with id ${inAppType.inAppId} already exists in showing queue!"
                 )
+                notifyNotShown(wrapper)
             }
         }
     }
@@ -251,6 +262,7 @@ internal class InAppMessageViewDisplayerImpl(
                 mindboxLogW(
                     "Embedded in-app ${wrapper.inAppType.inAppId} must never be shown as an overlay, skipping"
                 )
+                notifyNotShown(wrapper)
                 return
             }
         }
@@ -261,7 +273,7 @@ internal class InAppMessageViewDisplayerImpl(
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying draw inapp",
                 tags = wrapper.tags,
-                onFailure = ::closeInApp
+                onFailure = { closeInApp() }
             ) {
                 currentHolder?.show(createMindboxView(root))
             }
@@ -271,6 +283,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "currentRoot is null",
                 tags = wrapper.tags
             )
+            notifyNotShown(wrapper)
         }
     }
 
@@ -287,6 +300,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "failed to reattach inApp: currentRoot is null",
                 tags = restoredTags
             )
+            closeInApp()
             return true
         }
         inAppFailureTracker.executeWithFailureTracking(
@@ -294,7 +308,7 @@ internal class InAppMessageViewDisplayerImpl(
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "Error when trying reattach InApp",
             tags = restoredTags,
-            onFailure = ::closeInApp,
+            onFailure = { closeInApp() },
         ) {
             restoredHolder.reattach(createMindboxView(root))
         }
@@ -326,11 +340,17 @@ internal class InAppMessageViewDisplayerImpl(
 
     private fun closeInApp() {
         loggingRunCatching {
-            currentHolder?.onClose()
+            currentHolder?.let { holder ->
+                notifyNotShown(holder.wrapper)
+                holder.onClose()
+            }
             currentHolder = null
-            pausedHolder?.onClose()
+            pausedHolder?.let { paused ->
+                notifyNotShown(paused.wrapper)
+                paused.onClose()
+            }
             pausedHolder = null
-            inAppQueue.clear()
+            discardQueue()
             isActionExecuted = false
         }
     }

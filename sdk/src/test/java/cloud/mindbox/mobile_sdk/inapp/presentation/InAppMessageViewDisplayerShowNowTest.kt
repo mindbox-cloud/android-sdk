@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
 import android.app.Activity
 import android.app.Application
 import android.widget.FrameLayout
@@ -46,6 +47,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
         override val onInAppClick = OnInAppClick {}
         override val onInAppShown = OnInAppShown {}
         override val onInAppDismiss = OnInAppDismiss {}
+        override val onInAppNotShown = OnInAppNotShown {}
     }
 
     @Before
@@ -73,6 +75,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
                     override val onInAppClick = OnInAppClick {}
                     override val onInAppShown = OnInAppShown {}
                     override val onInAppDismiss = dismiss
+                    override val onInAppNotShown = OnInAppNotShown {}
                 },
                 onRenderStart = {},
             )

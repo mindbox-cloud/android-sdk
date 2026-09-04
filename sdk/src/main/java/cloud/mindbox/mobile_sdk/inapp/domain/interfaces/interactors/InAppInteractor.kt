@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
@@ -97,6 +98,14 @@ internal interface InAppInteractor {
     /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
     fun markEmbeddedDelayWaitedOut(placeSystemName: String, inAppId: String)
 
+    fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean
+
+    fun releasePlaceShow(placeSystemName: String)
+
+    fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
+
+    fun releaseOverlayShow(inAppId: String)
+
     fun sendInAppClicked(inAppId: String, tags: Map<String, String>?)
 
     suspend fun fetchMobileConfig()
@@ -106,10 +115,6 @@ internal interface InAppInteractor {
     fun isTimeDelayInapp(inAppId: String): Boolean
 
     fun saveInAppDismissTime(inApp: InApp)
-
-    fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean
-
-    fun areShowLimitsAllowed(inApp: InApp): Boolean
 }
 
 internal data class InAppToShow(

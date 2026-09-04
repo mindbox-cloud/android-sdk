@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.checkers
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -38,7 +39,7 @@ class MinIntervalBetweenShowsLimitCheckerTest {
             minIntervalBetweenShows = null
         )
 
-        val result = minIntervalBetweenShowsLimitChecker.check()
+        val result = minIntervalBetweenShowsLimitChecker.check(emptyList())
 
         assertTrue(result)
     }
@@ -53,9 +54,9 @@ class MinIntervalBetweenShowsLimitCheckerTest {
             minIntervalBetweenShows = interval
         )
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
-        every { timeProvider.currentTimeMillis() } returns currentTime
+        every { timeProvider.currentTimestamp() } returns Timestamp(currentTime)
 
-        val result = minIntervalBetweenShowsLimitChecker.check()
+        val result = minIntervalBetweenShowsLimitChecker.check(emptyList())
 
         assertFalse(result)
     }
@@ -70,9 +71,9 @@ class MinIntervalBetweenShowsLimitCheckerTest {
             minIntervalBetweenShows = interval
         )
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
-        every { timeProvider.currentTimeMillis() } returns currentTime
+        every { timeProvider.currentTimestamp() } returns Timestamp(currentTime)
 
-        val result = minIntervalBetweenShowsLimitChecker.check()
+        val result = minIntervalBetweenShowsLimitChecker.check(emptyList())
 
         assertFalse(result)
     }
@@ -87,10 +88,39 @@ class MinIntervalBetweenShowsLimitCheckerTest {
             minIntervalBetweenShows = interval
         )
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(lastShowTime)
-        every { timeProvider.currentTimeMillis() } returns currentTime
+        every { timeProvider.currentTimestamp() } returns Timestamp(currentTime)
 
-        val result = minIntervalBetweenShowsLimitChecker.check()
+        val result = minIntervalBetweenShowsLimitChecker.check(emptyList())
 
         assertTrue(result)
+    }
+
+    @Test
+    fun `check counts the newest reservation as the last show`() {
+        val interval = Milliseconds(2000L)
+        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+            minIntervalBetweenShows = interval
+        )
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+        every { timeProvider.currentTimestamp() } returns Timestamp(10_000L)
+
+        val fresh = listOf(ShowReservation("place|main", "inapp1", Timestamp(9_000L)))
+        val stale = listOf(ShowReservation("place|main", "inapp1", Timestamp(7_000L)))
+
+        assertFalse(minIntervalBetweenShowsLimitChecker.check(fresh))
+        assertTrue(minIntervalBetweenShowsLimitChecker.check(stale))
+    }
+
+    @Test
+    fun `check keeps the dismiss time when it is newer than every reservation`() {
+        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+            minIntervalBetweenShows = Milliseconds(2000L)
+        )
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(9_000L)
+        every { timeProvider.currentTimestamp() } returns Timestamp(10_000L)
+
+        val old = listOf(ShowReservation("place|main", "inapp1", Timestamp(1_000L)))
+
+        assertFalse(minIntervalBetweenShowsLimitChecker.check(old))
     }
 }

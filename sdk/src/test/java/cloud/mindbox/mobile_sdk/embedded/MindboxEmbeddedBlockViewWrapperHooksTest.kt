@@ -19,6 +19,8 @@ import java.io.Closeable
 class MindboxEmbeddedBlockViewWrapperHooksTest {
 
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
+        override fun onBlockContentDropped(placeSystemName: String) {}
+
         var lastHandle: EmbeddedBlockHandle? = null
 
         override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {

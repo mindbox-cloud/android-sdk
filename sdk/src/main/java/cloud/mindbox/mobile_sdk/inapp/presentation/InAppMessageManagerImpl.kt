@@ -14,6 +14,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -88,19 +90,20 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                if (!inAppInteractor.areShowAndFrequencyLimitsAllowed(inApp)) {
-                    mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
-                    return@withContext
-                }
-
                 val inAppMessage = inApp.firstOverlayVariant()
                 if (inAppMessage == null) {
                     mindboxLogI("InApp ${inApp.id} has no variant an overlay can show. Skipping.")
                     return@withContext
                 }
 
+                val hold = inAppInteractor.reserveOverlayShow(inApp)
+                if (hold == ShowReservationOutcome.REFUSED) {
+                    mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
+                    return@withContext
+                }
+
                 val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs)
+                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs, holdsBudget = hold == ShowReservationOutcome.GRANTED)
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
@@ -141,12 +144,15 @@ internal class InAppMessageManagerImpl(
      */
     private inner class ShowCallbacks(
         inApp: InApp,
-        variant: InAppType,
+        private val variant: InAppType,
         tags: Map<String, String>?,
         preparedTime: Milliseconds,
+        private val holdsBudget: Boolean = false,
     ) : InAppActionCallbacks {
 
         private var renderStartTime = Timestamp(0L)
+
+        @Volatile private var isShown = false
 
         val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
 
@@ -154,10 +160,17 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.sendInAppClicked(variant.inAppId, tags)
         }
         override val onInAppShown = OnInAppShown {
+            isShown = true
             handleInAppShown(renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
+            giveBackHoldIfNotShown()
             inAppInteractor.saveInAppDismissTime(inApp)
+        }
+        override val onInAppNotShown = OnInAppNotShown { giveBackHoldIfNotShown() }
+
+        private fun giveBackHoldIfNotShown() {
+            if (holdsBudget && !isShown) inAppInteractor.releaseOverlayShow(variant.inAppId)
         }
     }
 

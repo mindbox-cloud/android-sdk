@@ -177,6 +177,7 @@ internal class EmbeddedBlockContentController(
         registration?.let { loggingRunCatching { it.close() } }
         registration = null
         dropProvider()
+        notifyContentDropped()
     }
 
     override fun onContentResolved(content: InAppType.Embedded?) {
@@ -186,6 +187,7 @@ internal class EmbeddedBlockContentController(
                 "[EmbeddedBlock] Content for '$placeSystemName' arrived after the block gave up " +
                     "waiting, dropping it; the next appearance on screen asks afresh"
             )
+            notifyContentDropped()
             return
         }
         configBudget.reset()
@@ -311,6 +313,9 @@ internal class EmbeddedBlockContentController(
         }
     }
 
+    override val isHoldingContent: Boolean
+        get() = lastReportedState is EmbeddedBlockState.Loading || lastReportedState == EmbeddedBlockState.Ready
+
     private fun report(state: EmbeddedBlockState) {
         if (state !is EmbeddedBlockState.Loading) {
             readyBudget.reset()
@@ -319,6 +324,12 @@ internal class EmbeddedBlockContentController(
         if (state == lastReportedState) return
         lastReportedState = state
         onStateChange?.let { listener -> loggingRunCatching { listener(state) } }
+        if (state == EmbeddedBlockState.Failed || state == EmbeddedBlockState.Empty) notifyContentDropped()
+    }
+
+    private fun notifyContentDropped() {
+        val place = placeSystemName ?: return
+        loggingRunCatching { blocksRegistry()?.onBlockContentDropped(place) }
     }
 
     private fun ensureRegistered(): Boolean {

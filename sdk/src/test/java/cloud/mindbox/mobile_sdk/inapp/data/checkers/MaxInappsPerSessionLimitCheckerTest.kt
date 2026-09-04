@@ -2,6 +2,8 @@ package cloud.mindbox.mobile_sdk.inapp.data.checkers
 
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
@@ -28,7 +30,7 @@ class MaxInappsPerSessionLimitCheckerTest {
         )
         every { sessionStorageManager.inAppMessageShownInSession } returns shownInapps
 
-        val result = maxInappsPerSessionLimitChecker.check()
+        val result = maxInappsPerSessionLimitChecker.check(emptyList())
 
         assertTrue(result)
     }
@@ -43,7 +45,7 @@ class MaxInappsPerSessionLimitCheckerTest {
         )
         every { sessionStorageManager.inAppMessageShownInSession } returns shownInapps
 
-        val result = maxInappsPerSessionLimitChecker.check()
+        val result = maxInappsPerSessionLimitChecker.check(emptyList())
 
         assertTrue(result)
     }
@@ -58,7 +60,7 @@ class MaxInappsPerSessionLimitCheckerTest {
         )
         every { sessionStorageManager.inAppMessageShownInSession } returns shownInapps
 
-        val result = maxInappsPerSessionLimitChecker.check()
+        val result = maxInappsPerSessionLimitChecker.check(emptyList())
 
         assertFalse(result)
     }
@@ -73,8 +75,20 @@ class MaxInappsPerSessionLimitCheckerTest {
         )
         every { sessionStorageManager.inAppMessageShownInSession } returns shownInapps
 
-        val result = maxInappsPerSessionLimitChecker.check()
+        val result = maxInappsPerSessionLimitChecker.check(emptyList())
 
         assertFalse(result)
+    }
+
+    @Test
+    fun `check counts held reservations against the session limit`() {
+        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+            maxInappsPerSession = 2
+        )
+        every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf("inapp1")
+        val held = listOf(ShowReservation("place|main", "inapp2", Timestamp(1L)))
+
+        assertFalse(maxInappsPerSessionLimitChecker.check(held))
+        assertTrue(maxInappsPerSessionLimitChecker.check(emptyList()))
     }
 }

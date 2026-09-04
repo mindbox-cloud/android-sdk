@@ -36,6 +36,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val reportedShowFailures: MutableSet<String> = newConcurrentSet()
 
+    val showReservations: MutableMap<String, ShowReservation> = ConcurrentHashMap()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -106,6 +107,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         requestedInAppTargetingReportedInSession.clear()
         waitBudgetReportedPlaces.clear()
         reportedShowFailures.clear()
+        showReservations.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

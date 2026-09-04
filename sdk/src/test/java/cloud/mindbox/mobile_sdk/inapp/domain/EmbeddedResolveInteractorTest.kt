@@ -1,10 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -67,13 +71,7 @@ class EmbeddedResolveInteractorTest {
     private lateinit var inAppABTestLogic: InAppABTestLogic
 
     @MockK
-    private lateinit var maxInappsPerSessionLimitChecker: Checker
-
-    @MockK
-    private lateinit var maxInappsPerDayLimitChecker: Checker
-
-    @MockK
-    private lateinit var minIntervalBetweenShowsLimitChecker: Checker
+    private lateinit var showBudgetManager: ShowBudgetManager
 
     @RelaxedMockK
     private lateinit var timeProvider: TimeProvider
@@ -103,9 +101,7 @@ class EmbeddedResolveInteractorTest {
             inAppProcessingManager = inAppProcessingManager,
             inAppABTestLogic = inAppABTestLogic,
             inAppFrequencyManager = frequencyManager,
-            maxInappsPerSessionLimitChecker = maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker = maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker = minIntervalBetweenShowsLimitChecker,
+            showBudgetManager = showBudgetManager,
             timeProvider = timeProvider,
             sessionStorageManager = sessionStorageManager,
             inAppFailureTracker = inAppFailureTracker,
@@ -120,9 +116,11 @@ class EmbeddedResolveInteractorTest {
         every { sessionStorageManager.embeddedLastTargetedByPlace } returns ConcurrentHashMap()
         every { sessionStorageManager.embeddedDelaysWaitedOut } returns ConcurrentHashMap.newKeySet()
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
-        every { maxInappsPerSessionLimitChecker.check() } returns true
-        every { maxInappsPerDayLimitChecker.check() } returns true
-        every { minIntervalBetweenShowsLimitChecker.check() } returns true
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns true
+        every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
+        every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
+        every { showBudgetManager.release(any()) } just runs
+        every { showBudgetManager.recordCooldown(any(), any()) } just runs
         coEvery { inAppABTestLogic.getInAppsPool(any()) } answers { firstArg<List<String>>().toSet() }
         coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } answers {
             firstArg<List<InApp>>().firstOrNull()
@@ -271,25 +269,26 @@ class EmbeddedResolveInteractorTest {
 
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
-        verify { maxInappsPerSessionLimitChecker.check() }
-        verify { maxInappsPerDayLimitChecker.check() }
-        verify { minIntervalBetweenShowsLimitChecker.check() }
+        verify(exactly = 1) { showBudgetManager.isWithinBudgets(any(), false, ShowBudgetOwner.place(place)) }
     }
 
     @Test
     fun `selectInAppForPlace returns nothing when a show limit blocks the winner`() = runTest {
         givenConfig(embeddedInApp())
-        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
     }
 
     @Test
     fun `selectInAppForPlace ignores the show limits for a priority in-app`() = runTest {
+        // The bypass lives in the manager; the interactor's part is to hand the priority flag over.
         givenConfig(embeddedInApp(isPriority = true))
-        every { maxInappsPerDayLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), false, any()) } returns false
+        every { showBudgetManager.isWithinBudgets(any(), true, any()) } returns true
 
         assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+        verify { showBudgetManager.isWithinBudgets(any(), true, any()) }
     }
 
     @Test
@@ -299,11 +298,11 @@ class EmbeddedResolveInteractorTest {
         givenConfig(
             embeddedInApp().copy(frequency = Frequency(Frequency.Delay.Unlimited))
         )
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-        every { minIntervalBetweenShowsLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
+        every { showBudgetManager.isWithinBudgets(match { it.delay is Frequency.Delay.Unlimited }, any(), any()) } returns true
 
         assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
+        verify { showBudgetManager.isWithinBudgets(match { it.delay is Frequency.Delay.Unlimited }, false, any()) }
     }
 
     @Test
@@ -376,12 +375,12 @@ class EmbeddedResolveInteractorTest {
         // Parity with the overlay: the offer is reported before the budgets decide whether it
         // may actually appear — and the blocked pass consumes the winner's offer slot.
         givenConfig(embeddedInApp())
-        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
 
-        every { maxInappsPerSessionLimitChecker.check() } returns true
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns true
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
@@ -463,7 +462,7 @@ class EmbeddedResolveInteractorTest {
         // Parity with the overlay pass: a winner — even one the limits then hold back — answers
         // "why nothing was shown", so the buffer of the pass is discarded, not sent.
         givenConfig(embeddedInApp())
-        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
@@ -544,9 +543,7 @@ class EmbeddedResolveInteractorTest {
 
         interactor.getInAppToShowById("known")
 
-        verify { maxInappsPerSessionLimitChecker wasNot Called }
-        verify { maxInappsPerDayLimitChecker wasNot Called }
-        verify { minIntervalBetweenShowsLimitChecker wasNot Called }
+        verify { showBudgetManager wasNot Called }
     }
 
     @Test
@@ -690,7 +687,7 @@ class EmbeddedResolveInteractorTest {
     fun `filterShowableInAppIds does not check the show limits`() = runTest {
         // The limits belong to the overlay show; the dictionary shows nothing itself.
         givenConfig(modalInApp(id = "inapp-1"))
-        every { maxInappsPerSessionLimitChecker.check() } returns false
+        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
     }
@@ -781,9 +778,19 @@ class EmbeddedResolveInteractorTest {
         interactor.saveShownInApp("modal-1", now.ms, "0:0:1", null)
 
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
-        verify { inAppRepository.setInAppShown("modal-1") }
-        verify { inAppRepository.saveShownInApp("modal-1", now.ms) }
-        verify { inAppRepository.saveInAppStateChangeTime(now) }
+        // The counters and the cooldown are the manager's: one commit under its lock, keyed by the overlay's hold.
+        verify { showBudgetManager.commit(ShowBudgetOwner.overlay("modal-1"), "modal-1", modalInApp(id = "modal-1").frequency, now) }
+    }
+
+    @Test
+    fun `saveShownInApp gives the hold back when the in-app left the session config`() {
+        every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
+
+        interactor.saveShownInApp("gone", now.ms, "0:0:1", null)
+
+        verify { inAppRepository.sendInAppShown("gone", "0:0:1", null) }
+        verify { showBudgetManager.release(ShowBudgetOwner.overlay("gone")) }
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
     }
 
     @Test
@@ -795,10 +802,9 @@ class EmbeddedResolveInteractorTest {
         interactor.saveShownInApp("modal-1", now.ms, "0:0:1", null)
 
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
-        verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
-        verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
-        // Unlimited is outside the show accounting in both directions: the cooldown stays put too.
-        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
+        // Unlimited is outside the show accounting in both directions — the manager sees the
+        // frequency and writes nothing; the interactor still closes the hold.
+        verify { showBudgetManager.commit(ShowBudgetOwner.overlay("modal-1"), "modal-1", Frequency(Frequency.Delay.Unlimited), now) }
     }
 
     @Test
@@ -807,7 +813,7 @@ class EmbeddedResolveInteractorTest {
 
         interactor.saveInAppDismissTime(modalInApp(id = "modal-1"))
 
-        verify { inAppRepository.saveInAppStateChangeTime(now) }
+        verify { showBudgetManager.recordCooldown(modalInApp(id = "modal-1").frequency, now) }
     }
 
     @Test
@@ -818,7 +824,7 @@ class EmbeddedResolveInteractorTest {
             modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
         )
 
-        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
+        verify(exactly = 0) { showBudgetManager.recordCooldown(any(), any()) }
     }
 
     @Test
@@ -826,10 +832,8 @@ class EmbeddedResolveInteractorTest {
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"))
 
         verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
-        verify { inAppRepository.setInAppShown("embedded-id") }
-        verify { inAppRepository.saveShownInApp("embedded-id", now.ms) }
-        // Parity in both directions: a counted block show also moves the shared cooldown.
-        verify { inAppRepository.saveInAppStateChangeTime(now) }
+        // The place's hold turns into the show: counters and cooldown move in the manager's one commit.
+        verify { showBudgetManager.commit(ShowBudgetOwner.place(place), "embedded-id", InAppStub.getInApp().frequency, now) }
     }
 
     @Test
@@ -840,7 +844,9 @@ class EmbeddedResolveInteractorTest {
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
 
         verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
-        verify(exactly = 1) { inAppRepository.setInAppShown(any()) }
+        verify(exactly = 1) { showBudgetManager.commit(any(), any(), any(), any()) }
+        // The silent repeat touches no hold: a hold under this place could only be a newer winner's.
+        verify(exactly = 0) { showBudgetManager.release(any()) }
 
         interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
@@ -854,9 +860,8 @@ class EmbeddedResolveInteractorTest {
         interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null)
 
         verify { inAppRepository.sendInAppShown(any(), any(), any()) }
-        verify(exactly = 0) { inAppRepository.setInAppShown(any()) }
-        verify(exactly = 0) { inAppRepository.saveShownInApp(any(), any()) }
-        verify(exactly = 0) { inAppRepository.saveInAppStateChangeTime(any()) }
+        // Unlimited writes no counters — the manager decides that from the frequency it is handed.
+        verify { showBudgetManager.commit(ShowBudgetOwner.place(place), "embedded-id", Frequency(Frequency.Delay.Unlimited), now) }
     }
 
     @Test
@@ -939,5 +944,46 @@ class EmbeddedResolveInteractorTest {
         val result = interactor.filterShowableInAppIds("host-form", listOf("mixed-id"))
 
         assertEquals(listOf("mixed-id"), result)
+    }
+
+    @Test
+    fun `reservePlaceShow skips the budget for content the place already shows`() {
+        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+
+        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `reservePlaceShow takes the place's hold and only a refusal empties the place`() {
+        val content = InAppStub.getEmbedded().copy(inAppId = "embedded-id", isPriority = true)
+        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
+
+        assertTrue(interactor.reservePlaceShow(" $place ", content))
+
+        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
+        assertFalse(interactor.reservePlaceShow(place, content))
+    }
+
+    @Test
+    fun `reserveOverlayShow refuses on frequency before the budget is even asked`() {
+        val onceASession = modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+
+        assertEquals(ShowReservationOutcome.REFUSED, interactor.reserveOverlayShow(onceASession))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `reserveOverlayShow hands the manager's verdict through under the overlay owner`() {
+        val inApp = modalInApp(id = "modal-1")
+        every { showBudgetManager.reserve(ShowBudgetOwner.overlay("modal-1"), "modal-1", inApp.frequency, inApp.isPriority) } returns ShowReservationOutcome.GRANTED
+
+        assertEquals(ShowReservationOutcome.GRANTED, interactor.reserveOverlayShow(inApp))
+
+        interactor.releaseOverlayShow("modal-1")
+        verify { showBudgetManager.release(ShowBudgetOwner.overlay("modal-1")) }
     }
 }

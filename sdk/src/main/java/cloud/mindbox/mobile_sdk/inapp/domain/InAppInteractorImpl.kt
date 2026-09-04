@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
@@ -13,6 +12,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManag
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.isAllowedByFrequency
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
@@ -27,13 +29,11 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import cloud.mindbox.mobile_sdk.utils.allAllow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 
@@ -45,9 +45,7 @@ internal class InAppInteractorImpl(
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
     private val inAppFrequencyManager: InAppFrequencyManager,
-    private val maxInappsPerSessionLimitChecker: Checker,
-    private val maxInappsPerDayLimitChecker: Checker,
-    private val minIntervalBetweenShowsLimitChecker: Checker,
+    private val showBudgetManager: ShowBudgetManager,
     private val timeProvider: TimeProvider,
     private val sessionStorageManager: SessionStorageManager,
     private val inAppFailureTracker: InAppFailureTracker,
@@ -148,7 +146,7 @@ internal class InAppInteractorImpl(
             return null
         }
         inAppFailureTracker.clearFailures()
-        if (!areShowLimitsAllowed(winner)) {
+        if (!isPlaceWinnerWithinBudgets(requestedPlace, winner)) {
             logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
             return null
         }
@@ -298,17 +296,32 @@ internal class InAppInteractorImpl(
             }
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
-    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean =
-        inAppFrequencyManager.isAllowedByFrequency(inApp) && areShowLimitsAllowed(inApp)
+    private fun isPlaceWinnerWithinBudgets(place: String, winner: InApp): Boolean =
+        sessionStorageManager.embeddedLastShownByPlace[place] == winner.id ||
+            showBudgetManager.isWithinBudgets(winner.frequency, winner.isPriority, ShowBudgetOwner.place(place))
 
-    override fun areShowLimitsAllowed(inApp: InApp): Boolean =
-        inApp.isPriority ||
-            inApp.frequency.delay is Frequency.Delay.Unlimited ||
-            allAllow(
-                maxInappsPerSessionLimitChecker,
-                maxInappsPerDayLimitChecker,
-                minIntervalBetweenShowsLimitChecker
-            )
+    override fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean {
+        val place = placeSystemName.trim()
+        if (sessionStorageManager.embeddedLastShownByPlace[place] == content.inAppId) {
+            logI("Place '$place' already shows in-app ${content.inAppId}, no new show to reserve")
+            return true
+        }
+        return showBudgetManager.reserve(ShowBudgetOwner.place(place), content.inAppId, content.frequency, content.isPriority) !=
+            ShowReservationOutcome.REFUSED
+    }
+
+    override fun releasePlaceShow(placeSystemName: String) {
+        showBudgetManager.release(ShowBudgetOwner.place(placeSystemName.trim()))
+    }
+
+    override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
+        if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) return ShowReservationOutcome.REFUSED
+        return showBudgetManager.reserve(ShowBudgetOwner.overlay(inApp.id), inApp.id, inApp.frequency, inApp.isPriority)
+    }
+
+    override fun releaseOverlayShow(inAppId: String) {
+        showBudgetManager.release(ShowBudgetOwner.overlay(inAppId))
+    }
 
     private suspend fun findInAppById(inAppId: String): InApp? =
         mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
@@ -326,14 +339,7 @@ internal class InAppInteractorImpl(
             logI("Place '$place': the block re-drew in-app $inAppId it already showed, nothing to report")
             return
         }
-        if (frequency.countsShows()) {
-            logI("Counting a show of in-app $inAppId (frequency ${frequency.delay})")
-            inAppRepository.setInAppShown(inAppId)
-            inAppRepository.saveShownInApp(inAppId, timeProvider.currentTimestamp().ms)
-            inAppRepository.saveInAppStateChangeTime(timeProvider.currentTimestamp())
-        } else {
-            logI("In-app $inAppId has unlimited frequency, nothing to count")
-        }
+        showBudgetManager.commit(ShowBudgetOwner.place(place), inAppId, frequency, timeProvider.currentTimestamp())
         logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }
@@ -348,22 +354,10 @@ internal class InAppInteractorImpl(
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == id }
             ?: run {
                 logI("No in-app with id $id in the current session to count a show for")
+                showBudgetManager.release(ShowBudgetOwner.overlay(id))
                 return
             }
-        recordShowCounters(inApp, timeStamp.toTimestamp())
-        if (inApp.countsShows()) {
-            inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
-        }
-    }
-
-    private fun recordShowCounters(inApp: InApp, shownAt: Timestamp) {
-        if (!inApp.countsShows()) {
-            logI("In-app ${inApp.id} has unlimited frequency, nothing to count")
-            return
-        }
-        logI("Counting a show of in-app ${inApp.id} (frequency ${inApp.frequency.delay})")
-        inAppRepository.setInAppShown(inApp.id)
-        inAppRepository.saveShownInApp(inApp.id, shownAt.ms)
+        showBudgetManager.commit(ShowBudgetOwner.overlay(id), id, inApp.frequency, timeStamp.toTimestamp())
     }
 
     override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
@@ -408,6 +402,6 @@ internal class InAppInteractorImpl(
             logI("In-app ${inApp.id} is unlimited, the dismiss does not move the cooldown")
             return
         }
-        inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
+        showBudgetManager.recordCooldown(inApp.frequency, timeStamp)
     }
 }
