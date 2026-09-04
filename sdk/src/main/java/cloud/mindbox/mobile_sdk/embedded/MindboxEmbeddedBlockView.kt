@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -102,6 +103,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var errorView: View? = null
     private val defaultPlaceholder by lazy { EmbeddedBlockDefaultViews.placeholder(context) }
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val contentFrame = Rect()
 
     private enum class BlockEvent { LOADED, FAILED }
 
@@ -235,8 +238,40 @@ public class MindboxEmbeddedBlockView internal constructor(
     private val hasCustomErrorView: Boolean
         get() = errorView != null
 
+    override fun onLayout(
+        changed: Boolean,
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int
+    ) {
+        withContentFrame(right - left, bottom - top) { frame -> shownContent?.measureTo(frame) }
+        super.onLayout(changed, left, top, right, bottom)
+    }
+
+    override fun setPadding(
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int
+    ) {
+        super.setPadding(left, top, right, bottom)
+        shownContent?.let(::placeContentInFrame)
+    }
+
+    override fun setPaddingRelative(
+        start: Int,
+        top: Int,
+        end: Int,
+        bottom: Int
+    ) {
+        super.setPaddingRelative(start, top, end, bottom)
+        shownContent?.let(::placeContentInFrame)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        shownContent?.let(::placeContentInFrame)
         observeHostDestruction()
         isWindowVisible = windowVisibility == VISIBLE
         updateContentActivity()
@@ -415,6 +450,38 @@ public class MindboxEmbeddedBlockView internal constructor(
         shownContent = content
         (content.parent as? ViewGroup)?.removeView(content)
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        placeContentInFrame(content)
+    }
+
+    private fun placeContentInFrame(content: View) {
+        withContentFrame(width, height) { frame -> content.placeIn(frame) }
+    }
+
+    private inline fun withContentFrame(blockWidth: Int, blockHeight: Int, action: (Rect) -> Unit) {
+        contentFrame.set(
+            paddingLeft,
+            paddingTop,
+            blockWidth - paddingRight,
+            blockHeight - paddingBottom,
+        )
+        if (contentFrame.isEmpty) return
+        action(contentFrame)
+    }
+
+    private fun View.placeIn(frame: Rect) {
+        if (left == frame.left && top == frame.top && right == frame.right && bottom == frame.bottom) {
+            return
+        }
+        measureTo(frame)
+        layout(frame.left, frame.top, frame.right, frame.bottom)
+    }
+
+    private fun View.measureTo(frame: Rect) {
+        if (measuredWidth == frame.width() && measuredHeight == frame.height()) return
+        measure(
+            MeasureSpec.makeMeasureSpec(frame.width(), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(frame.height(), MeasureSpec.EXACTLY),
+        )
     }
 
     private fun clearContent() {
