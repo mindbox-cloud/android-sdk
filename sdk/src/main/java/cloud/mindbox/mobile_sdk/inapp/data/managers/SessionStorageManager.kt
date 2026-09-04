@@ -37,6 +37,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     val reportedShowFailures: MutableSet<String> = newConcurrentSet()
 
     val showReservations: MutableMap<String, ShowReservation> = ConcurrentHashMap()
+
+    val showBudgetLock = Any()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -95,7 +97,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     fun isSessionExpiredOnLastCheck() = wasSessionExpiredOnLastCheck
 
-    fun clearSessionData() {
+    fun clearSessionData() = synchronized(showBudgetLock) {
         inAppCustomerSegmentations = null
         unShownOperationalInApps.clear()
         operationalInApps.clear()

@@ -242,6 +242,35 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
+    fun `a session reset waits for a reserve in flight and leaves no hold behind`() {
+        // The reset used to wipe the holds outside the manager's lock: a reserve that had already
+        // passed its check would then put its hold into the fresh session.
+        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
+        val entered = CountDownLatch(1)
+        val proceed = CountDownLatch(1)
+        every { inAppRepository.getShownInApps() } answers {
+            entered.countDown()
+            proceed.await(5, TimeUnit.SECONDS)
+            emptyMap()
+        }
+        val workers = Executors.newFixedThreadPool(2)
+        val reserve = workers.submit<ShowReservationOutcome> {
+            manager.reserve(place, "block", counting, isPriority = false)
+        }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        val reset = workers.submit { sessionStorageManager.clearSessionData() }
+        Thread.sleep(150)
+        assertFalse(reset.isDone)
+
+        proceed.countDown()
+
+        assertEquals(ShowReservationOutcome.GRANTED, reserve.get(5, TimeUnit.SECONDS))
+        reset.get(5, TimeUnit.SECONDS)
+        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        workers.shutdown()
+    }
+
+    @Test
     fun `commit leaves no window in which the budget reads as free`() {
         // The repository really writes the session counter here, and blocks right after the
         // reservation was removed — a concurrent reserve must still see the budget taken.

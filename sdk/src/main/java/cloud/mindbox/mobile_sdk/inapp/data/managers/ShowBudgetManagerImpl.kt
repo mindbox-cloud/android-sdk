@@ -21,7 +21,7 @@ internal class ShowBudgetManagerImpl(
     private val minIntervalBetweenShowsLimitChecker: Checker,
 ) : ShowBudgetManager {
 
-    private val lock = Any()
+    private val lock: Any get() = sessionStorageManager.showBudgetLock
 
     override fun isWithinBudgets(frequency: Frequency, isPriority: Boolean, owner: String?): Boolean {
         if (bypassesBudgets(frequency, isPriority)) return true
