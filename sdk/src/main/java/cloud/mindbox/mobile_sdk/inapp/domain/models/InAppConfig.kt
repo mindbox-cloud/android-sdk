@@ -110,6 +110,7 @@ internal sealed class InAppType(open val inAppId: String) {
         val layers: List<Layer>,
         val frequency: Frequency,
         val tags: Map<String, String>?,
+        val isPriority: Boolean,
     ) : InAppType(inAppId)
 }
 
