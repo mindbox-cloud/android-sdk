@@ -958,12 +958,30 @@ class EmbeddedResolveInteractorTest {
     @Test
     fun `reservePlaceShow takes the place's hold and only a refusal empties the place`() {
         val content = InAppStub.getEmbedded().copy(inAppId = "embedded-id", isPriority = true)
+        every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
         every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
         assertTrue(interactor.reservePlaceShow(" $place ", content))
 
         every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
         assertFalse(interactor.reservePlaceShow(place, content))
+    }
+
+    @Test
+    fun `reservePlaceShow re-checks the frequency at delivery, so a second place does not show a once-a-session in-app again`() {
+        // Picked for two places before the first show; the first place showed and counted it,
+        // the second place reaches its delivery later — its hold must be refused on frequency.
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+
+        assertFalse(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
+        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
+        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
     }
 
     @Test

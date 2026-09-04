@@ -306,6 +306,11 @@ internal class InAppInteractorImpl(
             logI("Place '$place' already shows in-app ${content.inAppId}, no new show to reserve")
             return true
         }
+        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == content.inAppId }
+        if (inApp != null && !inAppFrequencyManager.isAllowedByFrequency(inApp)) {
+            logI("Place '$place': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place stays empty")
+            return false
+        }
         return showBudgetManager.reserve(ShowBudgetOwner.place(place), content.inAppId, content.frequency, content.isPriority) !=
             ShowReservationOutcome.REFUSED
     }
