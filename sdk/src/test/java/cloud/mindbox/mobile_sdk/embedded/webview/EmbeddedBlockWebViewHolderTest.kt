@@ -26,11 +26,15 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.JsonObject
+import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppFailure
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.slot
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -444,16 +448,34 @@ class EmbeddedBlockWebViewHolderTest {
         await { states.lastOrNull() == EmbeddedBlockState.Empty }
     }
 
+    private val outcomes = slot<OnShowInAppOutcome>()
+
+    private fun givenShowPathCapturesOutcome() {
+        every { inAppMessageManager.showInAppById(any(), any(), capture(outcomes)) } just runs
+    }
+
+    private fun noShowInAppAnswerYet(): Boolean {
+        shadowOf(Looper.getMainLooper()).idle()
+        Thread.sleep(150)
+        shadowOf(Looper.getMainLooper()).idle()
+        return lastOutgoingMessage()?.get("action")?.asString != "showInApp"
+    }
+
     @Test
-    fun `showInApp from the page is acknowledged and reports nothing`() {
-        // The ack says the request was handed over, never that a window opened: the block's own
-        // show accounting must not be spent on a tap.
+    fun `showInApp is answered with success only once the window is on screen`() {
+        // Nothing goes back to the page until the show ends; the block's own show accounting is
+        // not spent on a tap either way.
         every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
 
         postFromPage(
             request(action = "showInApp", payload = """{"inappId":"inapp-1","index":0,"params":{}}""")
         )
+        await { outcomes.isCaptured }
+        assertTrue(noShowInAppAnswerYet())
+
+        outcomes.captured.onOutcome(ShowInAppOutcome.Shown)
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
@@ -462,7 +484,58 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `showInApp for an id nothing resolves is answered with unknown_inapp`() {
+        givenShowPathCapturesOutcome()
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"missing"}"""))
+        await { outcomes.isCaptured }
+        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("unknown_inapp", lastOutgoingPayload()!!.get("error").asString)
+    }
+
+    @Test
+    fun `showInApp whose show failed after it started is answered with show_failed, once`() {
+        givenShowPathCapturesOutcome()
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { outcomes.isCaptured }
+        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("show_failed", lastOutgoingPayload()!!.get("error").asString)
+
+        // A late success changes nothing: the deferred is already complete, no second envelope.
+        val answered = shadowOf(webView).lastEvaluatedJavascript
+        outcomes.captured.onOutcome(ShowInAppOutcome.Shown)
+        assertTrue(noShowInAppAnswerYet() || shadowOf(webView).lastEvaluatedJavascript == answered)
+    }
+
+    @Test
+    fun `releasing the block while showInApp waits answers nothing`() {
+        givenShowPathCapturesOutcome()
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { outcomes.isCaptured }
+        val page = shadowOf(webView)
+        val lastScriptBeforeRelease = page.lastEvaluatedJavascript
+        holder.release()
+        outcomes.captured.onOutcome(ShowInAppOutcome.Shown)
+        shadowOf(Looper.getMainLooper()).idle()
+        Thread.sleep(150)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(lastScriptBeforeRelease, page.lastEvaluatedJavascript)
+    }
+
+    @Test
     fun `showInApp hands the id and the params to the show path`() {
+        givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
 
         postFromPage(
@@ -471,7 +544,7 @@ class EmbeddedBlockWebViewHolderTest {
                 payload = """{"inappId":"inapp-1","index":0,"sourceInappId":"host-id","params":{"title":"Заголовок 1","record":{"rank":3}}}"""
             )
         )
-        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+        await { outcomes.isCaptured }
 
         verify(exactly = 1) {
             inAppMessageManager.showInAppById(
@@ -479,24 +552,25 @@ class EmbeddedBlockWebViewHolderTest {
                 mapOf(
                     "title" to JsonPrimitive("Заголовок 1"),
                     "record" to JsonParser.parseString("""{"rank":3}"""),
-                )
+                ),
+                any()
             )
         }
     }
 
     @Test
     fun `showInApp sent with an object payload works the same as a string one`() {
+        givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
 
         // The whole envelope is one JSON document: payload is a plain object, not a quoted string.
         postFromPage(
             """{"type":"request","action":"showInApp","payload":{"inappId":"inapp-1","params":{"a":1}},"id":"req-obj","version":1,"timestamp":1}"""
         )
-        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+        await { outcomes.isCaptured }
 
-        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
         verify(exactly = 1) {
-            inAppMessageManager.showInAppById("inapp-1", mapOf("a" to JsonPrimitive(1)))
+            inAppMessageManager.showInAppById("inapp-1", mapOf("a" to JsonPrimitive(1)), any())
         }
     }
 
@@ -508,7 +582,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
     @Test
@@ -520,11 +594,11 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
     @Test
-    fun `showInApp from a failed attempt is acked and ignored`() {
+    fun `showInApp from a failed attempt is refused with source_dismissed`() {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":-1}""", id = "bad"))
         await { states.lastOrNull() == EmbeddedBlockState.Failed }
@@ -532,8 +606,9 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
-        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any()) }
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("source_dismissed", lastOutgoingPayload()!!.get("error").asString)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
     @Test

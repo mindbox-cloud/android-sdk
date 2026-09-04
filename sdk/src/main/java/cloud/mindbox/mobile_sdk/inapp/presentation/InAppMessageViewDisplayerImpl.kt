@@ -187,6 +187,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "No foreground activity to present the requested in-app on",
                 tags = tags
             )
+            loggingRunCatching { inAppActionCallbacks.onInAppNotShown.onNotShown() }
             return
         }
         if (isInAppActive()) {

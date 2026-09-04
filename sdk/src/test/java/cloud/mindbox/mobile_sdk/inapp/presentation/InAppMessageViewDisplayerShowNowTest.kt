@@ -197,20 +197,25 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `without a foreground activity nothing is closed and the miss reaches the tracker`() {
+    fun `without a foreground activity nothing is closed, the miss reaches the tracker and the asker`() {
         val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
         val holder = activeHolder(dismiss)
         setCurrentHolder(holder)
+        var notShown = 0
+        val callbacks = object : InAppActionCallbacks by noCallbacks {
+            override val onInAppNotShown = OnInAppNotShown { notShown++ }
+        }
 
         displayer.showInAppMessageNow(
             inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
-            inAppActionCallbacks = noCallbacks,
+            inAppActionCallbacks = callbacks,
         )
 
         // Closing what the user may come back to would trade a missed show for a lost one.
         verify(exactly = 0) { dismiss.onDismiss() }
         verify(exactly = 0) { holder.onClose() }
         verify { failureTracker.sendFailure("tapped-id", FailureReason.PRESENTATION_FAILED, any(), any()) }
+        assertEquals(1, notShown)
     }
 
     @Test

@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -497,7 +498,7 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
         } just runs
 
-        createManager().showInAppById("tap-id", extraParams)
+        createManager().showInAppById("tap-id", extraParams) {}
         advanceUntilIdle()
 
         verify(exactly = 1) {
@@ -525,7 +526,7 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
         } just runs
 
-        createManager().showInAppById("tap-id", emptyMap())
+        createManager().showInAppById("tap-id", emptyMap()) {}
         advanceUntilIdle()
 
         callbacks.captured.onInAppShown.onShown()
@@ -537,15 +538,66 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `showInAppById for an id nothing resolves shows nothing`() = runTest {
+    fun `showInAppById for an id nothing resolves shows nothing and answers unknown_inapp`() = runTest {
         coEvery { inAppMessageInteractor.getInAppToShowById("missing") } returns null
+        val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("missing", emptyMap())
+        createManager().showInAppById("missing", emptyMap()) { outcomes.add(it) }
         advanceUntilIdle()
 
         verify(exactly = 0) {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
         }
+        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP)), outcomes)
+    }
+
+    @Test
+    fun `showInAppById answers shown once the window is on screen, and only then`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        advanceUntilIdle()
+        assertTrue(outcomes.isEmpty())
+
+        callbacks.captured.onInAppShown.onShown()
+        assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
+
+        // A dismiss after the show is an ordinary dismiss, not a second answer.
+        callbacks.captured.onInAppDismiss.onDismiss()
+        assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
+    }
+
+    @Test
+    fun `showInAppById answers show_failed once when the show never happens`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        callbacks.captured.onInAppNotShown.onNotShown()
+        callbacks.captured.onInAppNotShown.onNotShown()
+        callbacks.captured.onInAppShown.onShown()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED)), outcomes)
     }
 
     // ---- the overlay's hold in the show budgets: taken before the show, given back if it never shows ----

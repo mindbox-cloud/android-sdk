@@ -30,6 +30,7 @@ import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.google.gson.JsonElement
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -115,16 +116,24 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>) {
+    override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>, onOutcome: OnShowInAppOutcome) {
         val tapTick = timeProvider.monotonicMillis()
+        val outcome = TerminalOutcome(onOutcome)
         inAppScope.launch {
             val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
                 mindboxLogI("Nothing to show for in-app $inAppId")
+                outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
                 return@launch
             }
             val (inApp, variant) = inAppToShow
             val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-            val callbacks = ShowCallbacks(inApp, variant, tags, preparedTime = timeProvider.monotonicElapsedSince(tapTick))
+            val callbacks = ShowCallbacks(
+                inApp,
+                variant,
+                tags,
+                preparedTime = timeProvider.monotonicElapsedSince(tapTick),
+                outcome = outcome,
+            )
             withContext(Dispatchers.Main) {
                 inAppMessageViewDisplayer.showInAppMessageNow(
                     inAppType = variant,
@@ -148,6 +157,7 @@ internal class InAppMessageManagerImpl(
         tags: Map<String, String>?,
         preparedTime: Milliseconds,
         private val holdsBudget: Boolean = false,
+        private val outcome: TerminalOutcome? = null,
     ) : InAppActionCallbacks {
 
         private var renderStartTime = Timestamp(0L)
@@ -161,16 +171,28 @@ internal class InAppMessageManagerImpl(
         }
         override val onInAppShown = OnInAppShown {
             isShown = true
+            outcome?.settle(ShowInAppOutcome.Shown)
             handleInAppShown(renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
-            giveBackHoldIfNotShown()
+            settleAsNotShownIfNotShown()
             inAppInteractor.saveInAppDismissTime(inApp)
         }
-        override val onInAppNotShown = OnInAppNotShown { giveBackHoldIfNotShown() }
+        override val onInAppNotShown = OnInAppNotShown { settleAsNotShownIfNotShown() }
 
-        private fun giveBackHoldIfNotShown() {
-            if (holdsBudget && !isShown) inAppInteractor.releaseOverlayShow(variant.inAppId)
+        private fun settleAsNotShownIfNotShown() {
+            if (isShown) return
+            if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
+            outcome?.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+        }
+    }
+
+    private class TerminalOutcome(private val listener: OnShowInAppOutcome) {
+        private val settled = AtomicBoolean(false)
+
+        fun settle(outcome: ShowInAppOutcome) {
+            if (!settled.compareAndSet(false, true)) return
+            loggingRunCatching { listener.onOutcome(outcome) }
         }
     }
 
