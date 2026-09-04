@@ -111,6 +111,27 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
+    fun `the same failure collected in a later pass is not reported twice a session`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+            errorDetails = "first pass"
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+            errorDetails = "second pass"
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    @Test
     fun `sendFailure truncates errorDetails to 1000 chars`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val longErrorDetails = "a".repeat(1500)

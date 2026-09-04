@@ -33,6 +33,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     val requestedInAppTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
     val waitBudgetReportedPlaces: MutableSet<String> = newConcurrentSet()
+
+    val reportedShowFailures: MutableSet<String> = newConcurrentSet()
+
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -102,6 +105,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         embeddedDelaysWaitedOut.clear()
         requestedInAppTargetingReportedInSession.clear()
         waitBudgetReportedPlaces.clear()
+        reportedShowFailures.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

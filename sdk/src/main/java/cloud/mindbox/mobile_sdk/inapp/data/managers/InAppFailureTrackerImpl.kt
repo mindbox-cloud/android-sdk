@@ -37,9 +37,15 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failures")
             return
         }
-        inAppRepository.sendInAppShowErrors(failures.toList())
+        val toSend = failures.toList()
+        inAppRepository.sendInAppShowErrors(toSend)
+        toSend.forEach { failure -> sessionStorageManager.reportedShowFailures.add(failure.sessionKey()) }
         failures.clear()
     }
+
+    private fun InAppShowFailure.sessionKey(): String = sessionKey(inAppId, failureReason)
+
+    private fun sessionKey(inAppId: String, failureReason: FailureReason): String = "$inAppId|${failureReason.name}"
 
     private fun sendSingleFailure(failure: InAppShowFailure) {
         if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
@@ -76,6 +82,10 @@ internal class InAppFailureTrackerImpl(
         errorDetails: String?,
         tags: Map<String, String>?
     ) {
+        if (sessionKey(inAppId, failureReason) in sessionStorageManager.reportedShowFailures) {
+            mindboxLogI("Failure $failureReason for in-app $inAppId already reported this session, not collecting it again")
+            return
+        }
         val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
             .convertToZonedDateTimeAtUTC()
             .convertToString()
