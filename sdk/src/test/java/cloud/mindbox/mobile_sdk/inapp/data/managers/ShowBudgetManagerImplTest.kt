@@ -108,16 +108,6 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
-    fun `the owner re-asking about its own hold is not counted against itself`() {
-        // The idle second resolve pass of a place must not empty the block that just reserved.
-        manager.reserve(place, "block", counting, isPriority = false)
-
-        assertTrue(manager.isWithinBudgets(counting, isPriority = false, owner = place))
-        assertFalse(manager.isWithinBudgets(counting, isPriority = false, owner = overlay))
-        assertFalse(manager.isWithinBudgets(counting, isPriority = false))
-    }
-
-    @Test
     fun `re-reserving the same in-app for the same owner keeps the one hold`() {
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(place, "block", counting, isPriority = false))
 

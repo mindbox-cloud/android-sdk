@@ -146,10 +146,6 @@ internal class InAppInteractorImpl(
             return null
         }
         inAppFailureTracker.clearFailures()
-        if (!isPlaceWinnerWithinBudgets(requestedPlace, winner)) {
-            logI("Place '$requestedPlace': in-app ${winner.id} is blocked by the show limits")
-            return null
-        }
         val variant = winner.embeddedVariantFor(requestedPlace) ?: return null
         val delayTime = winner.delayTime?.takeIf { delay ->
             delay.interval > 0 && waitedOutDelayKey(requestedPlace, winner.id) !in sessionStorageManager.embeddedDelaysWaitedOut
@@ -295,10 +291,6 @@ internal class InAppInteractorImpl(
                 false
             }
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
-
-    private fun isPlaceWinnerWithinBudgets(place: String, winner: InApp): Boolean =
-        sessionStorageManager.embeddedLastShownByPlace[place] == winner.id ||
-            showBudgetManager.isWithinBudgets(winner.frequency, winner.isPriority, ShowBudgetOwner.place(place))
 
     override fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean {
         val place = placeSystemName.trim()

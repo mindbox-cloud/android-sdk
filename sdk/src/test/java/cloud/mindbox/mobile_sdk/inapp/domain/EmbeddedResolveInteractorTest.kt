@@ -116,7 +116,6 @@ class EmbeddedResolveInteractorTest {
         every { sessionStorageManager.embeddedLastTargetedByPlace } returns ConcurrentHashMap()
         every { sessionStorageManager.embeddedDelaysWaitedOut } returns ConcurrentHashMap.newKeySet()
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns true
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
         every { showBudgetManager.release(any()) } just runs
@@ -264,45 +263,12 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace checks the show limits`() = runTest {
+    fun `selectInAppForPlace never asks the show budgets, the delivery reserves them`() = runTest {
         givenConfig(embeddedInApp())
 
-        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
-
-        verify(exactly = 1) { showBudgetManager.isWithinBudgets(any(), false, ShowBudgetOwner.place(place)) }
-    }
-
-    @Test
-    fun `selectInAppForPlace returns nothing when a show limit blocks the winner`() = runTest {
-        givenConfig(embeddedInApp())
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
-
-        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
-    }
-
-    @Test
-    fun `selectInAppForPlace ignores the show limits for a priority in-app`() = runTest {
-        // The bypass lives in the manager; the interactor's part is to hand the priority flag over.
-        givenConfig(embeddedInApp(isPriority = true))
-        every { showBudgetManager.isWithinBudgets(any(), false, any()) } returns false
-        every { showBudgetManager.isWithinBudgets(any(), true, any()) } returns true
-
         assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
-        verify { showBudgetManager.isWithinBudgets(any(), true, any()) }
-    }
 
-    @Test
-    fun `selectInAppForPlace ignores the show limits for an unlimited in-app`() = runTest {
-        // The unlimited rule, second half (iOS decision 14.08, mirrored): the stock block
-        // config is unlimited, and spent budgets of other in-apps must not empty it.
-        givenConfig(
-            embeddedInApp().copy(frequency = Frequency(Frequency.Delay.Unlimited))
-        )
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
-        every { showBudgetManager.isWithinBudgets(match { it.delay is Frequency.Delay.Unlimited }, any(), any()) } returns true
-
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
-        verify { showBudgetManager.isWithinBudgets(match { it.delay is Frequency.Delay.Unlimited }, false, any()) }
+        verify { showBudgetManager wasNot Called }
     }
 
     @Test
@@ -367,21 +333,6 @@ class EmbeddedResolveInteractorTest {
 
         assertEquals("embedded-id", first?.variant?.inAppId)
         assertEquals("embedded-id", second?.variant?.inAppId)
-        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
-    }
-
-    @Test
-    fun `selectInAppForPlace sends the winner targeting even when the show limits block it`() = runTest {
-        // Parity with the overlay: the offer is reported before the budgets decide whether it
-        // may actually appear — and the blocked pass consumes the winner's offer slot.
-        givenConfig(embeddedInApp())
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
-
-        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
-        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
-
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns true
-        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
@@ -459,10 +410,9 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `selectInAppForPlace drops the pass failures once somebody won the place`() = runTest {
-        // Parity with the overlay pass: a winner — even one the limits then hold back — answers
-        // "why nothing was shown", so the buffer of the pass is discarded, not sent.
+        // Parity with the overlay pass: a winner answers "why nothing was shown", so the buffer
+        // of the pass is discarded, not sent.
         givenConfig(embeddedInApp())
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
@@ -687,9 +637,9 @@ class EmbeddedResolveInteractorTest {
     fun `filterShowableInAppIds does not check the show limits`() = runTest {
         // The limits belong to the overlay show; the dictionary shows nothing itself.
         givenConfig(modalInApp(id = "inapp-1"))
-        every { showBudgetManager.isWithinBudgets(any(), any(), any()) } returns false
 
         assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify { showBudgetManager wasNot Called }
     }
 
     @Test

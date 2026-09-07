@@ -5,8 +5,6 @@ import cloud.mindbox.mobile_sdk.models.Timestamp
 
 internal interface ShowBudgetManager {
 
-    fun isWithinBudgets(frequency: Frequency, isPriority: Boolean, owner: String? = null): Boolean
-
     fun reserve(
         owner: String,
         inAppId: String,

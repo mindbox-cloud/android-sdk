@@ -23,13 +23,6 @@ internal class ShowBudgetManagerImpl(
 
     private val lock: Any get() = sessionStorageManager.showBudgetLock
 
-    override fun isWithinBudgets(frequency: Frequency, isPriority: Boolean, owner: String?): Boolean {
-        if (bypassesBudgets(frequency, isPriority)) return true
-        return synchronized(lock) {
-            budgetsAllow(sessionStorageManager.showReservations.values.filter { held -> held.owner != owner })
-        }
-    }
-
     override fun reserve(
         owner: String,
         inAppId: String,
