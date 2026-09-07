@@ -29,10 +29,6 @@ internal class ShowBudgetManagerImpl(
         frequency: Frequency,
         isPriority: Boolean
     ): ShowReservationOutcome {
-        if (bypassesBudgets(frequency, isPriority)) {
-            mindboxLogI("Show budgets do not apply to in-app $inAppId, no reservation needed")
-            return ShowReservationOutcome.NOT_NEEDED
-        }
         synchronized(lock) {
             val reservations = sessionStorageManager.showReservations
             val held = reservations[owner]
@@ -43,6 +39,10 @@ internal class ShowBudgetManagerImpl(
             if (held != null) {
                 mindboxLogI("$owner drops its reservation for in-app ${held.inAppId}: a newer candidate replaces it")
                 reservations.remove(owner)
+            }
+            if (bypassesBudgets(frequency, isPriority)) {
+                mindboxLogI("Show budgets do not apply to in-app $inAppId, no reservation needed")
+                return ShowReservationOutcome.NOT_NEEDED
             }
             if (!budgetsAllow(reservations.values)) {
                 mindboxLogI("Show budgets are spent, in-app $inAppId gets no reservation for $owner")

@@ -127,6 +127,17 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
+    fun `an unlimited or priority newcomer for the same owner drops the counted hold it replaces`() {
+        manager.reserve(place, "block", counting, isPriority = false)
+        assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(place, "unlimited", unlimited, isPriority = false))
+        assertTrue(sessionStorageManager.showReservations.isEmpty())
+
+        manager.reserve(place, "block", counting, isPriority = false)
+        assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(place, "prio", counting, isPriority = true))
+        assertTrue(sessionStorageManager.showReservations.isEmpty())
+    }
+
+    @Test
     fun `a late show of the replaced candidate leaves the newer hold in place`() {
         manager.reserve(place, "old", counting, isPriority = false)
         manager.reserve(place, "new", counting, isPriority = false)
