@@ -135,7 +135,7 @@ internal class InAppInteractorImpl(
         logI("Place '$requestedPlace': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
         val winner = inAppFilteringManager.filterABTestsInApps(matched, inAppsPool)
-            .let { inAppFrequencyManager.filterInAppsFrequency(it) }
+            .let { filterPlaceFrequency(requestedPlace, it) }
             .sortByPriority()
             .firstOrNull { candidate -> candidate.embeddedVariantFor(requestedPlace) != null }
 
@@ -164,6 +164,15 @@ internal class InAppInteractorImpl(
     }
 
     private fun waitedOutDelayKey(place: String, inAppId: String): String = "$place|$inAppId"
+
+    private fun filterPlaceFrequency(place: String, inApps: List<InApp>): List<InApp> {
+        val shownHere = sessionStorageManager.embeddedLastShownByPlace[place]
+        val (shown, others) = inApps.partition { inApp -> inApp.id == shownHere }
+        if (shown.isEmpty()) return inAppFrequencyManager.filterInAppsFrequency(inApps)
+        logI("Place '$place': in-app $shownHere already shows here this session, its frequency is not re-checked")
+        val passedIds = inAppFrequencyManager.filterInAppsFrequency(others).map { inApp -> inApp.id }.toSet()
+        return inApps.filter { inApp -> inApp.id == shownHere || inApp.id in passedIds }
+    }
 
     private fun sendPlaceTargetings(place: String, matched: List<InApp>, winner: InApp?) {
         for (inApp in matched) {

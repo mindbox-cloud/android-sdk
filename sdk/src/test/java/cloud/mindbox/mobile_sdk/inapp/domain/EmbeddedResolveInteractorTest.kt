@@ -263,6 +263,57 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `selectInAppForPlace keeps the in-app the place already showed this session past its frequency`() = runTest {
+        // A block re-created on the same place, or a config refresh re-resolving it, is the same
+        // show until the session ends: the spent once-a-session frequency must not empty the place.
+        val onceASession = embeddedInApp().copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        givenConfig(onceASession)
+        every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
+        every { inAppRepository.isInAppShown("embedded-id") } returns true
+        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap(mapOf(place to "embedded-id"))
+
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+    }
+
+    @Test
+    fun `selectInAppForPlace still cuts the in-app another place showed this session`() = runTest {
+        // The pass is per place: the same in-app on a second place would be a second Show.
+        val secondPlace = "second-place"
+        val onceASession = InAppStub.getInApp().copy(
+            id = "embedded-id",
+            frequency = Frequency(Frequency.Delay.OneTimePerSession),
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = Form(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = "embedded-id", placeSystemName = place),
+                    InAppStub.getEmbedded().copy(inAppId = "embedded-id", placeSystemName = secondPlace),
+                )
+            )
+        )
+        givenConfig(onceASession)
+        every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
+        every { inAppRepository.isInAppShown("embedded-id") } returns true
+        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap(mapOf(place to "embedded-id"))
+
+        assertNull(interactor.selectInAppForPlace(secondPlace, InAppEventType.EmbeddedPlaceRequested(secondPlace)))
+    }
+
+    @Test
+    fun `selectInAppForPlace lets a priority newcomer outrank the in-app the place already shows`() = runTest {
+        // The pass only keeps the shown in-app among the candidates; the rest still go through
+        // the frequency and the priority order decides as before.
+        val onceASession = embeddedInApp().copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        val newcomer = embeddedInApp(id = "newcomer-id", isPriority = true)
+        givenConfig(onceASession, newcomer)
+        every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
+        every { inAppRepository.isInAppShown("embedded-id") } returns true
+        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap(mapOf(place to "embedded-id"))
+
+        assertEquals("newcomer-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+        verify(exactly = 1) { frequencyManager.filterInAppsFrequency(listOf(newcomer)) }
+    }
+
+    @Test
     fun `selectInAppForPlace never asks the show budgets, the delivery reserves them`() = runTest {
         givenConfig(embeddedInApp())
 
