@@ -117,7 +117,13 @@ class DataCollectorTest {
         assertFalse(permissionsJson.has("location"))
         assertFalse(permissionsJson.has("microphone"))
         assertFalse(permissionsJson.has("notifications"))
-        assertFalse(permissionsJson.has("photoLibrary"))
+        // Limited photo access is access: the page gates its picker on "granted", the detail says how much.
+        assertEquals("granted", getPermissionStatus(actualJson, "photoLibrary"))
+        assertEquals(
+            "limited",
+            permissionsJson.getAsJsonObject("photoLibrary").getAsJsonObject("details").get("access").asString
+        )
+        assertFalse(permissionsJson.getAsJsonObject("camera").has("details"))
         assertTrue(actualJson.has("sdkVersion"))
         assertEquals(Constants.SDK_VERSION_NUMERIC.toString(), actualJson.get("sdkVersionNumeric").asString)
     }
