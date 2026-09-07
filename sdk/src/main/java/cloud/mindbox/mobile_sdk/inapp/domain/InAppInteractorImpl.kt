@@ -305,6 +305,7 @@ internal class InAppInteractorImpl(
         val place = placeSystemName.trim()
         if (sessionStorageManager.embeddedLastShownByPlace[place] == content.inAppId) {
             logI("Place '$place' already shows in-app ${content.inAppId}, no new show to reserve")
+            showBudgetManager.release(ShowBudgetOwner.place(place))
             return true
         }
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == content.inAppId }

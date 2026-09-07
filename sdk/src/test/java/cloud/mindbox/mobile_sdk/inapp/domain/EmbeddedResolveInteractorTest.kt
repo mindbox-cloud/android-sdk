@@ -957,6 +957,19 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `reservePlaceShow gives back the hold of a newcomer the place never drew when it returns to its shown content`() {
+        // B won the place and took its hold, then A — already on the block — was delivered again
+        // before B drew. B is not coming: the hold under the place is B's and must not stay in the
+        // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
+        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+
+        assertTrue(interactor.reservePlaceShow(" $place ", InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+
+        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.place(place)) }
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `reservePlaceShow takes the place's hold and only a refusal empties the place`() {
         val content = InAppStub.getEmbedded().copy(inAppId = "embedded-id", isPriority = true)
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
