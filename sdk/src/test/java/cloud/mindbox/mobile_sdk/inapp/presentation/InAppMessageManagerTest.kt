@@ -696,6 +696,20 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    fun `a dismiss before any show does not move the cooldown, a dismiss after the show does`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppDismiss.onDismiss()
+        verify(exactly = 0) { inAppMessageInteractor.saveInAppDismissTime(any()) }
+
+        val shown = managerWithCapturedCallbacks(inApp)
+        shown().onInAppShown.onShown()
+        shown().onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp) }
+    }
+
+    @Test
     fun `a candidate that found the hold already standing is shown but never gives it back`() = runTest {
         // The hold belongs to the earlier candidate of the same in-app; this one owns nothing.
         val inApp = InAppStub.getInApp()

@@ -175,8 +175,11 @@ internal class InAppMessageManagerImpl(
             handleInAppShown(renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
-            settleAsNotShownIfNotShown()
-            inAppInteractor.saveInAppDismissTime(inApp)
+            if (isShown) {
+                inAppInteractor.saveInAppDismissTime(inApp)
+            } else {
+                settleAsNotShownIfNotShown()
+            }
         }
         override val onInAppNotShown = OnInAppNotShown { settleAsNotShownIfNotShown() }
 
