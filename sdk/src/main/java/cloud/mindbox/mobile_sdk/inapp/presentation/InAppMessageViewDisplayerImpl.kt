@@ -125,7 +125,7 @@ internal class InAppMessageViewDisplayerImpl(
         this.inAppCallback = defaultCallback
     }
 
-    override fun isInAppActive(): Boolean = currentHolder?.isActive ?: false
+    override fun isInAppActive(): Boolean = currentHolder?.isActive == true || pausedHolder != null
 
     override fun onStopCurrentActivity(activity: Activity) {
         mindboxLogI("onStopCurrentActivity: ${activity.hashCode()}")
