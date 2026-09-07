@@ -284,7 +284,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "currentRoot is null",
                 tags = wrapper.tags
             )
-            notifyNotShown(wrapper)
+            closeInApp()
         }
     }
 
@@ -340,19 +340,17 @@ internal class InAppMessageViewDisplayerImpl(
     }
 
     private fun closeInApp() {
-        loggingRunCatching {
-            currentHolder?.let { holder ->
-                notifyNotShown(holder.wrapper)
-                holder.onClose()
-            }
-            currentHolder = null
-            pausedHolder?.let { paused ->
-                notifyNotShown(paused.wrapper)
-                paused.onClose()
-            }
-            pausedHolder = null
-            discardQueue()
-            isActionExecuted = false
+        currentHolder?.let { holder ->
+            notifyNotShown(holder.wrapper)
+            loggingRunCatching { holder.onClose() }
         }
+        currentHolder = null
+        pausedHolder?.let { paused ->
+            notifyNotShown(paused.wrapper)
+            loggingRunCatching { paused.onClose() }
+        }
+        pausedHolder = null
+        discardQueue()
+        isActionExecuted = false
     }
 }

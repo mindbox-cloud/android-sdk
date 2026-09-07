@@ -269,7 +269,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         clearBackRegistration()
         positionController?.stop()
         positionController = null
-        currentDialog.parent.safeAs<ViewGroup>()?.removeView(_currentDialog)
+        _currentDialog?.let { dialog -> dialog.parent.safeAs<ViewGroup>()?.removeView(dialog) }
         mindboxLogI("Close ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()
     }
