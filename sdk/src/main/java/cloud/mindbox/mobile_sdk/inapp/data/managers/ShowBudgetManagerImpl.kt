@@ -61,7 +61,12 @@ internal class ShowBudgetManagerImpl(
         shownAt: Timestamp
     ) {
         synchronized(lock) {
-            sessionStorageManager.showReservations.remove(owner)
+            val held = sessionStorageManager.showReservations[owner]
+            if (held != null && held.inAppId != inAppId) {
+                mindboxLogI("$owner now holds a reservation for in-app ${held.inAppId}, the show of $inAppId leaves it in place")
+            } else {
+                sessionStorageManager.showReservations.remove(owner)
+            }
             if (!frequency.countsShows()) {
                 mindboxLogI("In-app $inAppId has unlimited frequency, nothing to count")
                 return

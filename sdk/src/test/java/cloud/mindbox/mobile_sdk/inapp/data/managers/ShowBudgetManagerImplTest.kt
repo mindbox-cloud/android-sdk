@@ -127,6 +127,20 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
+    fun `a late show of the replaced candidate leaves the newer hold in place`() {
+        manager.reserve(place, "old", counting, isPriority = false)
+        manager.reserve(place, "new", counting, isPriority = false)
+
+        manager.commit(place, "old", counting, now)
+
+        assertEquals("new", sessionStorageManager.showReservations[place]?.inAppId)
+        verify(exactly = 1) { inAppRepository.setInAppShown("old") }
+
+        manager.commit(place, "new", counting, now)
+        assertTrue(sessionStorageManager.showReservations.isEmpty())
+    }
+
+    @Test
     fun `a replacement refused by the budget leaves the owner with no hold`() {
         sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1)
         manager.reserve(place, "block-1", counting, isPriority = false)
