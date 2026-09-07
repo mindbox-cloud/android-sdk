@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- A light skeleton on a dark screen reads as a lit rectangle, not as loading content. -->
-    <color name="mindbox_embedded_block_placeholder">#2C2C2E</color>
+    <!--
+        On a dark screen the tint is white at the same 8%, and the highlight peaks to 16% so the
+        spot reads brighter rather than lighter.
+    -->
+    <color name="mindbox_embedded_block_shimmer_rest">#14FFFFFF</color>
+    <color name="mindbox_embedded_block_shimmer_highlight">#29FFFFFF</color>
 </resources>

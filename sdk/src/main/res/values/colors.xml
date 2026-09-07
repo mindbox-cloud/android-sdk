@@ -2,6 +2,11 @@
 <resources>
     <color name="mindbox_default_notification_color">@android:color/transparent</color>
     <color name="mindbox_default_inapp_background_color">#80000000</color>
-    <!-- The loading skeleton of an embedded block; see values-night for the dark counterpart. -->
-    <color name="mindbox_embedded_block_placeholder">#E8E8EC</color>
+    <!--
+        The embedded block shimmer is a translucent tint over the host's own background: near-black
+        at 8% opacity, dipping to 4% in the highlight so the spot reads lighter. See values-night
+        for the dark counterpart.
+    -->
+    <color name="mindbox_embedded_block_shimmer_rest">#14282A2F</color>
+    <color name="mindbox_embedded_block_shimmer_highlight">#0A282A2F</color>
 </resources>
