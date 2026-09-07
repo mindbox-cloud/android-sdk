@@ -578,6 +578,18 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    fun `showInAppById answers show_failed when the lookup itself blows up`() = runTest {
+        coEvery { inAppMessageInteractor.getInAppToShowById("boom") } throws IllegalStateException("boom")
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("boom", emptyMap()) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED)), outcomes)
+        verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `showInAppById answers show_failed once when the show never happens`() = runTest {
         val inApp = InAppStub.getInApp().copy(id = "tap-id")
         val variant = inApp.form.variants.first()

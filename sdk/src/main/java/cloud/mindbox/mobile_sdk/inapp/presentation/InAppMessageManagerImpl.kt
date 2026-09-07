@@ -120,29 +120,43 @@ internal class InAppMessageManagerImpl(
         val tapTick = timeProvider.monotonicMillis()
         val outcome = TerminalOutcome(onOutcome)
         inAppScope.launch {
-            val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
-                mindboxLogI("Nothing to show for in-app $inAppId")
-                outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
-                return@launch
-            }
-            val (inApp, variant) = inAppToShow
-            val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-            val callbacks = ShowCallbacks(
-                inApp,
-                variant,
-                tags,
-                preparedTime = timeProvider.monotonicElapsedSince(tapTick),
-                outcome = outcome,
+            runCatching { showRequestedInApp(inAppId, extraParams, tapTick, outcome) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    MindboxLoggerImpl.e(this@InAppMessageManagerImpl, "Showing in-app $inAppId on request failed", error)
+                    outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+                }
+        }
+    }
+
+    private suspend fun showRequestedInApp(
+        inAppId: String,
+        extraParams: Map<String, JsonElement>,
+        tapTick: Milliseconds,
+        outcome: TerminalOutcome,
+    ) {
+        val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
+            mindboxLogI("Nothing to show for in-app $inAppId")
+            outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
+            return
+        }
+        val (inApp, variant) = inAppToShow
+        val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+        val callbacks = ShowCallbacks(
+            inApp,
+            variant,
+            tags,
+            preparedTime = timeProvider.monotonicElapsedSince(tapTick),
+            outcome = outcome,
+        )
+        withContext(Dispatchers.Main) {
+            inAppMessageViewDisplayer.showInAppMessageNow(
+                inAppType = variant,
+                onRenderStart = callbacks.onRenderStart,
+                tags = tags,
+                extraParams = extraParams,
+                inAppActionCallbacks = callbacks
             )
-            withContext(Dispatchers.Main) {
-                inAppMessageViewDisplayer.showInAppMessageNow(
-                    inAppType = variant,
-                    onRenderStart = callbacks.onRenderStart,
-                    tags = tags,
-                    extraParams = extraParams,
-                    inAppActionCallbacks = callbacks
-                )
-            }
         }
     }
 
