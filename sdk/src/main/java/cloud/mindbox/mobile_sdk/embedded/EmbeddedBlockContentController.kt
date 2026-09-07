@@ -314,7 +314,9 @@ internal class EmbeddedBlockContentController(
     }
 
     override val isHoldingContent: Boolean
-        get() = lastReportedState is EmbeddedBlockState.Loading || lastReportedState == EmbeddedBlockState.Ready
+        get() = lastReportedState is EmbeddedBlockState.Loading ||
+            lastReportedState == EmbeddedBlockState.Ready ||
+            hasPendingContent
 
     private fun report(state: EmbeddedBlockState) {
         if (state !is EmbeddedBlockState.Loading) {

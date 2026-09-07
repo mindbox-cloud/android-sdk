@@ -465,6 +465,24 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `content parked while paused keeps the place's hold until the block applies it`() {
+        val controller = controller()
+        controller.start()
+        val handle = blocksRegistry.lastHandle!!
+        handle.onContentResolved(null)
+        controller.pause()
+        assertFalse(handle.isHoldingContent)
+
+        handle.onContentResolved(content)
+
+        // The registry reserved for this delivery; a neighbour dropping its content must not free it.
+        assertTrue(handle.isHoldingContent)
+        controller.start()
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertTrue(handle.isHoldingContent)
+    }
+
+    @Test
     fun `failed state re-resolves on returning to the screen`() {
         val controller = controller()
         controller.start()
