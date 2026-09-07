@@ -736,4 +736,56 @@ internal class InAppMessageManagerTest {
         callbacks().onInAppNotShown.onNotShown()
         verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
     }
+
+    // ---- a candidate's show and its refusal are terminal and mutually exclusive ----
+
+    @Test
+    fun `a show reported after the candidate was told it will not be shown writes nothing`() = runTest {
+        // A page's late `init` on a torn-down holder, or a restored holder whose original already
+        // gave the hold back: the Inapp.Show must not outlive the candidate's refusal.
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppNotShown.onNotShown()
+        callbacks().onInAppShown.onShown()
+
+        verify(exactly = 0) { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) }
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+    }
+
+    @Test
+    fun `a second show report of the same candidate is not counted again`() = runTest {
+        // Two holders can report the same show: the one paused in the background finishing its
+        // image, and the one restored on top of it.
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppShown.onShown()
+        callbacks().onInAppShown.onShown()
+
+        verify(exactly = 1) { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a not-shown report after the show neither gives the hold back nor answers the asker`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.releaseOverlayShow(any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        advanceUntilIdle()
+        callbacks.captured.onInAppShown.onShown()
+        callbacks.captured.onInAppNotShown.onNotShown()
+
+        assertEquals(listOf<ShowInAppOutcome>(ShowInAppOutcome.Shown), outcomes)
+        verify(exactly = 0) { inAppMessageInteractor.releaseOverlayShow(any()) }
+    }
 }

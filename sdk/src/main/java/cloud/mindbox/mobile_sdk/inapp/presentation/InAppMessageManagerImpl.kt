@@ -31,6 +31,7 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.google.gson.JsonElement
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -176,7 +177,7 @@ internal class InAppMessageManagerImpl(
 
         private var renderStartTime = Timestamp(0L)
 
-        @Volatile private var isShown = false
+        private val state = AtomicReference(ShowState.PENDING)
 
         val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
 
@@ -184,25 +185,27 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.sendInAppClicked(variant.inAppId, tags)
         }
         override val onInAppShown = OnInAppShown {
-            isShown = true
+            if (!state.compareAndSet(ShowState.PENDING, ShowState.SHOWN)) return@OnInAppShown
             outcome?.settle(ShowInAppOutcome.Shown)
             handleInAppShown(renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
-            if (isShown) {
+            if (state.get() == ShowState.SHOWN) {
                 inAppInteractor.saveInAppDismissTime(inApp)
             } else {
-                settleAsNotShownIfNotShown()
+                settleAsNotShown()
             }
         }
-        override val onInAppNotShown = OnInAppNotShown { settleAsNotShownIfNotShown() }
+        override val onInAppNotShown = OnInAppNotShown { settleAsNotShown() }
 
-        private fun settleAsNotShownIfNotShown() {
-            if (isShown) return
+        private fun settleAsNotShown() {
+            if (!state.compareAndSet(ShowState.PENDING, ShowState.NOT_SHOWN)) return
             if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
             outcome?.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
         }
     }
+
+    private enum class ShowState { PENDING, SHOWN, NOT_SHOWN }
 
     private class TerminalOutcome(private val listener: OnShowInAppOutcome) {
         private val settled = AtomicBoolean(false)
