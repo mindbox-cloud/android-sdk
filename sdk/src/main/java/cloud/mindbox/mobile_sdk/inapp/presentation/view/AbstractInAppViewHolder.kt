@@ -269,6 +269,7 @@ internal abstract class AbstractInAppViewHolder<T : InAppType>(
         clearBackRegistration()
         positionController?.stop()
         positionController = null
+        preparedImages.keys.forEach { imageView -> runCatching { Glide.with(imageView).clear(imageView) } }
         _currentDialog?.let { dialog -> dialog.parent.safeAs<ViewGroup>()?.removeView(dialog) }
         mindboxLogI("Close ${wrapper.inAppType.inAppId} on ${this.hashCode()}")
         restoreKeyboard()

@@ -21,7 +21,6 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
-import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -72,19 +71,10 @@ internal class InAppMessageViewDisplayerImpl(
         val holder = pausedHolder ?: currentHolder
         if (holder != null) {
             pausedHolder?.wrapper?.let { wrapper ->
-                mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
-                showInAppMessage(
-                    wrapper = wrapper.copy(
-                        inAppActionCallbacks = wrapper.inAppActionCallbacks.copy(onInAppShown = {
-                            mindboxLogI("Skip InApp.Show for restored inApp")
-                            currentActivity?.postDelayedAnimation {
-                                pausedHolder?.onClose()
-                            }
-                        })
-                    ),
-                    isRestored = true
-                )
+                mindboxLogI("trying to restore in-app with id ${wrapper.inAppType.inAppId}")
+                showInAppMessage(wrapper = wrapper, isRestored = true)
             }
+            discardQueue()
         } else {
             tryShowInAppFromQueue(isNeedToShow)
         }

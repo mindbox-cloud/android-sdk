@@ -178,15 +178,6 @@ internal fun ViewGroup.removeChildById(
 internal val Activity?.root: ViewGroup?
     get() = this?.window?.decorView?.rootView as ViewGroup?
 
-internal fun Activity.postDelayedAnimation(action: Runnable) {
-    val duration = try {
-        resources.getInteger(android.R.integer.config_mediumAnimTime).toLong()
-    } catch (_: Exception) {
-        window.transitionBackgroundFadeDuration
-    }
-    this.root?.postDelayed(action, duration)
-}
-
 internal inline fun <T> Queue<T>.addUnique(
     item: T,
     predicate: (T) -> Boolean = { it == item }
