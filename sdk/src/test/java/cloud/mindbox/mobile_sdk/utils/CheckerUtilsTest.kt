@@ -80,7 +80,7 @@ class CheckerUtilsTest {
 
     @Test
     fun `hands the same reservations to every checker`() {
-        val held = listOf(ShowReservation("place|main", "inapp1", Timestamp(1L)))
+        val held = listOf(ShowReservation("inapp1", Timestamp(1L)))
         every { checker1.check(held) } returns true
         every { checker2.check(held) } returns true
 

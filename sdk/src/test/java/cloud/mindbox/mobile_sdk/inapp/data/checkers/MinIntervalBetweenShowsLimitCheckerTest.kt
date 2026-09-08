@@ -104,8 +104,8 @@ class MinIntervalBetweenShowsLimitCheckerTest {
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
         every { timeProvider.currentTimestamp() } returns Timestamp(10_000L)
 
-        val fresh = listOf(ShowReservation("place|main", "inapp1", Timestamp(9_000L)))
-        val stale = listOf(ShowReservation("place|main", "inapp1", Timestamp(7_000L)))
+        val fresh = listOf(ShowReservation("inapp1", Timestamp(9_000L)))
+        val stale = listOf(ShowReservation("inapp1", Timestamp(7_000L)))
 
         assertFalse(minIntervalBetweenShowsLimitChecker.check(fresh))
         assertTrue(minIntervalBetweenShowsLimitChecker.check(stale))
@@ -119,7 +119,7 @@ class MinIntervalBetweenShowsLimitCheckerTest {
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(9_000L)
         every { timeProvider.currentTimestamp() } returns Timestamp(10_000L)
 
-        val old = listOf(ShowReservation("place|main", "inapp1", Timestamp(1_000L)))
+        val old = listOf(ShowReservation("inapp1", Timestamp(1_000L)))
 
         assertFalse(minIntervalBetweenShowsLimitChecker.check(old))
     }

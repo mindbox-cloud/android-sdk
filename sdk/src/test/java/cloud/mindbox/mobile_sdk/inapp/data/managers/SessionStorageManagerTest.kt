@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingErrorKey
@@ -117,7 +118,7 @@ class SessionStorageManagerTest {
             requestedInAppTargetingReportedInSession.add("host|inapp")
             embeddedDelaysWaitedOut.add("main-screen-top|in-app-1")
             waitBudgetReportedPlaces.add("main-screen-top")
-            showReservations["place|main-screen-top"] = ShowReservation("place|main-screen-top", "in-app-1", Timestamp(1L))
+            showReservations[ShowBudgetOwner.Place("main-screen-top")] = ShowReservation("in-app-1", Timestamp(1L))
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS

@@ -86,7 +86,7 @@ class MaxInappsPerSessionLimitCheckerTest {
             maxInappsPerSession = 2
         )
         every { sessionStorageManager.inAppMessageShownInSession } returns mutableListOf("inapp1")
-        val held = listOf(ShowReservation("place|main", "inapp2", Timestamp(1L)))
+        val held = listOf(ShowReservation("inapp2", Timestamp(1L)))
 
         assertFalse(maxInappsPerSessionLimitChecker.check(held))
         assertTrue(maxInappsPerSessionLimitChecker.check(emptyList()))

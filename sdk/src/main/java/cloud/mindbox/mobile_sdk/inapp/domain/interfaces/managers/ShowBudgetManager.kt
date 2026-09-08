@@ -6,20 +6,20 @@ import cloud.mindbox.mobile_sdk.models.Timestamp
 internal interface ShowBudgetManager {
 
     fun reserve(
-        owner: String,
+        owner: ShowBudgetOwner,
         inAppId: String,
         frequency: Frequency,
         isPriority: Boolean
     ): ShowReservationOutcome
 
     fun commit(
-        owner: String,
+        owner: ShowBudgetOwner,
         inAppId: String,
         frequency: Frequency,
         shownAt: Timestamp
     )
 
-    fun release(owner: String)
+    fun release(owner: ShowBudgetOwner)
 
     fun recordCooldown(frequency: Frequency, at: Timestamp)
 }
@@ -34,8 +34,9 @@ internal enum class ShowReservationOutcome {
     REFUSED,
 }
 
-internal object ShowBudgetOwner {
-    fun place(placeSystemName: String): String = "place|$placeSystemName"
+internal sealed interface ShowBudgetOwner {
 
-    fun overlay(inAppId: String): String = "overlay|$inAppId"
+    data class Place(val placeSystemName: String) : ShowBudgetOwner
+
+    data class Overlay(val inAppId: String) : ShowBudgetOwner
 }

@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
@@ -24,7 +25,7 @@ internal class ShowBudgetManagerImpl(
     private val lock: Any get() = sessionStorageManager.showBudgetLock
 
     override fun reserve(
-        owner: String,
+        owner: ShowBudgetOwner,
         inAppId: String,
         frequency: Frequency,
         isPriority: Boolean
@@ -48,14 +49,14 @@ internal class ShowBudgetManagerImpl(
                 mindboxLogI("Show budgets are spent, in-app $inAppId gets no reservation for $owner")
                 return ShowReservationOutcome.REFUSED
             }
-            reservations[owner] = ShowReservation(owner, inAppId, timeProvider.currentTimestamp())
+            reservations[owner] = ShowReservation(inAppId, timeProvider.currentTimestamp())
             mindboxLogI("$owner reserved a show for in-app $inAppId (${reservations.size} reservation(s) held)")
             return ShowReservationOutcome.GRANTED
         }
     }
 
     override fun commit(
-        owner: String,
+        owner: ShowBudgetOwner,
         inAppId: String,
         frequency: Frequency,
         shownAt: Timestamp
@@ -78,7 +79,7 @@ internal class ShowBudgetManagerImpl(
         }
     }
 
-    override fun release(owner: String) {
+    override fun release(owner: ShowBudgetOwner) {
         synchronized(lock) {
             val released = sessionStorageManager.showReservations.remove(owner) ?: return
             mindboxLogI("$owner released its show reservation for in-app ${released.inAppId}")

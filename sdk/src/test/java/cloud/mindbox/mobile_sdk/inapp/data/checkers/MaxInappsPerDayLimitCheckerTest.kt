@@ -136,7 +136,7 @@ class MaxInappsPerDayLimitCheckerTest {
         every { inAppRepository.getShownInApps() } returns mapOf(
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS)
         )
-        val held = listOf(ShowReservation("place|main", "inapp2", Timestamp(TEST_TIME)))
+        val held = listOf(ShowReservation("inapp2", Timestamp(TEST_TIME)))
 
         assertFalse(maxInappsPerDayLimitChecker.check(held))
         assertTrue(maxInappsPerDayLimitChecker.check(emptyList()))

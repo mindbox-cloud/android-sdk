@@ -37,8 +37,8 @@ internal class ShowBudgetManagerImplTest {
     private val now = Timestamp(1_700_000_000_000L)
     private val counting = InAppStub.getInApp().frequency
     private val unlimited = Frequency(Frequency.Delay.Unlimited)
-    private val place = ShowBudgetOwner.place("main-screen-top")
-    private val overlay = ShowBudgetOwner.overlay("modal-1")
+    private val place = ShowBudgetOwner.Place("main-screen-top")
+    private val overlay = ShowBudgetOwner.Overlay("modal-1")
 
     @Before
     fun setUp() {
@@ -99,7 +99,7 @@ internal class ShowBudgetManagerImplTest {
         manager.reserve(place, "block", counting, isPriority = false)
 
         assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(overlay, "unlimited", unlimited, isPriority = false))
-        assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(ShowBudgetOwner.overlay("prio"), "prio", counting, isPriority = true))
+        assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(ShowBudgetOwner.Overlay("prio"), "prio", counting, isPriority = true))
         assertEquals(setOf(place), sessionStorageManager.showReservations.keys)
 
         manager.commit(overlay, "unlimited", unlimited, now)
@@ -202,7 +202,7 @@ internal class ShowBudgetManagerImplTest {
         repeat(16) { index ->
             pool.execute {
                 gate.await()
-                if (manager.reserve("owner-$index", "in-app-$index", counting, isPriority = false) == ShowReservationOutcome.GRANTED) granted.incrementAndGet()
+                if (manager.reserve(ShowBudgetOwner.Overlay("in-app-$index"), "in-app-$index", counting, isPriority = false) == ShowReservationOutcome.GRANTED) granted.incrementAndGet()
                 done.countDown()
             }
         }

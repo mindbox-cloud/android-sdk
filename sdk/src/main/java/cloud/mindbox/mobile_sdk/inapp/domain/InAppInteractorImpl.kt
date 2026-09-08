@@ -296,7 +296,7 @@ internal class InAppInteractorImpl(
         val place = placeSystemName.trim()
         if (sessionStorageManager.embeddedLastShownByPlace[place] == content.inAppId) {
             logI("Place '$place' already shows in-app ${content.inAppId}, no new show to reserve")
-            showBudgetManager.release(ShowBudgetOwner.place(place))
+            showBudgetManager.release(ShowBudgetOwner.Place(place))
             return true
         }
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == content.inAppId }
@@ -304,21 +304,21 @@ internal class InAppInteractorImpl(
             logI("Place '$place': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place stays empty")
             return false
         }
-        return showBudgetManager.reserve(ShowBudgetOwner.place(place), content.inAppId, content.frequency, content.isPriority) !=
+        return showBudgetManager.reserve(ShowBudgetOwner.Place(place), content.inAppId, content.frequency, content.isPriority) !=
             ShowReservationOutcome.REFUSED
     }
 
     override fun releasePlaceShow(placeSystemName: String) {
-        showBudgetManager.release(ShowBudgetOwner.place(placeSystemName.trim()))
+        showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName.trim()))
     }
 
     override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
         if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) return ShowReservationOutcome.REFUSED
-        return showBudgetManager.reserve(ShowBudgetOwner.overlay(inApp.id), inApp.id, inApp.frequency, inApp.isPriority)
+        return showBudgetManager.reserve(ShowBudgetOwner.Overlay(inApp.id), inApp.id, inApp.frequency, inApp.isPriority)
     }
 
     override fun releaseOverlayShow(inAppId: String) {
-        showBudgetManager.release(ShowBudgetOwner.overlay(inAppId))
+        showBudgetManager.release(ShowBudgetOwner.Overlay(inAppId))
     }
 
     private suspend fun findInAppById(inAppId: String): InApp? =
@@ -337,7 +337,7 @@ internal class InAppInteractorImpl(
             logI("Place '$place': the block re-drew in-app $inAppId it already showed, nothing to report")
             return
         }
-        showBudgetManager.commit(ShowBudgetOwner.place(place), inAppId, frequency, timeProvider.currentTimestamp())
+        showBudgetManager.commit(ShowBudgetOwner.Place(place), inAppId, frequency, timeProvider.currentTimestamp())
         logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }
@@ -352,10 +352,10 @@ internal class InAppInteractorImpl(
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == id }
             ?: run {
                 logI("No in-app with id $id in the current session to count a show for")
-                showBudgetManager.release(ShowBudgetOwner.overlay(id))
+                showBudgetManager.release(ShowBudgetOwner.Overlay(id))
                 return
             }
-        showBudgetManager.commit(ShowBudgetOwner.overlay(id), id, inApp.frequency, timeStamp.toTimestamp())
+        showBudgetManager.commit(ShowBudgetOwner.Overlay(id), id, inApp.frequency, timeStamp.toTimestamp())
     }
 
     override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {

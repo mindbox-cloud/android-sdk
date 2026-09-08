@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -36,7 +37,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val reportedShowFailures: MutableSet<String> = newConcurrentSet()
 
-    val showReservations: MutableMap<String, ShowReservation> = ConcurrentHashMap()
+    val showReservations: MutableMap<ShowBudgetOwner, ShowReservation> = ConcurrentHashMap()
 
     val showBudgetLock = Any()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =

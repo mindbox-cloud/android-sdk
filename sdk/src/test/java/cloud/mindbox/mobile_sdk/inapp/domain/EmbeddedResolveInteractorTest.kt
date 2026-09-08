@@ -729,7 +729,7 @@ class EmbeddedResolveInteractorTest {
 
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
         // The counters and the cooldown are the manager's: one commit under its lock, keyed by the overlay's hold.
-        verify { showBudgetManager.commit(ShowBudgetOwner.overlay("modal-1"), "modal-1", modalInApp(id = "modal-1").frequency, now) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Overlay("modal-1"), "modal-1", modalInApp(id = "modal-1").frequency, now) }
     }
 
     @Test
@@ -739,7 +739,7 @@ class EmbeddedResolveInteractorTest {
         interactor.saveShownInApp("gone", now.ms, "0:0:1", null)
 
         verify { inAppRepository.sendInAppShown("gone", "0:0:1", null) }
-        verify { showBudgetManager.release(ShowBudgetOwner.overlay("gone")) }
+        verify { showBudgetManager.release(ShowBudgetOwner.Overlay("gone")) }
         verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
     }
 
@@ -754,7 +754,7 @@ class EmbeddedResolveInteractorTest {
         verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
         // Unlimited is outside the show accounting in both directions — the manager sees the
         // frequency and writes nothing; the interactor still closes the hold.
-        verify { showBudgetManager.commit(ShowBudgetOwner.overlay("modal-1"), "modal-1", Frequency(Frequency.Delay.Unlimited), now) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Overlay("modal-1"), "modal-1", Frequency(Frequency.Delay.Unlimited), now) }
     }
 
     @Test
@@ -783,7 +783,7 @@ class EmbeddedResolveInteractorTest {
 
         verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
         // The place's hold turns into the show: counters and cooldown move in the manager's one commit.
-        verify { showBudgetManager.commit(ShowBudgetOwner.place(place), "embedded-id", InAppStub.getInApp().frequency, now) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", InAppStub.getInApp().frequency, now) }
     }
 
     @Test
@@ -811,7 +811,7 @@ class EmbeddedResolveInteractorTest {
 
         verify { inAppRepository.sendInAppShown(any(), any(), any()) }
         // Unlimited writes no counters — the manager decides that from the frequency it is handed.
-        verify { showBudgetManager.commit(ShowBudgetOwner.place(place), "embedded-id", Frequency(Frequency.Delay.Unlimited), now) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", Frequency(Frequency.Delay.Unlimited), now) }
     }
 
     @Test
@@ -914,7 +914,7 @@ class EmbeddedResolveInteractorTest {
 
         assertTrue(interactor.reservePlaceShow(" $place ", InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
-        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.place(place)) }
+        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
     }
 
@@ -922,11 +922,11 @@ class EmbeddedResolveInteractorTest {
     fun `reservePlaceShow takes the place's hold and only a refusal empties the place`() {
         val content = InAppStub.getEmbedded().copy(inAppId = "embedded-id", isPriority = true)
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
-        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
         assertTrue(interactor.reservePlaceShow(" $place ", content))
 
-        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
         assertFalse(interactor.reservePlaceShow(place, content))
     }
 
@@ -943,7 +943,7 @@ class EmbeddedResolveInteractorTest {
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
 
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
-        every { showBudgetManager.reserve(ShowBudgetOwner.place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
         assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
     }
 
@@ -960,11 +960,11 @@ class EmbeddedResolveInteractorTest {
     @Test
     fun `reserveOverlayShow hands the manager's verdict through under the overlay owner`() {
         val inApp = modalInApp(id = "modal-1")
-        every { showBudgetManager.reserve(ShowBudgetOwner.overlay("modal-1"), "modal-1", inApp.frequency, inApp.isPriority) } returns ShowReservationOutcome.GRANTED
+        every { showBudgetManager.reserve(ShowBudgetOwner.Overlay("modal-1"), "modal-1", inApp.frequency, inApp.isPriority) } returns ShowReservationOutcome.GRANTED
 
         assertEquals(ShowReservationOutcome.GRANTED, interactor.reserveOverlayShow(inApp))
 
         interactor.releaseOverlayShow("modal-1")
-        verify { showBudgetManager.release(ShowBudgetOwner.overlay("modal-1")) }
+        verify { showBudgetManager.release(ShowBudgetOwner.Overlay("modal-1")) }
     }
 }
