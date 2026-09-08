@@ -76,6 +76,8 @@ internal class DataCollector(
         private const val KEY_OPERATION_NAME = "operationName"
         private const val KEY_PERMISSIONS = "permissions"
         private const val KEY_PERMISSIONS_STATUS = "status"
+        private const val KEY_PERMISSIONS_DETAILS = "details"
+        private const val KEY_PERMISSIONS_DETAILS_ACCESS = "access"
         private const val KEY_PERMISSIONS_CAMERA = "camera"
         private const val KEY_PERMISSIONS_LOCATION = "location"
         private const val KEY_PERMISSIONS_MICROPHONE = "microphone"
@@ -139,21 +141,38 @@ internal class DataCollector(
     }
 
     private fun createPermissionsPayload(): Provider {
-        val map = mapOf(
-            KEY_PERMISSIONS_CAMERA to permissionManager.getCameraPermissionStatus().value,
-            KEY_PERMISSIONS_LOCATION to permissionManager.getLocationPermissionStatus().value,
-            KEY_PERMISSIONS_MICROPHONE to permissionManager.getMicrophonePermissionStatus().value,
-            KEY_PERMISSIONS_NOTIFICATIONS to permissionManager.getNotificationPermissionStatus().value,
-            KEY_PERMISSIONS_PHOTO_LIBRARY to permissionManager.getPhotoLibraryPermissionStatus().value,
-        ).filter { (_, value) -> value == PermissionStatus.GRANTED.value }
+        val statuses = mapOf(
+            KEY_PERMISSIONS_CAMERA to permissionManager.getCameraPermissionStatus(),
+            KEY_PERMISSIONS_LOCATION to permissionManager.getLocationPermissionStatus(),
+            KEY_PERMISSIONS_MICROPHONE to permissionManager.getMicrophonePermissionStatus(),
+            KEY_PERMISSIONS_NOTIFICATIONS to permissionManager.getNotificationPermissionStatus(),
+            KEY_PERMISSIONS_PHOTO_LIBRARY to permissionManager.getPhotoLibraryPermissionStatus(),
+        )
 
         return Provider {
             JsonObject().apply {
-                map.forEach { (key, value) ->
-                    add(key, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, value) })
+                statuses.forEach { (key, status) ->
+                    grantedPermissionPayload(status)?.let { payload -> add(key, payload) }
                 }
             }
         }
+    }
+
+    private fun grantedPermissionPayload(status: PermissionStatus): JsonObject? = when (status) {
+        PermissionStatus.GRANTED -> JsonObject().apply {
+            addProperty(KEY_PERMISSIONS_STATUS, PermissionStatus.GRANTED.value)
+        }
+        PermissionStatus.LIMITED -> JsonObject().apply {
+            addProperty(KEY_PERMISSIONS_STATUS, PermissionStatus.GRANTED.value)
+            add(
+                KEY_PERMISSIONS_DETAILS,
+                JsonObject().apply { addProperty(KEY_PERMISSIONS_DETAILS_ACCESS, PermissionStatus.LIMITED.value) }
+            )
+        }
+        PermissionStatus.DENIED,
+        PermissionStatus.NOT_DETERMINED,
+        PermissionStatus.RESTRICTED,
+        -> null
     }
 
     private fun resolveTheme(): String {

@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
@@ -307,6 +308,16 @@ internal fun DataModule(
     override val maxInappsPerSessionLimitChecker: Checker by lazy { MaxInappsPerSessionLimitChecker(sessionStorageManager) }
     override val maxInappsPerDayLimitChecker: Checker by lazy { MaxInappsPerDayLimitChecker(inAppRepository, sessionStorageManager, timeProvider) }
     override val minIntervalBetweenShowsLimitChecker: Checker by lazy { MinIntervalBetweenShowsLimitChecker(sessionStorageManager, inAppRepository, timeProvider) }
+    override val showBudgetManager: ShowBudgetManager by lazy {
+        ShowBudgetManagerImpl(
+            sessionStorageManager,
+            inAppRepository,
+            timeProvider,
+            maxInappsPerSessionLimitChecker,
+            maxInappsPerDayLimitChecker,
+            minIntervalBetweenShowsLimitChecker
+        )
+    }
     override val inAppMessageDelayedManager: InAppMessageDelayedManager by lazy {
         InAppMessageDelayedManager(timeProvider = timeProvider, dispatcher = Dispatchers.Default)
     }

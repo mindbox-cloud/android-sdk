@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -33,6 +34,12 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     val requestedInAppTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
     val waitBudgetReportedPlaces: MutableSet<String> = newConcurrentSet()
+
+    val reportedShowFailures: MutableSet<String> = newConcurrentSet()
+
+    val showReservations: MutableMap<ShowBudgetOwner, ShowReservation> = ConcurrentHashMap()
+
+    val showBudgetLock = Any()
     var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
         CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
@@ -91,7 +98,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     fun isSessionExpiredOnLastCheck() = wasSessionExpiredOnLastCheck
 
-    fun clearSessionData() {
+    fun clearSessionData() = synchronized(showBudgetLock) {
         inAppCustomerSegmentations = null
         unShownOperationalInApps.clear()
         operationalInApps.clear()
@@ -102,6 +109,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         embeddedDelaysWaitedOut.clear()
         requestedInAppTargetingReportedInSession.clear()
         waitBudgetReportedPlaces.clear()
+        reportedShowFailures.clear()
+        showReservations.clear()
         customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         inAppProductSegmentations.clear()

@@ -1,5 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.models.InAppStub
+import org.junit.Assert.assertEquals
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.ComposableInAppCallback
@@ -12,6 +20,8 @@ import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
 import org.junit.After
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -123,6 +133,12 @@ internal class InAppMessageViewDisplayerImplTest {
         return field.get(this) as InAppCallback
     }
 
+    private fun InAppMessageViewDisplayerImpl.getPrivateField(name: String): Any? {
+        val field = InAppMessageViewDisplayerImpl::class.java.getDeclaredField(name)
+        field.isAccessible = true
+        return field.get(this)
+    }
+
     private fun InAppMessageViewDisplayerImpl.setPrivateField(name: String, value: Any?) {
         val field = InAppMessageViewDisplayerImpl::class.java.getDeclaredField(name)
         field.isAccessible = true
@@ -133,5 +149,116 @@ internal class InAppMessageViewDisplayerImplTest {
         val method = InAppMessageViewDisplayerImpl::class.java.getDeclaredMethod(name, String::class.java)
         method.isAccessible = true
         return method.invoke(this, arg)
+    }
+
+    // ---- a candidate that will never be presented says so, so its hold in the show budgets can go back ----
+
+    private class CountingCallbacks : InAppActionCallbacks {
+        var notShown = 0
+        override val onInAppClick = OnInAppClick {}
+        override val onInAppShown = OnInAppShown {}
+        override val onInAppDismiss = OnInAppDismiss {}
+        override val onInAppNotShown = OnInAppNotShown { notShown++ }
+    }
+
+    @Test
+    fun `a duplicate of a queued candidate is told it will not be shown`() {
+        // No activity: the first candidate waits in the queue, the second is the same in-app.
+        val first = CountingCallbacks()
+        val duplicate = CountingCallbacks()
+        val inApp = InAppStub.getInApp().form.variants.first()
+
+        displayer.tryShowInAppMessage(inApp, first, {}, null)
+        displayer.tryShowInAppMessage(inApp, duplicate, {}, null)
+
+        assertEquals(0, first.notShown)
+        assertEquals(1, duplicate.notShown)
+    }
+
+    @Test
+    fun `closing the in-app discards the queue and tells every queued candidate`() {
+        val queued = CountingCallbacks()
+        displayer.tryShowInAppMessage(InAppStub.getInApp().form.variants.first(), queued, {}, null)
+
+        val closeInApp = InAppMessageViewDisplayerImpl::class.java.getDeclaredMethod("closeInApp")
+        closeInApp.isAccessible = true
+        closeInApp.invoke(displayer)
+
+        assertEquals(1, queued.notShown)
+    }
+
+    @Test
+    fun `closing a presented in-app before it was shown tells it it will not be shown`() {
+        // The holder's own failure paths (image, HTML fetch, WebView init timeout) end in
+        // InAppController.close(); the hold in the show budgets must go back through that door.
+        val callbacks = CountingCallbacks()
+        val holder = mockk<InAppViewHolder<*>>(relaxed = true)
+        every { holder.wrapper } returns InAppTypeWrapper(
+            inAppType = InAppStub.getInApp().form.variants.first(),
+            inAppActionCallbacks = callbacks,
+            onRenderStart = {},
+        )
+        displayer.setPrivateField("currentHolder", holder)
+
+        val closeInApp = InAppMessageViewDisplayerImpl::class.java.getDeclaredMethod("closeInApp")
+        closeInApp.isAccessible = true
+        closeInApp.invoke(displayer)
+
+        assertEquals(1, callbacks.notShown)
+        verify(exactly = 1) { holder.onClose() }
+    }
+
+    @Test
+    fun `a restored in-app that cannot reattach is told it will not be shown`() {
+        val callbacks = CountingCallbacks()
+        val restoredHolder = mockk<InAppViewHolder<*>>(relaxed = true)
+        every { restoredHolder.canReuseOnRestore("restored") } returns true
+        every { restoredHolder.wrapper } returns InAppTypeWrapper(
+            inAppType = InAppStub.getInApp().form.variants.first(),
+            inAppActionCallbacks = callbacks,
+            onRenderStart = {},
+        )
+        // pausedHolder present, no activity -> root is null -> the reattach failure branch
+        displayer.setPrivateField("pausedHolder", restoredHolder)
+
+        displayer.invokePrivateWithString("tryReattachRestoredInApp", "restored")
+
+        assertEquals(1, callbacks.notShown)
+    }
+
+    @Test
+    fun `a holder that blows up on close still lets everything else be cleared`() {
+        val presented = CountingCallbacks()
+        val queued = CountingCallbacks()
+        val pausedCallbacks = CountingCallbacks()
+        displayer.tryShowInAppMessage(InAppStub.getInApp().form.variants.first(), queued, {}, null)
+
+        val holder = mockk<InAppViewHolder<*>>(relaxed = true)
+        every { holder.wrapper } returns InAppTypeWrapper(
+            inAppType = InAppStub.getInApp().form.variants.first(),
+            inAppActionCallbacks = presented,
+            onRenderStart = {},
+        )
+        every { holder.onClose() } throws IllegalStateException("teardown blew up")
+        val paused = mockk<InAppViewHolder<*>>(relaxed = true)
+        every { paused.wrapper } returns InAppTypeWrapper(
+            inAppType = InAppStub.getInApp().form.variants.first(),
+            inAppActionCallbacks = pausedCallbacks,
+            onRenderStart = {},
+        )
+        displayer.setPrivateField("currentHolder", holder)
+        displayer.setPrivateField("pausedHolder", paused)
+
+        val closeInApp = InAppMessageViewDisplayerImpl::class.java.getDeclaredMethod("closeInApp")
+        closeInApp.isAccessible = true
+        closeInApp.invoke(displayer)
+
+        assertNull(displayer.getPrivateField("currentHolder"))
+        assertNull(displayer.getPrivateField("pausedHolder"))
+        assertFalse(displayer.isInAppActive())
+        verify(exactly = 1) { paused.onClose() }
+        assertEquals(1, presented.notShown)
+        assertEquals(1, pausedCallbacks.notShown)
+        assertEquals(1, queued.notShown)
     }
 }

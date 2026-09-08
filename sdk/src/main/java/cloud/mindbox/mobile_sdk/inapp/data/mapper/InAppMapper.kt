@@ -282,6 +282,7 @@ internal class InAppMapper {
                                             ),
                                             frequency = Frequency(getDelay(inAppDto.frequency)),
                                             tags = inAppDto.tags?.takeIf { it.isNotEmpty() },
+                                            isPriority = inAppDto.isPriority,
                                         )
                                     }
 

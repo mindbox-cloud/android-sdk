@@ -37,6 +37,9 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.dispatch
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.fromBridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeErrorPayload
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppFailure
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
+import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.inapp.webview.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -104,6 +107,8 @@ internal class EmbeddedBlockWebViewHolder(
     @Volatile private var lastLoadedContent: WebViewHtmlContent? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val pendingShowInAppOutcomes: MutableSet<CompletableDeferred<ShowInAppOutcome>> = newConcurrentSet()
 
     private val pendingResponsesById: MutableMap<String, CompletableDeferred<BridgeMessage.Response>> =
         ConcurrentHashMap()
@@ -338,7 +343,7 @@ internal class EmbeddedBlockWebViewHolder(
                 BridgeMessage.SUCCESS_PAYLOAD
             }
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
-            register(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
+            registerSuspend(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
             registerSuspend(WebViewAction.FILTER_SHOWABLE_INAPPS, ::handleFilterShowableInappsAction)
         }
     }
@@ -477,7 +482,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
     }
 
-    private fun handleShowInAppAction(message: BridgeMessage.Request): String {
+    private suspend fun handleShowInAppAction(message: BridgeMessage.Request): String {
         val payload = gson.fromJson<JsonObject>(message.payload).getOrNull()
             ?: throw IllegalArgumentException(SHOW_IN_APP_INVALID_PAYLOAD)
         val requestedId = payload.getOrNull(SHOW_IN_APP_ID_FIELD)
@@ -495,11 +500,23 @@ internal class EmbeddedBlockWebViewHolder(
                 " with ${extraParams.size} param(s)"
         )
         if (lastState != EmbeddedBlockState.Loading && lastState != EmbeddedBlockState.Ready) {
-            mindboxLogI("[EmbeddedBlock] Ignored a show request from a block that is not shown")
-            return BridgeMessage.SUCCESS_PAYLOAD
+            mindboxLogI("[EmbeddedBlock] Refused a show request from a block that is not shown")
+            throw IllegalStateException(ShowInAppFailure.SOURCE_DISMISSED.bridgeReason)
         }
-        inAppMessageManager.showInAppById(requestedId, extraParams)
-        return BridgeMessage.SUCCESS_PAYLOAD
+        val outcome = CompletableDeferred<ShowInAppOutcome>()
+        pendingShowInAppOutcomes.add(outcome)
+        try {
+            inAppMessageManager.showInAppById(requestedId, extraParams) { result -> outcome.complete(result) }
+            return when (val result = outcome.await()) {
+                ShowInAppOutcome.Shown -> BridgeMessage.SUCCESS_PAYLOAD
+                is ShowInAppOutcome.NotShown -> {
+                    mindboxLogI("[EmbeddedBlock] showInApp for $requestedId ended without a show: ${result.reason.bridgeReason}")
+                    throw IllegalStateException(result.reason.bridgeReason)
+                }
+            }
+        } finally {
+            pendingShowInAppOutcomes.remove(outcome)
+        }
     }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
@@ -706,6 +723,12 @@ internal class EmbeddedBlockWebViewHolder(
             }
         }
         pendingResponsesById.clear()
+        pendingShowInAppOutcomes.forEach { deferred ->
+            if (!deferred.isCompleted) {
+                deferred.cancel(error)
+            }
+        }
+        pendingShowInAppOutcomes.clear()
     }
 
     private fun gatedTags(): Map<String, String>? =

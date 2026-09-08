@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
@@ -38,6 +39,7 @@ import java.lang.ref.WeakReference
 class EmbeddedBlocksRegistryTest {
 
     private class RecordingHandle(override var isActive: Boolean = true) : EmbeddedBlockHandle {
+        override val isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
         var pendingCount = 0
 
@@ -65,6 +67,7 @@ class EmbeddedBlocksRegistryTest {
     private fun controller(): EmbeddedBlocksRegistryImpl {
         coEvery { interactor.listenEmbeddedPlaceEvents() } returns placeEvents
         coEvery { interactor.listenConfigUpdates() } returns configUpdates
+        every { interactor.reservePlaceShow(any(), any()) } returns true
         return EmbeddedBlocksRegistryImpl(
             inAppInteractor = interactor,
             scopeProvider = { scope },
@@ -516,5 +519,111 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 1) { interactor.listenEmbeddedPlaceEvents() }
         coVerify(exactly = 1) { interactor.listenConfigUpdates() }
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
+    }
+
+    // ---- show budget holds: taken where the content goes to the blocks, given back when nothing shows ----
+
+    private class HoldingHandle : EmbeddedBlockHandle {
+        override val isActive: Boolean = true
+        override val isHoldingContent: Boolean = true
+
+        override fun onContentResolved(content: InAppType.Embedded?) {}
+    }
+
+    @Test
+    fun `the place reserves its show when the content is delivered, once for all its blocks`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        val controller = controller()
+        controller.register(place, RecordingHandle())
+        controller.register(place, RecordingHandle())
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+    }
+
+    @Test
+    fun `a refused hold empties the place without a failure`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        val handle = RecordingHandle()
+        val controller = controller()
+        every { interactor.reservePlaceShow(place, content) } returns false
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
+        verify { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `nothing to show over an active hold gives the hold back`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns null
+        val controller = controller()
+        controller.register(place, RecordingHandle())
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
+        verify { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `a winner waiting out its delay reserves only when the delay has run`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
+            EmbeddedResolveResult(content, Milliseconds(5_000L))
+        val controller = controller()
+        controller.register(place, RecordingHandle())
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        // The hold would sit through the whole delay otherwise — the budget is asked at the delivery.
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
+
+        scope.testScheduler.advanceTimeBy(5_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+    }
+
+    @Test
+    fun `a block that dropped its content gives the hold back only when no block of the place still holds content`() {
+        val controller = controller()
+        val dropped = RecordingHandle()
+        val stillLoading = HoldingHandle()
+        controller.register(place, dropped)
+        controller.register(place, stillLoading)
+        idleMain()
+
+        controller.onBlockContentDropped(place)
+        idleMain()
+        verify(exactly = 0) { interactor.releasePlaceShow(place) }
+
+        val alone = controller()
+        alone.register(place, RecordingHandle())
+        idleMain()
+        alone.onBlockContentDropped(place)
+        idleMain()
+        verify(exactly = 1) { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `the last block leaving the place gives the hold back`() {
+        val controller = controller()
+        val registration = controller.register(place, RecordingHandle())
+        idleMain()
+
+        registration.close()
+        idleMain()
+
+        verify { interactor.releasePlaceShow(place) }
     }
 }

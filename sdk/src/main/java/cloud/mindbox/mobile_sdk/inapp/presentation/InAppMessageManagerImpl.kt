@@ -14,6 +14,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -28,6 +30,8 @@ import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.VolleyError
 import com.google.gson.JsonElement
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -88,19 +92,20 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                if (!inAppInteractor.areShowAndFrequencyLimitsAllowed(inApp)) {
-                    mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
-                    return@withContext
-                }
-
                 val inAppMessage = inApp.firstOverlayVariant()
                 if (inAppMessage == null) {
                     mindboxLogI("InApp ${inApp.id} has no variant an overlay can show. Skipping.")
                     return@withContext
                 }
 
+                val hold = inAppInteractor.reserveOverlayShow(inApp)
+                if (hold == ShowReservationOutcome.REFUSED) {
+                    mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
+                    return@withContext
+                }
+
                 val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs)
+                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs, holdsBudget = hold == ShowReservationOutcome.GRANTED)
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
@@ -112,25 +117,47 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>) {
+    override fun showInAppById(inAppId: String, extraParams: Map<String, JsonElement>, onOutcome: OnShowInAppOutcome) {
         val tapTick = timeProvider.monotonicMillis()
+        val outcome = TerminalOutcome(onOutcome)
         inAppScope.launch {
-            val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
-                mindboxLogI("Nothing to show for in-app $inAppId")
-                return@launch
-            }
-            val (inApp, variant) = inAppToShow
-            val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
-            val callbacks = ShowCallbacks(inApp, variant, tags, preparedTime = timeProvider.monotonicElapsedSince(tapTick))
-            withContext(Dispatchers.Main) {
-                inAppMessageViewDisplayer.showInAppMessageNow(
-                    inAppType = variant,
-                    onRenderStart = callbacks.onRenderStart,
-                    tags = tags,
-                    extraParams = extraParams,
-                    inAppActionCallbacks = callbacks
-                )
-            }
+            runCatching { showRequestedInApp(inAppId, extraParams, tapTick, outcome) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    MindboxLoggerImpl.e(this@InAppMessageManagerImpl, "Showing in-app $inAppId on request failed", error)
+                    outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+                }
+        }
+    }
+
+    private suspend fun showRequestedInApp(
+        inAppId: String,
+        extraParams: Map<String, JsonElement>,
+        tapTick: Milliseconds,
+        outcome: TerminalOutcome,
+    ) {
+        val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
+            mindboxLogI("Nothing to show for in-app $inAppId")
+            outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
+            return
+        }
+        val (inApp, variant) = inAppToShow
+        val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+        val callbacks = ShowCallbacks(
+            inApp,
+            variant,
+            tags,
+            preparedTime = timeProvider.monotonicElapsedSince(tapTick),
+            outcome = outcome,
+        )
+        withContext(Dispatchers.Main) {
+            inAppMessageViewDisplayer.showInAppMessageNow(
+                inAppType = variant,
+                onRenderStart = callbacks.onRenderStart,
+                tags = tags,
+                extraParams = extraParams,
+                inAppActionCallbacks = callbacks
+            )
         }
     }
 
@@ -141,12 +168,16 @@ internal class InAppMessageManagerImpl(
      */
     private inner class ShowCallbacks(
         inApp: InApp,
-        variant: InAppType,
+        private val variant: InAppType,
         tags: Map<String, String>?,
         preparedTime: Milliseconds,
+        private val holdsBudget: Boolean = false,
+        private val outcome: TerminalOutcome? = null,
     ) : InAppActionCallbacks {
 
         private var renderStartTime = Timestamp(0L)
+
+        private val state = AtomicReference(ShowState.PENDING)
 
         val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
 
@@ -154,10 +185,34 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.sendInAppClicked(variant.inAppId, tags)
         }
         override val onInAppShown = OnInAppShown {
+            if (!state.compareAndSet(ShowState.PENDING, ShowState.SHOWN)) return@OnInAppShown
+            outcome?.settle(ShowInAppOutcome.Shown)
             handleInAppShown(renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
-            inAppInteractor.saveInAppDismissTime(inApp)
+            if (state.get() == ShowState.SHOWN) {
+                inAppInteractor.saveInAppDismissTime(inApp)
+            } else {
+                settleAsNotShown()
+            }
+        }
+        override val onInAppNotShown = OnInAppNotShown { settleAsNotShown() }
+
+        private fun settleAsNotShown() {
+            if (!state.compareAndSet(ShowState.PENDING, ShowState.NOT_SHOWN)) return
+            if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
+            outcome?.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+        }
+    }
+
+    private enum class ShowState { PENDING, SHOWN, NOT_SHOWN }
+
+    private class TerminalOutcome(private val listener: OnShowInAppOutcome) {
+        private val settled = AtomicBoolean(false)
+
+        fun settle(outcome: ShowInAppOutcome) {
+            if (!settled.compareAndSet(false, true)) return
+            loggingRunCatching { listener.onOutcome(outcome) }
         }
     }
 

@@ -327,6 +327,7 @@ internal class InAppStub {
             layers = listOf(getEmbeddedWebViewLayer()),
             frequency = Frequency(Frequency.Delay.Unlimited),
             tags = null,
+            isPriority = false,
         )
 
         fun getEmbeddedDto() = PayloadDto.EmbeddedDto(

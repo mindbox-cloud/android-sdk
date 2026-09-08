@@ -4,9 +4,9 @@ import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -17,7 +17,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
-import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -62,13 +61,7 @@ class InAppInteractorImplTest {
     private lateinit var inAppFrequencyManager: InAppFrequencyManager
 
     @MockK
-    private lateinit var maxInappsPerSessionLimitChecker: Checker
-
-    @MockK
-    private lateinit var maxInappsPerDayLimitChecker: Checker
-
-    @MockK
-    private lateinit var minIntervalBetweenShowsLimitChecker: Checker
+    private lateinit var showBudgetManager: ShowBudgetManager
 
     @RelaxedMockK
     private lateinit var timeProvider: TimeProvider
@@ -106,9 +99,7 @@ class InAppInteractorImplTest {
             inAppProcessingManager,
             inAppABTestLogic,
             inAppFrequencyManager,
-            maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker,
+            showBudgetManager,
             timeProvider,
             sessionStorageManager,
             inAppFailureTracker
@@ -196,9 +187,7 @@ class InAppInteractorImplTest {
             realProcessingManager,
             inAppABTestLogic,
             inAppFrequencyManager,
-            maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker,
+            showBudgetManager,
             timeProvider,
             sessionStorageManager,
             inAppFailureTracker
@@ -266,141 +255,5 @@ class InAppInteractorImplTest {
             }
             cancelAndIgnoreRemainingEvents()
         }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns true when all checks pass for non-priority in-app`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = false)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
-
-        every { maxInappsPerSessionLimitChecker.check() } returns true
-        every { maxInappsPerDayLimitChecker.check() } returns true
-        every { minIntervalBetweenShowsLimitChecker.check() } returns true
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(true, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 1) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 1) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns true for priority in-app when frequency allowed`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = true)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
-
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-        every { maxInappsPerDayLimitChecker.check() } returns false
-        every { minIntervalBetweenShowsLimitChecker.check() } returns false
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(true, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed lets an unlimited in-app skip the show limits entirely`() {
-        // The unlimited rule, second half (iOS decision 14.08, mirrored): unlimited neither
-        // writes the show records nor obeys the limits — session, day and interval are not
-        // even checked for it.
-        val testInApp = InAppStub.getInApp().copy(
-            isPriority = false,
-            frequency = Frequency(Frequency.Delay.Unlimited)
-        )
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
-
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-        every { maxInappsPerDayLimitChecker.check() } returns false
-        every { minIntervalBetweenShowsLimitChecker.check() } returns false
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(true, result)
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns false when at least one check not pass for non-priority in-app`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = false)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
-
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-        every { maxInappsPerDayLimitChecker.check() } returns true
-        every { minIntervalBetweenShowsLimitChecker.check() } returns true
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(false, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 1) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns false when all checks not pass for priority in-app`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = true)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns listOf(testInApp)
-
-        every { maxInappsPerSessionLimitChecker.check() } returns false
-        every { maxInappsPerDayLimitChecker.check() } returns false
-        every { minIntervalBetweenShowsLimitChecker.check() } returns false
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(true, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns false for non priority inapp when frequency manager forbids it`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = false)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns emptyList()
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(false, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
-    }
-
-    @Test
-    fun `areShowAndFrequencyLimitsAllowed returns false for priority inapp when frequency forbids it`() {
-        val testInApp = InAppStub.getInApp().copy(isPriority = true)
-
-        every { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) } returns emptyList()
-
-        val result = interactor.areShowAndFrequencyLimitsAllowed(testInApp)
-
-        assertEquals(false, result)
-
-        verify(exactly = 1) { inAppFrequencyManager.filterInAppsFrequency(listOf(testInApp)) }
-        verify(exactly = 0) { maxInappsPerSessionLimitChecker.check() }
-        verify(exactly = 0) { maxInappsPerDayLimitChecker.check() }
-        verify(exactly = 0) { minIntervalBetweenShowsLimitChecker.check() }
     }
 }
