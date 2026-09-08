@@ -264,7 +264,7 @@ internal class InAppMessageViewDisplayerImpl(
                 failureReason = FailureReason.PRESENTATION_FAILED,
                 errorDescription = "Error when trying draw inapp",
                 tags = wrapper.tags,
-                onFailure = { closeInApp() }
+                onFailure = ::closeInApp
             ) {
                 currentHolder?.show(createMindboxView(root))
             }
@@ -299,7 +299,7 @@ internal class InAppMessageViewDisplayerImpl(
             failureReason = FailureReason.PRESENTATION_FAILED,
             errorDescription = "Error when trying reattach InApp",
             tags = restoredTags,
-            onFailure = { closeInApp() },
+            onFailure = ::closeInApp,
         ) {
             restoredHolder.reattach(createMindboxView(root))
         }
