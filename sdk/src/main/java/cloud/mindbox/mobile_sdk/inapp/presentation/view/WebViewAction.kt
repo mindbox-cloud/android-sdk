@@ -227,8 +227,7 @@ internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
         WebViewAction.ALERT,
         WebViewAction.TOAST,
         WebViewAction.MOTION_STOP,
-        WebViewAction.CONTENT_RENDERED,
-        WebViewAction.UNKNOWN -> true
+        WebViewAction.CONTENT_RENDERED -> true
 
         else -> false
     }

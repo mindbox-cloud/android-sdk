@@ -263,14 +263,14 @@ internal class WebViewInAppViewHolder(
             controller.setCacheBypass(false)
         }
         lastLoadedContent = null
-        if (!hasShownFired) {
-            hasShownFired = true
-            wrapper.inAppActionCallbacks.onInAppShown.onShown()
-        }
         val mindboxView = currentMindboxView ?: run {
             mindboxLogW("MindboxView is null when activating WebView In-App")
             inAppController.close()
             return BridgeMessage.UNKNOWN_ERROR_PAYLOAD
+        }
+        if (!hasShownFired) {
+            hasShownFired = true
+            wrapper.inAppActionCallbacks.onInAppShown.onShown()
         }
         activateFirstShowPresentation(
             mindboxView = mindboxView,
@@ -621,6 +621,10 @@ internal class WebViewInAppViewHolder(
                     }
 
                     controller.executeOnViewThread {
+                        if (webViewController !== controller) {
+                            mindboxLogW("Dropping a page message that reached WebView In-App ${wrapper.inAppType.inAppId} after it was closed")
+                            return@executeOnViewThread
+                        }
                         when (message) {
                             is BridgeMessage.Request -> handleRequest(message, controller, handlers)
                             is BridgeMessage.Response -> handleResponse(message)
