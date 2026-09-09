@@ -43,7 +43,7 @@ maven_publish = "0.32.0"
 kover = "0.8.3"
 detekt = "1.23.6"
 
-pushclient = "7.2.0"
+pushclient = "7.4.1"
 
 [bundles]
 buildscript-plugins = [
