@@ -5,11 +5,12 @@ import android.graphics.Color
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import cloud.mindbox.mobile_sdk.R
-import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.CYCLE_MS
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.END_X
-import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.PAUSE_AT_START_MS
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.START_X
-import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.SWEEP_MS
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.cycle
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.pauseAtStart
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockShimmerDesign.sweep
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -21,17 +22,15 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * The stock placeholder against its design: a mask of one tint whose opacity alone changes, sized
- * in fractions of the block, sweeping once per cycle, and in step with every other shimmer around.
- */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockShimmerViewTest {
 
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
 
     private fun shimmer(now: () -> Long, epoch: Long = 0L) =
-        EmbeddedBlockShimmerView(activity, clock = now, epochMs = epoch)
+        EmbeddedBlockShimmerView(activity, clock = { Milliseconds(now()) }, epoch = Milliseconds(epoch))
+
+    private fun layerLeftAt(elapsedMs: Long): Float = EmbeddedBlockShimmerDesign.layerLeft(Milliseconds(elapsedMs))
 
     private fun assertClose(expected: Float, actual: Float) = assertEquals(expected, actual, TOLERANCE)
 
@@ -96,22 +95,22 @@ class EmbeddedBlockShimmerViewTest {
 
     @Test
     fun `the layer rests at the start for the first pause`() {
-        assertClose(START_X, EmbeddedBlockShimmerDesign.layerLeft(0L))
-        assertClose(START_X, EmbeddedBlockShimmerDesign.layerLeft(PAUSE_AT_START_MS - 1))
-        assertClose(START_X, EmbeddedBlockShimmerDesign.layerLeft(PAUSE_AT_START_MS))
+        assertClose(START_X, layerLeftAt(0L))
+        assertClose(START_X, layerLeftAt(pauseAtStart.interval - 1))
+        assertClose(START_X, layerLeftAt(pauseAtStart.interval))
     }
 
     @Test
     fun `the layer rests at the end for the second pause and jumps back at the end of the cycle`() {
-        assertClose(END_X, EmbeddedBlockShimmerDesign.layerLeft(PAUSE_AT_START_MS + SWEEP_MS))
-        assertClose(END_X, EmbeddedBlockShimmerDesign.layerLeft(CYCLE_MS - 1))
-        assertClose(START_X, EmbeddedBlockShimmerDesign.layerLeft(EmbeddedBlockShimmerDesign.elapsedInCycle(CYCLE_MS, 0L)))
+        assertClose(END_X, layerLeftAt(pauseAtStart.interval + sweep.interval))
+        assertClose(END_X, layerLeftAt(cycle.interval - 1))
+        assertClose(START_X, EmbeddedBlockShimmerDesign.layerLeft(EmbeddedBlockShimmerDesign.elapsedInCycle(cycle, Milliseconds(0L))))
     }
 
     @Test
     fun `the sweep runs from the start to the end and eases in`() {
-        val quarter = EmbeddedBlockShimmerDesign.layerLeft(PAUSE_AT_START_MS + SWEEP_MS / 4)
-        val half = EmbeddedBlockShimmerDesign.layerLeft(PAUSE_AT_START_MS + SWEEP_MS / 2)
+        val quarter = layerLeftAt(pauseAtStart.interval + sweep.interval / 4)
+        val half = layerLeftAt(pauseAtStart.interval + sweep.interval / 2)
         val linearHalf = START_X + (END_X - START_X) / 2
 
         assertTrue("the highlight moves towards the trailing edge", START_X < quarter && quarter < half && half < END_X)
@@ -120,9 +119,9 @@ class EmbeddedBlockShimmerViewTest {
 
     @Test
     fun `one cycle is 0_6 s of rest, a 1 s sweep and 0_6 s of rest`() {
-        assertEquals(2200L, CYCLE_MS)
-        assertEquals(600L, PAUSE_AT_START_MS)
-        assertEquals(1000L, SWEEP_MS)
+        assertEquals(2200L, cycle.interval)
+        assertEquals(600L, pauseAtStart.interval)
+        assertEquals(1000L, sweep.interval)
     }
 
     @Test
@@ -154,18 +153,18 @@ class EmbeddedBlockShimmerViewTest {
 
     @Test
     fun `a clock reading before the epoch still lands inside the cycle`() {
-        val elapsed = EmbeddedBlockShimmerDesign.elapsedInCycle(nowMs = 100L, epochMs = 400L)
+        val elapsed = EmbeddedBlockShimmerDesign.elapsedInCycle(now = Milliseconds(100L), epoch = Milliseconds(400L))
 
-        assertTrue(elapsed in 0L until CYCLE_MS)
-        assertEquals(CYCLE_MS - 300L, elapsed)
+        assertTrue(elapsed.interval in 0L until cycle.interval)
+        assertEquals(cycle.interval - 300L, elapsed.interval)
     }
 
     @Test
     fun `the shared epoch is one per process and lies in the past`() {
-        val epoch = EmbeddedBlockShimmerView.beatEpochMs
+        val epoch = EmbeddedBlockShimmerView.beatEpoch
 
-        assertEquals(epoch, EmbeddedBlockShimmerView.beatEpochMs)
-        assertTrue(epoch <= android.os.SystemClock.uptimeMillis())
+        assertEquals(epoch, EmbeddedBlockShimmerView.beatEpoch)
+        assertTrue(epoch.interval <= android.os.SystemClock.uptimeMillis())
     }
 
     private companion object {
