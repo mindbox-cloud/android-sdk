@@ -131,8 +131,14 @@ internal class EmbeddedBlockContentStore(
     }
 
     override fun onTrimMemory(level: Int) {
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) releaseAll("memory trim, level $level")
+        if (isMemoryPressure(level)) releaseAll("memory trim, level $level")
     }
+
+    @Suppress("DEPRECATION")
+    private fun isMemoryPressure(level: Int): Boolean =
+        level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+            level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+            level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
 
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onLowMemory() = Unit

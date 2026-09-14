@@ -232,6 +232,20 @@ class EmbeddedBlockContentStoreTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
+    fun `running low on memory in the foreground frees everything, moderate pressure frees nothing`() {
+        val contents = List(2) { readyContent() }
+        contents.forEach { kept -> store.retain(Screen(), PLACE, kept.controller, activity = null) }
+
+        store.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE)
+        assertEquals(2, store.size)
+
+        store.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
+        assertEquals(0, store.size)
+        contents.forEach { kept -> assertEquals(1, kept.provider.releaseCount) }
+    }
+
+    @Test
     fun `a content kept on one activity is not handed to a block on another`() {
         val activity = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
         val other = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
