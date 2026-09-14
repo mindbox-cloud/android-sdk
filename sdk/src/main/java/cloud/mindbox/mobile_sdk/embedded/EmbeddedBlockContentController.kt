@@ -65,7 +65,11 @@ internal class EmbeddedBlockContentController(
     private var isStarted = false
     private var isReleased = false
     private var hasGivenUp = false
-    private var lastReportedState: EmbeddedBlockState? = null
+
+    var lastReportedState: EmbeddedBlockState? = null
+        private set
+    val isRetainable: Boolean
+        get() = !isReleased && lastReportedState == EmbeddedBlockState.Ready && provider?.contentView != null
 
     private var registration: Closeable? = null
     private var configJob: Job? = null

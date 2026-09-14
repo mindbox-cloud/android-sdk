@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockContentStore
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -63,6 +64,7 @@ internal interface PresentationModule : MindboxModule {
 
     /** The registry only if a block has already asked for it — never creates one. */
     val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
+    val embeddedBlockContentStore: EmbeddedBlockContentStore
 }
 
 internal interface DataModule : MindboxModule {

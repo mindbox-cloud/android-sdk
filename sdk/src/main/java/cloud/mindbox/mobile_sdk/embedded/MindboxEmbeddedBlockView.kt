@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
@@ -48,6 +49,9 @@ import kotlin.math.abs
  * ```
  *
  * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
+ * A screen that leaves the window for the back stack — a Fragment behind a newer one, a Compose
+ * destination behind the next — keeps the block's content, and the block the screen builds on its
+ * return shows it at once. The content goes when the screen goes.
  * The block owns its behavior too — visible while loading and while showing content, `GONE`
  * when the place ends up without content: always for an empty place, and for a failure unless
  * [setErrorView] keeps it in place. A block that
@@ -60,7 +64,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     attrs: AttributeSet?,
     placeSystemName: String?,
     configTimeout: Milliseconds? = null,
-    private val contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
+    contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
         configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
         providerFactory = { content, attemptStartedAt ->
@@ -73,7 +77,14 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
         },
     ),
+    private val contentStore: () -> EmbeddedBlockContentStore? = {
+        loggingRunCatching(defaultValue = null) {
+            if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlockContentStore else null
+        }
+    },
 ) : FrameLayout(context, attrs) {
+
+    private var contentController: EmbeddedBlockContentController = contentController
 
     @JvmOverloads
     public constructor(
@@ -123,11 +134,21 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var isReleased = false
     private var shownContent: View? = null
     private var isContentStarted = false
+    private var hasStartedOnce = false
     private var observedLifecycle: Lifecycle? = null
+
+    private var screenOwner: LifecycleOwner? = null
+
+    private var screenOwnerAtAttach: LifecycleOwner? = null
 
     private val hostDestroyObserver = object : DefaultLifecycleObserver {
         override fun onDestroy(owner: LifecycleOwner) {
-            mindboxLogI("[EmbeddedBlock] Host screen destroyed, freeing content")
+            val retainRefusal = tryRetainContent(destroyedOwner = owner)
+            if (retainRefusal == null) {
+                releaseViewOnly()
+                return
+            }
+            mindboxLogI("[EmbeddedBlock] Host screen destroyed, freeing content ($retainRefusal)")
             detachFromHost()
             loggingRunCatching { contentController.release() }
         }
@@ -271,6 +292,8 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        screenOwnerAtAttach = loggingRunCatching(defaultValue = null) { findScreenOwner(explicitOwner = screenOwner) }
+        reclaimRetainedContent()
         shownContent?.let(::placeContentInFrame)
         observeHostDestruction()
         isWindowVisible = windowVisibility == VISIBLE
@@ -299,6 +322,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     private fun startContent() {
         if (isContentStarted) return
         isContentStarted = true
+        hasStartedOnce = true
         mindboxLogI("[EmbeddedBlock] On screen (place='$placeSystemName'), starting content")
         loggingRunCatching { contentController.start() }
     }
@@ -343,12 +367,76 @@ public class MindboxEmbeddedBlockView internal constructor(
         loggingRunCatching { contentController.release() }
     }
 
+    @InternalMindboxApi
+    public fun setScreenOwner(owner: LifecycleOwner?) {
+        screenOwner = owner
+    }
+
+    @InternalMindboxApi
+    public fun releaseOrRetain() {
+        if (isReleased) return
+
+        val retainRefusal = tryRetainContent(destroyedOwner = null)
+        if (retainRefusal == null) {
+            mindboxLogI("[EmbeddedBlock] Let go by the host wrapper, the content stays with the screen")
+            releaseViewOnly()
+            return
+        }
+        mindboxLogI("[EmbeddedBlock] Let go by the host wrapper, nothing to keep ($retainRefusal)")
+        release()
+    }
+
+    private fun releaseViewOnly() {
+        isReleased = true
+        appearanceObserver = null
+        detachFromHost()
+    }
+
     private fun detachFromHost(): Unit = loggingRunCatching {
         observedLifecycle?.removeObserver(hostDestroyObserver)
         observedLifecycle = null
+        screenOwnerAtAttach = null
         mainHandler.removeCallbacksAndMessages(null)
         isDeliveryScheduled = false
         listener = DefaultListener
+    }
+
+    private fun tryRetainContent(destroyedOwner: LifecycleOwner?): String? =
+        loggingRunCatching(defaultValue = "keeping the content failed") {
+            val place = placeSystemName ?: return@loggingRunCatching "no place"
+            if (!contentController.isRetainable) return@loggingRunCatching "no content to keep"
+            val store = contentStore() ?: return@loggingRunCatching "the SDK is not initialized"
+            val activity = context.findActivity()
+            if (activity != null && (activity.isFinishing || activity.isChangingConfigurations)) {
+                return@loggingRunCatching "the activity is going away"
+            }
+            val owner = screenOwnerAtAttach?.takeIf { attached -> attached.isScreenOwnerFor(destroyedOwner) }
+                ?: findScreenOwner(destroyedOwner, explicitOwner = screenOwner)
+                ?: return@loggingRunCatching "no screen outlives the view"
+            if (owner.lifecycle.currentState == Lifecycle.State.RESUMED) {
+                return@loggingRunCatching "the screen is still in front"
+            }
+
+            pauseContent()
+            contentController.onStateChange = null
+            clearContent()
+            store.retain(owner, place, contentController, activity)
+            mindboxLogI("[EmbeddedBlock] Host view destroyed, keeping the content for the screen (place='$place')")
+            null
+        }
+
+    private fun reclaimRetainedContent(): Unit = loggingRunCatching {
+        if (isReleased || hasStartedOnce) return@loggingRunCatching
+        val place = placeSystemName ?: return@loggingRunCatching
+        val store = contentStore() ?: return@loggingRunCatching
+        val owner = screenOwnerAtAttach ?: return@loggingRunCatching
+        val kept = store.reclaim(owner, place, context.findActivity()) ?: return@loggingRunCatching
+
+        contentController.onStateChange = null
+        contentController = kept
+        kept.onStateChange = { newState -> state = newState }
+        mindboxLogI("[EmbeddedBlock] Back on the screen (place='$place'), showing the kept content")
+        kept.lastReportedState?.let { keptState -> state = keptState }
     }
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop

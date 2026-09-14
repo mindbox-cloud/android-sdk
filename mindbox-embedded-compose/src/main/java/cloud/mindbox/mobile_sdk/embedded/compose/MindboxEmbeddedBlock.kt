@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import cloud.mindbox.mobile_sdk.Mindbox
@@ -78,6 +79,7 @@ public fun MindboxEmbeddedBlock(
     val currentError by rememberUpdatedState(error)
 
     val context = LocalContext.current
+    val screenOwner by rememberUpdatedState(LocalLifecycleOwner.current)
 
     key(placeSystemName) {
         var appearance by remember {
@@ -118,6 +120,7 @@ public fun MindboxEmbeddedBlock(
             ).fillMaxWidth(),
             factory = { viewContext ->
                 MindboxEmbeddedBlockView(viewContext, placeSystemName, timeoutMs).apply {
+                    setScreenOwner(screenOwner)
                     setAppearanceObserver { shown -> appearance = shown }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
@@ -133,10 +136,11 @@ public fun MindboxEmbeddedBlock(
                 }
             },
             update = { view ->
+                view.setScreenOwner(screenOwner)
                 view.setPlaceholderView(placeholder?.let { placeholderHost.value })
                 view.setErrorView(error?.let { errorHost.value })
             },
-            onRelease = { view -> view.release() },
+            onRelease = { view -> view.releaseOrRetain() },
         )
     }
 }
