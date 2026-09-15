@@ -13,6 +13,8 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.logger.Level
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -203,6 +205,30 @@ class MindboxEmbeddedBlockTest {
         settle()
 
         assertTrue(timeoutWarnings().isEmpty())
+    }
+
+    @Test
+    fun `leaving the composition lets the block go through releaseOrRetain, not release`() {
+        // A destination that leaves the composition may still sit in the back stack; the wrapper
+        // must hand the block over to its screen instead of freeing it outright. With nothing
+        // loaded here there is nothing to keep, and the block says so before it releases.
+        Mindbox.setLogLevel(Level.INFO)
+        val show = mutableStateOf(true)
+
+        compose.setContent {
+            if (show.value) {
+                MindboxEmbeddedBlock(
+                    placeSystemName = "main-screen-top",
+                    modifier = Modifier.height(120.dp),
+                )
+            }
+        }
+        settle()
+        show.value = false
+        settle()
+
+        val messages = ShadowLog.getLogs().mapNotNull { log -> log.msg }
+        assertTrue(messages.any { message -> message.contains("Let go by the host wrapper, nothing to keep") })
     }
 
     private fun timeoutWarnings(): List<String> = ShadowLog.getLogs()

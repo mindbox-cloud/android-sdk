@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockContentStore
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
@@ -53,6 +54,10 @@ internal fun PresentationModule(
 
     override val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
         get() = embeddedBlocksRegistryLazy.takeIf { registry -> registry.isInitialized() }?.value
+
+    override val embeddedBlockContentStore: EmbeddedBlockContentStore by lazy {
+        EmbeddedBlockContentStore().also { store -> appContext.registerComponentCallbacks(store) }
+    }
 
     override val activityManager: ActivityManager by lazy {
         ActivityManagerImpl(callbackInteractor = callbackInteractor, context = appContext)

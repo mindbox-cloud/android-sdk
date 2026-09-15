@@ -18,5 +18,6 @@ internal object Constants {
 
     internal object Embedded {
         internal val defaultConfigTimeout = Milliseconds(30_000L)
+        internal const val MAX_RETAINED_CONTENTS = 3
     }
 }
