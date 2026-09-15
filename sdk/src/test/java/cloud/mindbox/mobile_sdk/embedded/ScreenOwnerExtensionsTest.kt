@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
  * Activity or an owner that is itself going away.
  */
 @RunWith(RobolectricTestRunner::class)
-class EmbeddedBlockScreenOwnerTest {
+class ScreenOwnerExtensionsTest {
 
     class HostFragment : Fragment() {
         override fun onCreateView(
