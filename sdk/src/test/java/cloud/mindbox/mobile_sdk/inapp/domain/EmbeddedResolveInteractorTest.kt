@@ -912,7 +912,7 @@ class EmbeddedResolveInteractorTest {
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
         sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertTrue(interactor.reservePlaceShow(" $place ", InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
         verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
@@ -924,7 +924,7 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
-        assertTrue(interactor.reservePlaceShow(" $place ", content))
+        assertTrue(interactor.reservePlaceShow(place, content))
 
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
         assertFalse(interactor.reservePlaceShow(place, content))

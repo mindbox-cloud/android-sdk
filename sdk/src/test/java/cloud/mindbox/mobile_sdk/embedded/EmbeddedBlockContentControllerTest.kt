@@ -177,10 +177,10 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a padded place name is normalized for the registry and the failure report`() {
+    fun `a padded mixed-case place name is normalized for the registry and the failure report`() {
         val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
         val controller = EmbeddedBlockContentController(
-            placeSystemName = "  main-screen-top  ",
+            placeSystemName = "  Main-Screen-Top  ",
             configTimeout = Milliseconds(50L),
             providerFactory = { _, _ -> FakeProvider() },
             blocksRegistry = { blocksRegistry },

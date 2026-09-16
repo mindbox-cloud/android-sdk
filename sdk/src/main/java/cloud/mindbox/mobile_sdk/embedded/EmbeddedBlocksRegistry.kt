@@ -84,7 +84,7 @@ internal class EmbeddedBlocksRegistryImpl(
             scope.launch {
                 inAppInteractor.listenEmbeddedPlaceEvents().collect { placeEvent ->
                     runOnMain {
-                        onPlaceEvent(placeEvent.placeSystemName.trim(), placeEvent.triggerEvent)
+                        onPlaceEvent(placeEvent.placeSystemName, placeEvent.triggerEvent)
                     }
                 }
             },
@@ -98,28 +98,26 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
-        val place = placeSystemName.trim()
         runOnMain {
             restartChannelsIfDead()
-            handlesByPlace.getOrPut(place) { mutableListOf() }.add(WeakReference(handle))
-            mindboxLogI("[EmbeddedBlock] Block registered for place '$place'")
+            handlesByPlace.getOrPut(placeSystemName) { mutableListOf() }.add(WeakReference(handle))
+            mindboxLogI("[EmbeddedBlock] Block registered for place '$placeSystemName'")
         }
         return Closeable {
             runOnMain {
-                handlesByPlace[place]?.removeAll { reference ->
+                handlesByPlace[placeSystemName]?.removeAll { reference ->
                     reference.get().let { registered -> registered === handle || registered == null }
                 }
-                forgetPlaceIfEmpty(place)
-                mindboxLogI("[EmbeddedBlock] Block unregistered from place '$place'")
+                forgetPlaceIfEmpty(placeSystemName)
+                mindboxLogI("[EmbeddedBlock] Block unregistered from place '$placeSystemName'")
             }
         }
     }
 
     override fun onBlockAppeared(placeSystemName: String) {
-        val place = placeSystemName.trim()
         runOnMain {
             restartChannelsIfDead()
-            resolvePlace(place)
+            resolvePlace(placeSystemName)
         }
     }
 
@@ -134,10 +132,9 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     override fun onBlockContentDropped(placeSystemName: String) {
-        val place = placeSystemName.trim()
         runOnMain {
-            if (liveHandles(place).none { handle -> handle.isHoldingContent }) {
-                inAppInteractor.releasePlaceShow(place)
+            if (liveHandles(placeSystemName).none { handle -> handle.isHoldingContent }) {
+                inAppInteractor.releasePlaceShow(placeSystemName)
             }
         }
     }

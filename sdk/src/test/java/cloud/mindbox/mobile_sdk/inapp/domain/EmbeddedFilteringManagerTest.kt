@@ -6,7 +6,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -33,24 +32,6 @@ class EmbeddedFilteringManagerTest {
         val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded, other, modalInApp()), "main-screen-top")
 
         assertEquals(listOf(embedded), result)
-    }
-
-    @Test
-    fun `place comparison trims whitespace on both sides`() {
-        val embedded = embeddedInApp()
-
-        val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded), "  main-screen-top  ")
-
-        assertEquals(listOf(embedded), result)
-    }
-
-    @Test
-    fun `place comparison is case sensitive`() {
-        val embedded = embeddedInApp(place = "Main-Screen-Top")
-
-        val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded), "main-screen-top")
-
-        assertTrue(result.isEmpty())
     }
 
     @Test

@@ -51,7 +51,7 @@ internal class EmbeddedBlockContentController(
     },
 ) : EmbeddedBlockHandle {
 
-    private val placeSystemName: String? = placeSystemName?.trim()?.takeIf { it.isNotEmpty() }
+    private val placeSystemName: String? = placeSystemName?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 

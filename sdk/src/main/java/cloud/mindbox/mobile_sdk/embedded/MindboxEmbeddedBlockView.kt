@@ -35,6 +35,9 @@ import kotlin.math.abs
  * config decides through an in-app with an `embedded` form variant bound to that place, and can
  * change it without an app release. Blocks sharing a place work independently.
  *
+ * The place name is matched like an operation system name: surrounding whitespace is trimmed and
+ * letter case is ignored, so `Main-Screen-Top` and `main-screen-top` are the same place, not two.
+ *
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
  * default one or the host's own ([setPlaceholderView]). When the place ends up without content the
@@ -95,6 +98,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     /**
      * Creates a block for [placeSystemName] in code, where there is no XML to carry the attributes.
      *
+     * @param placeSystemName The place this block fills, as named in the mobile config. Matched
+     * with surrounding whitespace trimmed and letter case ignored, the same way an operation system
+     * name is.
      * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
      * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
      * default of 30 s. An answer that arrives after that no longer expands the block; the next

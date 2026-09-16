@@ -78,9 +78,9 @@ class EmbeddedMapperTest {
     }
 
     @Test
-    fun `place system name is trimmed on mapping`() {
+    fun `place system name is trimmed and lowercased on mapping`() {
         val dto = baseDto.copy(
-            form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  main-screen-top  ")))
+            form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  Main-Screen-Top  ")))
         )
 
         val variant = mapper.mapToInAppConfig(config(dto)).inApps.single()
