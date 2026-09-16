@@ -10,6 +10,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -30,14 +31,14 @@ class EmbeddedBlockContentStoreTest {
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
         var lastHandle: EmbeddedBlockHandle? = null
 
-        override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
+        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
             lastHandle = handle
             return Closeable { lastHandle = null }
         }
 
-        override fun onBlockAppeared(placeSystemName: String) = Unit
+        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
 
-        override fun onBlockContentDropped(placeSystemName: String) = Unit
+        override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
         override fun startListening() = Unit
     }
@@ -71,11 +72,11 @@ class EmbeddedBlockContentStoreTest {
 
     private class Kept(val controller: EmbeddedBlockContentController, val provider: FakeProvider)
 
-    private fun readyContent(place: String = PLACE): Kept {
+    private fun readyContent(place: PlaceKey = PLACE): Kept {
         val registry = FakeBlocksRegistry()
         lateinit var provider: FakeProvider
         val controller = EmbeddedBlockContentController(
-            placeSystemName = place,
+            placeSystemName = place.value,
             providerFactory = { _, _ -> FakeProvider().also { provider = it } },
             blocksRegistry = { registry },
         )
@@ -122,7 +123,7 @@ class EmbeddedBlockContentStoreTest {
         store.retain(screen, PLACE, readyContent().controller, activity = null)
 
         assertNull(store.reclaim(Screen(), PLACE, activity = null))
-        assertNull(store.reclaim(screen, "other-place", activity = null))
+        assertNull(store.reclaim(screen, PlaceKey.of("other-place"), activity = null))
         assertEquals(1, store.size)
     }
 
@@ -269,6 +270,6 @@ class EmbeddedBlockContentStoreTest {
     }
 
     private companion object {
-        const val PLACE = "main-screen-top"
+        val PLACE = PlaceKey.of("main-screen-top")
     }
 }

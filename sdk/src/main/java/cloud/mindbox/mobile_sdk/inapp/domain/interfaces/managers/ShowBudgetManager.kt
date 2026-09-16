@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
 
 internal interface ShowBudgetManager {
@@ -36,7 +37,7 @@ internal enum class ShowReservationOutcome {
 
 internal sealed interface ShowBudgetOwner {
 
-    data class Place(val placeSystemName: String) : ShowBudgetOwner
+    data class Place(val placeSystemName: PlaceKey) : ShowBudgetOwner
 
     data class Overlay(val inAppId: String) : ShowBudgetOwner
 }

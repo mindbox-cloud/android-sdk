@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.gatedTags
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.safeAs
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -78,7 +79,7 @@ import java.util.concurrent.atomic.AtomicReference
 @OptIn(InternalMindboxApi::class)
 internal class EmbeddedBlockWebViewHolder(
     private val inAppId: String,
-    private val placeSystemName: String,
+    private val placeSystemName: PlaceKey,
     @Volatile private var layer: Layer.WebViewLayer,
     private val context: Context,
     @Volatile private var frequency: Frequency,

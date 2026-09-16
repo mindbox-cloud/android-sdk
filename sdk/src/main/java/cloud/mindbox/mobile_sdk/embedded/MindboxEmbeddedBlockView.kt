@@ -24,6 +24,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
@@ -34,6 +35,9 @@ import kotlin.math.abs
  * The host marks a *place* by [placeSystemName] and never learns what goes into it — the mobile
  * config decides through an in-app with an `embedded` form variant bound to that place, and can
  * change it without an app release. Blocks sharing a place work independently.
+ *
+ * The place name is matched like an operation system name: surrounding whitespace is trimmed and
+ * letter case is ignored, so `Main-Screen-Top` and `main-screen-top` are the same place, not two.
  *
  * **The host owns the size**: give the block an explicit height. The content adapts to that
  * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
@@ -95,6 +99,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     /**
      * Creates a block for [placeSystemName] in code, where there is no XML to carry the attributes.
      *
+     * @param placeSystemName The place this block fills, as named in the mobile config. Matched
+     * with surrounding whitespace trimmed and letter case ignored, the same way an operation system
+     * name is.
      * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
      * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
      * default of 30 s. An answer that arrives after that no longer expands the block; the next
@@ -420,7 +427,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             pauseContent()
             contentController.onStateChange = null
             clearContent()
-            store.retain(owner, place, contentController, activity)
+            store.retain(owner, PlaceKey.of(place), contentController, activity)
             mindboxLogI("[EmbeddedBlock] Host view destroyed, keeping the content for the screen (place='$place')")
             null
         }
@@ -430,7 +437,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         val place = placeSystemName ?: return@loggingRunCatching
         val store = contentStore() ?: return@loggingRunCatching
         val owner = screenOwnerAtAttach ?: return@loggingRunCatching
-        val kept = store.reclaim(owner, place, context.findActivity()) ?: return@loggingRunCatching
+        val kept = store.reclaim(owner, PlaceKey.of(place), context.findActivity()) ?: return@loggingRunCatching
 
         contentController.onStateChange = null
         contentController = kept

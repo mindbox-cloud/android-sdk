@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
@@ -88,7 +89,7 @@ class EmbeddedResolveInteractorTest {
 
     private val now = Timestamp(1_000_000L)
 
-    private val place = "main-screen-top"
+    private val place = PlaceKey.of("main-screen-top")
 
     @Before
     fun setUp() {
@@ -128,7 +129,7 @@ class EmbeddedResolveInteractorTest {
 
     private fun embeddedInApp(
         id: String = "embedded-id",
-        placeName: String = place,
+        placeName: PlaceKey = place,
         isPriority: Boolean = false,
     ): InApp = InAppStub.getInApp().copy(
         id = id,
@@ -140,7 +141,7 @@ class EmbeddedResolveInteractorTest {
     private fun modalInApp(id: String = "modal-id"): InApp =
         InAppStub.getInApp().copy(id = id, targeting = InAppStub.getTargetingTrueNode())
 
-    private fun mixedInApp(id: String = "mixed-id", placeName: String = place): InApp =
+    private fun mixedInApp(id: String = "mixed-id", placeName: PlaceKey = place): InApp =
         InAppStub.getInApp().copy(
             id = id,
             targeting = InAppStub.getTargetingTrueNode(),
@@ -170,7 +171,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace returns null for unknown place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
-        assertNull(interactor.selectInAppForPlace("no-such-place", InAppEventType.EmbeddedPlaceRequested("no-such-place")))
+        assertNull(interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
     }
 
     @Test
@@ -211,7 +212,7 @@ class EmbeddedResolveInteractorTest {
     fun `a waited-out delay is per place and per in-app`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        interactor.markEmbeddedDelayWaitedOut("other-place", "embedded-id")
+        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id")
         interactor.markEmbeddedDelayWaitedOut(place, "other-in-app")
         val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
@@ -912,7 +913,7 @@ class EmbeddedResolveInteractorTest {
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
         sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertTrue(interactor.reservePlaceShow(" $place ", InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
         verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
@@ -924,7 +925,7 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
-        assertTrue(interactor.reservePlaceShow(" $place ", content))
+        assertTrue(interactor.reservePlaceShow(place, content))
 
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
         assertFalse(interactor.reservePlaceShow(place, content))

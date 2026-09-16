@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
@@ -49,7 +50,7 @@ class EmbeddedMapperTest {
         val variant = inApp.form.variants.single() as InAppType.Embedded
 
         assertEquals("in-app-id", variant.inAppId)
-        assertEquals("main-screen-top", variant.placeSystemName)
+        assertEquals(PlaceKey.of("main-screen-top"), variant.placeSystemName)
         assertEquals(1, variant.layers.size)
     }
 
@@ -78,15 +79,15 @@ class EmbeddedMapperTest {
     }
 
     @Test
-    fun `place system name is trimmed on mapping`() {
+    fun `place system name is trimmed and lowercased on mapping`() {
         val dto = baseDto.copy(
-            form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  main-screen-top  ")))
+            form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  Main-Screen-Top  ")))
         )
 
         val variant = mapper.mapToInAppConfig(config(dto)).inApps.single()
             .form.variants.single() as InAppType.Embedded
 
-        assertEquals("main-screen-top", variant.placeSystemName)
+        assertEquals(PlaceKey.of("main-screen-top"), variant.placeSystemName)
     }
 
     @Test

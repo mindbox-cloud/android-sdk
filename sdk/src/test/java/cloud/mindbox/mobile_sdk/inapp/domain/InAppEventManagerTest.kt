@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import org.junit.Assert.assertFalse
@@ -59,7 +60,7 @@ internal class InAppEventManagerTest {
         // the place signal must never reach the overlay conveyor (the MOBILE-324 bypass is gone).
         assertFalse(
             inAppEventManager.isValidInAppEvent(
-                InAppEventType.EmbeddedPlaceRequested(placeSystemName = "main-screen-top"),
+                InAppEventType.EmbeddedPlaceRequested(placeSystemName = PlaceKey.of("main-screen-top")),
             ),
         )
     }

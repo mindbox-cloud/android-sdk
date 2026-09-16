@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
@@ -121,37 +122,36 @@ internal class InAppInteractorImpl(
     }
 
     override suspend fun selectInAppForPlace(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
     ): EmbeddedResolveResult? {
-        val requestedPlace = placeSystemName.trim()
         val inApps = mobileConfigRepository.getInAppsSection()
         inAppRepository.saveCurrentSessionInApps(inApps)
-        val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, requestedPlace)
+        val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
         val matched = candidates.filter { candidate ->
             inAppProcessingManager.matchesTargeting(candidate, triggerEvent)
         }
-        logI("Place '$requestedPlace': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
+        logI("Place '$placeSystemName': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
         val winner = inAppFilteringManager.filterABTestsInApps(matched, inAppsPool)
             .let { inAppFrequencyManager.filterInAppsFrequency(it) }
             .sortByPriority()
-            .firstOrNull { candidate -> candidate.embeddedVariantFor(requestedPlace) != null }
+            .firstOrNull { candidate -> candidate.embeddedVariantFor(placeSystemName) != null }
 
-        sendPlaceTargetings(requestedPlace, matched, winner)
+        sendPlaceTargetings(placeSystemName, matched, winner)
         if (winner == null) {
-            logI("Place '$requestedPlace': nothing to show")
+            logI("Place '$placeSystemName': nothing to show")
             inAppFailureTracker.sendCollectedFailures()
             return null
         }
         inAppFailureTracker.clearFailures()
-        val variant = winner.embeddedVariantFor(requestedPlace) ?: return null
+        val variant = winner.embeddedVariantFor(placeSystemName) ?: return null
         val delayTime = winner.delayTime?.takeIf { delay ->
-            delay.interval > 0 && waitedOutDelayKey(requestedPlace, winner.id) !in sessionStorageManager.embeddedDelaysWaitedOut
+            delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.embeddedDelaysWaitedOut
         }
         if (winner.delayTime != null && delayTime == null) {
-            logI("Place '$requestedPlace': in-app ${winner.id} waits no delay (already waited out this session or zero)")
+            logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
         return EmbeddedResolveResult(
             variant = variant,
@@ -159,13 +159,13 @@ internal class InAppInteractorImpl(
         )
     }
 
-    override fun markEmbeddedDelayWaitedOut(placeSystemName: String, inAppId: String) {
-        sessionStorageManager.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName.trim(), inAppId))
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String) {
+        sessionStorageManager.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
     }
 
-    private fun waitedOutDelayKey(place: String, inAppId: String): String = "$place|$inAppId"
+    private fun waitedOutDelayKey(place: PlaceKey, inAppId: String): String = "$place|$inAppId"
 
-    private fun sendPlaceTargetings(place: String, matched: List<InApp>, winner: InApp?) {
+    private fun sendPlaceTargetings(place: PlaceKey, matched: List<InApp>, winner: InApp?) {
         for (inApp in matched) {
             if (inApp.id == winner?.id) {
                 if (sessionStorageManager.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
@@ -184,7 +184,7 @@ internal class InAppInteractorImpl(
         }
     }
 
-    private fun InApp.embeddedVariantFor(place: String): InAppType.Embedded? =
+    private fun InApp.embeddedVariantFor(place: PlaceKey): InAppType.Embedded? =
         form.variants
             .filterIsInstance<InAppType.Embedded>()
             .firstOrNull { variant -> variant.placeSystemName == place }
@@ -292,24 +292,23 @@ internal class InAppInteractorImpl(
             }
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
-    override fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean {
-        val place = placeSystemName.trim()
-        if (sessionStorageManager.embeddedLastShownByPlace[place] == content.inAppId) {
-            logI("Place '$place' already shows in-app ${content.inAppId}, no new show to reserve")
-            showBudgetManager.release(ShowBudgetOwner.Place(place))
+    override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {
+        if (sessionStorageManager.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
+            logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
+            showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
             return true
         }
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == content.inAppId }
         if (inApp != null && !inAppFrequencyManager.isAllowedByFrequency(inApp)) {
-            logI("Place '$place': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place stays empty")
+            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place stays empty")
             return false
         }
-        return showBudgetManager.reserve(ShowBudgetOwner.Place(place), content.inAppId, content.frequency, content.isPriority) !=
+        return showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority) !=
             ShowReservationOutcome.REFUSED
     }
 
-    override fun releasePlaceShow(placeSystemName: String) {
-        showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName.trim()))
+    override fun releasePlaceShow(placeSystemName: PlaceKey) {
+        showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
     }
 
     override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
@@ -325,19 +324,18 @@ internal class InAppInteractorImpl(
         mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
 
     override fun recordBlockShow(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         inAppId: String,
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
     ) {
-        val place = placeSystemName.trim()
-        val lastShown = sessionStorageManager.embeddedLastShownByPlace.put(place, inAppId)
+        val lastShown = sessionStorageManager.embeddedLastShownByPlace.put(placeSystemName, inAppId)
         if (lastShown == inAppId) {
-            logI("Place '$place': the block re-drew in-app $inAppId it already showed, nothing to report")
+            logI("Place '$placeSystemName': the block re-drew in-app $inAppId it already showed, nothing to report")
             return
         }
-        showBudgetManager.commit(ShowBudgetOwner.Place(place), inAppId, frequency, timeProvider.currentTimestamp())
+        showBudgetManager.commit(ShowBudgetOwner.Place(placeSystemName), inAppId, frequency, timeProvider.currentTimestamp())
         logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
     }

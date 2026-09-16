@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,16 +20,16 @@ import java.io.Closeable
 class MindboxEmbeddedBlockViewWrapperHooksTest {
 
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
-        override fun onBlockContentDropped(placeSystemName: String) {}
+        override fun onBlockContentDropped(placeSystemName: PlaceKey) {}
 
         var lastHandle: EmbeddedBlockHandle? = null
 
-        override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
+        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
             lastHandle = handle
             return Closeable { lastHandle = null }
         }
 
-        override fun onBlockAppeared(placeSystemName: String) = Unit
+        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
 
         override fun startListening() = Unit
     }

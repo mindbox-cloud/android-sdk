@@ -9,6 +9,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.lang.ref.WeakReference
@@ -20,7 +21,7 @@ internal class EmbeddedBlockContentStore(
 
     private inner class Entry(
         owner: LifecycleOwner,
-        val placeSystemName: String,
+        val placeSystemName: PlaceKey,
         val controller: EmbeddedBlockContentController,
         activity: Activity?,
     ) {
@@ -42,7 +43,7 @@ internal class EmbeddedBlockContentStore(
         val isScreenGone: Boolean
             get() = owner == null || ownerLifecycle.currentState == Lifecycle.State.DESTROYED
 
-        fun matches(owner: LifecycleOwner, placeSystemName: String, activity: Activity?): Boolean =
+        fun matches(owner: LifecycleOwner, placeSystemName: PlaceKey, activity: Activity?): Boolean =
             this.owner === owner && this.placeSystemName == placeSystemName && activityReference.get() === activity
 
         fun watch() {
@@ -66,7 +67,7 @@ internal class EmbeddedBlockContentStore(
 
     fun retain(
         owner: LifecycleOwner,
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         controller: EmbeddedBlockContentController,
         activity: Activity?,
     ) {
@@ -103,7 +104,7 @@ internal class EmbeddedBlockContentStore(
 
     fun reclaim(
         owner: LifecycleOwner,
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         activity: Activity?,
     ): EmbeddedBlockContentController? {
         releaseGoneScreens()

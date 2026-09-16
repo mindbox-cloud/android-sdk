@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 
 internal interface InAppFilteringManager {
 
@@ -17,7 +18,7 @@ internal interface InAppFilteringManager {
 
     fun filterABTestsInApps(inApps: List<InApp>, abtestsInAppsPool: Collection<String>): List<InApp>
 
-    fun filterEmbeddedInAppsByPlace(inApps: List<InApp>, placeSystemName: String): List<InApp>
+    fun filterEmbeddedInAppsByPlace(inApps: List<InApp>, placeSystemName: PlaceKey): List<InApp>
 
     fun filterOutNonOverlayInApps(inApps: List<InApp>): List<InApp>
 

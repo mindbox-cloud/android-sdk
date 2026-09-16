@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductResponse
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.Ids
@@ -275,7 +276,7 @@ internal class InAppMapper {
                                     is PayloadDto.EmbeddedDto -> {
                                         InAppType.Embedded(
                                             inAppId = inAppDto.id,
-                                            placeSystemName = payloadDto.placeSystemName!!.trim(),
+                                            placeSystemName = PlaceKey.of(payloadDto.placeSystemName!!),
                                             layers = mapBackgroundLayers(
                                                 payloadDto.content?.background?.layers
                                                     ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()

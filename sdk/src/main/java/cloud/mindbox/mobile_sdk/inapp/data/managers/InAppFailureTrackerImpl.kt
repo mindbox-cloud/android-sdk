@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
@@ -108,7 +109,7 @@ internal class InAppFailureTrackerImpl(
         failures.clear()
     }
 
-    override fun sendWaitBudgetExceeded(placeSystemName: String, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
+    override fun sendWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
         if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send wait budget failure")
             return
@@ -124,7 +125,7 @@ internal class InAppFailureTrackerImpl(
         inAppRepository.sendInAppShowErrors(
             listOf(
                 EmbeddedBlockShowFailure(
-                    placeSystemName = placeSystemName,
+                    placeSystemName = placeSystemName.value,
                     failureReason = FailureReason.WAIT_BUDGET_EXCEEDED,
                     errorDetails = "phase=${phase.wireName}; waited=${waitedFor.interval.millisToTimeSpan()}",
                     dateTimeUtc = timestamp,

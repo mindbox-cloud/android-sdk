@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleMa
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowError
@@ -295,9 +296,9 @@ internal class InAppFailureTrackerImplTest {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val sent = mutableListOf<List<InAppShowError>>()
 
-        inAppFailureTracker.sendWaitBudgetExceeded("main-screen-top", Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
-        inAppFailureTracker.sendWaitBudgetExceeded("main-screen-top", Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
-        inAppFailureTracker.sendWaitBudgetExceeded("another-place", Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("another-place"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
 
         verify(exactly = 2) { inAppRepository.sendInAppShowErrors(capture(sent)) }
         val first = sent.first().single() as EmbeddedBlockShowFailure
@@ -314,7 +315,7 @@ internal class InAppFailureTrackerImplTest {
     fun `sendWaitBudgetExceeded respects the feature toggle`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
 
-        inAppFailureTracker.sendWaitBudgetExceeded("main-screen-top", Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
 
         verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }

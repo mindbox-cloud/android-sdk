@@ -7,8 +7,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 
 internal class InAppFilteringManagerImpl(
     private val inAppRepository: InAppRepository
@@ -51,21 +51,10 @@ internal class InAppFilteringManagerImpl(
 
     override fun filterEmbeddedInAppsByPlace(
         inApps: List<InApp>,
-        placeSystemName: String
+        placeSystemName: PlaceKey
     ): List<InApp> {
-        val requestedPlace = placeSystemName.trim()
         return inApps.filter { inApp ->
-            inApp.embeddedVariants().any { variant ->
-                val matches = variant.placeSystemName == requestedPlace
-                if (!matches && variant.placeSystemName.equals(requestedPlace, ignoreCase = true)) {
-                    mindboxLogW(
-                        "Place names differ only in letter case: config has " +
-                            "'${variant.placeSystemName}', the block asked for '$requestedPlace'. " +
-                            "The comparison is case-sensitive, the candidate is skipped"
-                    )
-                }
-                matches
-            }
+            inApp.embeddedVariants().any { variant -> variant.placeSystemName == placeSystemName }
         }
     }
 

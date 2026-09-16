@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
@@ -37,7 +38,7 @@ internal class ShowBudgetManagerImplTest {
     private val now = Timestamp(1_700_000_000_000L)
     private val counting = InAppStub.getInApp().frequency
     private val unlimited = Frequency(Frequency.Delay.Unlimited)
-    private val place = ShowBudgetOwner.Place("main-screen-top")
+    private val place = ShowBudgetOwner.Place(PlaceKey.of("main-screen-top"))
     private val overlay = ShowBudgetOwner.Overlay("modal-1")
 
     @Before
