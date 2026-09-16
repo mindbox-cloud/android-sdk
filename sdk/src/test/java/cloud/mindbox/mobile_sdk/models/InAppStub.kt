@@ -323,7 +323,7 @@ internal class InAppStub {
 
         fun getEmbedded() = InAppType.Embedded(
             inAppId = "embedded-id",
-            placeSystemName = "main-screen-top",
+            placeSystemName = PlaceKey.of("main-screen-top"),
             layers = listOf(getEmbeddedWebViewLayer()),
             frequency = Frequency(Frequency.Delay.Unlimited),
             tags = null,

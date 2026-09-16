@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -58,7 +59,7 @@ class EmbeddedBlocksRegistryTest {
     // one in its place.
     private var scope = TestScope(UnconfinedTestDispatcher())
 
-    private val place = "main-screen-top"
+    private val place = PlaceKey.of("main-screen-top")
     private val content = InAppStub.getEmbedded()
 
     private val placeEvents = MutableSharedFlow<EmbeddedPlaceEvent>()
@@ -135,7 +136,7 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        scope.launch { placeEvents.emit(EmbeddedPlaceEvent("nobody-registered-here", operation)) }
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(PlaceKey.of("nobody-registered-here"), operation)) }
         idleMain()
 
         assertTrue(handle.received.isEmpty())

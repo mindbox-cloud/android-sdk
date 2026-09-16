@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppInteractor {
@@ -32,7 +33,7 @@ internal interface InAppInteractor {
      * matched operation. Suspends until the config arrives.
      */
     suspend fun selectInAppForPlace(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
     ): EmbeddedResolveResult?
 
@@ -88,7 +89,7 @@ internal interface InAppInteractor {
      * have moved on since the resolve. [tags] arrive already gated by the caller.
      */
     fun recordBlockShow(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         inAppId: String,
         frequency: Frequency,
         timeToDisplay: Milliseconds,
@@ -96,11 +97,11 @@ internal interface InAppInteractor {
     )
 
     /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
-    fun markEmbeddedDelayWaitedOut(placeSystemName: String, inAppId: String)
+    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String)
 
-    fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean
+    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean
 
-    fun releasePlaceShow(placeSystemName: String)
+    fun releasePlaceShow(placeSystemName: PlaceKey)
 
     fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
 

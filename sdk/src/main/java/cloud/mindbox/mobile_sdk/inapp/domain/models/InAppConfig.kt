@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal data class InAppConfig(
@@ -106,7 +107,7 @@ internal sealed class InAppType(open val inAppId: String) {
 
     internal data class Embedded(
         override val inAppId: String,
-        val placeSystemName: String,
+        val placeSystemName: PlaceKey,
         val layers: List<Layer>,
         val frequency: Frequency,
         val tags: Map<String, String>?,

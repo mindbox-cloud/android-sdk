@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -19,7 +20,7 @@ class EmbeddedFilteringManagerTest {
     private fun embeddedInApp(id: String = "embedded-id", place: String = "main-screen-top"): InApp =
         InAppStub.getInApp().copy(
             id = id,
-            form = Form(variants = listOf(InAppStub.getEmbedded().copy(inAppId = id, placeSystemName = place)))
+            form = Form(variants = listOf(InAppStub.getEmbedded().copy(inAppId = id, placeSystemName = PlaceKey.of(place))))
         )
 
     private fun modalInApp(id: String = "modal-id"): InApp = InAppStub.getInApp().copy(id = id)
@@ -29,7 +30,7 @@ class EmbeddedFilteringManagerTest {
         val embedded = embeddedInApp()
         val other = embeddedInApp(id = "other", place = "another-place")
 
-        val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded, other, modalInApp()), "main-screen-top")
+        val result = manager.filterEmbeddedInAppsByPlace(listOf(embedded, other, modalInApp()), PlaceKey.of("main-screen-top"))
 
         assertEquals(listOf(embedded), result)
     }
@@ -49,7 +50,7 @@ class EmbeddedFilteringManagerTest {
             id = "mixed",
             form = Form(
                 variants = listOf(
-                    InAppStub.getEmbedded().copy(inAppId = "mixed", placeSystemName = "main-screen-top"),
+                    InAppStub.getEmbedded().copy(inAppId = "mixed", placeSystemName = PlaceKey.of("main-screen-top")),
                     InAppStub.getModalWindow().copy(inAppId = "mixed")
                 )
             )

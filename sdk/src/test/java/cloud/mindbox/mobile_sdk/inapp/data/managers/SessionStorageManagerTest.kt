@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingErrorKey
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
@@ -112,13 +113,13 @@ class SessionStorageManagerTest {
             operationalInApps["test"] = mutableListOf(mockk())
             inAppMessageShownInSession.add("test1")
             inAppMessageShownInSession.add("test2")
-            embeddedLastShownByPlace["main-screen-top"] = "in-app-1"
-            embeddedLastTargetedByPlace["main-screen-top"] = "in-app-2"
+            embeddedLastShownByPlace[PlaceKey.of("main-screen-top")] = "in-app-1"
+            embeddedLastTargetedByPlace[PlaceKey.of("main-screen-top")] = "in-app-2"
             placeTargetingReportedInSession.add("in-app-3")
             requestedInAppTargetingReportedInSession.add("host|inapp")
             embeddedDelaysWaitedOut.add("main-screen-top|in-app-1")
-            waitBudgetReportedPlaces.add("main-screen-top")
-            showReservations[ShowBudgetOwner.Place("main-screen-top")] = ShowReservation("in-app-1", Timestamp(1L))
+            waitBudgetReportedPlaces.add(PlaceKey.of("main-screen-top"))
+            showReservations[ShowBudgetOwner.Place(PlaceKey.of("main-screen-top"))] = ShowReservation("in-app-1", Timestamp(1L))
             customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
             geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
             processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS

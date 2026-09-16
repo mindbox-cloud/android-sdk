@@ -24,7 +24,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
-import cloud.mindbox.mobile_sdk.toPlaceKey
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
@@ -427,7 +427,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             pauseContent()
             contentController.onStateChange = null
             clearContent()
-            store.retain(owner, place.toPlaceKey(), contentController, activity)
+            store.retain(owner, PlaceKey.of(place), contentController, activity)
             mindboxLogI("[EmbeddedBlock] Host view destroyed, keeping the content for the screen (place='$place')")
             null
         }
@@ -437,7 +437,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         val place = placeSystemName ?: return@loggingRunCatching
         val store = contentStore() ?: return@loggingRunCatching
         val owner = screenOwnerAtAttach ?: return@loggingRunCatching
-        val kept = store.reclaim(owner, place.toPlaceKey(), context.findActivity()) ?: return@loggingRunCatching
+        val kept = store.reclaim(owner, PlaceKey.of(place), context.findActivity()) ?: return@loggingRunCatching
 
         contentController.onStateChange = null
         contentController = kept

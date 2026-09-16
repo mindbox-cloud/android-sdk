@@ -18,9 +18,9 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
-import cloud.mindbox.mobile_sdk.toPlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.Job
@@ -52,7 +52,7 @@ internal class EmbeddedBlockContentController(
     },
 ) : EmbeddedBlockHandle {
 
-    private val placeSystemName: String? = placeSystemName?.toPlaceKey()?.takeIf { it.isNotEmpty() }
+    private val placeSystemName: PlaceKey? = placeSystemName?.takeIf { it.isNotBlank() }?.let(PlaceKey::of)
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 
@@ -117,7 +117,7 @@ internal class EmbeddedBlockContentController(
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val configWaitDuration: Milliseconds = sanitizedConfigTimeout(configTimeout, placeSystemName)
+    private val configWaitDuration: Milliseconds = sanitizedConfigTimeout(configTimeout, this.placeSystemName)
 
     private val configBudget = EmbeddedBlockWaitBudget(configWaitDuration, mainHandler) { onConfigTimeout() }
     private val readyBudget = EmbeddedBlockWaitBudget(readyTimeout, mainHandler) { onReadyTimeout() }
@@ -434,7 +434,7 @@ internal class EmbeddedBlockContentController(
     }
 
     private companion object {
-        fun sanitizedConfigTimeout(requested: Milliseconds, place: String?): Milliseconds {
+        fun sanitizedConfigTimeout(requested: Milliseconds, place: PlaceKey?): Milliseconds {
             if (requested.interval > 0) return requested
             mindboxLogE(
                 "[EmbeddedBlock] Block for place '$place' was given timeout " +

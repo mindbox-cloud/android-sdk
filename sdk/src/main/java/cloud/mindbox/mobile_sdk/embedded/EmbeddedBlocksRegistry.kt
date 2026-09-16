@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -34,11 +35,11 @@ internal interface EmbeddedBlockHandle {
 
 internal interface EmbeddedBlocksRegistry {
 
-    fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable
+    fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable
 
-    fun onBlockAppeared(placeSystemName: String)
+    fun onBlockAppeared(placeSystemName: PlaceKey)
 
-    fun onBlockContentDropped(placeSystemName: String)
+    fun onBlockContentDropped(placeSystemName: PlaceKey)
 
     fun startListening()
 }
@@ -52,14 +53,14 @@ internal class EmbeddedBlocksRegistryImpl(
     // Weak on purpose: a host with no lifecycle owner to say goodbye — a plain Dialog, a
     // PopupWindow, an app that swaps views itself — only lets its block go, and a strong entry in
     // this process-wide map would keep the block, its view and the Activity behind it alive.
-    private val handlesByPlace = mutableMapOf<String, MutableList<WeakReference<EmbeddedBlockHandle>>>()
-    private val resolvingPlaces = mutableSetOf<String>()
+    private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
+    private val resolvingPlaces = mutableSetOf<PlaceKey>()
 
-    private val reResolveQueuedPlaces = mutableMapOf<String, InAppEventType?>()
+    private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, InAppEventType?>()
 
     private class PendingDelay(val inAppId: String, val job: Job)
 
-    private val delayJobsByPlace = mutableMapOf<String, PendingDelay>()
+    private val delayJobsByPlace = mutableMapOf<PlaceKey, PendingDelay>()
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -97,7 +98,7 @@ internal class EmbeddedBlocksRegistryImpl(
         invalidateAll(reason = "channels resubscribed")
     }
 
-    override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
+    override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         runOnMain {
             restartChannelsIfDead()
             handlesByPlace.getOrPut(placeSystemName) { mutableListOf() }.add(WeakReference(handle))
@@ -114,14 +115,14 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    override fun onBlockAppeared(placeSystemName: String) {
+    override fun onBlockAppeared(placeSystemName: PlaceKey) {
         runOnMain {
             restartChannelsIfDead()
             resolvePlace(placeSystemName)
         }
     }
 
-    private fun liveHandles(place: String): List<EmbeddedBlockHandle> {
+    private fun liveHandles(place: PlaceKey): List<EmbeddedBlockHandle> {
         val references = handlesByPlace[place] ?: return emptyList()
         val handles = references.mapNotNull { reference -> reference.get() }
         if (handles.size != references.size) {
@@ -131,7 +132,7 @@ internal class EmbeddedBlocksRegistryImpl(
         return handles
     }
 
-    override fun onBlockContentDropped(placeSystemName: String) {
+    override fun onBlockContentDropped(placeSystemName: PlaceKey) {
         runOnMain {
             if (liveHandles(placeSystemName).none { handle -> handle.isHoldingContent }) {
                 inAppInteractor.releasePlaceShow(placeSystemName)
@@ -139,14 +140,14 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun forgetPlaceIfEmpty(place: String) {
+    private fun forgetPlaceIfEmpty(place: PlaceKey) {
         if (handlesByPlace[place]?.isEmpty() != true) return
         handlesByPlace.remove(place)
         reResolveQueuedPlaces.remove(place)
         inAppInteractor.releasePlaceShow(place)
     }
 
-    private fun onPlaceEvent(place: String, triggerEvent: InAppEventType) {
+    private fun onPlaceEvent(place: PlaceKey, triggerEvent: InAppEventType) {
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogI("[EmbeddedBlock] Operation matched place '$place' but no block is registered, dropping")
@@ -159,7 +160,7 @@ internal class EmbeddedBlocksRegistryImpl(
         resolvePlace(place, triggerEvent)
     }
 
-    private fun resolvePlace(place: String, triggerEvent: InAppEventType? = null) {
+    private fun resolvePlace(place: PlaceKey, triggerEvent: InAppEventType? = null) {
         if (!resolvingPlaces.add(place)) {
             mindboxLogI(
                 "[EmbeddedBlock] Place '$place' is already resolving, queueing one more pass"
@@ -215,7 +216,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun handleResolved(place: String, result: EmbeddedResolveResult?) {
+    private fun handleResolved(place: PlaceKey, result: EmbeddedResolveResult?) {
         val delayTime = result?.delayTime?.takeIf { delay -> delay.interval > 0 }
         if (result == null || delayTime == null) {
             delayJobsByPlace.remove(place)?.job?.cancel()
@@ -250,7 +251,7 @@ internal class EmbeddedBlocksRegistryImpl(
         delayJobsByPlace[place] = PendingDelay(result.variant.inAppId, job)
     }
 
-    private fun handleResolveFailure(place: String) {
+    private fun handleResolveFailure(place: PlaceKey) {
         val running = delayJobsByPlace[place]
         if (running != null && running.job.isActive) {
             mindboxLogI(
@@ -263,13 +264,13 @@ internal class EmbeddedBlocksRegistryImpl(
         deliver(place, null)
     }
 
-    private fun notifyPending(place: String) {
+    private fun notifyPending(place: PlaceKey) {
         liveHandles(place).forEach { handle ->
             loggingRunCatching { handle.onContentPending() }
         }
     }
 
-    private fun deliver(place: String, content: InAppType.Embedded?) {
+    private fun deliver(place: PlaceKey, content: InAppType.Embedded?) {
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")

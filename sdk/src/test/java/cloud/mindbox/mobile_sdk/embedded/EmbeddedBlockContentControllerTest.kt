@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertFalse
 import android.os.Looper
 import android.view.View
@@ -27,20 +28,20 @@ class EmbeddedBlockContentControllerTest {
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
         val droppedPlaces = mutableListOf<String>()
 
-        override fun onBlockContentDropped(placeSystemName: String) {
-            droppedPlaces.add(placeSystemName)
+        override fun onBlockContentDropped(placeSystemName: PlaceKey) {
+            droppedPlaces.add(placeSystemName.value)
         }
 
         val appearedPlaces = mutableListOf<String>()
         var lastHandle: EmbeddedBlockHandle? = null
 
-        override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
+        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
             lastHandle = handle
             return Closeable { lastHandle = null }
         }
 
-        override fun onBlockAppeared(placeSystemName: String) {
-            appearedPlaces.add(placeSystemName)
+        override fun onBlockAppeared(placeSystemName: PlaceKey) {
+            appearedPlaces.add(placeSystemName.value)
         }
 
         override fun startListening() = Unit
@@ -193,7 +194,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
         io.mockk.verify(exactly = 1) {
             tracker.sendWaitBudgetExceeded(
-                "main-screen-top",
+                PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
             )
@@ -217,7 +218,7 @@ class EmbeddedBlockContentControllerTest {
         // The SDK stayed silent for the whole budget: the fact ships with no in-app to name.
         io.mockk.verify(exactly = 1) {
             tracker.sendWaitBudgetExceeded(
-                "main-screen-top",
+                PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
             )
@@ -242,7 +243,7 @@ class EmbeddedBlockContentControllerTest {
 
         io.mockk.verify(exactly = 1) {
             tracker.sendWaitBudgetExceeded(
-                "main-screen-top",
+                PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.RESOLVE_PENDING,
             )

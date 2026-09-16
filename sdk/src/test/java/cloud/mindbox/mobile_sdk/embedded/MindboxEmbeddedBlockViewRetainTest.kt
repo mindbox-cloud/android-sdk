@@ -12,6 +12,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
@@ -32,14 +33,14 @@ class MindboxEmbeddedBlockViewRetainTest {
         val handles = mutableListOf<EmbeddedBlockHandle>()
         var droppedCount = 0
 
-        override fun register(placeSystemName: String, handle: EmbeddedBlockHandle): Closeable {
+        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
             handles.add(handle)
             return Closeable { handles.remove(handle) }
         }
 
-        override fun onBlockAppeared(placeSystemName: String) = Unit
+        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
 
-        override fun onBlockContentDropped(placeSystemName: String) {
+        override fun onBlockContentDropped(placeSystemName: PlaceKey) {
             droppedCount++
         }
 

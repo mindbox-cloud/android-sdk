@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 
 internal class InAppFilteringManagerImpl(
     private val inAppRepository: InAppRepository
@@ -50,7 +51,7 @@ internal class InAppFilteringManagerImpl(
 
     override fun filterEmbeddedInAppsByPlace(
         inApps: List<InApp>,
-        placeSystemName: String
+        placeSystemName: PlaceKey
     ): List<InApp> {
         return inApps.filter { inApp ->
             inApp.embeddedVariants().any { variant -> variant.placeSystemName == placeSystemName }

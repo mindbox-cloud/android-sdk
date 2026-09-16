@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -23,9 +24,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     var operationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
     var inAppMessageShownInSession: MutableList<String> = CopyOnWriteArrayList()
 
-    val embeddedLastShownByPlace: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+    val embeddedLastShownByPlace: ConcurrentHashMap<PlaceKey, String> = ConcurrentHashMap()
 
-    val embeddedLastTargetedByPlace: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+    val embeddedLastTargetedByPlace: ConcurrentHashMap<PlaceKey, String> = ConcurrentHashMap()
 
     val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
@@ -33,7 +34,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val requestedInAppTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
-    val waitBudgetReportedPlaces: MutableSet<String> = newConcurrentSet()
+    val waitBudgetReportedPlaces: MutableSet<PlaceKey> = newConcurrentSet()
 
     val reportedShowFailures: MutableSet<String> = newConcurrentSet()
 

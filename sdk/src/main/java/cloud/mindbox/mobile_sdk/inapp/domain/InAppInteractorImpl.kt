@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
@@ -121,7 +122,7 @@ internal class InAppInteractorImpl(
     }
 
     override suspend fun selectInAppForPlace(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
     ): EmbeddedResolveResult? {
         val inApps = mobileConfigRepository.getInAppsSection()
@@ -158,13 +159,13 @@ internal class InAppInteractorImpl(
         )
     }
 
-    override fun markEmbeddedDelayWaitedOut(placeSystemName: String, inAppId: String) {
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String) {
         sessionStorageManager.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
     }
 
-    private fun waitedOutDelayKey(place: String, inAppId: String): String = "$place|$inAppId"
+    private fun waitedOutDelayKey(place: PlaceKey, inAppId: String): String = "$place|$inAppId"
 
-    private fun sendPlaceTargetings(place: String, matched: List<InApp>, winner: InApp?) {
+    private fun sendPlaceTargetings(place: PlaceKey, matched: List<InApp>, winner: InApp?) {
         for (inApp in matched) {
             if (inApp.id == winner?.id) {
                 if (sessionStorageManager.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
@@ -183,7 +184,7 @@ internal class InAppInteractorImpl(
         }
     }
 
-    private fun InApp.embeddedVariantFor(place: String): InAppType.Embedded? =
+    private fun InApp.embeddedVariantFor(place: PlaceKey): InAppType.Embedded? =
         form.variants
             .filterIsInstance<InAppType.Embedded>()
             .firstOrNull { variant -> variant.placeSystemName == place }
@@ -291,7 +292,7 @@ internal class InAppInteractorImpl(
             }
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
-    override fun reservePlaceShow(placeSystemName: String, content: InAppType.Embedded): Boolean {
+    override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {
         if (sessionStorageManager.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
             logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
             showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
@@ -306,7 +307,7 @@ internal class InAppInteractorImpl(
             ShowReservationOutcome.REFUSED
     }
 
-    override fun releasePlaceShow(placeSystemName: String) {
+    override fun releasePlaceShow(placeSystemName: PlaceKey) {
         showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
     }
 
@@ -323,7 +324,7 @@ internal class InAppInteractorImpl(
         mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
 
     override fun recordBlockShow(
-        placeSystemName: String,
+        placeSystemName: PlaceKey,
         inAppId: String,
         frequency: Frequency,
         timeToDisplay: Milliseconds,

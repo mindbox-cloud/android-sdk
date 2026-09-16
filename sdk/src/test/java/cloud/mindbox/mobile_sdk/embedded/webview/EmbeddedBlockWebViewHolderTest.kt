@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.JsonObject
@@ -120,7 +121,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         holder = EmbeddedBlockWebViewHolder(
             inAppId = "embedded-id",
-            placeSystemName = "main-screen-top",
+            placeSystemName = PlaceKey.of("main-screen-top"),
             layer = InAppStub.getEmbeddedWebViewLayer(),
             context = application,
             frequency = Frequency(Frequency.Delay.Unlimited),
@@ -264,7 +265,7 @@ class EmbeddedBlockWebViewHolderTest {
         assertTrue(holder.contentView != null)
         // Content on screen is a show, counted like any other in-app's; the frequency decides
         // inside the interactor whether there is anything to write.
-        verify(timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+        verify(timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
     }
 
     @Test
@@ -282,7 +283,7 @@ class EmbeddedBlockWebViewHolderTest {
         holder.start()
 
         // The block returned to the screen — the user sees the content now.
-        verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+        verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
     }
 
     @Test
@@ -301,7 +302,7 @@ class EmbeddedBlockWebViewHolderTest {
             holder.pause()
             holder.start()
 
-            verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+            verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
         } finally {
             setMindboxScope(originalScope)
         }
@@ -369,7 +370,7 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "contentRendered", payload = """{"count":3.0}"""))
 
         await { states.lastOrNull() == EmbeddedBlockState.Ready }
-        verify(timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+        verify(timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
     }
 
     @Test
@@ -382,7 +383,7 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
 
         verify(exactly = 1, timeout = 5_000L) {
-            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", refreshed, any(), any())
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", refreshed, any(), any())
         }
     }
 
@@ -395,7 +396,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { states.lastOrNull() == EmbeddedBlockState.Ready }
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
 
-        verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any()) }
+        verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
     }
 
     @Test
@@ -888,7 +889,7 @@ class EmbeddedBlockWebViewHolderTest {
         states.clear()
         holder = EmbeddedBlockWebViewHolder(
             inAppId = "embedded-id",
-            placeSystemName = "main-screen-top",
+            placeSystemName = PlaceKey.of("main-screen-top"),
             layer = InAppStub.getEmbeddedWebViewLayer(),
             context = application,
             frequency = Frequency(Frequency.Delay.Unlimited),
@@ -1071,7 +1072,7 @@ class EmbeddedBlockWebViewHolderTest {
         holder.start()
 
         coVerify(exactly = 1, timeout = 5_000L) {
-            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), any(), any())
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any())
         }
     }
 
@@ -1088,7 +1089,7 @@ class EmbeddedBlockWebViewHolderTest {
         holder.start()
 
         coVerify(exactly = 1, timeout = 5_000L) {
-            inAppInteractor.recordBlockShow("main-screen-top", "embedded-id", any(), Milliseconds(1_000L), any())
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(1_000L), any())
         }
     }
 
