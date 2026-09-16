@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto.Frequency
 import cloud.mindbox.mobile_sdk.models.toMilliseconds
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.Md5Hash
+import cloud.mindbox.mobile_sdk.toPlaceKey
 import kotlin.math.roundToInt
 
 internal class InAppMapper {
@@ -275,7 +276,7 @@ internal class InAppMapper {
                                     is PayloadDto.EmbeddedDto -> {
                                         InAppType.Embedded(
                                             inAppId = inAppDto.id,
-                                            placeSystemName = payloadDto.placeSystemName!!.trim().lowercase(),
+                                            placeSystemName = payloadDto.placeSystemName!!.toPlaceKey(),
                                             layers = mapBackgroundLayers(
                                                 payloadDto.content?.background?.layers
                                                     ?.filterIsInstance<BackgroundDto.LayerDto.WebViewLayerDto>()

@@ -179,6 +179,11 @@ internal class ExtensionsTest {
     }
 
     @Test
+    fun `toPlaceKey trims and lowercases the place name`() {
+        assertEquals("main-screen-top", "  Main-Screen-Top  ".toPlaceKey())
+    }
+
+    @Test
     fun `isUuid returns true for valid UUID`() {
         val validUuid = "123e4567-e89b-12d3-a456-426614174000"
         assertTrue(validUuid.isUuid())

@@ -102,14 +102,15 @@ class MindboxEmbeddedBlockViewRetainTest {
     private val store = EmbeddedBlockContentStore(maxRetained = 3)
     private val providers = mutableListOf<FakeProvider>()
     private val loads = mutableListOf<MindboxEmbeddedBlockView>()
+    private var placeName = PLACE
 
     private fun newBlock(context: Context): MindboxEmbeddedBlockView =
         MindboxEmbeddedBlockView(
             context,
             null,
-            PLACE,
+            placeName,
             contentController = EmbeddedBlockContentController(
-                placeSystemName = PLACE,
+                placeSystemName = placeName,
                 providerFactory = { _, _ -> FakeProvider(context).also { providers.add(it) } },
                 blocksRegistry = { blocksRegistry },
             ),
@@ -194,6 +195,27 @@ class MindboxEmbeddedBlockViewRetainTest {
         assertEquals(0, store.size)
         assertSame(secondBlock, providers.single().contentView.parent)
         assertEquals(listOf(firstBlock, secondBlock), loads)
+    }
+
+    @Test
+    fun `the kept content comes back to a block naming the place in another letter case`() {
+        placeName = "Main-Screen-Top"
+        val home = openHome()
+        deliverContent()
+        val firstBlock = home.block
+
+        goForward()
+        assertEquals(1, store.size)
+
+        placeName = PLACE
+        goBack()
+        val secondBlock = home.block
+        show(secondBlock)
+
+        assertNotSame(firstBlock, secondBlock)
+        assertEquals(1, providers.size)
+        assertEquals(0, store.size)
+        assertSame(secondBlock, providers.single().contentView.parent)
     }
 
     @Test

@@ -95,6 +95,8 @@ internal fun String.convertToZonedDateTimeWithZ(): ZonedDateTime = runCatching {
 
 internal fun String?.equalsAny(vararg values: String, ignoreCase: Boolean = false): Boolean = values.any { this?.equals(it, ignoreCase) == true }
 
+internal fun String.toPlaceKey(): String = trim().lowercase()
+
 internal inline fun <reified T : Enum<T>> String?.enumValue(default: T? = null): T = this?.let {
     enumValues<T>().firstOrNull { value ->
         value.name

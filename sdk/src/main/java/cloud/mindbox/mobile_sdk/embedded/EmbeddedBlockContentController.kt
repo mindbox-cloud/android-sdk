@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.toPlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.Job
@@ -51,7 +52,7 @@ internal class EmbeddedBlockContentController(
     },
 ) : EmbeddedBlockHandle {
 
-    private val placeSystemName: String? = placeSystemName?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+    private val placeSystemName: String? = placeSystemName?.toPlaceKey()?.takeIf { it.isNotEmpty() }
 
     var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
 
