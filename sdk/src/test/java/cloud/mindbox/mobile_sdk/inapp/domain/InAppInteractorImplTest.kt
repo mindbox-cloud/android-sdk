@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -108,6 +109,23 @@ class InAppInteractorImplTest {
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
         every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
         every { inAppEventManager.isValidInAppEvent(any()) } returns true
+    }
+
+    @Test
+    fun `processEventAndConfig names every in-app the ab-test branch cuts`() = runTest {
+        val kept = InAppStub.getInApp().copy(id = "kept")
+        val cut = InAppStub.getInApp().copy(id = "cut")
+        coEvery { mobileConfigRepository.getInAppsSection() } returns listOf(kept, cut)
+        coEvery { inAppFilteringManager.filterABTestsInApps(any(), any()) } returns listOf(kept)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.processEventAndConfig()
+
+            verify(exactly = 1) { MindboxLoggerImpl.i(any(), "Config: in-app cut is filtered by ab-tests, cutting it") }
+            verify(exactly = 0) { MindboxLoggerImpl.i(any(), match { it.startsWith("Config: in-app kept") }) }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
     }
 
     @Test
