@@ -166,15 +166,18 @@ internal class MobileConfigRepositoryImpl(
                         ?.takeIf { timeSpanPositiveValidator.isValid(it) },
                     formDto = defaultDataManager.fillFormData(
                         mobileConfigSerializationManager.deserializeToInAppFormDto(
-                            inAppDtoBlank.form
+                            inAppDtoBlank.form,
+                            inAppDtoBlank.id
                         )
                     ),
-                    frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency)),
+                    frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency, inAppDtoBlank.id)),
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
-                        inAppDtoBlank.targeting
+                        inAppDtoBlank.targeting,
+                        inAppDtoBlank.id
                     ),
                     displayConditionsDto = mobileConfigSerializationManager.deserializeToDisplayConditionsDto(
-                        inAppDtoBlank.displayConditions
+                        inAppDtoBlank.displayConditions,
+                        inAppDtoBlank.id
                     )
                 )
             }?.filter { inAppDto ->

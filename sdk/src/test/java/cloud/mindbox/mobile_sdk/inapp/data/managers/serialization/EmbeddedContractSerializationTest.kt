@@ -5,8 +5,12 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.managers.MobileConfigSerializationManagerImpl
 import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.google.gson.JsonParser
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -28,26 +32,26 @@ class EmbeddedContractSerializationTest {
 
     @Test
     fun `displayConditions directCall is parsed`() {
-        val dto = manager.deserializeToDisplayConditionsDto(json("""{"${'$'}type":"directCall"}"""))
+        val dto = manager.deserializeToDisplayConditionsDto(json("""{"${'$'}type":"directCall"}"""), "inapp-id")
 
         assertTrue(dto is DisplayConditionsDto.DirectCallDto)
     }
 
     @Test
     fun `displayConditions null reads as show by trigger`() {
-        assertNull(manager.deserializeToDisplayConditionsDto(null))
+        assertNull(manager.deserializeToDisplayConditionsDto(null, "inapp-id"))
     }
 
     @Test
     fun `displayConditions with unknown type reads as show by trigger`() {
-        assertNull(manager.deserializeToDisplayConditionsDto(json("""{"${'$'}type":"pushOnly"}""")))
+        assertNull(manager.deserializeToDisplayConditionsDto(json("""{"${'$'}type":"pushOnly"}"""), "inapp-id"))
     }
 
     // frequency unlimited
 
     @Test
     fun `frequency unlimited is parsed`() {
-        val dto = manager.deserializeToFrequencyDto(json("""{"${'$'}type":"unlimited"}"""))
+        val dto = manager.deserializeToFrequencyDto(json("""{"${'$'}type":"unlimited"}"""), "inapp-id")
 
         assertTrue(dto is FrequencyDto.FrequencyUnlimitedDto)
     }
@@ -70,7 +74,8 @@ class EmbeddedContractSerializationTest {
                     }]}}
                 }]}
                 """.trimIndent()
-            )
+            ),
+            "inapp-id"
         )
 
         val variant = form?.variants?.single() as PayloadDto.EmbeddedDto
@@ -100,7 +105,8 @@ class EmbeddedContractSerializationTest {
                     }
                 }]}
                 """.trimIndent()
-            )
+            ),
+            "inapp-id"
         )
 
         val variant = form?.variants?.single() as PayloadDto.EmbeddedDto
@@ -121,10 +127,94 @@ class EmbeddedContractSerializationTest {
                      "content":{"background":{"layers":[]}}}
                 ]}
                 """.trimIndent()
-            )
+            ),
+            "inapp-id"
         )
 
         assertNull(form)
+    }
+
+    @Test
+    fun `unknown variant type is a warning line, not an error with a stack trace`() {
+        mockkObject(MindboxLoggerImpl)
+        try {
+            manager.deserializeToInAppFormDto(
+                json(
+                    """
+                    {"variants":[
+                        {"${'$'}type":"hologram"},
+                        {"${'$'}type":"embedded","placeSystemName":"main-screen-top",
+                         "content":{"background":{"layers":[]}}}
+                    ]}
+                    """.trimIndent()
+                ),
+                "inapp-id"
+            )
+
+            verify(exactly = 1) {
+                MindboxLoggerImpl.w(
+                    any(),
+                    match { message ->
+                        message.startsWith("In-app inapp-id: unknown ${'$'}type 'hologram', skipping it")
+                    }
+                )
+            }
+            verify(exactly = 0) { MindboxLoggerImpl.e(any(), any(), any()) }
+            verify(exactly = 0) { MindboxLoggerImpl.e(any(), any()) }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `unknown layer type is a warning line and only that layer is skipped`() {
+        mockkObject(MindboxLoggerImpl)
+        try {
+            val form = manager.deserializeToInAppFormDto(
+                json(
+                    """
+                    {"variants":[
+                        {"${'$'}type":"embedded","placeSystemName":"main-screen-top",
+                         "content":{"background":{"layers":[
+                            {"${'$'}type":"video"},
+                            {"${'$'}type":"webview","baseUrl":"https://cdn.example/",
+                             "contentUrl":"https://cdn.example/stories.html"}
+                         ]}}}
+                    ]}
+                    """.trimIndent()
+                ),
+                "inapp-id"
+            )
+
+            val variant = form?.variants?.single() as PayloadDto.EmbeddedDto
+            assertEquals(1, variant.content?.background?.layers?.size)
+            verify(exactly = 1) {
+                MindboxLoggerImpl.w(
+                    any(),
+                    match { message -> message.startsWith("In-app inapp-id: unknown ${'$'}type 'video', skipping it") }
+                )
+            }
+            verify(exactly = 0) { MindboxLoggerImpl.e(any(), any(), any()) }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `a form broken for another reason still logs an error with the cause`() {
+        mockkObject(MindboxLoggerImpl)
+        try {
+            val form = manager.deserializeToInAppFormDto(
+                json("""{"variants":"not-an-array"}"""),
+                "inapp-id"
+            )
+
+            assertNull(form)
+            verify(exactly = 1) { MindboxLoggerImpl.e(any(), match { it.startsWith("Failed to parse JsonObject") }, any()) }
+            verify(exactly = 0) { MindboxLoggerImpl.w(any(), any()) }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
     }
 
     @Test

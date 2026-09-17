@@ -9,13 +9,13 @@ import com.google.gson.JsonObject
 
 internal interface MobileConfigSerializationManager {
 
-    fun deserializeToFrequencyDto(frequencyString: JsonObject?): FrequencyDto?
+    fun deserializeToFrequencyDto(frequencyString: JsonObject?, inAppId: String): FrequencyDto?
 
     fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank?
 
-    fun deserializeToInAppFormDto(inAppForm: JsonObject?): FormDto?
+    fun deserializeToInAppFormDto(inAppForm: JsonObject?, inAppId: String): FormDto?
 
-    fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto?
+    fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?, inAppId: String): TreeTargetingDto?
 
-    fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?): DisplayConditionsDto?
+    fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?, inAppId: String): DisplayConditionsDto?
 }

@@ -149,7 +149,7 @@ internal class MobileConfigRepositoryImplTest {
                 every { validateInApp(any()) } returns true
             },
             mobileConfigSerializationManager = mockk(relaxed = true) {
-                every { deserializeToInAppTargetingDto(any()) } returns mockk()
+                every { deserializeToInAppTargetingDto(any(), any()) } returns mockk()
                 every { deserializeToConfigDtoBlank(any()) } returns deserializedBlank
             },
             monitoringValidator = mockk(relaxed = true),
