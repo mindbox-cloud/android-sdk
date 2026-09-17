@@ -10,7 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         maven { url 'https://developer.huawei.com/repo/' }
-        maven { url "https://nexus-external.vkteam.ru/repository/maven" }
+        maven { url "https://nexus-external.rustore.ru/repository/maven-rustore-exposed" }
         mavenCentral()
         mavenLocal()
     }
