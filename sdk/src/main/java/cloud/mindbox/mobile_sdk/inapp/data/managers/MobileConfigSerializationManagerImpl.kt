@@ -243,7 +243,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         if (error is UnknownSubtypeException) {
             mindboxLogW("In-app $inAppId: unknown ${Constants.TYPE_JSON_NAME} '${error.label}', skipping it: $json")
         } else {
-            mindboxLogE("Failed to parse JsonObject: $json", error)
+            mindboxLogE("Failed to parse JsonObject for in-app $inAppId: $json", error)
         }
     }
 }

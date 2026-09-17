@@ -210,7 +210,7 @@ class EmbeddedContractSerializationTest {
             )
 
             assertNull(form)
-            verify(exactly = 1) { MindboxLoggerImpl.e(any(), match { it.startsWith("Failed to parse JsonObject") }, any()) }
+            verify(exactly = 1) { MindboxLoggerImpl.e(any(), match { it.startsWith("Failed to parse JsonObject for in-app inapp-id") }, any()) }
             verify(exactly = 0) { MindboxLoggerImpl.w(any(), any()) }
         } finally {
             unmockkObject(MindboxLoggerImpl)
