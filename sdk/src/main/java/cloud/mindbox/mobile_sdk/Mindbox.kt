@@ -647,9 +647,10 @@ public object Mindbox : MindboxLog {
         lifecycleManager?.callbacks = object : LifecycleManager.Callbacks {
             override fun onActivityStarted(activity: Activity) {
                 UuidCopyManager.onAppMovedToForeground(activity)
+                val appContext = activity.applicationContext
                 mindboxScope.launch {
                     if (!MindboxPreferences.isFirstInitialize) {
-                        updateAppInfo(activity.applicationContext)
+                        updateAppInfo(appContext)
                     }
                 }
             }
