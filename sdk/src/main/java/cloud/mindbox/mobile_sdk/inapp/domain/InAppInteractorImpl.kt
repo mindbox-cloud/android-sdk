@@ -75,6 +75,7 @@ internal class InAppInteractorImpl(
                     }
                 }
                 abTestFilteredInApps(inApps).also { filteredInApps ->
+                    logInAppsFilteredByABTests(logLabel = "Config", candidates = inApps, showable = filteredInApps)
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
                 }
             }.also { unShownInApps ->
@@ -135,6 +136,7 @@ internal class InAppInteractorImpl(
         logI("Place '$placeSystemName': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
         val winner = inAppFilteringManager.filterABTestsInApps(matched, inAppsPool)
+            .also { showable -> logInAppsFilteredByABTests(logLabel = "Place '$placeSystemName'", candidates = matched, showable = showable) }
             .let { inAppFrequencyManager.filterInAppsFrequency(it) }
             .sortByPriority()
             .firstOrNull { candidate -> candidate.embeddedVariantFor(placeSystemName) != null }
@@ -191,6 +193,13 @@ internal class InAppInteractorImpl(
 
     private suspend fun abTestFilteredInApps(inApps: List<InApp>): List<InApp> =
         inAppFilteringManager.filterABTestsInApps(inApps, inAppABTestLogic.getInAppsPool(inApps.map { it.id }))
+
+    private fun logInAppsFilteredByABTests(logLabel: String, candidates: List<InApp>, showable: List<InApp>) {
+        val showableIds = showable.mapTo(HashSet()) { inApp -> inApp.id }
+        for (inApp in candidates) {
+            if (inApp.id !in showableIds) logI("$logLabel: in-app ${inApp.id} is filtered by ab-tests, cutting it")
+        }
+    }
 
     private suspend fun chooseAmongCandidates(
         logLabel: String,

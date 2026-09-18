@@ -4,12 +4,14 @@ import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
 import cloud.mindbox.mobile_sdk.inapp.data.dto.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
-import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank.InAppDtoBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.SettingsDtoBlank.*
+import cloud.mindbox.mobile_sdk.utils.Constants
+import cloud.mindbox.mobile_sdk.utils.RuntimeTypeAdapterFactory.UnknownSubtypeException
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -18,43 +20,33 @@ import com.google.gson.JsonParser
 internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
     MobileConfigSerializationManager {
 
-    override fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?): TreeTargetingDto? {
+    override fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?, inAppId: String): TreeTargetingDto? {
         val result = runCatching {
             gson.fromJson(inAppTreeTargeting, TreeTargetingDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this@MobileConfigSerializationManagerImpl,
-                message = "Failed to parse JsonObject: $inAppTreeTargeting",
-                exception = error
-            )
+            logParseFailure(inAppId, inAppTreeTargeting, error)
         }
         return result.getOrNull()
     }
 
-    override fun deserializeToFrequencyDto(frequencyString: JsonObject?): FrequencyDto? {
+    override fun deserializeToFrequencyDto(frequencyString: JsonObject?, inAppId: String): FrequencyDto? {
         val result = runCatching {
             gson.fromJson(frequencyString, FrequencyDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            mindboxLogE(
-                message = "Failed to parse JsonObject: $frequencyString",
-                exception = error
-            )
+            logParseFailure(inAppId, frequencyString, error)
         }
         return result.getOrNull()
     }
 
-    override fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?): DisplayConditionsDto? {
+    override fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?, inAppId: String): DisplayConditionsDto? {
         if (displayConditions == null) return null
         val result = runCatching {
             gson.fromJson(displayConditions, DisplayConditionsDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            mindboxLogE(
-                message = "Failed to parse displayConditions $displayConditions, reading it as unrestricted",
-                exception = error
-            )
+            logParseFailure(inAppId, displayConditions, error)
         }
         return result.getOrNull()
     }
@@ -155,16 +147,12 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         mindboxLogE("Failed to parse abtests block", it)
     }
 
-    override fun deserializeToInAppFormDto(inAppForm: JsonObject?): FormDto? {
+    override fun deserializeToInAppFormDto(inAppForm: JsonObject?, inAppId: String): FormDto? {
         val blankResult = runCatching {
             gson.fromJson(inAppForm, FormBlankDto::class.java)
         }
         blankResult.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this@MobileConfigSerializationManagerImpl,
-                message = "Failed to parse JsonObject: $inAppForm",
-                exception = error
-            )
+            logParseFailure(inAppId, inAppForm, error)
         }
         val result =
             FormDto(
@@ -176,10 +164,10 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                     content = PayloadDto.ModalWindowDto.ContentDto(
                                         background = BackgroundDto(
                                             layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
-                                                deserializeToBackgroundLayersDto(it as JsonObject)
+                                                deserializeToBackgroundLayersDto(it as JsonObject, inAppId)
                                             }),
                                         elements = payloadBlankDto.content?.elements?.mapNotNull {
-                                            deserializeToElementDto(it)
+                                            deserializeToElementDto(it, inAppId)
                                         }
                                     ), type = PayloadDto.ModalWindowDto.MODAL_JSON_NAME
                                 )
@@ -189,10 +177,10 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                 PayloadDto.SnackbarDto(
                                     content = PayloadDto.SnackbarDto.ContentDto(
                                         background = BackgroundDto(layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
-                                            deserializeToBackgroundLayersDto(it as JsonObject)
+                                            deserializeToBackgroundLayersDto(it as JsonObject, inAppId)
                                         }),
                                         elements = payloadBlankDto.content?.elements?.mapNotNull {
-                                            deserializeToElementDto(it)
+                                            deserializeToElementDto(it, inAppId)
                                         },
                                         position = PayloadDto.SnackbarDto.ContentDto.PositionDto(
                                             gravity = PayloadDto.SnackbarDto.ContentDto.PositionDto.GravityDto(
@@ -216,7 +204,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
                                     content = PayloadDto.EmbeddedDto.ContentDto(
                                         background = BackgroundDto(
                                             layers = payloadBlankDto.content?.background?.layers?.mapNotNull {
-                                                deserializeToBackgroundLayersDto(it as JsonObject)
+                                                deserializeToBackgroundLayersDto(it as JsonObject, inAppId)
                                             })
                                     ),
                                     placeSystemName = payloadBlankDto.placeSystemName,
@@ -229,33 +217,33 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         return result
     }
 
-    private fun deserializeToElementDto(element: JsonObject?): ElementDto? {
+    private fun deserializeToElementDto(element: JsonObject?, inAppId: String): ElementDto? {
         if (element == null) return null
         val result = runCatching {
             gson.fromJson(element, ElementDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this@MobileConfigSerializationManagerImpl,
-                message = "Failed to parse JsonObject: $element",
-                exception = error
-            )
+            logParseFailure(inAppId, element, error)
         }
         return result.getOrNull()
     }
 
-    private fun deserializeToBackgroundLayersDto(layer: JsonObject?): BackgroundDto.LayerDto? {
+    private fun deserializeToBackgroundLayersDto(layer: JsonObject?, inAppId: String): BackgroundDto.LayerDto? {
         if (layer == null) return null
         val result = runCatching {
             gson.fromJson(layer, BackgroundDto.LayerDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            MindboxLoggerImpl.e(
-                parent = this@MobileConfigSerializationManagerImpl,
-                message = "Failed to parse JsonObject: $layer",
-                exception = error
-            )
+            logParseFailure(inAppId, layer, error)
         }
         return result.getOrNull()
+    }
+
+    private fun logParseFailure(inAppId: String, json: JsonObject?, error: Throwable) {
+        if (error is UnknownSubtypeException) {
+            mindboxLogW("In-app $inAppId: unknown ${Constants.TYPE_JSON_NAME} '${error.label}', skipping it: $json")
+        } else {
+            mindboxLogE("Failed to parse JsonObject for in-app $inAppId: $json", error)
+        }
     }
 }

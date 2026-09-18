@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
+import cloud.mindbox.mobile_sdk.network.WebViewContentRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -22,7 +23,6 @@ import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.ParseError
 import com.android.volley.Request
 import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
@@ -473,14 +473,11 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     suspend fun fetchWebViewContent(contentUrl: String): String {
         return suspendCoroutine { continuation ->
             try {
-                val request: StringRequest = StringRequest(
-                    Request.Method.GET,
-                    contentUrl,
-                    { response -> continuation.resume(response) },
-                    { error -> continuation.resumeWithException(error) }
-                ).apply {
-                    setShouldCache(false)
-                }
+                val request = WebViewContentRequest(
+                    url = contentUrl,
+                    listener = { response -> continuation.resume(response) },
+                    errorListener = { error -> continuation.resumeWithException(error) },
+                )
                 mindboxServiceGenerator.addToRequestQueue(request)
             } catch (e: Exception) {
                 mindboxLogE("Failed to fetch WebView content", e)

@@ -391,7 +391,7 @@ internal class InAppWebViewPrewarmManagerImpl(
             .asSequence()
             .filter { inAppBlank -> inAppValidator.validateInAppVersion(inAppBlank) }
             .flatMap { inAppBlank ->
-                mobileConfigSerializationManager.deserializeToInAppFormDto(inAppBlank.form)
+                mobileConfigSerializationManager.deserializeToInAppFormDto(inAppBlank.form, inAppBlank.id)
                     ?.variants.orEmpty()
                     .filterIsInstance<PayloadDto.ModalWindowDto>()
                     // Same gate as the real pipeline (InAppMapper): a modal only becomes a

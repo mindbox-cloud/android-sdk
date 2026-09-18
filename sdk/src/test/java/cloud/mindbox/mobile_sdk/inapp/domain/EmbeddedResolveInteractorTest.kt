@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -33,7 +34,9 @@ import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.runs
+import io.mockk.unmockkObject
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -165,6 +168,26 @@ class EmbeddedResolveInteractorTest {
 
         assertEquals("embedded-id", content?.inAppId)
         assertEquals(place, content?.placeSystemName)
+    }
+
+    @Test
+    fun `selectInAppForPlace names every in-app the ab-test branch cuts`() = runTest {
+        givenConfig(embeddedInApp(id = "other-branch"), embeddedInApp(id = "my-branch"))
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("my-branch")
+        mockkObject(MindboxLoggerImpl)
+        try {
+            val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
+
+            assertEquals("my-branch", content?.inAppId)
+            verify(exactly = 1) {
+                MindboxLoggerImpl.i(any(), "Place 'main-screen-top': in-app other-branch is filtered by ab-tests, cutting it")
+            }
+            verify(exactly = 0) {
+                MindboxLoggerImpl.i(any(), match { it.startsWith("Place 'main-screen-top': in-app my-branch") })
+            }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
     }
 
     @Test

@@ -134,7 +134,7 @@ internal class MobileConfigSerializationManagerTest {
         val actualResult =
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "true")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -149,7 +149,7 @@ internal class MobileConfigSerializationManagerTest {
                 add("ids", JsonArray().apply {
                     add("123")
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -164,7 +164,7 @@ internal class MobileConfigSerializationManagerTest {
                 add("ids", JsonArray().apply {
                     add("123")
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -179,7 +179,7 @@ internal class MobileConfigSerializationManagerTest {
                 add("ids", JsonArray().apply {
                     add("123")
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -199,7 +199,7 @@ internal class MobileConfigSerializationManagerTest {
                 addProperty("segmentExternalId", "123")
                 addProperty("segmentationExternalId", "213")
                 addProperty("segmentationInternalId", "222")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -213,7 +213,7 @@ internal class MobileConfigSerializationManagerTest {
             mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
                 addProperty("${'$'}type", "apiMethodCall")
                 addProperty("systemName", "test")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -229,7 +229,7 @@ internal class MobileConfigSerializationManagerTest {
                 addProperty("${'$'}type", "viewProductCategoryId")
                 addProperty("kind", "substring")
                 addProperty("value", "test")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -257,7 +257,7 @@ internal class MobileConfigSerializationManagerTest {
                         addProperty("externalSystemName", "externalSystemName")
                     })
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -275,7 +275,7 @@ internal class MobileConfigSerializationManagerTest {
                         addProperty("${'$'}type", "true")
                     })
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -293,7 +293,7 @@ internal class MobileConfigSerializationManagerTest {
                         addProperty("${'$'}type", "true")
                     })
                 })
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -310,7 +310,7 @@ internal class MobileConfigSerializationManagerTest {
                 addProperty("${'$'}type", "viewProductId")
                 addProperty("kind", "substring")
                 addProperty("value", "test")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -330,18 +330,18 @@ internal class MobileConfigSerializationManagerTest {
                 addProperty("segmentExternalId", "segmentExternalId")
                 addProperty("segmentationInternalId", "segmentationInternalId")
                 addProperty("segmentationExternalId", "segmentationExternalId")
-            })
+            }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
     @Test
     fun `deserialize to inApp targetingDto invalid json object`() {
-        assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject()))
+        assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject(), "inapp-id"))
     }
 
     @Test
     fun `deserialize to inApp targetingDto null`() {
-        assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(null))
+        assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(null, "inapp-id"))
     }
 
     @Test
@@ -349,7 +349,7 @@ internal class MobileConfigSerializationManagerTest {
         mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(fakeGson)
         assertNull(mobileConfigSerializationManager.deserializeToInAppTargetingDto(JsonObject().apply {
             addProperty("${'$'}type", "true")
-        }))
+        }, "inapp-id"))
     }
 
     @Test
@@ -435,7 +435,7 @@ internal class MobileConfigSerializationManagerTest {
                 }
                 add(variantObject)
             })
-        })
+        }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -480,7 +480,7 @@ internal class MobileConfigSerializationManagerTest {
                 }
                 add(variantObject)
             })
-        })
+        }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -531,7 +531,7 @@ internal class MobileConfigSerializationManagerTest {
                 }
                 add(variantObject)
             })
-        })
+        }, "inapp-id")
         assertEquals(expectedResult, actualResult)
     }
 
@@ -566,7 +566,7 @@ internal class MobileConfigSerializationManagerTest {
                 }
                 add(variantObject)
             })
-        })
+        }, "inapp-id")
         val layers = actualResult?.variants?.firstOrNull()
             ?.let { it as? PayloadDto.ModalWindowDto }?.content?.background?.layers
         val webViewLayer = layers?.firstOrNull() as? BackgroundDto.LayerDto.WebViewLayerDto
@@ -580,12 +580,12 @@ internal class MobileConfigSerializationManagerTest {
 
     @Test
     fun `deserialize to inApp formDto invalid json object`() {
-        assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject()))
+        assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject(), "inapp-id"))
     }
 
     @Test
     fun `deserialize to inApp formDto null`() {
-        assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(null))
+        assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(null, "inapp-id"))
     }
 
     @Test
@@ -639,7 +639,7 @@ internal class MobileConfigSerializationManagerTest {
                 }
                 add(variantObject)
             })
-        }))
+        }, "inapp-id"))
     }
 
     @Test
@@ -660,7 +660,7 @@ internal class MobileConfigSerializationManagerTest {
                     addProperty("intentPayload", "123")
                 })
             })
-        }))
+        }, "inapp-id"))
     }
 
     @Test
