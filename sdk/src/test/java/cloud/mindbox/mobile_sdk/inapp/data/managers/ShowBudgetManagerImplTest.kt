@@ -48,7 +48,7 @@ internal class ShowBudgetManagerImplTest {
         every { inAppRepository.getShownInApps() } returns emptyMap()
         every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
         sessionStorageManager = SessionStorageManager(timeProvider)
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1)
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1)
         manager = managerWith(inAppRepository)
     }
 
@@ -66,7 +66,7 @@ internal class ShowBudgetManagerImplTest {
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(place, "block", counting, isPriority = false))
 
         assertEquals(ShowReservationOutcome.REFUSED, manager.reserve(overlay, "modal-1", counting, isPriority = false))
-        assertEquals(setOf(place), sessionStorageManager.showReservations.keys)
+        assertEquals(setOf(place), sessionStorageManager.state.showReservations.keys)
     }
 
     @Test
@@ -84,14 +84,14 @@ internal class ShowBudgetManagerImplTest {
 
         manager.commit(place, "block", counting, now)
 
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
         verifyOrder {
             inAppRepository.setInAppShown("block")
             inAppRepository.saveShownInApp("block", now.ms)
             inAppRepository.saveInAppStateChangeTime(now)
         }
         // The counter now stands where the hold stood (the repository writes it): still one, still spent.
-        sessionStorageManager.inAppMessageShownInSession.add("block")
+        sessionStorageManager.state.inAppMessageShownInSession.add("block")
         assertEquals(ShowReservationOutcome.REFUSED, manager.reserve(overlay, "modal-1", counting, isPriority = false))
     }
 
@@ -101,7 +101,7 @@ internal class ShowBudgetManagerImplTest {
 
         assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(overlay, "unlimited", unlimited, isPriority = false))
         assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(ShowBudgetOwner.Overlay("prio"), "prio", counting, isPriority = true))
-        assertEquals(setOf(place), sessionStorageManager.showReservations.keys)
+        assertEquals(setOf(place), sessionStorageManager.state.showReservations.keys)
 
         manager.commit(overlay, "unlimited", unlimited, now)
         verify(exactly = 0) { inAppRepository.setInAppShown("unlimited") }
@@ -115,7 +115,7 @@ internal class ShowBudgetManagerImplTest {
         // The second asker owns nothing: it must not give the first one's hold back.
         assertEquals(ShowReservationOutcome.ALREADY_HELD, manager.reserve(place, "block", counting, isPriority = false))
 
-        assertEquals(1, sessionStorageManager.showReservations.size)
+        assertEquals(1, sessionStorageManager.state.showReservations.size)
     }
 
     @Test
@@ -124,18 +124,18 @@ internal class ShowBudgetManagerImplTest {
 
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(place, "block-2", counting, isPriority = false))
 
-        assertEquals("block-2", sessionStorageManager.showReservations.getValue(place).inAppId)
+        assertEquals("block-2", sessionStorageManager.state.showReservations.getValue(place).inAppId)
     }
 
     @Test
     fun `an unlimited or priority newcomer for the same owner drops the counted hold it replaces`() {
         manager.reserve(place, "block", counting, isPriority = false)
         assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(place, "unlimited", unlimited, isPriority = false))
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
 
         manager.reserve(place, "block", counting, isPriority = false)
         assertEquals(ShowReservationOutcome.NOT_NEEDED, manager.reserve(place, "prio", counting, isPriority = true))
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
     }
 
     @Test
@@ -145,27 +145,27 @@ internal class ShowBudgetManagerImplTest {
 
         manager.commit(place, "old", counting, now)
 
-        assertEquals("new", sessionStorageManager.showReservations[place]?.inAppId)
+        assertEquals("new", sessionStorageManager.state.showReservations[place]?.inAppId)
         verify(exactly = 1) { inAppRepository.setInAppShown("old") }
 
         manager.commit(place, "new", counting, now)
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
     }
 
     @Test
     fun `a replacement refused by the budget leaves the owner with no hold`() {
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1)
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1)
         manager.reserve(place, "block-1", counting, isPriority = false)
-        sessionStorageManager.inAppMessageShownInSession.add("someone-else")
+        sessionStorageManager.state.inAppMessageShownInSession.add("someone-else")
 
         assertEquals(ShowReservationOutcome.REFUSED, manager.reserve(place, "block-2", counting, isPriority = false))
 
-        assertNull(sessionStorageManager.showReservations[place])
+        assertNull(sessionStorageManager.state.showReservations[place])
     }
 
     @Test
     fun `the daily budget counts the holds too`() {
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerDay = 2)
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerDay = 2)
         every { inAppRepository.getShownInApps() } returns mapOf("earlier" to listOf(now.ms - 1_000L))
         manager.reserve(place, "block", counting, isPriority = false)
 
@@ -174,7 +174,7 @@ internal class ShowBudgetManagerImplTest {
 
     @Test
     fun `the cooldown runs from the latest of the last show and the last hold`() {
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(minIntervalBetweenShows = Milliseconds(60_000L))
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(minIntervalBetweenShows = Milliseconds(60_000L))
         manager.reserve(place, "block", counting, isPriority = false)
 
         // A hold taken just now is as good as a show for the pause: the overlay waits.
@@ -212,7 +212,7 @@ internal class ShowBudgetManagerImplTest {
         pool.shutdown()
 
         assertEquals(1, granted.get())
-        assertEquals(1, sessionStorageManager.showReservations.size)
+        assertEquals(1, sessionStorageManager.state.showReservations.size)
     }
 
     @Test
@@ -221,7 +221,7 @@ internal class ShowBudgetManagerImplTest {
 
         sessionStorageManager.clearSessionData()
 
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(overlay, "modal-1", counting, isPriority = false))
     }
 
@@ -229,7 +229,7 @@ internal class ShowBudgetManagerImplTest {
     fun `a reserve that blocks mid-read keeps the second asker out until it decides`() {
         // Deterministic version of the race: the first asker is held inside the critical section
         // (on the daily read), the second must wait for it and then find the budget taken.
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
         val entered = CountDownLatch(1)
         val proceed = CountDownLatch(1)
         every { inAppRepository.getShownInApps() } answers {
@@ -261,7 +261,7 @@ internal class ShowBudgetManagerImplTest {
     fun `a session reset waits for a reserve in flight and leaves no hold behind`() {
         // The reset used to wipe the holds outside the manager's lock: a reserve that had already
         // passed its check would then put its hold into the fresh session.
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
         val entered = CountDownLatch(1)
         val proceed = CountDownLatch(1)
         every { inAppRepository.getShownInApps() } answers {
@@ -282,7 +282,7 @@ internal class ShowBudgetManagerImplTest {
 
         assertEquals(ShowReservationOutcome.GRANTED, reserve.get(5, TimeUnit.SECONDS))
         reset.get(5, TimeUnit.SECONDS)
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
         workers.shutdown()
     }
 
@@ -293,7 +293,7 @@ internal class ShowBudgetManagerImplTest {
         val counting = this.counting
         val blockingRepository = object : InAppRepository by inAppRepository {
             override fun setInAppShown(inAppId: String) {
-                sessionStorageManager.inAppMessageShownInSession.add(inAppId)
+                sessionStorageManager.state.inAppMessageShownInSession.add(inAppId)
             }
 
             override fun saveShownInApp(id: String, timeStamp: Long) {
@@ -319,7 +319,7 @@ internal class ShowBudgetManagerImplTest {
         commit.get(5, TimeUnit.SECONDS)
 
         assertEquals(ShowReservationOutcome.REFUSED, rival.get(5, TimeUnit.SECONDS))
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
         workers.shutdown()
     }
 

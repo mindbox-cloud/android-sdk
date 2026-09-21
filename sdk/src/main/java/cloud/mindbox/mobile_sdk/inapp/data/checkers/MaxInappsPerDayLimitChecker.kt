@@ -18,7 +18,7 @@ internal class MaxInappsPerDayLimitChecker(
 
     override fun check(reservations: Collection<ShowReservation>): Boolean {
         mindboxLogI("Checking max inapps per day limit")
-        return when (val maxInappsPerDayCount = sessionStorageManager.inAppShowLimitsSettings.maxInappsPerDay) {
+        return when (val maxInappsPerDayCount = sessionStorageManager.state.inAppShowLimitsSettings.maxInappsPerDay) {
             null -> {
                 mindboxLogI("Parameter limit inapp for show per day not specify. Work without limits for show per day")
                 true

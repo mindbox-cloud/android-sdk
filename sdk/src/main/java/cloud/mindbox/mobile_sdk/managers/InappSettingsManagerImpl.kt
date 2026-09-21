@@ -14,7 +14,7 @@ internal class InappSettingsManagerImpl(val sessionStorageManager: SessionStorag
             minIntervalBetweenShows = ${config.settings?.inapp?.minIntervalBetweenShows?.interval} ms
         """.trimIndent())
 
-        sessionStorageManager.inAppShowLimitsSettings = InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerSession = config.settings?.inapp?.maxInappsPerSession,
             maxInappsPerDay = config.settings?.inapp?.maxInappsPerDay,
             minIntervalBetweenShows = config.settings?.inapp?.minIntervalBetweenShows

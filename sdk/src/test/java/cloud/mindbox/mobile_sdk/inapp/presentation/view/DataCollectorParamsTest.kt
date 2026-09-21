@@ -161,7 +161,7 @@ class DataCollectorParamsTest {
         // The block and the requested show pass `null`, and the session's last trigger — which
         // belongs to somebody else's in-app — stays out of the payload.
         val session = SessionStorageManager(mockk(relaxed = true)).apply {
-            inAppTriggerEvent = InAppEventType.OrdinalEvent(
+            state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
                 eventType = EventType.AsyncOperation("SomebodyElsesOperation"),
                 body = """{"not":"ours"}""",
             )

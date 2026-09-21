@@ -31,7 +31,7 @@ internal class ShowBudgetManagerImpl(
         isPriority: Boolean
     ): ShowReservationOutcome {
         synchronized(lock) {
-            val reservations = sessionStorageManager.showReservations
+            val reservations = sessionStorageManager.state.showReservations
             val held = reservations[owner]
             if (held != null && held.inAppId == inAppId) {
                 mindboxLogI("$owner already holds a show reservation for in-app $inAppId")
@@ -62,11 +62,11 @@ internal class ShowBudgetManagerImpl(
         shownAt: Timestamp
     ) {
         synchronized(lock) {
-            val held = sessionStorageManager.showReservations[owner]
+            val held = sessionStorageManager.state.showReservations[owner]
             if (held != null && held.inAppId != inAppId) {
                 mindboxLogI("$owner now holds a reservation for in-app ${held.inAppId}, the show of $inAppId leaves it in place")
             } else {
-                sessionStorageManager.showReservations.remove(owner)
+                sessionStorageManager.state.showReservations.remove(owner)
             }
             if (!frequency.countsShows()) {
                 mindboxLogI("In-app $inAppId has unlimited frequency, nothing to count")
@@ -81,7 +81,7 @@ internal class ShowBudgetManagerImpl(
 
     override fun release(owner: ShowBudgetOwner) {
         synchronized(lock) {
-            val released = sessionStorageManager.showReservations.remove(owner) ?: return
+            val released = sessionStorageManager.state.showReservations.remove(owner) ?: return
             mindboxLogI("$owner released its show reservation for in-app ${released.inAppId}")
         }
     }

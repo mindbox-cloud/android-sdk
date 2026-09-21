@@ -40,7 +40,7 @@ internal class InAppFailureTrackerImpl(
         }
         val toSend = failures.toList()
         inAppRepository.sendInAppShowErrors(toSend)
-        toSend.forEach { failure -> sessionStorageManager.reportedShowFailures.add(failure.sessionKey()) }
+        toSend.forEach { failure -> sessionStorageManager.state.reportedShowFailures.add(failure.sessionKey()) }
         failures.clear()
     }
 
@@ -83,7 +83,7 @@ internal class InAppFailureTrackerImpl(
         errorDetails: String?,
         tags: Map<String, String>?
     ) {
-        if (sessionKey(inAppId, failureReason) in sessionStorageManager.reportedShowFailures) {
+        if (sessionKey(inAppId, failureReason) in sessionStorageManager.state.reportedShowFailures) {
             mindboxLogI("Failure $failureReason for in-app $inAppId already reported this session, not collecting it again")
             return
         }
@@ -114,7 +114,7 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send wait budget failure")
             return
         }
-        if (!sessionStorageManager.waitBudgetReportedPlaces.add(placeSystemName)) {
+        if (!sessionStorageManager.state.waitBudgetReportedPlaces.add(placeSystemName)) {
             mindboxLogI("Place '$placeSystemName' already reported its exceeded wait budget this session")
             return
         }

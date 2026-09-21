@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -35,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -57,7 +59,8 @@ internal class InAppMessageManagerTest {
     @MockK
     private lateinit var monitoringRepository: MonitoringInteractor
 
-    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
+    private val sessionState = SessionState()
+    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) { every { state } returns sessionState }
 
     private val userVisitManager = mockk<UserVisitManager>()
 
@@ -338,7 +341,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 1) { sessionStorageManager.configFetchingError = true }
+        assertTrue(sessionStorageManager.state.configFetchingError)
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
         }
@@ -369,7 +372,7 @@ internal class InAppMessageManagerTest {
         }.throws(VolleyError(networkResponse))
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 0) { sessionStorageManager.configFetchingError = true }
+        assertFalse(sessionStorageManager.state.configFetchingError)
         verify(exactly = 1) {
             MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
         }

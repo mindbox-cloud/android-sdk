@@ -24,8 +24,8 @@ internal class MobileConfigSettingsManagerImpl(
         config.settings?.slidingExpiration?.config?.interval
             ?.takeIf { it > 0 }
             ?.let { sessionTime ->
-                sessionStorageManager.sessionTime = sessionTime.milliseconds
-                mindboxLogI("Session time set to ${sessionStorageManager.sessionTime.inWholeMilliseconds} ms")
+                sessionStorageManager.state.sessionTime = sessionTime.milliseconds
+                mindboxLogI("Session time set to ${sessionStorageManager.state.sessionTime.inWholeMilliseconds} ms")
             } ?: mindboxLogI("SessionTime is not set")
     }
 

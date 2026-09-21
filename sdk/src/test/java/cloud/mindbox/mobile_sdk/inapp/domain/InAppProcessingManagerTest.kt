@@ -155,14 +155,14 @@ internal class InAppProcessingManagerTest {
     )
 
     private fun setupTestGeoRepositoryForErrorScenario() {
-        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         every { inAppGeoRepositoryTestImpl.getGeoFetchedStatus() } answers { callOriginal() }
         coEvery { inAppGeoRepositoryTestImpl.fetchGeo() } throws GeoError(VolleyError())
         every { inAppGeoRepositoryTestImpl.setGeoStatus(any()) } answers { callOriginal() }
     }
 
     private fun setupTestSegmentationRepositoryForErrorScenario() {
-        sessionStorageManager.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
         coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
         coEvery { inAppSegmentationRepositoryTestImpl.setCustomerSegmentationStatus(any()) } answers { callOriginal() }
@@ -567,7 +567,7 @@ internal class InAppProcessingManagerTest {
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.state.geoFetchStatus)
     }
 
     @Test
@@ -585,7 +585,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
     }
 
     @Test
@@ -617,7 +617,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.state.geoFetchStatus)
     }
 
     @Test
@@ -629,7 +629,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
     }
 
     @Test

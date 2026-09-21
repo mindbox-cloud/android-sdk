@@ -26,7 +26,7 @@ internal class InAppGeoRepositoryImpl(
     private val geoMutex = Mutex()
 
     override suspend fun fetchGeo() = geoMutex.withLock {
-        if (sessionStorageManager.geoFetchStatus == GeoFetchStatus.GEO_FETCH_SUCCESS) {
+        if (sessionStorageManager.state.geoFetchStatus == GeoFetchStatus.GEO_FETCH_SUCCESS) {
             return@withLock
         }
         val configuration = DbManager.listenConfigurations().first()
@@ -37,16 +37,16 @@ internal class InAppGeoRepositoryImpl(
         )
         MindboxPreferences.inAppGeo =
             geoSerializationManager.serializeToGeoString(geoTargeting)
-        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
     }
 
     override fun setGeoStatus(status: GeoFetchStatus) {
-        sessionStorageManager.geoFetchStatus = status
+        sessionStorageManager.state.geoFetchStatus = status
     }
 
     override fun getGeoFetchedStatus(): GeoFetchStatus {
         return LoggingExceptionHandler.runCatching(GeoFetchStatus.GEO_FETCH_ERROR) {
-            sessionStorageManager.geoFetchStatus
+            sessionStorageManager.state.geoFetchStatus
         }
     }
 

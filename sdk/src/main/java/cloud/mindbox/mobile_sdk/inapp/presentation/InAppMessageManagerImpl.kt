@@ -231,7 +231,7 @@ internal class InAppMessageManagerImpl(
                     }
 
                     else -> {
-                        sessionStorageManager.configFetchingError = true
+                        sessionStorageManager.state.configFetchingError = true
                         // needed to trigger flow event
                         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
                         MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)

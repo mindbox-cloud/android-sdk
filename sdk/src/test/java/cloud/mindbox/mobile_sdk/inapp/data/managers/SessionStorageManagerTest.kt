@@ -31,7 +31,7 @@ class SessionStorageManagerTest {
         currentTime: Long
     ) {
         sessionStorageManager.lastTrackVisitSendTime.set(lastTrackTime)
-        sessionStorageManager.sessionTime = sessionTime.milliseconds
+        sessionStorageManager.state.sessionTime = sessionTime.milliseconds
         every { mockTimeProvider.currentTimeMillis() } returns currentTime
     }
 
@@ -128,7 +128,7 @@ class SessionStorageManagerTest {
 
     @Test
     fun `clearSessionData should reset all fields to default values`() {
-        sessionStorageManager.apply {
+        sessionStorageManager.state.apply {
             inAppCustomerSegmentations = mockk()
             unShownOperationalInApps["test"] = mutableListOf(mockk())
             operationalInApps["test"] = mutableListOf(mockk())
@@ -159,29 +159,29 @@ class SessionStorageManagerTest {
 
         sessionStorageManager.clearSessionData()
 
-        assertNull(sessionStorageManager.inAppCustomerSegmentations)
-        assertTrue(sessionStorageManager.unShownOperationalInApps.isEmpty())
-        assertTrue(sessionStorageManager.operationalInApps.isEmpty())
-        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+        assertNull(sessionStorageManager.state.inAppCustomerSegmentations)
+        assertTrue(sessionStorageManager.state.unShownOperationalInApps.isEmpty())
+        assertTrue(sessionStorageManager.state.operationalInApps.isEmpty())
+        assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
         // The block-event memory dies with the session, every cell together.
-        assertTrue(sessionStorageManager.embeddedLastShownByPlace.isEmpty())
-        assertTrue(sessionStorageManager.embeddedLastTargetedByPlace.isEmpty())
-        assertTrue(sessionStorageManager.embeddedLastOperationByPlace.isEmpty())
-        assertTrue(sessionStorageManager.placeTargetingReportedInSession.isEmpty())
-        assertTrue(sessionStorageManager.requestedInAppTargetingReportedInSession.isEmpty())
-        assertTrue(sessionStorageManager.embeddedDelaysWaitedOut.isEmpty())
-        assertTrue(sessionStorageManager.waitBudgetReportedPlaces.isEmpty())
-        assertTrue(sessionStorageManager.showReservations.isEmpty())
-        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.customerSegmentationFetchStatus)
-        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.geoFetchStatus)
-        assertTrue(sessionStorageManager.processedProductSegmentations.isEmpty())
-        assertTrue(sessionStorageManager.inAppProductSegmentations.isEmpty())
-        assertTrue(sessionStorageManager.currentSessionInApps.isEmpty())
-        assertTrue(sessionStorageManager.shownInAppIdsWithEvents.isEmpty())
-        assertFalse(sessionStorageManager.configFetchingError)
-        assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
-        assertEquals(InAppShowLimitsSettings(), sessionStorageManager.inAppShowLimitsSettings)
-        assertTrue(sessionStorageManager.lastTargetingErrors.isEmpty())
+        assertTrue(sessionStorageManager.state.embeddedLastShownByPlace.isEmpty())
+        assertTrue(sessionStorageManager.state.embeddedLastTargetedByPlace.isEmpty())
+        assertTrue(sessionStorageManager.state.embeddedLastOperationByPlace.isEmpty())
+        assertTrue(sessionStorageManager.state.placeTargetingReportedInSession.isEmpty())
+        assertTrue(sessionStorageManager.state.requestedInAppTargetingReportedInSession.isEmpty())
+        assertTrue(sessionStorageManager.state.embeddedDelaysWaitedOut.isEmpty())
+        assertTrue(sessionStorageManager.state.waitBudgetReportedPlaces.isEmpty())
+        assertTrue(sessionStorageManager.state.showReservations.isEmpty())
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.state.customerSegmentationFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionStorageManager.state.geoFetchStatus)
+        assertTrue(sessionStorageManager.state.processedProductSegmentations.isEmpty())
+        assertTrue(sessionStorageManager.state.inAppProductSegmentations.isEmpty())
+        assertTrue(sessionStorageManager.state.currentSessionInApps.isEmpty())
+        assertTrue(sessionStorageManager.state.shownInAppIdsWithEvents.isEmpty())
+        assertFalse(sessionStorageManager.state.configFetchingError)
+        assertEquals(0L, sessionStorageManager.state.sessionTime.inWholeMilliseconds)
+        assertEquals(InAppShowLimitsSettings(), sessionStorageManager.state.inAppShowLimitsSettings)
+        assertTrue(sessionStorageManager.state.lastTargetingErrors.isEmpty())
     }
 
     @Test
@@ -189,13 +189,13 @@ class SessionStorageManagerTest {
         val inAppId1 = "inApp1"
         val inAppId2 = "inApp2"
         val expectedResult = 3
-        assertTrue(sessionStorageManager.inAppMessageShownInSession.isEmpty())
+        assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
 
-        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
-        sessionStorageManager.inAppMessageShownInSession.add(inAppId2)
-        sessionStorageManager.inAppMessageShownInSession.add(inAppId1)
+        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
+        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId2)
+        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
 
-        assertEquals(expectedResult, sessionStorageManager.inAppMessageShownInSession.size)
+        assertEquals(expectedResult, sessionStorageManager.state.inAppMessageShownInSession.size)
     }
 
     @Test

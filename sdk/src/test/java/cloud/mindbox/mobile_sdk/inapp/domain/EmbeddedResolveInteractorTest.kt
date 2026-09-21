@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
@@ -46,7 +47,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import java.util.concurrent.ConcurrentHashMap
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -83,6 +83,8 @@ class EmbeddedResolveInteractorTest {
     @RelaxedMockK
     private lateinit var sessionStorageManager: SessionStorageManager
 
+    private val sessionState = SessionState()
+
     @RelaxedMockK
     private lateinit var inAppFailureTracker: InAppFailureTracker
 
@@ -96,6 +98,7 @@ class EmbeddedResolveInteractorTest {
 
     @Before
     fun setUp() {
+        every { sessionStorageManager.state } returns sessionState
         frequencyManager = spyk(InAppFrequencyManagerImpl(inAppRepository))
         interactor = InAppInteractorImpl(
             mobileConfigRepository = mobileConfigRepository,
@@ -114,12 +117,6 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getShownInApps() } returns emptyMap()
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
-        every { sessionStorageManager.placeTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
-        every { sessionStorageManager.requestedInAppTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
-        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap()
-        every { sessionStorageManager.embeddedLastTargetedByPlace } returns ConcurrentHashMap()
-        every { sessionStorageManager.embeddedDelaysWaitedOut } returns ConcurrentHashMap.newKeySet()
-        every { sessionStorageManager.embeddedLastOperationByPlace } returns ConcurrentHashMap()
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
@@ -558,8 +555,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `the remembered operation lives in the session storage and dies with it`() = runTest {
-        val memory = ConcurrentHashMap<PlaceKey, InAppEventType.OrdinalEvent>()
-        every { sessionStorageManager.embeddedLastOperationByPlace } returns memory
+        val memory = sessionStorageManager.state.embeddedLastOperationByPlace
         givenConfig(embeddedInApp())
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val request = InAppEventType.EmbeddedPlaceRequested(place)
@@ -1008,7 +1004,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `reservePlaceShow skips the budget for content the place already shows`() {
-        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
         assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
@@ -1020,7 +1016,7 @@ class EmbeddedResolveInteractorTest {
         // B won the place and took its hold, then A — already on the block — was delivered again
         // before B drew. B is not coming: the hold under the place is B's and must not stay in the
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
-        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
         assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
