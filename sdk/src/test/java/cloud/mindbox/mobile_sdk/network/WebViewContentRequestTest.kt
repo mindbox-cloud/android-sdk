@@ -30,13 +30,19 @@ class WebViewContentRequestTest {
     }
 
     @Test
-    fun `a successful answer is logged at debug with status, time, size and cache headers`() {
+    fun `a successful answer is logged at debug with status, time, size and the CDN cache headers`() {
         val response = NetworkResponse(
             200,
             "<html>".toByteArray(),
             false,
             143L,
-            listOf(Header("Age", "0"), Header("X-Cache", "HIT"), Header("ETag", "abc")),
+            listOf(
+                Header("Age", "0"),
+                Header("Cache-Status", "HIT"),
+                Header("Cache-Host", "cdn-msk-2"),
+                Header("ETag", "\"abc\""),
+                Header("Content-Type", "text/html"),
+            ),
         )
 
         val parsed = request.parseNetworkResponse(response)
@@ -44,7 +50,7 @@ class WebViewContentRequestTest {
         assertTrue(parsed.isSuccess)
         assertEquals("<html>", parsed.result)
         verify(exactly = 1) {
-            MindboxLoggerImpl.d(any(), "<--- 200 $url in 143 ms, 6 bytes [Age: 0, X-Cache: HIT]")
+            MindboxLoggerImpl.d(any(), "<--- 200 $url in 143 ms, 6 bytes [Cache-Status: HIT, Cache-Host: cdn-msk-2, ETag: \"abc\"]")
         }
     }
 

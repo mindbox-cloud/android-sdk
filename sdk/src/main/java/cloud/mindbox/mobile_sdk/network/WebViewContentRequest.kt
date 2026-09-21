@@ -35,6 +35,6 @@ internal class WebViewContentRequest(
     }
 
     private companion object {
-        val LOGGED_HEADERS = setOf("age", "cache-control", "x-cache", "content-type")
+        val LOGGED_HEADERS = setOf("cache-status", "cache-host", "etag", "last-modified", "cache-control")
     }
 }
