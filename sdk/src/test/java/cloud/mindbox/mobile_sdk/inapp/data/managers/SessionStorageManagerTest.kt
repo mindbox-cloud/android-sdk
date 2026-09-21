@@ -108,6 +108,25 @@ class SessionStorageManagerTest {
     }
 
     @Test
+    fun `every field of the manager is either session state or on the allow-list of what survives a session`() {
+        val survivesSession = setOf(
+            "timeProvider",
+            "state",
+            "showBudgetLock",
+            "lastTrackVisitData",
+            "lastTrackVisitSendTime",
+            "sessionExpirationListeners",
+            "wasSessionExpiredOnLastCheck",
+        )
+        val declared = SessionStorageManager::class.java.declaredFields
+            .map { field -> field.name }
+            .filterNot { name -> name.contains('$') }
+            .toSet()
+
+        assertEquals(survivesSession, declared)
+    }
+
+    @Test
     fun `clearSessionData should reset all fields to default values`() {
         sessionStorageManager.apply {
             inAppCustomerSegmentations = mockk()
