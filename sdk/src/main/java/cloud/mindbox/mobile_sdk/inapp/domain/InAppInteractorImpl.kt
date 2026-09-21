@@ -128,10 +128,11 @@ internal class InAppInteractorImpl(
     ): EmbeddedResolveResult? {
         val inApps = mobileConfigRepository.getInAppsSection()
         inAppRepository.saveCurrentSessionInApps(inApps)
+        val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
         val matched = candidates.filter { candidate ->
-            inAppProcessingManager.matchesTargeting(candidate, triggerEvent)
+            inAppProcessingManager.matchesTargeting(candidate, trigger)
         }
         logI("Place '$placeSystemName': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
@@ -159,6 +160,16 @@ internal class InAppInteractorImpl(
             variant = variant,
             delayTime = delayTime,
         )
+    }
+
+    private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {
+        if (triggerEvent is InAppEventType.OrdinalEvent) {
+            sessionStorageManager.embeddedLastOperationByPlace[place] = triggerEvent
+            return triggerEvent
+        }
+        val remembered = sessionStorageManager.embeddedLastOperationByPlace[place] ?: return triggerEvent
+        logI("Place '$place': resolving as if operation '${remembered.name}' were still in effect this session")
+        return remembered
     }
 
     override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String) {

@@ -28,6 +28,8 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val embeddedLastTargetedByPlace: ConcurrentHashMap<PlaceKey, String> = ConcurrentHashMap()
 
+    val embeddedLastOperationByPlace: ConcurrentHashMap<PlaceKey, InAppEventType.OrdinalEvent> = ConcurrentHashMap()
+
     val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
 
     val embeddedDelaysWaitedOut: MutableSet<String> = newConcurrentSet()
@@ -106,6 +108,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         inAppMessageShownInSession.clear()
         embeddedLastShownByPlace.clear()
         embeddedLastTargetedByPlace.clear()
+        embeddedLastOperationByPlace.clear()
         placeTargetingReportedInSession.clear()
         embeddedDelaysWaitedOut.clear()
         requestedInAppTargetingReportedInSession.clear()

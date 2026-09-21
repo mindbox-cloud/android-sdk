@@ -7,6 +7,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingErrorKey
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
@@ -115,6 +117,8 @@ class SessionStorageManagerTest {
             inAppMessageShownInSession.add("test2")
             embeddedLastShownByPlace[PlaceKey.of("main-screen-top")] = "in-app-1"
             embeddedLastTargetedByPlace[PlaceKey.of("main-screen-top")] = "in-app-2"
+            embeddedLastOperationByPlace[PlaceKey.of("main-screen-top")] =
+                InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
             placeTargetingReportedInSession.add("in-app-3")
             requestedInAppTargetingReportedInSession.add("host|inapp")
             embeddedDelaysWaitedOut.add("main-screen-top|in-app-1")
@@ -143,6 +147,7 @@ class SessionStorageManagerTest {
         // The block-event memory dies with the session, every cell together.
         assertTrue(sessionStorageManager.embeddedLastShownByPlace.isEmpty())
         assertTrue(sessionStorageManager.embeddedLastTargetedByPlace.isEmpty())
+        assertTrue(sessionStorageManager.embeddedLastOperationByPlace.isEmpty())
         assertTrue(sessionStorageManager.placeTargetingReportedInSession.isEmpty())
         assertTrue(sessionStorageManager.requestedInAppTargetingReportedInSession.isEmpty())
         assertTrue(sessionStorageManager.embeddedDelaysWaitedOut.isEmpty())
