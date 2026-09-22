@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
@@ -13,7 +14,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 internal class InAppTargetingErrorRepositoryTest {
-    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
+    private val sessionState = SessionState()
+    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) { every { state } returns sessionState }
     private val repository = InAppTargetingErrorRepositoryImpl(sessionStorageManager)
 
     @Test
@@ -22,7 +24,7 @@ internal class InAppTargetingErrorRepositoryTest {
         val responseBody = """{"error":"customer segmentation failed"}"""
         val volleyError = createVolleyError(statusCode = 500, responseBody = responseBody, networkTimeMs = 100)
         val throwable = CustomerSegmentationError(volleyError)
-        every { sessionStorageManager.lastTargetingErrors } returns errors
+        sessionStorageManager.state.lastTargetingErrors = errors
         repository.saveError(TargetingErrorKey.CustomerSegmentation, throwable)
         val expectedDetails = "statusCode=500, networkTimeMs=${volleyError.networkTimeMs}, body=$responseBody"
         assertEquals("${throwable.message}. $expectedDetails", errors[TargetingErrorKey.CustomerSegmentation])
@@ -34,7 +36,7 @@ internal class InAppTargetingErrorRepositoryTest {
         val responseBody = """{"error":"geo failed"}"""
         val volleyError = createVolleyError(statusCode = 503, responseBody = responseBody, networkTimeMs = 200)
         val throwable = GeoError(volleyError)
-        every { sessionStorageManager.lastTargetingErrors } returns errors
+        sessionStorageManager.state.lastTargetingErrors = errors
         repository.saveError(TargetingErrorKey.Geo, throwable)
         val expectedDetails = "statusCode=503, networkTimeMs=${volleyError.networkTimeMs}, body=$responseBody"
         assertEquals("${throwable.message}. $expectedDetails", errors[TargetingErrorKey.Geo])
@@ -48,7 +50,7 @@ internal class InAppTargetingErrorRepositoryTest {
         val responseBody = """{"error":"product segmentation failed"}"""
         val volleyError = createVolleyError(statusCode = 504, responseBody = responseBody, networkTimeMs = 300)
         val throwable = ProductSegmentationError(volleyError)
-        every { sessionStorageManager.lastTargetingErrors } returns errors
+        sessionStorageManager.state.lastTargetingErrors = errors
         repository.saveError(productKey, throwable)
         val expectedDetails = "statusCode=504, networkTimeMs=${volleyError.networkTimeMs}, body=$responseBody"
         assertEquals("${throwable.message}. $expectedDetails", errors[productKey])
@@ -59,14 +61,13 @@ internal class InAppTargetingErrorRepositoryTest {
         val product = "website" to "ProductRandomName"
         val productKey = TargetingErrorKey.ProductSegmentation(product)
         val errorDetails = "Product segmentation fetch failed"
-        every { sessionStorageManager.lastTargetingErrors[productKey] } returns errorDetails
+        sessionStorageManager.state.lastTargetingErrors[productKey] = errorDetails
         val result = repository.getError(productKey)
         assertEquals(errorDetails, result)
     }
 
     @Test
     fun `getError returns null when no error saved`() {
-        every { sessionStorageManager.lastTargetingErrors[TargetingErrorKey.Geo] } returns null
         val result = repository.getError(TargetingErrorKey.Geo)
         assertEquals(null, result)
     }
@@ -77,7 +78,7 @@ internal class InAppTargetingErrorRepositoryTest {
             TargetingErrorKey.Geo to "Geo error",
             TargetingErrorKey.CustomerSegmentation to "Customer error"
         )
-        every { sessionStorageManager.lastTargetingErrors } returns errors
+        sessionStorageManager.state.lastTargetingErrors = errors
         repository.clearErrors()
         assertEquals(emptyMap<TargetingErrorKey, String>(), errors)
     }

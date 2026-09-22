@@ -77,7 +77,7 @@ class DataCollectorTest {
             requestUrl = "https://mindbox.cloud/path",
             sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.OrdinalEvent(
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
             eventType = EventType.AsyncOperation("OpenScreen"),
             body = "{\"screen\":\"home\"}",
         )
@@ -90,7 +90,7 @@ class DataCollectorTest {
             inAppInsets = InAppInsets(left = 1, top = 2, right = 3, bottom = 4),
             gson = gson,
             inAppId = "inapp-id",
-            operation = sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent,
+            operation = sessionStorageManager.state.inAppTriggerEvent as? InAppEventType.OrdinalEvent,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -141,7 +141,7 @@ class DataCollectorTest {
         every { permissionManager.getMicrophonePermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.GRANTED
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.AppStartup
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.AppStartup
         sessionStorageManager.lastTrackVisitData = TrackVisitData(
             ianaTimeZone = "Europe/Moscow",
             endpointId = "endpoint-id",
@@ -196,7 +196,7 @@ class DataCollectorTest {
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.DENIED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.DENIED
         sessionStorageManager.lastTrackVisitData = null
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.AppStartup
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.AppStartup
         val inAppInsets = InAppInsets(left = 5, top = 10, right = 15, bottom = 20)
         val dataCollector = DataCollector(
             appContext = appContext,

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
@@ -48,17 +49,17 @@ internal class InAppGeoRepositoryTest {
     @MockK
     private lateinit var sessionStorageManager: SessionStorageManager
 
+    private val sessionState = SessionState()
+
     @MockK
     private lateinit var gatewayManager: GatewayManager
 
     @Before
     fun onTestStart() {
-        every { sessionStorageManager.geoFetchStatus } returns GeoFetchStatus.GEO_NOT_FETCHED
+        every { sessionStorageManager.state } returns sessionState
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         mockkObject(DbManager)
         mockkObject(MindboxPreferences)
-        every {
-            inAppGeoRepository.setGeoStatus(any())
-        } just runs
     }
 
     @Test
@@ -185,15 +186,13 @@ internal class InAppGeoRepositoryTest {
 
     @Test
     fun `get geo fetched status success`() {
-        every { sessionStorageManager.geoFetchStatus } returns GeoFetchStatus.GEO_FETCH_SUCCESS
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
         assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, inAppGeoRepository.getGeoFetchedStatus())
     }
 
     @Test
     fun `get segmentation not fetched`() {
-        every {
-            sessionStorageManager.geoFetchStatus
-        } returns GeoFetchStatus.GEO_NOT_FETCHED
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         assertEquals(
             GeoFetchStatus.GEO_NOT_FETCHED,
             inAppGeoRepository.getGeoFetchedStatus()
@@ -202,7 +201,7 @@ internal class InAppGeoRepositoryTest {
 
     @Test
     fun `get geo fetched status error`() {
-        every { sessionStorageManager.geoFetchStatus } throws Error()
+        every { sessionStorageManager.state } throws Error()
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, inAppGeoRepository.getGeoFetchedStatus())
     }
 }

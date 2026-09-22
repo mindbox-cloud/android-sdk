@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
@@ -46,7 +47,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import java.util.concurrent.ConcurrentHashMap
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -83,6 +83,8 @@ class EmbeddedResolveInteractorTest {
     @RelaxedMockK
     private lateinit var sessionStorageManager: SessionStorageManager
 
+    private val sessionState = SessionState()
+
     @RelaxedMockK
     private lateinit var inAppFailureTracker: InAppFailureTracker
 
@@ -96,6 +98,7 @@ class EmbeddedResolveInteractorTest {
 
     @Before
     fun setUp() {
+        every { sessionStorageManager.state } returns sessionState
         frequencyManager = spyk(InAppFrequencyManagerImpl(inAppRepository))
         interactor = InAppInteractorImpl(
             mobileConfigRepository = mobileConfigRepository,
@@ -114,11 +117,6 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getShownInApps() } returns emptyMap()
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
-        every { sessionStorageManager.placeTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
-        every { sessionStorageManager.requestedInAppTargetingReportedInSession } returns ConcurrentHashMap.newKeySet()
-        every { sessionStorageManager.embeddedLastShownByPlace } returns ConcurrentHashMap()
-        every { sessionStorageManager.embeddedLastTargetedByPlace } returns ConcurrentHashMap()
-        every { sessionStorageManager.embeddedDelaysWaitedOut } returns ConcurrentHashMap.newKeySet()
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
@@ -484,6 +482,90 @@ class EmbeddedResolveInteractorTest {
         interactor.selectInAppForPlace(place, triggerEvent = operation)
 
         coVerify { inAppProcessingManager.matchesTargeting(any(), operation) }
+    }
+
+    @Test
+    fun `a pull after an operation resolves as if that operation were still in effect`() = runTest {
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), ofType<InAppEventType.EmbeddedPlaceRequested>()) }
+    }
+
+    @Test
+    fun `a later operation replaces the one the place remembers`() = runTest {
+        givenConfig(embeddedInApp())
+        val first = InAppEventType.OrdinalEvent(EventType.AsyncOperation("first-operation"))
+        val second = InAppEventType.OrdinalEvent(EventType.AsyncOperation("second-operation"))
+
+        interactor.selectInAppForPlace(place, triggerEvent = first)
+        interactor.selectInAppForPlace(place, triggerEvent = second)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), first) }
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), second) }
+    }
+
+    @Test
+    fun `a pull with no operation behind it keeps the place request`() = runTest {
+        givenConfig(embeddedInApp())
+        val request = InAppEventType.EmbeddedPlaceRequested(place)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.selectInAppForPlace(place, request)
+
+            coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), request) }
+            verify(exactly = 0) {
+                MindboxLoggerImpl.i(any(), match { it.contains("were still in effect") })
+            }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `the remembered operation belongs to its place alone`() = runTest {
+        val otherPlace = PlaceKey.of("other-place")
+        givenConfig(embeddedInApp(id = "here"), embeddedInApp(id = "there", placeName = otherPlace))
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val otherRequest = InAppEventType.EmbeddedPlaceRequested(otherPlace)
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        interactor.selectInAppForPlace(otherPlace, otherRequest)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), otherRequest) }
+    }
+
+    @Test
+    fun `an operation that found nothing to show is remembered all the same`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+
+        assertNull(interactor.selectInAppForPlace(place, triggerEvent = operation))
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
+    }
+
+    @Test
+    fun `the remembered operation lives in the session storage and dies with it`() = runTest {
+        val memory = sessionStorageManager.state.embeddedLastOperationByPlace
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val request = InAppEventType.EmbeddedPlaceRequested(place)
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        assertEquals(operation, memory[place])
+        memory.clear()
+        interactor.selectInAppForPlace(place, request)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), request) }
     }
 
     @Test
@@ -922,7 +1004,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `reservePlaceShow skips the budget for content the place already shows`() {
-        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
         assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 
@@ -934,7 +1016,7 @@ class EmbeddedResolveInteractorTest {
         // B won the place and took its hold, then A — already on the block — was delivered again
         // before B drew. B is not coming: the hold under the place is B's and must not stay in the
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
-        sessionStorageManager.embeddedLastShownByPlace[place] = "embedded-id"
+        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
         assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
 

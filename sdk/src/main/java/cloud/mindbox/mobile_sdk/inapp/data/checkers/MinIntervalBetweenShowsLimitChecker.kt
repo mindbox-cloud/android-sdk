@@ -17,7 +17,7 @@ internal class MinIntervalBetweenShowsLimitChecker(
 
     override fun check(reservations: Collection<ShowReservation>): Boolean {
         mindboxLogI("Checking min interval between shows limit")
-        return when (val minIntervalBetweenShowDuration = sessionStorageManager.inAppShowLimitsSettings.minIntervalBetweenShows) {
+        return when (val minIntervalBetweenShowDuration = sessionStorageManager.state.inAppShowLimitsSettings.minIntervalBetweenShows) {
             null -> {
                 mindboxLogI("Parameter min interval between inapp show not specify. Work without limit")
                 true

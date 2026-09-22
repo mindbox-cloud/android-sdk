@@ -148,7 +148,7 @@ internal class MobileConfigRepositoryImpl(
         val isValidConfig = inAppConfigTtlValidator.isValid(
             InAppTtlData(
                 ttl = getInAppTtl(configBlank),
-                shouldCheckInAppTtl = sessionStorageManager.configFetchingError
+                shouldCheckInAppTtl = sessionStorageManager.state.configFetchingError
             )
         )
 

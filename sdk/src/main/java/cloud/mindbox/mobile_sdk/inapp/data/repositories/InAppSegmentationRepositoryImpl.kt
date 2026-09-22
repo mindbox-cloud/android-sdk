@@ -24,17 +24,17 @@ internal class InAppSegmentationRepositoryImpl(
     private val customerSegmentationsMutex = Mutex()
 
     override suspend fun fetchCustomerSegmentations() = customerSegmentationsMutex.withLock {
-        if (sessionStorageManager.customerSegmentationFetchStatus ==
+        if (sessionStorageManager.state.customerSegmentationFetchStatus ==
             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         ) {
             return@withLock
         }
-        if (sessionStorageManager.currentSessionInApps.isEmpty()) {
+        if (sessionStorageManager.state.currentSessionInApps.isEmpty()) {
             MindboxLoggerImpl.d(
                 this,
                 "No unshown inapps. Do not request segmentations"
             )
-            sessionStorageManager.customerSegmentationFetchStatus =
+            sessionStorageManager.state.customerSegmentationFetchStatus =
                 CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
             return@withLock
         }
@@ -46,12 +46,12 @@ internal class InAppSegmentationRepositoryImpl(
         val response = gatewayManager.checkCustomerSegmentations(
             configuration = configuration,
             segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
-                sessionStorageManager.currentSessionInApps
+                sessionStorageManager.state.currentSessionInApps
             )
         )
-        sessionStorageManager.inAppCustomerSegmentations =
+        sessionStorageManager.state.inAppCustomerSegmentations =
             inAppMapper.mapToSegmentationCheck(response)
-        sessionStorageManager.customerSegmentationFetchStatus =
+        sessionStorageManager.state.customerSegmentationFetchStatus =
             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         return@withLock
     }
@@ -63,14 +63,14 @@ internal class InAppSegmentationRepositoryImpl(
         val segmentationCheckRequest =
             inAppMapper.mapToProductSegmentationCheckRequest(
                 product,
-                sessionStorageManager.currentSessionInApps
+                sessionStorageManager.state.currentSessionInApps
             )
         val result = gatewayManager.checkProductSegmentation(
             configuration,
             segmentationCheckRequest
         )
-        sessionStorageManager.inAppProductSegmentations[product] =
-            sessionStorageManager.inAppProductSegmentations.getOrElse(product) {
+        sessionStorageManager.state.inAppProductSegmentations[product] =
+            sessionStorageManager.state.inAppProductSegmentations.getOrElse(product) {
                 mutableSetOf<ProductSegmentationResponseWrapper>().apply {
                     add(
                         inAppMapper.mapToProductSegmentationResponse(
@@ -79,7 +79,7 @@ internal class InAppSegmentationRepositoryImpl(
                     )
                 }
             }
-        sessionStorageManager.processedProductSegmentations[product] =
+        sessionStorageManager.state.processedProductSegmentations[product] =
             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
     }
 
@@ -87,29 +87,29 @@ internal class InAppSegmentationRepositoryImpl(
         productId: Pair<String, String>,
     ): Set<ProductSegmentationResponseWrapper?> {
         return LoggingExceptionHandler.runCatching(emptySet()) {
-            sessionStorageManager.inAppProductSegmentations[productId] ?: emptySet()
+            sessionStorageManager.state.inAppProductSegmentations[productId] ?: emptySet()
         }
     }
 
     override fun setCustomerSegmentationStatus(status: CustomerSegmentationFetchStatus) {
-        sessionStorageManager.customerSegmentationFetchStatus = status
+        sessionStorageManager.state.customerSegmentationFetchStatus = status
     }
 
     override fun getCustomerSegmentationFetched(): CustomerSegmentationFetchStatus {
         return LoggingExceptionHandler.runCatching(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR) {
-            sessionStorageManager.customerSegmentationFetchStatus
+            sessionStorageManager.state.customerSegmentationFetchStatus
         }
     }
 
     override fun getProductSegmentationFetched(productId: Pair<String, String>): ProductSegmentationFetchStatus {
         return LoggingExceptionHandler.runCatching(ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR) {
-            sessionStorageManager.processedProductSegmentations[productId] ?: ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+            sessionStorageManager.state.processedProductSegmentations[productId] ?: ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         }
     }
 
     override fun getCustomerSegmentations(): List<CustomerSegmentationInApp> {
         return LoggingExceptionHandler.runCatching(emptyList()) {
-            sessionStorageManager.inAppCustomerSegmentations?.customerSegmentations ?: emptyList()
+            sessionStorageManager.state.inAppCustomerSegmentations?.customerSegmentations ?: emptyList()
         }
     }
 }

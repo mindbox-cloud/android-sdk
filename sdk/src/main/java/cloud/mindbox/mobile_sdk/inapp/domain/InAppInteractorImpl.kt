@@ -111,7 +111,7 @@ internal class InAppInteractorImpl(
                     InitializeLock.complete(InitializeLock.State.APP_STARTED)
                 }
                 inApp?.let {
-                    sessionStorageManager.inAppTriggerEvent = event
+                    sessionStorageManager.state.inAppTriggerEvent = event
                 }
                 inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
@@ -128,10 +128,11 @@ internal class InAppInteractorImpl(
     ): EmbeddedResolveResult? {
         val inApps = mobileConfigRepository.getInAppsSection()
         inAppRepository.saveCurrentSessionInApps(inApps)
+        val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
         val matched = candidates.filter { candidate ->
-            inAppProcessingManager.matchesTargeting(candidate, triggerEvent)
+            inAppProcessingManager.matchesTargeting(candidate, trigger)
         }
         logI("Place '$placeSystemName': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
@@ -150,7 +151,7 @@ internal class InAppInteractorImpl(
         inAppFailureTracker.clearFailures()
         val variant = winner.embeddedVariantFor(placeSystemName) ?: return null
         val delayTime = winner.delayTime?.takeIf { delay ->
-            delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.embeddedDelaysWaitedOut
+            delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.state.embeddedDelaysWaitedOut
         }
         if (winner.delayTime != null && delayTime == null) {
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
@@ -161,8 +162,18 @@ internal class InAppInteractorImpl(
         )
     }
 
+    private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {
+        if (triggerEvent is InAppEventType.OrdinalEvent) {
+            sessionStorageManager.state.embeddedLastOperationByPlace[place] = triggerEvent
+            return triggerEvent
+        }
+        val remembered = sessionStorageManager.state.embeddedLastOperationByPlace[place] ?: return triggerEvent
+        logI("Place '$place': resolving as if operation '${remembered.name}' were still in effect this session")
+        return remembered
+    }
+
     override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String) {
-        sessionStorageManager.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
+        sessionStorageManager.state.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
     }
 
     private fun waitedOutDelayKey(place: PlaceKey, inAppId: String): String = "$place|$inAppId"
@@ -170,14 +181,14 @@ internal class InAppInteractorImpl(
     private fun sendPlaceTargetings(place: PlaceKey, matched: List<InApp>, winner: InApp?) {
         for (inApp in matched) {
             if (inApp.id == winner?.id) {
-                if (sessionStorageManager.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
+                if (sessionStorageManager.state.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
                     logI("Place '$place': winner ${inApp.id} is the last targeted here, no second targeting")
                 } else {
-                    sessionStorageManager.placeTargetingReportedInSession.add(inApp.id)
+                    sessionStorageManager.state.placeTargetingReportedInSession.add(inApp.id)
                     inAppProcessingManager.sendTargetedInApp(inApp)
                 }
             } else {
-                if (sessionStorageManager.placeTargetingReportedInSession.add(inApp.id)) {
+                if (sessionStorageManager.state.placeTargetingReportedInSession.add(inApp.id)) {
                     inAppProcessingManager.sendTargetedInApp(inApp)
                 } else {
                     logI("Place '$place': in-app ${inApp.id} already sent its targeting this session")
@@ -284,7 +295,7 @@ internal class InAppInteractorImpl(
     private fun sendRequestedTargetings(hostInAppId: String, fullById: Map<String, InApp>, matchedById: Map<String, Boolean>) {
         for ((id, matches) in matchedById) {
             if (!matches) continue
-            if (sessionStorageManager.requestedInAppTargetingReportedInSession.add("$hostInAppId|$id")) {
+            if (sessionStorageManager.state.requestedInAppTargetingReportedInSession.add("$hostInAppId|$id")) {
                 inAppProcessingManager.sendTargetedInApp(fullById.getValue(id))
             }
         }
@@ -302,7 +313,7 @@ internal class InAppInteractorImpl(
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
     override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {
-        if (sessionStorageManager.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
+        if (sessionStorageManager.state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
             logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
             showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
             return true
@@ -339,7 +350,7 @@ internal class InAppInteractorImpl(
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
     ) {
-        val lastShown = sessionStorageManager.embeddedLastShownByPlace.put(placeSystemName, inAppId)
+        val lastShown = sessionStorageManager.state.embeddedLastShownByPlace.put(placeSystemName, inAppId)
         if (lastShown == inAppId) {
             logI("Place '$placeSystemName': the block re-drew in-app $inAppId it already showed, nothing to report")
             return

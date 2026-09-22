@@ -241,7 +241,7 @@ internal class WebViewInAppViewHolder(
             operation = if (wrapper.isRequestedShow) {
                 null
             } else {
-                sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent
+                sessionStorageManager.state.inAppTriggerEvent as? InAppEventType.OrdinalEvent
             },
         ).get()
     }

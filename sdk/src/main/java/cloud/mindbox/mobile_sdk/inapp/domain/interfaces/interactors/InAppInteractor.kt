@@ -30,7 +30,10 @@ internal interface InAppInteractor {
      * and the show limits — parity with the overlay. Only the `isInAppActive` lock and the
      * delayed queue stay out: those are overlay machinery. The pull side passes
      * [InAppEventType.EmbeddedPlaceRequested] as [triggerEvent]; the push side passes the
-     * matched operation. Suspends until the config arrives.
+     * matched operation. The place remembers the last operation that reached it for the
+     * session and a pull resolves as if that operation were still in effect, so content shown
+     * by an operation survives the block's next appearance and a config update; nothing is
+     * re-emitted, the memory only steers this selection. Suspends until the config arrives.
      */
     suspend fun selectInAppForPlace(
         placeSystemName: PlaceKey,

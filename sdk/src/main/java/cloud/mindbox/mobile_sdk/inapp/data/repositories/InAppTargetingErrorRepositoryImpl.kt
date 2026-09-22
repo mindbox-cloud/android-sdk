@@ -9,14 +9,14 @@ internal class InAppTargetingErrorRepositoryImpl(
     private val sessionStorageManager: SessionStorageManager,
 ) : InAppTargetingErrorRepository {
     override fun saveError(key: TargetingErrorKey, error: Throwable) {
-        sessionStorageManager.lastTargetingErrors[key] = "${error.message}. ${error.cause?.getVolleyErrorDetails() ?: "volleyError = null"}"
+        sessionStorageManager.state.lastTargetingErrors[key] = "${error.message}. ${error.cause?.getVolleyErrorDetails() ?: "volleyError = null"}"
     }
 
     override fun getError(key: TargetingErrorKey): String? {
-        return sessionStorageManager.lastTargetingErrors[key]
+        return sessionStorageManager.state.lastTargetingErrors[key]
     }
 
     override fun clearErrors() {
-        sessionStorageManager.lastTargetingErrors.clear()
+        sessionStorageManager.state.lastTargetingErrors.clear()
     }
 }

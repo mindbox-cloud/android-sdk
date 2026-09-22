@@ -1,61 +1,22 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
-import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.PlaceKey
-import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 private typealias SessionExpirationListener = () -> Unit
 
 internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
-    @Volatile var inAppCustomerSegmentations: SegmentationCheckWrapper? = null
-    var unShownOperationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
-    var operationalInApps: ConcurrentHashMap<String, MutableList<InApp>> = ConcurrentHashMap()
-    var inAppMessageShownInSession: MutableList<String> = CopyOnWriteArrayList()
-
-    val embeddedLastShownByPlace: ConcurrentHashMap<PlaceKey, String> = ConcurrentHashMap()
-
-    val embeddedLastTargetedByPlace: ConcurrentHashMap<PlaceKey, String> = ConcurrentHashMap()
-
-    val placeTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
-
-    val embeddedDelaysWaitedOut: MutableSet<String> = newConcurrentSet()
-
-    val requestedInAppTargetingReportedInSession: MutableSet<String> = newConcurrentSet()
-
-    val waitBudgetReportedPlaces: MutableSet<PlaceKey> = newConcurrentSet()
-
-    val reportedShowFailures: MutableSet<String> = newConcurrentSet()
-
-    val showReservations: MutableMap<ShowBudgetOwner, ShowReservation> = ConcurrentHashMap()
+    @Volatile var state: SessionState = SessionState()
+        private set
 
     val showBudgetLock = Any()
-    var customerSegmentationFetchStatus: CustomerSegmentationFetchStatus =
-        CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-    var geoFetchStatus: GeoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-    var inAppProductSegmentations: MutableMap<Pair<String, String>, Set<ProductSegmentationResponseWrapper>> =
-        ConcurrentHashMap()
-    var processedProductSegmentations: MutableMap<Pair<String, String>, ProductSegmentationFetchStatus> = ConcurrentHashMap()
-    var lastTargetingErrors: MutableMap<TargetingErrorKey, String> = ConcurrentHashMap()
 
-    @Volatile var currentSessionInApps: List<InApp> = emptyList()
-    var shownInAppIdsWithEvents: ConcurrentHashMap<String, MutableSet<Int>> = ConcurrentHashMap()
-    var configFetchingError: Boolean = false
-    var sessionTime: Duration = 0L.milliseconds
-    var inAppShowLimitsSettings: InAppShowLimitsSettings = InAppShowLimitsSettings()
     var lastTrackVisitData: TrackVisitData? = null
-    var inAppTriggerEvent: InAppEventType? = null
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
@@ -76,7 +37,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
         val currentTime = timeProvider.currentTimeMillis()
         val oldLastTrackVisitSendTime = lastTrackVisitSendTime.getAndSet(currentTime)
         val timeBetweenVisits = currentTime - oldLastTrackVisitSendTime
-        val currentSessionTime = sessionTime.inWholeMilliseconds
+        val currentSessionTime = state.sessionTime.inWholeMilliseconds
         val checkingSessionResultLog = when {
             oldLastTrackVisitSendTime == 0L -> "First track visit on sdk init"
 
@@ -100,29 +61,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     fun isSessionExpiredOnLastCheck() = wasSessionExpiredOnLastCheck
 
     fun clearSessionData() = synchronized(showBudgetLock) {
-        inAppCustomerSegmentations = null
-        unShownOperationalInApps.clear()
-        operationalInApps.clear()
-        inAppMessageShownInSession.clear()
-        embeddedLastShownByPlace.clear()
-        embeddedLastTargetedByPlace.clear()
-        placeTargetingReportedInSession.clear()
-        embeddedDelaysWaitedOut.clear()
-        requestedInAppTargetingReportedInSession.clear()
-        waitBudgetReportedPlaces.clear()
-        reportedShowFailures.clear()
-        showReservations.clear()
-        customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
-        geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-        inAppProductSegmentations.clear()
-        processedProductSegmentations.clear()
-        lastTargetingErrors.clear()
-        currentSessionInApps = emptyList()
-        shownInAppIdsWithEvents.clear()
-        configFetchingError = false
-        sessionTime = 0L.milliseconds
-        inAppShowLimitsSettings = InAppShowLimitsSettings()
-        inAppTriggerEvent = null
+        state = SessionState()
     }
 
     private fun notifySessionExpired() {
