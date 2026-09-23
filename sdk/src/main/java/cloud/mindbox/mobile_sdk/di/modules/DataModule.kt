@@ -35,6 +35,8 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmEngine
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.*
+import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
+import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolverImpl
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManagerImpl
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManager
 import cloud.mindbox.mobile_sdk.managers.RequestPermissionManagerImpl
@@ -287,7 +289,15 @@ internal fun DataModule(
 
     override val slidingExpirationParametersValidator: TimeSpanPositiveValidator by lazy { TimeSpanPositiveValidator() }
     override val mobileConfigSettingsManager: MobileConfigSettingsManagerImpl by lazy {
-        MobileConfigSettingsManagerImpl(appContext, sessionStorageManager, timeProvider)
+        MobileConfigSettingsManagerImpl(
+            appContext,
+            sessionStorageManager,
+            timeProvider,
+            trackingIdsResolver,
+        )
+    }
+    override val trackingIdsResolver: TrackingIdsResolver by lazy {
+        TrackingIdsResolverImpl()
     }
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }

@@ -9,11 +9,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 class CoroutineExtensionsKtTest {
 
     private suspend fun delayedOperation(timeMillis: Long): String {
-        delay(timeMillis)
+        delay(timeMillis.milliseconds)
         return timeMillis.toString()
     }
 
@@ -63,6 +64,30 @@ class CoroutineExtensionsKtTest {
         assertEquals(listOf<String>(), results)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `awaitAllWithTimeout cancels unfinished jobs`() = runTest {
+        val jobs = listOf(100L, 180_000L).map { async { delayedOperation(it) } }
+
+        val results: List<String> = jobs.awaitAllWithTimeout(1_000)
+
+        assertEquals(listOf("100"), results)
+        assertTrue(jobs.last().isCancelled)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `awaitAllWithTimeout does not delay parent completion when a job hangs`() = runTest {
+        val started = testScheduler.currentTime
+
+        coroutineScope {
+            val jobs = listOf(100L, 180_000L).map { async { delayedOperation(it) } }
+            jobs.awaitAllWithTimeout(1_000)
+        }
+
+        assertEquals(1_000L, testScheduler.currentTime - started)
+    }
+
     @Test
     fun `launchWithLock should execute block`() = runTest {
         val mutex = Mutex()
@@ -85,12 +110,12 @@ class CoroutineExtensionsKtTest {
 
         scope.launchWithLock(mutex) {
             executionLog.add("Job 1 Start")
-            delay(100)
+            delay(100.milliseconds)
             executionLog.add("Job 1 End")
         }
         scope.launchWithLock(mutex) {
             executionLog.add("Job 2 Start")
-            delay(100)
+            delay(100.milliseconds)
             executionLog.add("Job 2 End")
         }
 

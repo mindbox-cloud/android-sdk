@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.pushes
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import java.util.UUID
@@ -17,6 +18,8 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
     }
 
     public abstract val notificationProvider: String
+
+    public open val trackingIdType: String? = null
 
     public abstract suspend fun initService(context: Context)
 
@@ -44,6 +47,38 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
     )
 
     public abstract fun getAdsId(context: Context): Pair<String?, Boolean>
+
+    internal fun tryGetTrackingId(context: Context): TrackingIdResult {
+        val type = trackingIdType ?: return TrackingIdResult.NotSupported
+
+        if (!isServiceAvailable(context)) {
+            logI("$notificationProvider services are unavailable, cannot read $type")
+            return TrackingIdResult.Unavailable
+        }
+
+        return try {
+            val (id, isLimitAdTrackingEnabled) = getAdsId(context)
+            when {
+                isLimitAdTrackingEnabled -> {
+                    logI("$type is not available: limit ad tracking is enabled")
+                    TrackingIdResult.Denied
+                }
+
+                !TrackingIdValidator.isValid(id) -> {
+                    logI("$type is not available: $notificationProvider returned no identifier")
+                    TrackingIdResult.Denied
+                }
+
+                else -> {
+                    logI("Received $type from $notificationProvider")
+                    TrackingIdResult.Success(TrackingId(type = type, value = id!!))
+                }
+            }
+        } catch (e: Exception) {
+            logW("Unable to read $type from $notificationProvider. Failed with exception $e")
+            TrackingIdResult.Unavailable
+        }
+    }
 
     internal fun isServiceAvailable(context: Context): Boolean = try {
         val isAvailable = isAvailable(context)

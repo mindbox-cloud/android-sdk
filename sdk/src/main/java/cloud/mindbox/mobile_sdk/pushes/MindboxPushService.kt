@@ -10,6 +10,9 @@ public interface MindboxPushService {
 
     public val tag: String
 
+    public val trackingIdType: String?
+        get() = null
+
     public fun getServiceHandler(
         logger: MindboxLogger,
         exceptionHandler: ExceptionHandler,

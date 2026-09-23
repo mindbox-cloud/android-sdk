@@ -19,6 +19,7 @@ internal data class InitData(
     @SerializedName("version") private val version: Int = INIT_DATA_VERSION,
     @SerializedName("ianaTimeZone") val ianaTimeZone: String?,
     @SerializedName("tokens") val tokens: List<TokenData>,
+    @SerializedName("ids") val trackingIds: List<TrackingId>,
 )
 
 internal data class UpdateData(
@@ -26,6 +27,7 @@ internal data class UpdateData(
     @SerializedName("instanceId") val instanceId: String,
     @SerializedName("version") val version: Int,
     @SerializedName("tokens") val tokens: List<TokenData>,
+    @SerializedName("ids") val trackingIds: List<TrackingId>,
 )
 
 internal data class TrackClickData(

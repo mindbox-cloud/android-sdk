@@ -17,6 +17,8 @@ public object MindboxHuawei : MindboxPushService, MindboxPushConverter<RemoteMes
 
     override val tag: String = "HCM"
 
+    override val trackingIdType: String = "huawei"
+
     override fun getServiceHandler(
         logger: MindboxLogger,
         exceptionHandler: ExceptionHandler,
