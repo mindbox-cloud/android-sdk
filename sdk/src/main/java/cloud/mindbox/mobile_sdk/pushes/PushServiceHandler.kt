@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.isUuid
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.TrackingId
@@ -13,10 +14,6 @@ import java.util.UUID
 * */
 public abstract class PushServiceHandler : PushConverter, MindboxLog {
 
-    internal companion object {
-        private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
-    }
-
     public abstract val notificationProvider: String
 
     public open val trackingIdType: String? = null
@@ -27,7 +24,7 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         block = {
             val (id, isLimitAdTrackingEnabled) = getAdsId(context)
 
-            if (isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
+            if (isLimitAdTrackingEnabled || id == null || !id.isUsableAdsId()) {
                 logI(
                     "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
                         "Will be generated from random. " +
@@ -116,6 +113,11 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         )
         generateRandomUuid()
     }
+
+    // Both checks are needed: the format one rejects the short `0000-0000` some devices answer
+    // with, the character one keeps rejecting the zero id, which `isUuid()` alone accepts.
+    private fun String.isUsableAdsId(): Boolean =
+        isUuid() && any { character -> character != '0' && character != '-' }
 
     private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
