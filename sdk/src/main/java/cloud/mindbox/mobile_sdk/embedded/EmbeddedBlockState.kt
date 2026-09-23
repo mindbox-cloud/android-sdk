@@ -8,7 +8,7 @@ internal sealed class EmbeddedBlockState {
 
     data object Empty : EmbeddedBlockState()
 
-    data object Failed : EmbeddedBlockState()
+    data class Failed(val reason: MindboxEmbeddedBlockFailReason) : EmbeddedBlockState()
 
     val nothingToShow: Boolean
         get() = this is Empty || this is Failed

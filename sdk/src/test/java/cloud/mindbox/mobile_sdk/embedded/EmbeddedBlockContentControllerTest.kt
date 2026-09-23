@@ -1,6 +1,11 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.Assert.assertFalse
 import android.os.Looper
 import android.view.View
@@ -14,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 import java.time.Duration
@@ -53,7 +59,7 @@ class EmbeddedBlockContentControllerTest {
 
     private class FakeProvider : EmbeddedContentProvider {
         override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-        override val contentView: View? = null
+        override val contentView: View? = View(RuntimeEnvironment.getApplication())
         var startCount = 0
         var releaseCount = 0
 
@@ -102,13 +108,13 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `no config within timeout collapses to Empty`() {
+    fun `no config within timeout fails with a network error`() {
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
 
         idleFor(Duration.ofMillis(30_001L))
 
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
     }
 
     @Test
@@ -193,7 +199,7 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
         io.mockk.verify(exactly = 1) {
-            tracker.sendWaitBudgetExceeded(
+            tracker.sendPlaceWaitBudgetExceeded(
                 PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
@@ -217,13 +223,13 @@ class EmbeddedBlockContentControllerTest {
 
         // The SDK stayed silent for the whole budget: the fact ships with no in-app to name.
         io.mockk.verify(exactly = 1) {
-            tracker.sendWaitBudgetExceeded(
+            tracker.sendPlaceWaitBudgetExceeded(
                 PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.CONFIG_MISSING,
             )
         }
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
     }
 
     @Test
@@ -242,7 +248,7 @@ class EmbeddedBlockContentControllerTest {
         idleFor(Duration.ofMillis(51L))
 
         io.mockk.verify(exactly = 1) {
-            tracker.sendWaitBudgetExceeded(
+            tracker.sendPlaceWaitBudgetExceeded(
                 PlaceKey.of("main-screen-top"),
                 Milliseconds(50L),
                 cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase.RESOLVE_PENDING,
@@ -255,7 +261,7 @@ class EmbeddedBlockContentControllerTest {
         val tracker = io.mockk.mockk<cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker>(relaxed = true)
         val silentProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() = Unit
 
@@ -285,7 +291,7 @@ class EmbeddedBlockContentControllerTest {
                 tags = mapOf("a" to "b"),
             )
         }
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
@@ -307,7 +313,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         idleFor(Duration.ofMillis(51L))
 
-        io.mockk.verify(exactly = 0) { tracker.sendWaitBudgetExceeded(any(), any(), any()) }
+        io.mockk.verify(exactly = 0) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
         assertEquals(EmbeddedBlockState.Loading, states.last())
     }
 
@@ -316,12 +322,12 @@ class EmbeddedBlockContentControllerTest {
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
         idleFor(Duration.ofMillis(30_001L))
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
 
         blocksRegistry.lastHandle?.onContentPending()
         blocksRegistry.pushContent("main-screen-top", content)
 
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
         assertTrue(createdProviders.isEmpty())
     }
 
@@ -346,7 +352,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = controller(configTimeout = Milliseconds(50L))
         controller.start()
         idleFor(Duration.ofMillis(51L))
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
         controller.pause()
 
         controller.start()
@@ -362,7 +368,7 @@ class EmbeddedBlockContentControllerTest {
         var builtPages = 0
         val silentProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() = Unit
 
@@ -380,13 +386,13 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         idleFor(Duration.ofMillis(101L))
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
 
         blocksRegistry.pushContent("main-screen-top", content)
 
         assertEquals(1, builtPages)
         assertEquals(false, blocksRegistry.lastHandle?.isActive)
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
@@ -397,7 +403,7 @@ class EmbeddedBlockContentControllerTest {
 
         idleFor(Duration.ofMillis(51L))
 
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
     }
 
     @Test
@@ -489,7 +495,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         val provider = createdProviders.single()
-        provider.onStateChange?.invoke(EmbeddedBlockState.Failed)
+        provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
         controller.pause()
 
         controller.start()
@@ -503,7 +509,7 @@ class EmbeddedBlockContentControllerTest {
     fun `page silence within ready timeout reports Failed`() {
         val silentProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() = Unit // never reports anything
 
@@ -523,7 +529,7 @@ class EmbeddedBlockContentControllerTest {
 
         idleFor(Duration.ofMillis(7_001L))
 
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
@@ -540,14 +546,14 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(states.none { state -> state is EmbeddedBlockState.Empty })
 
         idleFor(Duration.ofSeconds(2))
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
     }
 
     @Test
     fun `page budget is not refilled by re-entering the screen`() {
         val silentProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() = Unit // never reports anything
 
@@ -574,7 +580,7 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
 
         idleFor(Duration.ofMillis(1_100L))
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
@@ -586,7 +592,7 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(states.none { state -> state is EmbeddedBlockState.Empty })
 
         idleFor(Duration.ofMillis(2L))
-        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
     }
 
     @Test
@@ -629,7 +635,7 @@ class EmbeddedBlockContentControllerTest {
         var builtPages = 0
         val updatableProvider = object : EmbeddedUpdatableContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() {
                 onStateChange?.invoke(EmbeddedBlockState.Ready)
@@ -674,7 +680,7 @@ class EmbeddedBlockContentControllerTest {
         var updatedParams: Map<String, String>? = null
         val updatableProvider = object : EmbeddedUpdatableContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start() {
                 onStateChange?.invoke(EmbeddedBlockState.Ready)
@@ -729,7 +735,7 @@ class EmbeddedBlockContentControllerTest {
     fun `new params with a new page address rebuild instead of updating in place`() {
         class RecordingUpdatableProvider : EmbeddedUpdatableContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
             var updatedParams: Map<String, String>? = null
 
             override fun start() {
@@ -789,8 +795,8 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         val failed = createdProviders.single()
-        failed.onStateChange?.invoke(EmbeddedBlockState.Failed)
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        failed.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), states.last())
 
         blocksRegistry.pushContent("main-screen-top", content)
 
@@ -847,14 +853,14 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.pushContent("main-screen-top", content)
 
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
     fun `provider start crash degrades to failed instead of crashing the host`() {
         val crashingProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
             override fun start(): Unit = error("start boom")
 
@@ -872,7 +878,7 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.pushContent("main-screen-top", content)
 
-        assertEquals(EmbeddedBlockState.Failed, states.last())
+        assertEquals(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR), states.last())
     }
 
     @Test
@@ -899,7 +905,7 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(controller.isHoldingContent) // Ready (FakeProvider reports Ready on start)
         assertEquals(emptyList<String>(), blocksRegistry.droppedPlaces)
 
-        createdProviders.last().onStateChange?.invoke(EmbeddedBlockState.Failed)
+        createdProviders.last().onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
         assertFalse(controller.isHoldingContent)
         assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
     }
@@ -929,5 +935,169 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(droppedByTimeout + 1, blocksRegistry.droppedPlaces.size)
         assertFalse(controller.isHoldingContent)
         assertEquals(0, createdProviders.size)
+    }
+
+    private fun controllerWithTracker(
+        tracker: InAppFailureTracker,
+        configTimeout: Milliseconds = Milliseconds(30_000L),
+        providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider?,
+    ): EmbeddedBlockContentController =
+        EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = configTimeout,
+            providerFactory = providerFactory,
+            blocksRegistry = { blocksRegistry },
+            failureTracker = { tracker },
+            isTagsFeatureEnabled = { true },
+        ).apply { onStateChange = { state -> states.add(state) } }
+
+    private val networkError = EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR)
+    private val internalError = EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR)
+
+    @Test
+    fun `a winner without a webview layer is an internal error with a report`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controllerWithTracker(tracker) { _, _ -> FakeProvider() }
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content.copy(layers = emptyList(), tags = mapOf("a" to "b")))
+
+        assertEquals(internalError, states.last())
+        verify(exactly = 1) {
+            tracker.sendFailure(
+                inAppId = "embedded-id",
+                failureReason = FailureReason.UNKNOWN_ERROR,
+                errorDetails = any(),
+                tags = mapOf("a" to "b"),
+            )
+        }
+    }
+
+    @Test
+    fun `content that cannot be built is an internal error with a report`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controllerWithTracker(tracker) { _, _ -> null }
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(internalError, states.last())
+        verify(exactly = 1) {
+            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+        }
+    }
+
+    @Test
+    fun `a page whose start crashes is an internal error with a report`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val crashing = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+            var releaseCount = 0
+
+            override fun start(): Unit = throw IllegalStateException("boom")
+
+            override fun pause() = Unit
+
+            override fun release() {
+                releaseCount++
+            }
+        }
+        val controller = controllerWithTracker(tracker) { _, _ -> crashing }
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, crashing.releaseCount)
+        verify(exactly = 1) {
+            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+        }
+    }
+
+    @Test
+    fun `a page whose resume crashes is an internal error with a report`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val provider = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
+            var startCount = 0
+
+            override fun start() {
+                startCount++
+                if (startCount > 1) throw IllegalStateException("boom")
+                onStateChange?.invoke(EmbeddedBlockState.Ready)
+            }
+
+            override fun pause() = Unit
+
+            override fun release() = Unit
+        }
+        val controller = controllerWithTracker(tracker) { _, _ -> provider }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+
+        controller.pause()
+        controller.start()
+
+        // The failure settles like every other one: the block asks afresh on its next appearance, not now.
+        assertEquals(listOf(EmbeddedBlockState.Ready, internalError), states.takeLast(2))
+        assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
+        verify(exactly = 1) {
+            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+        }
+    }
+
+    @Test
+    fun `ready content without a view is an internal error with a report`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val viewless = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = null
+            var releaseCount = 0
+
+            override fun start() {
+                onStateChange?.invoke(EmbeddedBlockState.Ready)
+            }
+
+            override fun pause() = Unit
+
+            override fun release() {
+                releaseCount++
+            }
+        }
+        val controller = controllerWithTracker(tracker) { _, _ -> viewless }
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        assertEquals(internalError, states.last())
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Ready })
+        assertEquals(1, viewless.releaseCount)
+        assertEquals(null, controller.contentView)
+        verify(exactly = 1) {
+            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+        }
+    }
+
+    @Test
+    fun `the same failure reported twice is one state and a new reason is another`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        val provider = createdProviders.single()
+
+        provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
+        provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
+        provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR))
+
+        assertEquals(
+            listOf(
+                EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR),
+                EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR),
+            ),
+            states.filterIsInstance<EmbeddedBlockState.Failed>(),
+        )
     }
 }

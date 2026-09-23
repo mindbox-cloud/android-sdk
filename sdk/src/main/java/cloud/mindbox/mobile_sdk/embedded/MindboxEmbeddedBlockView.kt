@@ -22,7 +22,6 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -124,7 +123,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private val contentFrame = Rect()
 
-    private enum class BlockEvent { LOADED, FAILED }
+    private enum class BlockEvent { LOADED, EMPTY, FAILED }
 
     private var state: EmbeddedBlockState = EmbeddedBlockState.Loading
         set(value) {
@@ -474,12 +473,6 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun applyState(state: EmbeddedBlockState) {
-        if (state is EmbeddedBlockState.Ready && contentController.contentView == null) {
-            mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
-            this.state = EmbeddedBlockState.Failed
-            return
-        }
-
         val appearance = appearanceFor(state)
         shownAppearance = appearance
         hasSettled = when (appearance) {
@@ -594,18 +587,20 @@ public class MindboxEmbeddedBlockView internal constructor(
         isDeliveryScheduled = false
         // Loading is not an outcome, so the record of what was delivered is left alone: writing it
         // down would make the outcome that follows look new even when it is the one already heard.
-        val event = when {
-            state is EmbeddedBlockState.Ready -> BlockEvent.LOADED
-            state.nothingToShow -> BlockEvent.FAILED
-            else -> return@loggingRunCatching
+        when (val current = state) {
+            EmbeddedBlockState.Loading -> Unit
+            EmbeddedBlockState.Ready -> deliverIfChanged(BlockEvent.LOADED) { onLoad(this@MindboxEmbeddedBlockView) }
+            EmbeddedBlockState.Empty -> deliverIfChanged(BlockEvent.EMPTY) { onEmpty(this@MindboxEmbeddedBlockView) }
+            is EmbeddedBlockState.Failed -> deliverIfChanged(BlockEvent.FAILED) {
+                onFail(this@MindboxEmbeddedBlockView, current.reason)
+            }
         }
-        if (event == deliveredEvent) return@loggingRunCatching
+    }
 
+    private inline fun deliverIfChanged(event: BlockEvent, deliver: MindboxEmbeddedBlockListener.() -> Unit) {
+        if (event == deliveredEvent) return
         deliveredEvent = event
-        when (event) {
-            BlockEvent.LOADED -> listener.onLoad(this)
-            BlockEvent.FAILED -> listener.onFail(this)
-        }
+        listener.deliver()
     }
 
     private companion object {

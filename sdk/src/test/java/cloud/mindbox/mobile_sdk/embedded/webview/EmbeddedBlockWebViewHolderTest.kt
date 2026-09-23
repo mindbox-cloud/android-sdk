@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockFailReason
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -332,7 +333,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         postFromPage(request(action = "contentRendered", payload = """{"count":"many"}"""))
 
-        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         // The page must hear the refusal too: a success response would pass for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
@@ -345,7 +346,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         postFromPage(request(action = "contentRendered", payload = """{"count":-1}"""))
 
-        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
     }
@@ -357,7 +358,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         postFromPage(request(action = "contentRendered", payload = """{"count":2.5}"""))
 
-        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
     }
@@ -602,7 +603,7 @@ class EmbeddedBlockWebViewHolderTest {
     fun `showInApp from a failed attempt is refused with source_dismissed`() {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":-1}""", id = "bad"))
-        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        await { states.lastOrNull() is EmbeddedBlockState.Failed }
 
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
@@ -998,7 +999,7 @@ class EmbeddedBlockWebViewHolderTest {
         // In sync with iOS: a block has no window to click through, and "nothing to do here" is
         // an outcome the page carries on from. Nothing about the block changes.
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
-        assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
     }
 
     @Test
@@ -1011,7 +1012,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "navigationIntercepted" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertTrue(states.none { state -> state == EmbeddedBlockState.Failed })
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
     }
 
     @Test
@@ -1020,7 +1021,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         holder.start()
 
-        await { states.lastOrNull() == EmbeddedBlockState.Failed }
+        await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR) }
     }
 
     @Test

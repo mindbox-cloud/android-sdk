@@ -19,6 +19,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockFailReason
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 import cloud.mindbox.mobile_sdk.logger.Level
@@ -54,10 +55,14 @@ import cloud.mindbox.mobile_sdk.logger.Level
  * place is: a new value given to a block already on screen is ignored, and the block says so in
  * the log. Wrap the block in a `key()` of your own to build one on a different budget.
  * @param onLoad The block is shown and visible. Main thread.
- * @param onFail The place ends up without content — the load failed or timed out, or the
- * config had nothing to put here. The block collapsed, or — if the [error] slot is set —
- * stayed in place showing it. Not necessarily a breakage: an empty place is a normal outcome.
- * Main thread.
+ * @param onEmpty The place has nothing to show — a normal outcome, not a breakage: no campaign
+ * for the place, or the targeting, the A/B split, the show limits or the page itself left it
+ * empty. The block collapsed; the [error] slot does not apply. Main thread.
+ * @param onFail The block could not get or show its content; the reason is one of the
+ * [MindboxEmbeddedBlockFailReason] constants, for the host's logs. Not called for an empty place —
+ * that is [onEmpty], so a section hidden from `onFail` alone stays for a place with nothing to
+ * show. The block collapsed, or — if the [error] slot is set — stayed in place showing it. Main
+ * thread.
  * @param placeholder Replaces the SDK's default loading placeholder. Fills the whole block frame.
  * @param error The view for a block that failed. Setting it keeps the block visible instead of
  * the default collapse; an empty place collapses regardless. Fills the whole block frame.
@@ -69,11 +74,13 @@ public fun MindboxEmbeddedBlock(
     modifier: Modifier = Modifier,
     timeoutMs: Long? = null,
     onLoad: () -> Unit = {},
-    onFail: () -> Unit = {},
+    onEmpty: () -> Unit = {},
+    onFail: (MindboxEmbeddedBlockFailReason) -> Unit = {},
     placeholder: (@Composable () -> Unit)? = null,
     error: (@Composable () -> Unit)? = null,
 ) {
     val currentOnLoad by rememberUpdatedState(onLoad)
+    val currentOnEmpty by rememberUpdatedState(onEmpty)
     val currentOnFail by rememberUpdatedState(onFail)
     val currentPlaceholder by rememberUpdatedState(placeholder)
     val currentError by rememberUpdatedState(error)
@@ -128,8 +135,12 @@ public fun MindboxEmbeddedBlock(
                                 currentOnLoad()
                             }
 
-                            override fun onFail(view: MindboxEmbeddedBlockView) {
-                                currentOnFail()
+                            override fun onEmpty(view: MindboxEmbeddedBlockView) {
+                                currentOnEmpty()
+                            }
+
+                            override fun onFail(view: MindboxEmbeddedBlockView, reason: MindboxEmbeddedBlockFailReason) {
+                                currentOnFail(reason)
                             }
                         },
                     )

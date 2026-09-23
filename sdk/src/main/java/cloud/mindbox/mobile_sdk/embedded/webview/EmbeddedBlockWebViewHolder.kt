@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
+import cloud.mindbox.mobile_sdk.embedded.toEmbeddedBlockFailReason
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.getOrNull
@@ -321,7 +322,7 @@ internal class EmbeddedBlockWebViewHolder(
                             "description=${error.description}, url=${error.url}",
                         tags = gatedTags()
                     )
-                    report(EmbeddedBlockState.Failed)
+                    report(EmbeddedBlockState.Failed(FailureReason.WEBVIEW_LOAD_FAILED.toEmbeddedBlockFailReason()))
                 }
             }
 
@@ -457,7 +458,7 @@ internal class EmbeddedBlockWebViewHolder(
             errorDescription = "The embedded block page reported contentRendered with an unusable payload: $reason",
             tags = gatedTags()
         )
-        report(EmbeddedBlockState.Failed)
+        report(EmbeddedBlockState.Failed(FailureReason.PRESENTATION_FAILED.toEmbeddedBlockFailReason()))
         return IllegalArgumentException(reason)
     }
 
@@ -584,8 +585,9 @@ internal class EmbeddedBlockWebViewHolder(
             throwable = throwable,
             tags = gatedTags()
         )
-        webViewController?.executeOnViewThread { report(EmbeddedBlockState.Failed) }
-            ?: mainHandler.post { if (!isReleased) report(EmbeddedBlockState.Failed) }
+        val failed = EmbeddedBlockState.Failed(FailureReason.WEBVIEW_LOAD_FAILED.toEmbeddedBlockFailReason())
+        webViewController?.executeOnViewThread { report(failed) }
+            ?: mainHandler.post { if (!isReleased) report(failed) }
     }
 
     private fun report(state: EmbeddedBlockState) {
