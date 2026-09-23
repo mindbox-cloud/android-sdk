@@ -14,6 +14,8 @@ internal interface MobileConfigRepository {
 
     fun hasConfig(): Boolean
 
+    fun isConfigUnavailable(): Boolean
+
     suspend fun fetchMobileConfig()
 
     suspend fun getInAppsSection(): List<InApp>

@@ -216,6 +216,29 @@ internal class EmbeddedBlockContentController(
         pendingSinceTick = pendingSinceTick ?: monotonicNow()
     }
 
+    override fun onConfigUnavailable() {
+        if (isReleased) return
+        if (hasGivenUp) {
+            mindboxLogI(
+                "[EmbeddedBlock] The SDK answered for '$placeSystemName' after the block gave up " +
+                    "waiting, dropping the answer; the next appearance on screen asks afresh"
+            )
+            notifyContentDropped()
+            return
+        }
+        configBudget.reset()
+        settlePendingWindow()
+        pendingContent = null
+        hasPendingContent = false
+        forgetAppliedContent()
+        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for '$placeSystemName', reporting failure")
+        sendWaitBudgetExceeded(
+            waited = attemptStartTick?.let(::elapsedSince) ?: Milliseconds(0L),
+            phase = WaitBudgetPhase.CONFIG_MISSING,
+        )
+        report(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
+    }
+
     private fun sendWaitBudgetExceeded(waited: Milliseconds, phase: WaitBudgetPhase) {
         val place = placeSystemName ?: return
         val tracker = failureTracker() ?: return

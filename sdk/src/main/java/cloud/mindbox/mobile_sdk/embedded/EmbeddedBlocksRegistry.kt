@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded
 import android.os.Handler
 import android.os.Looper
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -31,6 +32,8 @@ internal interface EmbeddedBlockHandle {
     fun onContentResolved(content: InAppType.Embedded?)
 
     fun onContentPending() {}
+
+    fun onConfigUnavailable()
 }
 
 internal interface EmbeddedBlocksRegistry {
@@ -216,11 +219,22 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun handleResolved(place: PlaceKey, result: EmbeddedResolveResult?) {
-        val delayTime = result?.delayTime?.takeIf { delay -> delay.interval > 0 }
-        if (result == null || delayTime == null) {
+    private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome) {
+        when (outcome) {
+            is EmbeddedResolveOutcome.Content -> handleContent(place, outcome.result)
+            is EmbeddedResolveOutcome.Empty -> {
+                delayJobsByPlace.remove(place)?.job?.cancel()
+                deliver(place, null)
+            }
+            is EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place)
+        }
+    }
+
+    private fun handleContent(place: PlaceKey, result: EmbeddedResolveResult) {
+        val delayTime = result.delayTime?.takeIf { delay -> delay.interval > 0 }
+        if (delayTime == null) {
             delayJobsByPlace.remove(place)?.job?.cancel()
-            deliver(place, result?.variant)
+            deliver(place, result.variant)
             return
         }
         val running = delayJobsByPlace[place]
@@ -262,6 +276,32 @@ internal class EmbeddedBlocksRegistryImpl(
             return
         }
         deliver(place, null)
+    }
+
+    private fun handleConfigUnavailable(place: PlaceKey) {
+        val running = delayJobsByPlace[place]
+        if (running != null && running.job.isActive) {
+            mindboxLogI(
+                "[EmbeddedBlock] The SDK has no config to answer for place '$place' while winner " +
+                    "${running.inAppId} waits out its delay, keeping the running timer"
+            )
+            notifyPending(place)
+            return
+        }
+        deliverConfigUnavailable(place)
+    }
+
+    private fun deliverConfigUnavailable(place: PlaceKey) {
+        inAppInteractor.releasePlaceShow(place)
+        val handles = liveHandles(place)
+        if (handles.isEmpty()) {
+            mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the answer")
+            return
+        }
+        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for place '$place', the blocks report a failure")
+        handles.forEach { handle ->
+            loggingRunCatching { handle.onConfigUnavailable() }
+        }
     }
 
     private fun notifyPending(place: PlaceKey) {

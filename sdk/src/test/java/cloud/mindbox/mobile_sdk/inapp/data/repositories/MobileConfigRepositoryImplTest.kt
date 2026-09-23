@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -135,8 +136,77 @@ internal class MobileConfigRepositoryImplTest {
             .set(Mindbox, scope)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `an empty emission after a failed fetch means the config is unavailable until a real one arrives`() = runTest {
+        val originalScope = Mindbox.mindboxScope
+        try {
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+            setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+            val repository = createRepository(
+                deserializedBlank = null,
+                sessionState = SessionState(configFetchingError = true),
+            )
+            repository.startListening()
+            assertFalse(repository.isConfigUnavailable())
+
+            MindboxPreferences.inAppConfigFlow.emit("")
+
+            assertTrue(repository.hasConfig())
+            assertTrue(repository.isConfigUnavailable())
+
+            repository.resetCurrentConfig()
+
+            assertFalse(repository.isConfigUnavailable())
+        } finally {
+            setMindboxScope(originalScope)
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `an empty emission without a fetch error is an empty config, not an unavailable one`() = runTest {
+        val originalScope = Mindbox.mindboxScope
+        try {
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+            setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+            val repository = createRepository(deserializedBlank = null, sessionState = SessionState(configFetchingError = false))
+            repository.startListening()
+
+            MindboxPreferences.inAppConfigFlow.emit("")
+
+            assertTrue(repository.hasConfig())
+            assertFalse(repository.isConfigUnavailable())
+        } finally {
+            setMindboxScope(originalScope)
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a real config after a failed fetch is available`() = runTest {
+        val originalScope = Mindbox.mindboxScope
+        try {
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+            setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+            val repository = createRepository(sessionState = SessionState(configFetchingError = true))
+            repository.startListening()
+
+            MindboxPreferences.inAppConfigFlow.emit("{}")
+
+            assertTrue(repository.hasConfig())
+            assertFalse(repository.isConfigUnavailable())
+        } finally {
+            setMindboxScope(originalScope)
+            MindboxPreferences.inAppConfigFlow.resetReplayCache()
+        }
+    }
+
     private fun createRepository(
         deserializedBlank: InAppConfigResponseBlank? = mockk(),
+        sessionState: SessionState = SessionState(),
     ): MobileConfigRepositoryImpl {
         return MobileConfigRepositoryImpl(
             inAppMapper = inAppMapper,
@@ -162,7 +232,9 @@ internal class MobileConfigRepositoryImplTest {
                 every { fillFrequencyData(any()) } returns mockk()
             },
             ttlParametersValidator = mockk(relaxed = true),
-            sessionStorageManager = mockk(relaxed = true),
+            sessionStorageManager = mockk(relaxed = true) {
+                every { state } returns sessionState
+            },
             mobileConfigSettingsManager = mockk(relaxed = true),
             integerPositiveValidator = mockk(relaxed = true),
             inappSettingsManager = mockk(relaxed = true),

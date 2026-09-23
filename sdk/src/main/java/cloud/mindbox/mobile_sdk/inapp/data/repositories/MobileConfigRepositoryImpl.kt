@@ -63,6 +63,9 @@ internal class MobileConfigRepositoryImpl(
 
     private val configState = MutableStateFlow<InAppConfig?>(null)
 
+    @Volatile
+    private var configUnavailable = false
+
     private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private var configSubscription: Job? = null
@@ -118,6 +121,7 @@ internal class MobileConfigRepositoryImpl(
             inappSettingsManager.applySettings(config = filteredConfig)
             featureToggleManager.applyToggles(config = filteredConfig)
             persistOperationsDomain(filteredConfig)
+            configUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError
             configState.value = updatedInAppConfig
             configUpdates.tryEmit(Unit)
             // Prewarm stage 2: warm what the config's webview in-apps will need
@@ -131,6 +135,8 @@ internal class MobileConfigRepositoryImpl(
 
     override fun hasConfig(): Boolean = configState.value != null
 
+    override fun isConfigUnavailable(): Boolean = configUnavailable
+
     override suspend fun getMonitoringSection() = getConfig().monitoring
 
     override suspend fun getOperations() = getConfig().operations
@@ -141,6 +147,7 @@ internal class MobileConfigRepositoryImpl(
 
     override fun resetCurrentConfig() {
         configState.value = null
+        configUnavailable = false
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)

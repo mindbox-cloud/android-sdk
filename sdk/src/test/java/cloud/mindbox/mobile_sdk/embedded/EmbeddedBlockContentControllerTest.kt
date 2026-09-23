@@ -955,6 +955,55 @@ class EmbeddedBlockContentControllerTest {
     private val internalError = EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR)
 
     @Test
+    fun `the SDK having no config fails the block with a network error at once and ships the place-named failure`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controllerWithTracker(tracker) { _, _ -> FakeProvider() }
+        controller.start()
+        idleFor(Duration.ofMillis(250L))
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(networkError, states.last())
+        verify(exactly = 1) {
+            tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(250L), WaitBudgetPhase.CONFIG_MISSING)
+        }
+        assertTrue(blocksRegistry.droppedPlaces.contains("main-screen-top"))
+
+        // The answer settled the budget: the timeout does not report the place a second time.
+        idleFor(Duration.ofMillis(30_001L))
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+    }
+
+    @Test
+    fun `an answer the SDK could not give drops the content a block was showing`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(networkError, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(null, controller.contentView)
+    }
+
+    @Test
+    fun `an answer the SDK could not give after the block gave up is dropped`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controllerWithTracker(tracker, configTimeout = Milliseconds(50L)) { _, _ -> FakeProvider() }
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+        assertEquals(networkError, states.last())
+        val reportedSoFar = states.size
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(reportedSoFar, states.size)
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+    }
+
+    @Test
     fun `a winner without a webview layer is an internal error with a report`() {
         val tracker = mockk<InAppFailureTracker>(relaxed = true)
         val controller = controllerWithTracker(tracker) { _, _ -> FakeProvider() }
@@ -1099,5 +1148,20 @@ class EmbeddedBlockContentControllerTest {
             ),
             states.filterIsInstance<EmbeddedBlockState.Failed>(),
         )
+    }
+
+    @Test
+    fun `an answer the SDK could not give reaches a paused block at once and the return asks afresh`() {
+        val controller = controller()
+        controller.start()
+        controller.pause()
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+        assertEquals(networkError, states.last())
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 }

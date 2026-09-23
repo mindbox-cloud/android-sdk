@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded
 
 import android.os.Looper
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
@@ -51,6 +52,12 @@ class EmbeddedBlocksRegistryTest {
         override fun onContentPending() {
             pendingCount++
         }
+
+        var unavailableCount = 0
+
+        override fun onConfigUnavailable() {
+            unavailableCount++
+        }
     }
 
     private val interactor: InAppInteractor = mockk(relaxed = true)
@@ -81,7 +88,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `block appearance pulls content for its place`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -95,7 +102,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `two blocks on the same place both receive the same content`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val first = RecordingHandle()
         val second = RecordingHandle()
         val controller = controller()
@@ -115,7 +122,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `operation matched to a registered place resolves with that operation as the trigger`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -176,7 +183,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `operation for a paused place is skipped and the next appearance resolves fresh`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle(isActive = false)
         val controller = controller()
         controller.register(place, handle)
@@ -195,7 +202,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `unregistered handle stops receiving content`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         val registration = controller.register(place, handle)
@@ -213,7 +220,7 @@ class EmbeddedBlocksRegistryTest {
     fun `controller never calls selection itself`() {
         // The registry routes; the selection lives in the interactor. The only domain entries
         // the controller touches are selectInAppForPlace and the push flow subscription.
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val controller = controller()
         controller.register(place, RecordingHandle())
         idleMain()
@@ -231,7 +238,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `winner with delayTime is announced as pending and delivered after the delay`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L))
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L)))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -254,7 +261,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `the same winner re-selected keeps the running delay timer`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L))
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L)))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -283,7 +290,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a delay that elapsed while the block was away is delivered at once and not waited out again`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L)) andThen EmbeddedResolveResult(content, null)
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L))) andThen EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         val registration = controller.register(place, handle)
@@ -314,7 +321,7 @@ class EmbeddedBlocksRegistryTest {
     fun `a newer resolve outcome supersedes a winner still waiting out its delay`() {
         val delayed = InAppStub.getEmbedded().copy(inAppId = "delayed")
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(delayed, Milliseconds(5_000L)) andThen EmbeddedResolveResult(content, null)
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(delayed, Milliseconds(5_000L))) andThen EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -334,7 +341,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `new config re-resolves places with an active block`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle(isActive = true)
         val controller = controller()
         controller.register(place, handle)
@@ -348,7 +355,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `invalidation for a paused place is skipped and the next appearance resolves fresh`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle(isActive = false)
         val controller = controller()
         controller.register(place, handle)
@@ -396,7 +403,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `resolve failure while a winner waits out its delay keeps the running timer`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L)) andThenThrows IllegalStateException("boom")
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L))) andThenThrows IllegalStateException("boom")
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -421,7 +428,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `pending is announced to paused handles too so the delay leaves their clock`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L))
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L)))
         val active = RecordingHandle()
         val paused = RecordingHandle(isActive = false)
         val controller = controller()
@@ -439,9 +446,9 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `operation queued while resolving keeps its trigger for the second pass`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        val firstResolveGate = CompletableDeferred<EmbeddedResolveResult?>()
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() }
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -453,7 +460,7 @@ class EmbeddedBlocksRegistryTest {
         // WITH its trigger — a triggerless second pass would never match operation-targetings.
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
-        firstResolveGate.complete(null)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
@@ -463,8 +470,8 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `channels resubscribe after the SDK scope is recreated`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -489,7 +496,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `resubscribing re-resolves what may have changed while the channels were dead`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -529,11 +536,13 @@ class EmbeddedBlocksRegistryTest {
         override val isHoldingContent: Boolean = true
 
         override fun onContentResolved(content: InAppType.Embedded?) {}
+
+        override fun onConfigUnavailable() {}
     }
 
     @Test
     fun `the place reserves its show when the content is delivered, once for all its blocks`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val controller = controller()
         controller.register(place, RecordingHandle())
         controller.register(place, RecordingHandle())
@@ -547,7 +556,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `a refused hold empties the place without a failure`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveResult(content, null)
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, null))
         val handle = RecordingHandle()
         val controller = controller()
         every { interactor.reservePlaceShow(place, content) } returns false
@@ -563,7 +572,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `nothing to show over an active hold gives the hold back`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns null
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty
         val controller = controller()
         controller.register(place, RecordingHandle())
         idleMain()
@@ -578,7 +587,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a winner waiting out its delay reserves only when the delay has run`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveResult(content, Milliseconds(5_000L))
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L)))
         val controller = controller()
         controller.register(place, RecordingHandle())
         idleMain()
@@ -626,5 +635,65 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         verify { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `an answer the SDK could not give is delivered to the blocks as such and gives the hold back`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
+            EmbeddedResolveOutcome.ConfigUnavailable
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(1, handle.unavailableCount)
+        assertTrue(handle.received.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
+        verify { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `an answer the SDK could not give while a winner waits out its delay keeps the running timer`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
+            EmbeddedResolveOutcome.Content(EmbeddedResolveResult(content, Milliseconds(5_000L))) andThen
+            EmbeddedResolveOutcome.ConfigUnavailable
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(0, handle.unavailableCount)
+        assertEquals(2, handle.pendingCount)
+
+        scope.testScheduler.advanceTimeBy(5_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(content, handle.received.last())
+    }
+
+    @Test
+    fun `an answer the SDK could not give for a place nobody listens to is dropped with the hold`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
+            EmbeddedResolveOutcome.ConfigUnavailable
+        val controller = controller()
+        val registration = controller.register(place, RecordingHandle())
+        idleMain()
+        registration.close()
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        // Once for the unregistration, once for the answer that found nobody to hear it.
+        verify(exactly = 2) { interactor.releasePlaceShow(place) }
     }
 }
