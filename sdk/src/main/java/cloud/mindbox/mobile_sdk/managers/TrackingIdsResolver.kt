@@ -29,7 +29,7 @@ internal interface TrackingIdsResolver {
 
 internal class TrackingIdsResolverImpl(
     private val pushServiceHandlers: () -> List<PushServiceHandler> = { Mindbox.pushServiceHandlers },
-    private val scope: CoroutineScope = Mindbox.mindboxScope,
+    private val scope: () -> CoroutineScope = { Mindbox.mindboxScope },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val timeoutMillis: Long = READ_TRACKING_IDS_TIMEOUT,
 ) : TrackingIdsResolver {
@@ -39,7 +39,7 @@ internal class TrackingIdsResolverImpl(
     override suspend fun resolve(context: Context): List<TrackingId> {
         if (!MindboxPreferences.shouldCollectTrackingIds) return emptyList()
 
-        val reading = scope.async(ioDispatcher) {
+        val reading = scope().async(ioDispatcher) {
             pushServiceHandlers().map { handler -> handler.tryGetTrackingId(context) }
         }
         val results = withTimeoutOrNull(timeoutMillis.milliseconds) { reading.await() }
@@ -49,15 +49,7 @@ internal class TrackingIdsResolverImpl(
             return lastSent()
         }
 
-        val ids = results.collectTrackingIds()
-        if (ids.isNotEmpty()) return ids
-
-        if (results.any { it is TrackingIdResult.Unavailable }) {
-            mindboxLogI("Tracking id providers are unreachable, repeating the last reported set")
-            return lastSent()
-        }
-
-        return emptyList()
+        return results.mergeWithLastSent()
     }
 
     override fun hasChanged(trackingIds: List<TrackingId>): Boolean = trackingIds != lastSent()
@@ -74,9 +66,18 @@ internal class TrackingIdsResolverImpl(
             ?: emptyList()
     }
 
-    private fun List<TrackingIdResult>.collectTrackingIds(): List<TrackingId> =
-        filterIsInstance<TrackingIdResult.Success>()
-            .map { it.trackingId }
+    private fun List<TrackingIdResult>.mergeWithLastSent(): List<TrackingId> {
+        val fresh = filterIsInstance<TrackingIdResult.Success>().map { it.trackingId }
+        val answered = fresh.map { it.type }.toSet() +
+            filterIsInstance<TrackingIdResult.Denied>().map { it.type }
+
+        val kept = lastSent().filterNot { it.type in answered }
+        if (kept.isNotEmpty()) {
+            mindboxLogI("Keeping tracking ids we could not read: ${kept.joinToString { it.type }}")
+        }
+
+        return (fresh + kept)
             .sortedBy { it.type }
             .distinctBy { it.type }
+    }
 }

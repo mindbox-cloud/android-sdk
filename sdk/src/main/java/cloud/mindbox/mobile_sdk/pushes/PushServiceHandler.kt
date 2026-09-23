@@ -58,12 +58,12 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
             when {
                 isLimitAdTrackingEnabled -> {
                     logI("$type is not available: limit ad tracking is enabled")
-                    TrackingIdResult.Denied
+                    TrackingIdResult.Denied(type)
                 }
 
                 !TrackingIdValidator.isValid(id) -> {
                     logI("$type is not available: $notificationProvider returned no identifier")
-                    TrackingIdResult.Denied
+                    TrackingIdResult.Denied(type)
                 }
 
                 else -> {
@@ -114,10 +114,10 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         generateRandomUuid()
     }
 
-    // Both checks are needed: the format one rejects the short `0000-0000` some devices answer
-    // with, the character one keeps rejecting the zero id, which `isUuid()` alone accepts.
-    private fun String.isUsableAdsId(): Boolean =
-        isUuid() && any { character -> character != '0' && character != '-' }
-
     private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
+
+// Both checks are needed: the format one rejects the short `0000-0000` some devices answer
+// with, the character one keeps rejecting the zero id, which `isUuid()` alone accepts.
+internal fun String.isUsableAdsId(): Boolean =
+    isUuid() && any { character -> character != '0' && character != '-' }

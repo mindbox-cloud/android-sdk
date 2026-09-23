@@ -6,7 +6,7 @@ internal sealed interface TrackingIdResult {
 
     data class Success(val trackingId: TrackingId) : TrackingIdResult
 
-    object Denied : TrackingIdResult
+    data class Denied(val type: String) : TrackingIdResult
 
     object Unavailable : TrackingIdResult
 

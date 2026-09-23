@@ -24,6 +24,8 @@ private const val GOOGLE = "google"
 private const val HUAWEI = "huawei"
 private const val GOOGLE_VALUE = "38400000-8cf0-11bd-b23e-10b96e40000d"
 private const val HUAWEI_VALUE = "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"
+private const val STORED_BOTH =
+    """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"},{"type":"huawei","value":"1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"}]"""
 private const val STORED_GOOGLE =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"}]"""
 
@@ -49,14 +51,14 @@ class TrackingIdsResolverImplTest {
 
     private fun resolver(vararg results: TrackingIdResult) = TrackingIdsResolverImpl(
         pushServiceHandlers = { results.map(::handlerReturning) },
-        scope = CoroutineScope(UnconfinedTestDispatcher()),
+        scope = { CoroutineScope(UnconfinedTestDispatcher()) },
         ioDispatcher = UnconfinedTestDispatcher(),
     )
 
     /** Reads on a real dispatcher so a blocking provider actually blocks. */
     private fun resolverWithHangingProvider(vararg fast: TrackingIdResult) = TrackingIdsResolverImpl(
         pushServiceHandlers = { fast.map(::handlerReturning) + handlerThatHangs() },
-        scope = CoroutineScope(Dispatchers.IO),
+        scope = { CoroutineScope(Dispatchers.IO) },
         ioDispatcher = Dispatchers.IO,
         timeoutMillis = 100L,
     )
@@ -65,7 +67,7 @@ class TrackingIdsResolverImplTest {
         mockk<PushServiceHandler>().also { handler ->
             every { handler.tryGetTrackingId(context) } answers {
                 Thread.sleep(300L)
-                TrackingIdResult.Denied
+                TrackingIdResult.Denied(GOOGLE)
             }
         }
 
@@ -144,14 +146,14 @@ class TrackingIdsResolverImplTest {
     fun `opt-out erases a value that was sent before`() = runTest {
         lastSent = STORED_GOOGLE
 
-        val payload = resolver(TrackingIdResult.Denied).resolve(context)
+        val payload = resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context)
 
         assertEquals(emptyList<TrackingId>(), payload)
     }
 
     @Test
     fun `opt-out reports an empty set even when nothing was ever sent`() = runTest {
-        val payload = resolver(TrackingIdResult.Denied).resolve(context)
+        val payload = resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context)
 
         assertEquals(emptyList<TrackingId>(), payload)
     }
@@ -159,7 +161,7 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `the empty set keeps being reported, so a lost erase heals itself`() = runTest {
         lastSent = STORED_GOOGLE
-        val resolver = resolver(TrackingIdResult.Denied)
+        val resolver = resolver(TrackingIdResult.Denied(GOOGLE))
 
         val erase = resolver.resolve(context)
         resolver.markSent(erase)
@@ -226,6 +228,39 @@ class TrackingIdsResolverImplTest {
         val payload = resolverWithHangingProvider().resolve(context)
 
         assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `a denied provider is erased while an unreadable one keeps its value`() = runTest {
+        lastSent = STORED_BOTH
+
+        val payload = resolver(
+            TrackingIdResult.Denied(GOOGLE),
+            TrackingIdResult.Unavailable,
+        ).resolve(context)
+
+        assertEquals(listOf(huaweiId), payload)
+    }
+
+    @Test
+    fun `no providers at all keeps the stored value`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        val payload = resolver().resolve(context)
+
+        assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `a fresh value replaces the stored one of the same type`() = runTest {
+        lastSent = STORED_BOTH
+
+        val payload = resolver(success(GOOGLE, "11111111-1111-1111-1111-111111111111")).resolve(context)
+
+        assertEquals(
+            listOf(TrackingId(GOOGLE, "11111111-1111-1111-1111-111111111111"), huaweiId),
+            payload,
+        )
     }
 
     @Test

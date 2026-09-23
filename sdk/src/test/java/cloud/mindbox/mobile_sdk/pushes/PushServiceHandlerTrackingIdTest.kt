@@ -48,14 +48,14 @@ class PushServiceHandlerTrackingIdTest {
     fun `limit ad tracking counts as an opt-out`() {
         val handler = TestPushServiceHandler { GOOGLE_VALUE to true }
 
-        assertEquals(TrackingIdResult.Denied, handler.tryGetTrackingId(context))
+        assertEquals(TrackingIdResult.Denied(GOOGLE), handler.tryGetTrackingId(context))
     }
 
     @Test
     fun `zero guid counts as an opt-out`() {
         val handler = TestPushServiceHandler { ZERO_GUID to false }
 
-        assertEquals(TrackingIdResult.Denied, handler.tryGetTrackingId(context))
+        assertEquals(TrackingIdResult.Denied(GOOGLE), handler.tryGetTrackingId(context))
     }
 
     @Test
@@ -72,7 +72,7 @@ class PushServiceHandlerTrackingIdTest {
     fun `empty id counts as an opt-out`() {
         val handler = TestPushServiceHandler { "" to false }
 
-        assertEquals(TrackingIdResult.Denied, handler.tryGetTrackingId(context))
+        assertEquals(TrackingIdResult.Denied(GOOGLE), handler.tryGetTrackingId(context))
     }
 
     @Test
@@ -90,7 +90,7 @@ class PushServiceHandlerTrackingIdTest {
     }
 
     @Test
-    fun `a provider without an tracking id type supplies nothing`() {
+    fun `a provider without a tracking id type supplies nothing`() {
         val handler = TestPushServiceHandler(trackingIdType = null) { GOOGLE_VALUE to false }
 
         assertEquals(TrackingIdResult.NotSupported, handler.tryGetTrackingId(context))
