@@ -27,6 +27,8 @@ internal class HuaweiServiceHandler(
 
     override val notificationProvider: String = MindboxHuawei.tag
 
+    override val trackingIdType: String? = MindboxHuawei.trackingIdType
+
     override suspend fun initService(context: Context) {
         HmsMessaging.getInstance(context).isAutoInitEnabled = true
         val appId = getAppId(context)

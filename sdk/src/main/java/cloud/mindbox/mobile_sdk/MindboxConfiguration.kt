@@ -23,6 +23,7 @@ public class MindboxConfiguration private constructor(
     internal val shouldCreateCustomer: Boolean,
     internal val shouldIncludeVersionCode: Boolean,
     internal val uuidDebugEnabled: Boolean,
+    internal val disableTrackingIds: Boolean,
     internal val operationsDomain: String? = null,
 ) {
 
@@ -38,6 +39,7 @@ public class MindboxConfiguration private constructor(
         shouldCreateCustomer = builder.shouldCreateCustomer,
         shouldIncludeVersionCode = builder.shouldIncludeVersionCode,
         uuidDebugEnabled = builder.uuidDebugEnabled,
+        disableTrackingIds = builder.disableTrackingIds,
         operationsDomain = builder.operationsDomain,
     )
 
@@ -53,6 +55,7 @@ public class MindboxConfiguration private constructor(
         shouldCreateCustomer: Boolean = this.shouldCreateCustomer,
         shouldIncludeVersionCode: Boolean = this.shouldIncludeVersionCode,
         uuidDebugEnabled: Boolean = this.uuidDebugEnabled,
+        disableTrackingIds: Boolean = this.disableTrackingIds,
         operationsDomain: String? = this.operationsDomain,
     ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
@@ -66,6 +69,7 @@ public class MindboxConfiguration private constructor(
         shouldCreateCustomer = shouldCreateCustomer,
         shouldIncludeVersionCode = shouldIncludeVersionCode,
         uuidDebugEnabled = uuidDebugEnabled,
+        disableTrackingIds = disableTrackingIds,
         operationsDomain = operationsDomain,
     )
 
@@ -81,6 +85,7 @@ public class MindboxConfiguration private constructor(
             "shouldCreateCustomer = $shouldCreateCustomer, " +
             "shouldIncludeVersionCode = $shouldIncludeVersionCode, " +
             "uuidDebugEnabled = $uuidDebugEnabled, " +
+            "disableTrackingIds = $disableTrackingIds, " +
             "operationsDomain = $operationsDomain)"
     }
 
@@ -106,6 +111,7 @@ public class MindboxConfiguration private constructor(
         internal var shouldCreateCustomer: Boolean = true
         internal var shouldIncludeVersionCode: Boolean = true
         internal var uuidDebugEnabled: Boolean = true
+        internal var disableTrackingIds: Boolean = false
         internal var operationsDomain: String? = null
 
         /**
@@ -174,6 +180,30 @@ public class MindboxConfiguration private constructor(
          */
         public fun uuidDebugEnabled(uuidDebugEnabled: Boolean): Builder {
             this.uuidDebugEnabled = uuidDebugEnabled
+            return this
+        }
+
+        /**
+         * Turns off the collection of the device tracking identifier (GAID from Google Mobile
+         * Services, OAID from Huawei Mobile Services), which the SDK otherwise reports to Mindbox
+         * alongside the application events.
+         *
+         * Collection is **on by default**; pass true to stop it. This is the only supported way to
+         * opt out: stripping `com.google.android.gms.permission.AD_ID` from the manifest is
+         * app-wide, cuts off every other SDK that needs the identifier, and does nothing about the
+         * OAID, which HMS does not gate behind that permission.
+         *
+         * The SDK never requests a runtime permission of its own — it reads only what the system
+         * already exposes. RuStore supplies no tracking identifier at all.
+         *
+         * Unlike most options here this one is re-read on every initialization, so it can be
+         * turned on or off in a later app version.
+         *
+         * @param disableTrackingIds - flag which turns the collection off. Default value is false,
+         * meaning the identifier is collected.
+         */
+        public fun disableTrackingIds(disableTrackingIds: Boolean): Builder {
+            this.disableTrackingIds = disableTrackingIds
             return this
         }
 

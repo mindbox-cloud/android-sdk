@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.isUuid
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import java.util.UUID
@@ -12,11 +14,9 @@ import java.util.UUID
 * */
 public abstract class PushServiceHandler : PushConverter, MindboxLog {
 
-    internal companion object {
-        private const val ZERO_ID = "00000000-0000-0000-0000-000000000000"
-    }
-
     public abstract val notificationProvider: String
+
+    public open val trackingIdType: String? = null
 
     public abstract suspend fun initService(context: Context)
 
@@ -24,7 +24,7 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         block = {
             val (id, isLimitAdTrackingEnabled) = getAdsId(context)
 
-            if (isLimitAdTrackingEnabled || id.isNullOrEmpty() || id == ZERO_ID) {
+            if (isLimitAdTrackingEnabled || id == null || !id.isUsableAdsId()) {
                 logI(
                     "Device uuid cannot be received from $notificationProvider AdvertisingIdClient. " +
                         "Will be generated from random. " +
@@ -44,6 +44,38 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
     )
 
     public abstract fun getAdsId(context: Context): Pair<String?, Boolean>
+
+    internal fun tryGetTrackingId(context: Context): TrackingIdResult {
+        val type = trackingIdType ?: return TrackingIdResult.NotSupported
+
+        if (!isServiceAvailable(context)) {
+            logI("$notificationProvider services are unavailable, cannot read $type")
+            return TrackingIdResult.Unavailable
+        }
+
+        return try {
+            val (id, isLimitAdTrackingEnabled) = getAdsId(context)
+            when {
+                isLimitAdTrackingEnabled -> {
+                    logI("$type is not available: limit ad tracking is enabled")
+                    TrackingIdResult.Denied(type)
+                }
+
+                !TrackingIdValidator.isValid(id) -> {
+                    logI("$type is not available: $notificationProvider returned no identifier")
+                    TrackingIdResult.Denied(type)
+                }
+
+                else -> {
+                    logI("Received $type from $notificationProvider")
+                    TrackingIdResult.Success(TrackingId(type = type, value = id!!))
+                }
+            }
+        } catch (e: Exception) {
+            logW("Unable to read $type from $notificationProvider. Failed with exception $e")
+            TrackingIdResult.Unavailable
+        }
+    }
 
     internal fun isServiceAvailable(context: Context): Boolean = try {
         val isAvailable = isAvailable(context)
@@ -84,3 +116,8 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
 
     private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
+
+// Both checks are needed: the format one rejects the short `0000-0000` some devices answer
+// with, the character one keeps rejecting the zero id, which `isUuid()` alone accepts.
+internal fun String.isUsableAdsId(): Boolean =
+    isUuid() && any { character -> character != '0' && character != '-' }

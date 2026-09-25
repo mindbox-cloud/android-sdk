@@ -15,6 +15,8 @@ public object MindboxFirebase : MindboxPushService, MindboxPushConverter<RemoteM
 
     override val tag: String = "FCM"
 
+    override val trackingIdType: String = "google"
+
     override fun getServiceHandler(
         logger: MindboxLogger,
         exceptionHandler: ExceptionHandler,

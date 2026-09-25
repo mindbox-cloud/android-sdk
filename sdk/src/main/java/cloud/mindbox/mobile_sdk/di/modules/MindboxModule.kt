@@ -120,6 +120,7 @@ internal interface DataModule : MindboxModule {
     val integerPositiveValidator: IntegerPositiveValidator
     val inappSettingsManager: InappSettingsManager
     val featureToggleManager: FeatureToggleManager
+    val trackingIdsResolver: TrackingIdsResolver
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker

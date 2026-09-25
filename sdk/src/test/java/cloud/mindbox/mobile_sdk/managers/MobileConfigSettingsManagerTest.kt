@@ -20,6 +20,7 @@ import org.junit.Test
 class MobileConfigSettingsManagerImplTest {
 
     private val mockTimeProvider = mockk<TimeProvider>()
+    private val trackingIdsResolver = mockk<TrackingIdsResolver>()
     private lateinit var sessionStorageManager: SessionStorageManager
     private lateinit var mobileConfigSettingsManager: MobileConfigSettingsManagerImpl
     private val now = 100_000L
@@ -30,7 +31,13 @@ class MobileConfigSettingsManagerImplTest {
         every { mockTimeProvider.currentTimestamp() } returns now.toTimestamp()
 
         sessionStorageManager = spyk(SessionStorageManager(mockTimeProvider))
-        mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(mockk(), sessionStorageManager, mockTimeProvider)
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(
+            mockk(),
+            sessionStorageManager,
+            mockTimeProvider,
+            trackingIdsResolver,
+        )
         mockkObject(Mindbox)
         mockkObject(MindboxPreferences)
         mockkObject(MindboxEventManager)
@@ -86,7 +93,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive does not send appKeepalive when not expired`() {
+    fun `checkPushTokenKeepalive does not send appKeepalive when not expired`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns (now - 5_000L)
         val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(10000L))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
@@ -105,7 +112,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is not set`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is not set`() = runTest {
         val config = getSlidingExpiration(pushTokenKeepalive = null)
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
@@ -114,7 +121,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is less zero`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is less zero`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(-5))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
@@ -123,7 +130,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is zero`() {
+    fun `checkPushTokenKeepalive not sends when pushTokenKeepalive is zero`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = getSlidingExpiration(pushTokenKeepalive = Milliseconds(0))
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
@@ -132,7 +139,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when settings is null`() {
+    fun `checkPushTokenKeepalive not sends when settings is null`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = InAppConfigResponse(null, null, null, null)
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
@@ -141,7 +148,7 @@ class MobileConfigSettingsManagerImplTest {
     }
 
     @Test
-    fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() {
+    fun `checkPushTokenKeepalive not sends when SlidingExpiration is null`() = runTest {
         every { MindboxPreferences.lastInfoUpdateTime } returns now
         val config = InAppConfigResponse(null, null, SettingsDto(null, null, null, null, null, null), null)
         mobileConfigSettingsManager.checkPushTokenKeepalive(config)
