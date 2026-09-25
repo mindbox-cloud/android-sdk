@@ -589,18 +589,19 @@ public class MindboxEmbeddedBlockView internal constructor(
         // down would make the outcome that follows look new even when it is the one already heard.
         when (val current = state) {
             EmbeddedBlockState.Loading -> Unit
-            EmbeddedBlockState.Ready -> deliverIfChanged(BlockEvent.LOADED) { onLoad(this@MindboxEmbeddedBlockView) }
-            EmbeddedBlockState.Empty -> deliverIfChanged(BlockEvent.EMPTY) { onEmpty(this@MindboxEmbeddedBlockView) }
-            is EmbeddedBlockState.Failed -> deliverIfChanged(BlockEvent.FAILED) {
-                onFail(this@MindboxEmbeddedBlockView, current.reason)
-            }
+            EmbeddedBlockState.Ready -> deliverIfChanged(BlockEvent.LOADED) { view -> onLoad(view) }
+            EmbeddedBlockState.Empty -> deliverIfChanged(BlockEvent.EMPTY) { view -> onEmpty(view) }
+            is EmbeddedBlockState.Failed -> deliverIfChanged(BlockEvent.FAILED) { view -> onFail(view, current.reason) }
         }
     }
 
-    private inline fun deliverIfChanged(event: BlockEvent, deliver: MindboxEmbeddedBlockListener.() -> Unit) {
+    private inline fun deliverIfChanged(
+        event: BlockEvent,
+        deliver: MindboxEmbeddedBlockListener.(MindboxEmbeddedBlockView) -> Unit,
+    ) {
         if (event == deliveredEvent) return
         deliveredEvent = event
-        listener.deliver()
+        listener.deliver(this)
     }
 
     private companion object {

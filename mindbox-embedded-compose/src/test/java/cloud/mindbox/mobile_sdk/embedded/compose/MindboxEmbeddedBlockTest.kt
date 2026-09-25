@@ -14,7 +14,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import cloud.mindbox.mobile_sdk.Mindbox
-import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockFailReason
 import cloud.mindbox.mobile_sdk.logger.Level
 import java.time.Duration
 import org.junit.Assert.assertEquals
@@ -89,7 +88,6 @@ class MindboxEmbeddedBlockTest {
     @Test
     fun `no config within the budget fails the block with a network error`() {
         val events = mutableListOf<String>()
-        val reasons = mutableListOf<MindboxEmbeddedBlockFailReason>()
 
         compose.setContent {
             MindboxEmbeddedBlock(
@@ -99,15 +97,14 @@ class MindboxEmbeddedBlockTest {
                     .testTag("block"),
                 timeoutMs = 50,
                 onEmpty = { events.add("empty") },
-                onFail = { reason -> reasons.add(reason) },
+                onFail = { reason -> events.add("fail:$reason") },
             )
         }
         settle()
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(60))
         settle()
 
-        assertEquals(listOf(MindboxEmbeddedBlockFailReason.NETWORK_ERROR), reasons)
-        assertTrue(events.isEmpty())
+        assertEquals(listOf("fail:networkError"), events)
         compose.onNodeWithTag("block").assertHeightIsEqualTo(0.dp)
     }
 

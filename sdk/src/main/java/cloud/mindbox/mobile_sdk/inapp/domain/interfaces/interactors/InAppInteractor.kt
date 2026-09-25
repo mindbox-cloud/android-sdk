@@ -126,19 +126,14 @@ internal data class InAppToShow(
     val variant: InAppType,
 )
 
-/**
- * A resolved place: the content to render and the winner's show delay — the campaign's choice,
- * applied by the registry before the delivery.
- */
-internal data class EmbeddedResolveResult(
-    val variant: InAppType.Embedded,
-    val delayTime: Milliseconds?,
-)
-
 /** What the pass of a place ended with — the registry's input for the delivery to the blocks. */
 internal sealed class EmbeddedResolveOutcome {
 
-    data class Content(val result: EmbeddedResolveResult) : EmbeddedResolveOutcome()
+    /**
+     * A resolved place: the content to render and the winner's show delay — the campaign's choice,
+     * applied by the registry before the delivery.
+     */
+    data class Content(val variant: InAppType.Embedded, val delayTime: Milliseconds?) : EmbeddedResolveOutcome()
 
     /** Nothing to show: no campaign for the place, or every candidate was left out. */
     data object Empty : EmbeddedResolveOutcome()

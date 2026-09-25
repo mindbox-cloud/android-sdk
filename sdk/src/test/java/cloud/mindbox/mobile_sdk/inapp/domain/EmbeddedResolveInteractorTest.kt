@@ -1,7 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertFalse
@@ -193,7 +192,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace returns null for unknown place`() = runTest {
+    fun `selectInAppForPlace is empty for unknown place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
         assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
@@ -216,7 +215,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
         // The resolve itself never waits: the registry owns the delay.
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).resultOrNull()
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
         assertEquals(7_200_000L, result?.delayTime?.interval)
@@ -227,7 +226,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
         interactor.markEmbeddedDelayWaitedOut(place, "embedded-id")
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).resultOrNull()
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
         assertNull(result?.delayTime)
@@ -239,7 +238,7 @@ class EmbeddedResolveInteractorTest {
 
         interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id")
         interactor.markEmbeddedDelayWaitedOut(place, "other-in-app")
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).resultOrNull()
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals(7_200_000L, result?.delayTime?.interval)
     }
@@ -354,8 +353,8 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace sends the winner targeting once per session`() = runTest {
         givenConfig(embeddedInApp())
 
-        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).resultOrNull()
-        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).resultOrNull()
+        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", first?.variant?.inAppId)
         assertEquals("embedded-id", second?.variant?.inAppId)
@@ -1097,8 +1096,7 @@ class EmbeddedResolveInteractorTest {
         assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
     }
 
-    private fun EmbeddedResolveOutcome.resultOrNull(): EmbeddedResolveResult? =
-        (this as? EmbeddedResolveOutcome.Content)?.result
+    private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content
 
-    private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = resultOrNull()?.variant
+    private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 }

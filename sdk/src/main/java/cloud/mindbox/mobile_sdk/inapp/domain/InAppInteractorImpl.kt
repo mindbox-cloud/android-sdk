@@ -6,7 +6,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -161,12 +160,7 @@ internal class InAppInteractorImpl(
         if (winner.delayTime != null && delayTime == null) {
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
-        return EmbeddedResolveOutcome.Content(
-            EmbeddedResolveResult(
-                variant = variant,
-                delayTime = delayTime,
-            )
-        )
+        return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime)
     }
 
     private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {

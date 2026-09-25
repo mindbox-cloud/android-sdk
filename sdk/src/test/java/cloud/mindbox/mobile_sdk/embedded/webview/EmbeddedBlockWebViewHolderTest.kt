@@ -603,7 +603,7 @@ class EmbeddedBlockWebViewHolderTest {
     fun `showInApp from a failed attempt is refused with source_dismissed`() {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":-1}""", id = "bad"))
-        await { states.lastOrNull() is EmbeddedBlockState.Failed }
+        await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
 
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }

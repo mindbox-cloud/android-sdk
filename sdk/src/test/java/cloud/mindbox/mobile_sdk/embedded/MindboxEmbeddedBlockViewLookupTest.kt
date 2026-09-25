@@ -32,22 +32,6 @@ class MindboxEmbeddedBlockViewLookupTest {
         org.junit.Assert.assertEquals("main-screen-top", view.placeSystemName)
     }
 
-    private class RecordingListener : MindboxEmbeddedBlockListener {
-        val events = mutableListOf<String>()
-
-        override fun onLoad(view: MindboxEmbeddedBlockView) {
-            events.add("load")
-        }
-
-        override fun onEmpty(view: MindboxEmbeddedBlockView) {
-            events.add("empty")
-        }
-
-        override fun onFail(view: MindboxEmbeddedBlockView, reason: MindboxEmbeddedBlockFailReason) {
-            events.add("fail:${reason.value}")
-        }
-    }
-
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
 
     private fun attach(view: MindboxEmbeddedBlockView) {
