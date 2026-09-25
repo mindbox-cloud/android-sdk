@@ -120,7 +120,6 @@ class EmbeddedResolveInteractorTest {
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
-        every { mobileConfigRepository.isConfigUnavailable() } returns false
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
         every { showBudgetManager.release(any()) } just runs
@@ -159,6 +158,7 @@ class EmbeddedResolveInteractorTest {
 
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns inApps.toList()
     }
 
     @Test
@@ -1079,8 +1079,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `selectInAppForPlace has no answer when the config could not be fetched and nothing is cached`() = runTest {
-        givenConfig()
-        every { mobileConfigRepository.isConfigUnavailable() } returns true
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns null
 
         val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 

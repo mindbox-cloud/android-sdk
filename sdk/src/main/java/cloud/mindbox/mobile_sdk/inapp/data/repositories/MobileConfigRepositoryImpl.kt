@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleMa
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTtlData
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewPrewarmManager
@@ -61,10 +62,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private val configState = MutableStateFlow<InAppConfig?>(null)
-
-    @Volatile
-    private var configUnavailable = false
+    private val configState = MutableStateFlow<ConfigEntry?>(null)
 
     private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -121,8 +119,10 @@ internal class MobileConfigRepositoryImpl(
             inappSettingsManager.applySettings(config = filteredConfig)
             featureToggleManager.applyToggles(config = filteredConfig)
             persistOperationsDomain(filteredConfig)
-            configUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError
-            configState.value = updatedInAppConfig
+            configState.value = ConfigEntry(
+                config = updatedInAppConfig,
+                isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
+            )
             configUpdates.tryEmit(Unit)
             // Prewarm stage 2: warm what the config's webview in-apps will need
             // (or release the warm instance when the config proves there are none).
@@ -135,19 +135,19 @@ internal class MobileConfigRepositoryImpl(
 
     override fun hasConfig(): Boolean = configState.value != null
 
-    override fun isConfigUnavailable(): Boolean = configUnavailable
-
     override suspend fun getMonitoringSection() = getConfig().monitoring
 
     override suspend fun getOperations() = getConfig().operations
 
     override suspend fun getInAppsSection() = getConfig().inApps
 
+    override suspend fun getInAppsSectionIfAvailable(): List<InApp>? =
+        awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
+
     override suspend fun getABTests() = getConfig().abtests
 
     override fun resetCurrentConfig() {
         configState.value = null
-        configUnavailable = false
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
@@ -331,9 +331,9 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    private suspend fun getConfig(): InAppConfig {
-        return configState
-            .filterNotNull()
-            .first()
-    }
+    private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
+
+    private suspend fun awaitConfigEntry(): ConfigEntry = configState.filterNotNull().first()
+
+    private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean)
 }

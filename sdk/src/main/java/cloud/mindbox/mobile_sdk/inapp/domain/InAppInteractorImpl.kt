@@ -126,8 +126,7 @@ internal class InAppInteractorImpl(
         placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
     ): EmbeddedResolveOutcome {
-        val inApps = mobileConfigRepository.getInAppsSection()
-        if (mobileConfigRepository.isConfigUnavailable()) {
+        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
             logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
             return EmbeddedResolveOutcome.ConfigUnavailable
         }

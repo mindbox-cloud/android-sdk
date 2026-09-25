@@ -142,16 +142,16 @@ internal class MobileConfigRepositoryImplTest {
             sessionState = SessionState(configFetchingError = true),
         )
         repository.startListening()
-        assertFalse(repository.isConfigUnavailable())
+        assertFalse(repository.hasConfig())
 
         MindboxPreferences.inAppConfigFlow.emit("")
 
         assertTrue(repository.hasConfig())
-        assertTrue(repository.isConfigUnavailable())
+        assertNull(repository.getInAppsSectionIfAvailable())
 
         repository.resetCurrentConfig()
 
-        assertFalse(repository.isConfigUnavailable())
+        assertFalse(repository.hasConfig())
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -163,7 +163,7 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("")
 
         assertTrue(repository.hasConfig())
-        assertFalse(repository.isConfigUnavailable())
+        assertNotNull(repository.getInAppsSectionIfAvailable())
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -175,7 +175,7 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("{}")
 
         assertTrue(repository.hasConfig())
-        assertFalse(repository.isConfigUnavailable())
+        assertNotNull(repository.getInAppsSectionIfAvailable())
     }
 
     private fun createRepository(

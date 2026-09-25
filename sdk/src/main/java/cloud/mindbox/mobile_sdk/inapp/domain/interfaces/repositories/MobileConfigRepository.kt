@@ -14,11 +14,11 @@ internal interface MobileConfigRepository {
 
     fun hasConfig(): Boolean
 
-    fun isConfigUnavailable(): Boolean
-
     suspend fun fetchMobileConfig()
 
     suspend fun getInAppsSection(): List<InApp>
+
+    suspend fun getInAppsSectionIfAvailable(): List<InApp>?
 
     suspend fun getMonitoringSection(): List<LogRequest>
 
