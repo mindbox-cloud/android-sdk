@@ -101,10 +101,11 @@ public class MindboxEmbeddedBlockView internal constructor(
      * @param placeSystemName The place this block fills, as named in the mobile config. Matched
      * with surrounding whitespace trimmed and letter case ignored, the same way an operation system
      * name is.
-     * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
-     * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
-     * default of 30 s. An answer that arrives after that no longer expands the block; the next
-     * attempt starts when the block enters the window again.
+     * @param timeoutMs How long the block waits to learn what it shows before failing with
+     * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR] — [MindboxEmbeddedBlockListener.onFail], and
+     * [setErrorView] applies — in milliseconds; the same budget `app:mindboxTimeoutMs` sets from
+     * XML. `null` means the SDK default of 30 s. An answer that arrives after that no longer
+     * expands the block; the next attempt starts when the block enters the window again.
      */
     @JvmOverloads
     public constructor(

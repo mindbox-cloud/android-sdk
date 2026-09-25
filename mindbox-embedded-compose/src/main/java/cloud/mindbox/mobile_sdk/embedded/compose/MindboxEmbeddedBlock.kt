@@ -50,7 +50,8 @@ import cloud.mindbox.mobile_sdk.logger.Level
  * @param placeSystemName The place identifier matched against the config's `inlineBlocks`
  * section. Changing it recreates the block for the new place. Blocks with the same name work
  * independently, each with its own content.
- * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty, in
+ * @param timeoutMs How long the block waits to learn what it shows before failing with
+ * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR] — [onFail], and the [error] slot applies — in
  * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
  * place is: a new value given to a block already on screen is ignored, and the block says so in
  * the log. Wrap the block in a `key()` of your own to build one on a different budget.
