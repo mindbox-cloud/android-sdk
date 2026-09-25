@@ -24,7 +24,7 @@ internal interface InAppFailureTracker {
 
     fun clearFailures()
 
-    fun sendWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase)
+    fun sendPlaceWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase)
 }
 
 internal enum class WaitBudgetPhase(val wireName: String) {

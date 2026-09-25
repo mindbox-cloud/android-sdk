@@ -5,7 +5,7 @@ import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveResult
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
@@ -125,8 +125,11 @@ internal class InAppInteractorImpl(
     override suspend fun selectInAppForPlace(
         placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
-    ): EmbeddedResolveResult? {
-        val inApps = mobileConfigRepository.getInAppsSection()
+    ): EmbeddedResolveOutcome {
+        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
+            logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
+            return EmbeddedResolveOutcome.ConfigUnavailable
+        }
         inAppRepository.saveCurrentSessionInApps(inApps)
         val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
@@ -146,20 +149,17 @@ internal class InAppInteractorImpl(
         if (winner == null) {
             logI("Place '$placeSystemName': nothing to show")
             inAppFailureTracker.sendCollectedFailures()
-            return null
+            return EmbeddedResolveOutcome.Empty
         }
         inAppFailureTracker.clearFailures()
-        val variant = winner.embeddedVariantFor(placeSystemName) ?: return null
+        val variant = winner.embeddedVariantFor(placeSystemName) ?: return EmbeddedResolveOutcome.Empty
         val delayTime = winner.delayTime?.takeIf { delay ->
             delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.state.embeddedDelaysWaitedOut
         }
         if (winner.delayTime != null && delayTime == null) {
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
-        return EmbeddedResolveResult(
-            variant = variant,
-            delayTime = delayTime,
-        )
+        return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime)
     }
 
     private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {

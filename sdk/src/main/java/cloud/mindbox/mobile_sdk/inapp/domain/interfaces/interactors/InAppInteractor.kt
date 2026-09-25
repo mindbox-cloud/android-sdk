@@ -38,7 +38,7 @@ internal interface InAppInteractor {
     suspend fun selectInAppForPlace(
         placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
-    ): EmbeddedResolveResult?
+    ): EmbeddedResolveOutcome
 
     /**
      * The in-app with [inAppId] and its overlay variant for a direct call: no restriction —
@@ -126,11 +126,21 @@ internal data class InAppToShow(
     val variant: InAppType,
 )
 
-/**
- * A resolved place: the content to render and the winner's show delay — the campaign's choice,
- * applied by the registry before the delivery.
- */
-internal data class EmbeddedResolveResult(
-    val variant: InAppType.Embedded,
-    val delayTime: Milliseconds?,
-)
+/** What the pass of a place ended with — the registry's input for the delivery to the blocks. */
+internal sealed class EmbeddedResolveOutcome {
+
+    /**
+     * A resolved place: the content to render and the winner's show delay — the campaign's choice,
+     * applied by the registry before the delivery.
+     */
+    data class Content(val variant: InAppType.Embedded, val delayTime: Milliseconds?) : EmbeddedResolveOutcome()
+
+    /** Nothing to show: no campaign for the place, or every candidate was left out. */
+    data object Empty : EmbeddedResolveOutcome()
+
+    /**
+     * The SDK could not decide: the config fetch failed and nothing is cached, so the place has no
+     * answer rather than nothing to show.
+     */
+    data object ConfigUnavailable : EmbeddedResolveOutcome()
+}

@@ -292,13 +292,13 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `sendWaitBudgetExceeded ships the place-named fact once per place a session`() {
+    fun `sendPlaceWaitBudgetExceeded ships the place-named fact once per place a session`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val sent = mutableListOf<List<InAppShowError>>()
 
-        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
-        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
-        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("another-place"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("another-place"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
 
         verify(exactly = 2) { inAppRepository.sendInAppShowErrors(capture(sent)) }
         val first = sent.first().single() as EmbeddedBlockShowFailure
@@ -312,10 +312,10 @@ internal class InAppFailureTrackerImplTest {
     }
 
     @Test
-    fun `sendWaitBudgetExceeded respects the feature toggle`() {
+    fun `sendPlaceWaitBudgetExceeded respects the feature toggle`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
 
-        inAppFailureTracker.sendWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
 
         verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }

@@ -315,13 +315,11 @@ internal class EmbeddedBlockWebViewHolder(
                         "description=${error.description}, url=${error.url}"
                 )
                 if (error.isForMainFrame == true) {
-                    sendFailure(
-                        failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                        errorDescription = "Embedded block WebView error: code=${error.code}, " +
+                    fail(
+                        FailureReason.WEBVIEW_LOAD_FAILED,
+                        "Embedded block WebView error: code=${error.code}, " +
                             "description=${error.description}, url=${error.url}",
-                        tags = gatedTags()
                     )
-                    report(EmbeddedBlockState.Failed)
                 }
             }
 
@@ -452,13 +450,13 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun refusedContentReport(reason: String): Throwable {
         mindboxLogE("[EmbeddedBlock] contentRendered refused: $reason")
-        sendFailure(
-            failureReason = FailureReason.PRESENTATION_FAILED,
-            errorDescription = "The embedded block page reported contentRendered with an unusable payload: $reason",
-            tags = gatedTags()
-        )
-        report(EmbeddedBlockState.Failed)
+        fail(FailureReason.PRESENTATION_FAILED, "The embedded block page reported contentRendered with an unusable payload: $reason")
         return IllegalArgumentException(reason)
+    }
+
+    private fun fail(reason: FailureReason, description: String) {
+        sendFailure(failureReason = reason, errorDescription = description, tags = gatedTags())
+        report(EmbeddedBlockState.Failed(reason))
     }
 
     /**
@@ -584,8 +582,9 @@ internal class EmbeddedBlockWebViewHolder(
             throwable = throwable,
             tags = gatedTags()
         )
-        webViewController?.executeOnViewThread { report(EmbeddedBlockState.Failed) }
-            ?: mainHandler.post { if (!isReleased) report(EmbeddedBlockState.Failed) }
+        val failed = EmbeddedBlockState.Failed(FailureReason.WEBVIEW_LOAD_FAILED)
+        webViewController?.executeOnViewThread { report(failed) }
+            ?: mainHandler.post { if (!isReleased) report(failed) }
     }
 
     private fun report(state: EmbeddedBlockState) {

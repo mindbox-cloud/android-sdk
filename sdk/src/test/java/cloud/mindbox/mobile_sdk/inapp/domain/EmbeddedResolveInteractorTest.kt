@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -156,13 +158,14 @@ class EmbeddedResolveInteractorTest {
 
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns inApps.toList()
     }
 
     @Test
     fun `selectInAppForPlace returns embedded content for known place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
 
         assertEquals("embedded-id", content?.inAppId)
         assertEquals(place, content?.placeSystemName)
@@ -174,7 +177,7 @@ class EmbeddedResolveInteractorTest {
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("my-branch")
         mockkObject(MindboxLoggerImpl)
         try {
-            val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
+            val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
 
             assertEquals("my-branch", content?.inAppId)
             verify(exactly = 1) {
@@ -189,10 +192,10 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace returns null for unknown place`() = runTest {
+    fun `selectInAppForPlace is empty for unknown place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
-        assertNull(interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
     }
 
     @Test
@@ -202,7 +205,7 @@ class EmbeddedResolveInteractorTest {
             embeddedInApp(id = "priority", isPriority = true),
         )
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
 
         assertEquals("priority", content?.inAppId)
     }
@@ -212,7 +215,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
         // The resolve itself never waits: the registry owns the delay.
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
         assertEquals(7_200_000L, result?.delayTime?.interval)
@@ -223,7 +226,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
         interactor.markEmbeddedDelayWaitedOut(place, "embedded-id")
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
         assertNull(result?.delayTime)
@@ -235,7 +238,7 @@ class EmbeddedResolveInteractorTest {
 
         interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id")
         interactor.markEmbeddedDelayWaitedOut(place, "other-in-app")
-        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals(7_200_000L, result?.delayTime?.interval)
     }
@@ -244,7 +247,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace skips candidate with directCall`() = runTest {
         givenConfig(embeddedInApp().copy(displayConditions = DisplayConditions.DIRECT_CALL))
 
-        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
     }
 
     @Test
@@ -253,7 +256,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
 
-        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" }) }
     }
 
@@ -262,14 +265,14 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("embedded-id")
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
     }
 
     @Test
     fun `selectInAppForPlace filters by frequency like every other path`() = runTest {
         givenConfig(embeddedInApp())
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
         verify(exactly = 1) { frequencyManager.filterInAppsFrequency(any()) }
     }
 
@@ -280,7 +283,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
 
-        assertNull(interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
@@ -288,7 +291,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace never asks the show budgets, the delivery reserves them`() = runTest {
         givenConfig(embeddedInApp())
 
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant?.inAppId)
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
 
         verify { showBudgetManager wasNot Called }
     }
@@ -350,8 +353,8 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace sends the winner targeting once per session`() = runTest {
         givenConfig(embeddedInApp())
 
-        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
-        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", first?.variant?.inAppId)
         assertEquals("embedded-id", second?.variant?.inAppId)
@@ -547,7 +550,7 @@ class EmbeddedResolveInteractorTest {
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
 
-        assertNull(interactor.selectInAppForPlace(place, triggerEvent = operation))
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, triggerEvent = operation))
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
         coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
@@ -987,7 +990,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace hands out the embedded variant of a mixed form`() = runTest {
         givenConfig(mixedInApp())
 
-        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))?.variant
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
 
         assertEquals("mixed-id", content?.inAppId)
         assertEquals(place, content?.placeSystemName)
@@ -1073,4 +1076,26 @@ class EmbeddedResolveInteractorTest {
         interactor.releaseOverlayShow("modal-1")
         verify { showBudgetManager.release(ShowBudgetOwner.Overlay("modal-1")) }
     }
+
+    @Test
+    fun `selectInAppForPlace has no answer when the config could not be fetched and nothing is cached`() = runTest {
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns null
+
+        val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals(EmbeddedResolveOutcome.ConfigUnavailable, outcome)
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace answers empty when nobody matched and every targeting was evaluated`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+
+        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+    }
+
+    private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content
+
+    private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 }
