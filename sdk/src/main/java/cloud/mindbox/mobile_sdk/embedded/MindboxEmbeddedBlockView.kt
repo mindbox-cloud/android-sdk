@@ -22,7 +22,6 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -102,10 +101,11 @@ public class MindboxEmbeddedBlockView internal constructor(
      * @param placeSystemName The place this block fills, as named in the mobile config. Matched
      * with surrounding whitespace trimmed and letter case ignored, the same way an operation system
      * name is.
-     * @param timeoutMs How long the block waits to learn what it shows before collapsing as empty,
-     * in milliseconds — the same budget `app:mindboxTimeoutMs` sets from XML. `null` means the SDK
-     * default of 30 s. An answer that arrives after that no longer expands the block; the next
-     * attempt starts when the block enters the window again.
+     * @param timeoutMs How long the block waits to learn what it shows before failing with
+     * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR] — [MindboxEmbeddedBlockListener.onFail], and
+     * [setErrorView] applies — in milliseconds; the same budget `app:mindboxTimeoutMs` sets from
+     * XML. `null` means the SDK default of 30 s. An answer that arrives after that no longer
+     * expands the block; the next attempt starts when the block enters the window again.
      */
     @JvmOverloads
     public constructor(
@@ -124,7 +124,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private val contentFrame = Rect()
 
-    private enum class BlockEvent { LOADED, FAILED }
+    private enum class BlockEvent { LOADED, EMPTY, FAILED }
 
     private var state: EmbeddedBlockState = EmbeddedBlockState.Loading
         set(value) {
@@ -474,12 +474,6 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun applyState(state: EmbeddedBlockState) {
-        if (state is EmbeddedBlockState.Ready && contentController.contentView == null) {
-            mindboxLogW("[EmbeddedBlock] Ready content has no view, treating it as a failure")
-            this.state = EmbeddedBlockState.Failed
-            return
-        }
-
         val appearance = appearanceFor(state)
         shownAppearance = appearance
         hasSettled = when (appearance) {
@@ -594,18 +588,21 @@ public class MindboxEmbeddedBlockView internal constructor(
         isDeliveryScheduled = false
         // Loading is not an outcome, so the record of what was delivered is left alone: writing it
         // down would make the outcome that follows look new even when it is the one already heard.
-        val event = when {
-            state is EmbeddedBlockState.Ready -> BlockEvent.LOADED
-            state.nothingToShow -> BlockEvent.FAILED
-            else -> return@loggingRunCatching
+        when (val current = state) {
+            EmbeddedBlockState.Loading -> Unit
+            EmbeddedBlockState.Ready -> deliverIfChanged(BlockEvent.LOADED) { view -> onLoad(view) }
+            EmbeddedBlockState.Empty -> deliverIfChanged(BlockEvent.EMPTY) { view -> onEmpty(view) }
+            is EmbeddedBlockState.Failed -> deliverIfChanged(BlockEvent.FAILED) { view -> onFail(view, current.reason) }
         }
-        if (event == deliveredEvent) return@loggingRunCatching
+    }
 
+    private inline fun deliverIfChanged(
+        event: BlockEvent,
+        deliver: MindboxEmbeddedBlockListener.(MindboxEmbeddedBlockView) -> Unit,
+    ) {
+        if (event == deliveredEvent) return
         deliveredEvent = event
-        when (event) {
-            BlockEvent.LOADED -> listener.onLoad(this)
-            BlockEvent.FAILED -> listener.onFail(this)
-        }
+        listener.deliver(this)
     }
 
     private companion object {

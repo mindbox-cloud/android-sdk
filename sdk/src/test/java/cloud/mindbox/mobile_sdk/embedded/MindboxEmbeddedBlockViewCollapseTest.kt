@@ -55,7 +55,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
         override val contentView: View = View(context)
 
         override fun start() {
-            onStateChange?.invoke(EmbeddedBlockState.Failed)
+            onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
         }
 
         override fun pause() = Unit
@@ -187,7 +187,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
         idle()
         assertEquals(View.VISIBLE, view.visibility)
 
-        lastProvider?.onStateChange?.invoke(EmbeddedBlockState.Failed)
+        lastProvider?.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
         idle()
         assertEquals(View.VISIBLE, view.visibility)
     }

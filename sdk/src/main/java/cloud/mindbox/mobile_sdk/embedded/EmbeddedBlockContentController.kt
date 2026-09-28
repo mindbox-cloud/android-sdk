@@ -63,6 +63,7 @@ internal class EmbeddedBlockContentController(
         get() = isStarted && !isReleased && !hasGivenUp
 
     private var provider: EmbeddedContentProvider? = null
+    private var failureTrackerCache: InAppFailureTracker? = null
     private var isStarted = false
     private var isReleased = false
     private var hasGivenUp = false
@@ -139,19 +140,14 @@ internal class EmbeddedBlockContentController(
 
         if (hasPendingContent) {
             val deferred = pendingContent
-            hasPendingContent = false
-            pendingContent = null
+            clearPendingContent()
             applyResolved(deferred)
         }
 
         provider?.let { current ->
-            current.onStateChange = { state -> report(state) }
+            current.onStateChange = ::onProviderState
             readyBudget.armIfNeeded()
-            runCatching { current.start() }.onFailure { error ->
-                mindboxLogE("[EmbeddedBlock] Starting content for '$placeSystemName' crashed, reporting failure", error)
-                dropProvider()
-                report(EmbeddedBlockState.Failed)
-            }
+            if (!startProvider(current, appliedContent)) return
         }
 
         if (!ensureRegistered()) {
@@ -186,20 +182,7 @@ internal class EmbeddedBlockContentController(
     }
 
     override fun onContentResolved(content: InAppType.Embedded?) {
-        if (isReleased) return
-        if (hasGivenUp) {
-            mindboxLogI(
-                "[EmbeddedBlock] Content for '$placeSystemName' arrived after the block gave up " +
-                    "waiting, dropping it; the next appearance on screen asks afresh"
-            )
-            notifyContentDropped()
-            return
-        }
-        configBudget.reset()
-        // The pending window closes at the delivery, not at the application: a delivery deferred
-        // while the block is off screen keeps the off-screen span inside the measure — only the
-        // campaign's delay leaves it.
-        settlePendingWindow()
+        if (!acceptAnswer("Content")) return
         if (!isActive) {
             mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
             pendingContent = content
@@ -216,11 +199,52 @@ internal class EmbeddedBlockContentController(
         pendingSinceTick = pendingSinceTick ?: monotonicNow()
     }
 
+    override fun onConfigUnavailable() {
+        if (!acceptAnswer("The SDK's answer")) return
+        clearPendingContent()
+        forgetAppliedContent()
+        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for '$placeSystemName', reporting failure")
+        sendWaitBudgetExceeded(
+            waited = attemptStartTick?.let(::elapsedSince) ?: Milliseconds(0L),
+            phase = WaitBudgetPhase.CONFIG_MISSING,
+        )
+        report(EmbeddedBlockState.Failed(FailureReason.WAIT_BUDGET_EXCEEDED))
+    }
+
+    private fun acceptAnswer(what: String): Boolean {
+        if (isReleased) return false
+        if (hasGivenUp) {
+            mindboxLogI(
+                "[EmbeddedBlock] $what for '$placeSystemName' arrived after the block gave up " +
+                    "waiting, dropping it; the next appearance on screen asks afresh"
+            )
+            notifyContentDropped()
+            return false
+        }
+        configBudget.reset()
+        // The pending window closes at the delivery, not at the application: a delivery deferred
+        // while the block is off screen keeps the off-screen span inside the measure — only the
+        // campaign's delay leaves it.
+        settlePendingWindow()
+        return true
+    }
+
+    private fun clearPendingContent() {
+        pendingContent = null
+        hasPendingContent = false
+    }
+
+    private fun sendWaitBudgetExceeded(waited: Milliseconds, phase: WaitBudgetPhase) {
+        val place = placeSystemName ?: return
+        val tracker = resolveFailureTracker() ?: return
+        loggingRunCatching { tracker.sendPlaceWaitBudgetExceeded(place, waited, phase) }
+    }
+
     private fun settlePendingWindow() {
         hasPendingDelivery = false
         pendingSinceTick?.let { pendingSince ->
             attemptStartTick = attemptStartTick?.let { started ->
-                Milliseconds(started.interval + (monotonicNow().interval - pendingSince.interval))
+                Milliseconds(started.interval + elapsedSince(pendingSince).interval)
             }
         }
         pendingSinceTick = null
@@ -229,15 +253,12 @@ internal class EmbeddedBlockContentController(
     private fun applyResolved(content: InAppType.Embedded?) {
         if (content == null) {
             mindboxLogI("[EmbeddedBlock] Nothing to show for place '$placeSystemName'")
-            dropProvider()
-            appliedDescriptor = null
-            appliedContent = null
+            forgetAppliedContent()
             report(EmbeddedBlockState.Empty)
             return
         }
         val layer = content.layers.filterIsInstance<Layer.WebViewLayer>().firstOrNull() ?: run {
-            mindboxLogE("[EmbeddedBlock] Winner ${content.inAppId} has no webview layer, reporting failure")
-            report(EmbeddedBlockState.Failed)
+            failInternally(content, "Winner ${content.inAppId} has no webview layer")
             return
         }
         val descriptor = descriptorOf(content.inAppId, layer)
@@ -298,23 +319,18 @@ internal class EmbeddedBlockContentController(
         }
         val startTick = attemptStartTick ?: monotonicNow().also { freshStart -> attemptStartTick = freshStart }
         val created = loggingRunCatching(defaultValue = null) { providerFactory(content, startTick) } ?: run {
-            mindboxLogE("[EmbeddedBlock] Could not build content for ${content.inAppId}, reporting failure")
-            report(EmbeddedBlockState.Failed)
+            failInternally(content, "Could not build content for ${content.inAppId}")
             return
         }
         provider = created
         appliedDescriptor =
             descriptorOf(content.inAppId, content.layers.filterIsInstance<Layer.WebViewLayer>().first())
         appliedContent = content
-        created.onStateChange = { state -> report(state) }
+        created.onStateChange = ::onProviderState
         if (isStarted) {
             readyBudget.reset()
             readyBudget.armIfNeeded()
-            runCatching { created.start() }.onFailure { error ->
-                mindboxLogE("[EmbeddedBlock] Starting content for '$placeSystemName' crashed, reporting failure", error)
-                dropProvider()
-                report(EmbeddedBlockState.Failed)
-            }
+            startProvider(created, content)
         }
     }
 
@@ -322,6 +338,15 @@ internal class EmbeddedBlockContentController(
         get() = lastReportedState is EmbeddedBlockState.Loading ||
             lastReportedState == EmbeddedBlockState.Ready ||
             hasPendingContent
+
+    private fun onProviderState(state: EmbeddedBlockState) {
+        if (state is EmbeddedBlockState.Ready && provider?.contentView == null) {
+            dropProvider()
+            failInternally(appliedContent, "Ready content for '$placeSystemName' has no view")
+            return
+        }
+        report(state)
+    }
 
     private fun report(state: EmbeddedBlockState) {
         if (state !is EmbeddedBlockState.Loading) {
@@ -331,8 +356,46 @@ internal class EmbeddedBlockContentController(
         if (state == lastReportedState) return
         lastReportedState = state
         onStateChange?.let { listener -> loggingRunCatching { listener(state) } }
-        if (state == EmbeddedBlockState.Failed || state == EmbeddedBlockState.Empty) notifyContentDropped()
+        if (state.nothingToShow) notifyContentDropped()
     }
+
+    private fun startProvider(current: EmbeddedContentProvider, content: InAppType.Embedded?): Boolean =
+        runCatching { current.start() }
+            .onFailure { error ->
+                dropProvider()
+                failInternally(content, "Starting content for '$placeSystemName' crashed", error)
+            }
+            .isSuccess
+
+    private fun failInternally(content: InAppType.Embedded?, description: String, error: Throwable? = null) {
+        if (!sendFailure(content, FailureReason.UNKNOWN_ERROR, "[EmbeddedBlock] $description", error)) {
+            mindboxLogE("[EmbeddedBlock] $description, reporting failure", error)
+        }
+        report(EmbeddedBlockState.Failed(FailureReason.UNKNOWN_ERROR))
+    }
+
+    private fun sendFailure(
+        content: InAppType.Embedded?,
+        code: FailureReason,
+        description: String,
+        error: Throwable? = null,
+    ): Boolean {
+        val failed = content ?: return false
+        val tracker = resolveFailureTracker() ?: return false
+        loggingRunCatching {
+            tracker.sendFailureWithContext(
+                inAppId = failed.inAppId,
+                failureReason = code,
+                errorDescription = description,
+                throwable = error,
+                tags = failed.tags.gatedTags(isTagsFeatureEnabled()),
+            )
+        }
+        return true
+    }
+
+    private fun resolveFailureTracker(): InAppFailureTracker? =
+        failureTrackerCache ?: failureTracker()?.also { tracker -> failureTrackerCache = tracker }
 
     private fun notifyContentDropped() {
         val place = placeSystemName ?: return
@@ -391,13 +454,11 @@ internal class EmbeddedBlockContentController(
         )
         hasGivenUp = true
         configBudget.reset()
-        placeSystemName?.let { place ->
-            failureTracker()?.let { tracker ->
-                val phase = if (hasConfig()) WaitBudgetPhase.RESOLVE_PENDING else WaitBudgetPhase.CONFIG_MISSING
-                loggingRunCatching { tracker.sendWaitBudgetExceeded(place, configWaitDuration, phase) }
-            }
-        }
-        report(EmbeddedBlockState.Empty)
+        sendWaitBudgetExceeded(
+            waited = configWaitDuration,
+            phase = if (hasConfig()) WaitBudgetPhase.RESOLVE_PENDING else WaitBudgetPhase.CONFIG_MISSING,
+        )
+        report(EmbeddedBlockState.Failed(FailureReason.WAIT_BUDGET_EXCEEDED))
     }
 
     private fun hasEverResolved(): Boolean =
@@ -409,23 +470,24 @@ internal class EmbeddedBlockContentController(
             "[EmbeddedBlock] Page for '$placeSystemName' stayed silent for " +
                 "${readyTimeout.interval}ms of waiting, reporting failure",
         )
-        appliedContent?.let { content ->
-            failureTracker()?.let { tracker ->
-                loggingRunCatching {
-                    tracker.sendFailureWithContext(
-                        inAppId = content.inAppId,
-                        failureReason = FailureReason.PRESENTATION_FAILED,
-                        errorDescription = "The embedded block page stayed silent for " +
-                            "${readyTimeout.interval}ms after the content was handed to it",
-                        tags = content.tags.gatedTags(isTagsFeatureEnabled()),
-                    )
-                }
-            }
-        }
+        sendFailure(
+            content = appliedContent,
+            code = FailureReason.PRESENTATION_FAILED,
+            description = "The embedded block page stayed silent for " +
+                "${readyTimeout.interval}ms after the content was handed to it",
+        )
         hasGivenUp = true
         loggingRunCatching { provider?.pause() }
-        report(EmbeddedBlockState.Failed)
+        report(EmbeddedBlockState.Failed(FailureReason.PRESENTATION_FAILED))
     }
+
+    private fun forgetAppliedContent() {
+        dropProvider()
+        appliedDescriptor = null
+        appliedContent = null
+    }
+
+    private fun elapsedSince(start: Milliseconds): Milliseconds = Milliseconds(monotonicNow().interval - start.interval)
 
     private fun dropProvider() {
         readyBudget.reset()

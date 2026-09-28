@@ -86,7 +86,7 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
     }
 
     private fun failContent() {
-        provider.onStateChange?.invoke(EmbeddedBlockState.Failed)
+        provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
         idle()
     }
 
@@ -297,7 +297,7 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
                     heard.add("load")
                 }
 
-                override fun onFail(view: MindboxEmbeddedBlockView) {
+                override fun onFail(view: MindboxEmbeddedBlockView, reason: MindboxEmbeddedBlockFailReason) {
                     heard.add("fail")
                 }
             },

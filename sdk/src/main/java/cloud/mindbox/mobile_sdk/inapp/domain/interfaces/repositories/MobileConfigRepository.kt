@@ -18,6 +18,8 @@ internal interface MobileConfigRepository {
 
     suspend fun getInAppsSection(): List<InApp>
 
+    suspend fun getInAppsSectionIfAvailable(): List<InApp>?
+
     suspend fun getMonitoringSection(): List<LogRequest>
 
     suspend fun getOperations(): Map<OperationName, OperationSystemName>

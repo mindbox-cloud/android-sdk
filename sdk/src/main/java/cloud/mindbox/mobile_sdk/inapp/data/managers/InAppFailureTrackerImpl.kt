@@ -109,7 +109,7 @@ internal class InAppFailureTrackerImpl(
         failures.clear()
     }
 
-    override fun sendWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
+    override fun sendPlaceWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
         if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send wait budget failure")
             return

@@ -110,7 +110,7 @@ class EmbeddedBlockContentStoreTest {
         val kept = readyContent()
         store.retain(screen, PLACE, kept.controller, activity = null)
 
-        kept.provider.onStateChange?.invoke(EmbeddedBlockState.Failed)
+        kept.provider.onStateChange?.invoke(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR))
 
         assertNull(store.reclaim(screen, PLACE, activity = null))
         assertEquals(0, store.size)

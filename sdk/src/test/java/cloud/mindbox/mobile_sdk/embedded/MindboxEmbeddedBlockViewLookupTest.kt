@@ -32,18 +32,6 @@ class MindboxEmbeddedBlockViewLookupTest {
         org.junit.Assert.assertEquals("main-screen-top", view.placeSystemName)
     }
 
-    private class RecordingListener : MindboxEmbeddedBlockListener {
-        val events = mutableListOf<String>()
-
-        override fun onLoad(view: MindboxEmbeddedBlockView) {
-            events.add("load")
-        }
-
-        override fun onFail(view: MindboxEmbeddedBlockView) {
-            events.add("fail")
-        }
-    }
-
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
 
     private fun attach(view: MindboxEmbeddedBlockView) {
@@ -80,10 +68,10 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
 
-        // 30 seconds without a config → Empty (a collapse, not a failure state); a late config
+        // 30 seconds without a config → Failed(networkError): the SDK gave no answer; a late config
         // would still expand the block because the registration survives.
         assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
     }
 
     @Test
@@ -101,7 +89,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
 
         assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
     }
 
     @Test
@@ -119,7 +107,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6L))
 
         assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
     }
 
     @Test
@@ -137,7 +125,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
 
         assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
     }
 
     @Test
@@ -151,7 +139,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
 
         assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("empty"), listener.events)
         assertNull(view.placeSystemName)
     }
 
@@ -203,7 +191,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
 
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
 
         // A second pass across the screen: the same empty place is the same outcome, not news.
         (view.parent as LinearLayout).removeView(view)
@@ -211,7 +199,7 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
 
-        assertEquals(listOf("fail"), listener.events)
+        assertEquals(listOf("fail:networkError"), listener.events)
     }
 
     @Test
