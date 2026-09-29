@@ -1,0 +1,102 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../mindbox-common/2.15.5-mobile389-local/mindbox-common-2.15.5-mobile389-local.module",
+    "group": "cloud.mindbox",
+    "module": "mindbox-common",
+    "version": "2.15.5-mobile389-local",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "files": [
+        {
+          "name": "mindbox-common-release.aar",
+          "url": "mindbox-common-android-2.15.5-mobile389-local.aar",
+          "size": 62428,
+          "sha512": "5f86ba572b67054965112dbe517a9d2b5205539a62b419a047a1352ab26bffefc15a9e15c59b328ea97c0fa2b2df71d260d898300172dd7e616c7642d8247e90",
+          "sha256": "da5c0482cea137546525dd455632ab7bd26c80a1a60fc0bb3e764224b63f70f3",
+          "sha1": "2111a39668f0cc9da2313576754d272f2057de44",
+          "md5": "0c95211ab75b1607b593df38d3b6f243"
+        }
+      ]
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          },
+          "excludes": [
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-stdlib-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-annotations-common"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-common-release.aar",
+          "url": "mindbox-common-android-2.15.5-mobile389-local.aar",
+          "size": 62428,
+          "sha512": "5f86ba572b67054965112dbe517a9d2b5205539a62b419a047a1352ab26bffefc15a9e15c59b328ea97c0fa2b2df71d260d898300172dd7e616c7642d8247e90",
+          "sha256": "da5c0482cea137546525dd455632ab7bd26c80a1a60fc0bb3e764224b63f70f3",
+          "sha1": "2111a39668f0cc9da2313576754d272f2057de44",
+          "md5": "0c95211ab75b1607b593df38d3b6f243"
+        }
+      ]
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "files": [
+        {
+          "name": "mindbox-common-android-2.15.5-mobile389-local-sources.jar",
+          "url": "mindbox-common-android-2.15.5-mobile389-local-sources.jar",
+          "size": 21540,
+          "sha512": "1e3933c496c1b0bf5c15a0b7a8ddf1880f45732536cca2dc14ef9fec4eefa976b1ede6f8d1ddaddfa1f4b11bb57f5fb21214049f4d504af47a5891276d1c171b",
+          "sha256": "ad0b66a59d1d306631046feaead91fe542e58efe78d83e56e9c206bff62c8bdb",
+          "sha1": "3e9ed103f1e599f17819ce0f4d860043af2c1360",
+          "md5": "4ec02a17807fa4786b27ef63ff2f5f8e"
+        }
+      ]
+    }
+  ]
+}

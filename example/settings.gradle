@@ -9,6 +9,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
+        maven { url = uri("$rootDir/local-sdk-repo") } // MOBILE-389: локальный RC, см. local-sdk-repo/README.md
         maven { url 'https://developer.huawei.com/repo/' }
         maven { url "https://nexus-external.vkteam.ru/repository/maven" }
         mavenCentral()

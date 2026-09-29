@@ -1,0 +1,158 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "cloud.mindbox",
+    "module": "mindbox-rustore",
+    "version": "2.15.5-mobile389-local",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-rustore-2.15.5-mobile389-local.aar",
+          "url": "mindbox-rustore-2.15.5-mobile389-local.aar",
+          "size": 36938,
+          "sha512": "1c314ef43d9126f1d3ba83eb0a0f196b9de002e41207a4888ce182a6cf1ea4e0d09dc1defdb47b73d53d71fc45b04431dacefd5bc84f3b526e4edeae93db9b22",
+          "sha256": "58a879b39102a410a3ec860952c54d9239f36202b170e2a7738fd4464682d49b",
+          "sha1": "8985f11c563355f3b2958f409232bd397f0a00f7",
+          "md5": "06c8405ae45b7c8782fe0b8e1cca7459"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mobile-sdk",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "ru.rustore.sdk",
+          "module": "pushclient",
+          "version": {
+            "requires": "7.4.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-bom",
+          "version": {
+            "requires": "1.6.4"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "androidx.core",
+          "module": "core-ktx",
+          "version": {
+            "requires": "1.13.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core"
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.9"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-rustore-2.15.5-mobile389-local.aar",
+          "url": "mindbox-rustore-2.15.5-mobile389-local.aar",
+          "size": 36938,
+          "sha512": "1c314ef43d9126f1d3ba83eb0a0f196b9de002e41207a4888ce182a6cf1ea4e0d09dc1defdb47b73d53d71fc45b04431dacefd5bc84f3b526e4edeae93db9b22",
+          "sha256": "58a879b39102a410a3ec860952c54d9239f36202b170e2a7738fd4464682d49b",
+          "sha1": "8985f11c563355f3b2958f409232bd397f0a00f7",
+          "md5": "06c8405ae45b7c8782fe0b8e1cca7459"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-rustore-2.15.5-mobile389-local-sources.jar",
+          "url": "mindbox-rustore-2.15.5-mobile389-local-sources.jar",
+          "size": 2816,
+          "sha512": "843bc3f9c6b26d3fda4f4979dd7ee5a03851d8196184b63e7d51279a258ec55d1b92380c1ca889f94c891532af7dd5eda5c2af47c720dea302c168db49d78338",
+          "sha256": "f3193317e9de4210d5d786a437aa3ec7b3a1f18ebd3ecf9dfd8f027d3871c55a",
+          "sha1": "c8172d9e05e554959912a37534eea2defd37cf3d",
+          "md5": "2e37263daaa00af9c399cbe03b87f6d2"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseJavaDocPublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-rustore-2.15.5-mobile389-local-javadoc.jar",
+          "url": "mindbox-rustore-2.15.5-mobile389-local-javadoc.jar",
+          "size": 272539,
+          "sha512": "b1f0f9ae7d7f05c49c80613e7ff5fa81b41e7f30f58a8e590c76d84baa2600c98b0df2d259c740677814ba51cf0b26a053baec002acd360f7eeec11964829cc1",
+          "sha256": "db5e36aa8796f5a239e0e93692e580b899a1cbf89beb83c74591920f02437ad0",
+          "sha1": "432363fd7732ebea04980f9ef2cddbd6763649aa",
+          "md5": "435246d9df17f68eafe73615c9315928"
+        }
+      ]
+    }
+  ]
+}

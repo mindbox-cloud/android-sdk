@@ -1,0 +1,324 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "cloud.mindbox",
+    "module": "mobile-sdk",
+    "version": "2.15.5-mobile389-local",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencyConstraints": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-firebase",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-huawei",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-rustore",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-firebase-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-huawei-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-rustore-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-sdk-starter-core",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mobile-sdk-2.15.5-mobile389-local.aar",
+          "url": "mobile-sdk-2.15.5-mobile389-local.aar",
+          "size": 2261144,
+          "sha512": "e2f880c49ae5254d0040be5f3349f31e42d28e8815933da6c2a22431af5ff523fe7f956cdff394bbec160b016cdf08d9aac6bdbce8622e15d8eabd2042b1a779",
+          "sha256": "c7dd950dca4c0fb7aac9c3f0ef8a2ce7ef9e05f8b95381b97d7fdd90877b5512",
+          "sha1": "c7febe64f96a43016db4151afd129e06e9ed9b2d",
+          "md5": "abd3bc0d6266308e099d1a69f3be88d2"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-common",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          },
+          "excludes": [
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        },
+        {
+          "group": "androidx.core",
+          "module": "core-ktx",
+          "version": {
+            "requires": "1.13.0"
+          }
+        },
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "androidx.constraintlayout",
+          "module": "constraintlayout",
+          "version": {
+            "requires": "2.1.4"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-bom",
+          "version": {
+            "requires": "1.6.4"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core"
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-android"
+        },
+        {
+          "group": "com.android.volley",
+          "module": "volley",
+          "version": {
+            "requires": "1.2.1"
+          }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.9"
+          }
+        },
+        {
+          "group": "androidx.room",
+          "module": "room-runtime",
+          "version": {
+            "requires": "2.6.1"
+          }
+        },
+        {
+          "group": "androidx.room",
+          "module": "room-ktx",
+          "version": {
+            "requires": "2.6.1"
+          }
+        },
+        {
+          "group": "androidx.work",
+          "module": "work-runtime-ktx",
+          "version": {
+            "requires": "2.8.1"
+          }
+        },
+        {
+          "group": "androidx.lifecycle",
+          "module": "lifecycle-process",
+          "version": {
+            "requires": "2.8.7"
+          }
+        },
+        {
+          "group": "androidx.startup",
+          "module": "startup-runtime",
+          "version": {
+            "requires": "1.2.0"
+          }
+        },
+        {
+          "group": "com.jakewharton.threetenabp",
+          "module": "threetenabp",
+          "version": {
+            "requires": "1.4.6"
+          }
+        },
+        {
+          "group": "com.github.bumptech.glide",
+          "module": "glide",
+          "version": {
+            "requires": "4.15.1"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-firebase",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-huawei",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-rustore",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-firebase-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-huawei-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-rustore-starter",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "cloud.mindbox",
+          "module": "mindbox-sdk-starter-core",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mobile-sdk-2.15.5-mobile389-local.aar",
+          "url": "mobile-sdk-2.15.5-mobile389-local.aar",
+          "size": 2261144,
+          "sha512": "e2f880c49ae5254d0040be5f3349f31e42d28e8815933da6c2a22431af5ff523fe7f956cdff394bbec160b016cdf08d9aac6bdbce8622e15d8eabd2042b1a779",
+          "sha256": "c7dd950dca4c0fb7aac9c3f0ef8a2ce7ef9e05f8b95381b97d7fdd90877b5512",
+          "sha1": "c7febe64f96a43016db4151afd129e06e9ed9b2d",
+          "md5": "abd3bc0d6266308e099d1a69f3be88d2"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mobile-sdk-2.15.5-mobile389-local-sources.jar",
+          "url": "mobile-sdk-2.15.5-mobile389-local-sources.jar",
+          "size": 352206,
+          "sha512": "98a547f30e2be30189556009727039cd1b76e4e17405444f87462c605855565f3de27cf523713d84855b0a9b67ef7b38e22489206b3fa4b48bf0bb5fa7b95ba4",
+          "sha256": "3c5515cae4ee39fffae150c8d278adffe504c7eebdb6ea0f1a17a087c967df1e",
+          "sha1": "bdf89835433539edac2f9b967c98a1ee2ad7fc0f",
+          "md5": "05963c4c44ad6a857cdf0cd630b48608"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseJavaDocPublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mobile-sdk-2.15.5-mobile389-local-javadoc.jar",
+          "url": "mobile-sdk-2.15.5-mobile389-local-javadoc.jar",
+          "size": 860059,
+          "sha512": "31f7a1754c0240e732fa29da67a60d0f75e7e71d633cd414e9049dbdd991b58b56d3a68418cded134a4353d8637857b68927a7ed3e2f3604d76d87f4c6f9fc4c",
+          "sha256": "06c3f749b8fc29cff0d86b2f837a420dd2c1c5470cbc6bd61a5c8cc9773f153b",
+          "sha1": "08b96deeb7b739a2139ab4d9008cf125203dcc69",
+          "md5": "0fa67673afe153b0a670d079b5b13c92"
+        }
+      ]
+    }
+  ]
+}

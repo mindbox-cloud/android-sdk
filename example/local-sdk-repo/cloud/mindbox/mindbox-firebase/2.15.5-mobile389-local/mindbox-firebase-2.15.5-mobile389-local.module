@@ -1,0 +1,186 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "cloud.mindbox",
+    "module": "mindbox-firebase",
+    "version": "2.15.5-mobile389-local",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-firebase-2.15.5-mobile389-local.aar",
+          "url": "mindbox-firebase-2.15.5-mobile389-local.aar",
+          "size": 36632,
+          "sha512": "9a43cc7f7dfe9704f00c464de573671ac061c7379bcda5dc580cae4b2b4168ae91bb4a9c43401214fb3bb7d581041b64f8a5694ba8f99e462c33eb4f394fca0e",
+          "sha256": "e3932759e469dda2d3e9f52a92582c3b4782b639db0f13bd1c0b059680ec7c9c",
+          "sha1": "036d81e391d19349c2a826ffa8fca86325c26674",
+          "md5": "b4f72150e537f36f2ceecd90e7f49a51"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mobile-sdk",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-bom",
+          "version": {
+            "requires": "1.6.4"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "androidx.core",
+          "module": "core-ktx",
+          "version": {
+            "requires": "1.13.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core"
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.9"
+          }
+        },
+        {
+          "group": "com.google.firebase",
+          "module": "firebase-bom",
+          "version": {
+            "requires": "33.7.0"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "com.google.firebase",
+          "module": "firebase-messaging"
+        },
+        {
+          "group": "com.google.android.gms",
+          "module": "play-services-base",
+          "version": {
+            "requires": "18.0.1"
+          }
+        },
+        {
+          "group": "com.google.android.gms",
+          "module": "play-services-basement",
+          "version": {
+            "requires": "18.3.0"
+          }
+        },
+        {
+          "group": "com.google.android.gms",
+          "module": "play-services-ads-identifier",
+          "version": {
+            "requires": "18.0.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-firebase-2.15.5-mobile389-local.aar",
+          "url": "mindbox-firebase-2.15.5-mobile389-local.aar",
+          "size": 36632,
+          "sha512": "9a43cc7f7dfe9704f00c464de573671ac061c7379bcda5dc580cae4b2b4168ae91bb4a9c43401214fb3bb7d581041b64f8a5694ba8f99e462c33eb4f394fca0e",
+          "sha256": "e3932759e469dda2d3e9f52a92582c3b4782b639db0f13bd1c0b059680ec7c9c",
+          "sha1": "036d81e391d19349c2a826ffa8fca86325c26674",
+          "md5": "b4f72150e537f36f2ceecd90e7f49a51"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-firebase-2.15.5-mobile389-local-sources.jar",
+          "url": "mindbox-firebase-2.15.5-mobile389-local-sources.jar",
+          "size": 3147,
+          "sha512": "f0bea1e6ccf3b9226aa46199a98a4026a4bfcb2c31d4f01d2cbe7378f9ea983d26713e9b6a386d4a1f761b2656fd88bb1ddaa971cde9fab96d84615ca61ae61b",
+          "sha256": "e461d925d21e314c1425ec0c19679df449a5bb6b616d5a020fc01e7109715da6",
+          "sha1": "a2bc11c37a206aa3e1ca0e0bd8ddaec6a718711c",
+          "md5": "24cb9197360236445f659c7131c3e935"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseJavaDocPublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-firebase-2.15.5-mobile389-local-javadoc.jar",
+          "url": "mindbox-firebase-2.15.5-mobile389-local-javadoc.jar",
+          "size": 269880,
+          "sha512": "47bbf944288aaf8e189b4d6cc691d377442e8f3e12e4a483c2b9382461da9e9be73fb7db7dea7227d7de37fe72dd3b0987eb17becff43ff865f83817be82f7f9",
+          "sha256": "839fd7d5a1608c384d9d86c49761bad34c33daa06fb7b6d95cc3bd096b3ccf43",
+          "sha1": "423a1362f27906ad86e9d5920c26a50b36e8f017",
+          "md5": "f071a6a467bdac627f98b4050d19728c"
+        }
+      ]
+    }
+  ]
+}

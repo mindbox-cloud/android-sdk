@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <!-- This module was also published with a richer model, Gradle metadata,  -->
+  <!-- which should be used instead. Do not delete the following line which  -->
+  <!-- is to indicate to Gradle or any Gradle module metadata file consumer  -->
+  <!-- that they should prefer consuming it instead. -->
+  <!-- do_not_remove: published-with-gradle-metadata -->
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>cloud.mindbox</groupId>
+  <artifactId>mindbox-common</artifactId>
+  <version>2.15.5-mobile389-local</version>
+  <name>Mindbox Common SDK</name>
+  <description>Mindbox Common SDK</description>
+  <url>https://github.com/mindbox-cloud/kmp-common-sdk</url>
+  <licenses>
+    <license>
+      <name>The Mindbox License</name>
+      <url>https://github.com/mindbox-cloud/kmp-common-sdk/blob/master/LICENSE.md</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>Mindbox</id>
+      <name>Mindbox</name>
+      <email>mobile-sdk@mindbox.cloud</email>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:https://github.com/mindbox-cloud/kmp-common-sdk.git</connection>
+    <developerConnection>scm:git://github.com/mindbox-cloud/kmp-common-sdk.git</developerConnection>
+    <url>https://github.com/mindbox-cloud/kmp-common-sdk</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>1.9.22</version>
+      <scope>runtime</scope>
+    </dependency>
+  </dependencies>
+</project>

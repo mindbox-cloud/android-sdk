@@ -1,0 +1,165 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "cloud.mindbox",
+    "module": "mindbox-huawei",
+    "version": "2.15.5-mobile389-local",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-huawei-2.15.5-mobile389-local.aar",
+          "url": "mindbox-huawei-2.15.5-mobile389-local.aar",
+          "size": 32079,
+          "sha512": "1387ba7f15c8217a80a0745ca8207f8562531149ed3b48a85d11d499d2b6e108835ac51bdfab8012aa0e82e588fc675e273c94a529790dc6cb46995f20f4da63",
+          "sha256": "680cfe12a61c5f69bda9840bc7547f90ea4e660e20566837e45f1328b074c84c",
+          "sha1": "586052ade73261ff5e7ba10ee0abcafbf6d5e9ec",
+          "md5": "a29e9d6b9ccd7fba2e7f2d2ac8cd24a5"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "cloud.mindbox",
+          "module": "mobile-sdk",
+          "version": {
+            "requires": "2.15.5-mobile389-local"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-bom",
+          "version": {
+            "requires": "1.6.4"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core"
+        },
+        {
+          "group": "com.huawei.hms",
+          "module": "push",
+          "version": {
+            "requires": "6.13.0.300"
+          }
+        },
+        {
+          "group": "com.huawei.hms",
+          "module": "ads-identifier",
+          "version": {
+            "requires": "3.4.62.300"
+          }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.9"
+          }
+        },
+        {
+          "group": "androidx.annotation",
+          "module": "annotation",
+          "version": {
+            "requires": "1.3.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mindbox-huawei-2.15.5-mobile389-local.aar",
+          "url": "mindbox-huawei-2.15.5-mobile389-local.aar",
+          "size": 32079,
+          "sha512": "1387ba7f15c8217a80a0745ca8207f8562531149ed3b48a85d11d499d2b6e108835ac51bdfab8012aa0e82e588fc675e273c94a529790dc6cb46995f20f4da63",
+          "sha256": "680cfe12a61c5f69bda9840bc7547f90ea4e660e20566837e45f1328b074c84c",
+          "sha1": "586052ade73261ff5e7ba10ee0abcafbf6d5e9ec",
+          "md5": "a29e9d6b9ccd7fba2e7f2d2ac8cd24a5"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-huawei-2.15.5-mobile389-local-sources.jar",
+          "url": "mindbox-huawei-2.15.5-mobile389-local-sources.jar",
+          "size": 2776,
+          "sha512": "baeef82c7733152306fdd190aac40b3669b51d7d6f16133a7022fae840e255bd8912dc67b67a3c5ab7757b54a930d75ce3b0494f4106779cfd802e7a16dd76d4",
+          "sha256": "6e995b45150ff5efd2409a933e8e8c5bb345a36f96255f09d8c1aa5f4d80589f",
+          "sha1": "315cc5258856ed3a1acf558628cc67644189dab3",
+          "md5": "a156e22414110781314f1d46adbd464f"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseJavaDocPublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mindbox-huawei-2.15.5-mobile389-local-javadoc.jar",
+          "url": "mindbox-huawei-2.15.5-mobile389-local-javadoc.jar",
+          "size": 271692,
+          "sha512": "9c4e191199ab8642a72f2767514598490c9dd90036613b98c49dbeb8efd16742a7193d5f78f203bd32ce3690a63df821424c2bcbfef82b5819bf1b5c473a44e9",
+          "sha256": "351f0d18b7cbabd054f6d750df5b702997acc8bf6e6cba5ce19536fd719d7470",
+          "sha1": "50ebed63c6d810cba9570ed3264ef4e207bcb546",
+          "md5": "3f0dc2f8bf1742315433e832f6bd3924"
+        }
+      ]
+    }
+  ]
+}
