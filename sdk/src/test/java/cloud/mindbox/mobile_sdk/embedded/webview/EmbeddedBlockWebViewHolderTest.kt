@@ -472,7 +472,7 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
 
         postFromPage(
-            request(action = "showInApp", payload = """{"inappId":"inapp-1","index":0,"params":{}}""")
+            request(action = "showInApp", payload = """{"inappId":"inapp-1","params":{}}""")
         )
         await { outcomes.isCaptured }
         assertTrue(noShowInAppAnswerYet())
@@ -543,7 +543,7 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(
             request(
                 action = "showInApp",
-                payload = """{"inappId":"inapp-1","index":0,"sourceInappId":"host-id","params":{"title":"Заголовок 1","record":{"rank":3}}}"""
+                payload = """{"inappId":"inapp-1","params":{"title":"Заголовок 1","record":{"rank":3}}}"""
             )
         )
         await { outcomes.isCaptured }
