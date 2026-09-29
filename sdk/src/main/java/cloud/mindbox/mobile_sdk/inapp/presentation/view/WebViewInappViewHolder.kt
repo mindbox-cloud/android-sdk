@@ -7,8 +7,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.RelativeLayout
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import cloud.mindbox.mobile_sdk.*
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -207,8 +205,6 @@ internal class WebViewInAppViewHolder(
         return WebViewActionHandlers().apply {
             commonBridgeActions.register(this)
             register(WebViewAction.CLICK, ::handleClickAction)
-            register(WebViewAction.TOAST, ::handleToastAction)
-            register(WebViewAction.ALERT, ::handleAlertAction)
             register(WebViewAction.READY) {
                 handleReadyAction(
                     configuration = configuration,
@@ -308,23 +304,6 @@ internal class WebViewInAppViewHolder(
 
     private fun handleHideAction(): String {
         webViewController?.setVisibility(false)
-        return BridgeMessage.SUCCESS_PAYLOAD
-    }
-
-    private fun handleToastAction(message: BridgeMessage.Request): String {
-        webViewController?.view?.context?.let { context ->
-            Toast.makeText(context, message.payload, Toast.LENGTH_LONG).show()
-        }
-        return BridgeMessage.SUCCESS_PAYLOAD
-    }
-
-    private fun handleAlertAction(message: BridgeMessage.Request): String {
-        webViewController?.view?.context?.let { context ->
-            AlertDialog.Builder(context)
-                .setMessage(message.payload)
-                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-                .show()
-        }
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
