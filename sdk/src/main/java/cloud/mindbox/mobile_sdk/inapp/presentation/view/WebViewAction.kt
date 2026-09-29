@@ -220,7 +220,6 @@ internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
         WebViewAction.CLICK,
         WebViewAction.CLOSE,
         WebViewAction.HIDE,
-        WebViewAction.BACK,
         WebViewAction.LOG,
         WebViewAction.ALERT,
         WebViewAction.TOAST,
