@@ -43,8 +43,9 @@ import kotlin.math.roundToInt
  * where there is nothing to show; a block that waits hidden never flashes at the price of the
  * layout growing when content arrives — a place that always has a campaign behind it is worth an
  * explicit [MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER]. On failure the [error] slot shows,
- * if set. The content is revealed with the SDK's own animation — a fade, and the growth of a
- * block that waited hidden — unless [animatesReveal] is off.
+ * if set, unless the block is still waiting hidden and has never taken its space. The content is
+ * revealed with the SDK's own animation — a fade, and the growth of a block that waited hidden —
+ * unless [animatesReveal] is off.
  *
  * The behavior mirrors the View one and belongs to the block itself: it is visible while
  * loading and showing content, and collapses to zero height when the place ends up without
@@ -87,7 +88,8 @@ import kotlin.math.roundToInt
  * thread.
  * @param placeholder Replaces the SDK's default loading placeholder. Fills the whole block frame.
  * @param error The view for a block that failed. Setting it keeps the block visible instead of
- * the default collapse; an empty place collapses regardless. Fills the whole block frame.
+ * the default collapse; an empty place collapses regardless, and a block still waiting hidden —
+ * see [loadingStrategy] — stays hidden. Fills the whole block frame.
  */
 @OptIn(InternalMindboxApi::class)
 @Composable
