@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInterac
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -551,7 +552,7 @@ internal class InAppMessageManagerTest {
         verify(exactly = 0) {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
         }
-        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP)), outcomes)
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP)), outcomes)
     }
 
     @Test
@@ -588,7 +589,7 @@ internal class InAppMessageManagerTest {
         createManager().showInAppById("boom", emptyMap()) { outcomes.add(it) }
         advanceUntilIdle()
 
-        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED)), outcomes)
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
         verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
     }
 
@@ -612,7 +613,7 @@ internal class InAppMessageManagerTest {
         callbacks.captured.onInAppNotShown.onNotShown()
         callbacks.captured.onInAppShown.onShown()
 
-        assertEquals(listOf(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED)), outcomes)
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
     }
 
     // ---- the overlay's hold in the show budgets: taken before the show, given back if it never shows ----

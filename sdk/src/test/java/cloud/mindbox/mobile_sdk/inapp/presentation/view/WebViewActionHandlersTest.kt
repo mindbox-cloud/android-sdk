@@ -88,8 +88,18 @@ class WebViewActionHandlersTest {
         handlers.dispatchInTest(WebViewAction.FILTER_SHOWABLE_INAPPS)
 
         assertNull(responded)
-        assertTrue(refused is IllegalArgumentException)
+        assertEquals(BridgeErrorCode.NOT_SERVED, (refused as BridgeRefusalException).code)
         assertTrue(refused!!.message!!.contains(WebViewAction.FILTER_SHOWABLE_INAPPS.name))
+    }
+
+    @Test
+    fun `an action the platform does not know is refused as unknown, not as unserved`() {
+        val handlers = WebViewActionHandlers()
+
+        handlers.dispatchInTest(WebViewAction.UNKNOWN)
+
+        assertNull(responded)
+        assertEquals(BridgeErrorCode.UNKNOWN_ACTION, (refused as BridgeRefusalException).code)
     }
 
     @Test
@@ -105,7 +115,7 @@ class WebViewActionHandlersTest {
 
         // Read before the handler, not inside it: the gate is the same wherever the action is served.
         assertEquals(false, ran)
-        assertTrue(refused is IllegalStateException)
+        assertEquals(BridgeErrorCode.NOT_VISIBLE, (refused as BridgeRefusalException).code)
         assertEquals(NOBODY_LOOKING_ERROR, refused?.message)
     }
 

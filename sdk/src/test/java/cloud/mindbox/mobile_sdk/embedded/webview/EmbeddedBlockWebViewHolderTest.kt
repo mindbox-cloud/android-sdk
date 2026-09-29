@@ -29,7 +29,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
-import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppFailure
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
@@ -47,6 +46,7 @@ import kotlinx.coroutines.flow.flowOf
 import org.json.JSONTokener
 import org.junit.After
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -240,7 +240,20 @@ class EmbeddedBlockWebViewHolderTest {
 
         // A refusal the page can retry, not an empty answer it would take for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
         coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any(), any()) }
+    }
+
+    @Test
+    fun `filterShowableInapps the SDK failed to check is answered with internal_error, not the failure text`() {
+        coEvery { inAppInteractor.filterShowableInAppIds(any(), any()) } throws IllegalStateException("config repository is down")
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "filterShowableInapps", payload = """{"inappIds":["inapp-1"]}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "filterShowableInapps" }
+
+        assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("internal_error", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -337,6 +350,7 @@ class EmbeddedBlockWebViewHolderTest {
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         // The page must hear the refusal too: a success response would pass for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -349,6 +363,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -361,6 +376,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -492,7 +508,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         postFromPage(request(action = "showInApp", payload = """{"inappId":"missing"}"""))
         await { outcomes.isCaptured }
-        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
+        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
@@ -506,7 +522,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
         await { outcomes.isCaptured }
-        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("show_failed", lastOutgoingPayload()!!.get("error").asString)
@@ -584,6 +600,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
@@ -596,11 +613,12 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
     @Test
-    fun `showInApp from a failed attempt is refused with source_dismissed`() {
+    fun `showInApp from a failed attempt is refused as not_visible`() {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":-1}""", id = "bad"))
         await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
@@ -609,7 +627,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("source_dismissed", lastOutgoingPayload()!!.get("error").asString)
+        assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
     }
 
@@ -720,6 +738,7 @@ class EmbeddedBlockWebViewHolderTest {
                 postFromPage(request(action = action, payload = "{}", id = "gated-$index"))
                 await { lastOutgoingMessage()?.get("action")?.asString == action }
                 assertEquals("error for $action", "error", lastOutgoingMessage()?.get("type")?.asString)
+                assertEquals("code for $action", "not_visible", lastOutgoingPayload()!!.get("error").asString)
             }
     }
 
@@ -731,6 +750,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "openLink" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -751,6 +771,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -770,8 +791,9 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "motion.start", payload = """{"gestures":["shake"]}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
 
-        // Robolectric offers no accelerometer: the page hears which gesture has no sensor.
+        // Robolectric offers no accelerometer.
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("gestures_unavailable", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -793,6 +815,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "settings.open" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -803,6 +826,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "permission.request" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("unsupported_value", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -1012,6 +1036,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "navigationIntercepted" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("not_served", lastOutgoingPayload()!!.get("error").asString)
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
     }
 

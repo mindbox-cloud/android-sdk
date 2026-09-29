@@ -5,7 +5,6 @@ import com.google.gson.JsonParser
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 internal class BridgeMessagePayloadTest {
@@ -69,18 +68,49 @@ internal class BridgeMessagePayloadTest {
     }
 
     @Test
-    fun `plain error is wrapped into the error envelope`() {
+    fun `a coded refusal is answered with its code, not its detail`() {
         assertEquals(
-            """{"error":"Nobody is looking at this page"}""",
+            """{"error":"not_visible"}""",
+            gson.toBridgeErrorPayload(BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, NOBODY_LOOKING_ERROR))
+        )
+    }
+
+    @Test
+    fun `an exception without a code is answered with internal_error, not its text`() {
+        assertEquals(
+            """{"error":"internal_error"}""",
             gson.toBridgeErrorPayload(IllegalStateException("Nobody is looking at this page"))
         )
     }
 
     @Test
-    fun `error without a message falls back to the unknown error payload`() {
+    fun `an exception without a message is answered with internal_error`() {
         assertEquals(
-            BridgeMessage.UNKNOWN_ERROR_PAYLOAD,
+            """{"error":"internal_error"}""",
             gson.toBridgeErrorPayload(IllegalStateException())
+        )
+    }
+
+    @Test
+    fun `the error codes are the contract list in the contract order`() {
+        assertEquals(
+            listOf(
+                "unknown_action",
+                "not_served",
+                "not_visible",
+                "invalid_payload",
+                "unsupported_value",
+                "invalid_url",
+                "blocked_scheme",
+                "open_failed",
+                "permission_failed",
+                "gestures_unavailable",
+                "operation_failed",
+                "unknown_inapp",
+                "show_failed",
+                "internal_error",
+            ),
+            BridgeErrorCode.entries.map { code -> code.wireValue }
         )
     }
 
@@ -124,7 +154,7 @@ internal class BridgeMessagePayloadTest {
         )
 
         assertNull(responded)
-        assertTrue(refused is IllegalArgumentException)
+        assertEquals(BridgeErrorCode.UNKNOWN_ACTION, (refused as BridgeRefusalException).code)
     }
 
     @Test

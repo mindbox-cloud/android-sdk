@@ -5,11 +5,14 @@ import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
+import cloud.mindbox.mobile_sdk.di.modules.DataModule
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -30,14 +33,15 @@ class WebViewCommonBridgeActionsTest {
 
     private val application = ApplicationProvider.getApplicationContext<Application>()
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
+    private val permissionManager: PermissionManager = mockk(relaxed = true)
 
     private class FakeHost(
         override val closeCapability: ((BridgeMessage.Request) -> String)? = null,
         override val hideCapability: (() -> String)? = null,
         override val isUserPresent: Boolean = true,
+        override val hostActivity: Activity? = null,
     ) : WebViewBridgeHost {
 
-        override val hostActivity: Activity? = null
         override val hostTags: Map<String, String> = mapOf("templateType" to "Embedded")
         override val hostPage: MindboxWebPage = MindboxWebPage { _, _ -> }
 
@@ -52,7 +56,9 @@ class WebViewCommonBridgeActionsTest {
     fun setUp() {
         MindboxDI.appModule = mockk<AppModule>(relaxed = true) {
             every { appContext } returns application
+            every { gson } returns DataModule(mockk(relaxed = true), mockk(relaxed = true)).gson
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
+            every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
         }
     }
 
@@ -75,6 +81,13 @@ class WebViewCommonBridgeActionsTest {
         val handler = handler(action) ?: return null
         return handler(request(action, payload))
     }
+
+    private fun WebViewActionHandlers.refusalCode(action: WebViewAction, payload: String): BridgeErrorCode =
+        assertThrows("$action with $payload", BridgeRefusalException::class.java) {
+            runBlocking {
+                suspendHandler(action)?.invoke(request(action, payload)) ?: answer(action, payload)
+            }
+        }.code
 
     @Test
     fun `close reaches the window of a surface that has one`() {
@@ -151,6 +164,93 @@ class WebViewCommonBridgeActionsTest {
             )
         }
         assertEquals(false, withWindow.serves(WebViewAction.READY))
+    }
+
+    @Test
+    fun `a permission type that is not a non-empty string is refused as invalid_payload`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf("""{}""", """{"type":""}""", """{"type":5}""", """{"type":null}""", "abc", "").forEach { payload ->
+            assertEquals(payload, BridgeErrorCode.INVALID_PAYLOAD, handlers.refusalCode(WebViewAction.PERMISSION_REQUEST, payload))
+        }
+    }
+
+    @Test
+    fun `a permission type the SDK does not know is refused as unsupported_value`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf("""{"type":"camera"}""", """{"type":" "}""").forEach { payload ->
+            assertEquals(payload, BridgeErrorCode.UNSUPPORTED_VALUE, handlers.refusalCode(WebViewAction.PERMISSION_REQUEST, payload))
+        }
+    }
+
+    @Test
+    fun `a permission request the system could not start is refused as permission_failed`() {
+        every { permissionManager.getNotificationPermissionStatus() } throws IllegalStateException("no activity to start")
+        val payload = """{"type":"pushNotifications"}"""
+
+        assertEquals(
+            BridgeErrorCode.PERMISSION_FAILED,
+            handlersOf(FakeHost()).refusalCode(WebViewAction.PERMISSION_REQUEST, payload),
+        )
+        assertEquals(
+            BridgeErrorCode.PERMISSION_FAILED,
+            handlersOf(FakeHost(hostActivity = mockk(relaxed = true))).refusalCode(WebViewAction.PERMISSION_REQUEST, payload),
+        )
+    }
+
+    @Test
+    fun `a settings target that is not a non-empty string is refused as invalid_payload`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf("""{}""", """{"target":""}""", """{"target":5}""", """{"target":true}""", """{"target":{}}""", "abc", "[]")
+            .forEach { payload ->
+                assertEquals(payload, BridgeErrorCode.INVALID_PAYLOAD, handlers.refusalCode(WebViewAction.SETTINGS_OPEN, payload))
+            }
+    }
+
+    @Test
+    fun `a settings target the SDK does not know is refused as unsupported_value`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf("""{"target":"bluetooth"}""", """{"target":" "}""").forEach { payload ->
+            assertEquals(payload, BridgeErrorCode.UNSUPPORTED_VALUE, handlers.refusalCode(WebViewAction.SETTINGS_OPEN, payload))
+        }
+    }
+
+    @Test
+    fun `settings with a known target and no activity to open them from is refused as open_failed`() {
+        assertEquals(
+            BridgeErrorCode.OPEN_FAILED,
+            handlersOf(FakeHost()).refusalCode(WebViewAction.SETTINGS_OPEN, """{"target":"notifications"}"""),
+        )
+    }
+
+    @Test
+    fun `motion gestures with any element that is not a non-empty string are refused as invalid_payload, in any order`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf(
+            """{}""",
+            """{"gestures":[]}""",
+            """{"gestures":"shake"}""",
+            "abc",
+            """{"gestures":[""]}""",
+            """{"gestures":[null]}""",
+            """{"gestures":[1,"wave"]}""",
+            """{"gestures":["wave",1]}""",
+        ).forEach { payload ->
+            assertEquals(payload, BridgeErrorCode.INVALID_PAYLOAD, handlers.refusalCode(WebViewAction.MOTION_START, payload))
+        }
+    }
+
+    @Test
+    fun `motion gestures that are all strings but include an unknown name are refused as unsupported_value`() {
+        val handlers = handlersOf(FakeHost())
+
+        listOf("""{"gestures":["wave"]}""", """{"gestures":[" "]}""", """{"gestures":["flip","wave"]}""").forEach { payload ->
+            assertEquals(payload, BridgeErrorCode.UNSUPPORTED_VALUE, handlers.refusalCode(WebViewAction.MOTION_START, payload))
+        }
     }
 
     @Test

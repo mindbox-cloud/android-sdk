@@ -160,8 +160,9 @@ class WebViewOperationExecutorTest {
         val payload: String = """{"body":{"screen":"home"}}"""
         try {
             executor.executeAsyncOperation(context, payload, tags = null)
-            fail("Expected IllegalArgumentException")
-        } catch (exception: IllegalArgumentException) {
+            fail("Expected BridgeRefusalException")
+        } catch (exception: BridgeRefusalException) {
+            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             assertEquals("Operation is not provided", exception.message)
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
@@ -173,35 +174,60 @@ class WebViewOperationExecutorTest {
         val payload: String = """{"operation":"OpenScreen"}"""
         try {
             executor.executeAsyncOperation(context, payload, tags = null)
-            fail("Expected IllegalArgumentException")
-        } catch (exception: IllegalArgumentException) {
+            fail("Expected BridgeRefusalException")
+        } catch (exception: BridgeRefusalException) {
+            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             assertEquals("Body is not provided", exception.message)
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
     }
 
     @Test
-    fun `executeAsyncOperation throws IllegalArgumentException when payload is null`() {
+    fun `executeAsyncOperation refuses a null payload as invalid_payload`() {
         val context: Application = mockk()
         try {
             executor.executeAsyncOperation(context, payload = null, tags = null)
-            fail("Expected IllegalArgumentException")
-        } catch (exception: IllegalArgumentException) {
+            fail("Expected BridgeRefusalException")
+        } catch (exception: BridgeRefusalException) {
+            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             assertEquals("Payload is not provided", exception.message)
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
     }
 
     @Test
-    fun `executeAsyncOperation throws IllegalArgumentException when payload is invalid json`() {
+    fun `executeAsyncOperation refuses a payload that is not json as invalid_payload`() {
         val context: Application = mockk()
         val payloads: List<String> = listOf("not-json", "")
         payloads.forEach { payload: String ->
             try {
                 executor.executeAsyncOperation(context, payload, tags = null)
-                fail("Expected IllegalArgumentException for payload: $payload")
-            } catch (exception: IllegalArgumentException) {
+                fail("Expected BridgeRefusalException for payload: $payload")
+            } catch (exception: BridgeRefusalException) {
+                assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
                 assertEquals("Payload is not a valid JSON object", exception.message)
+            }
+        }
+        verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
+    }
+
+    @Test
+    fun `executeAsyncOperation refuses an operation or a body of the wrong json type as invalid_payload`() {
+        val context: Application = mockk()
+        val payloads: List<String> = listOf(
+            """{"operation":{},"body":{}}""",
+            """{"operation":["X"],"body":{}}""",
+            """{"operation":null,"body":{}}""",
+            """{"operation":"OpenScreen","body":"str"}""",
+            """{"operation":"OpenScreen","body":[1]}""",
+            """{"operation":"OpenScreen","body":null}""",
+        )
+        payloads.forEach { payload: String ->
+            try {
+                executor.executeAsyncOperation(context, payload, tags = null)
+                fail("Expected BridgeRefusalException for payload: $payload")
+            } catch (exception: BridgeRefusalException) {
+                assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             }
         }
         verify(exactly = 0) { MindboxEventManager.asyncOperation(any(), any(), any()) }
@@ -387,8 +413,9 @@ class WebViewOperationExecutorTest {
         val payload: String = """{"operation":"OpenScreen"}"""
         try {
             executor.executeSyncOperation(payload, tags = null)
-            fail("Expected IllegalArgumentException")
-        } catch (exception: IllegalArgumentException) {
+            fail("Expected BridgeRefusalException")
+        } catch (exception: BridgeRefusalException) {
+            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             assertEquals("Body is not provided", exception.message)
         }
         verify(exactly = 0) {
@@ -402,11 +429,12 @@ class WebViewOperationExecutorTest {
     }
 
     @Test
-    fun `executeSyncOperation throws IllegalArgumentException when payload is null`() = runTest {
+    fun `executeSyncOperation refuses a null payload as invalid_payload`() = runTest {
         try {
             executor.executeSyncOperation(payload = null, tags = null)
-            fail("Expected IllegalArgumentException")
-        } catch (exception: IllegalArgumentException) {
+            fail("Expected BridgeRefusalException")
+        } catch (exception: BridgeRefusalException) {
+            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
             assertEquals("Payload is not provided", exception.message)
         }
         verify(exactly = 0) {
@@ -420,13 +448,14 @@ class WebViewOperationExecutorTest {
     }
 
     @Test
-    fun `executeSyncOperation throws IllegalArgumentException when payload is invalid json`() = runTest {
+    fun `executeSyncOperation refuses a payload that is not json as invalid_payload`() = runTest {
         val payloads: List<String> = listOf("not-json", "")
         payloads.forEach { payload: String ->
             try {
                 executor.executeSyncOperation(payload, tags = null)
-                fail("Expected IllegalArgumentException for payload: $payload")
-            } catch (exception: IllegalArgumentException) {
+                fail("Expected BridgeRefusalException for payload: $payload")
+            } catch (exception: BridgeRefusalException) {
+                assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
                 assertEquals("Payload is not a valid JSON object", exception.message)
             }
         }
