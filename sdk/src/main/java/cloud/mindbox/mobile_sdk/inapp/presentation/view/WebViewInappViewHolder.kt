@@ -465,9 +465,7 @@ internal class WebViewInAppViewHolder(
      * Readiness probe for a freshly finished page. Module scripts can evaluate a beat after
      * `onPageFinished` (slow device, cold cache), so a single early `false` must not close a
      * healthy in-app — the checker polls before giving up. Every new `onPageFinished` (redirect,
-     * re-load) restarts the poll; teardown cancels it. The outgoing-message verification in
-     * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
-     * path talks to a page that already proved itself ready.
+     * re-load) restarts the poll; teardown cancels it.
      *
      * Give-up BEFORE `init` only records the failure ([pendingReadyCheckFailure]) — the
      * init timer is the closing authority there, since the checker's ~1.2s budget can
@@ -511,29 +509,11 @@ internal class WebViewInAppViewHolder(
         )
     }
 
-    /**
-     * Verifies an outgoing bridge call's JS result. Tracks the failure but does NOT close
-     * the in-app: whether one undelivered message is fatal is the caller's policy (a failed
-     * `back` action closes via its own onError, a failed motion event just stops monitoring)
-     * — force-closing here used to tear down a healthy show over a single transient miss.
-     * Page readiness has its own retrying probe ([startReadyCheck]).
-     */
     internal fun checkEvaluateJavaScript(response: String?): Boolean {
         return when (response) {
             JS_RETURN -> true
             else -> {
-                // A miss during teardown (holder already closed, controller gone) is an
-                // expected race, not a presentation failure — don't feed it to telemetry.
-                if (webViewController != null) {
-                    inAppFailureTracker.sendFailureWithContext(
-                        inAppId = wrapper.inAppType.inAppId,
-                        failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "evaluateJavaScript returned unexpected response: $response",
-                        tags = wrapper.tags
-                    )
-                } else {
-                    mindboxLogW("evaluateJavaScript miss after teardown (ignored): $response")
-                }
+                mindboxLogW("evaluateJavaScript returned unexpected response: $response")
                 false
             }
         }
