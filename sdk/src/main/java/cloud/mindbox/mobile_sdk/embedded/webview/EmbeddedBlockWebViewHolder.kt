@@ -492,12 +492,7 @@ internal class EmbeddedBlockWebViewHolder(
             payload.getOrNull(SHOW_IN_APP_PARAMS_FIELD).safeAs<JsonObject>()
                 ?.entrySet()?.associate { (key, value) -> key to value }
                 ?: emptyMap()
-        mindboxLogI(
-            "[EmbeddedBlock] showInApp: inappId=$requestedId" +
-                " index=${payload.getOrNull(SHOW_IN_APP_INDEX_FIELD)}" +
-                " sourceInappId=${payload.getOrNull(SHOW_IN_APP_SOURCE_FIELD)}" +
-                " with ${extraParams.size} param(s)"
-        )
+        mindboxLogI("[EmbeddedBlock] showInApp: inappId=$requestedId with ${extraParams.size} param(s)")
         if (lastState != EmbeddedBlockState.Loading && lastState != EmbeddedBlockState.Ready) {
             mindboxLogI("[EmbeddedBlock] Refused a show request from a block that is not shown")
             throw IllegalStateException(ShowInAppFailure.SOURCE_DISMISSED.bridgeReason)
@@ -742,8 +737,6 @@ internal class EmbeddedBlockWebViewHolder(
     private companion object {
         private const val SHOW_IN_APP_ID_FIELD = "inappId"
         private const val SHOW_IN_APP_PARAMS_FIELD = "params"
-        private const val SHOW_IN_APP_INDEX_FIELD = "index"
-        private const val SHOW_IN_APP_SOURCE_FIELD = "sourceInappId"
         private const val SHOW_IN_APP_INVALID_PAYLOAD = "Invalid payload: missing or empty 'inappId'"
         private const val JS_RETURN = "true"
         private const val JS_BRIDGE = "window.bridgeMessagesHandlers.emit"
