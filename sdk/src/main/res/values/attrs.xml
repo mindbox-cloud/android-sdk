@@ -3,5 +3,11 @@
     <declare-styleable name="MindboxEmbeddedBlockView">
         <attr name="mindboxPlaceSystemName" format="string" />
         <attr name="mindboxTimeoutMs" format="integer" />
+        <attr name="mindboxLoadingStrategy" format="enum">
+            <enum name="automatic" value="0" />
+            <enum name="placeholder" value="1" />
+            <enum name="hidden" value="2" />
+        </attr>
+        <attr name="mindboxAnimatesReveal" format="boolean" />
     </declare-styleable>
 </resources>

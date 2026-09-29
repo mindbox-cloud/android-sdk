@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.embedded.compose
 
 import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockLoadingStrategy
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 import cloud.mindbox.mobile_sdk.logger.Level
 import java.time.Duration
 import org.junit.Assert.assertEquals
@@ -40,10 +43,10 @@ class MindboxEmbeddedBlockTest {
     }
 
     @Test
-    fun `the block keeps its frame while the config has not arrived`() {
+    fun `a placeholder block keeps its frame while the config has not arrived`() {
         // Nothing is initialized in this test process — the case a host hits when it composes a
-        // screen before the SDK finished starting up. The block holds the height it was given
-        // and stays silent: no config yet is not an empty place.
+        // screen before the SDK finished starting up. A block that takes its space up front
+        // holds the height it was given and stays silent: no config yet is not an empty place.
         val events = mutableListOf<String>()
 
         compose.setContent {
@@ -52,6 +55,7 @@ class MindboxEmbeddedBlockTest {
                 modifier = Modifier
                     .height(120.dp)
                     .testTag("block"),
+                loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
                 onLoad = { events.add("load") },
                 onFail = { events.add("fail") },
             )
@@ -61,6 +65,58 @@ class MindboxEmbeddedBlockTest {
         compose.onNodeWithTag("block").assertExists()
         compose.onNodeWithTag("block").assertHeightIsEqualTo(120.dp)
         assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun `a block waiting hidden is zero height from its very first frame`() {
+        // The default strategy on a device where the place never showed content: the first look
+        // is decided before the first frame, so the layout never flashes reserved space.
+        compose.setContent {
+            MindboxEmbeddedBlock(
+                placeSystemName = "main-screen-top",
+                modifier = Modifier
+                    .height(120.dp)
+                    .testTag("block"),
+            )
+        }
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("block").assertHeightIsEqualTo(0.dp)
+    }
+
+    @Test
+    fun `the strategy and the animation flag reach the view and are read once`() {
+        val strategy = mutableStateOf(MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
+        val animates = mutableStateOf(false)
+
+        compose.setContent {
+            MindboxEmbeddedBlock(
+                placeSystemName = "main-screen-top",
+                modifier = Modifier.height(120.dp),
+                loadingStrategy = strategy.value,
+                animatesReveal = animates.value,
+            )
+        }
+        settle()
+
+        val view = requireNotNull(findBlockView(compose.activity.window.decorView))
+        assertEquals(MindboxEmbeddedBlockLoadingStrategy.HIDDEN, view.loadingStrategy)
+        assertEquals(false, view.animatesReveal)
+
+        ShadowLog.clear()
+        compose.runOnUiThread {
+            strategy.value = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER
+            animates.value = true
+        }
+        settle()
+
+        assertEquals(MindboxEmbeddedBlockLoadingStrategy.HIDDEN, view.loadingStrategy)
+        assertEquals(false, view.animatesReveal)
+        assertTrue(
+            ShadowLog.getLogs().any { log ->
+                log.msg.contains("fixed when the block is created")
+            },
+        )
     }
 
     @Test
@@ -118,6 +174,7 @@ class MindboxEmbeddedBlockTest {
             MindboxEmbeddedBlock(
                 placeSystemName = "main-screen-top",
                 modifier = Modifier.height(120.dp),
+                loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
                 onFail = { events.add("fail") },
                 placeholder = { Box(Modifier.fillMaxSize().testTag("custom-placeholder")) },
                 error = { Box(Modifier.fillMaxSize().testTag("custom-error")) },
@@ -139,6 +196,7 @@ class MindboxEmbeddedBlockTest {
             MindboxEmbeddedBlock(
                 placeSystemName = "main-screen-top",
                 modifier = Modifier.height(120.dp),
+                loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
                 placeholder = if (withPlaceholder.value) {
                     { Box(Modifier.fillMaxSize().testTag("custom-placeholder")) }
                 } else {
@@ -259,4 +317,13 @@ class MindboxEmbeddedBlockTest {
     private fun timeoutWarnings(): List<String> = ShadowLog.getLogs()
         .filter { log -> log.msg?.contains("was given timeoutMs=") == true }
         .map { log -> log.msg }
+
+    private fun findBlockView(root: View): MindboxEmbeddedBlockView? {
+        if (root is MindboxEmbeddedBlockView) return root
+        if (root !is ViewGroup) return null
+        for (index in 0 until root.childCount) {
+            findBlockView(root.getChildAt(index))?.let { return it }
+        }
+        return null
+    }
 }

@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded.compose
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -11,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -21,8 +25,10 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockAppearance
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockFailReason
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockListener
+import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockLoadingStrategy
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
 import cloud.mindbox.mobile_sdk.logger.Level
+import kotlin.math.roundToInt
 
 /**
  * An embedded Mindbox block as a composable.
@@ -30,8 +36,15 @@ import cloud.mindbox.mobile_sdk.logger.Level
  * The caller marks a *place* by its [placeSystemName] — what the place shows is decided by the
  * mobile config, the app never learns it. **The caller owns the size**: give the block an
  * explicit height (e.g. `Modifier.height(120.dp)`) — the block is a fixed frame and the content
- * adapts to it, so the layout never jumps. While the content loads the frame shows a placeholder
- * (the SDK's default placeholder or the [placeholder] slot); on failure — the [error] slot, if set.
+ * adapts to it. What the block shows before the SDK answers is decided by [loadingStrategy]: a
+ * placeholder (the SDK's default placeholder or the [placeholder] slot), nothing, or — by
+ * default — nothing until the place has shown content once on this device and a placeholder from
+ * then on. A block that takes its space up front keeps the layout still at the price of flashing
+ * where there is nothing to show; a block that waits hidden never flashes at the price of the
+ * layout growing when content arrives — a place that always has a campaign behind it is worth an
+ * explicit [MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER]. On failure the [error] slot shows,
+ * if set. The content is revealed with the SDK's own animation — a fade, and the growth of a
+ * block that waited hidden — unless [animatesReveal] is off.
  *
  * The behavior mirrors the View one and belongs to the block itself: it is visible while
  * loading and showing content, and collapses to zero height when the place ends up without
@@ -55,6 +68,14 @@ import cloud.mindbox.mobile_sdk.logger.Level
  * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
  * place is: a new value given to a block already on screen is ignored, and the block says so in
  * the log. Wrap the block in a `key()` of your own to build one on a different budget.
+ * @param loadingStrategy What the block shows until the SDK answers.
+ * [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] — the default — keeps the block hidden until
+ * the place has shown content once on this device and puts a placeholder there from then on. The
+ * first look is known before the first frame, so a block that waits hidden never flashes reserved
+ * space. Fixed when the block is created, as the place is.
+ * @param animatesReveal Whether the SDK animates the reveal of the content — a fade, and the
+ * growth of a block that waited hidden. `true` by default. Turn it off to animate the block's
+ * container yourself in [onLoad]. Fixed when the block is created, as the place is.
  * @param onLoad The block is shown and visible. Main thread.
  * @param onEmpty The place has nothing to show — a normal outcome, not a breakage: no campaign
  * for the place, or the targeting, the A/B split, the show limits or the page itself left it
@@ -74,6 +95,8 @@ public fun MindboxEmbeddedBlock(
     placeSystemName: String,
     modifier: Modifier = Modifier,
     timeoutMs: Long? = null,
+    loadingStrategy: MindboxEmbeddedBlockLoadingStrategy = MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC,
+    animatesReveal: Boolean = true,
     onLoad: () -> Unit = {},
     onEmpty: () -> Unit = {},
     onFail: (MindboxEmbeddedBlockFailReason) -> Unit = {},
@@ -90,46 +113,49 @@ public fun MindboxEmbeddedBlock(
     val screenOwner by rememberUpdatedState(LocalLifecycleOwner.current)
 
     key(placeSystemName) {
-        var appearance by remember {
-            mutableStateOf(MindboxEmbeddedBlockAppearance.PLACEHOLDER)
+        val creationTimeoutMs = rememberFixedAtCreation(placeSystemName, "timeoutMs", timeoutMs)
+        val creationLoadingStrategy = rememberFixedAtCreation(placeSystemName, "loadingStrategy", loadingStrategy)
+        val creationAnimatesReveal = rememberFixedAtCreation(placeSystemName, "animatesReveal", animatesReveal)
+        var look by remember {
+            mutableStateOf(
+                AppearanceChange(
+                    MindboxEmbeddedBlockView.initialAppearance(context, placeSystemName, creationLoadingStrategy),
+                    animated = false,
+                ),
+            )
         }
 
-        val creationTimeoutMs = remember { timeoutMs }
-        if (timeoutMs != creationTimeoutMs) {
-            LaunchedEffect(timeoutMs) {
-                Mindbox.writeLog(
-                    "[EmbeddedBlock] Block '$placeSystemName' was given timeoutMs=$timeoutMs after " +
-                        "creation and keeps $creationTimeoutMs: the timeout is fixed when the block " +
-                        "is created. Wrap the block in a key() of your own to build one on a " +
-                        "different budget.",
-                    Level.WARN,
+        val placeholderHost = rememberLazySlotHost { currentPlaceholder }
+        val errorHost = rememberLazySlotHost { currentError }
+
+        val revealFraction = remember { Animatable(look.appearance.targetFraction) }
+        LaunchedEffect(look.appearance) {
+            val reveals = look.appearance == MindboxEmbeddedBlockAppearance.CONTENT && revealFraction.value < 1f
+            if (reveals && look.animated) {
+                revealFraction.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(MindboxEmbeddedBlockView.REVEAL_ANIMATION_DURATION_MS.toInt()),
                 )
-            }
-        }
-
-        val placeholderHost = remember(context) {
-            lazy(LazyThreadSafetyMode.NONE) {
-                ComposeView(context).apply { setContent { currentPlaceholder?.invoke() } }
-            }
-        }
-        val errorHost = remember(context) {
-            lazy(LazyThreadSafetyMode.NONE) {
-                ComposeView(context).apply { setContent { currentError?.invoke() } }
+            } else {
+                revealFraction.snapTo(look.appearance.targetFraction)
             }
         }
 
         AndroidView(
-            modifier = (
-                if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) {
-                    Modifier.height(0.dp).then(modifier)
-                } else {
-                    modifier
-                }
-            ).fillMaxWidth(),
+            modifier = Modifier
+                .revealHeight(look.appearance) { revealFraction.value }
+                .then(modifier)
+                .fillMaxWidth(),
             factory = { viewContext ->
-                MindboxEmbeddedBlockView(viewContext, placeSystemName, timeoutMs).apply {
+                MindboxEmbeddedBlockView(
+                    context = viewContext,
+                    placeSystemName = placeSystemName,
+                    timeoutMs = creationTimeoutMs,
+                    loadingStrategy = creationLoadingStrategy,
+                    animatesReveal = creationAnimatesReveal,
+                ).apply {
                     setScreenOwner(screenOwner)
-                    setAppearanceObserver { shown -> appearance = shown }
+                    setAppearanceObserver { shown -> look = AppearanceChange(shown, isRevealAnimated) }
                     setListener(
                         object : MindboxEmbeddedBlockListener {
                             override fun onLoad(view: MindboxEmbeddedBlockView) {
@@ -156,3 +182,51 @@ public fun MindboxEmbeddedBlock(
         )
     }
 }
+
+private data class AppearanceChange(
+    val appearance: MindboxEmbeddedBlockAppearance,
+    val animated: Boolean,
+)
+
+private val MindboxEmbeddedBlockAppearance.targetFraction: Float
+    get() = if (this == MindboxEmbeddedBlockAppearance.COLLAPSED) 0f else 1f
+
+@Composable
+private fun <T> rememberFixedAtCreation(placeSystemName: String, name: String, value: T): T {
+    val creationValue = remember { value }
+    LaunchedEffect(value) {
+        if (value != creationValue) {
+            Mindbox.writeLog(
+                "[EmbeddedBlock] Block '$placeSystemName' was given $name=$value after creation " +
+                    "and keeps $creationValue: $name is fixed when the block is created. Wrap the " +
+                    "block in a key() of your own to build one anew.",
+                Level.WARN,
+            )
+        }
+    }
+    return creationValue
+}
+
+@Composable
+private fun rememberLazySlotHost(slot: () -> (@Composable () -> Unit)?): Lazy<ComposeView> {
+    val context = LocalContext.current
+    return remember(context) {
+        lazy(LazyThreadSafetyMode.NONE) {
+            ComposeView(context).apply { setContent { slot()?.invoke() } }
+        }
+    }
+}
+
+private fun Modifier.revealHeight(
+    appearance: MindboxEmbeddedBlockAppearance,
+    revealFraction: () -> Float,
+): Modifier =
+    if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) {
+        height(0.dp)
+    } else {
+        clipToBounds().layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+            val revealedHeight = (placeable.height * revealFraction()).roundToInt()
+            layout(placeable.width, revealedHeight) { placeable.placeRelative(0, 0) }
+        }
+    }

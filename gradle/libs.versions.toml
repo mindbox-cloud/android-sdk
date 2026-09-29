@@ -80,6 +80,7 @@ androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 compose_bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose_bom" }
 compose_ui = { group = "androidx.compose.ui", name = "ui" }
 compose_foundation_layout = { group = "androidx.compose.foundation", name = "foundation-layout" }
+compose_animation_core = { group = "androidx.compose.animation", name = "animation-core" }
 compose_ui_test_junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose_ui_test_manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx_annotations = { group = "androidx.annotation", name = "annotation", version.ref = "androidx_annotations" }

@@ -45,7 +45,11 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a block created before the config arrived holds the placeholder within the timeout`() {
-        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
         val listener = RecordingListener()
         view.setListener(listener)
 
@@ -76,7 +80,12 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a timeout given in code is the one the block waits out`() {
-        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 5_000L)
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            timeoutMs = 5_000L,
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
         val listener = RecordingListener()
         view.setListener(listener)
 
@@ -112,7 +121,12 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a non-positive timeout is not a budget, and the default stands`() {
-        val view = MindboxEmbeddedBlockView(activity, "main-screen-top", timeoutMs = 0L)
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            timeoutMs = 0L,
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
         val listener = RecordingListener()
         view.setListener(listener)
 
@@ -205,7 +219,11 @@ class MindboxEmbeddedBlockViewLookupTest {
     @Test
     fun `the block behaves with no listener at all`() {
         // The show/hide behavior belongs to the block, not to the host's callbacks.
-        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
 
         attach(view)
 
