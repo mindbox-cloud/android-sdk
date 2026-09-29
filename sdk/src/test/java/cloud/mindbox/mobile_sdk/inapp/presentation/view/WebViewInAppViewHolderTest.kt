@@ -197,6 +197,20 @@ class WebViewInAppViewHolderTest {
     }
 
     @Test
+    fun `back sent by the page is refused as not_served`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "back", id = "back-1")
+        await { lastOutgoingMessage()?.get("id")?.asString == "back-1" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("back", lastOutgoingMessage()?.get("action")?.asString)
+        assertEquals("""{"error":"not_served"}""", lastOutgoingMessage()?.get("payload")?.asString)
+        assertEquals(0, closeCount)
+    }
+
+    @Test
     fun `a message the page did not take is logged with its action and id`() {
         showAndAwaitPageLoad()
         postFromPage(action = "init", id = "init-1")
