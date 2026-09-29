@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.animation.Animator
 import android.content.Context
+import android.content.res.TypedArray
 import android.graphics.Color
 import android.graphics.Rect
 import android.os.Handler
@@ -22,6 +24,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.managers.SharedPreferencesManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -39,10 +42,20 @@ import kotlin.math.abs
  * letter case is ignored, so `Main-Screen-Top` and `main-screen-top` are the same place, not two.
  *
  * **The host owns the size**: give the block an explicit height. The content adapts to that
- * frame, so the host UI never jumps. While loading, the frame shows a placeholder — the SDK's
- * default one or the host's own ([setPlaceholderView]). When the place ends up without content the
- * block hides itself; a failure can be shown instead of hidden if the host gave it a view for one
- * ([setErrorView]).
+ * frame. What the block shows before the SDK answers is decided by [loadingStrategy]: a
+ * placeholder — the SDK's default one or the host's own ([setPlaceholderView]) — nothing, or — by
+ * default — nothing until the place has shown content once on this device and a placeholder from
+ * then on. A block that takes its space up front keeps the layout still at the price of flashing
+ * where there is nothing to show; a block that waits hidden never flashes at the price of the
+ * layout growing when content arrives. A place that always has a campaign behind it is worth an
+ * explicit [MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER]. When the place ends up without
+ * content the block hides itself; a failure can be shown instead of hidden if the host gave it a
+ * view for one ([setErrorView]).
+ *
+ * The content is revealed with the SDK's own animation — it fades in, and a block that started
+ * hidden grows to its height — unless [animatesReveal] is off. A host that wants an animation of
+ * its own turns that off, puts the block in a container of its own and animates the container in
+ * [MindboxEmbeddedBlockListener.onLoad].
  *
  * ```xml
  * <cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
@@ -67,6 +80,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     attrs: AttributeSet?,
     placeSystemName: String?,
     configTimeout: Milliseconds? = null,
+    loadingStrategy: MindboxEmbeddedBlockLoadingStrategy? = null,
+    animatesReveal: Boolean? = null,
     contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
         configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
@@ -85,6 +100,8 @@ public class MindboxEmbeddedBlockView internal constructor(
             if (MindboxDI.isInitialized()) MindboxDI.appModule.embeddedBlockContentStore else null
         }
     },
+    private val placeMemory: EmbeddedBlockPlaceMemory = EmbeddedBlockPlaceMemory(),
+    private val revealAnimation: EmbeddedBlockRevealAnimation = EmbeddedBlockRevealAnimation(),
 ) : FrameLayout(context, attrs) {
 
     private var contentController: EmbeddedBlockContentController = contentController
@@ -106,15 +123,39 @@ public class MindboxEmbeddedBlockView internal constructor(
      * [setErrorView] applies — in milliseconds; the same budget `app:mindboxTimeoutMs` sets from
      * XML. `null` means the SDK default of 30 s. An answer that arrives after that no longer
      * expands the block; the next attempt starts when the block enters the window again.
+     * @param loadingStrategy What the block shows until the SDK answers — the same choice
+     * `app:mindboxLoadingStrategy` makes from XML. [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] —
+     * the default — keeps the block hidden until the place has shown content once on this device
+     * and puts a placeholder there from then on.
+     * @param animatesReveal Whether the SDK animates the reveal of the content — a fade, and the
+     * growth of a block that waited hidden; the same flag `app:mindboxAnimatesReveal` sets from
+     * XML. `true` by default. Turn it off to animate the block's container yourself in
+     * [MindboxEmbeddedBlockListener.onLoad].
      */
     @JvmOverloads
     public constructor(
         context: Context,
         placeSystemName: String,
         timeoutMs: Long? = null,
-    ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds))
+        loadingStrategy: MindboxEmbeddedBlockLoadingStrategy = MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC,
+        animatesReveal: Boolean = true,
+    ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds), loadingStrategy, animatesReveal)
 
     public val placeSystemName: String? = placeSystemName.orNullIfBlank()
+
+    /**
+     * What the block shows until the SDK answers, given at creation.
+     * See [MindboxEmbeddedBlockLoadingStrategy].
+     */
+    public val loadingStrategy: MindboxEmbeddedBlockLoadingStrategy =
+        loadingStrategy ?: readLoadingStrategy(context, attrs)
+
+    /**
+     * Whether the SDK animates the reveal of the content, given at creation. `false` swaps the
+     * looks and applies the space at once — for a host that animates the block's container itself.
+     */
+    public val animatesReveal: Boolean = animatesReveal ?: readAnimatesReveal(context, attrs)
+
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
     private var appearanceObserver: ((MindboxEmbeddedBlockAppearance) -> Unit)? = null
     private var placeholderView: View? = null
@@ -140,6 +181,11 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var isHostVisible = true
     private var isReleased = false
     private var shownContent: View? = null
+    private var fadingOutView: View? = null
+    private var fadeAnimator: Animator? = null
+    private var growthAnimator: Animator? = null
+    private var growthTargetHeight: Int? = null
+    private var isReclaimingContent = false
     private var isContentStarted = false
     private var hasStartedOnce = false
     private var observedLifecycle: Lifecycle? = null
@@ -166,8 +212,31 @@ public class MindboxEmbeddedBlockView internal constructor(
         clipToPadding = true
         setBackgroundColor(Color.TRANSPARENT)
         contentController.onStateChange = { newState -> state = newState }
-        showContent(currentPlaceholder())
+        loggingRunCatching { SharedPreferencesManager.with(context) }
+        val initial = initialAppearanceFor(this.loadingStrategy) {
+            placeMemory.hasShownContentAt(placeSystemName)
+        }
+        shownAppearance = initial
+        hasSettled = initial == MindboxEmbeddedBlockAppearance.COLLAPSED
+        if (initial == MindboxEmbeddedBlockAppearance.PLACEHOLDER) {
+            showContent(currentPlaceholder())
+        } else {
+            visibility = GONE
+        }
+        logInitialLook()
         warnIfPlaceIsMissing()
+    }
+
+    private fun logInitialLook() {
+        val look =
+            if (shownAppearance == MindboxEmbeddedBlockAppearance.COLLAPSED) {
+                "hidden, taking no space"
+            } else {
+                "a placeholder"
+            }
+        mindboxLogI(
+            "[EmbeddedBlock] Block '$placeSystemName' starts with $look (strategy $loadingStrategy)",
+        )
     }
 
     private fun warnIfPlaceIsMissing() {
@@ -195,7 +264,8 @@ public class MindboxEmbeddedBlockView internal constructor(
      * Replaces the SDK's default loading placeholder. Fills the whole block frame.
      *
      * Takes effect immediately: a block that is loading right now swaps to the new placeholder.
-     * Pass `null` to go back to the default one.
+     * Pass `null` to go back to the default one. A block that waits hidden — see
+     * [loadingStrategy] — shows no placeholder at all.
      */
     public fun setPlaceholderView(view: View?) {
         placeholderView = view
@@ -215,7 +285,9 @@ public class MindboxEmbeddedBlockView internal constructor(
      * shown takes the failure back down to a collapse — the space returns to the layout. What
      * neither does is expand a block that has already collapsed: reopening space the layout has
      * reclaimed would make it jump, so such a view takes effect on a load that starts the cycle
-     * anew, never on the silent retry a return to the screen brings.
+     * anew, never on the silent retry a return to the screen brings. For the same reason a block
+     * that waits hidden — see [loadingStrategy] — shows no error screen while it has not taken its
+     * space; once it has shown content, a failure applies here like anywhere else.
      */
     public fun setErrorView(view: View?) {
         errorView = view
@@ -229,15 +301,22 @@ public class MindboxEmbeddedBlockView internal constructor(
      * relying on this view's own `visibility` — see [MindboxEmbeddedBlockAppearance].
      *
      * The current value arrives right away on subscribing: a wrapper that comes after the outcome
-     * cannot miss what the block already decided.
+     * cannot miss what the block already decided. Whether the change deserves an animation is
+     * [isRevealAnimated] at the moment the observer runs — the view is the one owner of that
+     * decision, gates included, so a wrapper animating its own frame never disagrees with it.
      */
     @InternalMindboxApi
     public fun setAppearanceObserver(observer: ((MindboxEmbeddedBlockAppearance) -> Unit)?) {
         if (isReleased) return
 
         appearanceObserver = observer
+        isRevealAnimated = false
         loggingRunCatching { observer?.invoke(shownAppearance) }
     }
+
+    @InternalMindboxApi
+    public var isRevealAnimated: Boolean = false
+        private set
 
     /**
      * Tells the block whether the host still shows it — a second source for the same input as
@@ -310,6 +389,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     override fun onDetachedFromWindow() {
         isWindowVisible = false
         updateContentActivity()
+        cancelRevealAnimation()
         super.onDetachedFromWindow()
     }
 
@@ -400,6 +480,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun detachFromHost(): Unit = loggingRunCatching {
+        cancelRevealAnimation()
         observedLifecycle?.removeObserver(hostDestroyObserver)
         observedLifecycle = null
         screenOwnerAtAttach = null
@@ -443,7 +524,12 @@ public class MindboxEmbeddedBlockView internal constructor(
         contentController = kept
         kept.onStateChange = { newState -> state = newState }
         mindboxLogI("[EmbeddedBlock] Back on the screen (place='$place'), showing the kept content")
-        kept.lastReportedState?.let { keptState -> state = keptState }
+        isReclaimingContent = true
+        try {
+            kept.lastReportedState?.let { keptState -> state = keptState }
+        } finally {
+            isReclaimingContent = false
+        }
     }
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
@@ -474,8 +560,10 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun applyState(state: EmbeddedBlockState) {
+        val previous = shownAppearance
         val appearance = appearanceFor(state)
         shownAppearance = appearance
+        updatePlaceMemory(state)
         hasSettled = when (appearance) {
             MindboxEmbeddedBlockAppearance.COLLAPSED,
             MindboxEmbeddedBlockAppearance.ERROR,
@@ -484,6 +572,12 @@ public class MindboxEmbeddedBlockView internal constructor(
             MindboxEmbeddedBlockAppearance.PLACEHOLDER -> hasSettled
         }
 
+        cancelRevealAnimation()
+        val reveals = appearance == MindboxEmbeddedBlockAppearance.CONTENT &&
+            previous != MindboxEmbeddedBlockAppearance.CONTENT
+        val animated = reveals && shouldAnimateReveal
+        isRevealAnimated = animated
+
         when (appearance) {
             MindboxEmbeddedBlockAppearance.PLACEHOLDER -> {
                 mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
@@ -491,7 +585,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
             MindboxEmbeddedBlockAppearance.CONTENT -> {
                 mindboxLogI("[EmbeddedBlock] Content ready")
-                contentController.contentView?.let { showContent(it) }
+                contentController.contentView?.let { showContent(it, animated) }
             }
             MindboxEmbeddedBlockAppearance.ERROR -> {
                 mindboxLogI("[EmbeddedBlock] Content failed, showing the host's error view")
@@ -504,8 +598,57 @@ public class MindboxEmbeddedBlockView internal constructor(
         }
 
         visibility = if (appearance == MindboxEmbeddedBlockAppearance.COLLAPSED) GONE else VISIBLE
+        if (animated && previous == MindboxEmbeddedBlockAppearance.COLLAPSED && appearanceObserver == null) {
+            animateGrowth()
+        }
         loggingRunCatching { appearanceObserver?.invoke(appearance) }
         scheduleDelivery()
+    }
+
+    private val shouldAnimateReveal: Boolean
+        get() = animatesReveal && !isReclaimingContent && isAttachedToWindow &&
+            loggingRunCatching(defaultValue = false) { revealAnimation.isEnabled }
+
+    private fun updatePlaceMemory(state: EmbeddedBlockState) {
+        val place = placeSystemName ?: return
+        loggingRunCatching {
+            when (state) {
+                EmbeddedBlockState.Ready -> placeMemory.rememberShownContent(PlaceKey.of(place))
+                EmbeddedBlockState.Empty -> placeMemory.forgetPlace(PlaceKey.of(place))
+                EmbeddedBlockState.Loading, is EmbeddedBlockState.Failed -> Unit
+            }
+        }
+    }
+
+    private fun animateGrowth() {
+        val params = layoutParams ?: return
+        val target = params.height
+        if (target <= 0) return
+        growthTargetHeight = target
+        params.height = 0
+        requestLayout()
+        growthAnimator = revealAnimation.growHeight(this, target) {
+            growthAnimator = null
+            growthTargetHeight = null
+        }
+    }
+
+    private fun cancelRevealAnimation() {
+        growthAnimator?.let { animator ->
+            growthAnimator = null
+            animator.cancel()
+        }
+        growthTargetHeight = null
+        fadeAnimator?.let { animator ->
+            fadeAnimator = null
+            animator.cancel()
+        }
+        settleFadingContent()
+    }
+
+    private fun settleFadingContent() {
+        fadingOutView?.let { removeView(it) }
+        fadingOutView = null
     }
 
     private fun appearanceFor(state: EmbeddedBlockState): MindboxEmbeddedBlockAppearance =
@@ -533,13 +676,22 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun currentPlaceholder(): View = placeholderView ?: defaultPlaceholder
 
-    private fun showContent(content: View): Unit = loggingRunCatching {
+    private fun showContent(content: View, animated: Boolean = false): Unit = loggingRunCatching {
         if (content === shownContent) return@loggingRunCatching
-        shownContent?.let { removeView(it) }
+        val previous = shownContent
         shownContent = content
         (content.parent as? ViewGroup)?.removeView(content)
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         placeContentInFrame(content)
+        if (!animated) {
+            previous?.let { removeView(it) }
+            return@loggingRunCatching
+        }
+        fadingOutView = previous
+        fadeAnimator = revealAnimation.fadeIn(content) {
+            fadeAnimator = null
+            settleFadingContent()
+        }
     }
 
     private fun placeContentInFrame(content: View) {
@@ -551,7 +703,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             paddingLeft,
             paddingTop,
             blockWidth - paddingRight,
-            blockHeight - paddingBottom,
+            (growthTargetHeight ?: blockHeight) - paddingBottom,
         )
         if (contentFrame.isEmpty) return
         action(contentFrame)
@@ -574,6 +726,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun clearContent() {
+        cancelRevealAnimation()
         shownContent?.let { removeView(it) }
         shownContent = null
     }
@@ -605,33 +758,87 @@ public class MindboxEmbeddedBlockView internal constructor(
         listener.deliver(this)
     }
 
-    private companion object {
+    public companion object {
         private val DefaultListener = object : MindboxEmbeddedBlockListener {}
+
+        @InternalMindboxApi
+        public val REVEAL_ANIMATION_DURATION_MS: Long = Constants.Embedded.revealAnimationDuration.interval
+
+        @InternalMindboxApi
+        public fun initialAppearance(
+            context: Context,
+            placeSystemName: String?,
+            loadingStrategy: MindboxEmbeddedBlockLoadingStrategy,
+        ): MindboxEmbeddedBlockAppearance {
+            loggingRunCatching { SharedPreferencesManager.with(context) }
+            return initialAppearanceFor(loadingStrategy) {
+                EmbeddedBlockPlaceMemory().hasShownContentAt(placeSystemName)
+            }
+        }
+
+        internal fun initialAppearanceFor(
+            strategy: MindboxEmbeddedBlockLoadingStrategy,
+            hasShownContentBefore: () -> Boolean,
+        ): MindboxEmbeddedBlockAppearance = when (strategy) {
+            MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER -> MindboxEmbeddedBlockAppearance.PLACEHOLDER
+            MindboxEmbeddedBlockLoadingStrategy.HIDDEN -> MindboxEmbeddedBlockAppearance.COLLAPSED
+            MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC ->
+                if (hasShownContentBefore()) {
+                    MindboxEmbeddedBlockAppearance.PLACEHOLDER
+                } else {
+                    MindboxEmbeddedBlockAppearance.COLLAPSED
+                }
+        }
     }
 }
 
 private fun String?.orNullIfBlank(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
-private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? {
-    if (attrs == null) return null
+private fun EmbeddedBlockPlaceMemory.hasShownContentAt(place: String?): Boolean {
+    val name = place.orNullIfBlank() ?: return false
+    return loggingRunCatching(defaultValue = false) { hasShownContent(PlaceKey.of(name)) }
+}
+
+private fun <T> readBlockAttribute(
+    context: Context,
+    attrs: AttributeSet?,
+    defaultValue: T,
+    read: (TypedArray) -> T,
+): T = loggingRunCatching(defaultValue = defaultValue) {
+    if (attrs == null) return@loggingRunCatching defaultValue
     val values = context.obtainStyledAttributes(attrs, R.styleable.MindboxEmbeddedBlockView)
-    return try {
-        values.getString(R.styleable.MindboxEmbeddedBlockView_mindboxPlaceSystemName)
+    try {
+        read(values)
     } finally {
         values.recycle()
     }
 }
 
-private fun readConfigTimeout(context: Context, attrs: AttributeSet?): Milliseconds =
-    loggingRunCatching(defaultValue = Constants.Embedded.defaultConfigTimeout) {
-        val default = context.resources.getInteger(R.integer.mindbox_embedded_block_timeout_ms)
-        if (attrs == null) return@loggingRunCatching Milliseconds(default.toLong())
-        val values = context.obtainStyledAttributes(attrs, R.styleable.MindboxEmbeddedBlockView)
-        try {
-            Milliseconds(
-                values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxTimeoutMs, default).toLong()
-            )
-        } finally {
-            values.recycle()
+private fun readPlaceSystemName(context: Context, attrs: AttributeSet?): String? =
+    readBlockAttribute(context, attrs, defaultValue = null) { values ->
+        values.getString(R.styleable.MindboxEmbeddedBlockView_mindboxPlaceSystemName)
+    }
+
+private fun readConfigTimeout(context: Context, attrs: AttributeSet?): Milliseconds {
+    val default = loggingRunCatching(defaultValue = Constants.Embedded.defaultConfigTimeout.interval.toInt()) {
+        context.resources.getInteger(R.integer.mindbox_embedded_block_timeout_ms)
+    }
+    val timeoutMs = readBlockAttribute(context, attrs, defaultValue = default) { values ->
+        values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxTimeoutMs, default)
+    }
+    return Milliseconds(timeoutMs.toLong())
+}
+
+private fun readLoadingStrategy(context: Context, attrs: AttributeSet?): MindboxEmbeddedBlockLoadingStrategy =
+    readBlockAttribute(context, attrs, defaultValue = MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC) { values ->
+        when (values.getInt(R.styleable.MindboxEmbeddedBlockView_mindboxLoadingStrategy, 0)) {
+            1 -> MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER
+            2 -> MindboxEmbeddedBlockLoadingStrategy.HIDDEN
+            else -> MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC
         }
+    }
+
+private fun readAnimatesReveal(context: Context, attrs: AttributeSet?): Boolean =
+    readBlockAttribute(context, attrs, defaultValue = true) { values ->
+        values.getBoolean(R.styleable.MindboxEmbeddedBlockView_mindboxAnimatesReveal, true)
     }

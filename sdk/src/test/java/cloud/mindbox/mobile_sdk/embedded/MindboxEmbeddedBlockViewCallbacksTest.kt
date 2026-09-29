@@ -35,6 +35,7 @@ class MindboxEmbeddedBlockViewCallbacksTest {
     private val listener = RecordingListener()
 
     private fun buildView(
+        loadingStrategy: MindboxEmbeddedBlockLoadingStrategy? = null,
         providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider = { _, _ ->
             ScriptedProvider(activity).also { provider = it }
         },
@@ -43,6 +44,7 @@ class MindboxEmbeddedBlockViewCallbacksTest {
             activity,
             null,
             "main-screen-top",
+            loadingStrategy = loadingStrategy,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = providerFactory,
@@ -167,7 +169,9 @@ class MindboxEmbeddedBlockViewCallbacksTest {
 
     @Test
     fun `no answer from the SDK keeps the place when the host set an error view`() {
-        val view = buildView()
+        // The error screen replaces a look that took the block's space: a placeholder-strategy
+        // block. A block that waits hidden never shows one — that path has its own test.
+        val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER)
         view.setErrorView(View(activity))
         activity.attachBlock(view)
 
