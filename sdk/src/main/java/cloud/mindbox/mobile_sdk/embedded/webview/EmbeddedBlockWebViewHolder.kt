@@ -41,6 +41,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.fromBridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.logBridgeRefusal
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.requireBridgeNotNull
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeErrorPayload
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeJson
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import cloud.mindbox.mobile_sdk.newConcurrentSet
@@ -141,7 +142,7 @@ internal class EmbeddedBlockWebViewHolder(
 
             override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
                 val controller = webViewController ?: return
-                sendActionInternal(controller, message, onError)
+                sendActionInternal(controller, message, onError = onError)
             }
 
             override val closeCapability: ((BridgeMessage.Request) -> String)? = null
@@ -260,17 +261,16 @@ internal class EmbeddedBlockWebViewHolder(
 
             controller.setJsBridge(bridge = { json ->
                 mindboxLogI("SDK <- receive message $json")
-                val message = gson.fromBridgeMessage(json)
+                val (message, sentAction) = gson.fromBridgeMessage(json) ?: return@setJsBridge
                 if (!messageValidator.isValid(message)) {
                     return@setJsBridge
                 }
                 controller.executeOnViewThread {
                     if (isReleased) return@executeOnViewThread
                     when (message) {
-                        is BridgeMessage.Request -> handleRequest(message, controller, handlers)
+                        is BridgeMessage.Request -> handleRequest(message, sentAction, controller, handlers)
                         is BridgeMessage.Response -> handleResponse(message)
                         is BridgeMessage.Error -> handleError(message)
-                        else -> mindboxLogW("Unknown message type: $message")
                     }
                 }
             })
@@ -652,10 +652,11 @@ internal class EmbeddedBlockWebViewHolder(
     private fun sendActionInternal(
         controller: WebViewController,
         message: BridgeMessage,
+        sentAction: String? = null,
         onError: ((String?) -> Unit)? = null,
     ) {
         mindboxLogI("SDK -> send message $message")
-        val json: String = gson.toJson(message)
+        val json: String = gson.toBridgeJson(message, sentAction)
         val escapedJson: String = JSONObject.quote(json)
         controller.evaluateJavaScript(JS_CALL_BRIDGE.format(escapedJson)) { result ->
             if (result != JS_RETURN) {
@@ -666,6 +667,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleRequest(
         message: BridgeMessage.Request,
+        sentAction: String?,
         controller: WebViewController,
         handlers: WebViewActionHandlers,
     ) {
@@ -675,7 +677,7 @@ internal class EmbeddedBlockWebViewHolder(
             isAlive = { !isReleased },
             launchSuspending = { handle -> Mindbox.mindboxScope.launch { handle() } },
             respond = { payload -> sendSuccessResponse(message, payload, controller) },
-            refuse = { error -> sendErrorResponse(message, error, controller) },
+            refuse = { error -> sendErrorResponse(message, sentAction, error, controller) },
         )
     }
 
@@ -689,11 +691,16 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun sendErrorResponse(
         message: BridgeMessage.Request,
+        sentAction: String?,
         error: Throwable,
         controller: WebViewController,
     ) {
         logBridgeRefusal(message, inAppId, error)
-        sendActionInternal(controller, BridgeMessage.createErrorAction(message, gson.toBridgeErrorPayload(error)))
+        sendActionInternal(
+            controller = controller,
+            message = BridgeMessage.createErrorAction(message, gson.toBridgeErrorPayload(error)),
+            sentAction = sentAction,
+        )
     }
 
     private fun handleResponse(message: BridgeMessage.Response) {
