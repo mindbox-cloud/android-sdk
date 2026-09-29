@@ -12,8 +12,10 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CancellationException
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal interface WebViewBridgeHost {
@@ -105,37 +107,49 @@ internal class WebViewCommonBridgeActions(
     }
 
     private fun handleOpenLinkAction(message: BridgeMessage.Request): String {
-        linkRouter.executeOpenLink(message.payload)
-            .getOrElse { error: Throwable ->
-                throw IllegalStateException(error.message ?: "Navigation error")
-            }
+        linkRouter.executeOpenLink(message.payload).getOrThrow()
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private suspend fun handlePermissionAction(message: BridgeMessage.Request): String {
         val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
-        val typeString: String? = JSONObject(payload).getString(PERMISSION_PAYLOAD_TYPE_FIELD_NAME)
-        val type: PermissionType? = runCatching { typeString.enumValue<PermissionType>() }.getOrNull()
-        requireNotNull(type) { "Unknown permission type: $typeString" }
+        val typeValue: Any? = readBridgePayload { JSONObject(payload).get(PERMISSION_PAYLOAD_TYPE_FIELD_NAME) }
+        val typeString: String = requireBridgeNotNull((typeValue as? String)?.takeIf { it.isNotEmpty() }, BridgeErrorCode.INVALID_PAYLOAD) {
+            "Permission type must be a non-empty string, got $typeValue"
+        }
+        val type: PermissionType = requireBridgeNotNull(runCatching { typeString.enumValue<PermissionType>() }.getOrNull(), BridgeErrorCode.UNSUPPORTED_VALUE) {
+            "Unknown permission type: $typeString"
+        }
 
-        val activity: Activity? = host.hostActivity
-        checkNotNull(activity) { "Not found activity for permission request" }
+        val activity: Activity = requireBridgeNotNull(host.hostActivity, BridgeErrorCode.PERMISSION_FAILED) {
+            "Not found activity for permission request"
+        }
 
-        val permissionRequestResult: PermissionActionResponse = webViewPermissionRequester.requestPermission(
-            activity,
-            type
-        )
+        val permissionRequestResult: PermissionActionResponse = try {
+            webViewPermissionRequester.requestPermission(activity, type)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            throw BridgeRefusalException(BridgeErrorCode.PERMISSION_FAILED, error.message ?: "Permission request failed", error)
+        }
         return gson.toJson(permissionRequestResult)
     }
 
     private fun handleSettingsOpenAction(message: BridgeMessage.Request): String {
         val payload: String = message.payload ?: BridgeMessage.EMPTY_PAYLOAD
-        val settingsOpenRequest: SettingsOpenRequest? = gson.fromJson<SettingsOpenRequest>(payload).getOrNull()
-        requireNotNull(settingsOpenRequest)
+        val settingsOpenRequest: SettingsOpenRequest = requireBridgeNotNull(gson.fromJson<SettingsOpenRequest>(payload).getOrNull(), BridgeErrorCode.INVALID_PAYLOAD) {
+            "settings.open payload is not an object: $payload"
+        }
 
-        val targetType = settingsOpenRequest.target.enumValue<SettingsOpenTargetType>()
-        val activity: Activity? = host.hostActivity
-        checkNotNull(activity) { "Not found activity for open settings" }
+        val target: String = requireBridgeNotNull(settingsOpenRequest.target?.asNonEmptyStringOrNull(), BridgeErrorCode.INVALID_PAYLOAD) {
+            "Settings target must be a non-empty string, got ${settingsOpenRequest.target}"
+        }
+        val targetType: SettingsOpenTargetType = requireBridgeNotNull(runCatching { target.enumValue<SettingsOpenTargetType>() }.getOrNull(), BridgeErrorCode.UNSUPPORTED_VALUE) {
+            "Unknown settings target: $target"
+        }
+        val activity: Activity = requireBridgeNotNull(host.hostActivity, BridgeErrorCode.OPEN_FAILED) {
+            "Not found activity for open settings"
+        }
 
         when (targetType) {
             SettingsOpenTargetType.NOTIFICATIONS ->
@@ -160,12 +174,14 @@ internal class WebViewCommonBridgeActions(
     }
 
     private fun handleMotionStartAction(message: BridgeMessage.Request): String {
-        val payload = requireNotNull(message.payload) { "Missing payload" }
+        val payload = requireBridgeNotNull(message.payload, BridgeErrorCode.INVALID_PAYLOAD) { "Missing payload" }
         val gestures = parseMotionGestures(payload)
-        require(gestures.isNotEmpty()) { "No valid gestures provided. Available: shake, flip" }
         val result = getOrCreateMotionService().startMonitoring(gestures)
-        require(!result.allUnavailable) {
-            "No sensors available for: ${result.unavailable.joinToString { it.value }}"
+        if (result.allUnavailable) {
+            throw BridgeRefusalException(
+                BridgeErrorCode.GESTURES_UNAVAILABLE,
+                "No sensors available for: ${result.unavailable.joinToString { it.value }}",
+            )
         }
         return buildMotionStartPayload(result)
     }
@@ -183,14 +199,25 @@ internal class WebViewCommonBridgeActions(
     }
 
     private fun parseMotionGestures(payload: String): Set<MotionGesture> {
-        return loggingRunCatching(defaultValue = emptySet()) {
-            val array = JSONObject(payload).optJSONArray(MOTION_GESTURES_KEY)
-                ?: return@loggingRunCatching emptySet()
-            (0 until array.length())
-                .mapNotNull { i -> array.optString(i).enumValue<MotionGesture>() }
-                .toSet()
+        val entries: JSONArray = readBridgePayload { JSONObject(payload).optJSONArray(MOTION_GESTURES_KEY) }
+            ?.takeIf { array -> array.length() > 0 }
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "No gestures provided. Available: shake, flip")
+        val names: List<String> = (0 until entries.length()).map { i ->
+            requireBridgeNotNull((entries.opt(i) as? String)?.takeIf { it.isNotEmpty() }, BridgeErrorCode.INVALID_PAYLOAD) {
+                "Gesture #$i is not a non-empty string. Available: shake, flip"
+            }
         }
+        return names.map { name ->
+            requireBridgeNotNull(runCatching { name.enumValue<MotionGesture>() }.getOrNull(), BridgeErrorCode.UNSUPPORTED_VALUE) {
+                "Unknown gesture '$name'. Available: shake, flip"
+            }
+        }.toSet()
     }
+
+    private fun JsonElement.asNonEmptyStringOrNull(): String? =
+        takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
+            ?.asString
+            ?.takeIf { it.isNotEmpty() }
 
     private fun sendMotionEvent(gesture: MotionGesture, data: Map<String, String>) {
         val payload = JSONObject()
@@ -230,7 +257,7 @@ internal class WebViewCommonBridgeActions(
 
     private data class SettingsOpenRequest(
         @SerializedName("target")
-        val target: String,
+        val target: JsonElement?,
         @SerializedName("channelId")
         val channelId: String?
     )

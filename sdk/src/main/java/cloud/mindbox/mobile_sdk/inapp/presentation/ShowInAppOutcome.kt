@@ -1,15 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
+
 internal sealed interface ShowInAppOutcome {
     data object Shown : ShowInAppOutcome
 
-    data class NotShown(val reason: ShowInAppFailure) : ShowInAppOutcome
-}
-
-internal enum class ShowInAppFailure(val bridgeReason: String) {
-    UNKNOWN_INAPP("unknown_inapp"),
-    SOURCE_DISMISSED("source_dismissed"),
-    SHOW_FAILED("show_failed"),
+    data class NotShown(val code: BridgeErrorCode) : ShowInAppOutcome
 }
 
 internal fun interface OnShowInAppOutcome {
