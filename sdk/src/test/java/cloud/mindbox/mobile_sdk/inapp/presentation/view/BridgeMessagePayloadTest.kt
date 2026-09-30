@@ -130,6 +130,16 @@ internal class BridgeMessagePayloadTest {
     }
 
     @Test
+    fun `an answer carries the version of this SDK, not the one of the request`() {
+        val request = gson.fromBridgeMessage(
+            """{"type":"request","action":"openLink","payload":{},"id":"id-1","version":${BridgeMessage.VERSION + 1},"timestamp":1}"""
+        )?.message as BridgeMessage.Request
+
+        assertEquals(BridgeMessage.VERSION, BridgeMessage.createResponseAction(request, BridgeMessage.SUCCESS_PAYLOAD).version)
+        assertEquals(BridgeMessage.VERSION, BridgeMessage.createErrorAction(request, """{"error":"invalid_url"}""").version)
+    }
+
+    @Test
     fun `an action this SDK does not know survives parsing as unknown`() {
         // Gson writes null into the non-null action field for a name it has no constant for, and
         // the message then dies in the validator with an NPE — before reaching the dispatcher whose

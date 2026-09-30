@@ -152,7 +152,7 @@ public sealed class BridgeMessage {
         public fun createResponseAction(message: Request, payload: String?): Response =
             Response(
                 id = message.id,
-                version = message.version,
+                version = VERSION,
                 action = message.action,
                 payload = payload,
                 timestamp = System.currentTimeMillis(),
@@ -161,7 +161,7 @@ public sealed class BridgeMessage {
         public fun createErrorAction(message: Request, payload: String?): Error =
             Error(
                 id = message.id,
-                version = message.version,
+                version = VERSION,
                 action = message.action,
                 payload = payload,
                 timestamp = System.currentTimeMillis(),

@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInterac
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -1065,6 +1066,16 @@ class EmbeddedBlockWebViewHolderTest {
             assertEquals("action for '$action'", action, lastOutgoingMessage()?.get("action")?.asString)
             assertEquals("payload for '$action'", """{"error":"unknown_action"}""", lastOutgoingMessage()?.get("payload")?.asString)
         }
+    }
+
+    @Test
+    fun `a request of a newer version is answered with the version of this SDK`() {
+        startAndAwaitPageLoad()
+
+        postFromPage("""{"type":"request","action":"log","payload":"{}","id":"v2-1","version":${BridgeMessage.VERSION + 1},"timestamp":1}""")
+        await { lastOutgoingMessage()?.get("id")?.asString == "v2-1" }
+
+        assertEquals(BridgeMessage.VERSION, lastOutgoingMessage()?.get("version")?.asInt)
     }
 
     @Test
