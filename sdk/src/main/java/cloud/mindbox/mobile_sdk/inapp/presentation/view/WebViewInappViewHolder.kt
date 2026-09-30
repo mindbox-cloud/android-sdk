@@ -257,16 +257,13 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun handleInitAction(controller: WebViewController): String {
+        val mindboxView = checkNotNull(currentMindboxView) { "MindboxView is null when activating WebView In-App" }
         hasInitialized = true
         stopTimer()
         if (noCacheRetryPolicy.hasRetried) {
             controller.setCacheBypass(false)
         }
         lastLoadedContent = null
-        val mindboxView = currentMindboxView ?: run {
-            inAppController.close()
-            throw BridgeRefusalException(BridgeErrorCode.INTERNAL_ERROR, "MindboxView is null when activating WebView In-App")
-        }
         if (!hasShownFired) {
             hasShownFired = true
             wrapper.inAppActionCallbacks.onInAppShown.onShown()
