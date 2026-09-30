@@ -140,7 +140,6 @@ public sealed class BridgeMessage {
         public const val VERSION: Int = 1
         public const val EMPTY_PAYLOAD: String = "{}"
         public const val SUCCESS_PAYLOAD: String = """{"success":true}"""
-        public const val UNKNOWN_ERROR_PAYLOAD: String = """{"error":"Unknown error"}"""
         public const val TYPE_FIELD_NAME: String = "type"
         public const val TYPE_REQUEST: String = "request"
         public const val TYPE_RESPONSE: String = "response"
@@ -199,8 +198,7 @@ internal fun Gson.fromBridgeMessage(json: String): BridgeMessage? = fromJson<Jso
  */
 internal fun Gson.toBridgeErrorPayload(error: Throwable): String = when (error) {
     is WebViewSyncOperationException -> error.payloadJson
-    else -> runCatching { toJson(BridgeErrorPayload(error = requireNotNull(error.message))) }
-        .getOrDefault(BridgeMessage.UNKNOWN_ERROR_PAYLOAD)
+    else -> toJson(BridgeErrorPayload(error = error.bridgeErrorCode.wireValue))
 }
 
 private data class BridgeErrorPayload(
@@ -285,12 +283,13 @@ internal fun WebViewActionHandlers.dispatch(
             mindboxLogI("[WebView] Bridge: '${message.action}' is not served on this surface, acknowledging it")
             respond(BridgeMessage.SUCCESS_PAYLOAD)
         } else {
-            refuse(IllegalArgumentException("Action ${message.action} is not served on this surface"))
+            val code = if (message.action == WebViewAction.UNKNOWN) BridgeErrorCode.UNKNOWN_ACTION else BridgeErrorCode.NOT_SERVED
+            refuse(BridgeRefusalException(code, "Action ${message.action} is not served on this surface"))
         }
         return
     }
     if (message.action.requiresUserPresence && !isUserPresent) {
-        refuse(IllegalStateException(NOBODY_LOOKING_ERROR))
+        refuse(BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, NOBODY_LOOKING_ERROR))
         return
     }
     when {

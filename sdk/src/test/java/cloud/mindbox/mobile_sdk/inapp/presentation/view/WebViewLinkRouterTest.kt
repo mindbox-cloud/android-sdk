@@ -89,7 +89,7 @@ internal class WebViewLinkRouterTest {
         val activityNotFoundRouter: MindboxWebViewLinkRouter = createRouterWithActivityNotFoundError()
         val result: Result<String> = activityNotFoundRouter.executeOpenLink("""{"url":"tg://resolve?domain=durov"}""")
         assertFalse(result.isSuccess)
-        assertErrorContains(result = result, expectedMessagePart = "ActivityNotFoundException")
+        assertErrorCode(result = result, expectedCode = BridgeErrorCode.OPEN_FAILED)
     }
 
     @Test
@@ -129,8 +129,8 @@ internal class WebViewLinkRouterTest {
             activityNotFoundRouter.executeOpenLink("""{"url":"itms-apps://apps.apple.com/app/id389801252"}""")
         assertFalse(mapsResult.isSuccess)
         assertFalse(appStoreResult.isSuccess)
-        assertErrorContains(result = mapsResult, expectedMessagePart = "ActivityNotFoundException")
-        assertErrorContains(result = appStoreResult, expectedMessagePart = "ActivityNotFoundException")
+        assertErrorCode(result = mapsResult, expectedCode = BridgeErrorCode.OPEN_FAILED)
+        assertErrorCode(result = appStoreResult, expectedCode = BridgeErrorCode.OPEN_FAILED)
     }
 
     @Test
@@ -144,7 +144,7 @@ internal class WebViewLinkRouterTest {
         blockedUrls.forEach { blockedUrl: String ->
             val actualResult: Result<String> = executeOpenLink(url = blockedUrl)
             assertFalse(actualResult.isSuccess)
-            assertErrorContains(result = actualResult, expectedMessagePart = "Blocked URL scheme")
+            assertErrorCode(result = actualResult, expectedCode = BridgeErrorCode.BLOCKED_SCHEME)
         }
     }
 
@@ -154,8 +154,8 @@ internal class WebViewLinkRouterTest {
         val missingSchemeResult: Result<String> = executeOpenLink(url = "://missing-scheme")
         assertFalse(invalidResult.isSuccess)
         assertFalse(missingSchemeResult.isSuccess)
-        assertErrorContains(result = invalidResult, expectedMessagePart = "Invalid URL")
-        assertErrorContains(result = missingSchemeResult, expectedMessagePart = "Invalid URL")
+        assertErrorCode(result = invalidResult, expectedCode = BridgeErrorCode.INVALID_URL)
+        assertErrorCode(result = missingSchemeResult, expectedCode = BridgeErrorCode.INVALID_URL)
     }
 
     @Test
@@ -163,7 +163,7 @@ internal class WebViewLinkRouterTest {
         val activityNotFoundRouter: MindboxWebViewLinkRouter = createRouterWithActivityNotFoundError()
         val result: Result<String> = activityNotFoundRouter.executeOpenLink("""{"url":"nonexistent-scheme://test"}""")
         assertFalse(result.isSuccess)
-        assertErrorContains(result = result, expectedMessagePart = "ActivityNotFoundException")
+        assertErrorCode(result = result, expectedCode = BridgeErrorCode.OPEN_FAILED)
     }
 
     @Test
@@ -186,10 +186,24 @@ internal class WebViewLinkRouterTest {
         )
         payloadResults.forEach { actualResult: Result<String> ->
             assertFalse(actualResult.isSuccess)
-            assertErrorContains(
-                result = actualResult,
-                expectedMessagePart = "Invalid payload: missing or empty 'url' field",
-            )
+            assertErrorCode(result = actualResult, expectedCode = BridgeErrorCode.INVALID_PAYLOAD)
+        }
+    }
+
+    @Test
+    fun `executeOpenLink refuses a url of the wrong json type as invalid_payload`() {
+        val payloads: List<String> = listOf(
+            """{"url":123}""",
+            """{"url":true}""",
+            """{"url":{}}""",
+            """{"url":null}""",
+            """{"url":[]}""",
+            """{"url":["a","b"]}""",
+        )
+        payloads.forEach { payload: String ->
+            val actualResult: Result<String> = router.executeOpenLink(payload)
+            assertFalse(actualResult.isSuccess)
+            assertErrorCode(result = actualResult, expectedCode = BridgeErrorCode.INVALID_PAYLOAD)
         }
     }
 
@@ -197,14 +211,13 @@ internal class WebViewLinkRouterTest {
         return router.executeOpenLink("""{"url":"$url"}""")
     }
 
-    private fun assertErrorContains(
+    private fun assertErrorCode(
         result: Result<String>,
-        expectedMessagePart: String,
+        expectedCode: BridgeErrorCode,
     ) {
         val actualError: Throwable? = result.exceptionOrNull()
         assertNotNull(actualError)
-        val actualMessage: String = actualError?.message.orEmpty()
-        assertTrue(actualMessage.contains(expectedMessagePart))
+        assertEquals(expectedCode, (actualError as? BridgeRefusalException)?.code)
     }
 
     private fun createRouterWithActivityNotFoundError(): MindboxWebViewLinkRouter {

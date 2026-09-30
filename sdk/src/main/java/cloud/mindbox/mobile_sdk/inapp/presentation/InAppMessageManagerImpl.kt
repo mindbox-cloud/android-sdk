@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -125,7 +126,7 @@ internal class InAppMessageManagerImpl(
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     MindboxLoggerImpl.e(this@InAppMessageManagerImpl, "Showing in-app $inAppId on request failed", error)
-                    outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+                    outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
                 }
         }
     }
@@ -138,7 +139,7 @@ internal class InAppMessageManagerImpl(
     ) {
         val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
             mindboxLogI("Nothing to show for in-app $inAppId")
-            outcome.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.UNKNOWN_INAPP))
+            outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP))
             return
         }
         val (inApp, variant) = inAppToShow
@@ -201,7 +202,7 @@ internal class InAppMessageManagerImpl(
         private fun settleAsNotShown() {
             if (!state.compareAndSet(ShowState.PENDING, ShowState.NOT_SHOWN)) return
             if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
-            outcome?.settle(ShowInAppOutcome.NotShown(ShowInAppFailure.SHOW_FAILED))
+            outcome?.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
         }
     }
 

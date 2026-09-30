@@ -192,7 +192,7 @@ internal class WebViewInAppViewHolder(
         val json: String = gson.toJson(message)
         val escapedJson: String = JSONObject.quote(json)
         controller.evaluateJavaScript(JS_CALL_BRIDGE.format(escapedJson)) { result ->
-            if (!checkEvaluateJavaScript(result)) {
+            if (!checkEvaluateJavaScript(message, result)) {
                 onError?.invoke(result)
             }
         }
@@ -264,9 +264,8 @@ internal class WebViewInAppViewHolder(
         }
         lastLoadedContent = null
         val mindboxView = currentMindboxView ?: run {
-            mindboxLogW("MindboxView is null when activating WebView In-App")
             inAppController.close()
-            return BridgeMessage.UNKNOWN_ERROR_PAYLOAD
+            throw BridgeRefusalException(BridgeErrorCode.INTERNAL_ERROR, "MindboxView is null when activating WebView In-App")
         }
         if (!hasShownFired) {
             hasShownFired = true
@@ -509,11 +508,11 @@ internal class WebViewInAppViewHolder(
         )
     }
 
-    internal fun checkEvaluateJavaScript(response: String?): Boolean {
+    internal fun checkEvaluateJavaScript(message: BridgeMessage, response: String?): Boolean {
         return when (response) {
             JS_RETURN -> true
             else -> {
-                mindboxLogW("evaluateJavaScript returned unexpected response: $response")
+                mindboxLogW("[WebView] Bridge: '${message.action}' ${message.id} (${message.type}) did not reach the page: $response")
                 false
             }
         }
@@ -547,10 +546,8 @@ internal class WebViewInAppViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val json: String = gson.toBridgeErrorPayload(error)
-        val errorMessage: BridgeMessage.Error = BridgeMessage.createErrorAction(message, json)
-        mindboxLogE("WebView send error response for ${message.action} with payload ${errorMessage.payload}")
-        sendActionInternal(controller, errorMessage)
+        logBridgeRefusal(message, wrapper.inAppType.inAppId, error)
+        sendActionInternal(controller, BridgeMessage.createErrorAction(message, gson.toBridgeErrorPayload(error)))
     }
 
     private fun handleResponse(message: BridgeMessage.Response) {

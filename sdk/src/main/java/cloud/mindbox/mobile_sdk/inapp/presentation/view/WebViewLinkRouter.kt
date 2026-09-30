@@ -6,7 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import com.google.gson.JsonElement
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 
 internal interface WebViewLinkRouter {
     fun executeOpenLink(request: String?): Result<String>
@@ -41,16 +43,20 @@ internal class MindboxWebViewLinkRouter(
 
     private fun extractTargetUrl(request: String?): String {
         if (request.isNullOrBlank()) {
-            throw IllegalStateException(ERROR_MISSING_URL)
+            throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, ERROR_MISSING_URL)
         }
         val parsedJsonElement = runCatching { JsonParser.parseString(request) }.getOrNull()
-            ?: throw IllegalStateException(ERROR_MISSING_URL)
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, ERROR_MISSING_URL)
         if (!parsedJsonElement.isJsonObject) {
-            throw IllegalStateException(ERROR_MISSING_URL)
+            throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, ERROR_MISSING_URL)
         }
-        val url: String = parsedJsonElement.asJsonObject.get(KEY_URL)?.asString?.trim().orEmpty()
+        val urlElement: JsonElement? = parsedJsonElement.asJsonObject.get(KEY_URL)
+        if (urlElement is JsonPrimitive && !urlElement.isString) {
+            throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Invalid payload: 'url' must be a string, got $urlElement")
+        }
+        val url: String = runCatching { urlElement?.asString }.getOrNull()?.trim().orEmpty()
         if (url.isBlank()) {
-            throw IllegalStateException(ERROR_MISSING_URL)
+            throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, ERROR_MISSING_URL)
         }
         return url
     }
@@ -59,10 +65,10 @@ internal class MindboxWebViewLinkRouter(
         val parsedUri: Uri = url.toUri()
         val scheme: String = parsedUri.scheme?.lowercase().orEmpty()
         if (scheme.isBlank()) {
-            throw IllegalStateException("Invalid URL: '$url' could not be parsed")
+            throw BridgeRefusalException(BridgeErrorCode.INVALID_URL, "Invalid URL: '$url' could not be parsed")
         }
         if (scheme in BLOCKED_SCHEMES) {
-            throw IllegalStateException("Blocked URL scheme: '$scheme'")
+            throw BridgeRefusalException(BridgeErrorCode.BLOCKED_SCHEME, "Blocked URL scheme: '$scheme'")
         }
         return parsedUri
     }
@@ -86,7 +92,7 @@ internal class MindboxWebViewLinkRouter(
         val parsedIntent: Intent = runCatching { Intent.parseUri(rawIntentUri, Intent.URI_INTENT_SCHEME) }
             .getOrElse {
                 mindboxLogW("Intent URI parse failed: $rawIntentUri")
-                throw IllegalStateException("Invalid URL: '$rawIntentUri' could not be parsed")
+                throw BridgeRefusalException(BridgeErrorCode.INVALID_URL, "Invalid URL: '$rawIntentUri' could not be parsed")
             }
         if (parsedIntent.action.isNullOrBlank()) {
             parsedIntent.action = Intent.ACTION_VIEW
@@ -124,16 +130,20 @@ internal class MindboxWebViewLinkRouter(
             rawUrl
         } catch (error: ActivityNotFoundException) {
             mindboxLogW("Activity not found for URI: $rawUrl")
-            throw IllegalStateException(
-                "ActivityNotFoundException: ${error.message ?: "No activity found to handle URL"}"
+            throw BridgeRefusalException(
+                BridgeErrorCode.OPEN_FAILED,
+                "ActivityNotFoundException: ${error.message ?: "No activity found to handle URL"}",
+                error,
             )
         } catch (error: SecurityException) {
             mindboxLogW("Security exception for URI: $rawUrl")
-            throw IllegalStateException(
-                "SecurityException: ${error.message ?: "Cannot open URL"}"
+            throw BridgeRefusalException(
+                BridgeErrorCode.OPEN_FAILED,
+                "SecurityException: ${error.message ?: "Cannot open URL"}",
+                error,
             )
         } catch (error: Throwable) {
-            throw IllegalStateException(error.message ?: "Navigation failed: unable to open URL")
+            throw BridgeRefusalException(BridgeErrorCode.OPEN_FAILED, error.message ?: "Navigation failed: unable to open URL", error)
         }
     }
 }

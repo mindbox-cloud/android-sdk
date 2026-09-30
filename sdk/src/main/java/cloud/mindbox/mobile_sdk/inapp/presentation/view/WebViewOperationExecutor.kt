@@ -61,13 +61,13 @@ internal class MindboxWebViewOperationExecutor(
     }
 
     private fun parseOperationRequest(payload: String?, tags: Map<String, String>?): Pair<String, String> {
-        payload ?: throw IllegalArgumentException("Payload is not provided")
+        payload ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Payload is not provided")
         val jsonObject: JsonObject = runCatching { JsonParser.parseString(payload).asJsonObject }
-            .getOrElse { throw IllegalArgumentException("Payload is not a valid JSON object", it) }
-        val operation: String = jsonObject.getAsJsonPrimitive(OPERATION_FIELD)?.asString
-            ?: throw IllegalArgumentException("Operation is not provided")
-        val bodyObject: JsonObject = jsonObject.getAsJsonObject(BODY_FIELD)
-            ?: throw IllegalArgumentException("Body is not provided")
+            .getOrElse { throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Payload is not a valid JSON object", it) }
+        val operation: String = runCatching { jsonObject.getAsJsonPrimitive(OPERATION_FIELD)?.asString }.getOrNull()
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Operation is not provided")
+        val bodyObject: JsonObject = runCatching { jsonObject.getAsJsonObject(BODY_FIELD) }.getOrNull()
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Body is not provided")
         return operation to buildOperationBody(bodyObject, tags)
     }
 

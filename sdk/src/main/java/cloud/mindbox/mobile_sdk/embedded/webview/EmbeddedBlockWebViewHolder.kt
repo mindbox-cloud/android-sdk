@@ -24,7 +24,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInterac
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeRefusalException
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.DataCollector
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppInsets
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPage
@@ -36,9 +38,10 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewCommonBridgeActio
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewNoCacheRetryPolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.dispatch
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.fromBridgeMessage
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.logBridgeRefusal
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.requireBridgeNotNull
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.toBridgeErrorPayload
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
-import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppFailure
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import cloud.mindbox.mobile_sdk.newConcurrentSet
 import cloud.mindbox.mobile_sdk.inapp.webview.*
@@ -397,7 +400,7 @@ internal class EmbeddedBlockWebViewHolder(
     private suspend fun handleFilterShowableInappsAction(message: BridgeMessage.Request): String {
         val askedIds = runCatching {
             gson.fromJson(message.payload, JsonObject::class.java)?.get("inappIds") as? JsonArray
-        }.getOrNull() ?: throw IllegalArgumentException("no 'inappIds' array in the payload")
+        }.getOrNull() ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "no 'inappIds' array in the payload")
         val requestedIds = askedIds.mapNotNull { element ->
             runCatching { element.asJsonPrimitive.takeIf { primitive -> primitive.isString }?.asString }
                 .getOrNull()
@@ -451,7 +454,7 @@ internal class EmbeddedBlockWebViewHolder(
     private fun refusedContentReport(reason: String): Throwable {
         mindboxLogE("[EmbeddedBlock] contentRendered refused: $reason")
         fail(FailureReason.PRESENTATION_FAILED, "The embedded block page reported contentRendered with an unusable payload: $reason")
-        return IllegalArgumentException(reason)
+        return BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, reason)
     }
 
     private fun fail(reason: FailureReason, description: String) {
@@ -483,11 +486,14 @@ internal class EmbeddedBlockWebViewHolder(
 
     private suspend fun handleShowInAppAction(message: BridgeMessage.Request): String {
         val payload = gson.fromJson<JsonObject>(message.payload).getOrNull()
-            ?: throw IllegalArgumentException(SHOW_IN_APP_INVALID_PAYLOAD)
-        val requestedId = payload.getOrNull(SHOW_IN_APP_ID_FIELD)
-            ?.takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
-            ?.asString
-        require(!requestedId.isNullOrEmpty()) { SHOW_IN_APP_INVALID_PAYLOAD }
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, SHOW_IN_APP_INVALID_PAYLOAD)
+        val requestedId: String = requireBridgeNotNull(
+            payload.getOrNull(SHOW_IN_APP_ID_FIELD)
+                ?.takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
+                ?.asString
+                ?.takeIf { id -> id.isNotEmpty() },
+            BridgeErrorCode.INVALID_PAYLOAD,
+        ) { SHOW_IN_APP_INVALID_PAYLOAD }
         val extraParams: Map<String, JsonElement> =
             payload.getOrNull(SHOW_IN_APP_PARAMS_FIELD).safeAs<JsonObject>()
                 ?.entrySet()?.associate { (key, value) -> key to value }
@@ -495,7 +501,7 @@ internal class EmbeddedBlockWebViewHolder(
         mindboxLogI("[EmbeddedBlock] showInApp: inappId=$requestedId with ${extraParams.size} param(s)")
         if (lastState != EmbeddedBlockState.Loading && lastState != EmbeddedBlockState.Ready) {
             mindboxLogI("[EmbeddedBlock] Refused a show request from a block that is not shown")
-            throw IllegalStateException(ShowInAppFailure.SOURCE_DISMISSED.bridgeReason)
+            throw BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, "The block is not shown: $lastState")
         }
         val outcome = CompletableDeferred<ShowInAppOutcome>()
         pendingShowInAppOutcomes.add(outcome)
@@ -504,8 +510,8 @@ internal class EmbeddedBlockWebViewHolder(
             return when (val result = outcome.await()) {
                 ShowInAppOutcome.Shown -> BridgeMessage.SUCCESS_PAYLOAD
                 is ShowInAppOutcome.NotShown -> {
-                    mindboxLogI("[EmbeddedBlock] showInApp for $requestedId ended without a show: ${result.reason.bridgeReason}")
-                    throw IllegalStateException(result.reason.bridgeReason)
+                    mindboxLogI("[EmbeddedBlock] showInApp for $requestedId ended without a show: ${result.code}")
+                    throw BridgeRefusalException(result.code, "showInApp for $requestedId ended without a show")
                 }
             }
         } finally {
@@ -669,10 +675,7 @@ internal class EmbeddedBlockWebViewHolder(
             isAlive = { !isReleased },
             launchSuspending = { handle -> Mindbox.mindboxScope.launch { handle() } },
             respond = { payload -> sendSuccessResponse(message, payload, controller) },
-            refuse = { error ->
-                mindboxLogW("[EmbeddedBlock] Page action ${message.action} was refused: ${error.message}")
-                sendErrorResponse(message, error, controller)
-            },
+            refuse = { error -> sendErrorResponse(message, error, controller) },
         )
     }
 
@@ -689,9 +692,8 @@ internal class EmbeddedBlockWebViewHolder(
         error: Throwable,
         controller: WebViewController,
     ) {
-        val json: String = gson.toBridgeErrorPayload(error)
-        mindboxLogW("[EmbeddedBlock] Error response for ${message.action}: $json")
-        sendActionInternal(controller, BridgeMessage.createErrorAction(message, json))
+        logBridgeRefusal(message, inAppId, error)
+        sendActionInternal(controller, BridgeMessage.createErrorAction(message, gson.toBridgeErrorPayload(error)))
     }
 
     private fun handleResponse(message: BridgeMessage.Response) {

@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -71,6 +72,7 @@ class WebViewInAppViewHolderTest {
             }
         }
         mockkObject(DbManager)
+        mockkObject(MindboxLoggerImpl)
         every { DbManager.listenConfigurations() } returns flowOf(mockk<Configuration>(relaxed = true))
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html>inapp</html>"
 
@@ -92,6 +94,7 @@ class WebViewInAppViewHolderTest {
     fun tearDown() {
         holder.onClose()
         unmockkObject(DbManager)
+        unmockkObject(MindboxLoggerImpl)
     }
 
     private fun showAndAwaitPageLoad() {
@@ -134,6 +137,9 @@ class WebViewInAppViewHolderTest {
         return JsonParser.parseString(json).asJsonObject
     }
 
+    private fun lastOutgoingPayload(): JsonObject? =
+        lastOutgoingMessage()?.get("payload")?.asString?.let { JsonParser.parseString(it).asJsonObject }
+
     private fun failLastDelivery() {
         shadowOf(webView).lastEvaluatedJavascriptCallback.onReceiveValue("false")
         shadowOf(Looper.getMainLooper()).idle()
@@ -165,5 +171,59 @@ class WebViewInAppViewHolderTest {
         assertEquals(1, closeCount)
         verify(exactly = 1) { inAppCallback.onInAppDismissed("inapp-id") }
         verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a request the overlay does not serve is answered with not_served, and its detail goes to the log`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "showInApp", id = "show-1")
+        await { lastOutgoingMessage()?.get("id")?.asString == "show-1" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("""{"error":"not_served"}""", lastOutgoingPayload().toString())
+        verify(exactly = 1) {
+            MindboxLoggerImpl.e(
+                holder,
+                "[WebView] Bridge: 'SHOW_IN_APP' show-1 refused with not_served for 'inapp-id': " +
+                    "Action SHOW_IN_APP is not served on this surface",
+            )
+        }
+    }
+
+    @Test
+    fun `a message the page did not take is logged with its action and id`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+        postFromPage(action = "log", id = "log-1")
+        await { lastOutgoingMessage()?.get("id")?.asString == "log-1" }
+
+        failLastDelivery()
+
+        verify(exactly = 1) {
+            MindboxLoggerImpl.w(holder, "[WebView] Bridge: 'LOG' log-1 (response) did not reach the page: false")
+        }
+    }
+
+    @Test
+    fun `init with no window to show in closes the in-app and refuses with internal_error`() {
+        showAndAwaitPageLoad()
+        WebViewInAppViewHolder::class.java.getDeclaredField("currentMindboxView").apply {
+            isAccessible = true
+            set(holder, null)
+        }
+
+        postFromPage(action = "init", id = "init-1")
+
+        assertEquals(1, closeCount)
+        verify(exactly = 0) { inAppActionCallbacks.onInAppShown.onShown() }
+        verify(exactly = 1) {
+            MindboxLoggerImpl.e(
+                holder,
+                "[WebView] Bridge: 'INIT' init-1 refused with internal_error for 'inapp-id': " +
+                    "MindboxView is null when activating WebView In-App",
+            )
+        }
     }
 }
