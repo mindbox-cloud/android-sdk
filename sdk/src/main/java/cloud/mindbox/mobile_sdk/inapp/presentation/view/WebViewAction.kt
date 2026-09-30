@@ -35,12 +35,6 @@ public enum class WebViewAction {
     @SerializedName("log")
     LOG,
 
-    @SerializedName("alert")
-    ALERT,
-
-    @SerializedName("toast")
-    TOAST,
-
     @SerializedName("syncOperation")
     SYNC_OPERATION,
 
@@ -243,8 +237,6 @@ internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
         WebViewAction.CLOSE,
         WebViewAction.HIDE,
         WebViewAction.LOG,
-        WebViewAction.ALERT,
-        WebViewAction.TOAST,
         WebViewAction.MOTION_STOP,
         WebViewAction.CONTENT_RENDERED -> true
 
