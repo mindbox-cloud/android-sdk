@@ -211,6 +211,22 @@ class WebViewInAppViewHolderTest {
     }
 
     @Test
+    fun `an action this SDK does not know is refused with the name the page sent`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        listOf("show", "", "OPEN_LINK").forEachIndexed { index, action ->
+            postFromPage(action = action, id = "unknown-$index")
+            await { lastOutgoingMessage()?.get("id")?.asString == "unknown-$index" }
+
+            assertEquals("type for '$action'", "error", lastOutgoingMessage()?.get("type")?.asString)
+            assertEquals("action for '$action'", action, lastOutgoingMessage()?.get("action")?.asString)
+            assertEquals("payload for '$action'", """{"error":"unknown_action"}""", lastOutgoingMessage()?.get("payload")?.asString)
+        }
+        assertEquals(0, closeCount)
+    }
+
+    @Test
     fun `a message the page did not take is logged with its action and id`() {
         showAndAwaitPageLoad()
         postFromPage(action = "init", id = "init-1")

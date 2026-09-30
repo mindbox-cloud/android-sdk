@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import java.util.UUID
@@ -174,22 +175,43 @@ public sealed class BridgeMessage {
     }
 }
 
-internal fun Gson.fromBridgeMessage(json: String): BridgeMessage? = fromJson<JsonObject>(json)
-    .getOrNull()
-    ?.also { envelope ->
-        val payload = envelope.getOrNull("payload")
-        if (payload != null && (payload.isJsonObject || payload.isJsonArray)) {
-            envelope.addProperty("payload", payload.toString())
-        }
-        val action = envelope.getOrNull("action")
-        val isKnown = action != null &&
-            runCatching { fromJson(action, WebViewAction::class.java) }.getOrNull() != null
-        if (!isKnown) {
-            mindboxLogW("[WebView] Bridge: unknown action $action, answering it as unknown")
-            envelope.addProperty("action", UNKNOWN_ACTION_WIRE_NAME)
-        }
+internal data class ReceivedBridgeMessage(
+    val message: BridgeMessage,
+    val sentAction: String?,
+)
+
+internal fun Gson.fromBridgeMessage(json: String): ReceivedBridgeMessage? {
+    val envelope = fromJson<JsonObject>(json).getOrNull() ?: return null
+    val payload = envelope.getOrNull("payload")
+    if (payload != null && (payload.isJsonObject || payload.isJsonArray)) {
+        envelope.addProperty("payload", payload.toString())
     }
-    ?.let { envelope -> fromJson<BridgeMessage>(envelope).getOrNull() }
+    val action = envelope.getOrNull("action")
+    val sentAction = action?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+    val isKnown = sentAction != null && isActionWireName(sentAction)
+    if (!isKnown) {
+        envelope.addProperty("action", UNKNOWN_ACTION_WIRE_NAME)
+    }
+    val message = fromJson<BridgeMessage>(envelope).getOrNull() ?: return null
+    if (message is BridgeMessage.Request && sentAction == null) {
+        mindboxLogW("[WebView] Bridge: dropping a request whose action is not a name: $action")
+        return null
+    }
+    if (!isKnown) {
+        mindboxLogW("[WebView] Bridge: unknown action $action")
+    }
+    return ReceivedBridgeMessage(message = message, sentAction = sentAction)
+}
+
+private fun Gson.isActionWireName(name: String): Boolean = runCatching {
+    val action = fromJson(JsonPrimitive(name), WebViewAction::class.java)
+    action != null && toJsonTree(action).asString == name
+}.getOrDefault(false)
+
+internal fun Gson.toBridgeJson(message: BridgeMessage, sentAction: String?): String {
+    if (message.action != WebViewAction.UNKNOWN || sentAction == null) return toJson(message)
+    return toJson(toJsonTree(message).asJsonObject.apply { addProperty("action", sentAction) })
+}
 
 /**
  * The one error-payload rule for every surface: a sync-operation failure already carries the

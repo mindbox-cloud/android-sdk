@@ -635,10 +635,11 @@ class EmbeddedBlockWebViewHolderTest {
     fun `the old checkInappsTargeting name is not spoken anymore`() {
         startAndAwaitPageLoad()
 
-        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["inapp-1"]}"""))
+        postFromPage(request(action = "checkInappsTargeting", payload = """{"inappIds":["inapp-1"]}""", id = "old-name-1"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "old-name-1" }
 
         coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any(), any()) }
-        assertTrue(lastOutgoingMessage()?.get("action")?.asString != "checkInappsTargeting")
+        assertEquals("""{"error":"unknown_action"}""", lastOutgoingMessage()?.get("payload")?.asString)
     }
 
     @Test
@@ -1050,6 +1051,50 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("back", lastOutgoingMessage()?.get("action")?.asString)
         assertEquals("""{"error":"not_served"}""", lastOutgoingMessage()?.get("payload")?.asString)
+    }
+
+    @Test
+    fun `an action this SDK does not know is refused with the name the page sent`() {
+        startAndAwaitPageLoad()
+
+        listOf("show", "", "OPEN_LINK").forEachIndexed { index, action ->
+            postFromPage(request(action = action, payload = "{}", id = "unknown-$index"))
+            await { lastOutgoingMessage()?.get("id")?.asString == "unknown-$index" }
+
+            assertEquals("type for '$action'", "error", lastOutgoingMessage()?.get("type")?.asString)
+            assertEquals("action for '$action'", action, lastOutgoingMessage()?.get("action")?.asString)
+            assertEquals("payload for '$action'", """{"error":"unknown_action"}""", lastOutgoingMessage()?.get("payload")?.asString)
+        }
+    }
+
+    @Test
+    fun `a request without an action name or an id gets no answer`() {
+        startAndAwaitPageLoad()
+        val before = shadowOf(webView).lastEvaluatedJavascript
+
+        listOf(
+            """{"type":"request","payload":"{}","id":"no-action","version":1,"timestamp":1}""",
+            """{"type":"request","action":5,"payload":"{}","id":"number-action","version":1,"timestamp":1}""",
+            """{"type":"request","action":"show","payload":"{}","version":1,"timestamp":1}""",
+            """{"type":"request","action":"show","payload":"{}","id":null,"version":1,"timestamp":1}""",
+        ).forEach(::postFromPage)
+
+        assertEquals(before, shadowOf(webView).lastEvaluatedJavascript)
+    }
+
+    @Test
+    fun `a page answer without an action is still matched to its push by id`() {
+        startAndAwaitPageLoad()
+        var updateResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+        postFromPage(
+            """{"type":"response","payload":"{\"success\":true}","id":${lastOutgoingMessage()!!.get("id")},"version":1,"timestamp":2}"""
+        )
+
+        await { updateResult != null }
+        assertEquals(true, updateResult)
     }
 
     @Test
