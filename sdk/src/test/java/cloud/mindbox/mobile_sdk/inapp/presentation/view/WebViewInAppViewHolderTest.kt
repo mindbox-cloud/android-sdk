@@ -122,12 +122,16 @@ class WebViewInAppViewHolderTest {
     }
 
     private fun postFromPage(action: String, id: String) {
+        queueFromPage(action = action, id = id)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    private fun queueFromPage(action: String, id: String) {
         val json = """{"type":"request","action":"$action","payload":${Gson().toJson("{}")},"id":"$id","version":1,"timestamp":1}"""
         val bridge = shadowOf(webView).getJavascriptInterface("SdkBridge")
         val postMessage = bridge.javaClass.getDeclaredMethod("postMessage", String::class.java)
         postMessage.isAccessible = true
         postMessage.invoke(bridge, json)
-        shadowOf(Looper.getMainLooper()).idle()
     }
 
     private fun lastOutgoingMessage(): JsonObject? {
@@ -207,23 +211,15 @@ class WebViewInAppViewHolderTest {
     }
 
     @Test
-    fun `init with no window to show in closes the in-app and refuses with internal_error`() {
+    fun `an init still queued when the in-app closes is dropped before any handler`() {
         showAndAwaitPageLoad()
-        WebViewInAppViewHolder::class.java.getDeclaredField("currentMindboxView").apply {
-            isAccessible = true
-            set(holder, null)
-        }
 
-        postFromPage(action = "init", id = "init-1")
+        queueFromPage(action = "init", id = "init-1")
+        holder.onClose()
+        shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(1, closeCount)
-        verify(exactly = 0) { inAppActionCallbacks.onInAppShown.onShown() }
         verify(exactly = 1) {
-            MindboxLoggerImpl.e(
-                holder,
-                "[WebView] Bridge: 'INIT' init-1 refused with internal_error for 'inapp-id': " +
-                    "MindboxView is null when activating WebView In-App",
-            )
+            MindboxLoggerImpl.w(any(), "Dropping a page message that reached WebView In-App inapp-id after it was closed")
         }
     }
 }
