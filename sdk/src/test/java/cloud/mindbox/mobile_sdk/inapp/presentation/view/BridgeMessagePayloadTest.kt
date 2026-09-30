@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.data.validators.BridgeMessageValidator
+import com.google.gson.JsonDeserializer
 import com.google.gson.JsonParser
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -150,6 +151,31 @@ internal class BridgeMessagePayloadTest {
             assertEquals(name, WebViewAction.UNKNOWN, received?.message?.action)
             assertEquals(name, name, received?.sentAction)
         }
+    }
+
+    @Test
+    fun `a constant name stays unknown even when the Gson in use reads it as that action`() {
+        val gsonReadingConstantNames = gson.newBuilder()
+            .registerTypeAdapter(
+                WebViewAction::class.java,
+                JsonDeserializer { json, _, _ ->
+                    gson.fromJson(json, WebViewAction::class.java)
+                        ?: WebViewAction.entries.firstOrNull { action -> action.name == json.asString }
+                }
+            )
+            .create()
+
+        val byConstantName = gsonReadingConstantNames.fromBridgeMessage(
+            """{"type":"request","action":"OPEN_LINK","payload":{},"id":"id-1","version":1,"timestamp":1}"""
+        )
+        val byWireName = gsonReadingConstantNames.fromBridgeMessage(
+            """{"type":"request","action":"openLink","payload":{},"id":"id-1","version":1,"timestamp":1}"""
+        )
+
+        assertEquals(WebViewAction.UNKNOWN, byConstantName?.message?.action)
+        assertEquals("OPEN_LINK", byConstantName?.sentAction)
+        assertEquals(WebViewAction.OPEN_LINK, byWireName?.message?.action)
+        assertEquals("openLink", byWireName?.sentAction)
     }
 
     @Test
