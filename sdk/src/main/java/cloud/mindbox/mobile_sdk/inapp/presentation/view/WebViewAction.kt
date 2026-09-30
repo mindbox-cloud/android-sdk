@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import java.util.UUID
@@ -187,8 +188,7 @@ internal fun Gson.fromBridgeMessage(json: String): ReceivedBridgeMessage? {
     }
     val action = envelope.getOrNull("action")
     val sentAction = action?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
-    val isKnown = sentAction != null &&
-        runCatching { fromJson(action, WebViewAction::class.java) }.getOrNull() != null
+    val isKnown = sentAction != null && isActionWireName(sentAction)
     if (!isKnown) {
         envelope.addProperty("action", UNKNOWN_ACTION_WIRE_NAME)
     }
@@ -202,6 +202,11 @@ internal fun Gson.fromBridgeMessage(json: String): ReceivedBridgeMessage? {
     }
     return ReceivedBridgeMessage(message = message, sentAction = sentAction)
 }
+
+private fun Gson.isActionWireName(name: String): Boolean = runCatching {
+    val action = fromJson(JsonPrimitive(name), WebViewAction::class.java)
+    action != null && toJsonTree(action).asString == name
+}.getOrDefault(false)
 
 internal fun Gson.toBridgeJson(message: BridgeMessage, sentAction: String?): String {
     if (message.action != WebViewAction.UNKNOWN || sentAction == null) return toJson(message)
