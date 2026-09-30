@@ -93,6 +93,16 @@ class WebViewActionHandlersTest {
     }
 
     @Test
+    fun `back sent by the page is refused as not_served`() {
+        val handlers = WebViewActionHandlers()
+
+        handlers.dispatchInTest(WebViewAction.BACK)
+
+        assertNull(responded)
+        assertEquals(BridgeErrorCode.NOT_SERVED, (refused as BridgeRefusalException).code)
+    }
+
+    @Test
     fun `an action the platform does not know is refused as unknown, not as unserved`() {
         val handlers = WebViewActionHandlers()
 

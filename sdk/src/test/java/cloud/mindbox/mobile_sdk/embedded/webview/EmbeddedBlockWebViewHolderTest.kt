@@ -1041,6 +1041,18 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `back sent by the page is refused as not_served`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "back", payload = "{}", id = "back-1"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "back-1" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("back", lastOutgoingMessage()?.get("action")?.asString)
+        assertEquals("""{"error":"not_served"}""", lastOutgoingMessage()?.get("payload")?.asString)
+    }
+
+    @Test
     fun `content fetch failure reports Failed`() {
         coEvery { gatewayManager.fetchWebViewContent(any()) } throws IllegalStateException("network down")
 
