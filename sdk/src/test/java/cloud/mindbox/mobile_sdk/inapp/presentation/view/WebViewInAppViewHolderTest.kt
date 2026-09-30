@@ -121,13 +121,13 @@ class WebViewInAppViewHolderTest {
         }
     }
 
-    private fun postFromPage(action: String, id: String) {
-        queueFromPage(action = action, id = id)
+    private fun postFromPage(action: String, id: String, type: String = "request") {
+        queueFromPage(action = action, id = id, type = type)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    private fun queueFromPage(action: String, id: String) {
-        val json = """{"type":"request","action":"$action","payload":${Gson().toJson("{}")},"id":"$id","version":1,"timestamp":1}"""
+    private fun queueFromPage(action: String, id: String, type: String = "request") {
+        val json = """{"type":"$type","action":"$action","payload":${Gson().toJson("{}")},"id":"$id","version":1,"timestamp":1}"""
         val bridge = shadowOf(webView).getJavascriptInterface("SdkBridge")
         val postMessage = bridge.javaClass.getDeclaredMethod("postMessage", String::class.java)
         postMessage.isAccessible = true
@@ -175,6 +175,30 @@ class WebViewInAppViewHolderTest {
         assertEquals(1, closeCount)
         verify(exactly = 1) { inAppCallback.onInAppDismissed("inapp-id") }
         verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a page error closes the in-app, tells the host once and sends no failure`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "localState.changed", id = "changed-1", type = "error")
+
+        assertEquals(1, closeCount)
+        verify(exactly = 1) { inAppCallback.onInAppDismissed("inapp-id") }
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a page close and a page error queued together tell the host once`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        queueFromPage(action = "close", id = "close-1")
+        queueFromPage(action = "localState.changed", id = "changed-1", type = "error")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        verify(exactly = 1) { inAppCallback.onInAppDismissed("inapp-id") }
     }
 
     @Test
