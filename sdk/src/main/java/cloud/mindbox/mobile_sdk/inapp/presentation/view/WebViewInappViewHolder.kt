@@ -552,7 +552,7 @@ internal class WebViewInAppViewHolder(
         mindboxLogW("WebView error: ${message.payload}")
         val responseDeferred: CompletableDeferred<BridgeMessage.Response>? = pendingResponsesById.remove(message.id)
         responseDeferred?.cancel("WebView error: ${message.payload}")
-        inAppController.close()
+        handleCloseAction(message)
     }
 
     private fun cancelPendingResponses(reason: String) {
