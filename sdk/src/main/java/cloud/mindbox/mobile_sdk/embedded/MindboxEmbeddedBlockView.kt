@@ -431,22 +431,16 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     /**
-     * Stops the block for good: the content stops, the host screen is no longer observed, the
-     * listener is dropped, and the block does not start again even while it stays in a window.
+     * Releases the block and everything it holds. One way only: a released block never shows
+     * content again — to show the place again, create a new block.
      *
-     * For wrappers whose own object graph dies before the view leaves the window — a platform-view
-     * factory keeps the view for as long as the platform sees fit, and the block should stop when
-     * the screen is gone rather than when the last reference is. A host application needs nothing:
-     * a block that leaves the window pauses itself, and the destruction of the host screen frees it.
-     *
-     * One way only: a released block stays released, and [setListener] and [setAppearanceObserver]
-     * on it do nothing.
+     * Call it when the block is discarded before its screen is destroyed; otherwise its resources
+     * live until then. A block that only leaves the window needs no call.
      */
-    @InternalMindboxApi
     public fun release() {
         if (isReleased) return
 
-        mindboxLogI("[EmbeddedBlock] Released by the host wrapper, freeing content")
+        mindboxLogI("[EmbeddedBlock] Released by the host, freeing content")
         isReleased = true
         appearanceObserver = null
         updateContentActivity()
