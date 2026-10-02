@@ -73,7 +73,16 @@ internal class WebViewInAppViewHolder(
         private const val JS_BRIDGE_CLASS = "window.bridgeMessagesHandlers"
         private const val JS_BRIDGE = "$JS_BRIDGE_CLASS.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
-        private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
+
+        // Returns a status, not a boolean: the give-up message carries it into errorDetails, so a
+        // native bridge stripped by R8 is told apart from page JS that never booted.
+        private const val JS_CHECK_BRIDGE = "(() => {" +
+            "if (typeof window.$DEFAULT_WEBVIEW_BRIDGE_NAME === 'undefined' || " +
+            "typeof window.$DEFAULT_WEBVIEW_BRIDGE_NAME.postMessage !== 'function') return 'no-native-bridge';" +
+            "if (typeof $JS_BRIDGE_CLASS === 'undefined' || typeof $JS_BRIDGE !== 'function') return 'no-handlers';" +
+            "return 'ok';" +
+            "})()"
+        private const val JS_BRIDGE_READY = "\"ok\""
         private const val MOTION_GESTURE_KEY = "gesture"
         private const val MOTION_GESTURES_KEY = "gestures"
     }
@@ -601,7 +610,7 @@ internal class WebViewInAppViewHolder(
         readyChecker = checker
         checker.run(
             script = JS_CHECK_BRIDGE,
-            expectedResult = JS_RETURN,
+            expectedResult = JS_BRIDGE_READY,
             onReady = { mindboxLogD("JS ready check passed for $url") },
             onGiveUp = { lastFailure ->
                 if (hasInitialized) {
