@@ -13,6 +13,8 @@ class MindboxRuleSetProvider : RuleSetProvider {
             id = ruleSetId,
             rules = listOf(
                 GsonSerializedNameRule(config = config),
+                UnjustifiedReflectionRule(config = config),
+                RuntimeTypeAdapterSubtypeWithoutLabelRule(config = config),
             )
         )
     }
