@@ -33,3 +33,7 @@ mindbox:
   active: true
   GsonMissingSerializedName:
     active: true
+  UnjustifiedReflection:
+    active: true
+  RuntimeTypeAdapterSubtypeWithoutLabel:
+    active: true

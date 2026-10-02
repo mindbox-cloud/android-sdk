@@ -58,6 +58,8 @@ public object MindboxCoreStarter {
             ?.component
             ?.className
             ?.let { className ->
+                // The app's launcher Activity comes from the merged manifest, which AGP keeps by name.
+                @Suppress("UnjustifiedReflection")
                 Class.forName(className).asSubclass(Activity::class.java)
             }
 
