@@ -75,6 +75,8 @@ internal class WebViewInAppViewHolder(
     private var readyChecker: WebViewReadyChecker? = null
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
 
+    @Volatile private var isClosed = false
+
     private var hasInitialized = false
     private var hasShownFired = false
     private var pendingReadyCheckFailure: String? = null
@@ -107,9 +109,8 @@ internal class WebViewInAppViewHolder(
             override val hostActivity: Activity? get() = webViewController?.view?.context?.findActivity()
             override val hostTags: Map<String, String>? get() = wrapper.tags
             override val hostPage: MindboxWebPage get() = this@WebViewInAppViewHolder
-
-            // The overlay owns the screen for as long as it is alive.
-            override val isUserPresent: Boolean get() = true
+            override val hostInAppId: String get() = wrapper.inAppType.inAppId
+            override val isAskerAlive: Boolean get() = !isClosed
 
             override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
                 val controller = webViewController ?: return
@@ -118,6 +119,8 @@ internal class WebViewInAppViewHolder(
 
             override val closeCapability: ((BridgeMessage.Request) -> String) = ::handleCloseAction
             override val hideCapability: (() -> String) = ::handleHideAction
+
+            override fun requireCanShowInApp() = Unit
         })
     }
     private val commonBridgeActions: WebViewCommonBridgeActions by commonBridgeActionsLazy
@@ -740,6 +743,7 @@ internal class WebViewInAppViewHolder(
     }
 
     override fun onClose() {
+        isClosed = true
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
