@@ -52,6 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -470,7 +471,7 @@ class EmbeddedBlockWebViewHolderTest {
     private val outcomes = slot<OnShowInAppOutcome>()
 
     private fun givenShowPathCapturesOutcome() {
-        every { inAppMessageManager.showInAppById(any(), any(), capture(outcomes)) } just runs
+        every { inAppMessageManager.showInAppById(any(), any(), any(), capture(outcomes)) } just runs
     }
 
     private fun noShowInAppAnswerYet(): Boolean {
@@ -552,6 +553,41 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals(lastScriptBeforeRelease, page.lastEvaluatedJavascript)
     }
 
+    private val askerAlive = slot<() -> Boolean>()
+
+    private fun givenShowPathCapturesAsker() {
+        every { inAppMessageManager.showInAppById(any(), any(), capture(askerAlive), capture(outcomes)) } just runs
+    }
+
+    @Test
+    fun `a block that left the screen is no longer the asker of its showInApp and its page hears not_visible`() {
+        givenShowPathCapturesAsker()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { outcomes.isCaptured }
+        assertTrue(askerAlive.captured())
+
+        holder.pause()
+        assertFalse(askerAlive.captured())
+        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
+    }
+
+    @Test
+    fun `a released block is no longer the asker of the showInApp it sent`() {
+        givenShowPathCapturesAsker()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { askerAlive.isCaptured }
+
+        holder.release()
+
+        assertFalse(askerAlive.captured())
+    }
+
     @Test
     fun `showInApp hands the id and the params to the show path`() {
         givenShowPathCapturesOutcome()
@@ -572,6 +608,7 @@ class EmbeddedBlockWebViewHolderTest {
                     "title" to JsonPrimitive("Заголовок 1"),
                     "record" to JsonParser.parseString("""{"rank":3}"""),
                 ),
+                any(),
                 any()
             )
         }
@@ -589,7 +626,7 @@ class EmbeddedBlockWebViewHolderTest {
         await { outcomes.isCaptured }
 
         verify(exactly = 1) {
-            inAppMessageManager.showInAppById("inapp-1", mapOf("a" to JsonPrimitive(1)), any())
+            inAppMessageManager.showInAppById("inapp-1", mapOf("a" to JsonPrimitive(1)), any(), any())
         }
     }
 
@@ -602,7 +639,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
     }
 
     @Test
@@ -615,7 +652,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
     }
 
     @Test
@@ -629,7 +666,7 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
-        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any()) }
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
     }
 
     @Test

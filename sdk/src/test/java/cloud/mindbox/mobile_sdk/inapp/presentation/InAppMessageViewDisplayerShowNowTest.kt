@@ -26,6 +26,8 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import io.mockk.verifyOrder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Before
@@ -107,12 +109,25 @@ internal class InAppMessageViewDisplayerShowNowTest {
         val root = FrameLayout(ApplicationProvider.getApplicationContext<Application>())
         setPrivateField(
             "currentActivity",
-            mockk<Activity> {
+            mockk<Activity>(relaxed = true) {
                 every { isFinishing } returns false
                 every { window } returns mockk { every { decorView } returns root }
             }
         )
         return root
+    }
+
+    private fun onScreen(): InAppViewHolder<*>? =
+        InAppMessageViewDisplayerImpl::class.java.getDeclaredField("currentHolder")
+            .apply { isAccessible = true }
+            .get(displayer) as InAppViewHolder<*>?
+
+    private fun showModalNow(inAppId: String): InAppViewHolder<*> {
+        displayer.showInAppMessageNow(
+            inAppType = InAppStub.getModalWindow().copy(inAppId = inAppId),
+            inAppActionCallbacks = noCallbacks,
+        )
+        return onScreen()!!
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -258,6 +273,38 @@ internal class InAppMessageViewDisplayerShowNowTest {
         )
 
         assertTrue(queuedInApps().isEmpty())
+    }
+
+    @Test
+    fun `a late close from a replaced in-app leaves the one that replaced it on screen`() {
+        givenForegroundActivityWithRoot()
+        val replaced = showModalNow("first-id")
+        showModalNow("second-id")
+
+        replaced.inAppController.close()
+
+        assertEquals("second-id", onScreen()?.wrapper?.inAppType?.inAppId)
+    }
+
+    @Test
+    fun `the in-app on screen closes through its own controller`() {
+        givenForegroundActivityWithRoot()
+        val shown = showModalNow("shown-id")
+
+        shown.inAppController.close()
+
+        assertNull(onScreen())
+    }
+
+    @Test
+    fun `a paused in-app closes through its own controller`() {
+        givenForegroundActivityWithRoot()
+        val paused = showModalNow("paused-id")
+        displayer.onPauseCurrentActivity(mockk())
+
+        paused.inAppController.close()
+
+        assertFalse(displayer.isInAppActive())
     }
 
     @Test

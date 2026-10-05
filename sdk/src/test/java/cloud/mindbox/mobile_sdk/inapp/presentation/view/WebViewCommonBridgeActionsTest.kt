@@ -7,9 +7,18 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
+import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -34,22 +43,26 @@ class WebViewCommonBridgeActionsTest {
     private val application = ApplicationProvider.getApplicationContext<Application>()
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val permissionManager: PermissionManager = mockk(relaxed = true)
+    private val inAppMessageManager: InAppMessageManager = mockk()
 
     private class FakeHost(
         override val closeCapability: ((BridgeMessage.Request) -> String)? = null,
         override val hideCapability: (() -> String)? = null,
-        override val isUserPresent: Boolean = true,
+        override val isAskerAlive: Boolean = true,
         override val hostActivity: Activity? = null,
     ) : WebViewBridgeHost {
 
         override val hostTags: Map<String, String> = mapOf("templateType" to "Embedded")
         override val hostPage: MindboxWebPage = MindboxWebPage { _, _ -> }
+        override val hostInAppId: String = "host-id"
 
         val sentToPage = mutableListOf<BridgeMessage.Request>()
 
         override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
             sentToPage.add(message)
         }
+
+        override fun requireCanShowInApp() = Unit
     }
 
     @Before
@@ -59,6 +72,7 @@ class WebViewCommonBridgeActionsTest {
             every { gson } returns DataModule(mockk(relaxed = true), mockk(relaxed = true)).gson
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
             every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
+            every { inAppMessageManager } returns this@WebViewCommonBridgeActionsTest.inAppMessageManager
         }
     }
 
@@ -268,5 +282,36 @@ class WebViewCommonBridgeActionsTest {
         verify {
             webPageRegistry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, answer, excludingAuthor = host.hostPage)
         }
+    }
+
+    @Test
+    fun `a show request still waiting when the page is torn down ends without an answer`() = runBlocking {
+        val outcome = slot<OnShowInAppOutcome>()
+        every { inAppMessageManager.showInAppById(any(), any(), any(), capture(outcome)) } just runs
+        val actions = WebViewCommonBridgeActions(FakeHost())
+        val handler = WebViewActionHandlers().also(actions::register).suspendHandler(WebViewAction.SHOW_IN_APP)!!
+        val answer = async(start = CoroutineStart.UNDISPATCHED) {
+            runCatching { handler(request(WebViewAction.SHOW_IN_APP, """{"inappId":"story-2"}""")) }
+        }
+
+        actions.tearDown()
+        outcome.captured.onOutcome(ShowInAppOutcome.Shown)
+
+        assertTrue(answer.await().exceptionOrNull() is CancellationException)
+    }
+
+    @Test
+    fun `a show request reaching a torn-down page never asks for the show`() {
+        every { inAppMessageManager.showInAppById(any(), any(), any(), any()) } answers {
+            arg<OnShowInAppOutcome>(3).onOutcome(ShowInAppOutcome.Shown)
+        }
+        val actions = WebViewCommonBridgeActions(FakeHost())
+        val handler = WebViewActionHandlers().also(actions::register).suspendHandler(WebViewAction.SHOW_IN_APP)!!
+
+        actions.tearDown()
+        val answer = runBlocking { runCatching { handler(request(WebViewAction.SHOW_IN_APP, """{"inappId":"story-2"}""")) } }
+
+        assertTrue(answer.exceptionOrNull() is CancellationException)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
     }
 }

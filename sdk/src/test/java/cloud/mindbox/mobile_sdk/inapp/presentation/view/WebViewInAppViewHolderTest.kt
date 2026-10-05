@@ -10,11 +10,15 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppTypeWrapper
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.MindboxView
+import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -26,8 +30,10 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.runs
 import io.mockk.slot
 import io.mockk.unmockkObject
 import io.mockk.verify
@@ -35,6 +41,8 @@ import kotlinx.coroutines.flow.flowOf
 import org.json.JSONTokener
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +59,8 @@ class WebViewInAppViewHolderTest {
     private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
     private val inAppCallback: InAppCallback = mockk(relaxed = true)
     private val inAppActionCallbacks: InAppActionCallbacks = mockk(relaxed = true)
+    private val inAppInteractor: InAppInteractor = mockk()
+    private val inAppMessageManager: InAppMessageManager = mockk()
     private val onBackPress = slot<() -> Unit>()
     private val backPressRegistrar: BackPressRegistrar = mockk {
         every { register(any(), capture(onBackPress)) } returns BackRegistration {}
@@ -67,6 +77,8 @@ class WebViewInAppViewHolderTest {
             every { gatewayManager } returns this@WebViewInAppViewHolderTest.gatewayManager
             every { appContext } returns application
             every { inAppFailureTracker } returns this@WebViewInAppViewHolderTest.inAppFailureTracker
+            every { inAppInteractor } returns this@WebViewInAppViewHolderTest.inAppInteractor
+            every { inAppMessageManager } returns this@WebViewInAppViewHolderTest.inAppMessageManager
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
@@ -121,13 +133,23 @@ class WebViewInAppViewHolderTest {
         }
     }
 
-    private fun postFromPage(action: String, id: String, type: String = "request") {
-        queueFromPage(action = action, id = id, type = type)
+    private fun postFromPage(
+        action: String,
+        id: String,
+        type: String = "request",
+        payload: String = "{}",
+    ) {
+        queueFromPage(action = action, id = id, type = type, payload = payload)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    private fun queueFromPage(action: String, id: String, type: String = "request") {
-        val json = """{"type":"$type","action":"$action","payload":${Gson().toJson("{}")},"id":"$id","version":1,"timestamp":1}"""
+    private fun queueFromPage(
+        action: String,
+        id: String,
+        type: String = "request",
+        payload: String = "{}",
+    ) {
+        val json = """{"type":"$type","action":"$action","payload":${Gson().toJson(payload)},"id":"$id","version":1,"timestamp":1}"""
         val bridge = shadowOf(webView).getJavascriptInterface("SdkBridge")
         val postMessage = bridge.javaClass.getDeclaredMethod("postMessage", String::class.java)
         postMessage.isAccessible = true
@@ -206,18 +228,76 @@ class WebViewInAppViewHolderTest {
         showAndAwaitPageLoad()
         postFromPage(action = "init", id = "init-1")
 
-        postFromPage(action = "showInApp", id = "show-1")
-        await { lastOutgoingMessage()?.get("id")?.asString == "show-1" }
+        postFromPage(action = "navigationIntercepted", id = "navigation-1")
+        await { lastOutgoingMessage()?.get("id")?.asString == "navigation-1" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("""{"error":"not_served"}""", lastOutgoingPayload().toString())
         verify(exactly = 1) {
             MindboxLoggerImpl.e(
                 holder,
-                "[WebView] Bridge: 'SHOW_IN_APP' show-1 refused with not_served for 'inapp-id': " +
-                    "Action SHOW_IN_APP is not served on this surface",
+                "[WebView] Bridge: 'NAVIGATION_INTERCEPTED' navigation-1 refused with not_served for 'inapp-id': " +
+                    "Action NAVIGATION_INTERCEPTED is not served on this surface",
             )
         }
+    }
+
+    @Test
+    fun `filterShowableInapps from the overlay page is answered with the selection made for the overlay`() {
+        coEvery { inAppInteractor.filterShowableInAppIds("inapp-id", listOf("story-2", "story-3")) } returns listOf("story-2")
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "filterShowableInapps", id = "filter-1", payload = """{"inappIds":["story-2","story-3"]}""")
+        await { lastOutgoingMessage()?.get("id")?.asString == "filter-1" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals(listOf("story-2"), lastOutgoingPayload()?.getAsJsonArray("inappIds")?.map { id -> id.asString })
+    }
+
+    @Test
+    fun `showInApp of an in-app the overlay cannot open keeps the overlay and refuses the page`() {
+        val outcome = slot<OnShowInAppOutcome>()
+        every { inAppMessageManager.showInAppById("missing", any(), any(), capture(outcome)) } just runs
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "showInApp", id = "show-1", payload = """{"inappId":"missing"}""")
+        await { outcome.isCaptured }
+        outcome.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP))
+        await { lastOutgoingMessage()?.get("id")?.asString == "show-1" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("""{"error":"unknown_inapp"}""", lastOutgoingPayload().toString())
+        assertEquals(0, closeCount)
+    }
+
+    @Test
+    fun `showInApp without an inappId is refused as invalid_payload and keeps the overlay`() {
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+
+        postFromPage(action = "showInApp", id = "show-1", payload = """{"params":{}}""")
+        await { lastOutgoingMessage()?.get("id")?.asString == "show-1" }
+
+        assertEquals("""{"error":"invalid_payload"}""", lastOutgoingPayload().toString())
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
+        assertEquals(0, closeCount)
+    }
+
+    @Test
+    fun `the overlay stops being the asker of its showInApp once it closes`() {
+        val askerAlive = slot<() -> Boolean>()
+        every { inAppMessageManager.showInAppById("story-2", any(), capture(askerAlive), any()) } just runs
+        showAndAwaitPageLoad()
+        postFromPage(action = "init", id = "init-1")
+        postFromPage(action = "showInApp", id = "show-1", payload = """{"inappId":"story-2"}""")
+        await { askerAlive.isCaptured }
+        assertTrue(askerAlive.captured())
+
+        postFromPage(action = "close", id = "close-1")
+
+        assertFalse(askerAlive.captured())
     }
 
     @Test

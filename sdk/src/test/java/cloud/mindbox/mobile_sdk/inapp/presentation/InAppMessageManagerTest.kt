@@ -502,7 +502,7 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
         } just runs
 
-        createManager().showInAppById("tap-id", extraParams) {}
+        createManager().showInAppById("tap-id", extraParams, askerAlive = { true }) {}
         advanceUntilIdle()
 
         verify(exactly = 1) {
@@ -530,7 +530,7 @@ internal class InAppMessageManagerTest {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
         } just runs
 
-        createManager().showInAppById("tap-id", emptyMap()) {}
+        createManager().showInAppById("tap-id", emptyMap(), askerAlive = { true }) {}
         advanceUntilIdle()
 
         callbacks.captured.onInAppShown.onShown()
@@ -546,7 +546,7 @@ internal class InAppMessageManagerTest {
         coEvery { inAppMessageInteractor.getInAppToShowById("missing") } returns null
         val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("missing", emptyMap()) { outcomes.add(it) }
+        createManager().showInAppById("missing", emptyMap(), askerAlive = { true }) { outcomes.add(it) }
         advanceUntilIdle()
 
         verify(exactly = 0) {
@@ -569,7 +569,7 @@ internal class InAppMessageManagerTest {
         } just runs
         val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        createManager().showInAppById("tap-id", emptyMap(), askerAlive = { true }) { outcomes.add(it) }
         advanceUntilIdle()
         assertTrue(outcomes.isEmpty())
 
@@ -586,7 +586,7 @@ internal class InAppMessageManagerTest {
         coEvery { inAppMessageInteractor.getInAppToShowById("boom") } throws IllegalStateException("boom")
         val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("boom", emptyMap()) { outcomes.add(it) }
+        createManager().showInAppById("boom", emptyMap(), askerAlive = { true }) { outcomes.add(it) }
         advanceUntilIdle()
 
         assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
@@ -606,7 +606,7 @@ internal class InAppMessageManagerTest {
         } just runs
         val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        createManager().showInAppById("tap-id", emptyMap(), askerAlive = { true }) { outcomes.add(it) }
         advanceUntilIdle()
 
         callbacks.captured.onInAppNotShown.onNotShown()
@@ -614,6 +614,24 @@ internal class InAppMessageManagerTest {
         callbacks.captured.onInAppShown.onShown()
 
         assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
+    }
+
+    @Test
+    fun `showInAppById from an asker gone by the main step shows nothing and answers not_visible`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        var isAskerAlive = true
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } coAnswers {
+            isAskerAlive = false
+            InAppToShow(inApp, variant)
+        }
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap(), askerAlive = { isAskerAlive }) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE)), outcomes)
+        verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
     }
 
     // ---- the overlay's hold in the show budgets: taken before the show, given back if it never shows ----
@@ -784,7 +802,7 @@ internal class InAppMessageManagerTest {
         } just runs
         val outcomes = mutableListOf<ShowInAppOutcome>()
 
-        createManager().showInAppById("tap-id", emptyMap()) { outcomes.add(it) }
+        createManager().showInAppById("tap-id", emptyMap(), askerAlive = { true }) { outcomes.add(it) }
         advanceUntilIdle()
         callbacks.captured.onInAppShown.onShown()
         callbacks.captured.onInAppNotShown.onNotShown()
