@@ -286,18 +286,18 @@ class WebViewInAppViewHolderTest {
     }
 
     @Test
-    fun `the overlay stops being the asker of its showInApp once it closes`() {
-        val askerAlive = slot<() -> Boolean>()
-        every { inAppMessageManager.showInAppById("story-2", any(), capture(askerAlive), any()) } just runs
+    fun `the overlay stops being the requester of its showInApp once it closes`() {
+        val requesterIsActive = slot<() -> Boolean>()
+        every { inAppMessageManager.showInAppById("story-2", any(), capture(requesterIsActive), any()) } just runs
         showAndAwaitPageLoad()
         postFromPage(action = "init", id = "init-1")
         postFromPage(action = "showInApp", id = "show-1", payload = """{"inappId":"story-2"}""")
-        await { askerAlive.isCaptured }
-        assertTrue(askerAlive.captured())
+        await { requesterIsActive.isCaptured }
+        assertTrue(requesterIsActive.captured())
 
         postFromPage(action = "close", id = "close-1")
 
-        assertFalse(askerAlive.captured())
+        assertFalse(requesterIsActive.captured())
     }
 
     @Test

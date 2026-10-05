@@ -110,7 +110,7 @@ internal class WebViewInAppViewHolder(
             override val hostTags: Map<String, String>? get() = wrapper.tags
             override val hostPage: MindboxWebPage get() = this@WebViewInAppViewHolder
             override val hostInAppId: String get() = wrapper.inAppType.inAppId
-            override val isAskerAlive: Boolean get() = !isClosed
+            override val isRequesterActive: Boolean get() = !isClosed
 
             override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
                 val controller = webViewController ?: return

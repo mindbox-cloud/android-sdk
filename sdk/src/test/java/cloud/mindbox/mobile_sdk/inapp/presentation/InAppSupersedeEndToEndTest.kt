@@ -160,7 +160,7 @@ internal class InAppSupersedeEndToEndTest {
 
     private fun askToShow(inAppId: String): List<ShowInAppOutcome> {
         val outcomes = mutableListOf<ShowInAppOutcome>()
-        manager.showInAppById(inAppId, emptyMap(), askerAlive = { true }) { outcome -> outcomes.add(outcome) }
+        manager.showInAppById(inAppId, emptyMap(), requesterIsActive = { true }) { outcome -> outcomes.add(outcome) }
         return outcomes
     }
 

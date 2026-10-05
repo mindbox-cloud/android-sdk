@@ -48,7 +48,7 @@ class WebViewCommonBridgeActionsTest {
     private class FakeHost(
         override val closeCapability: ((BridgeMessage.Request) -> String)? = null,
         override val hideCapability: (() -> String)? = null,
-        override val isAskerAlive: Boolean = true,
+        override val isRequesterActive: Boolean = true,
         override val hostActivity: Activity? = null,
     ) : WebViewBridgeHost {
 

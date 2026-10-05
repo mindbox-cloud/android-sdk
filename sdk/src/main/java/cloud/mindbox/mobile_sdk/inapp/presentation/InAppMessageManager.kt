@@ -14,12 +14,12 @@ internal interface InAppMessageManager {
      * open. [extraParams] land in the shown page's start payload last, over whatever the SDK and
      * the configuration put there. Show/dismiss accounting runs the ordinary overlay path.
      * [onOutcome] is told exactly once how it ended: shown, or not shown with the reason.
-     * [askerAlive] is read on the main thread right before the show: false ends it as `not_visible`.
+     * [requesterIsActive] is read on the main thread right before the show: false ends it as `not_visible`.
      */
     fun showInAppById(
         inAppId: String,
         extraParams: Map<String, JsonElement>,
-        askerAlive: () -> Boolean,
+        requesterIsActive: () -> Boolean,
         onOutcome: OnShowInAppOutcome,
     )
 

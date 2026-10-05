@@ -31,7 +31,7 @@ internal interface WebViewBridgeHost {
     val hostTags: Map<String, String>?
     val hostPage: MindboxWebPage
     val hostInAppId: String
-    val isAskerAlive: Boolean
+    val isRequesterActive: Boolean
 
     fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit)
 
@@ -197,7 +197,7 @@ internal class WebViewCommonBridgeActions(
         val outcome = registerShowInAppOutcome()
             ?: throw CancellationException("The page of ${host.hostInAppId} is torn down")
         try {
-            inAppMessageManager.showInAppById(requestedId, extraParams, askerAlive = { host.isAskerAlive }) { result ->
+            inAppMessageManager.showInAppById(requestedId, extraParams, requesterIsActive = { host.isRequesterActive }) { result ->
                 outcome.complete(result)
             }
             return when (val result = outcome.await()) {

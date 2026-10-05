@@ -121,13 +121,13 @@ internal class InAppMessageManagerImpl(
     override fun showInAppById(
         inAppId: String,
         extraParams: Map<String, JsonElement>,
-        askerAlive: () -> Boolean,
+        requesterIsActive: () -> Boolean,
         onOutcome: OnShowInAppOutcome,
     ) {
         val tapTick = timeProvider.monotonicMillis()
         val outcome = TerminalOutcome(onOutcome)
         inAppScope.launch {
-            runCatching { showRequestedInApp(inAppId, extraParams, askerAlive, tapTick, outcome) }
+            runCatching { showRequestedInApp(inAppId, extraParams, requesterIsActive, tapTick, outcome) }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     MindboxLoggerImpl.e(this@InAppMessageManagerImpl, "Showing in-app $inAppId on request failed", error)
@@ -139,7 +139,7 @@ internal class InAppMessageManagerImpl(
     private suspend fun showRequestedInApp(
         inAppId: String,
         extraParams: Map<String, JsonElement>,
-        askerAlive: () -> Boolean,
+        requesterIsActive: () -> Boolean,
         tapTick: Milliseconds,
         outcome: TerminalOutcome,
     ) {
@@ -158,7 +158,7 @@ internal class InAppMessageManagerImpl(
             outcome = outcome,
         )
         withContext(Dispatchers.Main) {
-            if (!askerAlive()) {
+            if (!requesterIsActive()) {
                 mindboxLogI("The page that asked for in-app $inAppId is gone, showing nothing")
                 outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE))
                 return@withContext

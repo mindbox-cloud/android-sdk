@@ -553,22 +553,22 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals(lastScriptBeforeRelease, page.lastEvaluatedJavascript)
     }
 
-    private val askerAlive = slot<() -> Boolean>()
+    private val requesterIsActive = slot<() -> Boolean>()
 
-    private fun givenShowPathCapturesAsker() {
-        every { inAppMessageManager.showInAppById(any(), any(), capture(askerAlive), capture(outcomes)) } just runs
+    private fun givenShowPathCapturesRequester() {
+        every { inAppMessageManager.showInAppById(any(), any(), capture(requesterIsActive), capture(outcomes)) } just runs
     }
 
     @Test
-    fun `a block that left the screen is no longer the asker of its showInApp and its page hears not_visible`() {
-        givenShowPathCapturesAsker()
+    fun `a block that left the screen is no longer the requester of its showInApp and its page hears not_visible`() {
+        givenShowPathCapturesRequester()
         startAndAwaitPageLoad()
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
         await { outcomes.isCaptured }
-        assertTrue(askerAlive.captured())
+        assertTrue(requesterIsActive.captured())
 
         holder.pause()
-        assertFalse(askerAlive.captured())
+        assertFalse(requesterIsActive.captured())
         outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE))
         await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
 
@@ -577,15 +577,15 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `a released block is no longer the asker of the showInApp it sent`() {
-        givenShowPathCapturesAsker()
+    fun `a released block is no longer the requester of the showInApp it sent`() {
+        givenShowPathCapturesRequester()
         startAndAwaitPageLoad()
         postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
-        await { askerAlive.isCaptured }
+        await { requesterIsActive.isCaptured }
 
         holder.release()
 
-        assertFalse(askerAlive.captured())
+        assertFalse(requesterIsActive.captured())
     }
 
     @Test
