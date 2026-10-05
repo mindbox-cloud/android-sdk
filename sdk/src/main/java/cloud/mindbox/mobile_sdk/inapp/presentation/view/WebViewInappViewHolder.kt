@@ -73,7 +73,23 @@ internal class WebViewInAppViewHolder(
         private const val JS_BRIDGE_CLASS = "window.bridgeMessagesHandlers"
         private const val JS_BRIDGE = "$JS_BRIDGE_CLASS.emit"
         private const val JS_CALL_BRIDGE = "(()=>{try{$JS_BRIDGE(%s);return!0}catch(_){return!1}})()"
-        private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
+        private const val JS_NATIVE_BRIDGE_CLASS = "window.$DEFAULT_WEBVIEW_BRIDGE_NAME"
+        private const val JS_NATIVE_BRIDGE = "$JS_NATIVE_BRIDGE_CLASS.postMessage"
+        private const val BRIDGE_STATUS_READY = "ok"
+        private const val BRIDGE_STATUS_NO_NATIVE_BRIDGE = "no-native-bridge"
+        private const val BRIDGE_STATUS_NO_HANDLERS = "no-handlers"
+
+        // Returns a status, not a boolean: the give-up message carries it into errorDetails, so a
+        // native bridge stripped by R8 is told apart from page JS that never booted.
+        private const val JS_CHECK_BRIDGE = "(() => {" +
+            "if (typeof $JS_NATIVE_BRIDGE_CLASS === 'undefined' || " +
+            "typeof $JS_NATIVE_BRIDGE !== 'function') return '$BRIDGE_STATUS_NO_NATIVE_BRIDGE';" +
+            "if (typeof $JS_BRIDGE_CLASS === 'undefined' || typeof $JS_BRIDGE !== 'function') return '$BRIDGE_STATUS_NO_HANDLERS';" +
+            "return '$BRIDGE_STATUS_READY';" +
+            "})()"
+
+        // evaluateJavascript hands back the JSON encoding of the result, so a string arrives quoted.
+        private const val JS_BRIDGE_READY = "\"$BRIDGE_STATUS_READY\""
         private const val MOTION_GESTURE_KEY = "gesture"
         private const val MOTION_GESTURES_KEY = "gestures"
     }
@@ -601,7 +617,7 @@ internal class WebViewInAppViewHolder(
         readyChecker = checker
         checker.run(
             script = JS_CHECK_BRIDGE,
-            expectedResult = JS_RETURN,
+            expectedResult = JS_BRIDGE_READY,
             onReady = { mindboxLogD("JS ready check passed for $url") },
             onGiveUp = { lastFailure ->
                 if (hasInitialized) {
