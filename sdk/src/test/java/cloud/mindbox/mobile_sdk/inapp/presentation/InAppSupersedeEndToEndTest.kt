@@ -27,7 +27,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -47,6 +47,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONTokener
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -54,6 +56,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.io.IOException
+import java.time.Duration
 import kotlin.coroutines.resume
 
 // No Dispatchers.setMain: the manager's main step has to queue on the same Robolectric looper the holders run on.
@@ -191,6 +194,11 @@ internal class InAppSupersedeEndToEndTest {
             .get(displayer) as InAppViewHolder<*>?
 
     private fun onScreenId(): String? = onScreen()?.wrapper?.inAppType?.inAppId
+
+    private fun initTimeoutOf(holder: InAppViewHolder<*>): Any? =
+        WebViewInAppViewHolder::class.java.getDeclaredField("initTimeout")
+            .apply { isAccessible = true }
+            .get(holder)
 
     private fun awaitLoadedPageOf(inAppId: String): WebView {
         await { onScreenId() == inAppId }
@@ -398,7 +406,7 @@ internal class InAppSupersedeEndToEndTest {
     }
 
     @Test
-    fun `a content failure of the replaced story reaching the main thread late leaves the next story on screen`() {
+    fun `a content failure reaching the main thread after its story was replaced reports nothing`() {
         mockkObject(Mindbox)
         every { Mindbox.mindboxScope } returns CoroutineScope(Dispatchers.Unconfined)
         val firstContent = CompletableDeferred<String>()
@@ -410,9 +418,56 @@ internal class InAppSupersedeEndToEndTest {
         firstContent.completeExceptionally(IOException("content fetch timed out"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        verify(exactly = 1) { inAppFailureTracker.sendFailure("story-1", FailureReason.WEBVIEW_LOAD_FAILED, any(), any()) }
+        verify(exactly = 0) { inAppFailureTracker.sendFailure("story-1", any(), any(), any()) }
         assertEquals("story-2", onScreenId())
         assertEquals(1, root.childCount)
         verify(exactly = 0) { host.onInAppDismissed("story-2") }
+    }
+
+    @Test
+    fun `a story's loaded content reaches its page on the main thread`() {
+        mockkObject(Mindbox)
+        every { Mindbox.mindboxScope } returns CoroutineScope(Dispatchers.Unconfined)
+        val content = CompletableDeferred<String>()
+        coEvery { gatewayManager.fetchWebViewContent(contentUrlOf("story-1")) } coAnswers { content.await() }
+        askToShow("story-1")
+        await { onScreenId() == "story-1" }
+        val story = onScreen()!!
+
+        content.complete("<html>story</html>")
+        val armedBeforeTheMainThreadRan = initTimeoutOf(story) != null
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertFalse(armedBeforeTheMainThreadRan)
+        assertNotNull(initTimeoutOf(story))
+    }
+
+    @Test
+    fun `a story whose page never sends init times out once and closes`() {
+        mockkObject(Mindbox)
+        every { Mindbox.mindboxScope } returns CoroutineScope(Dispatchers.Unconfined)
+        askToShow("story-1")
+        await { onScreenId() == "story-1" }
+        await { initTimeoutOf(onScreen()!!) != null }
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(Constants.WebView.readyTimeout.interval + 1_000))
+
+        verify(exactly = 1) { inAppFailureTracker.sendFailure("story-1", any(), any(), any()) }
+        assertNull(onScreenId())
+    }
+
+    @Test
+    fun `a story replaced before its init timeout reports nothing when the timeout comes due`() {
+        mockkObject(Mindbox)
+        every { Mindbox.mindboxScope } returns CoroutineScope(Dispatchers.Unconfined)
+        askToShow("story-1")
+        await { onScreenId() == "story-1" }
+        await { initTimeoutOf(onScreen()!!) != null }
+
+        askToShow("story-2")
+        await { onScreenId() == "story-2" }
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(Constants.WebView.readyTimeout.interval + 1_000))
+
+        verify(exactly = 0) { inAppFailureTracker.sendFailure("story-1", any(), any(), any()) }
     }
 }
