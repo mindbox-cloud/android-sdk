@@ -49,9 +49,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.Locale
-import java.util.Timer
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.timer
 
 @OptIn(InternalMindboxApi::class)
 internal class WebViewInAppViewHolder(
@@ -69,18 +67,19 @@ internal class WebViewInAppViewHolder(
         private const val JS_CHECK_BRIDGE = "(() => typeof $JS_BRIDGE_CLASS !== 'undefined' && typeof $JS_BRIDGE === 'function')()"
     }
 
-    private var closeInappTimer: Timer? = null
     private var webViewController: WebViewController? = null
-    private var currentWebViewOrigin: String? = null
-    private var readyChecker: WebViewReadyChecker? = null
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
 
     @Volatile private var isClosed = false
 
+    // Main thread only: page events, the content result and the init timeout all land there.
+    private var currentWebViewOrigin: String? = null
+    private var readyChecker: WebViewReadyChecker? = null
     private var hasInitialized = false
     private var hasShownFired = false
     private var pendingReadyCheckFailure: String? = null
     private var lastLoadedContent: WebViewHtmlContent? = null
+    private var initTimeout: Runnable? = null
 
     private val noCacheRetryPolicy: WebViewNoCacheRetryPolicy = WebViewNoCacheRetryPolicy {
         webViewCachePolicy.isCacheEnabled
@@ -366,8 +365,8 @@ internal class WebViewInAppViewHolder(
         val content = lastLoadedContent ?: return
         mindboxLogI("[WebView] Retrying In-App content load with cache bypassed (${noCacheRetryPolicy.lastHttpErrorDetail})")
         // stop timer when retry
-        closeInappTimer?.cancel()
-        closeInappTimer = null
+        initTimeout?.let(mainHandler::removeCallbacks)
+        initTimeout = null
         Stopwatch.stop(TIMER)
         readyChecker?.cancel()
         controller.setCacheBypass(true)
@@ -606,31 +605,41 @@ internal class WebViewInAppViewHolder(
                     runCatching {
                         gatewayManager.fetchWebViewContent(contentUrl)
                     }.onSuccess { response: String ->
-                        currentWebViewOrigin = resolveOrigin(layer.baseUrl)
-                        onContentPageLoaded(
-                            content = WebViewHtmlContent(
-                                baseUrl = layer.baseUrl ?: "",
-                                html = response
+                        controller.executeOnViewThread {
+                            if (isClosed) return@executeOnViewThread
+                            currentWebViewOrigin = resolveOrigin(layer.baseUrl)
+                            onContentPageLoaded(
+                                content = WebViewHtmlContent(
+                                    baseUrl = layer.baseUrl ?: "",
+                                    html = response
+                                )
                             )
-                        )
+                        }
                     }.onFailure { e ->
-                        inAppFailureTracker.sendFailureWithContext(
-                            inAppId = wrapper.inAppType.inAppId,
-                            failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                            errorDescription = "Failed to fetch HTML content for In-App",
-                            throwable = e,
-                            tags = wrapper.tags
-                        )
-                        controller.executeOnViewThread { inAppController.close() }
+                        controller.executeOnViewThread {
+                            if (isClosed) {
+                                mindboxLogI("Content of In-App ${wrapper.inAppType.inAppId} failed to load after it closed, not reporting it")
+                                return@executeOnViewThread
+                            }
+                            inAppFailureTracker.sendFailureWithContext(
+                                inAppId = wrapper.inAppType.inAppId,
+                                failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
+                                errorDescription = "Failed to fetch HTML content for In-App",
+                                throwable = e,
+                                tags = wrapper.tags
+                            )
+                            inAppController.close()
+                        }
                     }
-                } ?: run {
+                } ?: controller.executeOnViewThread {
+                    if (isClosed) return@executeOnViewThread
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
                         errorDescription = "WebView content URL is null",
                         tags = wrapper.tags
                     )
-                    controller.executeOnViewThread { inAppController.close() }
+                    inAppController.close()
                 }
             }
         }
@@ -666,6 +675,7 @@ internal class WebViewInAppViewHolder(
             lastLoadedContent = content
             controller.loadContent(content)
             startTimer {
+                initTimeout = null
                 val readyCheckFailure = pendingReadyCheckFailure
                 val httpErrorSuffix = noCacheRetryPolicy.lastHttpErrorDetail?.let { detail ->
                     " Last script HTTP error: $detail; no-cache retry attempted: ${noCacheRetryPolicy.hasRetried}."
@@ -684,9 +694,7 @@ internal class WebViewInAppViewHolder(
                     },
                     tags = wrapper.tags
                 )
-                controller.executeOnViewThread {
-                    inAppController.close()
-                }
+                inAppController.close()
             }
         } ?: run {
             mindboxLogW("WebView controller is null when loading content, skipping")
@@ -694,20 +702,19 @@ internal class WebViewInAppViewHolder(
     }
 
     private fun stopTimer() {
-        closeInappTimer?.let { timer ->
+        initTimeout?.let { timeout ->
             mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-            timer.cancel()
+            mainHandler.removeCallbacks(timeout)
         }
-        closeInappTimer = null
+        initTimeout = null
     }
 
     private fun startTimer(onTimeOut: () -> Unit) {
         Stopwatch.start(TIMER)
-        closeInappTimer = timer(
-            initialDelay = Constants.WebView.readyTimeout.interval,
-            period = Constants.WebView.readyTimeout.interval,
-            action = { onTimeOut() }
-        )
+        initTimeout?.let(mainHandler::removeCallbacks)
+        val timeout = Runnable { onTimeOut() }
+        initTimeout = timeout
+        mainHandler.postDelayed(timeout, Constants.WebView.readyTimeout.interval)
     }
 
     override fun show(currentRoot: MindboxView) {
@@ -744,11 +751,11 @@ internal class WebViewInAppViewHolder(
 
     override fun onClose() {
         isClosed = true
+        stopTimer()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
         }
-        stopTimer()
         readyChecker?.cancel()
         readyChecker = null
         lastLoadedContent = null

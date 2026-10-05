@@ -172,11 +172,7 @@ internal class InAppMessageViewDisplayerImpl(
         extraParams: Map<String, JsonElement>,
     ) {
         if (!isUiPresent()) {
-            inAppFailureTracker.sendPresentationFailure(
-                inAppId = inAppType.inAppId,
-                errorDescription = "No foreground activity to present the requested in-app on",
-                tags = tags
-            )
+            mindboxLogI("No foreground activity to present the requested in-app ${inAppType.inAppId} on, not showing it")
             loggingRunCatching { inAppActionCallbacks.onInAppNotShown.onNotShown() }
             return
         }
