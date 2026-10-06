@@ -20,6 +20,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import cloud.mindbox.mobile_sdk.inapp.data.validators.TimeSpanPositiveValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppStub
 
 internal class MobileConfigRepositoryImplTest {
@@ -82,6 +84,60 @@ internal class MobileConfigRepositoryImplTest {
     @Test
     fun `hasConfig is false until a config has been provided`() {
         assertFalse(repository.hasConfig())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig is null until a config arrives, then answers from it with the first copy of a repeated id`() = withTestMindboxScope {
+        val first = InAppStub.getInApp().copy(id = "story-2", tags = mapOf("copy" to "first"))
+        val second = first.copy(tags = mapOf("copy" to "second"))
+        val repository = createRepository()
+        assertNull(repository.findInAppInCurrentConfig("story-2"))
+
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-1"), first, second)
+
+        assertEquals(first, repository.findInAppInCurrentConfig("story-2"))
+        assertNull(repository.findInAppInCurrentConfig("story-3"))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig is null again after resetCurrentConfig`() = withTestMindboxScope {
+        val repository = createRepository()
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-2"))
+        assertNotNull(repository.findInAppInCurrentConfig("story-2"))
+
+        repository.resetCurrentConfig()
+
+        assertNull(repository.findInAppInCurrentConfig("story-2"))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig answers from the config that replaced the previous one`() = withTestMindboxScope {
+        val repository = createRepository()
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-2", tags = mapOf("config" to "first")))
+
+        every { inAppMapper.mapToInAppConfig(any()) } returns InAppConfig(
+            inApps = listOf(InAppStub.getInApp().copy(id = "story-2", tags = mapOf("config" to "second"))),
+            monitoring = emptyList(),
+            operations = emptyMap(),
+            abtests = emptyList(),
+        )
+        MindboxPreferences.inAppConfigFlow.emit("""{"next":true}""")
+
+        assertEquals(mapOf("config" to "second"), repository.findInAppInCurrentConfig("story-2")?.tags)
+    }
+
+    private suspend fun provideConfig(repository: MobileConfigRepositoryImpl, vararg inApps: InApp) {
+        every { inAppMapper.mapToInAppConfig(any()) } returns InAppConfig(
+            inApps = inApps.toList(),
+            monitoring = emptyList(),
+            operations = emptyMap(),
+            abtests = emptyList(),
+        )
+        repository.startListening()
+        MindboxPreferences.inAppConfigFlow.emit("{}")
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

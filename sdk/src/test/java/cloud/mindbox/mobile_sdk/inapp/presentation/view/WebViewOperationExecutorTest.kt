@@ -4,6 +4,7 @@ import android.app.Application
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.models.ValidationMessage
 import com.google.gson.Gson
@@ -48,6 +49,10 @@ class WebViewOperationExecutorTest {
             }
             syncResponse?.let(onSuccess)
         }
+    }
+
+    private fun givenConfigInApp(id: String, tags: Map<String, String>?) {
+        every { mobileConfigRepository.findInAppInCurrentConfig(id) } returns InAppStub.getInApp().copy(id = id, tags = tags)
     }
 
     @Before
@@ -154,6 +159,108 @@ class WebViewOperationExecutorTest {
             listOf(AsyncSent(context, "OpenScreen", """{"screen":"home","tags":"raw"}""")),
             sender.sentAsync,
         )
+    }
+
+    @Test
+    fun `executeAsyncOperation tags the operation with the in-app it names, not with the host`() {
+        val context: Application = mockk()
+        givenConfigInApp("story-2", tags = mapOf("story" to "second"))
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"screen":"home"}}"""
+        executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        assertEquals(
+            listOf(AsyncSent(context, "OpenScreen", """{"screen":"home","tags":{"story":"second"}}""")),
+            sender.sentAsync,
+        )
+    }
+
+    @Test
+    fun `executeAsyncOperation keeps the host tags without a lookup when inappId is absent, null or the host's own id`() {
+        val context: Application = mockk()
+        val payloads: List<String> = listOf(
+            """{"operation":"OpenScreen","body":{"screen":"home"}}""",
+            """{"operation":"OpenScreen","inappId":null,"body":{"screen":"home"}}""",
+            """{"operation":"OpenScreen","inappId":"host-id","body":{"screen":"home"}}""",
+        )
+        payloads.forEach { payload: String ->
+            executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        }
+        assertEquals(
+            List(payloads.size) { AsyncSent(context, "OpenScreen", """{"screen":"home","tags":{"templateType":"Popup"}}""") },
+            sender.sentAsync,
+        )
+        verify(exactly = 0) { mobileConfigRepository.findInAppInCurrentConfig(any()) }
+    }
+
+    @Test
+    fun `executeAsyncOperation sends an operation naming an in-app the config does not know without any SDK tags`() {
+        val context: Application = mockk()
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-9","body":{"screen":"home"}}"""
+        executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        assertEquals(
+            listOf(AsyncSent(context, "OpenScreen", """{"screen":"home"}""")),
+            sender.sentAsync,
+        )
+        verify(exactly = 1) { mobileConfigRepository.findInAppInCurrentConfig("story-9") }
+    }
+
+    @Test
+    fun `executeAsyncOperation adds no tags from the named in-app while the tags toggle is off`() {
+        val context: Application = mockk()
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        givenConfigInApp("story-2", tags = mapOf("story" to "second"))
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"screen":"home"}}"""
+        executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        assertEquals(
+            listOf(AsyncSent(context, "OpenScreen", """{"screen":"home"}""")),
+            sender.sentAsync,
+        )
+    }
+
+    @Test
+    fun `executeAsyncOperation still looks up an in-app the config does not know while the tags toggle is off`() {
+        val context: Application = mockk()
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-9","body":{"screen":"home"}}"""
+        executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = null)
+        verify(exactly = 1) { mobileConfigRepository.findInAppInCurrentConfig("story-9") }
+        assertEquals(
+            listOf(AsyncSent(context, "OpenScreen", """{"screen":"home"}""")),
+            sender.sentAsync,
+        )
+    }
+
+    @Test
+    fun `executeAsyncOperation keeps the page's own tag value over the named in-app's on a key collision`() {
+        val context: Application = mockk()
+        givenConfigInApp("story-2", tags = mapOf("story" to "second", "campaign" to "summer"))
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"tags":{"story":"page"}}}"""
+        executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        assertEquals(
+            listOf(AsyncSent(context, "OpenScreen", """{"tags":{"story":"page","campaign":"summer"}}""")),
+            sender.sentAsync,
+        )
+    }
+
+    @Test
+    fun `executeAsyncOperation refuses an inappId that is not a non-empty string as invalid_payload and sends nothing`() {
+        val context: Application = mockk()
+        val payloads: List<String> = listOf(
+            """{"operation":"OpenScreen","inappId":5,"body":{}}""",
+            """{"operation":"OpenScreen","inappId":"","body":{}}""",
+            """{"operation":"OpenScreen","inappId":true,"body":{}}""",
+            """{"operation":"OpenScreen","inappId":{},"body":{}}""",
+            """{"operation":"OpenScreen","inappId":["story-2"],"body":{}}""",
+        )
+        payloads.forEach { payload: String ->
+            try {
+                executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+                fail("Expected BridgeRefusalException for payload: $payload")
+            } catch (exception: BridgeRefusalException) {
+                assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, exception.code)
+            }
+        }
+        assertEquals(emptyList<AsyncSent>(), sender.sentAsync)
+        verify(exactly = 0) { mobileConfigRepository.findInAppInCurrentConfig(any()) }
     }
 
     @Test
@@ -277,6 +384,38 @@ class WebViewOperationExecutorTest {
             listOf("OpenScreen" to """{"screen":"home","tags":{"templateType":"ClientOwn","campaign":"summer"}}"""),
             sender.sentSync,
         )
+    }
+
+    @Test
+    fun `executeSyncOperation tags the operation with the in-app it names and returns the backend body`() = runTest {
+        givenConfigInApp("story-2", tags = mapOf("story" to "second"))
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"screen":"home"}}"""
+        val expectedResponse: String = """{"result":"ok"}"""
+        sender.syncResponse = expectedResponse
+        val actualResponse: String = executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        assertEquals(expectedResponse, actualResponse)
+        assertEquals(
+            listOf("OpenScreen" to """{"screen":"home","tags":{"story":"second"}}"""),
+            sender.sentSync,
+        )
+    }
+
+    @Test
+    fun `executeSyncOperation refuses an inappId that is a number or an empty string as invalid_payload and sends nothing`() = runTest {
+        sender.syncResponse = """{"result":"ok"}"""
+        val payloads: List<String> = listOf(
+            """{"operation":"OpenScreen","inappId":5,"body":{}}""",
+            """{"operation":"OpenScreen","inappId":"","body":{}}""",
+        )
+        payloads.forEach { payload: String ->
+            try {
+                executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = null)
+                fail("Expected BridgeRefusalException for payload: $payload")
+            } catch (exception: BridgeRefusalException) {
+                assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, exception.code)
+            }
+        }
+        assertEquals(emptyList<Pair<String, String>>(), sender.sentSync)
     }
 
     private fun executeSyncOperationExpectingError(error: MindboxError): WebViewSyncOperationException = runBlocking {
