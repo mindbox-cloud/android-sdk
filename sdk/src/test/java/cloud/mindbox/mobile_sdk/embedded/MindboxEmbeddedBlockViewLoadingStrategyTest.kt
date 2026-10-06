@@ -42,7 +42,7 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
     ) : EmbeddedBlockRevealAnimation(areSystemAnimationsEnabled = { enabled }) {
         val calls = mutableListOf<String>()
 
-        override fun fadeIn(view: View, onEnd: () -> Unit): Animator {
+        override fun crossfade(incoming: View, outgoing: View?, onEnd: () -> Unit): Animator {
             calls.add("fade")
             onEnd()
             return ValueAnimator.ofFloat(0f, 1f)
@@ -106,7 +106,7 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         loadingStrategy: MindboxEmbeddedBlockLoadingStrategy? = null,
         animatesReveal: Boolean? = null,
         placeMemory: TestPlaceMemory = TestPlaceMemory(),
-        animation: RecordingAnimation = RecordingAnimation(),
+        animation: EmbeddedBlockRevealAnimation = RecordingAnimation(),
         providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider = { _, _ ->
             ScriptedProvider(activity).also { provider = it }
         },
@@ -512,6 +512,39 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
 
         assertEquals(listOf("fade"), animation.calls)
         assertEquals(View.VISIBLE, view.visibility)
+    }
+
+    @Test
+    fun `a placeholder fades out with the reveal and is ready for the next loading`() {
+        val view = buildView(
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+            animation = EmbeddedBlockRevealAnimation(duration = Milliseconds(50L)),
+        )
+        val placeholder = View(activity)
+        view.setPlaceholderView(placeholder)
+        activity.setContentView(
+            android.widget.LinearLayout(activity).apply {
+                addView(view, 500, 300)
+            },
+        )
+        idleMainLooper()
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idleMainLooper()
+
+        contentForThePlace()
+        pageReports(EmbeddedBlockState.Ready)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+            .idleFor(java.time.Duration.ofMillis(300L))
+
+        // The shimmer faded out in step with the content and left ready for its next show.
+        assertTrue(placeholder.parent == null)
+        assertEquals(1f, placeholder.alpha)
+        assertEquals(1f, requireNotNull(provider).contentView.alpha)
+
+        // The next loading shows the same placeholder again — fully visible, not a faded ghost.
+        pageReports(EmbeddedBlockState.Loading)
+        assertTrue(placeholder.parent != null)
+        assertEquals(1f, placeholder.alpha)
     }
 
     @Test

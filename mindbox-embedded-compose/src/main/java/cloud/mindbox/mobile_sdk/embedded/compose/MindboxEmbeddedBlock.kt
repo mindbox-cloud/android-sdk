@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded.compose
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -136,7 +137,10 @@ public fun MindboxEmbeddedBlock(
             if (reveals && look.animated) {
                 revealFraction.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(MindboxEmbeddedBlockView.REVEAL_ANIMATION_DURATION_MS.toInt()),
+                    animationSpec = tween(
+                        durationMillis = MindboxEmbeddedBlockView.REVEAL_ANIMATION_DURATION_MS.toInt(),
+                        easing = EaseInOutCurve,
+                    ),
                 )
             } else {
                 revealFraction.snapTo(look.appearance.targetFraction)
@@ -184,6 +188,8 @@ public fun MindboxEmbeddedBlock(
         )
     }
 }
+
+private val EaseInOutCurve = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
 private data class AppearanceChange(
     val appearance: MindboxEmbeddedBlockAppearance,

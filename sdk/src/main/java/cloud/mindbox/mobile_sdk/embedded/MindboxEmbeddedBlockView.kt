@@ -641,7 +641,10 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun settleFadingContent() {
-        fadingOutView?.let { removeView(it) }
+        fadingOutView?.let { faded ->
+            removeView(faded)
+            faded.alpha = 1f
+        }
         fadingOutView = null
     }
 
@@ -682,7 +685,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             return@loggingRunCatching
         }
         fadingOutView = previous
-        fadeAnimator = revealAnimation.fadeIn(content) {
+        fadeAnimator = revealAnimation.crossfade(content, previous) {
             fadeAnimator = null
             settleFadingContent()
         }

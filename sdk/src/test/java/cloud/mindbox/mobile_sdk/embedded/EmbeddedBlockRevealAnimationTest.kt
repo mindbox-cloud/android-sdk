@@ -27,31 +27,45 @@ class EmbeddedBlockRevealAnimationTest {
     }
 
     @Test
-    fun `the fade carries the view from invisible to fully shown and reports the end`() {
-        val view = View(activity)
+    fun `the crossfade shows the incoming view and hides the outgoing one in step`() {
+        val incoming = View(activity)
+        val outgoing = View(activity)
         var ended = false
 
-        animation.fadeIn(view) { ended = true }
-        assertEquals(0f, view.alpha)
-        assertTrue(view.translationY > 0f)
+        animation.crossfade(incoming, outgoing) { ended = true }
+        assertEquals(0f, incoming.alpha)
+        assertEquals(1f, outgoing.alpha)
 
         runOut()
 
-        assertEquals(1f, view.alpha)
-        assertEquals(0f, view.translationY)
+        assertEquals(1f, incoming.alpha)
+        assertEquals(0f, outgoing.alpha)
         assertTrue(ended)
     }
 
     @Test
-    fun `a cancelled fade settles the view at fully shown`() {
-        val view = View(activity)
+    fun `a crossfade with nothing to hide still shows the incoming view`() {
+        val incoming = View(activity)
         var ended = false
 
-        val animator = animation.fadeIn(view) { ended = true }
+        animation.crossfade(incoming, outgoing = null) { ended = true }
+        runOut()
+
+        assertEquals(1f, incoming.alpha)
+        assertTrue(ended)
+    }
+
+    @Test
+    fun `a cancelled crossfade settles both views at their final look`() {
+        val incoming = View(activity)
+        val outgoing = View(activity)
+        var ended = false
+
+        val animator = animation.crossfade(incoming, outgoing) { ended = true }
         animator.cancel()
 
-        assertEquals(1f, view.alpha)
-        assertEquals(0f, view.translationY)
+        assertEquals(1f, incoming.alpha)
+        assertEquals(0f, outgoing.alpha)
         assertTrue(ended)
     }
 
