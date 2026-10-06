@@ -212,7 +212,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `without a foreground activity nothing is closed, the miss reaches the tracker and the asker`() {
+    fun `without a foreground activity nothing is closed and only the requester hears the miss`() {
         val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
         val holder = activeHolder(dismiss)
         setCurrentHolder(holder)
@@ -229,7 +229,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
         // Closing what the user may come back to would trade a missed show for a lost one.
         verify(exactly = 0) { dismiss.onDismiss() }
         verify(exactly = 0) { holder.onClose() }
-        verify { failureTracker.sendFailure("tapped-id", FailureReason.PRESENTATION_FAILED, any(), any()) }
+        verify(exactly = 0) { failureTracker.sendFailure(any(), any(), any(), any()) }
         assertEquals(1, notShown)
     }
 

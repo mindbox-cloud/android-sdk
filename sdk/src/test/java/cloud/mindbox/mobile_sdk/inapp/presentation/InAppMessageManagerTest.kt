@@ -789,7 +789,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `a not-shown report after the show neither gives the hold back nor answers the asker`() = runTest {
+    fun `a not-shown report after the show neither gives the hold back nor answers the requester`() = runTest {
         val inApp = InAppStub.getInApp().copy(id = "tap-id")
         val variant = inApp.form.variants.first()
         coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
