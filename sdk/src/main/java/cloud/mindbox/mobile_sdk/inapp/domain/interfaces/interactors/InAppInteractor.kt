@@ -62,8 +62,8 @@ internal interface InAppInteractor {
      * The single place where the page's requested ids are cut: the answer to `filterShowableInapps`.
      * Keeps the ids whose in-apps exist in the version- and A/B-filtered list, pass the
      * frequency rule (an exhausted non-unlimited in-app drops out of the answer, `unlimited` always
-     * passes — decision 17.08), match targeting (no network fetches — the page waits
-     * 3 seconds) and are not embedded. `directCall` and the show limits are deliberately not
+     * passes), match targeting (geo and segmentation are fetched from the network) and
+     * are not embedded. `directCall` and the show limits are deliberately not
      * checked: a drawn element must open.
      *
      * The answer mirrors the request, duplicates included. `Inapp.Targeting` goes out at the

@@ -225,7 +225,7 @@ internal class InAppMessageViewDisplayerImpl(
         val callbackWrapper = InAppCallbackWrapper({ inAppCallback }) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
         }
-        val controller = InAppViewHolder.InAppController { closeInApp() }
+        val controller = InAppViewHolder.InAppController { closeInAppOf(wrapper) }
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
@@ -325,6 +325,14 @@ internal class InAppMessageViewDisplayerImpl(
                     ?.onInAppDismiss
                     ?.onDismiss()
             }
+        }
+        closeInApp()
+    }
+
+    private fun closeInAppOf(wrapper: InAppTypeWrapper<InAppType>) {
+        if (wrapper !== currentHolder?.wrapper && wrapper !== pausedHolder?.wrapper) {
+            mindboxLogI("In-app ${wrapper.inAppType.inAppId} is no longer on screen, its close is ignored")
+            return
         }
         closeInApp()
     }

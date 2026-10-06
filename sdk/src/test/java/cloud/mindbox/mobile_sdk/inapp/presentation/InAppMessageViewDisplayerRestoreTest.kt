@@ -2,8 +2,12 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 
 import android.app.Activity
 import android.app.Application
+import android.os.Looper
+import android.view.MotionEvent
+import android.view.View
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
+import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -30,6 +34,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
 
 /**
  * The overlay across a background stint: what the paused holder keeps, what the restored one
@@ -83,8 +89,9 @@ internal class InAppMessageViewDisplayerRestoreTest {
     @Suppress("UNCHECKED_CAST")
     private fun queue(): List<InAppTypeWrapper<*>> = field("inAppQueue") as List<InAppTypeWrapper<*>>
 
-    private fun activityWithRoot(): Activity {
-        val root = FrameLayout(ApplicationProvider.getApplicationContext<Application>())
+    private fun activityWithRoot(
+        root: FrameLayout = FrameLayout(ApplicationProvider.getApplicationContext<Application>()),
+    ): Activity {
         return mockk(relaxed = true) {
             every { isFinishing } returns false
             every { window } returns mockk { every { decorView } returns root }
@@ -145,6 +152,32 @@ internal class InAppMessageViewDisplayerRestoreTest {
         assertEquals(1, queued.notShown)
         assertTrue(queue().isEmpty())
         assertNotNull(currentHolder())
+    }
+
+    private fun swipeAway(root: FrameLayout) {
+        val layout = root.findViewById<View>(R.id.inapp_layout)
+        listOf(MotionEvent.ACTION_DOWN to 0f, MotionEvent.ACTION_MOVE to 500f, MotionEvent.ACTION_UP to 500f)
+            .forEach { (action, y) ->
+                val event = MotionEvent.obtain(0L, 0L, action, 0f, y, 0)
+                layout.dispatchTouchEvent(event)
+                event.recycle()
+            }
+    }
+
+    @Test
+    fun `a snackbar swiped away right before a pause is gone once its slide-out ends after the resume`() {
+        val root = FrameLayout(ApplicationProvider.getApplicationContext<Application>())
+        val activity = activityWithRoot(root)
+        setField("currentActivity", activity)
+        displayer.tryShowInAppMessage(InAppStub.getSnackbar().copy(inAppId = "snackbar-id"), CountingCallbacks(), {}, null)
+
+        swipeAway(root)
+        displayer.onPauseCurrentActivity(activity)
+        displayer.onResumeCurrentActivity(activityWithRoot(), { true }) {}
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+
+        assertNull(currentHolder())
+        assertFalse(displayer.isInAppActive())
     }
 
     @Test

@@ -314,6 +314,26 @@ internal class InAppStub {
             type = "", inAppId = "", layers = listOf(), elements = listOf()
         )
 
+        fun getSnackbar() = InAppType.Snackbar(
+            inAppId = "",
+            type = "snackbar",
+            layers = listOf(),
+            elements = listOf(),
+            position = InAppType.Snackbar.Position(
+                gravity = InAppType.Snackbar.Position.Gravity(
+                    horizontal = InAppType.Snackbar.Position.Gravity.HorizontalGravity.CENTER,
+                    vertical = InAppType.Snackbar.Position.Gravity.VerticalGravity.BOTTOM,
+                ),
+                margin = InAppType.Snackbar.Position.Margin(
+                    kind = InAppType.Snackbar.Position.Margin.MarginKind.DP,
+                    top = 0,
+                    left = 0,
+                    right = 0,
+                    bottom = 0,
+                ),
+            ),
+        )
+
         fun getEmbeddedWebViewLayer() = Layer.WebViewLayer(
             baseUrl = "https://blocks.local/base",
             contentUrl = "https://blocks.local/items.html",

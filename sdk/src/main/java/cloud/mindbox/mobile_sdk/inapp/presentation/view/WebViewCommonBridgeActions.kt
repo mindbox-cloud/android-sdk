@@ -4,17 +4,24 @@ import android.app.Activity
 import androidx.lifecycle.ProcessLifecycleOwner
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.enumValue
+import cloud.mindbox.mobile_sdk.getOrNull
+import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionServiceProtocol
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionStartResult
 import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.safeAs
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -23,13 +30,16 @@ internal interface WebViewBridgeHost {
     val hostActivity: Activity?
     val hostTags: Map<String, String>?
     val hostPage: MindboxWebPage
-    val isUserPresent: Boolean
+    val hostInAppId: String
+    val isRequesterActive: Boolean
 
     fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit)
 
     val closeCapability: ((BridgeMessage.Request) -> String)?
 
     val hideCapability: (() -> String)?
+
+    fun requireCanShowInApp()
 }
 
 internal class WebViewCommonBridgeActions(
@@ -42,6 +52,8 @@ internal class WebViewCommonBridgeActions(
     private val permissionManager by mindboxInject { permissionManager }
     private val mindboxNotificationManager by mindboxInject { mindboxNotificationManager }
     private val webPageRegistry by mindboxInject { webPageRegistry }
+    private val inAppInteractor by mindboxInject { inAppInteractor }
+    private val inAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val operationExecutor: WebViewOperationExecutor by lazy { MindboxWebViewOperationExecutor(gson) }
     private val linkRouter: WebViewLinkRouter by lazy { MindboxWebViewLinkRouter(appContext) }
@@ -53,6 +65,9 @@ internal class WebViewCommonBridgeActions(
         WebViewPermissionRequesterImpl(context = appContext, permissionManager = permissionManager)
     }
     private var motionService: MotionServiceProtocol? = null
+
+    private val pendingShowInAppOutcomes = mutableSetOf<CompletableDeferred<ShowInAppOutcome>>()
+    private var isTornDown = false
 
     fun register(handlers: WebViewActionHandlers) {
         handlers.apply {
@@ -87,10 +102,13 @@ internal class WebViewCommonBridgeActions(
                     BridgeMessage.SUCCESS_PAYLOAD
                 }
             }
+            registerSuspend(WebViewAction.SHOW_IN_APP, ::handleShowInAppAction)
+            registerSuspend(WebViewAction.FILTER_SHOWABLE_INAPPS, ::handleFilterShowableInappsAction)
         }
     }
 
     fun tearDown() {
+        cancelPendingShowInAppOutcomes()
         if (hapticFeedbackExecutorLazy.isInitialized()) {
             hapticFeedbackExecutor.cancel()
         }
@@ -158,6 +176,76 @@ internal class WebViewCommonBridgeActions(
                 mindboxNotificationManager.openApplicationSettings(activity)
         }
         return BridgeMessage.SUCCESS_PAYLOAD
+    }
+
+    private suspend fun handleShowInAppAction(message: BridgeMessage.Request): String {
+        val payload = gson.fromJson<JsonObject>(message.payload).getOrNull()
+            ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, SHOW_IN_APP_INVALID_PAYLOAD)
+        val requestedId: String = requireBridgeNotNull(
+            payload.getOrNull(SHOW_IN_APP_ID_FIELD)
+                ?.takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
+                ?.asString
+                ?.takeIf { id -> id.isNotEmpty() },
+            BridgeErrorCode.INVALID_PAYLOAD,
+        ) { SHOW_IN_APP_INVALID_PAYLOAD }
+        val extraParams: Map<String, JsonElement> =
+            payload.getOrNull(SHOW_IN_APP_PARAMS_FIELD).safeAs<JsonObject>()
+                ?.entrySet()?.associate { (key, value) -> key to value }
+                ?: emptyMap()
+        mindboxLogI("[WebView] Bridge: showInApp from ${host.hostInAppId}: inappId=$requestedId with ${extraParams.size} param(s)")
+        host.requireCanShowInApp()
+        val outcome = registerShowInAppOutcome()
+            ?: throw CancellationException("The page of ${host.hostInAppId} is torn down")
+        try {
+            inAppMessageManager.showInAppById(requestedId, extraParams, requesterIsActive = { host.isRequesterActive }) { result ->
+                outcome.complete(result)
+            }
+            return when (val result = outcome.await()) {
+                ShowInAppOutcome.Shown -> BridgeMessage.SUCCESS_PAYLOAD
+                is ShowInAppOutcome.NotShown -> {
+                    mindboxLogI("[WebView] Bridge: showInApp for $requestedId ended without a show: ${result.code}")
+                    throw BridgeRefusalException(result.code, "showInApp for $requestedId ended without a show")
+                }
+            }
+        } finally {
+            synchronized(pendingShowInAppOutcomes) { pendingShowInAppOutcomes.remove(outcome) }
+        }
+    }
+
+    private fun registerShowInAppOutcome(): CompletableDeferred<ShowInAppOutcome>? =
+        synchronized(pendingShowInAppOutcomes) {
+            if (isTornDown) return null
+            CompletableDeferred<ShowInAppOutcome>().also(pendingShowInAppOutcomes::add)
+        }
+
+    private fun cancelPendingShowInAppOutcomes() {
+        val abandoned = synchronized(pendingShowInAppOutcomes) {
+            isTornDown = true
+            pendingShowInAppOutcomes.toList().also { pendingShowInAppOutcomes.clear() }
+        }
+        abandoned.forEach { outcome -> outcome.cancel() }
+    }
+
+    private suspend fun handleFilterShowableInappsAction(message: BridgeMessage.Request): String {
+        val askedIds = runCatching {
+            gson.fromJson(message.payload, JsonObject::class.java)?.get(INAPP_IDS_FIELD) as? JsonArray
+        }.getOrNull() ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "no '$INAPP_IDS_FIELD' array in the payload")
+        val requestedIds = askedIds.mapNotNull { element ->
+            runCatching { element.asJsonPrimitive.takeIf { primitive -> primitive.isString }?.asString }
+                .getOrNull()
+        }
+        if (requestedIds.size != askedIds.size()) {
+            mindboxLogE(
+                "[WebView] Bridge: ${askedIds.size() - requestedIds.size} of ${askedIds.size()} " +
+                    "asked ids are not strings, skipping them"
+            )
+        }
+        val showableIds = inAppInteractor.filterShowableInAppIds(host.hostInAppId, requestedIds)
+        mindboxLogI(
+            "[WebView] Bridge: filterShowableInapps from ${host.hostInAppId}: ${requestedIds.size} id(s) asked, " +
+                "${showableIds.size} allowed"
+        )
+        return gson.toJson(InAppIdsPayload(showableIds))
     }
 
     private fun handleHapticAction(message: BridgeMessage.Request): String {
@@ -255,6 +343,11 @@ internal class WebViewCommonBridgeActions(
         val unavailable: List<String>? = null,
     )
 
+    private data class InAppIdsPayload(
+        @SerializedName(INAPP_IDS_FIELD)
+        val inappIds: List<String>?,
+    )
+
     private data class SettingsOpenRequest(
         @SerializedName("target")
         val target: JsonElement?,
@@ -270,5 +363,9 @@ internal class WebViewCommonBridgeActions(
     private companion object {
         private const val MOTION_GESTURE_KEY = "gesture"
         private const val MOTION_GESTURES_KEY = "gestures"
+        private const val INAPP_IDS_FIELD = "inappIds"
+        private const val SHOW_IN_APP_ID_FIELD = "inappId"
+        private const val SHOW_IN_APP_PARAMS_FIELD = "params"
+        private const val SHOW_IN_APP_INVALID_PAYLOAD = "Invalid payload: missing or empty 'inappId'"
     }
 }
