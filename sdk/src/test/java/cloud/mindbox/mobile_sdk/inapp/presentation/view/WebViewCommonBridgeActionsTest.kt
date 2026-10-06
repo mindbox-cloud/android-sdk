@@ -6,7 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
@@ -44,6 +47,13 @@ class WebViewCommonBridgeActionsTest {
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val permissionManager: PermissionManager = mockk(relaxed = true)
     private val inAppMessageManager: InAppMessageManager = mockk()
+    private val mobileConfigRepository: MobileConfigRepository = mockk {
+        every { findInAppInCurrentConfig(any()) } returns null
+    }
+    private val featureToggleManager: FeatureToggleManager = mockk {
+        every { isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
+    }
+    private val operationSender: WebViewOperationSender = mockk(relaxUnitFun = true)
 
     private class FakeHost(
         override val closeCapability: ((BridgeMessage.Request) -> String)? = null,
@@ -73,11 +83,13 @@ class WebViewCommonBridgeActionsTest {
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
             every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
             every { inAppMessageManager } returns this@WebViewCommonBridgeActionsTest.inAppMessageManager
+            every { mobileConfigRepository } returns this@WebViewCommonBridgeActionsTest.mobileConfigRepository
+            every { featureToggleManager } returns this@WebViewCommonBridgeActionsTest.featureToggleManager
         }
     }
 
     private fun handlersOf(host: WebViewBridgeHost): WebViewActionHandlers =
-        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host).register(handlers) }
+        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host, operationSender).register(handlers) }
 
     private fun WebViewActionHandlers.serves(action: WebViewAction): Boolean =
         handler(action) != null || suspendHandler(action) != null
