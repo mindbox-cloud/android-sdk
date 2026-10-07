@@ -7,16 +7,19 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.JsonObject
 
-internal object OperationTagsResolver {
+internal class OperationTagsResolver(
+    private val mobileConfigRepository: MobileConfigRepository,
+    private val featureToggleManager: FeatureToggleManager,
+) {
 
-    private const val INAPP_ID_FIELD = "inappId"
+    companion object {
+        private const val INAPP_ID_FIELD = "inappId"
+    }
 
     fun resolve(
         request: JsonObject,
         hostInAppId: String,
         hostTags: Map<String, String>?,
-        mobileConfigRepository: MobileConfigRepository,
-        featureToggleManager: FeatureToggleManager,
     ): Map<String, String>? {
         val inAppId = requestedInAppId(request)
         if (inAppId == null || inAppId == hostInAppId) return hostTags

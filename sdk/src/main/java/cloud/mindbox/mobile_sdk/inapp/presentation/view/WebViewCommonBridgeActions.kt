@@ -59,7 +59,7 @@ internal class WebViewCommonBridgeActions(
     private val featureToggleManager by mindboxInject { featureToggleManager }
 
     private val operationExecutor: WebViewOperationExecutor by lazy {
-        MindboxWebViewOperationExecutor(gson, mobileConfigRepository, featureToggleManager, operationSender)
+        MindboxWebViewOperationExecutor(gson, OperationTagsResolver(mobileConfigRepository, featureToggleManager), operationSender)
     }
     private val linkRouter: WebViewLinkRouter by lazy { MindboxWebViewLinkRouter(appContext) }
     private val localStateStore: WebViewLocalStateStore by lazy { WebViewLocalStateStore(appContext) }

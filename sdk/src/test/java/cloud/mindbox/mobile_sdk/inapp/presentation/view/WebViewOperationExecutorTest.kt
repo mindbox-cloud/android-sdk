@@ -64,7 +64,7 @@ class WebViewOperationExecutorTest {
         featureToggleManager = mockk {
             every { isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
         }
-        executor = MindboxWebViewOperationExecutor(Gson(), mobileConfigRepository, featureToggleManager, sender)
+        executor = MindboxWebViewOperationExecutor(Gson(), OperationTagsResolver(mobileConfigRepository, featureToggleManager), sender)
     }
 
     @Test

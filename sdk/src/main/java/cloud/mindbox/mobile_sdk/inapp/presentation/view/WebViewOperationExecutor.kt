@@ -1,8 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import android.app.Application
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.MindboxError
@@ -56,8 +54,7 @@ internal object MindboxWebViewOperationSender : WebViewOperationSender {
 
 internal class MindboxWebViewOperationExecutor(
     private val gson: Gson,
-    private val mobileConfigRepository: MobileConfigRepository,
-    private val featureToggleManager: FeatureToggleManager,
+    private val tagsResolver: OperationTagsResolver,
     private val sender: WebViewOperationSender,
 ) : WebViewOperationExecutor {
 
@@ -111,7 +108,7 @@ internal class MindboxWebViewOperationExecutor(
             ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Operation is not provided")
         val bodyObject: JsonObject = runCatching { jsonObject.getAsJsonObject(BODY_FIELD) }.getOrNull()
             ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Body is not provided")
-        val tags = OperationTagsResolver.resolve(jsonObject, hostInAppId, hostTags, mobileConfigRepository, featureToggleManager)
+        val tags = tagsResolver.resolve(jsonObject, hostInAppId, hostTags)
         return operation to buildOperationBody(bodyObject, tags)
     }
 
