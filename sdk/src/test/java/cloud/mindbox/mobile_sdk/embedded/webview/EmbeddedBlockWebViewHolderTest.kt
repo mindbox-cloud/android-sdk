@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.stubBridgeHelpers
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -112,6 +113,7 @@ class EmbeddedBlockWebViewHolderTest {
             }
             every { inAppMessageManager } returns this@EmbeddedBlockWebViewHolderTest.inAppMessageManager
             every { webPageRegistry } returns this@EmbeddedBlockWebViewHolderTest.webPageRegistry
+            stubBridgeHelpers(application)
         }
         mockkObject(DbManager)
         every { DbManager.listenConfigurations() } returns flowOf(
