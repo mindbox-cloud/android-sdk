@@ -204,6 +204,20 @@ class WebViewOperationExecutorTest {
     }
 
     @Test
+    fun `executeAsyncOperation adds no tags for a named in-app that has none, and the host's do not stand in`() {
+        val context: Application = mockk()
+        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"screen":"home"}}"""
+        listOf<Map<String, String>?>(emptyMap(), null).forEach { tags: Map<String, String>? ->
+            givenConfigInApp("story-2", tags = tags)
+            executor.executeAsyncOperation(context, payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
+        }
+        assertEquals(
+            List(2) { AsyncSent(context, "OpenScreen", """{"screen":"home"}""") },
+            sender.sentAsync,
+        )
+    }
+
+    @Test
     fun `executeAsyncOperation adds no tags from the named in-app while the tags toggle is off`() {
         val context: Application = mockk()
         every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false

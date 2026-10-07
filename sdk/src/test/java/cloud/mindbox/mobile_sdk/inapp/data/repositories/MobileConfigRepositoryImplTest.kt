@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import io.mockk.*
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
@@ -79,6 +80,18 @@ internal class MobileConfigRepositoryImplTest {
         repository.getInApps(configBlank)
 
         verify(exactly = 1) { inAppMapper.mapToInAppDto(any(), null, any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `getInApps keeps only the copy of a repeated id that this SDK version may show`() {
+        val otherVersion = InAppStub.getInAppDtoBlank().copy(id = "story-2", sdkVersion = SdkVersion(minVersion = 999, maxVersion = null))
+        val thisVersion = InAppStub.getInAppDtoBlank().copy(id = "story-2", sdkVersion = SdkVersion(minVersion = 1, maxVersion = null))
+        val repository = createRepository(isVersionValid = { inAppDto -> inAppDto != otherVersion })
+
+        repository.getInApps(InAppConfigResponseBlank(listOf(otherVersion, thisVersion), null, null, null))
+
+        verify(exactly = 0) { inAppMapper.mapToInAppDto(otherVersion, any(), any(), any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(thisVersion, any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -237,6 +250,7 @@ internal class MobileConfigRepositoryImplTest {
     private fun createRepository(
         deserializedBlank: InAppConfigResponseBlank? = mockk(),
         sessionState: SessionState = SessionState(),
+        isVersionValid: (InAppConfigResponseBlank.InAppDtoBlank) -> Boolean = { true },
     ): MobileConfigRepositoryImpl {
         return MobileConfigRepositoryImpl(
             inAppMapper = inAppMapper,
@@ -245,7 +259,7 @@ internal class MobileConfigRepositoryImplTest {
                 every { isValid(any()) } returns true
             },
             inAppValidator = mockk(relaxed = true) {
-                every { validateInAppVersion(any()) } returns true
+                every { validateInAppVersion(any()) } answers { isVersionValid(firstArg()) }
                 every { validateInApp(any()) } returns true
             },
             mobileConfigSerializationManager = mockk(relaxed = true) {
