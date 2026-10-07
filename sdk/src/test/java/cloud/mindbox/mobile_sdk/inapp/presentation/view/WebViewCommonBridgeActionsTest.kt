@@ -7,7 +7,6 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
-import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
@@ -86,14 +85,14 @@ class WebViewCommonBridgeActionsTest {
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
             every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
             every { inAppMessageManager } returns this@WebViewCommonBridgeActionsTest.inAppMessageManager
-            every { operationTagsResolver } returns OperationTagsResolver(
-                this@WebViewCommonBridgeActionsTest.mobileConfigRepository,
-                this@WebViewCommonBridgeActionsTest.featureToggleManager,
+            stubBridgeHelpers(
+                application,
+                tagsResolver = OperationTagsResolver(
+                    this@WebViewCommonBridgeActionsTest.mobileConfigRepository,
+                    this@WebViewCommonBridgeActionsTest.featureToggleManager,
+                ),
+                sender = operationSender,
             )
-            every { webViewOperationSender } returns operationSender
-            every { webViewLinkRouter } returns MindboxWebViewLinkRouter(application)
-            every { webViewLocalStateStore } returns WebViewLocalStateStore(application)
-            every { hapticRequestValidator } returns HapticRequestValidator()
         }
     }
 

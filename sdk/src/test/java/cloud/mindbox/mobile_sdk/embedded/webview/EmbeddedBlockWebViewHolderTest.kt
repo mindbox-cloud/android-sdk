@@ -15,14 +15,10 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInterac
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppWebViewCachePolicy
-import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeMessage
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewLinkRouter
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewOperationSender
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.OperationTagsResolver
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewAction
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLocalStateStore
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.stubBridgeHelpers
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -117,11 +113,7 @@ class EmbeddedBlockWebViewHolderTest {
             }
             every { inAppMessageManager } returns this@EmbeddedBlockWebViewHolderTest.inAppMessageManager
             every { webPageRegistry } returns this@EmbeddedBlockWebViewHolderTest.webPageRegistry
-            every { operationTagsResolver } returns OperationTagsResolver(mockk(relaxed = true), mockk(relaxed = true))
-            every { webViewOperationSender } returns MindboxWebViewOperationSender
-            every { webViewLinkRouter } returns MindboxWebViewLinkRouter(application)
-            every { webViewLocalStateStore } returns WebViewLocalStateStore(application)
-            every { hapticRequestValidator } returns HapticRequestValidator()
+            stubBridgeHelpers(application)
         }
         mockkObject(DbManager)
         every { DbManager.listenConfigurations() } returns flowOf(
