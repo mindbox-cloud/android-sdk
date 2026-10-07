@@ -287,6 +287,7 @@ internal fun DataModule(
     override val jsonValidator: JsonValidator by lazy { JsonValidator() }
     override val xmlValidator: XmlValidator by lazy { XmlValidator() }
     override val urlValidator: UrlValidator by lazy { UrlValidator() }
+    override val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
 
     override val operationNameValidator: OperationNameValidator
         get() = OperationNameValidator()

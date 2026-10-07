@@ -10,7 +10,6 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionGesture
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionService
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionServiceProtocol
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.motion.MotionStartResult
-import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -44,7 +43,6 @@ internal interface WebViewBridgeHost {
 
 internal class WebViewCommonBridgeActions(
     private val host: WebViewBridgeHost,
-    private val operationSender: WebViewOperationSender = MindboxWebViewOperationSender,
 ) {
 
     private val appContext by mindboxInject { appContext }
@@ -55,15 +53,15 @@ internal class WebViewCommonBridgeActions(
     private val webPageRegistry by mindboxInject { webPageRegistry }
     private val inAppInteractor by mindboxInject { inAppInteractor }
     private val inAppMessageManager by mindboxInject { inAppMessageManager }
-    private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
-    private val featureToggleManager by mindboxInject { featureToggleManager }
+    private val operationTagsResolver by mindboxInject { operationTagsResolver }
+    private val operationSender by mindboxInject { webViewOperationSender }
+    private val linkRouter by mindboxInject { webViewLinkRouter }
+    private val localStateStore by mindboxInject { webViewLocalStateStore }
+    private val hapticRequestValidator by mindboxInject { hapticRequestValidator }
 
     private val operationExecutor: WebViewOperationExecutor by lazy {
-        MindboxWebViewOperationExecutor(gson, OperationTagsResolver(mobileConfigRepository, featureToggleManager), operationSender)
+        MindboxWebViewOperationExecutor(gson, operationTagsResolver, operationSender)
     }
-    private val linkRouter: WebViewLinkRouter by lazy { MindboxWebViewLinkRouter(appContext) }
-    private val localStateStore: WebViewLocalStateStore by lazy { WebViewLocalStateStore(appContext) }
-    private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
     private val hapticFeedbackExecutorLazy = lazy { HapticFeedbackExecutorImpl(appContext) }
     private val hapticFeedbackExecutor: HapticFeedbackExecutor by hapticFeedbackExecutorLazy
     private val webViewPermissionRequester: WebViewPermissionRequester by lazy {

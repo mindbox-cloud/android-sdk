@@ -5,6 +5,12 @@ import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistryImpl
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewLinkRouter
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewOperationSender
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.OperationTagsResolver
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLinkRouter
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLocalStateStore
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewOperationSender
 import kotlinx.coroutines.Dispatchers
 
 internal fun PresentationModule(
@@ -61,5 +67,20 @@ internal fun PresentationModule(
 
     override val activityManager: ActivityManager by lazy {
         ActivityManagerImpl(callbackInteractor = callbackInteractor, context = appContext)
+    }
+
+    override val operationTagsResolver: OperationTagsResolver by lazy {
+        OperationTagsResolver(mobileConfigRepository, featureToggleManager)
+    }
+
+    override val webViewOperationSender: WebViewOperationSender
+        get() = MindboxWebViewOperationSender
+
+    override val webViewLinkRouter: WebViewLinkRouter by lazy {
+        MindboxWebViewLinkRouter(appContext)
+    }
+
+    override val webViewLocalStateStore: WebViewLocalStateStore by lazy {
+        WebViewLocalStateStore(appContext)
     }
 }
