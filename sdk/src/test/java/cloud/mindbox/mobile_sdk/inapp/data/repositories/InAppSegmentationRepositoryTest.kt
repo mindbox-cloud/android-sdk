@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
@@ -255,5 +256,20 @@ class InAppSegmentationRepositoryTest {
         every { sessionStorageManager.state } throws Error()
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `failed customer segmentations fetch is cached for the session`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery {
+            gatewayManager.checkCustomerSegmentations(any(), any())
+        } throws CustomerSegmentationError(VolleyError("timeout"))
+
+        assertTrue(runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }.exceptionOrNull() is CustomerSegmentationError)
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
+        coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
     }
 }

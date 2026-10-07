@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import app.cash.turbine.test
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
@@ -17,6 +18,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -271,6 +274,54 @@ class InAppInteractorImplTest {
             verify(exactly = 1) {
                 inAppRepository.saveTargetedInAppWithEvent(winner.id, InAppEventType.AppStartup.hashCode())
             }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private fun givenEventWinner(variant: InAppType): InApp {
+        val winner = InAppStub.getInApp().copy(
+            id = "winner",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(variants = listOf(variant))
+        )
+        coEvery { mobileConfigRepository.getInAppsSection() } returns listOf(winner)
+        every { inAppFilteringManager.filterUnShownInAppsByEvent(any(), any()) } returns listOf(winner)
+        every { inAppFilteringManager.filterOutNonOverlayInApps(any()) } answers { firstArg() }
+        every { inAppFilteringManager.filterOutDirectCallInApps(any()) } answers { firstArg() }
+        coEvery { inAppFrequencyManager.filterInAppsFrequency(any()) } answers { firstArg() }
+        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } returns winner
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } just runs
+        return winner
+    }
+
+    @Test
+    fun `overlay winner hosting a web page fetches the session's targeting dependencies after the app start is released`() = runTest {
+        val sessionInApps = listOf(InAppStub.getInApp().copy(id = "story"))
+        every { inAppRepository.getCurrentSessionInApps() } returns sessionInApps
+        givenEventWinner(InAppStub.getWebView().copy(inAppId = "winner"))
+        mockkObject(InitializeLock)
+        try {
+            interactor.processEventAndConfig().test {
+                awaitItem()
+                coVerifyOrder {
+                    InitializeLock.complete(InitializeLock.State.APP_STARTED)
+                    inAppProcessingManager.prefetchTargetingDependencies(sessionInApps)
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        } finally {
+            unmockkObject(InitializeLock)
+        }
+    }
+
+    @Test
+    fun `overlay winner without a web page fetches no targeting dependencies`() = runTest {
+        givenEventWinner(InAppStub.getModalWindow().copy(inAppId = "winner"))
+
+        interactor.processEventAndConfig().test {
+            awaitItem()
+            coVerify(exactly = 0) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
             cancelAndIgnoreRemainingEvents()
         }
     }

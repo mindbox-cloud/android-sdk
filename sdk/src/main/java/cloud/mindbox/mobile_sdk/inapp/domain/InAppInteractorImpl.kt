@@ -22,7 +22,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingDataWrapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
@@ -33,6 +32,7 @@ import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
+import cloud.mindbox.mobile_sdk.hostsWebPage
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
@@ -53,9 +53,6 @@ internal class InAppInteractorImpl(
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
-
-    private val placeRequestTargetingData =
-        TargetingDataWrapper(InAppEventType.EmbeddedPlaceRequested.EVENT_NAME)
 
     override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
@@ -113,6 +110,9 @@ internal class InAppInteractorImpl(
                 inApp?.let {
                     sessionStorageManager.state.inAppTriggerEvent = event
                 }
+                if (inApp?.firstOverlayVariant()?.hostsWebPage() == true) {
+                    inAppProcessingManager.prefetchTargetingDependencies(inAppRepository.getCurrentSessionInApps())
+                }
                 inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
             .onEach { pair ->
@@ -134,6 +134,7 @@ internal class InAppInteractorImpl(
         val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+        if (candidates.isNotEmpty()) inAppProcessingManager.prefetchTargetingDependencies(inApps)
         val matched = candidates.filter { candidate ->
             inAppProcessingManager.matchesTargeting(candidate, trigger)
         }
@@ -302,14 +303,7 @@ internal class InAppInteractorImpl(
     }
 
     private suspend fun matchesRequestedTargeting(inApp: InApp): Boolean =
-        runCatching {
-            inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
-            inApp.targeting.checkTargeting(placeRequestTargetingData)
-        }
-            .getOrElse { error ->
-                logI("Requested id ${inApp.id} targeting could not be checked ($error), cutting it")
-                false
-            }
+        inAppProcessingManager.matchesRequestedTargeting(inApp)
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
     override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {

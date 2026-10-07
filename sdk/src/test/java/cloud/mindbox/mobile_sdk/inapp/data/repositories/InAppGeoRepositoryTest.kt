@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -22,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -203,5 +205,17 @@ internal class InAppGeoRepositoryTest {
     fun `get geo fetched status error`() {
         every { sessionStorageManager.state } throws Error()
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, inAppGeoRepository.getGeoFetchedStatus())
+    }
+
+    @Test
+    fun `failed geo fetch is cached for the session`() = runTest {
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } throws GeoError(VolleyError("timeout"))
+
+        assertTrue(runCatching { inAppGeoRepository.fetchGeo() }.exceptionOrNull() is GeoError)
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+        coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
     }
 }

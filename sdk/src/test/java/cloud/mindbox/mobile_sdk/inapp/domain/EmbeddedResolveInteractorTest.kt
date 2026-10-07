@@ -20,7 +20,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -31,12 +30,12 @@ import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.just
-import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkObject
@@ -120,6 +119,8 @@ class EmbeddedResolveInteractorTest {
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } just runs
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(any()) } returns true
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
         every { showBudgetManager.release(any()) } just runs
@@ -686,38 +687,10 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds cuts id with unmatched targeting`() = runTest {
-        // An operation node never matches the dictionary answer — no operation is happening.
-        givenConfig(
-            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
-        )
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
 
         assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-    }
-
-    @Test
-    fun `filterShowableInAppIds fetches the targeting dependencies before checking`() = runTest {
-        // A segment-targeted in-app is answerable only from fetched data. The dictionary question is
-        // the only path that ever evaluates a directCall in-app's targeting, so it has to fetch
-        // for itself — the session status and the repository mutexes keep it one network trip.
-        val targeting = mockk<TreeTargeting>()
-        coEvery { targeting.fetchTargetingInfo(any()) } just runs
-        every { targeting.checkTargeting(any()) } returns true
-        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
-
-        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-        coVerify(exactly = 1) { targeting.fetchTargetingInfo(any()) }
-    }
-
-    @Test
-    fun `filterShowableInAppIds cuts the id whose dependencies could not be fetched`() = runTest {
-        // Fail closed: a fetch that failed leaves the targeting unverifiable, and unverified
-        // is never "allowed".
-        val targeting = mockk<TreeTargeting>()
-        coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("offline")
-        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
-
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-        verify(exactly = 0) { targeting.checkTargeting(any()) }
     }
 
     @Test
@@ -821,9 +794,8 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds sends no targeting for a cut id`() = runTest {
-        givenConfig(
-            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
-        )
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
 
         interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "ghost"))
 
@@ -1096,6 +1068,29 @@ class EmbeddedResolveInteractorTest {
     }
 
     private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content
+
+    @Test
+    fun `selectInAppForPlace fetches the whole config's targeting dependencies before matching the place`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace fetches no targeting dependencies for a place without candidates`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp())
+
+        interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place")))
+
+        coVerify(exactly = 0) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
 
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 }

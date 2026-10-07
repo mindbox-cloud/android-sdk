@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
@@ -24,8 +25,8 @@ internal class InAppSegmentationRepositoryImpl(
     private val customerSegmentationsMutex = Mutex()
 
     override suspend fun fetchCustomerSegmentations() = customerSegmentationsMutex.withLock {
-        if (sessionStorageManager.state.customerSegmentationFetchStatus ==
-            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        if (sessionStorageManager.state.customerSegmentationFetchStatus !=
+            CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         ) {
             return@withLock
         }
@@ -43,12 +44,18 @@ internal class InAppSegmentationRepositoryImpl(
             "Request segmentations"
         )
         val configuration = DbManager.listenConfigurations().first()
-        val response = gatewayManager.checkCustomerSegmentations(
-            configuration = configuration,
-            segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
-                sessionStorageManager.state.currentSessionInApps
+        val response = try {
+            gatewayManager.checkCustomerSegmentations(
+                configuration = configuration,
+                segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
+                    sessionStorageManager.state.currentSessionInApps
+                )
             )
-        )
+        } catch (error: CustomerSegmentationError) {
+            sessionStorageManager.state.customerSegmentationFetchStatus =
+                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            throw error
+        }
         sessionStorageManager.state.inAppCustomerSegmentations =
             inAppMapper.mapToSegmentationCheck(response)
         sessionStorageManager.state.customerSegmentationFetchStatus =
