@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
+import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -82,6 +83,11 @@ class WebViewInAppViewHolderTest {
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
+            every { operationTagsResolver } returns OperationTagsResolver(mockk(relaxed = true), mockk(relaxed = true))
+            every { webViewOperationSender } returns MindboxWebViewOperationSender
+            every { webViewLinkRouter } returns MindboxWebViewLinkRouter(application)
+            every { webViewLocalStateStore } returns WebViewLocalStateStore(application)
+            every { hapticRequestValidator } returns HapticRequestValidator()
         }
         mockkObject(DbManager)
         mockkObject(MindboxLoggerImpl)
