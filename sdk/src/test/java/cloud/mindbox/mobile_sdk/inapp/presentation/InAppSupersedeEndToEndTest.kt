@@ -11,7 +11,6 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.data.validators.HapticRequestValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
@@ -21,11 +20,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewLinkRouter
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebViewOperationSender
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.OperationTagsResolver
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLocalStateStore
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.stubBridgeHelpers
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -111,11 +107,7 @@ internal class InAppSupersedeEndToEndTest {
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
-            every { operationTagsResolver } returns OperationTagsResolver(mockk(relaxed = true), mockk(relaxed = true))
-            every { webViewOperationSender } returns MindboxWebViewOperationSender
-            every { webViewLinkRouter } returns MindboxWebViewLinkRouter(application)
-            every { webViewLocalStateStore } returns WebViewLocalStateStore(application)
-            every { hapticRequestValidator } returns HapticRequestValidator()
+            stubBridgeHelpers(application)
         }
         mockkObject(DbManager)
         mockkObject(MindboxLoggerImpl)

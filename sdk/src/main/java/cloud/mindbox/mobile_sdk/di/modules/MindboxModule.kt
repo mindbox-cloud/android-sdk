@@ -20,11 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.OperationTagsResolver
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLinkRouter
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewLocalStateStore
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewOperationSender
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.*
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
