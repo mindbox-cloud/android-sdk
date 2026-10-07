@@ -5,9 +5,22 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+// Opt-in: build against the SDK from this repository instead of Maven Central.
+// Publish it first with `./gradlew publishToMavenLocal` in the repository root,
+// then build the example with `-PmindboxSdkFromMavenLocal=true`.
+def mindboxSdkFromMavenLocal = providers.gradleProperty('mindboxSdkFromMavenLocal')
+        .map { it.toBoolean() }
+        .getOrElse(false)
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        if (mindboxSdkFromMavenLocal) {
+            exclusiveContent {
+                forRepository { mavenLocal() }
+                filter { includeGroup 'cloud.mindbox' }
+            }
+        }
         google()
         maven { url 'https://developer.huawei.com/repo/' }
         maven { url "https://nexus-external.rustore.ru/repository/maven-rustore-exposed" }

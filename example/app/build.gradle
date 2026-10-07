@@ -22,14 +22,26 @@ if (examplePropertiesFile.exists()) {
 }
 
 
-def exampleVersionName = EXAMPLE_VERSION_NAME_FALLBACK
+def repoSdkVersionName = null
 def sdkPropertiesFile = rootProject.file("../gradle.properties")
 if (sdkPropertiesFile.exists()) {
     def sdkProperties = new Properties()
     sdkPropertiesFile.withInputStream { stream ->
         sdkProperties.load(stream)
     }
-    exampleVersionName = sdkProperties.getProperty('SDK_VERSION_NAME', exampleVersionName)
+    repoSdkVersionName = sdkProperties.getProperty('SDK_VERSION_NAME')
+}
+def exampleVersionName = repoSdkVersionName ?: EXAMPLE_VERSION_NAME_FALLBACK
+
+// By default the SDK comes from Maven Central. With -PmindboxSdkFromMavenLocal=true
+// (see settings.gradle) it is the version built from this repository and published
+// to mavenLocal.
+def mindboxSdkVersion = '2.15.4'
+if (providers.gradleProperty('mindboxSdkFromMavenLocal').map { it.toBoolean() }.getOrElse(false)) {
+    if (repoSdkVersionName == null) {
+        throw new GradleException("mindboxSdkFromMavenLocal requires SDK_VERSION_NAME in ${sdkPropertiesFile}")
+    }
+    mindboxSdkVersion = repoSdkVersionName
 }
 
 android {
@@ -133,7 +145,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
 
     // Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.15.4'
+    implementation "cloud.mindbox:mobile-sdk:$mindboxSdkVersion"
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
     implementation 'cloud.mindbox:mindbox-rustore'
