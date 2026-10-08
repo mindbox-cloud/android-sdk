@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -35,6 +36,7 @@ import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -83,6 +85,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
     private lateinit var featureToggleManager: FeatureToggleManager
     private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
     private lateinit var webViewCachePolicy: InAppWebViewCachePolicy
+    private val processLifecycleState = MutableStateFlow(Lifecycle.State.STARTED)
     private lateinit var service: InAppWebViewPrewarmManagerImpl
 
     @Before
@@ -117,7 +120,8 @@ internal class InAppWebViewPrewarmManagerImplTest {
                 every { hosts(any()) } returns listOf("learned-cdn.mindbox.ru")
             },
             featureToggleManager = featureToggleManager,
-            webViewCachePolicy = webViewCachePolicy
+            webViewCachePolicy = webViewCachePolicy,
+            processLifecycleState = processLifecycleState
         )
     }
 
