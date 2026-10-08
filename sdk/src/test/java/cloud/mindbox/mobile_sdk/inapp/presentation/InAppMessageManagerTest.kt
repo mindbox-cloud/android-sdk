@@ -744,6 +744,19 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
+    fun `a dismiss hands over the moment of the show, not the moment of the dismiss`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        every { timeProvider.currentTimestamp() } returns Timestamp(4_000L)
+        callbacks().onInAppShown.onShown()
+        every { timeProvider.currentTimestamp() } returns Timestamp(9_000L)
+        callbacks().onInAppDismiss.onDismiss()
+
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(4_000L)) }
+    }
+
+    @Test
     fun `a candidate that found the hold already standing is shown but never gives it back`() = runTest {
         // The hold belongs to the earlier candidate of the same in-app; this one owns nothing.
         val inApp = InAppStub.getInApp()

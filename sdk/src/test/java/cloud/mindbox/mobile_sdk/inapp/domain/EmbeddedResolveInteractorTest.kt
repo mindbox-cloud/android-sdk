@@ -884,6 +884,22 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `saveInAppDismissTime logs how long the in-app was on screen, whatever the last counted show says`() {
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.saveInAppDismissTime(
+                modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+                Timestamp(now.ms - 15_288L)
+            )
+
+            verify(exactly = 1) { MindboxLoggerImpl.i(any(), "Last in-app display duration 15288 ms") }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
     fun `recordBlockShow sends the Inapp Show, counts the show and moves the cooldown`() {
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"))
 
