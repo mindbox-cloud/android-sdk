@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
@@ -11,6 +12,9 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.Constants
+import com.android.volley.TimeoutError
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,18 +28,15 @@ internal class InAppSegmentationRepositoryImpl(
     private val customerSegmentationsMutex = Mutex()
 
     override suspend fun fetchCustomerSegmentations() = customerSegmentationsMutex.withLock {
-        if (sessionStorageManager.state.customerSegmentationFetchStatus ==
-            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        ) {
+        val state = sessionStorageManager.state
+        if (state.customerSegmentationFetchStatus != CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED) {
             return@withLock
         }
-        if (sessionStorageManager.state.currentSessionInApps.isEmpty()) {
+        if (state.currentSessionInApps.isEmpty()) {
             MindboxLoggerImpl.d(
                 this,
                 "No unshown inapps. Do not request segmentations"
             )
-            sessionStorageManager.state.customerSegmentationFetchStatus =
-                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
             return@withLock
         }
         MindboxLoggerImpl.d(
@@ -43,16 +44,19 @@ internal class InAppSegmentationRepositoryImpl(
             "Request segmentations"
         )
         val configuration = DbManager.listenConfigurations().first()
-        val response = gatewayManager.checkCustomerSegmentations(
-            configuration = configuration,
-            segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(
-                sessionStorageManager.state.currentSessionInApps
-            )
-        )
-        sessionStorageManager.state.inAppCustomerSegmentations =
-            inAppMapper.mapToSegmentationCheck(response)
-        sessionStorageManager.state.customerSegmentationFetchStatus =
-            CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        val response = try {
+            withTimeoutOrNull(Constants.targetingFetchWaitLimit.interval) {
+                gatewayManager.checkCustomerSegmentations(
+                    configuration = configuration,
+                    segmentationCheckRequest = inAppMapper.mapToCustomerSegmentationCheckRequest(state.currentSessionInApps)
+                )
+            } ?: throw CustomerSegmentationError(TimeoutError())
+        } catch (error: CustomerSegmentationError) {
+            state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            throw error
+        }
+        state.inAppCustomerSegmentations = inAppMapper.mapToSegmentationCheck(response)
+        state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         return@withLock
     }
 

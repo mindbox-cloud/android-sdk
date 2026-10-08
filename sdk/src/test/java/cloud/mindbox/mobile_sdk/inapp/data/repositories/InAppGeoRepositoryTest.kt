@@ -1,10 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CompletableDeferred
 import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
@@ -17,11 +21,13 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -203,5 +209,113 @@ internal class InAppGeoRepositoryTest {
     fun `get geo fetched status error`() {
         every { sessionStorageManager.state } throws Error()
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, inAppGeoRepository.getGeoFetchedStatus())
+    }
+
+    @Test
+    fun `failed geo fetch is cached for the session`() = runTest {
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } throws GeoError(VolleyError("timeout"))
+
+        assertTrue(runCatching { inAppGeoRepository.fetchGeo() }.exceptionOrNull() is GeoError)
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+        coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
+    }
+
+    @Test
+    fun `a geo fetch the session reset outlived writes into its own session only`() = runTest {
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            throw GeoError(VolleyError("timeout"))
+        }
+
+        runCatching { inAppGeoRepository.fetchGeo() }
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, nextSession.geoFetchStatus)
+    }
+
+    @Test
+    fun `a geo request the queue dropped without an answer ends as a cached fetch error`() = runTest {
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers { awaitCancellation() }
+
+        assertTrue(runCatching { inAppGeoRepository.fetchGeo() }.exceptionOrNull() is GeoError)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+    }
+
+    @Test
+    fun `a geo fetch the session reset outlived writes its success into its own session only`() = runTest {
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, nextSession.geoFetchStatus)
+    }
+
+    @Test
+    fun `two callers on a cold cache make one geo request and both see its result`() = runTest {
+        val answer = CompletableDeferred<Unit>()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers {
+            answer.await()
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        val first = launch { inAppGeoRepository.fetchGeo() }
+        val second = launch { inAppGeoRepository.fetchGeo() }
+        runCurrent()
+        answer.complete(Unit)
+        first.join()
+        second.join()
+
+        coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
+    }
+
+    @Test
+    fun `a geo caller cancelled while it holds the lock leaves the status not fetched for the next caller`() = runTest {
+        var dropsTheRequest = true
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers {
+            if (dropsTheRequest) awaitCancellation()
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        val cancelled = launch { inAppGeoRepository.fetchGeo() }
+        runCurrent()
+        cancelled.cancel()
+        cancelled.join()
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionState.geoFetchStatus)
+
+        dropsTheRequest = false
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
+        coVerify(exactly = 2) { gatewayManager.checkGeoTargeting(any()) }
     }
 }

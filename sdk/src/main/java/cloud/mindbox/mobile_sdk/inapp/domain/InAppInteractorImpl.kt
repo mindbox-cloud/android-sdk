@@ -21,8 +21,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingDataWrapper
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
@@ -54,9 +54,6 @@ internal class InAppInteractorImpl(
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
-
-    private val placeRequestTargetingData =
-        TargetingDataWrapper(InAppEventType.EmbeddedPlaceRequested.EVENT_NAME)
 
     override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
@@ -114,6 +111,9 @@ internal class InAppInteractorImpl(
                 inApp?.let {
                     sessionStorageManager.state.inAppTriggerEvent = event
                 }
+                if (inApp?.overlayHostsWebPage() == true) {
+                    inAppProcessingManager.prefetchTargetingDependencies(inAppRepository.getCurrentSessionInApps())
+                }
                 inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
             .onEach { pair ->
@@ -126,15 +126,28 @@ internal class InAppInteractorImpl(
     override suspend fun selectInAppForPlace(
         placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
+    ): EmbeddedResolveOutcome = selectInAppForPlace(placeSystemName, triggerEvent, isRetryAfterSessionReset = false)
+
+    private suspend fun selectInAppForPlace(
+        placeSystemName: PlaceKey,
+        triggerEvent: InAppEventType,
+        isRetryAfterSessionReset: Boolean,
     ): EmbeddedResolveOutcome {
         val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
             logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
             return EmbeddedResolveOutcome.ConfigUnavailable
         }
+        val session = sessionStorageManager.state
         inAppRepository.saveCurrentSessionInApps(inApps)
         val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+        if (candidates.isNotEmpty()) {
+            inAppProcessingManager.prefetchTargetingDependencies(inApps)
+            if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+                return resolveAgainForNewSession(placeSystemName, "while its targeting dependencies were fetched")
+            }
+        }
         val matched = candidates.filter { candidate ->
             inAppProcessingManager.matchesTargeting(candidate, trigger)
         }
@@ -145,6 +158,9 @@ internal class InAppInteractorImpl(
             .let { inAppFrequencyManager.filterInAppsFrequency(it) }
             .sortByPriority()
             .firstOrNull { candidate -> candidate.embeddedVariantFor(placeSystemName) != null }
+        if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+            return resolveAgainForNewSession(placeSystemName, "while its candidates were checked")
+        }
 
         sendPlaceTargetings(placeSystemName, matched, winner)
         if (winner == null) {
@@ -161,6 +177,12 @@ internal class InAppInteractorImpl(
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
         return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime)
+    }
+
+    private suspend fun resolveAgainForNewSession(placeSystemName: PlaceKey, moment: String): EmbeddedResolveOutcome {
+        logI("Place '$placeSystemName': the session was reset $moment, resolving again as a place request of the new session")
+        inAppFailureTracker.clearFailures()
+        return selectInAppForPlace(placeSystemName, InAppEventType.EmbeddedPlaceRequested(placeSystemName), isRetryAfterSessionReset = true)
     }
 
     private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {
@@ -196,6 +218,16 @@ internal class InAppInteractorImpl(
                 }
             }
         }
+    }
+
+    private fun InApp.overlayHostsWebPage(): Boolean {
+        val layers = when (val variant = firstOverlayVariant()) {
+            is InAppType.WebView -> variant.layers
+            is InAppType.ModalWindow -> variant.layers
+            is InAppType.Snackbar -> variant.layers
+            else -> return false
+        }
+        return layers.any { layer -> layer is Layer.WebViewLayer }
     }
 
     private fun InApp.embeddedVariantFor(place: PlaceKey): InAppType.Embedded? =
@@ -259,7 +291,11 @@ internal class InAppInteractorImpl(
 
     override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String> {
         if (inAppIds.isEmpty()) return emptyList()
-        val inApps = mobileConfigRepository.getInAppsSection()
+        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
+            logI("Page of $hostInAppId asks about ${inAppIds.size} id(s) while the config is unavailable, cutting them all")
+            return emptyList()
+        }
+        inAppRepository.saveCurrentSessionInApps(inApps)
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
         val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
             .map { inApp -> inApp.id }
@@ -303,14 +339,7 @@ internal class InAppInteractorImpl(
     }
 
     private suspend fun matchesRequestedTargeting(inApp: InApp): Boolean =
-        runCatching {
-            inApp.targeting.fetchTargetingInfo(placeRequestTargetingData)
-            inApp.targeting.checkTargeting(placeRequestTargetingData)
-        }
-            .getOrElse { error ->
-                logI("Requested id ${inApp.id} targeting could not be checked ($error), cutting it")
-                false
-            }
+        inAppProcessingManager.matchesRequestedTargeting(inApp)
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
     override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {

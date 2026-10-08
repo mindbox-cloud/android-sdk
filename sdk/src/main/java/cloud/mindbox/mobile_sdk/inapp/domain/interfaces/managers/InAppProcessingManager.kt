@@ -22,4 +22,8 @@ internal interface InAppProcessingManager {
     fun sendTargetedInApp(inApp: InApp)
 
     suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean
+
+    suspend fun matchesRequestedTargeting(inApp: InApp): Boolean
+
+    suspend fun prefetchTargetingDependencies(inApps: List<InApp>)
 }

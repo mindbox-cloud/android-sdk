@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
@@ -20,7 +21,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.TreeTargeting
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -31,12 +31,12 @@ import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.just
-import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkObject
@@ -120,6 +120,8 @@ class EmbeddedResolveInteractorTest {
         every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
         coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } just runs
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(any()) } returns true
         every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
         every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
         every { showBudgetManager.release(any()) } just runs
@@ -686,38 +688,10 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds cuts id with unmatched targeting`() = runTest {
-        // An operation node never matches the dictionary answer — no operation is happening.
-        givenConfig(
-            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
-        )
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
 
         assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-    }
-
-    @Test
-    fun `filterShowableInAppIds fetches the targeting dependencies before checking`() = runTest {
-        // A segment-targeted in-app is answerable only from fetched data. The dictionary question is
-        // the only path that ever evaluates a directCall in-app's targeting, so it has to fetch
-        // for itself — the session status and the repository mutexes keep it one network trip.
-        val targeting = mockk<TreeTargeting>()
-        coEvery { targeting.fetchTargetingInfo(any()) } just runs
-        every { targeting.checkTargeting(any()) } returns true
-        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
-
-        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-        coVerify(exactly = 1) { targeting.fetchTargetingInfo(any()) }
-    }
-
-    @Test
-    fun `filterShowableInAppIds cuts the id whose dependencies could not be fetched`() = runTest {
-        // Fail closed: a fetch that failed leaves the targeting unverifiable, and unverified
-        // is never "allowed".
-        val targeting = mockk<TreeTargeting>()
-        coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("offline")
-        givenConfig(modalInApp(id = "inapp-1").copy(targeting = targeting))
-
-        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-        verify(exactly = 0) { targeting.checkTargeting(any()) }
     }
 
     @Test
@@ -821,9 +795,8 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds sends no targeting for a cut id`() = runTest {
-        givenConfig(
-            modalInApp(id = "inapp-1").copy(targeting = InAppStub.getTargetingOperationNode())
-        )
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
 
         interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "ghost"))
 
@@ -1109,6 +1082,142 @@ class EmbeddedResolveInteractorTest {
     }
 
     private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content
+
+    @Test
+    fun `selectInAppForPlace fetches the whole config's targeting dependencies before matching the place`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace fetches no targeting dependencies for a place without candidates`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp())
+
+        interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place")))
+
+        coVerify(exactly = 0) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again for the new session when the session was reset during the prefetch`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again only once however often the session is reset`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            every { sessionStorageManager.state } returns SessionState()
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves once while the session stays the same`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 1) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds saves the config's in-apps into the session before checking`() = runTest {
+        val config = listOf(modalInApp(id = "inapp-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" })
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again when the session was reset while its candidates were checked`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again as a plain place request, leaving the old session's operation behind`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val operation = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), null)
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        interactor.selectInAppForPlace(place, operation)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), ofType<InAppEventType.EmbeddedPlaceRequested>()) }
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        assertFalse(nextSession.embeddedLastOperationByPlace.containsKey(place))
+        assertSame(operation, sessionState.embeddedLastOperationByPlace[place])
+    }
+
+    @Test
+    fun `selectInAppForPlace drops the failures the abandoned pass collected before resolving again`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppProcessingManager.matchesTargeting(any(), any())
+            inAppFailureTracker.clearFailures()
+            inAppProcessingManager.prefetchTargetingDependencies(any())
+        }
+    }
 
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 }

@@ -39,6 +39,9 @@ internal class InAppProcessingManagerImpl(
             "CheckCustomerSegments requires customer"
     }
 
+    private val requestedTargetingData =
+        TargetingDataWrapper(InAppEventType.EmbeddedPlaceRequested.EVENT_NAME)
+
     private fun isTagsFeatureEnabled(): Boolean =
         featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE)
 
@@ -88,6 +91,8 @@ internal class InAppProcessingManagerImpl(
                         targetingCheck = inApp.targeting.checkTargeting(data)
                     }.onFailure { throwable ->
                         when (throwable) {
+                            is CancellationException -> throw throwable
+
                             is GeoError -> {
                                 isTargetingErrorOccurred = true
                                 inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
@@ -175,6 +180,8 @@ internal class InAppProcessingManagerImpl(
             inApp.targeting.fetchTargetingInfo(data)
         }.onFailure { throwable ->
             when (throwable) {
+                is CancellationException -> throw throwable
+
                 is GeoError -> {
                     isTargetingErrorOccurred = true
                     inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
@@ -210,8 +217,13 @@ internal class InAppProcessingManagerImpl(
         )
     }
 
-    override suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean {
-        val data = getTargetingData(triggerEvent)
+    override suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean =
+        matchesTargeting(inApp, getTargetingData(triggerEvent), collectsFailures = true)
+
+    override suspend fun matchesRequestedTargeting(inApp: InApp): Boolean =
+        matchesTargeting(inApp, requestedTargetingData, collectsFailures = false)
+
+    private suspend fun matchesTargeting(inApp: InApp, data: TargetingData, collectsFailures: Boolean): Boolean {
         val tags = inApp.gatedTags(isTagsFeatureEnabled())
         var isTargetingErrorOccurred = false
         var targetingCheck = false
@@ -219,35 +231,12 @@ internal class InAppProcessingManagerImpl(
             inApp.targeting.fetchTargetingInfo(data)
             targetingCheck = inApp.targeting.checkTargeting(data)
         }.onFailure { throwable ->
-            when (throwable) {
-                is GeoError -> {
-                    isTargetingErrorOccurred = true
-                    inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
-                    if (throwable.shouldTrackTargetingError()) {
-                        inAppTargetingErrorRepository.saveError(
-                            key = TargetingErrorKey.Geo,
-                            error = throwable
-                        )
-                    }
-                    mindboxLogE("Error fetching geo", throwable)
-                }
-
-                is CustomerSegmentationError -> {
-                    isTargetingErrorOccurred = true
-                    inAppSegmentationRepository.setCustomerSegmentationStatus(
-                        CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-                    )
-                    if (throwable.shouldTrackTargetingError()) {
-                        inAppTargetingErrorRepository.saveError(
-                            key = TargetingErrorKey.CustomerSegmentation,
-                            error = throwable
-                        )
-                    }
-                    handleCustomerSegmentationErrorLog(throwable)
-                }
-
-                else -> {
-                    mindboxLogE(throwable.message ?: "", throwable)
+            if (throwable is CancellationException) throw throwable
+            if (handleTargetingFetchError(throwable)) {
+                isTargetingErrorOccurred = true
+            } else {
+                mindboxLogE(throwable.message ?: "", throwable)
+                if (collectsFailures) {
                     inAppFailureTracker.sendFailure(
                         inAppId = inApp.id,
                         failureReason = FailureReason.UNKNOWN_ERROR,
@@ -257,9 +246,53 @@ internal class InAppProcessingManagerImpl(
                 }
             }
         }
-        if (isTargetingErrorOccurred) return matchesTargeting(inApp, triggerEvent)
-        trackTargetingErrorIfAny(inApp, data, tags)
+        if (isTargetingErrorOccurred) return matchesTargeting(inApp, data, collectsFailures)
+        if (collectsFailures) trackTargetingErrorIfAny(inApp, data, tags)
         return targetingCheck
+    }
+
+    override suspend fun prefetchTargetingDependencies(inApps: List<InApp>) {
+        val fetchesSegmentations = inAppSegmentationRepository.getCustomerSegmentationFetched() ==
+            CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED &&
+            inApps.any { inApp -> inApp.targeting.hasSegmentationNode() }
+        val fetchesGeo = inAppGeoRepository.getGeoFetchedStatus() == GeoFetchStatus.GEO_NOT_FETCHED &&
+            inApps.any { inApp -> inApp.targeting.hasGeoNode() }
+        if (!fetchesSegmentations && !fetchesGeo) return
+        mindboxLogI("Prefetching targeting dependencies: segmentations=$fetchesSegmentations, geo=$fetchesGeo")
+        coroutineScope {
+            if (fetchesSegmentations) launch { fetchTargetingDependency { inAppSegmentationRepository.fetchCustomerSegmentations() } }
+            if (fetchesGeo) launch { fetchTargetingDependency { inAppGeoRepository.fetchGeo() } }
+        }
+    }
+
+    private fun handleTargetingFetchError(error: Throwable): Boolean = when (error) {
+        is GeoError -> {
+            if (error.shouldTrackTargetingError()) {
+                inAppTargetingErrorRepository.saveError(key = TargetingErrorKey.Geo, error = error)
+            }
+            mindboxLogE("Error fetching geo", error)
+            true
+        }
+
+        is CustomerSegmentationError -> {
+            if (error.shouldTrackTargetingError()) {
+                inAppTargetingErrorRepository.saveError(key = TargetingErrorKey.CustomerSegmentation, error = error)
+            }
+            handleCustomerSegmentationErrorLog(error)
+            true
+        }
+
+        else -> false
+    }
+
+    private suspend fun fetchTargetingDependency(fetch: suspend () -> Unit) {
+        try {
+            fetch()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            if (!handleTargetingFetchError(error)) mindboxLogE("Error prefetching targeting dependencies", error)
+        }
     }
 
     private fun getTargetingData(triggerEvent: InAppEventType): TargetingData {
