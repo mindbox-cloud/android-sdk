@@ -291,4 +291,31 @@ internal class InAppGeoRepositoryTest {
         coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
         assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
     }
+
+    @Test
+    fun `a geo caller cancelled while it holds the lock leaves the status not fetched for the next caller`() = runTest {
+        var dropsTheRequest = true
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers {
+            if (dropsTheRequest) awaitCancellation()
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        val cancelled = launch { inAppGeoRepository.fetchGeo() }
+        runCurrent()
+        cancelled.cancel()
+        cancelled.join()
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, sessionState.geoFetchStatus)
+
+        dropsTheRequest = false
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
+        coVerify(exactly = 2) { gatewayManager.checkGeoTargeting(any()) }
+    }
 }

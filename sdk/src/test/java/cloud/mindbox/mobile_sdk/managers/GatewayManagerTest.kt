@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.launch
@@ -350,6 +351,20 @@ class GatewayManagerTest {
     @Test
     fun `checkGeoTargeting cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
         val job = launch { gatewayManager.checkGeoTargeting(mockConfiguration) }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        val request = slot<MindboxRequest>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        assertTrue(request.captured.isCanceled)
+    }
+
+    @Test
+    fun `checkCustomerSegmentations cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch {
+            gatewayManager.checkCustomerSegmentations(mockConfiguration, SegmentationCheckRequest(segmentations = emptyList()))
+        }
         runCurrent()
         job.cancel()
         job.join()
