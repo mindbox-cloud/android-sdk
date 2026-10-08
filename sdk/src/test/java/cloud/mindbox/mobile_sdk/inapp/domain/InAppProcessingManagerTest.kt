@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import kotlinx.coroutines.flow.flowOf
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
@@ -17,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
@@ -1468,15 +1470,63 @@ internal class InAppProcessingManagerTest {
 
     @Test
     fun `place targeting matches from the session cache and collects nothing`() = runTest {
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        sessionStorageManager.state.inAppCustomerSegmentations = SegmentationCheckWrapper(
+            "Success",
+            listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "segmentationEI", segment = "segmentEI"))
+        )
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
         val inSegment = InAppStub.getTargetingSegmentNode().copy(
             kind = Kind.POSITIVE,
             segmentationExternalId = "segmentationEI",
             segmentExternalId = "segmentEI"
         )
 
-        assertTrue(inAppProcessingManager.matchesTargeting(inAppTargeting("ribbon", inSegment), event))
-        coVerify(exactly = 0) { mockkInAppSegmentationRepository.fetchCustomerSegmentations() }
+        assertTrue(inAppProcessingManagerTestImpl.matchesTargeting(inAppTargeting("ribbon", inSegment), event))
+        coVerify(exactly = 0) { gatewayManager.checkCustomerSegmentations(any(), any()) }
         verify(exactly = 0) { inAppFailureTracker.collectFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `send targeted inApp passes cancellation through and sends no targeting`() = runTest {
+        val targeting = mockk<TreeTargeting>(relaxed = true)
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("session expired")
+        every { targeting.checkTargeting(any()) } returns true
+
+        val error = runCatching { inAppProcessingManager.sendTargetedInApp(inAppTargeting("overlay", targeting), event) }.exceptionOrNull()
+
+        assertTrue(error is CancellationException)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
+    }
+
+    @Test
+    fun `a page question on a fresh session fetches the segmentations once and keeps the circle`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = listOf(InAppStub.getInApp().copy(id = "story"))
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
+        coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } answers { callOriginal() }
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentations() } answers { callOriginal() }
+        mockkObject(DbManager)
+        try {
+            coEvery { DbManager.listenConfigurations() } returns flowOf(mockk(relaxed = true))
+            coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } returns
+                SegmentationCheckInAppStub.getSegmentationCheckResponse().copy("Success", listOf())
+            every { inAppMapper.mapToSegmentationCheck(any()) } returns SegmentationCheckWrapper(
+                "Success",
+                listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "segmentationEI", segment = "segmentEI"))
+            )
+            setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+            val inSegment = InAppStub.getTargetingSegmentNode().copy(
+                kind = Kind.POSITIVE,
+                segmentationExternalId = "segmentationEI",
+                segmentExternalId = "segmentEI"
+            )
+
+            assertTrue(inAppProcessingManagerTestImpl.matchesRequestedTargeting(inAppTargeting("story", inSegment)))
+            assertTrue(inAppProcessingManagerTestImpl.matchesRequestedTargeting(inAppTargeting("story", inSegment)))
+            coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+        } finally {
+            unmockkObject(DbManager)
+        }
     }
 
     private fun inAppTargeting(id: String, targeting: TreeTargeting): InApp = InAppStub.getInApp().copy(id = id, targeting = targeting)

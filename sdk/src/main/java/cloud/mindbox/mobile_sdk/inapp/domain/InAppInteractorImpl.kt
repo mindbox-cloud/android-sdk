@@ -144,8 +144,7 @@ internal class InAppInteractorImpl(
         if (candidates.isNotEmpty()) {
             inAppProcessingManager.prefetchTargetingDependencies(inApps)
             if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
-                logI("Place '$placeSystemName': the session was reset while its targeting dependencies were fetched, resolving again for the new session")
-                return selectInAppForPlace(placeSystemName, triggerEvent, isRetryAfterSessionReset = true)
+                return resolveAgainForNewSession(placeSystemName, "while its targeting dependencies were fetched")
             }
         }
         val matched = candidates.filter { candidate ->
@@ -158,6 +157,9 @@ internal class InAppInteractorImpl(
             .let { inAppFrequencyManager.filterInAppsFrequency(it) }
             .sortByPriority()
             .firstOrNull { candidate -> candidate.embeddedVariantFor(placeSystemName) != null }
+        if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+            return resolveAgainForNewSession(placeSystemName, "while its candidates were checked")
+        }
 
         sendPlaceTargetings(placeSystemName, matched, winner)
         if (winner == null) {
@@ -174,6 +176,12 @@ internal class InAppInteractorImpl(
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
         return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime)
+    }
+
+    private suspend fun resolveAgainForNewSession(placeSystemName: PlaceKey, moment: String): EmbeddedResolveOutcome {
+        logI("Place '$placeSystemName': the session was reset $moment, resolving again as a place request of the new session")
+        inAppFailureTracker.clearFailures()
+        return selectInAppForPlace(placeSystemName, InAppEventType.EmbeddedPlaceRequested(placeSystemName), isRetryAfterSessionReset = true)
     }
 
     private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {
@@ -282,7 +290,11 @@ internal class InAppInteractorImpl(
 
     override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String> {
         if (inAppIds.isEmpty()) return emptyList()
-        val inApps = mobileConfigRepository.getInAppsSection()
+        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
+            logI("Page of $hostInAppId asks about ${inAppIds.size} id(s) while the config is unavailable, cutting them all")
+            return emptyList()
+        }
+        inAppRepository.saveCurrentSessionInApps(inApps)
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
         val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
             .map { inApp -> inApp.id }

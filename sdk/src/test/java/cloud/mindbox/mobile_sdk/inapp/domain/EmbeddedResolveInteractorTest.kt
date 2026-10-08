@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
@@ -1136,6 +1137,73 @@ class EmbeddedResolveInteractorTest {
 
         coVerify(exactly = 1) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
         verify(exactly = 1) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds saves the config's in-apps into the session before checking`() = runTest {
+        val config = listOf(modalInApp(id = "inapp-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" })
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again when the session was reset while its candidates were checked`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again as a plain place request, leaving the old session's operation behind`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val operation = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), null)
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        interactor.selectInAppForPlace(place, operation)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), ofType<InAppEventType.EmbeddedPlaceRequested>()) }
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        assertFalse(nextSession.embeddedLastOperationByPlace.containsKey(place))
+        assertSame(operation, sessionState.embeddedLastOperationByPlace[place])
+    }
+
+    @Test
+    fun `selectInAppForPlace drops the failures the abandoned pass collected before resolving again`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppProcessingManager.matchesTargeting(any(), any())
+            inAppFailureTracker.clearFailures()
+            inAppProcessingManager.prefetchTargetingDependencies(any())
+        }
     }
 
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
