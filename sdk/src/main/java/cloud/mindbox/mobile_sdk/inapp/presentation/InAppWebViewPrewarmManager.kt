@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -19,6 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmEngine
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmLayer
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmPlanner
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -29,9 +31,11 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBla
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -98,7 +102,8 @@ internal class InAppWebViewPrewarmManagerImpl(
     private val webViewLayerValidator: WebViewLayerValidator,
     private val learnedHostsStore: InAppWebViewLearnedHostsStore,
     private val featureToggleManager: FeatureToggleManager,
-    private val webViewCachePolicy: InAppWebViewCachePolicy
+    private val webViewCachePolicy: InAppWebViewCachePolicy,
+    private val processLifecycleState: StateFlow<Lifecycle.State>
 ) : InAppWebViewPrewarmManager {
 
     companion object {
@@ -137,7 +142,7 @@ internal class InAppWebViewPrewarmManagerImpl(
         // initialize() call must not redo work a prior attempt already finished.
         if (hasStartedResourcePrewarm.get()) return
         Mindbox.mindboxScope.launch {
-            loggingRunCatchingSuspending {
+            runLoggingFailures {
                 // Other init-time readers wait for this; without it, a migration that fails
                 // and triggers a softReset could erase the cached config out from under a
                 // prewarm that already read it.
@@ -149,10 +154,10 @@ internal class InAppWebViewPrewarmManagerImpl(
                     // thread, instead of parsing lazily (nothing to parse anyway) the
                     // moment isCacheEnabled is first read during that show.
                     webViewCachePolicy.prime(null)
-                    return@loggingRunCatchingSuspending
+                    return@runLoggingFailures
                 }
                 val layers = webViewLayers(cachedConfig)
-                if (layers.isEmpty()) return@loggingRunCatchingSuspending
+                if (layers.isEmpty()) return@runLoggingFailures
                 mindboxLogI("[WebView] Prewarm: head start from cached config (${layers.size} webview layer(s))")
                 startResourcePrewarm(layers)
             }
@@ -180,7 +185,7 @@ internal class InAppWebViewPrewarmManagerImpl(
         }
         latestConfigHasNoLayers.set(false)
         Mindbox.mindboxScope.launch {
-            loggingRunCatchingSuspending {
+            runLoggingFailures {
                 startResourcePrewarm(layers)
             }
         }
@@ -228,6 +233,8 @@ internal class InAppWebViewPrewarmManagerImpl(
      * for this launch, and the next launch heals with the new cached config.
      */
     private suspend fun startResourcePrewarm(layers: List<InAppWebViewPrewarmLayer>) {
+        if (hasAborted.get() || hasStartedResourcePrewarm.get()) return
+        awaitAppInForeground()
         if (hasAborted.get()) return
 
         val configuration = currentConfiguration() ?: run {
@@ -283,6 +290,21 @@ internal class InAppWebViewPrewarmManagerImpl(
             userAgentSuffix = userAgentSuffix
         )
         scheduleSettleRelease()
+    }
+
+    // Scope cancellation is SDK teardown (soft reinitialization), not a failure to report to monitoring.
+    private suspend fun runLoggingFailures(stage: suspend () -> Unit) {
+        runCatching { stage() }.onFailure { error ->
+            if (error is CancellationException) throw error
+            mindboxLogE("[WebView] Prewarm failed", error)
+        }
+    }
+
+    // A process started in the background (e.g. for a push) must not boot Chromium on its main looper.
+    private suspend fun awaitAppInForeground() {
+        if (processLifecycleState.value.isAtLeast(Lifecycle.State.STARTED)) return
+        mindboxLogI("[WebView] Prewarm: waiting for the app to come to the foreground")
+        processLifecycleState.first { state -> state.isAtLeast(Lifecycle.State.STARTED) }
     }
 
     private fun scheduleSettleRelease() {
