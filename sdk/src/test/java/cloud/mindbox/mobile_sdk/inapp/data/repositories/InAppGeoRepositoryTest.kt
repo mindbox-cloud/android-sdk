@@ -1,5 +1,8 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CompletableDeferred
 import android.content.Context
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
@@ -242,5 +245,50 @@ internal class InAppGeoRepositoryTest {
 
         assertTrue(runCatching { inAppGeoRepository.fetchGeo() }.exceptionOrNull() is GeoError)
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+    }
+
+    @Test
+    fun `a geo fetch the session reset outlived writes its success into its own session only`() = runTest {
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        inAppGeoRepository.fetchGeo()
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, nextSession.geoFetchStatus)
+    }
+
+    @Test
+    fun `two callers on a cold cache make one geo request and both see its result`() = runTest {
+        val answer = CompletableDeferred<Unit>()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        every { configuration.domain } returns ""
+        val geoTargetingDto = GeoTargetingStub.getGeoTargetingDto()
+        val geoTargeting = GeoTargetingStub.getGeoTargeting()
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers {
+            answer.await()
+            geoTargetingDto
+        }
+        coEvery { inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto) } returns geoTargeting
+        every { geoSerializationManager.serializeToGeoString(geoTargeting) } returns "{}"
+
+        val first = launch { inAppGeoRepository.fetchGeo() }
+        val second = launch { inAppGeoRepository.fetchGeo() }
+        runCurrent()
+        answer.complete(Unit)
+        first.join()
+        second.join()
+
+        coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
+        assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, sessionState.geoFetchStatus)
     }
 }

@@ -1,5 +1,11 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.launch
+import io.mockk.verify
+import io.mockk.slot
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -339,5 +345,17 @@ class GatewayManagerTest {
             .first { it.startsWith("transactionId=") }
             .split('=')
             .last()
+    }
+
+    @Test
+    fun `checkGeoTargeting cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch { gatewayManager.checkGeoTargeting(mockConfiguration) }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        val request = slot<MindboxRequest>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        assertTrue(request.captured.isCanceled)
     }
 }

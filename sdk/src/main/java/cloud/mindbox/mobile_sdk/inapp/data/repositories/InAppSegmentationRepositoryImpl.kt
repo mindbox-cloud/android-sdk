@@ -37,7 +37,6 @@ internal class InAppSegmentationRepositoryImpl(
                 this,
                 "No unshown inapps. Do not request segmentations"
             )
-            state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
             return@withLock
         }
         MindboxLoggerImpl.d(

@@ -1456,5 +1456,15 @@ internal class InAppProcessingManagerTest {
         verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
     }
 
+    @Test
+    fun `choose inApp to show passes cancellation through without reporting a failure`() = runTest {
+        val targeting = mockk<TreeTargeting>(relaxed = true)
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("session expired")
+
+        runCatching { inAppProcessingManager.chooseInAppToShow(listOf(inAppTargeting("overlay", targeting)), event) }
+
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
     private fun inAppTargeting(id: String, targeting: TreeTargeting): InApp = InAppStub.getInApp().copy(id = id, targeting = targeting)
 }

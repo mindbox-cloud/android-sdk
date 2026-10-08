@@ -1092,5 +1092,51 @@ class EmbeddedResolveInteractorTest {
         coVerify(exactly = 0) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
     }
 
+    @Test
+    fun `selectInAppForPlace resolves again for the new session when the session was reset during the prefetch`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again only once however often the session is reset`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            every { sessionStorageManager.state } returns SessionState()
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves once while the session stays the same`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 1) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 }

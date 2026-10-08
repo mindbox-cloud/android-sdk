@@ -91,6 +91,8 @@ internal class InAppProcessingManagerImpl(
                         targetingCheck = inApp.targeting.checkTargeting(data)
                     }.onFailure { throwable ->
                         when (throwable) {
+                            is CancellationException -> throw throwable
+
                             is GeoError -> {
                                 isTargetingErrorOccurred = true
                                 inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)

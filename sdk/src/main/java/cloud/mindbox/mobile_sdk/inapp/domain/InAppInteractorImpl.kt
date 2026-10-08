@@ -125,16 +125,29 @@ internal class InAppInteractorImpl(
     override suspend fun selectInAppForPlace(
         placeSystemName: PlaceKey,
         triggerEvent: InAppEventType,
+    ): EmbeddedResolveOutcome = selectInAppForPlace(placeSystemName, triggerEvent, isRetryAfterSessionReset = false)
+
+    private suspend fun selectInAppForPlace(
+        placeSystemName: PlaceKey,
+        triggerEvent: InAppEventType,
+        isRetryAfterSessionReset: Boolean,
     ): EmbeddedResolveOutcome {
         val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
             logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
             return EmbeddedResolveOutcome.ConfigUnavailable
         }
+        val session = sessionStorageManager.state
         inAppRepository.saveCurrentSessionInApps(inApps)
         val trigger = placeTrigger(placeSystemName, triggerEvent)
         val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
             .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
-        if (candidates.isNotEmpty()) inAppProcessingManager.prefetchTargetingDependencies(inApps)
+        if (candidates.isNotEmpty()) {
+            inAppProcessingManager.prefetchTargetingDependencies(inApps)
+            if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+                logI("Place '$placeSystemName': the session was reset while its targeting dependencies were fetched, resolving again for the new session")
+                return selectInAppForPlace(placeSystemName, triggerEvent, isRetryAfterSessionReset = true)
+            }
+        }
         val matched = candidates.filter { candidate ->
             inAppProcessingManager.matchesTargeting(candidate, trigger)
         }
