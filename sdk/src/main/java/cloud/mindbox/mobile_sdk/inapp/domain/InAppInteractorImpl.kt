@@ -30,6 +30,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
@@ -411,9 +412,9 @@ internal class InAppInteractorImpl(
         return inAppRepository.isTimeDelayInapp(inAppId)
     }
 
-    override fun saveInAppDismissTime(inApp: InApp) {
+    override fun saveInAppDismissTime(inApp: InApp, shownAt: Timestamp) {
         val timeStamp = timeProvider.currentTimestamp()
-        mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
+        mindboxLogI("Last in-app display duration ${(timeStamp - shownAt).ms} ms")
         if (!inApp.countsShows()) {
             logI("In-app ${inApp.id} is unlimited, the dismiss does not move the cooldown")
             return

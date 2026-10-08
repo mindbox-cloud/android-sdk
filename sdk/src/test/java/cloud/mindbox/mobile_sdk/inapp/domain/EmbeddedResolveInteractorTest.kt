@@ -868,22 +868,35 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `saveInAppDismissTime moves the cooldown for a counted in-app`() {
-        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
-
-        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"))
+        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"), now)
 
         verify { showBudgetManager.recordCooldown(modalInApp(id = "modal-1").frequency, now) }
     }
 
     @Test
     fun `saveInAppDismissTime leaves the cooldown alone for unlimited`() {
-        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
-
         interactor.saveInAppDismissTime(
-            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
+            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+            now
         )
 
         verify(exactly = 0) { showBudgetManager.recordCooldown(any(), any()) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime logs how long the in-app was on screen, whatever the last counted show says`() {
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.saveInAppDismissTime(
+                modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+                Timestamp(now.ms - 15_288L)
+            )
+
+            verify(exactly = 1) { MindboxLoggerImpl.i(any(), "Last in-app display duration 15288 ms") }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
     }
 
     @Test

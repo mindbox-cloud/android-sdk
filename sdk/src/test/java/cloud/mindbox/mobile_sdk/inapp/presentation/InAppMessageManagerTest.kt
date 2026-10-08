@@ -523,7 +523,7 @@ internal class InAppMessageManagerTest {
         coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
         every { timeProvider.currentTimestamp() } returns Timestamp(100L)
         every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
-        every { inAppMessageInteractor.saveInAppDismissTime(any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
         every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
         val callbacks = slot<InAppActionCallbacks>()
         every {
@@ -536,7 +536,7 @@ internal class InAppMessageManagerTest {
         callbacks.captured.onInAppShown.onShown()
         verify(exactly = 1) { inAppMessageInteractor.saveShownInApp(variant.inAppId, 100L, any(), null) }
         callbacks.captured.onInAppDismiss.onDismiss()
-        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp) }
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(100L)) }
         callbacks.captured.onInAppClick.onClick()
         verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(variant.inAppId, null) }
     }
@@ -562,7 +562,7 @@ internal class InAppMessageManagerTest {
         coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
         every { timeProvider.currentTimestamp() } returns Timestamp(100L)
         every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
-        every { inAppMessageInteractor.saveInAppDismissTime(any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
         val callbacks = slot<InAppActionCallbacks>()
         every {
             inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
@@ -646,7 +646,7 @@ internal class InAppMessageManagerTest {
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
         every { inAppMessageInteractor.reserveOverlayShow(any()) } returns hold
         every { inAppMessageInteractor.releaseOverlayShow(any()) } just runs
-        every { inAppMessageInteractor.saveInAppDismissTime(any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
         every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
         every { timeProvider.currentTimestamp() } returns Timestamp(1_000L)
         every { timeProvider.currentTimeMillis() } returns 1_000L
@@ -735,12 +735,25 @@ internal class InAppMessageManagerTest {
         val callbacks = managerWithCapturedCallbacks(inApp)
 
         callbacks().onInAppDismiss.onDismiss()
-        verify(exactly = 0) { inAppMessageInteractor.saveInAppDismissTime(any()) }
+        verify(exactly = 0) { inAppMessageInteractor.saveInAppDismissTime(any(), any()) }
 
         val shown = managerWithCapturedCallbacks(inApp)
         shown().onInAppShown.onShown()
         shown().onInAppDismiss.onDismiss()
-        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp) }
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(1_000L)) }
+    }
+
+    @Test
+    fun `a dismiss hands over the moment of the show, not the moment of the dismiss`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        every { timeProvider.currentTimestamp() } returns Timestamp(4_000L)
+        callbacks().onInAppShown.onShown()
+        every { timeProvider.currentTimestamp() } returns Timestamp(9_000L)
+        callbacks().onInAppDismiss.onDismiss()
+
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(4_000L)) }
     }
 
     @Test

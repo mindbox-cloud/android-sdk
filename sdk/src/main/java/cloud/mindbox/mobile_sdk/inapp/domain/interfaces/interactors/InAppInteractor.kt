@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
 
 internal interface InAppInteractor {
@@ -118,7 +119,7 @@ internal interface InAppInteractor {
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
-    fun saveInAppDismissTime(inApp: InApp)
+    fun saveInAppDismissTime(inApp: InApp, shownAt: Timestamp)
 }
 
 internal data class InAppToShow(

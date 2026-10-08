@@ -243,7 +243,7 @@ internal class InAppSupersedeEndToEndTest {
 
         assertEquals(listOf(ShowInAppOutcome.Shown), first)
         verify(exactly = 1) { host.onInAppDismissed("story-1") }
-        verify(exactly = 1) { inAppInteractor.saveInAppDismissTime(stories.getValue("story-1")) }
+        verify(exactly = 1) { inAppInteractor.saveInAppDismissTime(stories.getValue("story-1"), any()) }
         assertEquals(1, root.childCount)
         assertNull(firstPage.parent)
     }
@@ -258,7 +258,7 @@ internal class InAppSupersedeEndToEndTest {
 
         assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), first)
         verify(exactly = 1) { host.onInAppDismissed("story-1") }
-        verify(exactly = 0) { inAppInteractor.saveInAppDismissTime(any()) }
+        verify(exactly = 0) { inAppInteractor.saveInAppDismissTime(any(), any()) }
         assertEquals(1, root.childCount)
         assertNull(firstPage.parent)
     }
