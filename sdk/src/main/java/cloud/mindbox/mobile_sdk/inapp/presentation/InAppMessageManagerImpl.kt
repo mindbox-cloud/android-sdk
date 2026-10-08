@@ -189,7 +189,7 @@ internal class InAppMessageManagerImpl(
 
         private var renderStartTime = Timestamp(0L)
 
-        private val state = AtomicReference(ShowState.PENDING)
+        private val state = AtomicReference<ShowState>(ShowState.Pending)
 
         val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
 
@@ -197,27 +197,33 @@ internal class InAppMessageManagerImpl(
             inAppInteractor.sendInAppClicked(variant.inAppId, tags)
         }
         override val onInAppShown = OnInAppShown {
-            if (!state.compareAndSet(ShowState.PENDING, ShowState.SHOWN)) return@OnInAppShown
+            val shown = ShowState.Shown(at = timeProvider.currentTimestamp())
+            if (!state.compareAndSet(ShowState.Pending, shown)) return@OnInAppShown
             outcome?.settle(ShowInAppOutcome.Shown)
-            handleInAppShown(renderStartTime, preparedTime, variant, tags)
+            handleInAppShown(shown.at, renderStartTime, preparedTime, variant, tags)
         }
         override val onInAppDismiss = OnInAppDismiss {
-            if (state.get() == ShowState.SHOWN) {
-                inAppInteractor.saveInAppDismissTime(inApp)
-            } else {
-                settleAsNotShown()
+            when (val current = state.get()) {
+                is ShowState.Shown -> inAppInteractor.saveInAppDismissTime(inApp, current.at)
+                else -> settleAsNotShown()
             }
         }
         override val onInAppNotShown = OnInAppNotShown { settleAsNotShown() }
 
         private fun settleAsNotShown() {
-            if (!state.compareAndSet(ShowState.PENDING, ShowState.NOT_SHOWN)) return
+            if (!state.compareAndSet(ShowState.Pending, ShowState.NotShown)) return
             if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
             outcome?.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
         }
     }
 
-    private enum class ShowState { PENDING, SHOWN, NOT_SHOWN }
+    private sealed interface ShowState {
+        data object Pending : ShowState
+
+        data class Shown(val at: Timestamp) : ShowState
+
+        data object NotShown : ShowState
+    }
 
     private class TerminalOutcome(private val listener: OnShowInAppOutcome) {
         private val settled = AtomicBoolean(false)
@@ -313,12 +319,12 @@ internal class InAppMessageManagerImpl(
     }
 
     private fun handleInAppShown(
+        shownTime: Timestamp,
         renderStartTime: Timestamp,
         preparedTimeMs: Milliseconds,
         inAppMessage: InAppType,
         tags: Map<String, String>?
     ) {
-        val shownTime = timeProvider.currentTimestamp()
         val renderTime = shownTime - renderStartTime
         mindboxLogI("Render time is ${renderTime.ms}ms, prepared time is ${preparedTimeMs.interval}ms")
         val timeToDisplay = (preparedTimeMs.interval + renderTime.ms).millisToTimeSpan()

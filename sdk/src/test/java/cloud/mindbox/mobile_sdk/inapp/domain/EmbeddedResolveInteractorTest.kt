@@ -868,19 +868,16 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `saveInAppDismissTime moves the cooldown for a counted in-app`() {
-        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
-
-        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"))
+        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"), now)
 
         verify { showBudgetManager.recordCooldown(modalInApp(id = "modal-1").frequency, now) }
     }
 
     @Test
     fun `saveInAppDismissTime leaves the cooldown alone for unlimited`() {
-        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
-
         interactor.saveInAppDismissTime(
-            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
+            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+            now
         )
 
         verify(exactly = 0) { showBudgetManager.recordCooldown(any(), any()) }
