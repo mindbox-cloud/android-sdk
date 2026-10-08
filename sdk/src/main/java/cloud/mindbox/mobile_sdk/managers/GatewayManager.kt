@@ -347,23 +347,23 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     } ?: false
 
     suspend fun checkGeoTargeting(configuration: Configuration): GeoTargetingDto {
-        return suspendCoroutine { continuation ->
-            mindboxServiceGenerator.addToRequestQueue(
-                MindboxRequest(
-                    Request.Method.GET,
-                    "${SdkValidation.toBaseUrl(configuration.domain)}/geo",
-                    configuration,
-                    null,
-                    { response ->
-                        continuation.resumeFromJson<GeoTargetingDto>(
-                            json = response.toString()
-                        )
-                    },
-                    { error ->
-                        continuation.resumeWithException(GeoError(error))
-                    }
-                )
+        return suspendCancellableCoroutine { continuation ->
+            val request = MindboxRequest(
+                Request.Method.GET,
+                "${SdkValidation.toBaseUrl(configuration.domain)}/geo",
+                configuration,
+                null,
+                { response ->
+                    continuation.resumeFromJson<GeoTargetingDto>(
+                        json = response.toString()
+                    )
+                },
+                { error ->
+                    continuation.resumeWithException(GeoError(error))
+                }
             )
+            continuation.invokeOnCancellation { request.cancel() }
+            mindboxServiceGenerator.addToRequestQueue(request)
         }
     }
 
@@ -400,28 +400,28 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         configuration: Configuration,
         segmentationCheckRequest: SegmentationCheckRequest,
     ): SegmentationCheckResponse {
-        return suspendCoroutine { continuation ->
-            mindboxServiceGenerator.addToRequestQueue(
-                MindboxRequest(
-                    Request.Method.POST,
-                    getCustomerSegmentationsUrl(configuration),
-                    configuration,
-                    convertBodyToJson(
-                        gson.toJson(
-                            segmentationCheckRequest,
-                            SegmentationCheckRequest::class.java
-                        )
-                    )!!,
-                    { response ->
-                        continuation.resumeFromJson<SegmentationCheckResponse>(
-                            json = response.toString()
-                        )
-                    },
-                    { error ->
-                        continuation.resumeWithException(CustomerSegmentationError(error))
-                    }
-                )
+        return suspendCancellableCoroutine { continuation ->
+            val request = MindboxRequest(
+                Request.Method.POST,
+                getCustomerSegmentationsUrl(configuration),
+                configuration,
+                convertBodyToJson(
+                    gson.toJson(
+                        segmentationCheckRequest,
+                        SegmentationCheckRequest::class.java
+                    )
+                )!!,
+                { response ->
+                    continuation.resumeFromJson<SegmentationCheckResponse>(
+                        json = response.toString()
+                    )
+                },
+                { error ->
+                    continuation.resumeWithException(CustomerSegmentationError(error))
+                }
             )
+            continuation.invokeOnCancellation { request.cancel() }
+            mindboxServiceGenerator.addToRequestQueue(request)
         }
     }
 

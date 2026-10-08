@@ -17,6 +17,7 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -271,5 +272,31 @@ class InAppSegmentationRepositoryTest {
 
         assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
         coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+    }
+
+    @Test
+    fun `a fetch the session reset outlived writes into its own session only`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            throw CustomerSegmentationError(VolleyError("timeout"))
+        }
+
+        runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionState.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, nextSession.customerSegmentationFetchStatus)
+    }
+
+    @Test
+    fun `a request the queue dropped without an answer ends as a cached fetch error`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } coAnswers { awaitCancellation() }
+
+        assertTrue(runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }.exceptionOrNull() is CustomerSegmentationError)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionState.customerSegmentationFetchStatus)
     }
 }

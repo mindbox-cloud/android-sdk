@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
@@ -32,7 +33,6 @@ import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
-import cloud.mindbox.mobile_sdk.hostsWebPage
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import kotlinx.coroutines.channels.Channel
@@ -110,7 +110,7 @@ internal class InAppInteractorImpl(
                 inApp?.let {
                     sessionStorageManager.state.inAppTriggerEvent = event
                 }
-                if (inApp?.firstOverlayVariant()?.hostsWebPage() == true) {
+                if (inApp?.overlayHostsWebPage() == true) {
                     inAppProcessingManager.prefetchTargetingDependencies(inAppRepository.getCurrentSessionInApps())
                 }
                 inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
@@ -196,6 +196,16 @@ internal class InAppInteractorImpl(
                 }
             }
         }
+    }
+
+    private fun InApp.overlayHostsWebPage(): Boolean {
+        val layers = when (val variant = firstOverlayVariant()) {
+            is InAppType.WebView -> variant.layers
+            is InAppType.ModalWindow -> variant.layers
+            is InAppType.Snackbar -> variant.layers
+            else -> return false
+        }
+        return layers.any { layer -> layer is Layer.WebViewLayer }
     }
 
     private fun InApp.embeddedVariantFor(place: PlaceKey): InAppType.Embedded? =

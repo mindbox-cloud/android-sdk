@@ -263,7 +263,6 @@ internal class InAppProcessingManagerImpl(
 
     private fun handleTargetingFetchError(error: Throwable): Boolean = when (error) {
         is GeoError -> {
-            inAppGeoRepository.setGeoStatus(GeoFetchStatus.GEO_FETCH_ERROR)
             if (error.shouldTrackTargetingError()) {
                 inAppTargetingErrorRepository.saveError(key = TargetingErrorKey.Geo, error = error)
             }
@@ -272,9 +271,6 @@ internal class InAppProcessingManagerImpl(
         }
 
         is CustomerSegmentationError -> {
-            inAppSegmentationRepository.setCustomerSegmentationStatus(
-                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-            )
             if (error.shouldTrackTargetingError()) {
                 inAppTargetingErrorRepository.saveError(key = TargetingErrorKey.CustomerSegmentation, error = error)
             }

@@ -308,16 +308,6 @@ internal fun List<InApp>.sortByPriority(): List<InApp> {
 internal fun InApp.firstOverlayVariant(): InAppType? =
     form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
 
-internal fun InAppType.hostsWebPage(): Boolean {
-    val layers = when (this) {
-        is InAppType.WebView -> layers
-        is InAppType.ModalWindow -> layers
-        is InAppType.Snackbar -> layers
-        is InAppType.Embedded -> layers
-    }
-    return layers.any { layer -> layer is Layer.WebViewLayer }
-}
-
 /**
  * Whether shows of this in-app are written down: the show history, the session list and the
  * cooldown all exist to hold shows back, and an `unlimited` in-app is outside that accounting in

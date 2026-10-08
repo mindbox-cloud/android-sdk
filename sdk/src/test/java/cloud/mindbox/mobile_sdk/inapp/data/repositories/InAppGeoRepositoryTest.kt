@@ -18,6 +18,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -217,5 +218,29 @@ internal class InAppGeoRepositoryTest {
 
         assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
         coVerify(exactly = 1) { gatewayManager.checkGeoTargeting(any()) }
+    }
+
+    @Test
+    fun `a geo fetch the session reset outlived writes into its own session only`() = runTest {
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            throw GeoError(VolleyError("timeout"))
+        }
+
+        runCatching { inAppGeoRepository.fetchGeo() }
+
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_NOT_FETCHED, nextSession.geoFetchStatus)
+    }
+
+    @Test
+    fun `a geo request the queue dropped without an answer ends as a cached fetch error`() = runTest {
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkGeoTargeting(configuration = configuration) } coAnswers { awaitCancellation() }
+
+        assertTrue(runCatching { inAppGeoRepository.fetchGeo() }.exceptionOrNull() is GeoError)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionState.geoFetchStatus)
     }
 }
