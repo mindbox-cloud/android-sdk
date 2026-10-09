@@ -226,6 +226,25 @@ class MindboxEmbeddedBlockViewCollapseTest {
     }
 
     @Test
+    fun `shown content the place no longer has collapses as soon as the host stops showing the block while the app is in background`() {
+        val view = buildView()
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        idle()
+        isAppInForeground = false
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        view.setHostVisible(false)
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
     fun `an operation that empties the place collapses the shown block at once`() {
         val view = buildView()
         attach(view)

@@ -1508,6 +1508,10 @@ class EmbeddedBlocksRegistryTest {
             withheldShows.add(isWithheld)
         }
 
+        override val rendersNothing = false
+
+        override var onRendersNothing: (() -> Unit)? = null
+
         override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) = Unit
     }
 
@@ -1531,10 +1535,14 @@ class EmbeddedBlocksRegistryTest {
         isAppPresent = false
     }
 
-    private fun EmbeddedBlocksRegistryImpl.comeBackOnAnotherScreenWithTheSessionOver() {
+    private fun EmbeddedBlocksRegistryImpl.comeBackOnAnotherScreenWithTheSessionOver() = comeBackWithTheSessionOver(on = screen())
+
+    private fun EmbeddedBlocksRegistryImpl.comeBackOnTheBlockScreenWithTheSessionOver() = comeBackWithTheSessionOver(on = blockScreen)
+
+    private fun EmbeddedBlocksRegistryImpl.comeBackWithTheSessionOver(on: Activity) {
         isSessionEnding = true
         isAppPresent = true
-        onAppResumedOn(screen())
+        onAppResumedOn(on)
         idleMain()
         isSessionEnding = false
         currentSessionEpoch = 1L
@@ -1587,6 +1595,69 @@ class EmbeddedBlocksRegistryTest {
 
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
         assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `a feed taken off its screen inside its activity while the app was in background is gone before its first frame when the user comes back to it and the new session refuses it, with no show reserved meanwhile`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        block.onLeftScreen()
+
+        registry.comeBackOnTheBlockScreenWithTheSessionOver()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        val reportedBeforeReturn = states.size
+
+        isAppInForeground = true
+        block.start()
+        idleMain()
+
+        assertEquals(
+            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            states.drop(reportedBeforeReturn),
+        )
+        assertEquals(1, pages.single().releaseCount)
+        assertTrue(pages.single().withheldShows.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+    }
+
+    @Test
+    fun `a feed taken off its screen inside its activity while the app was in background reserves its show only on the user's return when the new session still picks it, and takes the new session's data timed from that return`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        block.onLeftScreen()
+        clock = 4_000L
+
+        registry.comeBackOnTheBlockScreenWithTheSessionOver()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        assertTrue(pages.single().sessionRefreshes.isEmpty())
+        val reportedBeforeReturn = states.size
+
+        clock = 9_000L
+        isAppInForeground = true
+        block.start()
+        idleMain()
+
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        assertEquals(listOf(1L to Milliseconds(9_000L)), pages.single().sessionRefreshes)
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
     }
 
     @Test

@@ -479,7 +479,7 @@ class EmbeddedBlockWebViewHolderTest {
         )
         postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-push"))
 
-        await { states.lastOrNull() == EmbeddedBlockState.Empty }
+        await { holder.rendersNothing }
     }
 
     private val outcomes = slot<OnShowInAppOutcome>()
@@ -1496,6 +1496,109 @@ class EmbeddedBlockWebViewHolderTest {
 
         verify(exactly = 1, timeout = 5_000L) {
             inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    private fun pushDataTheShownPageRendersNothingFor() {
+        holder.updateParams(mapOf("items" to "[]")) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
+        await { holder.rendersNothing }
+    }
+
+    @Test
+    fun `a shown page that renders nothing after a new session's data keeps the block shown, answers the page and sends no show`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionStartTick = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-refresh"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "after-refresh" }
+        letTheShowRecordingSettle()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(EmbeddedBlockState.Empty in states)
+        assertTrue(holder.contentView != null)
+        assertTrue(holder.rendersNothing)
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
+    }
+
+    @Test
+    fun `a shown page that renders nothing tells its block once`() {
+        var emptiedReports = 0
+        holder.onRendersNothing = { emptiedReports++ }
+        renderAndCountTheFirstShow()
+
+        pushDataTheShownPageRendersNothingFor()
+
+        assertEquals(1, emptiedReports)
+    }
+
+    @Test
+    fun `a page that renders content again after rendering nothing lets the new session's show go`() {
+        renderAndCountTheFirstShow()
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionStartTick = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
+        await { holder.rendersNothing }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+        assertFalse(holder.rendersNothing)
+    }
+
+    @Test
+    fun `a show the place lets go while the page renders nothing waits until the page renders content`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        startAndAwaitPageLoad()
+        holder.withholdShow(true)
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        pushDataTheShownPageRendersNothingFor()
+
+        holder.withholdShow(false)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
+        }
+    }
+
+    @Test
+    fun `a show waiting for the session check of the return does not go once the page renders nothing meanwhile, and goes once it renders content`() {
+        val returnChecked = CompletableDeferred<Unit>()
+        val isReturnCheckPending = MutableStateFlow(true)
+        every { inAppInteractor.returnCheckPending } returns isReturnCheckPending
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        val recordedSessions = ConcurrentLinkedQueue<Long>()
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
+            recordedSessions.add(arg(5))
+            true
+        }
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        pushDataTheShownPageRendersNothingFor()
+
+        isReturnCheckPending.value = false
+        returnChecked.complete(Unit)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        await { recordedSessions.isNotEmpty() }
+        verify(exactly = 1) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
         }
     }
 }

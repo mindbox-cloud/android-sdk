@@ -125,6 +125,10 @@ class EmbeddedBlockContentControllerTest {
 
         override fun withholdShow(isWithheld: Boolean) = Unit
 
+        override val rendersNothing: Boolean = false
+
+        override var onRendersNothing: (() -> Unit)? = null
+
         override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
         override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
@@ -173,6 +177,11 @@ class EmbeddedBlockContentControllerTest {
         val paramUpdates = mutableListOf<Map<String, String>>()
         var pushResult: ((Boolean) -> Unit)? = null
         var releaseCount = 0
+        override var rendersNothing = false
+            set(value) {
+                field = value
+                if (value) onRendersNothing?.invoke()
+            }
 
         override fun start() {
             if (rendersOnStart) render()
@@ -1834,6 +1843,121 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    private fun controllerShowingPage(
+        providers: MutableList<SessionAwareProvider>,
+        hostActivity: () -> Activity? = { null },
+    ): EmbeddedBlockContentController {
+        val controller = sessionAwareController(providers, hostActivity = hostActivity)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        return controller
+    }
+
+    @Test
+    fun `a page that renders nothing while its block is shown keeps the block until it leaves the screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+
+        providers.single().rendersNothing = true
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `a page that renders nothing and then fails reports only the failure when its block leaves the screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+        providers.single().rendersNothing = true
+
+        providers.single().onStateChange?.invoke(internalError)
+        controller.pause()
+
+        assertEquals(internalError, states.last())
+        assertFalse(EmbeddedBlockState.Empty in states)
+    }
+
+    @Test
+    fun `a block whose page renders nothing is not kept for its screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+        assertTrue(controller.isRetainable)
+
+        providers.single().rendersNothing = true
+
+        assertFalse(controller.isRetainable)
+    }
+
+    @Test
+    fun `a page that renders nothing keeps its block through the background, and the block collapses as soon as the app comes back on another screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
+        providers.single().rendersNothing = true
+        isAppInForeground = false
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+
+        controller.onAppResumedOn(otherScreen)
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a page that rendered nothing while the app was in background keeps its block on the return to its own screen until the block leaves it`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
+        isAppInForeground = false
+        controller.pause()
+        providers.single().rendersNothing = true
+        controller.onAppResumedOn(blockScreen)
+        isAppInForeground = true
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+    }
+
+    @Test
+    fun `a page that renders nothing after its block left the screen collapses the block at once and gives its place up`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+        controller.pause()
+
+        providers.single().rendersNothing = true
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `a data push that fails while the page renders nothing does not rebuild the page`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        controllerShowingPage(providers)
+        providers.single().rendersNothing = true
+        val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer())
+
+        providers.single().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, providers.size)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
     }
 
     @Test
