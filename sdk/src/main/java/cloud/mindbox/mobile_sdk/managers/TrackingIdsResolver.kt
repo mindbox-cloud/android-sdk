@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TrackingId
+import cloud.mindbox.mobile_sdk.pushes.PushConverter
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -18,6 +19,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val READ_TRACKING_IDS_TIMEOUT = 5000L
+
+internal fun trackingIdTypesOf(
+    configured: List<PushConverter>,
+    live: List<PushServiceHandler>,
+): Set<String>? = (configured.filterIsInstance<PushServiceHandler>() + live)
+    .takeIf { it.isNotEmpty() }
+    ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
 
 internal interface TrackingIdsResolver {
 
