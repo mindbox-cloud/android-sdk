@@ -38,6 +38,10 @@ internal class TrackingIdsResolverImpl(
 
     override suspend fun resolve(context: Context): List<TrackingId> {
         if (!MindboxPreferences.shouldCollectTrackingIds) return emptyList()
+        operationsDomain()?.let { domain ->
+            mindboxLogI("Tracking ids are not collected: operations go through operationsDomain $domain")
+            return emptyList()
+        }
 
         val reading = scope().async(ioDispatcher) {
             pushServiceHandlers().map { handler -> handler.tryGetTrackingId(context) }
@@ -58,6 +62,10 @@ internal class TrackingIdsResolverImpl(
         MindboxPreferences.lastSentTrackingIds = gson.toJson(trackingIds)
         mindboxLogI("Sent tracking ids: ${trackingIds.joinToString { it.type }.ifEmpty { "none" }}")
     }
+
+    private fun operationsDomain(): String? =
+        MindboxPreferences.operationsDomainFromConfig
+            ?: DbManager.getConfigurations()?.operationsDomain?.takeIf { it.isNotBlank() }
 
     private fun lastSent(): List<TrackingId> = loggingRunCatching(defaultValue = emptyList()) {
         MindboxPreferences.lastSentTrackingIds
