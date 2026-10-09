@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.models
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import cloud.mindbox.mobile_sdk.managers.DbManager.EVENTS_TABLE_NAME
+import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.UUID
 
@@ -18,7 +19,10 @@ internal data class Event(
     val body: String? = null,
 )
 
-internal sealed class EventType(val operation: String, val endpoint: String) {
+internal sealed class EventType(
+    @SerializedName("operation") val operation: String,
+    @SerializedName("endpoint") val endpoint: String,
+) {
 
     companion object {
 
