@@ -165,6 +165,11 @@ internal class EmbeddedBlockWebViewHolder(
 
     private var isShowWithheld = false
 
+    override var rendersNothing = false
+        private set
+
+    override var onRendersNothing: (() -> Unit)? = null
+
     private var showStartTick: Milliseconds = startTick
 
     @Volatile private var didReportShownContent = false
@@ -452,9 +457,16 @@ internal class EmbeddedBlockWebViewHolder(
         if (count < 0) throw refusedContentReport("'count' must not be negative, got $count")
         mindboxLogI("[EmbeddedBlock] Page rendered $count content element(s)")
         if (count == 0) {
-            report(EmbeddedBlockState.Empty)
+            if (lastState == EmbeddedBlockState.Ready) {
+                mindboxLogI("[EmbeddedBlock] The shown page has nothing to show any more, its block decides when to collapse")
+                rendersNothing = true
+                onRendersNothing?.invoke()
+            } else {
+                report(EmbeddedBlockState.Empty)
+            }
             return BridgeMessage.SUCCESS_PAYLOAD
         }
+        rendersNothing = false
         didReportShownContent = true
         isRenderAwaitedForSession = false
         renderedTimeToDisplay = timeProvider.monotonicElapsedSince(showStartTick)
@@ -488,6 +500,10 @@ internal class EmbeddedBlockWebViewHolder(
             mindboxLogI("[EmbeddedBlock] The place has nothing to show for this content any more, its show waits until content returns")
             return
         }
+        if (rendersNothing) {
+            mindboxLogI("[EmbeddedBlock] The page has nothing to show any more, its show waits until it renders content")
+            return
+        }
         if (!isUserPresent) {
             mindboxLogI("[EmbeddedBlock] Content rendered off screen, the show waits for the block to return")
             return
@@ -515,8 +531,8 @@ internal class EmbeddedBlockWebViewHolder(
 
     private suspend fun isShowStillDue(sessionEpoch: Long, previouslyAccounted: Long?): Boolean =
         withContext(Dispatchers.Main) {
-            if (!isShowWithheld) return@withContext true
-            mindboxLogI("[EmbeddedBlock] The place lost this content while its show waited for the session check, the show waits until content returns")
+            if (!isShowWithheld && !rendersNothing) return@withContext true
+            mindboxLogI("[EmbeddedBlock] This content was left with nothing to show while its show waited for the session check, the show waits until content returns")
             if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
             false
         }

@@ -86,8 +86,14 @@ internal class EmbeddedBlockContentController(
     var lastReportedState: EmbeddedBlockState? = null
         private set
     val isRetainable: Boolean
-        get() = !isReleased && heldCollapse == null &&
+        get() = !isReleased && heldOutcome == null &&
             lastReportedState == EmbeddedBlockState.Ready && provider?.contentView != null
+
+    val heldOutcome: EmbeddedBlockState?
+        get() = heldCollapse ?: EmbeddedBlockState.Empty.takeIf { isPageEmptied && lastReportedState?.nothingToShow != true }
+
+    private val isPageEmptied: Boolean
+        get() = (provider as? EmbeddedUpdatableContentProvider)?.rendersNothing == true
 
     private var registration: Closeable? = null
     private var configJob: Job? = null
@@ -263,6 +269,17 @@ internal class EmbeddedBlockContentController(
         val host = hostActivity() ?: return
         if (host === activity) return
         mindboxLogI("[EmbeddedBlock] The app came back from background on another screen, block '$placeSystemName' has left the screen")
+        leaveScreenPausedForBackground()
+    }
+
+    fun onLeftScreen() {
+        if (!isPausedForBackground) return
+        if (hostActivity()?.isChangingConfigurations == true) return
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' was taken off its screen while the app was in background, it has left the screen")
+        leaveScreenPausedForBackground()
+    }
+
+    private fun leaveScreenPausedForBackground() {
         isAwayInBackground = false
         leftBehind = true
         collapseHeldAnswer()
@@ -391,11 +408,18 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun collapseHeldAnswer() {
-        val held = heldCollapse ?: return
+        val held = heldOutcome ?: return
         heldCollapse = null
-        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' left the screen, collapsing the content its place no longer has")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' left the screen, collapsing the content it has nothing to show for")
         forgetAppliedContent()
         report(held)
+    }
+
+    private fun onPageEmptied() {
+        if (isReleased || isStarted || isAwayInBackground || !isPageEmptied || lastReportedState?.nothingToShow == true) return
+        mindboxLogI("[EmbeddedBlock] The page of block '$placeSystemName' was left with nothing to show after the block left the screen, collapsing it")
+        forgetAppliedContent()
+        report(EmbeddedBlockState.Empty)
     }
 
     private fun acceptAnswer(what: String): Boolean {
@@ -521,8 +545,8 @@ internal class EmbeddedBlockContentController(
                         appliedDescriptor = descriptor
                         appliedContent = content
                     }
-                    heldCollapse != null -> {
-                        mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the place has nothing to show, not rebuilding")
+                    heldOutcome != null -> {
+                        mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
                         if (isNewSession && appliedSessionEpoch == answer.sessionEpoch) appliedSessionEpoch = previousSessionEpoch
                     }
                     else -> {
@@ -585,7 +609,10 @@ internal class EmbeddedBlockContentController(
         appliedDescriptor = descriptorOf(content.inAppId, layer)
         appliedContent = content
         appliedSessionEpoch = answer.sessionEpoch
-        (created as? EmbeddedUpdatableContentProvider)?.confirmForSession(answer.sessionEpoch)
+        (created as? EmbeddedUpdatableContentProvider)?.let { page ->
+            page.confirmForSession(answer.sessionEpoch)
+            page.onRendersNothing = ::onPageEmptied
+        }
         created.onStateChange = ::onProviderState
         if (isStarted) {
             readyBudget.reset()

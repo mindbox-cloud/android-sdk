@@ -27,5 +27,10 @@ internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
     @MainThread
     fun withholdShow(isWithheld: Boolean)
 
+    @get:MainThread
+    val rendersNothing: Boolean
+
+    var onRendersNothing: (() -> Unit)?
+
     fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?)
 }
