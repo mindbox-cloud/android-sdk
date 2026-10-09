@@ -85,8 +85,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     contentController: EmbeddedBlockContentController = EmbeddedBlockContentController(
         placeSystemName = placeSystemName.orNullIfBlank(),
         configTimeout = configTimeout ?: readConfigTimeout(context, attrs),
-        providerFactory = { content, attemptStartedAt ->
-            EmbeddedBlockContentFactory.createProvider(context, content, attemptStartedAt)
+        providerFactory = { content, selectionTime ->
+            EmbeddedBlockContentFactory.createProvider(context, content, selectionTime)
         },
         failureTracker = {
             loggingRunCatching(defaultValue = null) {

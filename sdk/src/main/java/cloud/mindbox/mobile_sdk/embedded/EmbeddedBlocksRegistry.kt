@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CancellationException
@@ -28,7 +29,7 @@ internal interface EmbeddedBlockHandle {
 
     val isHoldingContent: Boolean
 
-    fun onContentResolved(content: InAppType.Embedded?)
+    fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds)
 
     fun onContentPending() {}
 
@@ -50,6 +51,7 @@ internal class EmbeddedBlocksRegistryImpl(
     private val inAppInteractor: InAppInteractor,
     // Read on every use, never captured: the SDK scope is recreated on a soft reinitialization.
     private val scopeProvider: () -> CoroutineScope = { Mindbox.mindboxScope },
+    private val monotonicNow: () -> Milliseconds,
 ) : EmbeddedBlocksRegistry {
 
     // Weak on purpose: a host with no lifecycle owner to say goodbye — a plain Dialog, a
@@ -60,7 +62,11 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, InAppEventType?>()
 
-    private class PendingDelay(val inAppId: String, val job: Job)
+    private class PendingDelay(
+        val job: Job,
+        var winner: InAppType.Embedded,
+        var selectionTime: Milliseconds,
+    )
 
     private val delayJobsByPlace = mutableMapOf<PlaceKey, PendingDelay>()
 
@@ -170,6 +176,7 @@ internal class EmbeddedBlocksRegistryImpl(
             reResolveQueuedPlaces[place] = triggerEvent ?: reResolveQueuedPlaces[place]
             return
         }
+        val requestedAt = monotonicNow()
         val job = scopeProvider().launch {
             val resolved = try {
                 Result.success(
@@ -184,10 +191,11 @@ internal class EmbeddedBlocksRegistryImpl(
                 mindboxLogW("[EmbeddedBlock] Resolving place '$place' failed: $error")
                 Result.failure(error)
             }
+            val selectionTime = Milliseconds(monotonicNow().interval - requestedAt.interval)
             runOnMain {
                 resolved.fold(
-                    onSuccess = { result -> handleResolved(place, result) },
-                    onFailure = { handleResolveFailure(place) },
+                    onSuccess = { result -> handleResolved(place, result, selectionTime) },
+                    onFailure = { handleResolveFailure(place, selectionTime) },
                 )
             }
         }
@@ -218,27 +226,29 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome) {
+    private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome, selectionTime: Milliseconds) {
         when (outcome) {
-            is EmbeddedResolveOutcome.Content -> handleContent(place, outcome)
-            EmbeddedResolveOutcome.Empty -> deliverNow(place, null)
+            is EmbeddedResolveOutcome.Content -> handleContent(place, outcome, selectionTime)
+            EmbeddedResolveOutcome.Empty -> deliverNow(place, null, selectionTime)
             EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place)
         }
     }
 
-    private fun handleContent(place: PlaceKey, outcome: EmbeddedResolveOutcome.Content) {
+    private fun handleContent(place: PlaceKey, outcome: EmbeddedResolveOutcome.Content, selectionTime: Milliseconds) {
         val winner = outcome.variant
         val delayTime = outcome.delayTime?.takeIf { delay -> delay.interval > 0 }
         if (delayTime == null) {
-            deliverNow(place, winner)
+            deliverNow(place, winner, selectionTime)
             return
         }
         val running = delayJobsByPlace[place]
-        if (running != null && running.job.isActive && running.inAppId == winner.inAppId) {
+        if (running != null && running.job.isActive && running.winner.inAppId == winner.inAppId) {
             mindboxLogI(
                 "[EmbeddedBlock] Winner ${winner.inAppId} for place '$place' is already " +
-                    "waiting out its delay, keeping the running timer"
+                    "waiting out its delay, keeping the running timer for the fresh answer"
             )
+            running.winner = winner
+            running.selectionTime = selectionTime
             notifyPending(place)
             return
         }
@@ -252,18 +262,18 @@ internal class EmbeddedBlocksRegistryImpl(
             delay(delayTime.interval)
             val self = coroutineContext[Job]
             runOnMain {
-                if (delayJobsByPlace[place]?.job !== self) return@runOnMain
+                val due = delayJobsByPlace[place]?.takeIf { pending -> pending.job === self } ?: return@runOnMain
                 delayJobsByPlace.remove(place)
-                inAppInteractor.markEmbeddedDelayWaitedOut(place, winner.inAppId)
-                deliver(place, winner)
+                inAppInteractor.markEmbeddedDelayWaitedOut(place, due.winner.inAppId)
+                deliver(place, due.winner, due.selectionTime)
             }
         }
-        delayJobsByPlace[place] = PendingDelay(winner.inAppId, job)
+        delayJobsByPlace[place] = PendingDelay(job, winner, selectionTime)
     }
 
-    private fun handleResolveFailure(place: PlaceKey) {
+    private fun handleResolveFailure(place: PlaceKey, selectionTime: Milliseconds) {
         if (keepsRunningDelay(place, "Resolving place '$place' failed")) return
-        deliver(place, null)
+        deliver(place, null, selectionTime)
     }
 
     private fun handleConfigUnavailable(place: PlaceKey) {
@@ -273,14 +283,14 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private fun keepsRunningDelay(place: PlaceKey, what: String): Boolean {
         val running = delayJobsByPlace[place]?.takeIf { pending -> pending.job.isActive } ?: return false
-        mindboxLogI("[EmbeddedBlock] $what while winner ${running.inAppId} waits out its delay, keeping the running timer")
+        mindboxLogI("[EmbeddedBlock] $what while winner ${running.winner.inAppId} waits out its delay, keeping the running timer")
         notifyPending(place)
         return true
     }
 
-    private fun deliverNow(place: PlaceKey, content: InAppType.Embedded?) {
+    private fun deliverNow(place: PlaceKey, content: InAppType.Embedded?, selectionTime: Milliseconds) {
         delayJobsByPlace.remove(place)?.job?.cancel()
-        deliver(place, content)
+        deliver(place, content, selectionTime)
     }
 
     private fun deliverConfigUnavailable(place: PlaceKey) {
@@ -302,7 +312,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun deliver(place: PlaceKey, content: InAppType.Embedded?) {
+    private fun deliver(place: PlaceKey, content: InAppType.Embedded?, selectionTime: Milliseconds) {
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")
@@ -323,7 +333,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
         if (delivered == null) inAppInteractor.releasePlaceShow(place)
         handles.forEach { handle ->
-            loggingRunCatching { handle.onContentResolved(delivered) }
+            loggingRunCatching { handle.onContentResolved(delivered, selectionTime) }
         }
     }
 

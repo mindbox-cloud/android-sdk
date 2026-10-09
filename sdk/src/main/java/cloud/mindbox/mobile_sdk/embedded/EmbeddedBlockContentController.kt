@@ -76,8 +76,11 @@ internal class EmbeddedBlockContentController(
     private var registration: Closeable? = null
     private var configJob: Job? = null
 
-    private var pendingContent: InAppType.Embedded? = null
-    private var hasPendingContent = false
+    private class PendingAnswer(val content: InAppType.Embedded?, val selectionTime: Milliseconds)
+
+    private var pendingAnswer: PendingAnswer? = null
+    private val hasPendingAnswer: Boolean
+        get() = pendingAnswer != null
 
     /** What the shown page was built from — the "same content" dedup key. */
     private var appliedDescriptor: PageDescriptor? = null
@@ -112,8 +115,6 @@ internal class EmbeddedBlockContentController(
 
     private var attemptStartTick: Milliseconds? = null
 
-    private var pendingSinceTick: Milliseconds? = null
-
     private var hasPendingDelivery = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -138,10 +139,9 @@ internal class EmbeddedBlockContentController(
             appliedDescriptor = null
         }
 
-        if (hasPendingContent) {
-            val deferred = pendingContent
-            clearPendingContent()
-            applyResolved(deferred)
+        pendingAnswer?.let { deferred ->
+            pendingAnswer = null
+            applyResolved(deferred.content, deferred.selectionTime)
         }
 
         provider?.let { current ->
@@ -154,7 +154,7 @@ internal class EmbeddedBlockContentController(
             beginWaitingForContent()
             return
         }
-        if (provider == null && !hasPendingContent) {
+        if (provider == null && !hasPendingAnswer) {
             beginWaitingForContent()
         }
         blocksRegistry()?.onBlockAppeared(place)
@@ -181,27 +181,25 @@ internal class EmbeddedBlockContentController(
         notifyContentDropped()
     }
 
-    override fun onContentResolved(content: InAppType.Embedded?) {
+    override fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {
         if (!acceptAnswer("Content")) return
         if (!isActive) {
             mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
-            pendingContent = content
-            hasPendingContent = true
+            pendingAnswer = PendingAnswer(content, selectionTime)
             return
         }
-        applyResolved(content)
+        applyResolved(content, selectionTime)
     }
 
     override fun onContentPending() {
         if (isReleased || hasGivenUp) return
         configBudget.reset()
         hasPendingDelivery = true
-        pendingSinceTick = pendingSinceTick ?: monotonicNow()
     }
 
     override fun onConfigUnavailable() {
         if (!acceptAnswer("The SDK's answer")) return
-        clearPendingContent()
+        pendingAnswer = null
         forgetAppliedContent()
         mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for '$placeSystemName', reporting failure")
         sendWaitBudgetExceeded(
@@ -222,16 +220,8 @@ internal class EmbeddedBlockContentController(
             return false
         }
         configBudget.reset()
-        // The pending window closes at the delivery, not at the application: a delivery deferred
-        // while the block is off screen keeps the off-screen span inside the measure — only the
-        // campaign's delay leaves it.
-        settlePendingWindow()
+        hasPendingDelivery = false
         return true
-    }
-
-    private fun clearPendingContent() {
-        pendingContent = null
-        hasPendingContent = false
     }
 
     private fun sendWaitBudgetExceeded(waited: Milliseconds, phase: WaitBudgetPhase) {
@@ -240,17 +230,7 @@ internal class EmbeddedBlockContentController(
         loggingRunCatching { tracker.sendPlaceWaitBudgetExceeded(place, waited, phase) }
     }
 
-    private fun settlePendingWindow() {
-        hasPendingDelivery = false
-        pendingSinceTick?.let { pendingSince ->
-            attemptStartTick = attemptStartTick?.let { started ->
-                Milliseconds(started.interval + elapsedSince(pendingSince).interval)
-            }
-        }
-        pendingSinceTick = null
-    }
-
-    private fun applyResolved(content: InAppType.Embedded?) {
+    private fun applyResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {
         if (content == null) {
             mindboxLogI("[EmbeddedBlock] Nothing to show for place '$placeSystemName'")
             forgetAppliedContent()
@@ -271,7 +251,7 @@ internal class EmbeddedBlockContentController(
         }
         if (lastReportedState?.nothingToShow == true) {
             mindboxLogI("[EmbeddedBlock] Delivery for a collapsed block '$placeSystemName', rebuilding the content")
-            recreateProvider(content)
+            recreateProvider(content, selectionTime)
             return
         }
         if (current is EmbeddedUpdatableContentProvider &&
@@ -290,17 +270,17 @@ internal class EmbeddedBlockContentController(
                             appliedContent = content
                         } else {
                             mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
-                            recreateProvider(content)
+                            recreateProvider(content, selectionTime)
                         }
                     }
                 }
             }.onFailure { error ->
                 mindboxLogW("[EmbeddedBlock] In-place update crashed ($error), recreating the content")
-                recreateProvider(content)
+                recreateProvider(content, selectionTime)
             }
             return
         }
-        recreateProvider(content)
+        recreateProvider(content, selectionTime)
     }
 
     private fun refreshMetricsSnapshot(current: EmbeddedContentProvider, content: InAppType.Embedded) {
@@ -312,13 +292,12 @@ internal class EmbeddedBlockContentController(
         appliedContent = content
     }
 
-    private fun recreateProvider(content: InAppType.Embedded) {
+    private fun recreateProvider(content: InAppType.Embedded, selectionTime: Milliseconds) {
         dropProvider()
-        if (lastReportedState != EmbeddedBlockState.Loading) {
+        if (lastReportedState != EmbeddedBlockState.Loading || attemptStartTick == null) {
             attemptStartTick = monotonicNow()
         }
-        val startTick = attemptStartTick ?: monotonicNow().also { freshStart -> attemptStartTick = freshStart }
-        val created = loggingRunCatching(defaultValue = null) { providerFactory(content, startTick) } ?: run {
+        val created = loggingRunCatching(defaultValue = null) { providerFactory(content, selectionTime) } ?: run {
             failInternally(content, "Could not build content for ${content.inAppId}")
             return
         }
@@ -337,7 +316,7 @@ internal class EmbeddedBlockContentController(
     override val isHoldingContent: Boolean
         get() = lastReportedState is EmbeddedBlockState.Loading ||
             lastReportedState == EmbeddedBlockState.Ready ||
-            hasPendingContent
+            hasPendingAnswer
 
     private fun onProviderState(state: EmbeddedBlockState) {
         if (state is EmbeddedBlockState.Ready && provider?.contentView == null) {
@@ -462,7 +441,7 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun hasEverResolved(): Boolean =
-        provider != null || hasPendingContent || appliedDescriptor != null || hasPendingDelivery
+        provider != null || hasPendingAnswer || appliedDescriptor != null || hasPendingDelivery
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
