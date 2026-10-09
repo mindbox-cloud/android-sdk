@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
@@ -9,8 +10,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -28,13 +31,17 @@ private const val STORED_BOTH =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"},{"type":"huawei","value":"1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"}]"""
 private const val STORED_GOOGLE =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"}]"""
+private const val ANONYMIZER_DOMAIN = "anonymizer.example.com"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TrackingIdsResolverImplTest {
 
     private val context = mockk<Context>()
 
     private var shouldCollect = true
     private var lastSent = ""
+    private var operationsDomainFromConfig: String? = null
+    private var configuration: Configuration? = storedConfiguration(operationsDomain = null)
 
     @Before
     fun onTestStart() {
@@ -42,12 +49,29 @@ class TrackingIdsResolverImplTest {
         every { MindboxPreferences.shouldCollectTrackingIds } answers { shouldCollect }
         every { MindboxPreferences.lastSentTrackingIds } answers { lastSent }
         every { MindboxPreferences.lastSentTrackingIds = any() } answers { lastSent = firstArg() }
+        every { MindboxPreferences.operationsDomainFromConfig } answers { operationsDomainFromConfig }
+        mockkObject(DbManager)
+        every { DbManager.getConfigurations() } answers { configuration }
     }
 
     @After
     fun onTestEnd() {
         unmockkObject(MindboxPreferences)
+        unmockkObject(DbManager)
     }
+
+    private fun storedConfiguration(operationsDomain: String?) = Configuration(
+        previousInstallationId = "",
+        previousDeviceUUID = "",
+        endpointId = "test-endpoint",
+        domain = "api.mindbox.ru",
+        packageName = "com.test.app",
+        versionName = "1.0.0",
+        versionCode = "1",
+        subscribeCustomerIfCreated = true,
+        shouldCreateCustomer = true,
+        operationsDomain = operationsDomain,
+    )
 
     private fun resolver(vararg results: TrackingIdResult) = TrackingIdsResolverImpl(
         pushServiceHandlers = { results.map(::handlerReturning) },
@@ -203,6 +227,91 @@ class TrackingIdsResolverImplTest {
         val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
 
         assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `nothing is collected when operationsDomain is set in init`() = runTest {
+        configuration = storedConfiguration(operationsDomain = ANONYMIZER_DOMAIN)
+
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+
+        assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `nothing is collected when operationsDomain comes from the mobile config`() = runTest {
+        operationsDomainFromConfig = ANONYMIZER_DOMAIN
+
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+
+        assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `providers are not even read when operationsDomain is set`() = runTest {
+        operationsDomainFromConfig = ANONYMIZER_DOMAIN
+        val handler = handlerReturning(success(GOOGLE, GOOGLE_VALUE))
+        val resolver = TrackingIdsResolverImpl(
+            pushServiceHandlers = { listOf(handler) },
+            scope = { CoroutineScope(UnconfinedTestDispatcher()) },
+            ioDispatcher = UnconfinedTestDispatcher(),
+        )
+
+        resolver.resolve(context)
+
+        verify(exactly = 0) { handler.tryGetTrackingId(any()) }
+    }
+
+    @Test
+    fun `operationsDomain does not repeat the last reported set`() = runTest {
+        lastSent = STORED_BOTH
+        configuration = storedConfiguration(operationsDomain = ANONYMIZER_DOMAIN)
+
+        val payload = resolver(TrackingIdResult.Unavailable).resolve(context)
+
+        assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `operationsDomain added to the mobile config stops the collection`() = runTest {
+        val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
+        resolver.markSent(resolver.resolve(context))
+
+        operationsDomainFromConfig = ANONYMIZER_DOMAIN
+        val payload = resolver.resolve(context)
+
+        assertEquals(emptyList<TrackingId>(), payload)
+        assertTrue(resolver.hasChanged(payload))
+    }
+
+    @Test
+    fun `operationsDomain removed from the mobile config resumes the collection`() = runTest {
+        val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
+        operationsDomainFromConfig = ANONYMIZER_DOMAIN
+        resolver.markSent(resolver.resolve(context))
+
+        operationsDomainFromConfig = null
+        val payload = resolver.resolve(context)
+
+        assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `a blank operationsDomain in the stored configuration does not stop the collection`() = runTest {
+        configuration = storedConfiguration(operationsDomain = "  ")
+
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+
+        assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `a missing stored configuration does not stop the collection`() = runTest {
+        configuration = null
+
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+
+        assertEquals(listOf(googleId), payload)
     }
 
     @Test
