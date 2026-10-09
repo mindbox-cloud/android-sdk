@@ -16,9 +16,17 @@ import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
 class SessionStorageManagerTest {
@@ -113,6 +121,9 @@ class SessionStorageManagerTest {
             "timeProvider",
             "state",
             "showBudgetLock",
+            "sessionEpochs",
+            "isSessionEnding",
+            "isReturnCheckPending",
             "lastTrackVisitData",
             "lastTrackVisitSendTime",
             "sessionExpirationListeners",
@@ -265,5 +276,111 @@ class SessionStorageManagerTest {
         threads.forEach { it.join() }
 
         verify(exactly = 1) { listener.invoke() }
+    }
+
+    @Test
+    fun `clearSessionData moves the session epoch on with every new session`() {
+        assertEquals(0L, sessionStorageManager.sessionEpoch)
+
+        sessionStorageManager.clearSessionData()
+        sessionStorageManager.clearSessionData()
+
+        assertEquals(2L, sessionStorageManager.sessionEpoch)
+    }
+
+    @Test
+    fun `the session epoch moves with the state only once the show budget lock is free`() {
+        val previousState = sessionStorageManager.state
+        val worker = Executors.newSingleThreadExecutor()
+        val reset = synchronized(sessionStorageManager.showBudgetLock) {
+            val reset = worker.submit { sessionStorageManager.clearSessionData() }
+            Thread.sleep(150)
+            assertEquals(0L, sessionStorageManager.sessionEpoch)
+            assertSame(previousState, sessionStorageManager.state)
+            reset
+        }
+
+        reset.get(5, TimeUnit.SECONDS)
+
+        assertEquals(1L, sessionStorageManager.sessionEpoch)
+        assertNotSame(previousState, sessionStorageManager.state)
+        worker.shutdown()
+    }
+
+    @Test
+    fun `a session found expired is ending before its listeners hear of it and until its data is wiped`() {
+        var wasEndingWhenNotified = false
+        sessionStorageManager.addSessionExpirationListener { wasEndingWhenNotified = sessionStorageManager.isSessionEnding }
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertTrue(wasEndingWhenNotified)
+        assertTrue(sessionStorageManager.isSessionEnding)
+
+        sessionStorageManager.clearSessionData()
+
+        assertFalse(sessionStorageManager.isSessionEnding)
+    }
+
+    @Test
+    fun `a session check reads the last visit and marks the session ending in one hold of the show budget lock`() {
+        sessionStorageManager.addSessionExpirationListener {}
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L)
+        val worker = Executors.newSingleThreadExecutor()
+        val check = synchronized(sessionStorageManager.showBudgetLock) {
+            val check = worker.submit { sessionStorageManager.hasSessionExpired() }
+            Thread.sleep(150)
+            assertEquals(1000L, sessionStorageManager.lastTrackVisitSendTime.get())
+            assertFalse(sessionStorageManager.isSessionEnding)
+            check
+        }
+
+        check.get(5, TimeUnit.SECONDS)
+
+        assertEquals(2000L, sessionStorageManager.lastTrackVisitSendTime.get())
+        assertTrue(sessionStorageManager.isSessionEnding)
+        worker.shutdown()
+    }
+
+    @Test
+    fun `a session check that finds the session active ends nothing`() {
+        sessionStorageManager.addSessionExpirationListener {}
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 2000L, currentTime = 1500L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionEnding)
+    }
+
+    @Test
+    fun `a session found expired with nothing listening to start the next one does not count as ending`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L)
+
+        sessionStorageManager.hasSessionExpired()
+
+        assertFalse(sessionStorageManager.isSessionEnding)
+    }
+
+    @Test
+    fun `the session check of a return is waited for only while the app is away`() = runBlocking {
+        assertNotNull(withTimeoutOrNull(1_000L) { sessionStorageManager.awaitReturnChecked() })
+
+        sessionStorageManager.onAppLeftForeground()
+
+        assertNull(withTimeoutOrNull(100L) { sessionStorageManager.awaitReturnChecked() })
+
+        sessionStorageManager.onReturnChecked()
+
+        assertNotNull(withTimeoutOrNull(1_000L) { sessionStorageManager.awaitReturnChecked() })
+    }
+
+    @Test
+    fun `a wipe announces the epoch of the session it begins`() = runBlocking {
+        val renewed = async(start = CoroutineStart.UNDISPATCHED) { sessionStorageManager.listenSessionEpoch().first { epoch -> epoch > 0L } }
+
+        sessionStorageManager.clearSessionData()
+
+        assertEquals(1L, withTimeout(1_000L) { renewed.await() })
     }
 }

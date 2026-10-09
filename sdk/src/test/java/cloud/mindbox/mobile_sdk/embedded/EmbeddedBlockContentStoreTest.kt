@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import android.content.ComponentCallbacks2
 import android.os.Looper
 import android.view.View
@@ -41,6 +42,12 @@ class EmbeddedBlockContentStoreTest {
         override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
         override fun startListening() = Unit
+
+        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
+        override fun onAppResumedOn(activity: Activity) = Unit
     }
 
     private class FakeProvider : EmbeddedContentProvider {

@@ -4,14 +4,32 @@ import android.app.Activity
 import android.os.Looper
 import android.view.View
 import android.widget.LinearLayout
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
+
+internal fun placeAnswer(
+    sessionEpoch: Long = 0L,
+    isByOperation: Boolean = false,
+    selectionStartTick: Milliseconds = Milliseconds(0L),
+): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(sessionEpoch, isByOperation, selectionStartTick)
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) = onContentResolved(content, placeAnswer())
+
+internal fun EmbeddedBlockHandle.onConfigUnavailable() = onConfigUnavailable(placeAnswer())
 
 internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
     var lastHandle: EmbeddedBlockHandle? = null
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
+
+    override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+
+    override fun deferUntilReturnChecked(): Boolean = false
+
+    override fun onAppResumedOn(activity: Activity) = Unit
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         lastHandle = handle

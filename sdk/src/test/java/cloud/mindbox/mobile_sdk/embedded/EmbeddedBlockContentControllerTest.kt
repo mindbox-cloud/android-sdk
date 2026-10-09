@@ -1,13 +1,16 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
+import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertFalse
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -18,6 +21,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
@@ -52,6 +56,16 @@ class EmbeddedBlockContentControllerTest {
 
         override fun startListening() = Unit
 
+        var endedSessions = setOf<Long>()
+
+        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = answer.sessionEpoch !in endedSessions
+
+        var isReturnCheckPending = false
+
+        override fun deferUntilReturnChecked(): Boolean = isReturnCheckPending
+
+        override fun onAppResumedOn(activity: Activity) = Unit
+
         fun pushContent(placeSystemName: String, content: InAppType.Embedded) {
             lastHandle?.onContentResolved(content)
         }
@@ -77,15 +91,46 @@ class EmbeddedBlockContentControllerTest {
         }
     }
 
+    private open class ReadyUpdatableProvider : EmbeddedUpdatableContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View? = View(RuntimeEnvironment.getApplication())
+
+        override fun start() {
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
+        }
+
+        override fun pause() = Unit
+
+        override fun release() = Unit
+
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: Long,
+            selectionStartTick: Milliseconds,
+            onResult: (Boolean) -> Unit,
+        ) = updateParams(params, onResult)
+
+        override fun confirmForSession(sessionEpoch: Long) = Unit
+
+        override fun withholdShow(isWithheld: Boolean) = Unit
+
+        override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
+
+        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+    }
+
     private val blocksRegistry = FakeBlocksRegistry()
     private val createdProviders = mutableListOf<FakeProvider>()
     private val states = mutableListOf<EmbeddedBlockState>()
     private val networkError = EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.NETWORK_ERROR)
     private val internalError = EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR)
 
+    private var isAppInForeground = true
+
     private fun controller(
         configTimeout: Milliseconds = Milliseconds(30_000L),
         tracker: InAppFailureTracker? = null,
+        hostActivity: () -> Activity? = { null },
         providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider? = { _, _ ->
             FakeProvider().also { createdProviders.add(it) }
         },
@@ -97,6 +142,8 @@ class EmbeddedBlockContentControllerTest {
             blocksRegistry = { blocksRegistry },
             failureTracker = { tracker },
             isTagsFeatureEnabled = { true },
+            isAppInForeground = { isAppInForeground },
+            hostActivity = hostActivity,
         ).apply {
             onStateChange = { state -> states.add(state) }
         }
@@ -106,6 +153,71 @@ class EmbeddedBlockContentControllerTest {
     }
 
     private val content = InAppStub.getEmbedded()
+
+    private class SessionAwareProvider(private val rendersOnStart: Boolean = true) : ReadyUpdatableProvider() {
+        val confirmedSessions = mutableListOf<Long>()
+        val withheldShows = mutableListOf<Boolean>()
+        val sessionRefreshes = mutableListOf<Long>()
+        val sessionRefreshTicks = mutableListOf<Milliseconds>()
+        val paramUpdates = mutableListOf<Map<String, String>>()
+        var pushResult: ((Boolean) -> Unit)? = null
+        var releaseCount = 0
+
+        override fun start() {
+            if (rendersOnStart) render()
+        }
+
+        override fun release() {
+            releaseCount++
+        }
+
+        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+            paramUpdates.add(params)
+            pushResult = onResult
+        }
+
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: Long,
+            selectionStartTick: Milliseconds,
+            onResult: (Boolean) -> Unit,
+        ) {
+            sessionRefreshes.add(sessionEpoch)
+            sessionRefreshTicks.add(selectionStartTick)
+            pushResult = onResult
+        }
+
+        override fun confirmForSession(sessionEpoch: Long) {
+            confirmedSessions.add(sessionEpoch)
+        }
+
+        override fun withholdShow(isWithheld: Boolean) {
+            withheldShows.add(isWithheld)
+        }
+
+        fun render() {
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
+        }
+    }
+
+    private fun sessionAwareController(
+        providers: MutableList<SessionAwareProvider>,
+        rendersOnStart: Boolean = true,
+        monotonicNow: () -> Milliseconds = { Milliseconds(SystemClock.elapsedRealtime()) },
+        startTicks: MutableList<Milliseconds> = mutableListOf(),
+        hostActivity: () -> Activity? = { null },
+    ) = EmbeddedBlockContentController(
+        placeSystemName = "main-screen-top",
+        configTimeout = Milliseconds(30_000L),
+        providerFactory = { _, startTick ->
+            startTicks.add(startTick)
+            SessionAwareProvider(rendersOnStart).also { providers.add(it) }
+        },
+        blocksRegistry = { blocksRegistry },
+        monotonicNow = monotonicNow,
+        isAppInForeground = { isAppInForeground },
+        hostActivity = hostActivity,
+    ).apply { onStateChange = { state -> states.add(state) } }
 
     @Test
     fun `start registers and pulls content for the place`() {
@@ -643,24 +755,11 @@ class EmbeddedBlockContentControllerTest {
         var snapshotFrequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency? = null
         var snapshotTags: Map<String, String>? = null
         var builtPages = 0
-        val updatableProvider = object : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
+        val updatableProvider = object : ReadyUpdatableProvider() {
             override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) {
                 snapshotFrequency = frequency
                 snapshotTags = tags
             }
-
-            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
         }
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
@@ -688,20 +787,7 @@ class EmbeddedBlockContentControllerTest {
     @Test
     fun `same winner with new params updates the content in place`() {
         var updatedParams: Map<String, String>? = null
-        val updatableProvider = object : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
-            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
-
+        val updatableProvider = object : ReadyUpdatableProvider() {
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
                 onResult(true)
@@ -743,20 +829,8 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `new params with a new page address rebuild instead of updating in place`() {
-        class RecordingUpdatableProvider : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
+        class RecordingUpdatableProvider : ReadyUpdatableProvider() {
             var updatedParams: Map<String, String>? = null
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
-            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
@@ -968,13 +1042,33 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `an answer the SDK could not give drops the content a block was showing`() {
-        val controller = controller()
+    fun `an answer the SDK could not give keeps the content a block is showing until the block leaves the screen`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(tracker = tracker)
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         assertEquals(EmbeddedBlockState.Ready, states.last())
 
         blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), WaitBudgetPhase.CONFIG_MISSING) }
+
+        controller.pause()
+
+        assertEquals(networkError, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(null, controller.contentView)
+    }
+
+    @Test
+    fun `an answer the SDK could not give to an operation drops the content a block was showing at once`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        blocksRegistry.lastHandle?.onConfigUnavailable(placeAnswer(isByOperation = true))
 
         assertEquals(networkError, states.last())
         assertEquals(1, createdProviders.single().releaseCount)
@@ -1109,17 +1203,770 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `an answer the SDK could not give reaches a paused block at once and the return asks afresh`() {
+    fun `an answer the SDK could not give to a paused block waits for its return, then fails it and asks afresh`() {
         val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `nothing to show for a block showing content keeps it until the block leaves the screen`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertTrue(controller.contentView != null)
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `an operation that leaves the place empty collapses a shown block at once`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(isByOperation = true))
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `nothing to show for a block that has not shown content yet collapses it at once`() {
+        val controller = controller { _, _ -> FakeProvider(onStart = {}).also { createdProviders.add(it) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `nothing to show parked while the block was away collapses it at once on return`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(null, controller.contentView)
+    }
+
+    @Test
+    fun `a block holding a collapse is not kept for its screen`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        assertTrue(controller.isRetainable)
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        assertFalse(controller.isRetainable)
+    }
+
+    @Test
+    fun `content arriving while a collapse is held cancels the collapse`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertTrue(controller.isRetainable)
+    }
+
+    @Test
+    fun `a data push that fails after the place became empty does not rebuild the content`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer())
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        providers.single().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, providers.size)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `content is confirmed for the session whose answer built it`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 2L))
+
+        assertEquals(listOf(2L), providers.single().confirmedSessions)
+    }
+
+    @Test
+    fun `a new session's same content refreshes the page in place once, with the same params`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(1, providers.size)
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertTrue(providers.single().paramUpdates.isEmpty())
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `the same content again within its session does not refresh the page`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        controller.pause()
+        controller.start()
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertTrue(providers.single().sessionRefreshes.isEmpty())
+        assertTrue(providers.single().paramUpdates.isEmpty())
+    }
+
+    @Test
+    fun `a new session's content with new params refreshes the page for the session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertTrue(providers.single().paramUpdates.isEmpty())
+    }
+
+    @Test
+    fun `a page still loading when a new session picks it again is refreshed once it renders`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        assertTrue(providers.single().sessionRefreshes.isEmpty())
+
+        providers.single().render()
+
+        assertEquals(1, providers.size)
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a new session's refresh that the page could not take rebuilds the page for that session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        providers.first().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(2, providers.size)
+        assertEquals(listOf(1L), providers.last().confirmedSessions)
+    }
+
+    @Test
+    fun `a held collapse withholds the page's show and content that clears it lets the show go`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        assertEquals(true, providers.single().withheldShows.last())
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(false, providers.single().withheldShows.last())
+        assertEquals(1, providers.size)
+    }
+
+    @Test
+    fun `a different winner clearing a held collapse never lets the replaced page's show go`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(2, providers.size)
+        assertEquals(listOf(true), providers.first().withheldShows)
+        assertEquals(1, providers.first().releaseCount)
+    }
+
+    @Test
+    fun `a winner without a webview layer keeps the content a block is showing until the block leaves the screen`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(tracker = tracker)
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+
+        controller.pause()
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `nothing to show parked in a session that has ended keeps the content and lets the place answer again`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.endedSessions = setOf(0L)
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertTrue(blocksRegistry.droppedPlaces.isEmpty())
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `another winner parked in a session that has ended does not rebuild the page`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.endedSessions = setOf(0L)
+
+        controller.start()
+
+        assertEquals(1, createdProviders.size)
+        assertEquals(0, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `an operation's answer in a new session refreshes the page once like any other`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, isByOperation = true))
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a session refresh the page could not take while a collapse is held is sent again once content clears the hold`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+
+        providers.single().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(1, providers.size)
+        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a collapse held when the app goes to background survives it and the block returns still holding it`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+        isAppInForeground = false
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+        assertEquals(listOf(true), providers.single().withheldShows)
+
+        isAppInForeground = true
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+        assertEquals(listOf(true), providers.single().withheldShows)
+        assertFalse(controller.isRetainable)
+        assertTrue(blocksRegistry.droppedPlaces.isEmpty())
+    }
+
+    @Test
+    fun `a collapse held through the background applies once the block leaves the screen inside the app`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        isAppInForeground = false
+        controller.pause()
+        isAppInForeground = true
+        controller.start()
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `nothing to show that reached a block away in background is held on its return`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        isAppInForeground = true
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertTrue(controller.contentView != null)
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `an answer the SDK could not give that reached a block away in background is held on its return`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+        isAppInForeground = true
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+
+        controller.pause()
+
+        assertEquals(networkError, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `a block away only because the app went to background tells the registry so until it returns`() {
+        val controller = controller()
+        controller.start()
+        val handle = blocksRegistry.lastHandle!!
+        assertFalse(handle.isPausedForBackground)
+
+        isAppInForeground = false
+        controller.pause()
+        assertTrue(handle.isPausedForBackground)
+
+        controller.start()
+        assertFalse(handle.isPausedForBackground)
+
+        isAppInForeground = true
+        controller.pause()
+        assertFalse(handle.isPausedForBackground)
+    }
+
+    @Test
+    fun `a winner without a page that reaches a block away reports its failure at once and not again on its return`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(tracker = tracker)
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+
+        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+        assertEquals(listOf(internalError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+    }
+
+    @Test
+    fun `a winner without a page parked while the block was away drops the page it showed`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf(internalError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(1, createdProviders.single().startCount)
+        assertEquals(null, controller.contentView)
+    }
+
+    @Test
+    fun `an answer the SDK could not give to a paused block that has not shown content waits for its return, then fails it and asks afresh`() {
+        val controller = controller { _, _ -> FakeProvider(onStart = {}).also { createdProviders.add(it) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `a page rebuilt after its new session's refresh failed counts its time from the new session's first selection`() {
+        var clock = 1_000L
+        val startTicks = mutableListOf<Milliseconds>()
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, monotonicNow = { Milliseconds(clock) }, startTicks = startTicks)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        clock = 9_000L
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionStartTick = Milliseconds(5_000L)))
+
+        providers.first().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(2, providers.size)
+        assertEquals(Milliseconds(5_000L), startTicks.last())
+    }
+
+    @Test
+    fun `a session refresh sent again once content clears the hold carries the new session's first selection time`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionStartTick = Milliseconds(5_000L)))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        providers.single().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionStartTick = Milliseconds(8_000L)))
+
+        assertEquals(listOf(Milliseconds(5_000L), Milliseconds(5_000L)), providers.single().sessionRefreshTicks)
+    }
+
+    private val blockScreen: Activity = Robolectric.buildActivity(Activity::class.java).get()
+    private val otherScreen: Activity = Robolectric.buildActivity(Activity::class.java).get()
+
+    private fun controllerHoldingThroughBackground(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
+        val controller = sessionAwareController(providers, hostActivity = { blockScreen })
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        isAppInForeground = false
+        controller.pause()
+        return controller
+    }
+
+    @Test
+    fun `a collapse held through the background applies as soon as the app comes back on another screen, and the block returns collapsed`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerHoldingThroughBackground(providers)
+
+        controller.onAppResumedOn(otherScreen)
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+        assertFalse(controller.isPausedForBackground)
+
+        isAppInForeground = true
+        val reportedBeforeReturn = states.size
+        controller.start()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `a collapse held through the background survives the app coming back on the block's own screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerHoldingThroughBackground(providers)
+
+        controller.onAppResumedOn(blockScreen)
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+        assertTrue(controller.isPausedForBackground)
+
+        isAppInForeground = true
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a block whose screen is unknown keeps its background pause when the app comes back`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        isAppInForeground = false
+        controller.pause()
+
+        controller.onAppResumedOn(otherScreen)
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertTrue(controller.isPausedForBackground)
+    }
+
+    @Test
+    fun `nothing to show that reached a block away in background collapses it at once on its return once the app came back on another screen`() {
+        val controller = controller(hostActivity = { blockScreen })
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        controller.onAppResumedOn(otherScreen)
+        isAppInForeground = true
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `a block paused while another screen of the app stays started has left the screen`() {
+        val lifecycle = LifecycleManager(currentActivityName = null, currentIntent = null, isAppInBackground = false)
+        lifecycle.onActivityStarted(blockScreen)
+        lifecycle.onActivityResumed(blockScreen)
+        lifecycle.onActivityStarted(otherScreen)
+        LifecycleManager.instance = lifecycle
+        try {
+            val controller = EmbeddedBlockContentController(
+                placeSystemName = "main-screen-top",
+                providerFactory = { _, _ -> FakeProvider().also { createdProviders.add(it) } },
+                blocksRegistry = { blocksRegistry },
+                hostActivity = { blockScreen },
+            ).apply { onStateChange = { state -> states.add(state) } }
+            controller.start()
+            blocksRegistry.pushContent("main-screen-top", content)
+            blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+
+            lifecycle.onActivityPaused(blockScreen)
+            controller.pause()
+
+            assertEquals(EmbeddedBlockState.Empty, states.last())
+            assertEquals(1, createdProviders.single().releaseCount)
+        } finally {
+            LifecycleManager.instance = null
+        }
+    }
+
+    @Test
+    fun `a winner without a page that reached a block away in background is held on its return`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+        isAppInForeground = true
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+
+        controller.pause()
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `a block back before the session check of the app's return keeps its parked answer until the check has run`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        blocksRegistry.isReturnCheckPending = true
+
+        controller.start()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+
+        blocksRegistry.isReturnCheckPending = false
+        controller.onReturnChecked()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `an answer parked through the background and kept for the session check of the return is held once the check has run`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        isAppInForeground = true
+        blocksRegistry.isReturnCheckPending = true
+        controller.start()
+
+        blocksRegistry.isReturnCheckPending = false
+        controller.onReturnChecked()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `an answer that reaches a block waiting for the session check of the return takes the place of its parked answer`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
+        blocksRegistry.isReturnCheckPending = true
+        controller.start()
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        blocksRegistry.isReturnCheckPending = false
+        controller.onReturnChecked()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        assertEquals(1, createdProviders.size)
+    }
+
+    @Test
+    fun `an answer kept for the session check of the return is dropped when the check ends its session`() {
+        val controller = controller()
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.isReturnCheckPending = true
+        controller.start()
+
+        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.isReturnCheckPending = false
+        controller.onReturnChecked()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+    }
+
+    @Test
+    fun `a new session's refresh due while the page loads keeps the time of the session's first answer`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionStartTick = Milliseconds(5_000L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionStartTick = Milliseconds(8_000L)))
+
+        providers.single().render()
+
+        assertEquals(listOf(Milliseconds(5_000L)), providers.single().sessionRefreshTicks)
+    }
+
+    @Test
+    fun `an answer the SDK could not give to a block paused before any answer fails it on its return and asks afresh`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(tracker = tracker)
         controller.start()
         controller.pause()
 
         blocksRegistry.lastHandle?.onConfigUnavailable()
-        assertEquals(networkError, states.last())
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        verify(exactly = 1) {
+            tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), any(), WaitBudgetPhase.CONFIG_MISSING)
+        }
+        val reportedBeforeReturn = states.size
 
         controller.start()
 
-        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 }

@@ -325,4 +325,23 @@ internal class ShowBudgetManagerImplTest {
 
     private val inCommit = CountDownLatch(1)
     private val letCommitFinish = CountDownLatch(1)
+
+    @Test
+    fun `every counted show moves the count of shows, an unlimited one does not`() {
+        manager.commit(place, "block", unlimited, now)
+        assertEquals(0L, manager.countedShows)
+
+        manager.commit(place, "block", counting, now)
+
+        assertEquals(1L, manager.countedShows)
+    }
+
+    @Test
+    fun `a counted show whose history could not be written still moves the count of shows`() {
+        every { inAppRepository.saveShownInApp(any(), any()) } throws IllegalStateException("the history could not be written")
+
+        runCatching { manager.commit(place, "block", counting, now) }
+
+        assertEquals(1L, manager.countedShows)
+    }
 }

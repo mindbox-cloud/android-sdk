@@ -33,6 +33,12 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
         override fun startListening() = Unit
+
+        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
+        override fun onAppResumedOn(activity: Activity) = Unit
     }
 
     /**
@@ -85,6 +91,7 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
             activity,
             null,
             "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> provider().also { lastProvider = it } },

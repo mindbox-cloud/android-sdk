@@ -32,6 +32,12 @@ class MindboxEmbeddedBlockViewWrapperHooksTest {
         override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
 
         override fun startListening() = Unit
+
+        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
+        override fun onAppResumedOn(activity: Activity) = Unit
     }
 
     private class ReadyProvider(context: Activity) : EmbeddedContentProvider {

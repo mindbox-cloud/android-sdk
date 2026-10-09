@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.os.Looper
@@ -45,6 +46,12 @@ class MindboxEmbeddedBlockViewRetainTest {
         }
 
         override fun startListening() = Unit
+
+        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
+        override fun onAppResumedOn(activity: Activity) = Unit
     }
 
     private class FakeProvider(context: Context) : EmbeddedContentProvider {

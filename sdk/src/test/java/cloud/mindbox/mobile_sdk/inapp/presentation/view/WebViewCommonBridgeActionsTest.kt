@@ -8,12 +8,14 @@ import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
 import cloud.mindbox.mobile_sdk.models.InAppStub
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -364,5 +366,17 @@ class WebViewCommonBridgeActionsTest {
 
         assertTrue(answer.exceptionOrNull() is CancellationException)
         verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `filterShowableInapps without a config to answer from is refused, not answered with an empty list`() {
+        val interactor = mockk<InAppInteractor> {
+            coEvery { filterShowableInAppIds("host-id", listOf("inapp-1")) } returns null
+        }
+        every { MindboxDI.appModule.inAppInteractor } returns interactor
+
+        val code = handlersOf(FakeHost()).refusalCode(WebViewAction.FILTER_SHOWABLE_INAPPS, """{"inappIds":["inapp-1"]}""")
+
+        assertEquals(BridgeErrorCode.INTERNAL_ERROR, code)
     }
 }
