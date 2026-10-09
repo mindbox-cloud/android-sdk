@@ -10,7 +10,8 @@ android {
 
     defaultConfig {
         consumerProguardFiles(
-            "consumer-rules.pro"
+            "consumer-rules.pro",
+            "../proguard/proguard-huawei.pro"
         )
     }
 
