@@ -30,6 +30,7 @@ internal data class EmbeddedPlaceAnswer(
     val sessionEpoch: Long,
     val isByOperation: Boolean,
     val selectionStartTick: Milliseconds,
+    val isShowReserved: Boolean = true,
 ) {
     fun afterWaiting(waited: Milliseconds): EmbeddedPlaceAnswer =
         copy(selectionStartTick = Milliseconds(selectionStartTick.interval + waited.interval))
@@ -47,6 +48,8 @@ internal interface EmbeddedBlockHandle {
 
     val isPausedForBackground: Boolean
 
+    val isLeftBehind: Boolean
+
     val isHoldingContent: Boolean
 
     @MainThread
@@ -62,6 +65,9 @@ internal interface EmbeddedBlockHandle {
 
     @MainThread
     fun onReturnChecked()
+
+    @MainThread
+    fun onSessionRenewed()
 }
 
 internal interface EmbeddedBlocksRegistry {
@@ -72,12 +78,17 @@ internal interface EmbeddedBlocksRegistry {
 
     fun onBlockContentDropped(placeSystemName: PlaceKey)
 
-    fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean
+    fun isLiveSession(sessionEpoch: Long): Boolean
+
+    @MainThread
+    fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation
 
     @MainThread
     fun deferUntilReturnChecked(): Boolean
 
     fun onAppResumedOn(activity: Activity)
+
+    fun onReturnCheckOver()
 
     fun startListening()
 }
@@ -113,6 +124,13 @@ internal class EmbeddedBlocksRegistryImpl(
             renewal = listOfNotNull(renewal, newer.renewal).maxWithOrNull(
                 compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
             ),
+        )
+
+        fun askedAt(tick: Milliseconds): ResolvePass = ResolvePass(
+            trigger = trigger,
+            includesNonOperation = includesNonOperation,
+            includesAppearance = includesAppearance,
+            renewal = renewal?.let { held -> SessionRenewal(held.sessionEpoch, tick) },
         )
     }
 
@@ -174,11 +192,6 @@ internal class EmbeddedBlocksRegistryImpl(
                     runOnMain { onSessionEpoch(sessionEpoch) }
                 }
             },
-            scope.launch {
-                inAppInteractor.returnCheckPending.collect { isPending ->
-                    if (!isPending) runOnMain { onReturnCheckOver() }
-                }
-            },
         )
         if (isFirstStart) return
 
@@ -186,6 +199,7 @@ internal class EmbeddedBlocksRegistryImpl(
             "[EmbeddedBlock] Invalidation channels died with the previous SDK scope, resubscribed"
         )
         invalidateAll(reason = "channels resubscribed")
+        releaseReturnCheckDeferrals()
     }
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
@@ -230,8 +244,11 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean =
-        inAppInteractor.isLiveSession(answer.sessionEpoch)
+    override fun isLiveSession(sessionEpoch: Long): Boolean = inAppInteractor.isLiveSession(sessionEpoch)
+
+    @MainThread
+    override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation =
+        inAppInteractor.reservePlaceShow(placeSystemName, content, answer.sessionEpoch)
 
     @MainThread
     override fun deferUntilReturnChecked(): Boolean {
@@ -247,15 +264,22 @@ internal class EmbeddedBlocksRegistryImpl(
             held.forEach { (place, renewal) ->
                 val handles = liveHandles(place)
                 when {
-                    handles.any { handle -> handle.isActive || handle.isPausedForBackground } -> {
+                    handles.any { handle -> handle.isActive || handle.isRenewedWhileAway } -> {
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
-                        resolvePlace(place, renewal.pass)
+                        resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
                     }
                     else -> renewal.pending?.let { pending -> resolvePlace(place, pending) }
                 }
             }
         }
     }
+
+    override fun onReturnCheckOver() {
+        runOnMain { releaseReturnCheckDeferrals() }
+    }
+
+    private val EmbeddedBlockHandle.isRenewedWhileAway: Boolean
+        get() = isPausedForBackground || isLeftBehind
 
     private fun forEachLiveHandle(action: (EmbeddedBlockHandle) -> Unit) {
         handlesByPlace.keys.toList().forEach { place ->
@@ -360,6 +384,7 @@ internal class EmbeddedBlocksRegistryImpl(
     private fun onSessionRenewed(renewal: SessionRenewal) {
         val awaiting = placesAwaitingNewSession.toMap()
         placesAwaitingNewSession.clear()
+        forEachLiveHandle { handle -> handle.onSessionRenewed() }
         val isPresent = isAppPresent()
         handlesByPlace.keys.toList().forEach { place ->
             val handles = liveHandles(place)
@@ -372,11 +397,11 @@ internal class EmbeddedBlocksRegistryImpl(
             )
             when {
                 handles.isEmpty() -> Unit
-                handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isPausedForBackground }) -> {
+                handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isRenewedWhileAway }) -> {
                     mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
                     resolvePlace(place, renewalPass)
                 }
-                handles.any { handle -> handle.isPausedForBackground } -> {
+                handles.any { handle -> handle.isRenewedWhileAway } -> {
                     mindboxLogI("[EmbeddedBlock] A new session began while no screen of the app is resumed, place '$place' is asked once one is")
                     val held = HeldRenewal(renewalPass, pending)
                     placesAwaitingFirstResume[place] = placesAwaitingFirstResume[place]?.mergedWith(held) ?: held
@@ -387,7 +412,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun onReturnCheckOver() {
+    private fun releaseReturnCheckDeferrals() {
         if (inAppInteractor.returnCheckPending.value) return
         forEachLiveHandle { handle -> handle.onReturnChecked() }
         val awaiting = placesAwaitingReturnCheck.toMap()
@@ -529,10 +554,13 @@ internal class EmbeddedBlocksRegistryImpl(
             inAppInteractor.releasePlaceShow(place, answer.sessionEpoch)
             return
         }
-        // The hold is taken here, where the content really goes to the blocks — after any delay,
-        // not at the resolve — so the check and the spend are one step against the overlay.
         val showable = content?.takeIf { winner -> winner.pageLayer != null }
-        val delivered = when (showable?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
+        val defersReservation = handles.none { handle -> handle.isActive || handle.isPausedForBackground } &&
+            handles.any { handle -> handle.isLeftBehind }
+        if (showable != null && defersReservation) {
+            mindboxLogI("[EmbeddedBlock] The blocks of place '$place' are off screen since the app's return or the new session, the show of ${showable.inAppId} is reserved once one is back")
+        }
+        val delivered = when (showable?.takeUnless { defersReservation }?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
             PlaceShowReservation.RESERVED -> content
             PlaceShowReservation.REFUSED -> {
                 mindboxLogI(
@@ -551,8 +579,9 @@ internal class EmbeddedBlocksRegistryImpl(
             dropEndedSessionAnswer(place)
             return
         }
+        val deliveredAnswer = if (showable != null && defersReservation) answer.copy(isShowReserved = false) else answer
         handles.forEach { handle ->
-            loggingRunCatching { handle.onContentResolved(delivered, answer) }
+            loggingRunCatching { handle.onContentResolved(delivered, deliveredAnswer) }
         }
     }
 

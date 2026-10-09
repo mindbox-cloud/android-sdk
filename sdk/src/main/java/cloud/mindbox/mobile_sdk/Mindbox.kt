@@ -688,6 +688,7 @@ public object Mindbox : MindboxLog {
 
             override fun onAppReturnHandled() {
                 sessionStorageManager.onReturnChecked()
+                embeddedBlocksRegistry?.onReturnCheckOver()
             }
 
             override fun onFirstActivityResumed(activity: Activity) {
