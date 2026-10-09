@@ -199,6 +199,10 @@ public class MindboxConfiguration private constructor(
          * Unlike most options here this one is re-read on every initialization, so it can be
          * turned on or off in a later app version.
          *
+         * Projects that route operations through an anonymizer never collect the identifier,
+         * whatever this option says: collection stops as soon as [operationsDomain] is set or the
+         * mobile config supplies an operations domain.
+         *
          * @param disableTrackingIds - flag which turns the collection off. Default value is false,
          * meaning the identifier is collected.
          */
@@ -214,6 +218,9 @@ public class MindboxConfiguration private constructor(
          * (e.g. "domain.com/api/v2") — operation endpoints are appended after it.
          * A blank value is treated as not set. An invalid value is logged
          * and ignored during SDK initialization.
+         *
+         * While an operations domain is set, the SDK does not collect the device tracking
+         * identifier (see [disableTrackingIds]).
          */
         public fun operationsDomain(operationsDomain: String): Builder {
             this.operationsDomain = operationsDomain.trim().takeIf { it.isNotBlank() }
