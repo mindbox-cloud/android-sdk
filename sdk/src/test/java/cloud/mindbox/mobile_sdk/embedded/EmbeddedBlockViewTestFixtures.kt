@@ -4,9 +4,14 @@ import android.app.Activity
 import android.os.Looper
 import android.view.View
 import android.widget.LinearLayout
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) =
+    onContentResolved(content, Milliseconds(0L))
 
 internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
     var lastHandle: EmbeddedBlockHandle? = null

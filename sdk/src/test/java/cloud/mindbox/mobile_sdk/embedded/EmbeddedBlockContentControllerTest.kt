@@ -52,8 +52,12 @@ class EmbeddedBlockContentControllerTest {
 
         override fun startListening() = Unit
 
-        fun pushContent(placeSystemName: String, content: InAppType.Embedded) {
-            lastHandle?.onContentResolved(content)
+        fun pushContent(
+            placeSystemName: String,
+            content: InAppType.Embedded,
+            selectionTime: Milliseconds = Milliseconds(0L),
+        ) {
+            lastHandle?.onContentResolved(content, selectionTime)
         }
     }
 
@@ -141,56 +145,60 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `the delay window leaves the attempt clock`() {
-        var clock = 1_000L
-        var receivedStart: Long? = null
-        val controller = EmbeddedBlockContentController(
-            placeSystemName = "main-screen-top",
-            configTimeout = Milliseconds(30_000L),
-            providerFactory = { _, startTick ->
-                receivedStart = startTick.interval
+    fun `a block back on screen before the campaign's delay ends builds its page with the selection time`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
+        val controller = controller(
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
                 FakeProvider()
             },
-            blocksRegistry = { blocksRegistry },
-            monotonicNow = { Milliseconds(clock) },
-        ).apply { onStateChange = { state -> states.add(state) } }
-
+        )
         controller.start()
-        // The campaign's delay begins at 2s and delivers at 7s: those five seconds are the
-        // campaign's choice, not the user's wait for the SDK — the clock base slides past them.
-        clock = 2_000L
+        blocksRegistry.lastHandle?.onContentResolved(null)
         blocksRegistry.lastHandle?.onContentPending()
-        clock = 7_000L
-        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        controller.start()
 
-        assertEquals(6_000L, receivedStart)
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(40L))
+
+        assertEquals(listOf(Milliseconds(40L)), selectionTimes)
     }
 
     @Test
-    fun `the delay window leaves the attempt clock of a block that was off screen`() {
-        var clock = 1_000L
-        var receivedStart: Long? = null
-        val controller = EmbeddedBlockContentController(
-            placeSystemName = "main-screen-top",
-            configTimeout = Milliseconds(30_000L),
-            providerFactory = { _, startTick ->
-                receivedStart = startTick.interval
+    fun `a page built for a collapsed block carries the selection time of the answer that revived it`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
+        val controller = controller(
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
                 FakeProvider()
             },
-            blocksRegistry = { blocksRegistry },
-            monotonicNow = { Milliseconds(clock) },
-        ).apply { onStateChange = { state -> states.add(state) } }
+        )
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(40L))
+
+        assertEquals(listOf(Milliseconds(40L)), selectionTimes)
+    }
+
+    @Test
+    fun `content deferred while the block is away is built with the selection time it came with`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
+        val controller = controller(
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
+                FakeProvider()
+            },
+        )
         controller.start()
         controller.pause()
 
-        clock = 2_000L
         blocksRegistry.lastHandle?.onContentPending()
-        clock = 7_000L
-        blocksRegistry.pushContent("main-screen-top", content)
-        clock = 8_000L
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(250L))
         controller.start()
 
-        assertEquals(6_000L, receivedStart)
+        assertEquals(listOf(Milliseconds(250L)), selectionTimes)
     }
 
     @Test
@@ -606,26 +614,86 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `provider is built with the attempt start, not the delivery moment`() {
-        var clock = 1_000L
-        var receivedStart: Long? = null
+    fun `each page is built with the selection time of its own answer`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
+        val controller = controller(
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
+                FakeProvider()
+            },
+        )
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(2_000L))
+        controller.pause()
+        controller.start()
+
+        blocksRegistry.pushContent("main-screen-top", content.copy(inAppId = "another-winner"), selectionTime = Milliseconds(1_000L))
+
+        assertEquals(listOf(Milliseconds(2_000L), Milliseconds(1_000L)), selectionTimes)
+    }
+
+    @Test
+    fun `another page arriving while the first one still loads is built with its own selection time`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
+        val controller = controller(
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
+                FakeProvider(onStart = {})
+            },
+        )
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(50L))
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+
+        val movedLayer = (content.layers.single() as Layer.WebViewLayer)
+            .copy(contentUrl = "https://static.example/another-page.html")
+        blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(movedLayer)), selectionTime = Milliseconds(30L))
+
+        assertEquals(listOf(Milliseconds(50L), Milliseconds(30L)), selectionTimes)
+    }
+
+    @Test
+    fun `a page rebuilt after a failed in-place update carries the selection time of the answer that asked for it`() {
+        val selectionTimes = mutableListOf<Milliseconds>()
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
             configTimeout = Milliseconds(30_000L),
-            providerFactory = { _, startTick ->
-                receivedStart = startTick.interval
-                FakeProvider()
+            providerFactory = { _, selectionTime ->
+                selectionTimes.add(selectionTime)
+                object : EmbeddedUpdatableContentProvider {
+                    override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+                    override val contentView: View? = View(RuntimeEnvironment.getApplication())
+
+                    override fun start() {
+                        onStateChange?.invoke(EmbeddedBlockState.Ready)
+                    }
+
+                    override fun pause() = Unit
+
+                    override fun release() = Unit
+
+                    override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
+
+                    override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+                        onResult(false)
+                    }
+                }
             },
             blocksRegistry = { blocksRegistry },
-            monotonicNow = { Milliseconds(clock) },
         ).apply { onStateChange = { state -> states.add(state) } }
-
         controller.start()
-        // The place answers five seconds later; the wait belongs to timeToDisplay.
-        clock = 6_000L
-        blocksRegistry.pushContent("main-screen-top", content)
+        blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(100L))
 
-        assertEquals(1_000L, receivedStart)
+        val refreshedLayer = (content.layers.single() as Layer.WebViewLayer)
+            .copy(params = mapOf("items" to "[]"))
+        blocksRegistry.pushContent(
+            "main-screen-top",
+            content.copy(layers = listOf(refreshedLayer)),
+            selectionTime = Milliseconds(700L),
+        )
+        idleFor(Duration.ZERO)
+
+        assertEquals(listOf(Milliseconds(100L), Milliseconds(700L)), selectionTimes)
     }
 
     @Test
