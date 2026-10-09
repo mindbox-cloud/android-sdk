@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -57,6 +58,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -65,6 +67,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
@@ -78,7 +81,7 @@ internal class EmbeddedBlockWebViewHolder(
     private val context: Context,
     @Volatile private var frequency: Frequency,
     @Volatile private var tags: Map<String, String>?,
-    private val startTick: Milliseconds,
+    startTick: Milliseconds,
     private val ackBudget: Milliseconds = Constants.WebView.readyTimeout,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
@@ -154,7 +157,15 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var hasPageAnswered = false
 
-    @Volatile private var didAccountForShow = false
+    private var confirmedSessionEpoch: Long? = null
+
+    private var accountedSessionEpoch: Long? = null
+
+    private var isRenderAwaitedForSession = false
+
+    private var isShowWithheld = false
+
+    private var showStartTick: Milliseconds = startTick
 
     @Volatile private var didReportShownContent = false
 
@@ -212,6 +223,40 @@ internal class EmbeddedBlockWebViewHolder(
         this.frequency = frequency
         this.tags = tags
     }
+
+    @MainThread
+    override fun confirmForSession(sessionEpoch: Long) {
+        confirmedSessionEpoch = sessionEpoch
+    }
+
+    @MainThread
+    override fun withholdShow(isWithheld: Boolean) {
+        if (isShowWithheld == isWithheld) return
+        isShowWithheld = isWithheld
+        if (!isWithheld && lastState == EmbeddedBlockState.Ready && isActive) accountForShow()
+    }
+
+    @MainThread
+    override fun refreshForSession(
+        params: Map<String, String>,
+        sessionEpoch: Long,
+        selectionStartTick: Milliseconds,
+        onResult: (Boolean) -> Unit,
+    ) {
+        if (webViewController != null) {
+            if (isLaterSession(sessionEpoch)) {
+                confirmedSessionEpoch = sessionEpoch
+                showStartTick = selectionStartTick
+            }
+            if (sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch) {
+                isRenderAwaitedForSession = true
+            }
+        }
+        updateParams(params, onResult)
+    }
+
+    private fun isLaterSession(sessionEpoch: Long): Boolean =
+        confirmedSessionEpoch?.let { confirmed -> sessionEpoch > confirmed } ?: true
 
     override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
         val controller = webViewController ?: run {
@@ -390,6 +435,7 @@ internal class EmbeddedBlockWebViewHolder(
         operation = null,
     ).get()
 
+    @MainThread
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
         if (didReportShownContent) {
@@ -410,7 +456,8 @@ internal class EmbeddedBlockWebViewHolder(
             return BridgeMessage.SUCCESS_PAYLOAD
         }
         didReportShownContent = true
-        renderedTimeToDisplay = timeProvider.monotonicElapsedSince(startTick)
+        isRenderAwaitedForSession = false
+        renderedTimeToDisplay = timeProvider.monotonicElapsedSince(showStartTick)
         report(EmbeddedBlockState.Ready)
         if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
@@ -433,27 +480,46 @@ internal class EmbeddedBlockWebViewHolder(
         report(EmbeddedBlockState.Failed(reason))
     }
 
-    /**
-     * The block drew something the user can see, so its in-app was shown. Reported once per
-     * content instance; the content-change rule lives in the interactor's place slot, where
-     * the session state is. Off screen the show waits — [start] re-asks when the block returns.
-     */
+    @MainThread
     private fun accountForShow() {
-        if (didAccountForShow) return
+        val sessionEpoch = confirmedSessionEpoch ?: return
+        if (sessionEpoch == accountedSessionEpoch || isRenderAwaitedForSession) return
+        if (isShowWithheld) {
+            mindboxLogI("[EmbeddedBlock] The place has nothing to show for this content any more, its show waits until content returns")
+            return
+        }
         if (!isUserPresent) {
             mindboxLogI("[EmbeddedBlock] Content rendered off screen, the show waits for the block to return")
             return
         }
-        didAccountForShow = true
-        val timeToDisplay = renderedTimeToDisplay ?: timeProvider.monotonicElapsedSince(startTick)
+        val previouslyAccounted = accountedSessionEpoch
+        accountedSessionEpoch = sessionEpoch
+        val timeToDisplay = renderedTimeToDisplay ?: timeProvider.monotonicElapsedSince(showStartTick)
+        val shownFrequency = frequency
+        val shownTags = gatedTags()
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
-                inAppInteractor.recordBlockShow(placeSystemName, inAppId, frequency, timeToDisplay, gatedTags())
+                if (inAppInteractor.returnCheckPending.value) {
+                    inAppInteractor.awaitReturnChecked()
+                    if (!isShowStillDue(sessionEpoch, previouslyAccounted)) return@loggingRunCatchingSuspending
+                }
+                inAppInteractor.recordBlockShow(placeSystemName, inAppId, shownFrequency, timeToDisplay, shownTags, sessionEpoch)
             }
         }.invokeOnCompletion { cause ->
-            if (cause is CancellationException) didAccountForShow = false
+            if (cause !is CancellationException) return@invokeOnCompletion
+            mainHandler.post {
+                if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+            }
         }
     }
+
+    private suspend fun isShowStillDue(sessionEpoch: Long, previouslyAccounted: Long?): Boolean =
+        withContext(Dispatchers.Main) {
+            if (!isShowWithheld) return@withContext true
+            mindboxLogI("[EmbeddedBlock] The place lost this content while its show waited for the session check, the show waits until content returns")
+            if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+            false
+        }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         val controller = webViewController ?: run {

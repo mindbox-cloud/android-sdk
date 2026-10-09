@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import androidx.annotation.MainThread
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -18,7 +19,9 @@ import cloud.mindbox.mobile_sdk.models.LINK
 import cloud.mindbox.mobile_sdk.models.PUSH
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.IS_OPENED_FROM_PUSH_BUNDLE_KEY
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import java.util.Collections
 import java.util.Timer
+import java.util.WeakHashMap
 import kotlin.concurrent.timer
 
 internal class LifecycleManager internal constructor(
@@ -37,6 +40,12 @@ internal class LifecycleManager internal constructor(
         fun onActivityStopped(activity: Activity) {}
 
         fun onTrackVisitReady(source: String?, requestUrl: String?) {}
+
+        fun onAppMovedToBackground() {}
+
+        fun onAppReturnHandled() {}
+
+        fun onFirstActivityResumed(activity: Activity) {}
     }
 
     companion object {
@@ -111,6 +120,23 @@ internal class LifecycleManager internal constructor(
     var isCurrentActivityResumed: Boolean = true
         private set
 
+    private val resumedActivities: MutableSet<Activity> = Collections.newSetFromMap(WeakHashMap())
+
+    private val startedActivities: MutableSet<Activity> = Collections.newSetFromMap(WeakHashMap())
+
+    private var isResumeTracked = false
+
+    @get:MainThread
+    val hasResumedActivity: Boolean
+        get() = resumedActivities.isNotEmpty() || !isResumeTracked
+
+    @MainThread
+    fun isInForegroundBesides(host: Activity?): Boolean {
+        if (!isResumeTracked) return true
+        if (host == null) return resumedActivities.isNotEmpty()
+        return host in resumedActivities || startedActivities.any { started -> started !== host }
+    }
+
     private var intentChanged = true
     private var keepaliveTimer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
@@ -143,6 +169,7 @@ internal class LifecycleManager internal constructor(
 
     override fun onActivityStarted(activity: Activity): Unit = loggingRunCatching {
         mindboxLogI("onActivityStarted. activity: ${activity.javaClass.simpleName}")
+        startedActivities.add(activity)
         callbacks?.onActivityStarted(activity)
 
         val sameActivity = currentActivityName == activity.javaClass.name
@@ -169,17 +196,24 @@ internal class LifecycleManager internal constructor(
     override fun onActivityResumed(activity: Activity) {
         mindboxLogI("onActivityResumed. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = true
+        val isFirstResumed = resumedActivities.isEmpty()
+        resumedActivities.add(activity)
+        isResumeTracked = true
         callbacks?.onActivityResumed(activity)
+        if (isFirstResumed) loggingRunCatching { callbacks?.onFirstActivityResumed(activity) }
     }
 
     override fun onActivityPaused(activity: Activity) {
         mindboxLogI("onActivityPaused. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = false
+        resumedActivities.remove(activity)
+        isResumeTracked = true
         callbacks?.onActivityPaused(activity)
     }
 
     override fun onActivityStopped(activity: Activity) {
         mindboxLogI("onActivityStopped. activity: ${activity.javaClass.simpleName}")
+        startedActivities.remove(activity)
         if (currentIntent == null || currentActivityName == null) {
             updateActivityState(activity)
         }
@@ -243,9 +277,15 @@ internal class LifecycleManager internal constructor(
         pendingRequestUrl = null
         foregroundedWithoutIntent = false
         cancelKeepaliveTimer()
+        callbacks?.onAppMovedToBackground()
     }
 
-    private fun onMovedToForeground(): Unit = loggingRunCatching {
+    private fun onMovedToForeground() {
+        handleReturnToForeground()
+        loggingRunCatching { callbacks?.onAppReturnHandled() }
+    }
+
+    private fun handleReturnToForeground(): Unit = loggingRunCatching {
         mindboxLogI("onAppMovedToForeground")
         if (skipNextTrackVisit) {
             skipNextTrackVisit = false

@@ -94,6 +94,7 @@ public class MindboxEmbeddedBlockView internal constructor(
                 MindboxDI.appModule.inAppFailureTracker
             }
         },
+        hostActivity = { loggingRunCatching(defaultValue = null) { context.findActivity() } },
     ),
     private val contentStore: () -> EmbeddedBlockContentStore? = {
         loggingRunCatching(defaultValue = null) {

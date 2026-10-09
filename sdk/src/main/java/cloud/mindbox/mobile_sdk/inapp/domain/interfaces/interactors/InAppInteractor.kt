@@ -9,8 +9,38 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 internal interface InAppInteractor {
+
+    val sessionEpoch: Long
+
+    /**
+     * Whether [sessionEpoch] is the current session and that session has not been found expired:
+     * between the expiry check and the wipe of its data the current session no longer counts as
+     * live. The one predicate every answer, delay, reservation and show of an embedded block is
+     * judged by.
+     */
+    fun isLiveSession(sessionEpoch: Long): Boolean
+
+    /**
+     * The current session epoch, moved on each time the session data is wiped for a new session.
+     * A subscriber gets the current value first, so a renewal that happened while nothing listened
+     * is still seen.
+     */
+    fun listenSessionEpoch(): StateFlow<Long>
+
+    /**
+     * `true` from the app leaving the foreground until the session check of its return has run;
+     * `false` while the app is in the foreground with its session checked.
+     */
+    val returnCheckPending: StateFlow<Boolean>
+
+    /**
+     * Returns at once while the app is in the foreground with its session checked; after the app
+     * left the foreground, suspends until the session check of its return has run.
+     */
+    suspend fun awaitReturnChecked()
 
     suspend fun listenToTargetingEvents()
 
@@ -71,8 +101,15 @@ internal interface InAppInteractor {
      * a requested id in the cut A/B branch keeps its funnel denominator — and once per session per
      * `host in-app + requested id` pair: a repeated request reports only the new ones. A tap
      * reports nothing here — the in-app is not shown yet.
+     *
+     * Between a session reset and the new session's config the answer comes from the config held
+     * before the reset; an embedded block's own selection waits for the new one.
+     *
+     * `null` when the SDK has no config to answer from: none arrived within the embedded block's
+     * config wait (30 s), or the config fetch failed with nothing cached. The page must not read
+     * that as an empty answer, so the bridge refuses the request instead.
      */
-    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>
+    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>?
 
     suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>>
 
@@ -84,12 +121,17 @@ internal interface InAppInteractor {
     )
 
     /**
-     * The embedded block drew its content. Compared against the place's "last shown" slot:
-     * a changed in-app ships the `Inapp.Show` half of the pair and — for a frequency that
-     * counts shows at all — writes the history and moves the shared cooldown, exactly like an
-     * overlay show; the same in-app repeated (a rotation, a recreated page) stays silent, in
-     * counters too. Everything comes from the snapshot the content carries — the config may
-     * have moved on since the resolve. [tags] arrive already gated by the caller.
+     * The embedded block drew its content confirmed in [sessionEpoch]. Unless that session is live
+     * ([isLiveSession]) nothing is written, committed or sent. In a live session it is compared
+     * against the place's "last shown" slot, in the same lock hold as the check: a changed in-app
+     * ships the `Inapp.Show` half of the pair and — for a frequency that counts shows at all —
+     * writes the history and moves the shared cooldown, exactly like an overlay show; the same
+     * in-app repeated within the session (a rotation, a recreated page) stays silent, in counters
+     * too. The slot is session state, so the first show of a new session is a new show.
+     * Everything comes from the snapshot the content carries — the config may have moved on since
+     * the resolve. [tags] arrive already gated by the caller.
+     *
+     * @return whether `Inapp.Show` was sent.
      */
     fun recordBlockShow(
         placeSystemName: PlaceKey,
@@ -97,14 +139,20 @@ internal interface InAppInteractor {
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-    )
+        sessionEpoch: Long,
+    ): Boolean
 
-    /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
-    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String)
+    /**
+     * The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay.
+     * Marks nothing and returns `false` unless [sessionEpoch] is live ([isLiveSession]).
+     */
+    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: Long): Boolean
 
-    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean
+    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded, sessionEpoch: Long): PlaceShowReservation
 
     fun releasePlaceShow(placeSystemName: PlaceKey)
+
+    fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: Long): Boolean
 
     fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
 
@@ -114,12 +162,14 @@ internal interface InAppInteractor {
 
     suspend fun fetchMobileConfig()
 
-    fun resetInAppConfigAndEvents()
+    fun beginNewSession()
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
     fun saveInAppDismissTime(inApp: InApp)
 }
+
+internal enum class PlaceShowReservation { RESERVED, REFUSED, STALE }
 
 internal data class InAppToShow(
     val inApp: InApp,

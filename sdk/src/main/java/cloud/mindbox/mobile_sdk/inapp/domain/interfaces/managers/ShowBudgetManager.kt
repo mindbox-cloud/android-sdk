@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.models.Timestamp
 
 internal interface ShowBudgetManager {
 
+    val countedShows: Long
+
     fun reserve(
         owner: ShowBudgetOwner,
         inAppId: String,

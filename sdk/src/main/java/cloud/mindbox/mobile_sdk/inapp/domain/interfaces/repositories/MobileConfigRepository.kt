@@ -2,6 +2,7 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
@@ -20,6 +21,8 @@ internal interface MobileConfigRepository {
 
     suspend fun getInAppsSectionIfAvailable(): List<InApp>?
 
+    suspend fun getConfigForPageIfAvailable(): InAppConfig?
+
     fun findInAppInCurrentConfig(id: String): InApp?
 
     suspend fun getMonitoringSection(): List<LogRequest>
@@ -29,4 +32,8 @@ internal interface MobileConfigRepository {
     suspend fun getABTests(): List<ABTest>
 
     fun resetCurrentConfig()
+
+    companion object {
+        const val CONFIG_NOT_FOUND = 404
+    }
 }

@@ -14,6 +14,7 @@ import androidx.work.WorkerFactory
 import cloud.mindbox.common.MindboxCommon
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
@@ -107,6 +108,8 @@ public object Mindbox : MindboxLog {
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
     private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
+
+    private val embeddedBlocksRegistry: EmbeddedBlocksRegistry? by mindboxInject { embeddedBlocksRegistryIfCreated }
 
     /**
      * Allows you to specify additional components for message handling
@@ -677,6 +680,18 @@ public object Mindbox : MindboxLog {
 
             override fun onActivityStopped(activity: Activity) {
                 inAppMessageManager.onStopCurrentActivity(activity)
+            }
+
+            override fun onAppMovedToBackground() {
+                sessionStorageManager.onAppLeftForeground()
+            }
+
+            override fun onAppReturnHandled() {
+                sessionStorageManager.onReturnChecked()
+            }
+
+            override fun onFirstActivityResumed(activity: Activity) {
+                embeddedBlocksRegistry?.onAppResumedOn(activity)
             }
 
             override fun onTrackVisitReady(source: String?, requestUrl: String?) {

@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
@@ -26,9 +27,9 @@ import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import com.android.volley.VolleyError
 import com.google.gson.JsonElement
 import java.util.concurrent.atomic.AtomicBoolean
@@ -228,29 +229,14 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    /**
-     * In case of 404 clear config
-     * In case of other network error use cached version
-     * Otherwise do nothing
-     **/
     override fun requestConfig(): Job {
         return inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
-                    CONFIG_NOT_FOUND -> {
-                        MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
-                        MindboxPreferences.inAppConfig = ""
-                    }
-
-                    else -> {
-                        sessionStorageManager.state.configFetchingError = true
-                        // needed to trigger flow event
-                        MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
-                        MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)
-                    }
+                    MobileConfigRepository.CONFIG_NOT_FOUND -> MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
+                    else -> MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)
                 }
             } else {
-                MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
                 MindboxLoggerImpl.e(
                     this@InAppMessageManagerImpl::class,
                     "Failed to get config",
@@ -296,18 +282,19 @@ internal class InAppMessageManagerImpl(
 
     override fun handleSessionExpiration() {
         inAppScope.launch {
-            withContext(Dispatchers.Main) {
-                inAppMessageViewDisplayer.dismissCurrentInApp()
+            loggingRunCatchingSuspending {
+                withContext(Dispatchers.Main) {
+                    inAppMessageViewDisplayer.dismissCurrentInApp()
+                }
             }
             processingJob?.cancel()
-            inAppInteractor.resetInAppConfigAndEvents()
-            sessionStorageManager.clearSessionData()
-            userVisitManager.saveUserVisit()
-            inAppMessageDelayedManager.clearSession()
-            InitializeLock.reset(InitializeLock.State.APP_STARTED)
-            listenEventAndInApp()
-            initLogs()
-            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+            inAppInteractor.beginNewSession()
+            loggingRunCatching { userVisitManager.saveUserVisit() }
+            loggingRunCatching { inAppMessageDelayedManager.clearSession() }
+            loggingRunCatching { InitializeLock.reset(InitializeLock.State.APP_STARTED) }
+            loggingRunCatching { listenEventAndInApp() }
+            loggingRunCatching { initLogs() }
+            loggingRunCatchingSuspending { MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted()) }
             requestConfig().join()
         }
     }
@@ -325,7 +312,5 @@ internal class InAppMessageManagerImpl(
         inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime.ms, timeToDisplay, tags)
     }
 
-    companion object {
-        const val CONFIG_NOT_FOUND = 404
-    }
+    companion object
 }

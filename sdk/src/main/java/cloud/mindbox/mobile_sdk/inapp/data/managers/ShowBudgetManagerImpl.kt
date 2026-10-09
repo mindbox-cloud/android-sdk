@@ -24,6 +24,9 @@ internal class ShowBudgetManagerImpl(
 
     private val lock: Any get() = sessionStorageManager.showBudgetLock
 
+    @Volatile override var countedShows: Long = 0L
+        private set
+
     override fun reserve(
         owner: ShowBudgetOwner,
         inAppId: String,
@@ -73,9 +76,13 @@ internal class ShowBudgetManagerImpl(
                 return
             }
             mindboxLogI("Counting a show of in-app $inAppId (frequency ${frequency.delay})")
-            inAppRepository.setInAppShown(inAppId)
-            inAppRepository.saveShownInApp(inAppId, shownAt.ms)
-            inAppRepository.saveInAppStateChangeTime(shownAt)
+            try {
+                inAppRepository.setInAppShown(inAppId)
+                inAppRepository.saveShownInApp(inAppId, shownAt.ms)
+                inAppRepository.saveInAppStateChangeTime(shownAt)
+            } finally {
+                countedShows++
+            }
         }
     }
 
