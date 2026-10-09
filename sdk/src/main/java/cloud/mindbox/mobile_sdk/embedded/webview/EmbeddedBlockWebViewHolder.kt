@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockStopwatch
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.models.PlaceKey
@@ -78,7 +79,7 @@ internal class EmbeddedBlockWebViewHolder(
     private val context: Context,
     @Volatile private var frequency: Frequency,
     @Volatile private var tags: Map<String, String>?,
-    private val startTick: Milliseconds,
+    private val selectionTime: Milliseconds,
     private val ackBudget: Milliseconds = Constants.WebView.readyTimeout,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
@@ -172,11 +173,17 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var renderedTimeToDisplay: Milliseconds? = null
 
+    private val onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() })
+
+    private val currentTimeToDisplay: Milliseconds
+        get() = Milliseconds(selectionTime.interval + onScreenTime.elapsed.interval)
+
     @Volatile private var pendingAckJob: Job? = null
 
     override fun start() {
         if (isReleased) return
         presence.value = true
+        onScreenTime.resume()
         flushHeldFailure()
         if (!isLoadRequested) {
             isLoadRequested = true
@@ -189,6 +196,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     override fun pause() {
         presence.value = false
+        onScreenTime.pause()
     }
 
     override fun release() {
@@ -411,7 +419,7 @@ internal class EmbeddedBlockWebViewHolder(
             return BridgeMessage.SUCCESS_PAYLOAD
         }
         didReportShownContent = true
-        renderedTimeToDisplay = timeProvider.monotonicElapsedSince(startTick)
+        renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         report(EmbeddedBlockState.Ready)
         if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
@@ -446,7 +454,8 @@ internal class EmbeddedBlockWebViewHolder(
             return
         }
         didAccountForShow = true
-        val timeToDisplay = renderedTimeToDisplay ?: timeProvider.monotonicElapsedSince(startTick)
+        val timeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
+        mindboxLogI("[EmbeddedBlock] In-app $inAppId is shown, timeToDisplay=${timeToDisplay.interval} ms")
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
                 inAppInteractor.recordBlockShow(placeSystemName, inAppId, frequency, timeToDisplay, gatedTags())

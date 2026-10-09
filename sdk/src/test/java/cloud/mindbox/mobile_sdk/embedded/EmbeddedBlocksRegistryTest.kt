@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedReso
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
@@ -42,11 +43,13 @@ class EmbeddedBlocksRegistryTest {
     private class RecordingHandle(override var isActive: Boolean = true) : EmbeddedBlockHandle {
         override val isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
+        val selectionTimes = mutableListOf<Milliseconds>()
         var pendingCount = 0
         var unavailableCount = 0
 
-        override fun onContentResolved(content: InAppType.Embedded?) {
+        override fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {
             received.add(content)
+            selectionTimes.add(selectionTime)
         }
 
         override fun onContentPending() {
@@ -73,6 +76,12 @@ class EmbeddedBlocksRegistryTest {
     private val placeEvents = MutableSharedFlow<EmbeddedPlaceEvent>()
     private val configUpdates = MutableSharedFlow<Unit>()
 
+    private var clock = Milliseconds(0L)
+
+    private fun advance(by: Milliseconds) {
+        clock = Milliseconds(clock.interval + by.interval)
+    }
+
     private fun controller(): EmbeddedBlocksRegistryImpl {
         coEvery { interactor.listenEmbeddedPlaceEvents() } returns placeEvents
         coEvery { interactor.listenConfigUpdates() } returns configUpdates
@@ -80,6 +89,7 @@ class EmbeddedBlocksRegistryTest {
         return EmbeddedBlocksRegistryImpl(
             inAppInteractor = interactor,
             scopeProvider = { scope },
+            monotonicNow = { clock },
         )
     }
 
@@ -289,6 +299,42 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `the same winner re-selected mid-delay is delivered with the fresh answer`() {
+        val refreshed = content.copy(
+            layers = listOf((content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]")))
+        )
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
+            selections++
+            if (selections == 1) {
+                advance(Milliseconds(320L))
+                winner(delay = Milliseconds(5_000L))
+            } else {
+                advance(Milliseconds(40L))
+                winner(variant = refreshed, delay = Milliseconds(5_000L))
+            }
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.testScheduler.advanceTimeBy(3_000L)
+        scope.testScheduler.runCurrent()
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.testScheduler.advanceTimeBy(2_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(refreshed), handle.received)
+        assertEquals(listOf(Milliseconds(40L)), handle.selectionTimes)
+        verify(exactly = 1) { interactor.reservePlaceShow(place, refreshed) }
+    }
+
+    @Test
     fun `a delay that elapsed while the block was away is delivered at once and not waited out again`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             winner(delay = Milliseconds(5_000L)) andThen winner()
@@ -427,7 +473,48 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `pending is announced to paused handles too so the delay leaves their clock`() {
+    fun `the content comes with the time its selection took`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
+            advance(Milliseconds(320L))
+            winner()
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        clock = Milliseconds(1_000L)
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+        assertEquals(listOf(Milliseconds(320L)), handle.selectionTimes)
+    }
+
+    @Test
+    fun `a delayed winner comes with the time its selection took, not the delay`() {
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
+            advance(Milliseconds(320L))
+            winner(delay = Milliseconds(5_000L))
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        advance(Milliseconds(5_000L))
+        scope.testScheduler.advanceTimeBy(5_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+        assertEquals(listOf(Milliseconds(320L)), handle.selectionTimes)
+    }
+
+    @Test
+    fun `pending is announced to paused handles too so their wait budget stays quiet on return`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             winner(delay = Milliseconds(5_000L))
         val active = RecordingHandle()
@@ -536,7 +623,7 @@ class EmbeddedBlocksRegistryTest {
         override val isActive: Boolean = true
         override val isHoldingContent: Boolean = true
 
-        override fun onContentResolved(content: InAppType.Embedded?) {}
+        override fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {}
 
         override fun onConfigUnavailable() {}
     }

@@ -14,7 +14,7 @@ internal object EmbeddedBlockContentFactory {
     fun createProvider(
         context: Context,
         content: InAppType.Embedded,
-        startTick: Milliseconds,
+        selectionTime: Milliseconds,
     ): EmbeddedContentProvider? {
         val layer = content.layers.filterIsInstance<Layer.WebViewLayer>().firstOrNull() ?: run {
             mindboxLogE("[EmbeddedBlock] Winner ${content.inAppId} has no webview layer")
@@ -27,7 +27,7 @@ internal object EmbeddedBlockContentFactory {
             context = context,
             frequency = content.frequency,
             tags = content.tags,
-            startTick = startTick,
+            selectionTime = selectionTime,
         )
     }
 }
