@@ -15,6 +15,7 @@ import io.mockk.mockkObject
 import io.mockk.spyk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -172,6 +173,24 @@ internal class MindboxSetupLifecycleManagerTest {
             manager.callbacks?.onAppReturnHandled()
 
             verify(exactly = 1) { sessionStorageManager.onReturnChecked() }
+        }
+    }
+
+    @Test
+    fun `a handled return tells the embedded blocks once the session check is marked over`() {
+        val sessionStorageManager = mockk<SessionStorageManager>(relaxed = true)
+        val blocksRegistry = mockk<EmbeddedBlocksRegistry>(relaxed = true)
+        val manager = LifecycleManager(null, null, isAppInBackground = true)
+        LifecycleManager.instance = manager
+        withAppModule(sessionStorageManager = sessionStorageManager, blocksRegistry = blocksRegistry) {
+            callAttachLifecycleCallbacks()
+
+            manager.callbacks?.onAppReturnHandled()
+
+            verifyOrder {
+                sessionStorageManager.onReturnChecked()
+                blocksRegistry.onReturnCheckOver()
+            }
         }
     }
 

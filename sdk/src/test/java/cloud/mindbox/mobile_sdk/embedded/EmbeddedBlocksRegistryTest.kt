@@ -2,10 +2,13 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.app.Activity
 import android.os.Looper
+import android.view.View
+import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -25,6 +28,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
@@ -34,6 +38,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
@@ -49,6 +54,7 @@ class EmbeddedBlocksRegistryTest {
     private class RecordingHandle(
         override var isActive: Boolean = true,
         override var isPausedForBackground: Boolean = false,
+        override var isLeftBehind: Boolean = false,
     ) : EmbeddedBlockHandle {
         override val isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
@@ -76,11 +82,20 @@ class EmbeddedBlocksRegistryTest {
 
         override fun onAppResumedOn(activity: Activity) {
             resumedOn.add(activity)
-            if (leavesOnAppResumed) isPausedForBackground = false
+            if (leavesOnAppResumed) {
+                isPausedForBackground = false
+                isLeftBehind = true
+            }
         }
 
         override fun onReturnChecked() {
             returnCheckedCount++
+        }
+
+        var leavesOnSessionRenewed = false
+
+        override fun onSessionRenewed() {
+            if (leavesOnSessionRenewed) isLeftBehind = true
         }
     }
 
@@ -590,6 +605,7 @@ class EmbeddedBlocksRegistryTest {
     private class HoldingHandle : EmbeddedBlockHandle {
         override val isActive: Boolean = true
         override val isPausedForBackground: Boolean = false
+        override val isLeftBehind: Boolean = false
         override val isHoldingContent: Boolean = true
 
         override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {}
@@ -599,6 +615,8 @@ class EmbeddedBlocksRegistryTest {
         override fun onAppResumedOn(activity: Activity) = Unit
 
         override fun onReturnChecked() = Unit
+
+        override fun onSessionRenewed() = Unit
     }
 
     @Test
@@ -1029,17 +1047,20 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a new session asks again every place with a block on screen or away only in background, stamped with the new session`() {
+    fun `a new session asks again every place with a block on screen, away in background or left behind by it, stamped with the new session`() {
         coEvery { interactor.selectInAppForPlace(any(), any()) } returns winner()
         val backgroundPlace = PlaceKey.of("background-place")
         val awayPlace = PlaceKey.of("away-place")
+        val leftPlace = PlaceKey.of("left-place")
         val onScreen = RecordingHandle()
         val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
         val awayInApp = RecordingHandle(isActive = false)
+        val leftBySession = RecordingHandle(isActive = false).apply { leavesOnSessionRenewed = true }
         val controller = controller()
         controller.register(place, onScreen)
         controller.register(backgroundPlace, inBackground)
         controller.register(awayPlace, awayInApp)
+        controller.register(leftPlace, leftBySession)
         idleMain()
 
         currentSessionEpoch = 1L
@@ -1050,8 +1071,11 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(backgroundPlace, any()) }
         coVerify(exactly = 0) { interactor.selectInAppForPlace(awayPlace, any()) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(leftPlace, any()) }
         assertEquals(listOf(1L), onScreen.answers.map { answer -> answer.sessionEpoch })
         assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(1L to false), leftBySession.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
+        verify(exactly = 0) { interactor.reservePlaceShow(leftPlace, any(), any()) }
         assertEquals(Milliseconds(4_000L), onScreen.answers.single().selectionStartTick)
         assertEquals(false, onScreen.answers.single().isByOperation)
     }
@@ -1187,7 +1211,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a new session while no screen of the app is resumed asks a block away in background once a screen resumes, timed from the renewal`() {
+    fun `a new session while no screen of the app is resumed asks a block away in background once a screen resumes, timed from that resume`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
         val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
         isAppPresent = false
@@ -1209,11 +1233,11 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
-        assertEquals(Milliseconds(4_000L), inBackground.answers.single().selectionStartTick)
+        assertEquals(Milliseconds(6_000L), inBackground.answers.single().selectionStartTick)
     }
 
     @Test
-    fun `a new session's ask held for a block away in background is dropped once the app resumes on another screen`() {
+    fun `a new session's ask held for a block away in background is made once the app resumes on another screen, reserving no show for the block that left`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
         val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true).apply { leavesOnAppResumed = true }
         isAppPresent = false
@@ -1228,7 +1252,57 @@ class EmbeddedBlocksRegistryTest {
         controller.onAppResumedOn(screen())
         idleMain()
 
-        coVerify(exactly = 0) { interactor.selectInAppForPlace(place, any()) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content), inBackground.received)
+        assertEquals(listOf(1L to false), inBackground.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a new session that begins after the app came back on another screen asks the block that left the screen, reserving no show for it`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val leftOnReturn = RecordingHandle(isActive = false, isLeftBehind = true)
+        val controller = controller()
+        controller.register(place, leftOnReturn)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        clock = 4_000L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content), leftOnReturn.received)
+        assertEquals(listOf(1L to false), leftOnReturn.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a place reserves its show at delivery unless every block of it is off screen after leaving it on the app's return`() {
+        coEvery { interactor.selectInAppForPlace(any(), any()) } returns winner()
+        val backgroundPlace = PlaceKey.of("background-place")
+        val leftPlace = PlaceKey.of("left-place")
+        val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
+        val awayInApp = RecordingHandle(isActive = false)
+        val leftOnReturn = RecordingHandle(isActive = false, isLeftBehind = true)
+        val controller = controller()
+        controller.register(backgroundPlace, inBackground)
+        controller.register(place, awayInApp)
+        controller.register(leftPlace, leftOnReturn)
+        idleMain()
+
+        controller.onBlockAppeared(backgroundPlace)
+        controller.onBlockAppeared(place)
+        controller.onBlockAppeared(leftPlace)
+        idleMain()
+
+        verify(exactly = 1) { interactor.reservePlaceShow(backgroundPlace, content, 0L) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 0L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(leftPlace, any(), any()) }
+        assertEquals(listOf(true), inBackground.answers.map { answer -> answer.isShowReserved })
+        assertEquals(listOf(true), awayInApp.answers.map { answer -> answer.isShowReserved })
+        assertEquals(listOf(false), leftOnReturn.answers.map { answer -> answer.isShowReserved })
+        assertEquals(listOf<InAppType.Embedded?>(content), leftOnReturn.received)
     }
 
     @Test
@@ -1251,6 +1325,7 @@ class EmbeddedBlocksRegistryTest {
         val checksHeardBeforeReturn = handle.returnCheckedCount
 
         returnCheckPending.value = false
+        controller.onReturnCheckOver()
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
@@ -1270,6 +1345,7 @@ class EmbeddedBlocksRegistryTest {
 
         isSessionEnding = true
         returnCheckPending.value = false
+        controller.onReturnCheckOver()
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
@@ -1348,5 +1424,531 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a place asked before the session check of the app's return is asked once the check is reported over, even when the flag flipped back before anything watched it`() {
+        scope = TestScope(StandardTestDispatcher())
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        scope.testScheduler.runCurrent()
+
+        returnCheckPending.value = true
+        controller.onBlockAppeared(place)
+        idleMain()
+        returnCheckPending.value = false
+        controller.onReturnCheckOver()
+        idleMain()
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `channels that resubscribe after the session check of the app's return release what still waits for it`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
+        val controller = controller()
+        controller.register(place, inBackground)
+        idleMain()
+        returnCheckPending.value = true
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        scope.cancel()
+        returnCheckPending.value = false
+        scope = TestScope(UnconfinedTestDispatcher())
+        controller.startListening()
+        idleMain()
+
+        assertEquals(1, inBackground.returnCheckedCount)
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
+    }
+
+    private var isAppInForeground = true
+    private val blockScreen: Activity by lazy { screen() }
+
+    private class ShownPage : EmbeddedUpdatableContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View = View(RuntimeEnvironment.getApplication())
+        var releaseCount = 0
+        val sessionRefreshes = mutableListOf<Pair<Long, Milliseconds>>()
+        val withheldShows = mutableListOf<Boolean>()
+
+        override fun start() {
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
+        }
+
+        override fun pause() = Unit
+
+        override fun release() {
+            releaseCount++
+        }
+
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: Long,
+            selectionStartTick: Milliseconds,
+            onResult: (Boolean) -> Unit,
+        ) {
+            sessionRefreshes.add(sessionEpoch to selectionStartTick)
+            onResult(true)
+        }
+
+        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+
+        override fun confirmForSession(sessionEpoch: Long) = Unit
+
+        override fun withholdShow(isWithheld: Boolean) {
+            withheldShows.add(isWithheld)
+        }
+
+        override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) = Unit
+    }
+
+    private fun liveBlock(
+        registry: EmbeddedBlocksRegistry,
+        states: MutableList<EmbeddedBlockState>,
+        pages: MutableList<ShownPage> = mutableListOf(),
+    ): EmbeddedBlockContentController =
+        EmbeddedBlockContentController(
+            placeSystemName = place.value,
+            providerFactory = { _, _ -> ShownPage().also { page -> pages.add(page) } },
+            blocksRegistry = { registry },
+            monotonicNow = { Milliseconds(clock) },
+            hostActivity = { blockScreen },
+            isAppInForeground = { isAppInForeground },
+        ).apply { onStateChange = { state -> states.add(state) } }
+
+    private fun EmbeddedBlockContentController.leaveForBackground() {
+        isAppInForeground = false
+        pause()
+        isAppPresent = false
+    }
+
+    private fun EmbeddedBlocksRegistryImpl.comeBackOnAnotherScreenWithTheSessionOver() {
+        isSessionEnding = true
+        isAppPresent = true
+        onAppResumedOn(screen())
+        idleMain()
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+    }
+
+    @Test
+    fun `a feed the new session refuses is gone before its first frame when the user comes back to it from the screen the app returned on`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        val states = mutableListOf<EmbeddedBlockState>()
+        val registry = controller()
+        val block = liveBlock(registry, states)
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+
+        registry.comeBackOnAnotherScreenWithTheSessionOver()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        val reportedBeforeReturn = states.size
+        isAppInForeground = true
+        block.start()
+        idleMain()
+
+        assertEquals(
+            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            states.drop(reportedBeforeReturn),
+        )
+    }
+
+    @Test
+    fun `a feed the new session still picks reserves no show while the user is on the screen the app returned on`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val states = mutableListOf<EmbeddedBlockState>()
+        val registry = controller()
+        val block = liveBlock(registry, states)
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+
+        registry.comeBackOnAnotherScreenWithTheSessionOver()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+
+        isAppInForeground = true
+        block.start()
+        idleMain()
+
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `a feed the new session refuses stays on screen until the user leaves it when the app comes back on its own screen`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        isAppPresent = true
+        registry.onAppResumedOn(blockScreen)
+        idleMain()
+        isAppInForeground = true
+        block.start()
+        idleMain()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, pages.single().releaseCount)
+
+        block.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, pages.single().releaseCount)
+    }
+
+    private fun answerTheRenewalOnlyWhen(renewalAnswer: CompletableDeferred<EmbeddedResolveOutcome>, laterAnswer: EmbeddedResolveOutcome) {
+        var resolves = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            when (resolves++) {
+                0 -> winner()
+                1 -> renewalAnswer.await()
+                else -> laterAnswer
+            }
+        }
+    }
+
+    @Test
+    fun `a feed the user comes back to before the new session answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
+        val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty)
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        registry.comeBackOnAnotherScreenWithTheSessionOver()
+        val reportedBeforeReturn = states.size
+
+        isAppInForeground = true
+        block.start()
+        idleMain()
+        renewalAnswer.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(true, pages.single().withheldShows.lastOrNull())
+
+        block.pause()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        assertEquals(1, pages.single().releaseCount)
+    }
+
+    @Test
+    fun `a feed the user comes back to before the new session answers takes the new session's data in place, timed from that return, when the new session still picks it`() {
+        val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = winner())
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        clock = 4_000L
+        registry.comeBackOnAnotherScreenWithTheSessionOver()
+        val reportedBeforeReturn = states.size
+
+        clock = 9_000L
+        isAppInForeground = true
+        block.start()
+        idleMain()
+        clock = 11_000L
+        renewalAnswer.complete(winner())
+        idleMain()
+
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(listOf(1L to Milliseconds(9_000L)), pages.single().sessionRefreshes)
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+    }
+
+    @Test
+    fun `a feed the user comes back to before the new session begins takes the new session's data timed from its first selection made after that return`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, mutableListOf(), pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        isSessionEnding = true
+        isAppPresent = true
+        registry.onAppResumedOn(screen())
+        idleMain()
+
+        clock = 9_000L
+        isAppInForeground = true
+        block.start()
+        idleMain()
+        clock = 12_000L
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(listOf(1L to Milliseconds(12_000L)), pages.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a block back from the screen the app returned on is asked by a later new session once it leaves its screen again with its page, reserving no show for it`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val registry = controller()
+        val block = liveBlock(registry, mutableListOf())
+        block.start()
+        idleMain()
+        block.leaveForBackground()
+        registry.comeBackOnAnotherScreenWithTheSessionOver()
+        isAppInForeground = true
+        block.start()
+        idleMain()
+        block.pause()
+
+        currentSessionEpoch = 2L
+        sessionEpochs.value = 2L
+        idleMain()
+
+        coVerify(exactly = 4) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 2L) }
+    }
+
+    private fun EmbeddedBlockContentController.leaveForAnotherScreen() {
+        isAppInForeground = true
+        pause()
+    }
+
+    private fun EmbeddedBlocksRegistryImpl.beginNewSessionWhileAwayAndComeBackOnAnotherScreen() {
+        isAppPresent = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+        isAppPresent = true
+        onAppResumedOn(screen())
+        idleMain()
+    }
+
+    @Test
+    fun `a feed left for another screen and refused by a new session begun meanwhile is gone before its first frame when the user comes back to it`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        val reportedBeforeReturn = states.size
+
+        block.start()
+        idleMain()
+
+        assertEquals(
+            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            states.drop(reportedBeforeReturn),
+        )
+        assertEquals(1, pages.single().releaseCount)
+        assertTrue(pages.single().withheldShows.isEmpty())
+        assertTrue(pages.single().sessionRefreshes.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+    }
+
+    @Test
+    fun `a feed left for another screen and still picked by a new session begun meanwhile reserves its show only on the user's return and takes the new session's data timed from it`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        clock = 4_000L
+
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        val reportedBeforeReturn = states.size
+
+        clock = 9_000L
+        block.start()
+        idleMain()
+
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        assertEquals(listOf(1L to Milliseconds(9_000L)), pages.single().sessionRefreshes)
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+    }
+
+    @Test
+    fun `a feed the user comes back to from another screen before a new session begun meanwhile answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
+        val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty)
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+        val reportedBeforeReturn = states.size
+
+        block.start()
+        idleMain()
+        renewalAnswer.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(true, pages.single().withheldShows.lastOrNull())
+
+        block.pause()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        assertEquals(1, pages.single().releaseCount)
+    }
+
+    @Test
+    fun `a feed the user comes back to from another screen before a new session begun meanwhile answers takes the new session's data in place, timed from that return`() {
+        val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = winner())
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        clock = 4_000L
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+        val reportedBeforeReturn = states.size
+
+        clock = 9_000L
+        block.start()
+        idleMain()
+        clock = 11_000L
+        renewalAnswer.complete(winner())
+        idleMain()
+
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(listOf(1L to Milliseconds(9_000L)), pages.single().sessionRefreshes)
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+    }
+
+    @Test
+    fun `a feed the user comes back to and leaves again before a new session begun meanwhile answers reserves no show until the user comes back once more, timed from that return`() {
+        val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = winner())
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        clock = 1_000L
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        clock = 4_000L
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+        clock = 9_000L
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+
+        clock = 11_000L
+        renewalAnswer.complete(winner())
+        idleMain()
+
+        coVerify(exactly = 3) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        val reportedBeforeReturn = states.size
+
+        clock = 15_000L
+        block.start()
+        idleMain()
+
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        assertEquals(listOf(1L to Milliseconds(15_000L)), pages.single().sessionRefreshes)
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+    }
+
+    @Test
+    fun `a block that leaves its screen for another one and comes back in the same session is asked only on its return and reserves at delivery an answer that reached it away`() {
+        val firstAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstAnswer.await() }
+        val states = mutableListOf<EmbeddedBlockState>()
+        val registry = controller()
+        val block = liveBlock(registry, states)
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        registry.onAppResumedOn(screen())
+        firstAnswer.complete(winner())
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 0L) }
+
+        block.start()
+        idleMain()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
+    @Test
+    fun `a feed asked by a new session while on another screen and released before the user comes back leaves no show reserved for its place`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val registry = controller()
+        val block = liveBlock(registry, mutableListOf())
+        block.start()
+        idleMain()
+        block.leaveForAnotherScreen()
+        registry.beginNewSessionWhileAwayAndComeBackOnAnotherScreen()
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        verify(exactly = 0) { interactor.releasePlaceShow(place) }
+
+        block.release()
+        idleMain()
+
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(atLeast = 1) { interactor.releasePlaceShow(place) }
     }
 }

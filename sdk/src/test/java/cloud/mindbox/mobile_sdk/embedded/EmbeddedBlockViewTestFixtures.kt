@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.View
 import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.robolectric.Shadows.shadowOf
@@ -25,11 +26,16 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
-    override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+    override fun isLiveSession(sessionEpoch: Long): Boolean = true
 
     override fun deferUntilReturnChecked(): Boolean = false
 
     override fun onAppResumedOn(activity: Activity) = Unit
+
+    override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
+        PlaceShowReservation.RESERVED
+
+    override fun onReturnCheckOver() = Unit
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         lastHandle = handle

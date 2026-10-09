@@ -7,6 +7,7 @@ import android.view.View
 import android.view.View.MeasureSpec
 import android.widget.FrameLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertEquals
@@ -34,11 +35,16 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
 
         override fun startListening() = Unit
 
-        override fun isOfLiveSession(answer: EmbeddedPlaceAnswer): Boolean = true
+        override fun isLiveSession(sessionEpoch: Long): Boolean = true
 
         override fun deferUntilReturnChecked(): Boolean = false
 
         override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
+            PlaceShowReservation.RESERVED
+
+        override fun onReturnCheckOver() = Unit
     }
 
     /**
