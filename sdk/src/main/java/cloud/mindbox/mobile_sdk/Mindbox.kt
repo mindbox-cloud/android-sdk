@@ -96,6 +96,11 @@ public object Mindbox : MindboxLog {
 
     private var pushConverters: List<PushConverter> by SingleInitDelegate()
 
+    internal val configuredTrackingIdTypes: Set<String>?
+        get() = (pushConverters.filterIsInstance<PushServiceHandler>() + pushServiceHandlers)
+            .takeIf { it.isNotEmpty() }
+            ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
+
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val getDeviceIdMutex = Mutex()
