@@ -3,7 +3,9 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TrackingId
+import cloud.mindbox.mobile_sdk.pushes.PushConverter
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -18,6 +20,13 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val READ_TRACKING_IDS_TIMEOUT = 5000L
 
+internal fun trackingIdTypesOf(
+    configured: List<PushConverter>,
+    live: List<PushServiceHandler>,
+): Set<String>? = (configured.filterIsInstance<PushServiceHandler>() + live)
+    .takeIf { it.isNotEmpty() }
+    ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
+
 internal interface TrackingIdsResolver {
 
     suspend fun resolve(context: Context): List<TrackingId>
@@ -29,6 +38,7 @@ internal interface TrackingIdsResolver {
 
 internal class TrackingIdsResolverImpl(
     private val pushServiceHandlers: () -> List<PushServiceHandler> = { Mindbox.pushServiceHandlers },
+    private val configuredTrackingIdTypes: () -> Set<String>? = { Mindbox.configuredTrackingIdTypes },
     private val scope: () -> CoroutineScope = { Mindbox.mindboxScope },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val timeoutMillis: Long = READ_TRACKING_IDS_TIMEOUT,
@@ -46,7 +56,7 @@ internal class TrackingIdsResolverImpl(
         if (results == null) {
             reading.cancel()
             mindboxLogI("Timed out reading tracking id providers, repeating the last reported set")
-            return lastSent()
+            return lastSentOfConfiguredProviders()
         }
 
         return results.mergeWithLastSent()
@@ -66,12 +76,22 @@ internal class TrackingIdsResolverImpl(
             ?: emptyList()
     }
 
+    private fun lastSentOfConfiguredProviders(): List<TrackingId> {
+        val stored = lastSent()
+        val configured = configuredTrackingIdTypes() ?: return stored
+        val (kept, removed) = stored.partition { it.type in configured }
+        if (removed.isNotEmpty()) {
+            mindboxLogW("Erasing tracking ids of removed providers: ${removed.joinToString { it.type }}")
+        }
+        return kept
+    }
+
     private fun List<TrackingIdResult>.mergeWithLastSent(): List<TrackingId> {
         val fresh = filterIsInstance<TrackingIdResult.Success>().map { it.trackingId }
         val answered = fresh.map { it.type }.toSet() +
             filterIsInstance<TrackingIdResult.Denied>().map { it.type }
 
-        val kept = lastSent().filterNot { it.type in answered }
+        val kept = lastSentOfConfiguredProviders().filterNot { it.type in answered }
         if (kept.isNotEmpty()) {
             mindboxLogI("Keeping tracking ids we could not read: ${kept.joinToString { it.type }}")
         }
