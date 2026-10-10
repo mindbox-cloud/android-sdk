@@ -6,16 +6,21 @@ import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
+import cloud.mindbox.mobile_sdk.models.InAppStub
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -44,6 +49,13 @@ class WebViewCommonBridgeActionsTest {
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val permissionManager: PermissionManager = mockk(relaxed = true)
     private val inAppMessageManager: InAppMessageManager = mockk()
+    private val mobileConfigRepository: MobileConfigRepository = mockk {
+        every { findInAppInCurrentConfig(any()) } returns null
+    }
+    private val featureToggleManager: FeatureToggleManager = mockk {
+        every { isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
+    }
+    private val operationSender: WebViewOperationSender = mockk(relaxUnitFun = true)
 
     private class FakeHost(
         override val closeCapability: ((BridgeMessage.Request) -> String)? = null,
@@ -73,11 +85,13 @@ class WebViewCommonBridgeActionsTest {
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
             every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
             every { inAppMessageManager } returns this@WebViewCommonBridgeActionsTest.inAppMessageManager
+            every { mobileConfigRepository } returns this@WebViewCommonBridgeActionsTest.mobileConfigRepository
+            every { featureToggleManager } returns this@WebViewCommonBridgeActionsTest.featureToggleManager
         }
     }
 
     private fun handlersOf(host: WebViewBridgeHost): WebViewActionHandlers =
-        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host).register(handlers) }
+        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host, operationSender).register(handlers) }
 
     private fun WebViewActionHandlers.serves(action: WebViewAction): Boolean =
         handler(action) != null || suspendHandler(action) != null
@@ -265,6 +279,37 @@ class WebViewCommonBridgeActionsTest {
         listOf("""{"gestures":["wave"]}""", """{"gestures":[" "]}""", """{"gestures":["flip","wave"]}""").forEach { payload ->
             assertEquals(payload, BridgeErrorCode.UNSUPPORTED_VALUE, handlers.refusalCode(WebViewAction.MOTION_START, payload))
         }
+    }
+
+    @Test
+    fun `an operation naming another in-app carries that in-app's tags, one naming the page's own in-app the host's`() {
+        every { mobileConfigRepository.findInAppInCurrentConfig("story-2") } returns
+            InAppStub.getInApp().copy(id = "story-2", tags = mapOf("story" to "second"))
+        val handlers = handlersOf(FakeHost())
+
+        handlers.answer(WebViewAction.ASYNC_OPERATION, """{"operation":"OpenScreen","inappId":"story-2","body":{}}""")
+        handlers.answer(WebViewAction.ASYNC_OPERATION, """{"operation":"OpenScreen","inappId":"host-id","body":{}}""")
+
+        verifyOrder {
+            operationSender.asyncOperation(application, "OpenScreen", """{"tags":{"story":"second"}}""")
+            operationSender.asyncOperation(application, "OpenScreen", """{"tags":{"templateType":"Embedded"}}""")
+        }
+        verify(exactly = 0) { mobileConfigRepository.findInAppInCurrentConfig("host-id") }
+    }
+
+    @Test
+    fun `an operation whose inappId is not a non-empty string is refused as invalid_payload and nothing is sent`() {
+        every { operationSender.syncOperation(any(), any(), any(), any()) } answers { arg<(String) -> Unit>(2)("{}") }
+        val handlers = handlersOf(FakeHost())
+
+        listOf(WebViewAction.ASYNC_OPERATION, WebViewAction.SYNC_OPERATION).forEach { action ->
+            listOf("""{"operation":"OpenScreen","inappId":5,"body":{}}""", """{"operation":"OpenScreen","inappId":"","body":{}}""")
+                .forEach { payload ->
+                    assertEquals("$action with $payload", BridgeErrorCode.INVALID_PAYLOAD, handlers.refusalCode(action, payload))
+                }
+        }
+        verify(exactly = 0) { operationSender.asyncOperation(any(), any(), any()) }
+        verify(exactly = 0) { operationSender.syncOperation(any(), any(), any(), any()) }
     }
 
     @Test

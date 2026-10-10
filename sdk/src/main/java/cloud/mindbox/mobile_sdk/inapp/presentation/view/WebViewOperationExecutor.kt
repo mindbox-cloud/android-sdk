@@ -14,13 +14,48 @@ import kotlin.coroutines.resumeWithException
 
 internal interface WebViewOperationExecutor {
 
-    fun executeAsyncOperation(context: Application, payload: String?, tags: Map<String, String>?)
+    fun executeAsyncOperation(
+        context: Application,
+        payload: String?,
+        hostInAppId: String,
+        hostTags: Map<String, String>?,
+    )
 
-    suspend fun executeSyncOperation(payload: String?, tags: Map<String, String>?): String
+    suspend fun executeSyncOperation(payload: String?, hostInAppId: String, hostTags: Map<String, String>?): String
+}
+
+internal interface WebViewOperationSender {
+
+    fun asyncOperation(context: Application, name: String, body: String)
+
+    fun syncOperation(
+        name: String,
+        body: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit,
+    )
+}
+
+internal object MindboxWebViewOperationSender : WebViewOperationSender {
+
+    override fun asyncOperation(context: Application, name: String, body: String) {
+        MindboxEventManager.asyncOperation(context = context, name = name, body = body)
+    }
+
+    override fun syncOperation(
+        name: String,
+        body: String,
+        onSuccess: (String) -> Unit,
+        onError: (MindboxError) -> Unit,
+    ) {
+        MindboxEventManager.syncOperation(name = name, bodyJson = body, onSuccess = onSuccess, onError = onError)
+    }
 }
 
 internal class MindboxWebViewOperationExecutor(
     private val gson: Gson,
+    private val tagsResolver: OperationTagsResolver,
+    private val sender: WebViewOperationSender,
 ) : WebViewOperationExecutor {
 
     companion object {
@@ -29,21 +64,26 @@ internal class MindboxWebViewOperationExecutor(
         private const val TAGS_FIELD = "tags"
     }
 
-    override fun executeAsyncOperation(context: Application, payload: String?, tags: Map<String, String>?) {
-        val (operation, body) = parseOperationRequest(payload, tags)
-        MindboxEventManager.asyncOperation(
+    override fun executeAsyncOperation(
+        context: Application,
+        payload: String?,
+        hostInAppId: String,
+        hostTags: Map<String, String>?,
+    ) {
+        val (operation, body) = parseOperationRequest(payload, hostInAppId, hostTags)
+        sender.asyncOperation(
             context = context,
             name = operation,
             body = body,
         )
     }
 
-    override suspend fun executeSyncOperation(payload: String?, tags: Map<String, String>?): String {
-        val (operation, body) = parseOperationRequest(payload, tags)
+    override suspend fun executeSyncOperation(payload: String?, hostInAppId: String, hostTags: Map<String, String>?): String {
+        val (operation, body) = parseOperationRequest(payload, hostInAppId, hostTags)
         return suspendCancellableCoroutine { continuation ->
-            MindboxEventManager.syncOperation(
+            sender.syncOperation(
                 name = operation,
-                bodyJson = body,
+                body = body,
                 onSuccess = { responseBody: String ->
                     if (continuation.isActive) {
                         continuation.resume(responseBody)
@@ -60,7 +100,7 @@ internal class MindboxWebViewOperationExecutor(
         }
     }
 
-    private fun parseOperationRequest(payload: String?, tags: Map<String, String>?): Pair<String, String> {
+    private fun parseOperationRequest(payload: String?, hostInAppId: String, hostTags: Map<String, String>?): Pair<String, String> {
         payload ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Payload is not provided")
         val jsonObject: JsonObject = runCatching { JsonParser.parseString(payload).asJsonObject }
             .getOrElse { throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Payload is not a valid JSON object", it) }
@@ -68,6 +108,7 @@ internal class MindboxWebViewOperationExecutor(
             ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Operation is not provided")
         val bodyObject: JsonObject = runCatching { jsonObject.getAsJsonObject(BODY_FIELD) }.getOrNull()
             ?: throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Body is not provided")
+        val tags = tagsResolver.resolve(jsonObject, hostInAppId, hostTags)
         return operation to buildOperationBody(bodyObject, tags)
     }
 

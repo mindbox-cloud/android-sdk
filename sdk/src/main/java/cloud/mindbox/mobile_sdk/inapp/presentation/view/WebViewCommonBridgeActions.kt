@@ -44,6 +44,7 @@ internal interface WebViewBridgeHost {
 
 internal class WebViewCommonBridgeActions(
     private val host: WebViewBridgeHost,
+    private val operationSender: WebViewOperationSender = MindboxWebViewOperationSender,
 ) {
 
     private val appContext by mindboxInject { appContext }
@@ -54,8 +55,12 @@ internal class WebViewCommonBridgeActions(
     private val webPageRegistry by mindboxInject { webPageRegistry }
     private val inAppInteractor by mindboxInject { inAppInteractor }
     private val inAppMessageManager by mindboxInject { inAppMessageManager }
+    private val mobileConfigRepository by mindboxInject { mobileConfigRepository }
+    private val featureToggleManager by mindboxInject { featureToggleManager }
 
-    private val operationExecutor: WebViewOperationExecutor by lazy { MindboxWebViewOperationExecutor(gson) }
+    private val operationExecutor: WebViewOperationExecutor by lazy {
+        MindboxWebViewOperationExecutor(gson, OperationTagsResolver(mobileConfigRepository, featureToggleManager), operationSender)
+    }
     private val linkRouter: WebViewLinkRouter by lazy { MindboxWebViewLinkRouter(appContext) }
     private val localStateStore: WebViewLocalStateStore by lazy { WebViewLocalStateStore(appContext) }
     private val hapticRequestValidator: HapticRequestValidator by lazy { HapticRequestValidator() }
@@ -116,12 +121,12 @@ internal class WebViewCommonBridgeActions(
     }
 
     private fun handleAsyncOperationAction(message: BridgeMessage.Request): String {
-        operationExecutor.executeAsyncOperation(appContext, message.payload, host.hostTags)
+        operationExecutor.executeAsyncOperation(appContext, message.payload, host.hostInAppId, host.hostTags)
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
     private suspend fun handleSyncOperationAction(message: BridgeMessage.Request): String {
-        return operationExecutor.executeSyncOperation(message.payload, host.hostTags)
+        return operationExecutor.executeSyncOperation(message.payload, host.hostInAppId, host.hostTags)
     }
 
     private fun handleOpenLinkAction(message: BridgeMessage.Request): String {
@@ -302,11 +307,6 @@ internal class WebViewCommonBridgeActions(
         }.toSet()
     }
 
-    private fun JsonElement.asNonEmptyStringOrNull(): String? =
-        takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
-            ?.asString
-            ?.takeIf { it.isNotEmpty() }
-
     private fun sendMotionEvent(gesture: MotionGesture, data: Map<String, String>) {
         val payload = JSONObject()
             .apply {
@@ -369,3 +369,8 @@ internal class WebViewCommonBridgeActions(
         private const val SHOW_IN_APP_INVALID_PAYLOAD = "Invalid payload: missing or empty 'inappId'"
     }
 }
+
+internal fun JsonElement.asNonEmptyStringOrNull(): String? =
+    takeIf { element -> element.isJsonPrimitive && element.asJsonPrimitive.isString }
+        ?.asString
+        ?.takeIf { it.isNotEmpty() }
