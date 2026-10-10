@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.di.modules
 
+import androidx.lifecycle.ProcessLifecycleOwner
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerDayLimitChecker
 import cloud.mindbox.mobile_sdk.inapp.data.checkers.MaxInappsPerSessionLimitChecker
@@ -172,7 +173,8 @@ internal fun DataModule(
             webViewLayerValidator = webViewLayerValidator,
             learnedHostsStore = InAppWebViewLearnedHostsStore(),
             featureToggleManager = featureToggleManager,
-            webViewCachePolicy = webViewCachePolicy
+            webViewCachePolicy = webViewCachePolicy,
+            processLifecycleState = ProcessLifecycleOwner.get().lifecycle.currentStateFlow
         )
     }
 

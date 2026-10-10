@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
@@ -16,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.webview.InAppWebViewPrewarmEngine
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.Configuration
@@ -35,6 +37,8 @@ import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -83,6 +87,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
     private lateinit var featureToggleManager: FeatureToggleManager
     private lateinit var mobileConfigSerializationManager: MobileConfigSerializationManager
     private lateinit var webViewCachePolicy: InAppWebViewCachePolicy
+    private val processLifecycleState = MutableStateFlow(Lifecycle.State.STARTED)
     private lateinit var service: InAppWebViewPrewarmManagerImpl
 
     @Before
@@ -95,6 +100,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid"
         mockkObject(InitializeLock)
         coEvery { InitializeLock.await(any()) } returns Unit
+        mockkObject(MindboxLoggerImpl)
         engine = mockk(relaxed = true)
         gatewayManager = mockk(relaxed = true)
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html></html>"
@@ -117,7 +123,8 @@ internal class InAppWebViewPrewarmManagerImplTest {
                 every { hosts(any()) } returns listOf("learned-cdn.mindbox.ru")
             },
             featureToggleManager = featureToggleManager,
-            webViewCachePolicy = webViewCachePolicy
+            webViewCachePolicy = webViewCachePolicy,
+            processLifecycleState = processLifecycleState
         )
     }
 
@@ -127,6 +134,7 @@ internal class InAppWebViewPrewarmManagerImplTest {
         unmockkObject(DbManager)
         unmockkObject(MindboxPreferences)
         unmockkObject(InitializeLock)
+        unmockkObject(MindboxLoggerImpl)
     }
 
     private fun configWith(vararg inApps: cloud.mindbox.mobile_sdk.inapp.domain.models.InApp) = InAppConfig(
@@ -549,6 +557,101 @@ internal class InAppWebViewPrewarmManagerImplTest {
         service.prewarmOnInit()
 
         assertEquals(false, webViewCachePolicy.isCacheEnabled)
+    }
+
+    @Test
+    fun `prewarmOnInit in a background process creates no webview until the app comes to the foreground`() {
+        processLifecycleState.value = Lifecycle.State.CREATED
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+
+        service.prewarmOnInit()
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        coVerify(exactly = 0) { gatewayManager.fetchWebViewContent(any()) }
+
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 1) { engine.loadPreconnectPage(any(), "https://inapp.local/popup", any()) }
+        verify(exactly = 1) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `prewarmResources in a background process creates no webview until the app comes to the foreground`() {
+        processLifecycleState.value = Lifecycle.State.CREATED
+
+        service.prewarmResources(configWith(webViewInApp))
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        coVerify(exactly = 0) { gatewayManager.fetchWebViewContent(any()) }
+
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 1) { engine.loadPreconnectPage(any(), "https://inapp.local/popup", any()) }
+        verify(exactly = 1) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `terminate during the background wait keeps the prewarm from ever reaching the engine`() {
+        processLifecycleState.value = Lifecycle.State.CREATED
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+        service.prewarmOnInit()
+
+        service.terminate()
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a no-layers config during the background wait keeps the prewarm from creating a webview`() {
+        processLifecycleState.value = Lifecycle.State.CREATED
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+        service.prewarmOnInit()
+
+        service.prewarmResources(configWith(InAppStub.getInApp()))
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `both prewarm stages waiting in the background reach the engine once when the app comes to the foreground`() {
+        processLifecycleState.value = Lifecycle.State.CREATED
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+        service.prewarmOnInit()
+        service.prewarmResources(configWith(webViewInApp))
+
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 1) { engine.loadPreconnectPage(any(), any(), any()) }
+        coVerify(exactly = 1) { gatewayManager.fetchWebViewContent(any()) }
+        verify(exactly = 1) { engine.loadContentPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a scope cancelled while a stage waits for the foreground ends the stage without reporting an error`() {
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
+        every { Mindbox.mindboxScope } returns scope
+        processLifecycleState.value = Lifecycle.State.CREATED
+        every { MindboxPreferences.inAppConfig } returns cachedConfigJson()
+        service.prewarmOnInit()
+
+        scope.cancel()
+        processLifecycleState.value = Lifecycle.State.STARTED
+
+        verify(exactly = 0) { MindboxLoggerImpl.e(any(), any(), any()) }
+        verify(exactly = 0) { engine.loadPreconnectPage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a stage that fails is still reported as an error`() {
+        coEvery { InitializeLock.await(any()) } throws IllegalStateException("migration failed")
+
+        service.prewarmOnInit()
+
+        verify(exactly = 1) { MindboxLoggerImpl.e(any(), any(), any<IllegalStateException>()) }
     }
 
     /** Same `${'$'}type` adapters the production gson registers for the form payload path. */
