@@ -1,8 +1,11 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.os.Looper
 import android.webkit.WebView
+import androidx.activity.ComponentActivity
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
@@ -28,6 +31,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
@@ -59,6 +63,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
@@ -124,17 +129,23 @@ class EmbeddedBlockWebViewHolderTest {
         )
         coEvery { gatewayManager.fetchWebViewContent(any()) } returns "<html>block</html>"
 
-        holder = EmbeddedBlockWebViewHolder(
+        holder = blockOn(application)
+    }
+
+    private fun blockOn(
+        context: Context,
+        ackBudget: Milliseconds = Constants.WebView.readyTimeout,
+    ): EmbeddedBlockWebViewHolder =
+        EmbeddedBlockWebViewHolder(
             inAppId = "embedded-id",
             placeSystemName = PlaceKey.of("main-screen-top"),
             layer = InAppStub.getEmbeddedWebViewLayer(),
-            context = application,
+            context = context,
             frequency = Frequency(Frequency.Delay.Unlimited),
             tags = null,
             startTick = Milliseconds(0L),
-        )
-        holder.onStateChange = { state -> states.add(state) }
-    }
+            ackBudget = ackBudget,
+        ).apply { onStateChange = { state -> states.add(state) } }
 
     @After
     fun tearDown() {
@@ -591,6 +602,35 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a block whose screen is closing is no longer the requester of the showInApp it sent`() {
+        val screen = Robolectric.buildActivity(Activity::class.java).setup().get()
+        rebuildHolder(context = screen)
+        givenShowPathCapturesRequester()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { requesterIsActive.isCaptured }
+        assertTrue(requesterIsActive.captured())
+
+        screen.finish()
+
+        assertFalse(requesterIsActive.captured())
+    }
+
+    @Test
+    fun `a block whose screen only went to the background is still the requester of the showInApp it sent`() {
+        val screen = Robolectric.buildActivity(ComponentActivity::class.java).setup()
+        rebuildHolder(context = screen.get())
+        givenShowPathCapturesRequester()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { requesterIsActive.isCaptured }
+
+        screen.pause()
+
+        assertTrue(requesterIsActive.captured())
+    }
+
+    @Test
     fun `showInApp hands the id and the params to the show path`() {
         givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
@@ -950,20 +990,13 @@ class EmbeddedBlockWebViewHolderTest {
         assertTrue(viewBeforeUpdate === webView)
     }
 
-    private fun rebuildHolder(ackBudget: Milliseconds) {
+    private fun rebuildHolder(
+        context: Context = application,
+        ackBudget: Milliseconds = Constants.WebView.readyTimeout,
+    ) {
         holder.release()
         states.clear()
-        holder = EmbeddedBlockWebViewHolder(
-            inAppId = "embedded-id",
-            placeSystemName = PlaceKey.of("main-screen-top"),
-            layer = InAppStub.getEmbeddedWebViewLayer(),
-            context = application,
-            frequency = Frequency(Frequency.Delay.Unlimited),
-            tags = null,
-            startTick = Milliseconds(0L),
-            ackBudget = ackBudget,
-        )
-        holder.onStateChange = { state -> states.add(state) }
+        holder = blockOn(context, ackBudget)
     }
 
     private fun answerDataPush(id: com.google.gson.JsonElement) {
