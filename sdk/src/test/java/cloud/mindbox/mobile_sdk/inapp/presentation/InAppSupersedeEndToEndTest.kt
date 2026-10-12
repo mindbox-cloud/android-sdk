@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppViewHolder
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.stubBridgeHelpers
 import cloud.mindbox.mobile_sdk.inapp.webview.WebViewController
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -106,6 +107,7 @@ internal class InAppSupersedeEndToEndTest {
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
+            stubBridgeHelpers(application)
         }
         mockkObject(DbManager)
         mockkObject(MindboxLoggerImpl)

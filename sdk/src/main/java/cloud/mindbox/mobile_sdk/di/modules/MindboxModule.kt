@@ -20,7 +20,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
-import cloud.mindbox.mobile_sdk.inapp.presentation.view.MindboxWebPageRegistry
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.*
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
@@ -65,6 +65,10 @@ internal interface PresentationModule : MindboxModule {
     /** The registry only if a block has already asked for it — never creates one. */
     val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
     val embeddedBlockContentStore: EmbeddedBlockContentStore
+    val operationTagsResolver: OperationTagsResolver
+    val webViewOperationSender: WebViewOperationSender
+    val webViewLinkRouter: WebViewLinkRouter
+    val webViewLocalStateStore: WebViewLocalStateStore
 }
 
 internal interface DataModule : MindboxModule {
@@ -97,6 +101,7 @@ internal interface DataModule : MindboxModule {
     val jsonValidator: JsonValidator
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
+    val hapticRequestValidator: HapticRequestValidator
     val inAppImageLoader: InAppImageLoader
     val defaultDataManager: DataManager
     val modalWindowDtoDataFiller: ModalWindowDtoDataFiller

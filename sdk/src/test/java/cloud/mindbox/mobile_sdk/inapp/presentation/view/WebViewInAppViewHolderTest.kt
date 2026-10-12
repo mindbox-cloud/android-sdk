@@ -82,6 +82,7 @@ class WebViewInAppViewHolderTest {
             every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
                 every { isCacheEnabled } returns false
             }
+            stubBridgeHelpers(application)
         }
         mockkObject(DbManager)
         mockkObject(MindboxLoggerImpl)

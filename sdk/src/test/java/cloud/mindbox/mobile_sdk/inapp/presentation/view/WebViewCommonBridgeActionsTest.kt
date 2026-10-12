@@ -85,13 +85,19 @@ class WebViewCommonBridgeActionsTest {
             every { webPageRegistry } returns this@WebViewCommonBridgeActionsTest.webPageRegistry
             every { permissionManager } returns this@WebViewCommonBridgeActionsTest.permissionManager
             every { inAppMessageManager } returns this@WebViewCommonBridgeActionsTest.inAppMessageManager
-            every { mobileConfigRepository } returns this@WebViewCommonBridgeActionsTest.mobileConfigRepository
-            every { featureToggleManager } returns this@WebViewCommonBridgeActionsTest.featureToggleManager
+            stubBridgeHelpers(
+                application,
+                tagsResolver = OperationTagsResolver(
+                    this@WebViewCommonBridgeActionsTest.mobileConfigRepository,
+                    this@WebViewCommonBridgeActionsTest.featureToggleManager,
+                ),
+                sender = operationSender,
+            )
         }
     }
 
     private fun handlersOf(host: WebViewBridgeHost): WebViewActionHandlers =
-        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host, operationSender).register(handlers) }
+        WebViewActionHandlers().also { handlers -> WebViewCommonBridgeActions(host).register(handlers) }
 
     private fun WebViewActionHandlers.serves(action: WebViewAction): Boolean =
         handler(action) != null || suspendHandler(action) != null
