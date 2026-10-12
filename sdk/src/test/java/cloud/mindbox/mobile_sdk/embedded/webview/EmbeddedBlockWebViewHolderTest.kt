@@ -1291,7 +1291,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `a page that rendered off screen reports every stretch on screen before the render and nothing after it`() {
+    fun `a page that rendered off screen reports every stretch on screen before the render`() {
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
         rebuildHolder(selectionTime = Milliseconds(2_000L))
         startAndAwaitPageLoad()

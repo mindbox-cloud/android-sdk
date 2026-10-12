@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertFalse
 import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -90,6 +91,7 @@ class EmbeddedBlockContentControllerTest {
     private fun controller(
         configTimeout: Milliseconds = Milliseconds(30_000L),
         tracker: InAppFailureTracker? = null,
+        monotonicNow: () -> Milliseconds = { Milliseconds(SystemClock.elapsedRealtime()) },
         providerFactory: (InAppType.Embedded, Milliseconds) -> EmbeddedContentProvider? = { _, _ ->
             FakeProvider().also { createdProviders.add(it) }
         },
@@ -99,6 +101,7 @@ class EmbeddedBlockContentControllerTest {
             configTimeout = configTimeout,
             providerFactory = providerFactory,
             blocksRegistry = { blocksRegistry },
+            monotonicNow = monotonicNow,
             failureTracker = { tracker },
             isTagsFeatureEnabled = { true },
         ).apply {
@@ -146,8 +149,10 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `a block back on screen before the campaign's delay ends builds its page with the selection time`() {
+        var clock = Milliseconds(0L)
         val selectionTimes = mutableListOf<Milliseconds>()
         val controller = controller(
+            monotonicNow = { clock },
             providerFactory = { _, selectionTime ->
                 selectionTimes.add(selectionTime)
                 FakeProvider()
@@ -157,6 +162,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(null)
         blocksRegistry.lastHandle?.onContentPending()
         controller.pause()
+        clock = Milliseconds(45_000L)
         controller.start()
 
         blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(40L))
@@ -184,8 +190,10 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `content deferred while the block is away is built with the selection time it came with`() {
+        var clock = Milliseconds(0L)
         val selectionTimes = mutableListOf<Milliseconds>()
         val controller = controller(
+            monotonicNow = { clock },
             providerFactory = { _, selectionTime ->
                 selectionTimes.add(selectionTime)
                 FakeProvider()
@@ -195,7 +203,9 @@ class EmbeddedBlockContentControllerTest {
         controller.pause()
 
         blocksRegistry.lastHandle?.onContentPending()
+        clock = Milliseconds(20_000L)
         blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(250L))
+        clock = Milliseconds(45_000L)
         controller.start()
 
         assertEquals(listOf(Milliseconds(250L)), selectionTimes)
