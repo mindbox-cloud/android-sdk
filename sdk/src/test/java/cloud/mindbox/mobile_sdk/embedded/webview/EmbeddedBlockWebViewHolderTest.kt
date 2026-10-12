@@ -883,7 +883,7 @@ class EmbeddedBlockWebViewHolderTest {
     fun `sync operation answers the page with the operation response`() {
         mockkObject(MindboxEventManager)
         every {
-            MindboxEventManager.syncOperation(any(), any(), any(), any())
+            MindboxEventManager.syncOperation("op.sync", "{}", any(), any())
         } answers {
             thirdArg<(String) -> Unit>().invoke("""{"status":"Success"}""")
         }

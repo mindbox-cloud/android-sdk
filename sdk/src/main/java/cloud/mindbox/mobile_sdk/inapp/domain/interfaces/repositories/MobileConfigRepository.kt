@@ -20,6 +20,8 @@ internal interface MobileConfigRepository {
 
     suspend fun getInAppsSectionIfAvailable(): List<InApp>?
 
+    fun findInAppInCurrentConfig(id: String): InApp?
+
     suspend fun getMonitoringSection(): List<LogRequest>
 
     suspend fun getOperations(): Map<OperationName, OperationSystemName>

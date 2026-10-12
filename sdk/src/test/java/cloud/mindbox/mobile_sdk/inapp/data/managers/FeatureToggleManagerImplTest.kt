@@ -257,6 +257,37 @@ class FeatureToggleManagerImplTest {
     }
 
     @Test
+    fun `isEnabled read while applyToggles takes in a new config answers the previous toggles, then the new ones`() {
+        featureToggleManager.applyToggles(configWithToggles(mapOf(SEND_INAPP_TAGS_FEATURE to false)))
+        val readsWhileApplying = mutableListOf<Boolean>()
+        val newToggles = object : AbstractMap<String, Boolean?>() {
+            override val entries: Set<Map.Entry<String, Boolean?>>
+                get() {
+                    readsWhileApplying.add(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+                    return mapOf<String, Boolean?>(SEND_INAPP_TAGS_FEATURE to true).entries
+                }
+        }
+
+        featureToggleManager.applyToggles(configWithToggles(newToggles))
+
+        assertEquals(listOf(false), readsWhileApplying.distinct())
+        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+    }
+
+    private fun configWithToggles(toggles: Map<String, Boolean?>) = InAppConfigResponse(
+        inApps = null,
+        monitoring = null,
+        settings = SettingsDto(
+            operations = null,
+            ttl = null,
+            slidingExpiration = null,
+            inapp = null,
+            featureToggles = toggles
+        ),
+        abtests = null
+    )
+
+    @Test
     fun `applyToggles clears previous toggles when new config is applied`() {
         val config1 = InAppConfigResponse(
             inApps = null,

@@ -144,6 +144,9 @@ internal class MobileConfigRepositoryImpl(
     override suspend fun getInAppsSectionIfAvailable(): List<InApp>? =
         awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
 
+    override fun findInAppInCurrentConfig(id: String): InApp? =
+        configState.value?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
+
     override suspend fun getABTests() = getConfig().abtests
 
     override fun resetCurrentConfig() {

@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import io.mockk.*
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
@@ -20,6 +21,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import cloud.mindbox.mobile_sdk.inapp.data.validators.TimeSpanPositiveValidator
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.models.InAppStub
 
 internal class MobileConfigRepositoryImplTest {
@@ -80,8 +83,74 @@ internal class MobileConfigRepositoryImplTest {
     }
 
     @Test
+    fun `getInApps keeps only the copy of a repeated id that this SDK version may show`() {
+        val otherVersion = InAppStub.getInAppDtoBlank().copy(id = "story-2", sdkVersion = SdkVersion(minVersion = 999, maxVersion = null))
+        val thisVersion = InAppStub.getInAppDtoBlank().copy(id = "story-2", sdkVersion = SdkVersion(minVersion = 1, maxVersion = null))
+        val repository = createRepository(isVersionValid = { inAppDto -> inAppDto != otherVersion })
+
+        repository.getInApps(InAppConfigResponseBlank(listOf(otherVersion, thisVersion), null, null, null))
+
+        verify(exactly = 0) { inAppMapper.mapToInAppDto(otherVersion, any(), any(), any(), any(), any()) }
+        verify(exactly = 1) { inAppMapper.mapToInAppDto(thisVersion, any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `hasConfig is false until a config has been provided`() {
         assertFalse(repository.hasConfig())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig is null until a config arrives, then answers from it with the first copy of a repeated id`() = withTestMindboxScope {
+        val first = InAppStub.getInApp().copy(id = "story-2", tags = mapOf("copy" to "first"))
+        val second = first.copy(tags = mapOf("copy" to "second"))
+        val repository = createRepository()
+        assertNull(repository.findInAppInCurrentConfig("story-2"))
+
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-1"), first, second)
+
+        assertEquals(first, repository.findInAppInCurrentConfig("story-2"))
+        assertNull(repository.findInAppInCurrentConfig("story-3"))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig is null again after resetCurrentConfig`() = withTestMindboxScope {
+        val repository = createRepository()
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-2"))
+        assertNotNull(repository.findInAppInCurrentConfig("story-2"))
+
+        repository.resetCurrentConfig()
+
+        assertNull(repository.findInAppInCurrentConfig("story-2"))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `findInAppInCurrentConfig answers from the config that replaced the previous one`() = withTestMindboxScope {
+        val repository = createRepository()
+        provideConfig(repository, InAppStub.getInApp().copy(id = "story-2", tags = mapOf("config" to "first")))
+
+        every { inAppMapper.mapToInAppConfig(any()) } returns InAppConfig(
+            inApps = listOf(InAppStub.getInApp().copy(id = "story-2", tags = mapOf("config" to "second"))),
+            monitoring = emptyList(),
+            operations = emptyMap(),
+            abtests = emptyList(),
+        )
+        MindboxPreferences.inAppConfigFlow.emit("""{"next":true}""")
+
+        assertEquals(mapOf("config" to "second"), repository.findInAppInCurrentConfig("story-2")?.tags)
+    }
+
+    private suspend fun provideConfig(repository: MobileConfigRepositoryImpl, vararg inApps: InApp) {
+        every { inAppMapper.mapToInAppConfig(any()) } returns InAppConfig(
+            inApps = inApps.toList(),
+            monitoring = emptyList(),
+            operations = emptyMap(),
+            abtests = emptyList(),
+        )
+        repository.startListening()
+        MindboxPreferences.inAppConfigFlow.emit("{}")
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -181,6 +250,7 @@ internal class MobileConfigRepositoryImplTest {
     private fun createRepository(
         deserializedBlank: InAppConfigResponseBlank? = mockk(),
         sessionState: SessionState = SessionState(),
+        isVersionValid: (InAppConfigResponseBlank.InAppDtoBlank) -> Boolean = { true },
     ): MobileConfigRepositoryImpl {
         return MobileConfigRepositoryImpl(
             inAppMapper = inAppMapper,
@@ -189,7 +259,7 @@ internal class MobileConfigRepositoryImplTest {
                 every { isValid(any()) } returns true
             },
             inAppValidator = mockk(relaxed = true) {
-                every { validateInAppVersion(any()) } returns true
+                every { validateInAppVersion(any()) } answers { isVersionValid(firstArg()) }
                 every { validateInApp(any()) } returns true
             },
             mobileConfigSerializationManager = mockk(relaxed = true) {
