@@ -299,7 +299,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `the same winner re-selected mid-delay is delivered with the fresh answer`() {
+    fun `the same winner re-selected mid-delay brings its fresh content but keeps the selection time that started the delay`() {
         val refreshed = content.copy(
             layers = listOf((content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]")))
         )
@@ -330,8 +330,41 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(refreshed), handle.received)
-        assertEquals(listOf(Milliseconds(40L)), handle.selectionTimes)
+        assertEquals(listOf(Milliseconds(320L)), handle.selectionTimes)
         verify(exactly = 1) { interactor.reservePlaceShow(place, refreshed) }
+    }
+
+    @Test
+    fun `a delayed winner keeps the config wait of its first selection when the config's arrival re-checks the place`() {
+        val configLoaded = CompletableDeferred<Unit>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
+            selections++
+            if (selections == 1) {
+                configLoaded.await()
+                advance(Milliseconds(1_070L))
+            } else {
+                advance(Milliseconds(15L))
+            }
+            winner(delay = Milliseconds(10_000L))
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.launch { configUpdates.emit(Unit) }
+        idleMain()
+        configLoaded.complete(Unit)
+        idleMain()
+        scope.testScheduler.advanceTimeBy(10_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf(Milliseconds(1_070L)), handle.selectionTimes)
     }
 
     @Test

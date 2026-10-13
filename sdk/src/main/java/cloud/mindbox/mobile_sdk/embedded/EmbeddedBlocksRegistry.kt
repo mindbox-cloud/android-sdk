@@ -65,7 +65,7 @@ internal class EmbeddedBlocksRegistryImpl(
     private class PendingDelay(
         val job: Job,
         var winner: InAppType.Embedded,
-        var selectionTime: Milliseconds,
+        val selectionTime: Milliseconds,
     )
 
     private val delayJobsByPlace = mutableMapOf<PlaceKey, PendingDelay>()
@@ -245,10 +245,9 @@ internal class EmbeddedBlocksRegistryImpl(
         if (running != null && running.job.isActive && running.winner.inAppId == winner.inAppId) {
             mindboxLogI(
                 "[EmbeddedBlock] Winner ${winner.inAppId} for place '$place' is already " +
-                    "waiting out its delay, keeping the running timer for the fresh answer"
+                    "waiting out its delay, keeping the running timer and its selection time for the fresh content"
             )
             running.winner = winner
-            running.selectionTime = selectionTime
             notifyPending(place)
             return
         }
