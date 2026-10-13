@@ -664,15 +664,19 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `the place reserves its show when the content is delivered, once for all its blocks`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
+        val first = RecordingHandle()
+        val second = RecordingHandle()
         val controller = controller()
-        controller.register(place, RecordingHandle())
-        controller.register(place, RecordingHandle())
+        controller.register(place, first)
+        controller.register(place, second)
         idleMain()
 
         controller.onBlockAppeared(place)
         idleMain()
 
         verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+        assertEquals(listOf<InAppType.Embedded?>(content), first.received)
+        assertEquals(listOf<InAppType.Embedded?>(content), second.received)
     }
 
     @Test
@@ -709,8 +713,9 @@ class EmbeddedBlocksRegistryTest {
     fun `a winner waiting out its delay reserves only when the delay has run`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             winner(delay = Milliseconds(5_000L))
+        val handle = RecordingHandle()
         val controller = controller()
-        controller.register(place, RecordingHandle())
+        controller.register(place, handle)
         idleMain()
 
         controller.onBlockAppeared(place)
@@ -723,6 +728,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
 
     @Test
@@ -739,7 +745,8 @@ class EmbeddedBlocksRegistryTest {
         verify(exactly = 0) { interactor.releasePlaceShow(place) }
 
         val alone = controller()
-        alone.register(place, RecordingHandle())
+        val onlyBlock = RecordingHandle()
+        alone.register(place, onlyBlock)
         idleMain()
         alone.onBlockContentDropped(place)
         idleMain()
