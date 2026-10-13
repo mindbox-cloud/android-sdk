@@ -53,6 +53,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.DurationUnit
 
 @OptIn(InternalMindboxApi::class)
 internal class WebViewInAppViewHolder(
@@ -262,7 +263,7 @@ internal class WebViewInAppViewHolder(
     private fun handleInitAction(controller: WebViewController): String {
         val mindboxView = checkNotNull(currentMindboxView) { "MindboxView is null when activating WebView In-App" }
         hasInitialized = true
-        stopTimer()
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] Init received after $waited") }
         if (noCacheRetryPolicy.hasRetried) {
             controller.setCacheBypass(false)
         }
@@ -706,12 +707,12 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    private fun stopTimer() {
-        initTimeout?.let { timeout ->
-            mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-            mainHandler.removeCallbacks(timeout)
-        }
+    /** Returns how long the page has been waited for, or null when no wait is running. */
+    private fun stopTimer(): String? {
+        val timeout = initTimeout ?: return null
+        mainHandler.removeCallbacks(timeout)
         initTimeout = null
+        return Stopwatch.stop(TIMER)?.toString(DurationUnit.SECONDS, 2)
     }
 
     private fun startTimer(onTimeOut: () -> Unit) {
@@ -732,7 +733,7 @@ internal class WebViewInAppViewHolder(
                 else -> mindboxLogW("Layer is not supported")
             }
         }
-        mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
+        mindboxLogI("Loading In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
     }
 
     override fun reattach(currentRoot: MindboxView) {
@@ -757,7 +758,7 @@ internal class WebViewInAppViewHolder(
     override fun onClose() {
         isClosed = true
         pageScope.cancel()
-        stopTimer()
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] Closed before init after $waited") }
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
