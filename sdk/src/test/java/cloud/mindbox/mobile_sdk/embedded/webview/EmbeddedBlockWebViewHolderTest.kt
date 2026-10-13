@@ -135,6 +135,7 @@ class EmbeddedBlockWebViewHolderTest {
     private fun blockOn(
         context: Context,
         ackBudget: Milliseconds = Constants.WebView.readyTimeout,
+        selectionTime: Milliseconds = Milliseconds(0L),
     ): EmbeddedBlockWebViewHolder =
         EmbeddedBlockWebViewHolder(
             inAppId = "embedded-id",
@@ -143,7 +144,7 @@ class EmbeddedBlockWebViewHolderTest {
             context = context,
             frequency = Frequency(Frequency.Delay.Unlimited),
             tags = null,
-            startTick = Milliseconds(0L),
+            selectionTime = selectionTime,
             ackBudget = ackBudget,
         ).apply { onStateChange = { state -> states.add(state) } }
 
@@ -323,15 +324,43 @@ class EmbeddedBlockWebViewHolderTest {
             startAndAwaitPageLoad()
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined).also { it.cancel() })
 
+            elapsed = 1_000L
             postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
             await { lastOutgoingMessage()?.get("action")?.asString == "contentRendered" }
             verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
 
             setMindboxScope(originalScope)
+            elapsed = 61_000L
             holder.pause()
             holder.start()
 
-            verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any()) }
+            verify(exactly = 1, timeout = 5_000L) {
+                inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(1_000L), any())
+            }
+        } finally {
+            setMindboxScope(originalScope)
+        }
+    }
+
+    @Test
+    fun `a page that reports itself again after a data push keeps the time of its first render`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        val originalScope = Mindbox.mindboxScope
+        try {
+            startAndAwaitPageLoad()
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined).also { it.cancel() })
+            elapsed = 1_000L
+            postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+            await { lastOutgoingMessage()?.get("action")?.asString == "contentRendered" }
+            setMindboxScope(originalScope)
+
+            holder.updateParams(mapOf("items" to "[]")) {}
+            elapsed = 5_000L
+            postFromPage(request(action = "contentRendered", payload = """{"count":3}""", id = "req-2"))
+
+            verify(exactly = 1, timeout = 5_000L) {
+                inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(1_000L), any())
+            }
         } finally {
             setMindboxScope(originalScope)
         }
@@ -993,10 +1022,11 @@ class EmbeddedBlockWebViewHolderTest {
     private fun rebuildHolder(
         context: Context = application,
         ackBudget: Milliseconds = Constants.WebView.readyTimeout,
+        selectionTime: Milliseconds = Milliseconds(0L),
     ) {
         holder.release()
         states.clear()
-        holder = blockOn(context, ackBudget)
+        holder = blockOn(context, ackBudget, selectionTime)
     }
 
     private fun answerDataPush(id: com.google.gson.JsonElement) {
@@ -1243,19 +1273,57 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `the counted show carries the time the render took, not the time off screen`() {
+    fun `the counted show is the selection time plus the time on screen, not the time off screen`() {
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        rebuildHolder(selectionTime = Milliseconds(2_000L))
         startAndAwaitPageLoad()
 
+        elapsed = 750L
         holder.pause()
-        elapsed = 1_000L
+        elapsed = 45_750L
+        holder.start()
+        elapsed = 46_000L
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        coVerify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(3_000L), any())
+        }
+    }
+
+    @Test
+    fun `a page that rendered off screen reports every stretch on screen before the render`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        rebuildHolder(selectionTime = Milliseconds(2_000L))
+        startAndAwaitPageLoad()
+
+        elapsed = 500L
+        holder.pause()
+        elapsed = 10_500L
+        holder.start()
+        elapsed = 11_000L
+        holder.pause()
+        elapsed = 41_000L
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
         elapsed = 121_000L
-
         holder.start()
 
         coVerify(exactly = 1, timeout = 5_000L) {
-            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(1_000L), any())
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(3_000L), any())
+        }
+    }
+
+    @Test
+    fun `a page counts nothing before the block first starts it`() {
+        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        rebuildHolder(selectionTime = Milliseconds(300L))
+
+        elapsed = 20_000L
+        startAndAwaitPageLoad()
+        elapsed = 20_500L
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        coVerify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(800L), any())
         }
     }
 

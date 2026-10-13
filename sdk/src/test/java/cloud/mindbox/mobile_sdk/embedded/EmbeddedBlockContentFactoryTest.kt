@@ -18,7 +18,7 @@ class EmbeddedBlockContentFactoryTest {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded(),
-            startTick = Milliseconds(0L),
+            selectionTime = Milliseconds(0L),
         )
 
         assertTrue(provider is EmbeddedBlockWebViewHolder)
@@ -29,7 +29,7 @@ class EmbeddedBlockContentFactoryTest {
         val provider = EmbeddedBlockContentFactory.createProvider(
             ApplicationProvider.getApplicationContext(),
             InAppStub.getEmbedded().copy(layers = emptyList()),
-            startTick = Milliseconds(0L),
+            selectionTime = Milliseconds(0L),
         )
 
         assertNull(provider)

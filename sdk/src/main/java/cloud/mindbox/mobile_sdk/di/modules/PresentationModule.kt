@@ -46,7 +46,7 @@ internal fun PresentationModule(
     }
 
     private val embeddedBlocksRegistryLazy: Lazy<EmbeddedBlocksRegistry> = lazy {
-        EmbeddedBlocksRegistryImpl(inAppInteractor = inAppInteractor)
+        EmbeddedBlocksRegistryImpl(inAppInteractor = inAppInteractor, monotonicNow = timeProvider::monotonicMillis)
     }
 
     override val embeddedBlocksRegistry: EmbeddedBlocksRegistry
