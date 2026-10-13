@@ -10,17 +10,18 @@ internal class MaxInappsPerSessionLimitChecker(
 ) : Checker {
 
     override fun check(reservations: Collection<ShowReservation>): Boolean {
-        mindboxLogI("Checking max inapps show per session limit")
         return when (val maxInappsPerSessionCount = sessionStorageManager.state.inAppShowLimitsSettings.maxInappsPerSession) {
             null -> {
-                mindboxLogI("Parameter limit inapp for show per session not specify. Work without limits for show per session")
+                mindboxLogI("[ShowBudget] [Session] No limit specified")
                 true
             }
 
             else -> {
                 val shownInSession = sessionStorageManager.state.inAppMessageShownInSession.size
                 val isAllowed = maxInappsPerSessionCount > shownInSession + reservations.size
-                mindboxLogI("Inapp shown in session count: $shownInSession, reserved: ${reservations.size}, limit: $maxInappsPerSessionCount, Show allowed: $isAllowed")
+                mindboxLogI(
+                    "[ShowBudget] [Session] counted: $shownInSession, reserved: ${reservations.size}, limit: $maxInappsPerSessionCount, allowed: $isAllowed"
+                )
                 isAllowed
             }
         }

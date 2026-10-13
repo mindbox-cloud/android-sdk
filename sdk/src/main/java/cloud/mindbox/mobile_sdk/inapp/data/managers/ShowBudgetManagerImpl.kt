@@ -42,11 +42,11 @@ internal class ShowBudgetManagerImpl(
                 reservations.remove(owner)
             }
             if (bypassesBudgets(frequency, isPriority)) {
-                mindboxLogI("Show budgets do not apply to in-app $inAppId, no reservation needed")
+                mindboxLogI("[ShowBudget] In-app $inAppId ${if (isPriority) "is priority" else "has unlimited frequency"}, limits not checked")
                 return ShowReservationOutcome.NOT_NEEDED
             }
             if (!budgetsAllow(reservations.values)) {
-                mindboxLogI("Show budgets are spent, in-app $inAppId gets no reservation for $owner")
+                mindboxLogI("[ShowBudget] In-app $inAppId refused by show limits")
                 return ShowReservationOutcome.REFUSED
             }
             reservations[owner] = ShowReservation(inAppId, timeProvider.currentTimestamp())
@@ -69,7 +69,7 @@ internal class ShowBudgetManagerImpl(
                 sessionStorageManager.state.showReservations.remove(owner)
             }
             if (!frequency.countsShows()) {
-                mindboxLogI("In-app $inAppId has unlimited frequency, nothing to count")
+                mindboxLogI("[ShowBudget] In-app $inAppId has unlimited frequency, show not counted")
                 return
             }
             mindboxLogI("Counting a show of in-app $inAppId (frequency ${frequency.delay})")
