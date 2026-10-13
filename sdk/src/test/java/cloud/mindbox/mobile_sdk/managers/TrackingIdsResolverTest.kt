@@ -49,15 +49,23 @@ class TrackingIdsResolverImplTest {
         unmockkObject(MindboxPreferences)
     }
 
-    private fun resolver(vararg results: TrackingIdResult) = TrackingIdsResolverImpl(
+    private fun resolver(
+        vararg results: TrackingIdResult,
+        configured: Set<String>? = null,
+    ) = TrackingIdsResolverImpl(
         pushServiceHandlers = { results.map(::handlerReturning) },
+        configuredTrackingIdTypes = { configured },
         scope = { CoroutineScope(UnconfinedTestDispatcher()) },
         ioDispatcher = UnconfinedTestDispatcher(),
     )
 
     /** Reads on a real dispatcher so a blocking provider actually blocks. */
-    private fun resolverWithHangingProvider(vararg fast: TrackingIdResult) = TrackingIdsResolverImpl(
+    private fun resolverWithHangingProvider(
+        vararg fast: TrackingIdResult,
+        configured: Set<String>? = null,
+    ) = TrackingIdsResolverImpl(
         pushServiceHandlers = { fast.map(::handlerReturning) + handlerThatHangs() },
+        configuredTrackingIdTypes = { configured },
         scope = { CoroutineScope(Dispatchers.IO) },
         ioDispatcher = Dispatchers.IO,
         timeoutMillis = 100L,
@@ -249,6 +257,61 @@ class TrackingIdsResolverImplTest {
         val payload = resolver().resolve(context)
 
         assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `a provider removed from the integration is erased`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        // Firebase was dropped, the new build passes RuStore only.
+        val payload = resolver(TrackingIdResult.NotSupported, configured = emptySet()).resolve(context)
+
+        assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `a removed provider is erased next to a fresh one`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        val payload = resolver(success(HUAWEI, HUAWEI_VALUE), configured = setOf(HUAWEI)).resolve(context)
+
+        assertEquals(listOf(huaweiId), payload)
+    }
+
+    @Test
+    fun `a removed provider is erased while the remaining one is unreadable`() = runTest {
+        lastSent = STORED_BOTH
+
+        val payload = resolver(TrackingIdResult.Unavailable, configured = setOf(HUAWEI)).resolve(context)
+
+        assertEquals(listOf(huaweiId), payload)
+    }
+
+    @Test
+    fun `a configured provider without a handler keeps its value`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        // Handlers of services unavailable at startup are filtered out, or not set up yet.
+        val payload = resolver(configured = setOf(GOOGLE)).resolve(context)
+
+        assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `a hanging provider does not keep a removed one`() = runTest {
+        lastSent = STORED_BOTH
+
+        val payload = resolverWithHangingProvider(configured = setOf(HUAWEI)).resolve(context)
+
+        assertEquals(listOf(huaweiId), payload)
+    }
+
+    @Test
+    fun `erasing a removed provider is a change`() = runTest {
+        lastSent = STORED_GOOGLE
+        val resolver = resolver(TrackingIdResult.NotSupported, configured = emptySet())
+
+        assertTrue(resolver.hasChanged(resolver.resolve(context)))
     }
 
     @Test
