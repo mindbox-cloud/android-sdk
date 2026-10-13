@@ -452,8 +452,7 @@ internal class EmbeddedBlockContentController(
         sendFailure(
             content = appliedContent,
             code = FailureReason.PRESENTATION_FAILED,
-            description = "The embedded block page stayed silent for " +
-                "${readyTimeout.interval}ms after the content was handed to it",
+            description = "Page did not send contentRendered within ${readyTimeout.interval / 1_000}s",
         )
         hasGivenUp = true
         loggingRunCatching { provider?.pause() }
