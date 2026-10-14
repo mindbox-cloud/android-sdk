@@ -1210,6 +1210,95 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
     }
 
+    private val queuedOperation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("queued-operation"))
+
+    private fun queueOperationBehindAResolveInFlight(
+        handle: RecordingHandle,
+        alsoQueue: EmbeddedBlocksRegistryImpl.() -> Unit = {},
+    ): CompletableDeferred<EmbeddedResolveOutcome> {
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() } andThen winner()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        controller.alsoQueue()
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, queuedOperation)) }
+        idleMain()
+        return firstResolveGate
+    }
+
+    @Test
+    fun `an operation queued behind a resolve in flight is dropped when no block of its place is on screen or away in background by the time it would be asked`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueOperationBehindAResolveInFlight(handle)
+
+        handle.isActive = false
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+    }
+
+    @Test
+    fun `an operation queued behind a resolve in flight is asked for a block of its place away in background`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueOperationBehindAResolveInFlight(handle)
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a queued pass that took in a config update is asked without the operation queued with it when no block of its place is on screen or away in background`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueOperationBehindAResolveInFlight(handle) {
+            scope.launch { configUpdates.emit(Unit) }
+            idleMain()
+        }
+
+        handle.isActive = false
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
+    }
+
+    @Test
+    fun `a new session's ask queued behind a resolve in flight keeps the operation it carries for a block it left behind holding content`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstResolveGate.await() } andThen winner()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        isSessionEnding = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, queuedOperation)) }
+        idleMain()
+
+        handle.isActive = false
+        handle.leavesOnSessionRenewed = true
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
     @Test
     fun `a new session asks again every place with a block on screen, away in background or left behind by it, stamped with the new session`() {
         coEvery { interactor.selectInAppForPlace(any(), any()) } returns winner()
