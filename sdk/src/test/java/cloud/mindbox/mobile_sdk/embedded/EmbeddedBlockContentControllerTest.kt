@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.models.PlaceKey
@@ -53,6 +54,8 @@ class EmbeddedBlockContentControllerTest {
 
         override fun startListening() = Unit
 
+        override fun onAppResumedOn(activity: Activity) = Unit
+
         fun pushContent(
             placeSystemName: String,
             content: InAppType.Embedded,
@@ -80,6 +83,29 @@ class EmbeddedBlockContentControllerTest {
         override fun release() {
             releaseCount++
         }
+    }
+
+    private open class ReadyUpdatableProvider : EmbeddedUpdatableContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View? = View(RuntimeEnvironment.getApplication())
+
+        override fun start() {
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
+        }
+
+        override fun pause() = Unit
+
+        override fun release() = Unit
+
+        override fun withholdShow(isWithheld: Boolean) = Unit
+
+        override val rendersNothing: Boolean = false
+
+        override var onRendersNothing: (() -> Unit)? = null
+
+        override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
+
+        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
     }
 
     private val blocksRegistry = FakeBlocksRegistry()
@@ -670,20 +696,7 @@ class EmbeddedBlockContentControllerTest {
             configTimeout = Milliseconds(30_000L),
             providerFactory = { _, selectionTime ->
                 selectionTimes.add(selectionTime)
-                object : EmbeddedUpdatableContentProvider {
-                    override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-                    override val contentView: View? = View(RuntimeEnvironment.getApplication())
-
-                    override fun start() {
-                        onStateChange?.invoke(EmbeddedBlockState.Ready)
-                    }
-
-                    override fun pause() = Unit
-
-                    override fun release() = Unit
-
-                    override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
-
+                object : ReadyUpdatableProvider() {
                     override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                         onResult(false)
                     }
@@ -721,24 +734,11 @@ class EmbeddedBlockContentControllerTest {
         var snapshotFrequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency? = null
         var snapshotTags: Map<String, String>? = null
         var builtPages = 0
-        val updatableProvider = object : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
+        val updatableProvider = object : ReadyUpdatableProvider() {
             override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) {
                 snapshotFrequency = frequency
                 snapshotTags = tags
             }
-
-            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
         }
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
@@ -766,20 +766,7 @@ class EmbeddedBlockContentControllerTest {
     @Test
     fun `same winner with new params updates the content in place`() {
         var updatedParams: Map<String, String>? = null
-        val updatableProvider = object : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
-            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
-
+        val updatableProvider = object : ReadyUpdatableProvider() {
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
                 onResult(true)
@@ -821,20 +808,8 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `new params with a new page address rebuild instead of updating in place`() {
-        class RecordingUpdatableProvider : EmbeddedUpdatableContentProvider {
-            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
-            override val contentView: View? = View(RuntimeEnvironment.getApplication())
+        class RecordingUpdatableProvider : ReadyUpdatableProvider() {
             var updatedParams: Map<String, String>? = null
-
-            override fun start() {
-                onStateChange?.invoke(EmbeddedBlockState.Ready)
-            }
-
-            override fun pause() = Unit
-
-            override fun release() = Unit
-
-            override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
             override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
                 updatedParams = params
@@ -1046,13 +1021,20 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `an answer the SDK could not give drops the content a block was showing`() {
-        val controller = controller()
+    fun `an answer the SDK could not give keeps the content a block is showing until the block leaves the screen`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(tracker = tracker)
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         assertEquals(EmbeddedBlockState.Ready, states.last())
 
         blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), WaitBudgetPhase.CONFIG_MISSING) }
+
+        controller.pause()
 
         assertEquals(networkError, states.last())
         assertEquals(1, createdProviders.single().releaseCount)
@@ -1187,17 +1169,21 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `an answer the SDK could not give reaches a paused block at once and the return asks afresh`() {
+    fun `an answer the SDK could not give to a paused block waits for its return, then fails it and asks afresh`() {
         val controller = controller()
         controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
         controller.pause()
 
         blocksRegistry.lastHandle?.onConfigUnavailable()
-        assertEquals(networkError, states.last())
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, createdProviders.single().releaseCount)
+        val reportedBeforeReturn = states.size
 
         controller.start()
 
-        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 }

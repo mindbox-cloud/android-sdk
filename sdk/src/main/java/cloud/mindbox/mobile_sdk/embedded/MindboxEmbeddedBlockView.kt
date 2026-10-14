@@ -94,6 +94,7 @@ public class MindboxEmbeddedBlockView internal constructor(
                 MindboxDI.appModule.inAppFailureTracker
             }
         },
+        hostActivity = { loggingRunCatching(defaultValue = null) { context.findActivity() } },
     ),
     private val contentStore: () -> EmbeddedBlockContentStore? = {
         loggingRunCatching(defaultValue = null) {
@@ -178,6 +179,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var hasSettled = false
     private var shownAppearance = MindboxEmbeddedBlockAppearance.PLACEHOLDER
     private var isWindowVisible = false
+    private var isInWindow = false
+    private var isScreenHidden = false
     private var isHostVisible = true
     private var isReleased = false
     private var shownContent: View? = null
@@ -203,7 +206,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
             mindboxLogI("[EmbeddedBlock] Host screen destroyed, freeing content ($retainRefusal)")
             detachFromHost()
-            loggingRunCatching { contentController.release() }
+            releaseContent()
         }
     }
 
@@ -378,16 +381,19 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        isInWindow = true
         screenOwnerAtAttach = loggingRunCatching(defaultValue = null) { findScreenOwner(explicitOwner = screenOwner) }
         reclaimRetainedContent()
         shownContent?.let(::placeContentInFrame)
         observeHostDestruction()
         isWindowVisible = windowVisibility == VISIBLE
+        isScreenHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
         updateContentActivity()
     }
 
     override fun onDetachedFromWindow() {
         isWindowVisible = false
+        isInWindow = false
         updateContentActivity()
         cancelRevealAnimation()
         super.onDetachedFromWindow()
@@ -399,11 +405,22 @@ public class MindboxEmbeddedBlockView internal constructor(
         updateContentActivity()
     }
 
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView === this) return
+        isScreenHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
+        updateContentActivity()
+    }
+
+    private val isPlacedOnScreen: Boolean
+        get() = isInWindow && isHostVisible && !isScreenHidden
+
     private val isEffectivelyVisible: Boolean
-        get() = isWindowVisible && isHostVisible && !isReleased
+        get() = isWindowVisible && isPlacedOnScreen && !isReleased
 
     private fun updateContentActivity() {
         if (isEffectivelyVisible) startContent() else pauseContent()
+        if (!isPlacedOnScreen) loggingRunCatching { contentController.onLeftScreen() }
     }
 
     private fun startContent() {
@@ -445,7 +462,12 @@ public class MindboxEmbeddedBlockView internal constructor(
         appearanceObserver = null
         updateContentActivity()
         detachFromHost()
-        loggingRunCatching { contentController.release() }
+        releaseContent()
+    }
+
+    private fun releaseContent(): Unit = loggingRunCatching {
+        contentController.heldOutcome?.let(::updatePlaceMemory)
+        contentController.release()
     }
 
     @InternalMindboxApi
@@ -474,6 +496,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     private fun detachFromHost(): Unit = loggingRunCatching {
+        if (isDeliveryScheduled) deliverPendingEvent()
         cancelRevealAnimation()
         observedLifecycle?.removeObserver(hostDestroyObserver)
         observedLifecycle = null

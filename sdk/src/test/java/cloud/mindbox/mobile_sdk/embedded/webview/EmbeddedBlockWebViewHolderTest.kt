@@ -507,7 +507,7 @@ class EmbeddedBlockWebViewHolderTest {
         )
         postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-push"))
 
-        await { states.lastOrNull() == EmbeddedBlockState.Empty }
+        await { holder.rendersNothing }
     }
 
     private val outcomes = slot<OnShowInAppOutcome>()

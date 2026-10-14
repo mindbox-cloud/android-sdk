@@ -25,6 +25,9 @@ internal fun LifecycleOwner.isScreenOwnerFor(destroyedOwner: LifecycleOwner?): B
     destroyedOwner !is Activity && this !is Activity && this !== destroyedOwner &&
         lifecycle.currentState != Lifecycle.State.DESTROYED
 
+internal fun View.isInHiddenFragment(): Boolean =
+    generateSequence(findHostFragment()) { fragment -> fragment.parentFragment }.any { fragment -> fragment.isHidden }
+
 private fun View.findHostFragment(): Fragment? =
     runCatching { FragmentManager.findFragment<Fragment>(this) }.getOrNull()
 

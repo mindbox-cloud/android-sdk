@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import android.os.Looper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
@@ -45,24 +46,36 @@ import java.util.concurrent.TimeUnit
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlocksRegistryTest {
 
-    private class RecordingHandle(override var isActive: Boolean = true) : EmbeddedBlockHandle {
+    private class RecordingHandle(
+        override var isActive: Boolean = true,
+        override var isPausedForBackground: Boolean = false,
+    ) : EmbeddedBlockHandle {
         override val isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
         val selectionTimes = mutableListOf<Milliseconds>()
+        val answers = mutableListOf<EmbeddedPlaceAnswer>()
         var pendingCount = 0
         var unavailableCount = 0
 
-        override fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {
+        override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
             received.add(content)
-            selectionTimes.add(selectionTime)
+            selectionTimes.add(answer.selectionTime)
+            answers.add(answer)
         }
 
         override fun onContentPending() {
             pendingCount++
         }
 
-        override fun onConfigUnavailable() {
+        override fun onConfigUnavailable(answer: EmbeddedPlaceAnswer) {
             unavailableCount++
+            answers.add(answer)
+        }
+
+        val resumedOn = mutableListOf<Activity>()
+
+        override fun onAppResumedOn(activity: Activity) {
+            resumedOn.add(activity)
         }
     }
 
@@ -669,11 +682,14 @@ class EmbeddedBlocksRegistryTest {
 
     private class HoldingHandle : EmbeddedBlockHandle {
         override val isActive: Boolean = true
+        override val isPausedForBackground: Boolean = false
         override val isHoldingContent: Boolean = true
 
-        override fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) {}
+        override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {}
 
-        override fun onConfigUnavailable() {}
+        override fun onConfigUnavailable(answer: EmbeddedPlaceAnswer) {}
+
+        override fun onAppResumedOn(activity: Activity) = Unit
     }
 
     @Test

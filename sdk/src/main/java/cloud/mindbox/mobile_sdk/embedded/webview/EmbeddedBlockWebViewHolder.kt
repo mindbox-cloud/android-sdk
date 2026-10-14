@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -158,6 +159,13 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var didAccountForShow = false
 
+    private var isShowWithheld = false
+
+    override var rendersNothing = false
+        private set
+
+    override var onRendersNothing: (() -> Unit)? = null
+
     @Volatile private var didReportShownContent = false
 
     private val isUserPresent: Boolean get() = isActive && !isReleased
@@ -220,6 +228,13 @@ internal class EmbeddedBlockWebViewHolder(
     override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) {
         this.frequency = frequency
         this.tags = tags
+    }
+
+    @MainThread
+    override fun withholdShow(isWithheld: Boolean) {
+        if (isShowWithheld == isWithheld) return
+        isShowWithheld = isWithheld
+        if (!isWithheld && lastState == EmbeddedBlockState.Ready && isActive) accountForShow()
     }
 
     override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
@@ -399,6 +414,7 @@ internal class EmbeddedBlockWebViewHolder(
         operation = null,
     ).get()
 
+    @MainThread
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
         if (didReportShownContent) {
@@ -415,9 +431,16 @@ internal class EmbeddedBlockWebViewHolder(
         if (count < 0) throw refusedContentReport("'count' must not be negative, got $count")
         mindboxLogI("[EmbeddedBlock] Page rendered $count content element(s)")
         if (count == 0) {
-            report(EmbeddedBlockState.Empty)
+            if (lastState == EmbeddedBlockState.Ready) {
+                mindboxLogI("[EmbeddedBlock] The shown page has nothing to show any more, its block decides when to collapse")
+                rendersNothing = true
+                onRendersNothing?.invoke()
+            } else {
+                report(EmbeddedBlockState.Empty)
+            }
             return BridgeMessage.SUCCESS_PAYLOAD
         }
+        rendersNothing = false
         didReportShownContent = true
         renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         report(EmbeddedBlockState.Ready)
@@ -447,8 +470,17 @@ internal class EmbeddedBlockWebViewHolder(
      * content instance; the content-change rule lives in the interactor's place slot, where
      * the session state is. Off screen the show waits — [start] re-asks when the block returns.
      */
+    @MainThread
     private fun accountForShow() {
         if (didAccountForShow) return
+        if (isShowWithheld) {
+            mindboxLogI("[EmbeddedBlock] Its block withholds the show of this content until the place's next content applies")
+            return
+        }
+        if (rendersNothing) {
+            mindboxLogI("[EmbeddedBlock] The page has nothing to show any more, its show waits until it renders content")
+            return
+        }
         if (!isUserPresent) {
             mindboxLogI("[EmbeddedBlock] Content rendered off screen, the show waits for the block to return")
             return

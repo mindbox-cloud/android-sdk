@@ -10,13 +10,24 @@ import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 
-internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) =
-    onContentResolved(content, Milliseconds(0L))
+internal fun placeAnswer(
+    isByOperation: Boolean = false,
+    selectionTime: Milliseconds = Milliseconds(0L),
+): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(isByOperation, selectionTime)
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) = onContentResolved(content, placeAnswer())
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) =
+    onContentResolved(content, placeAnswer(selectionTime = selectionTime))
+
+internal fun EmbeddedBlockHandle.onConfigUnavailable() = onConfigUnavailable(placeAnswer())
 
 internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
     var lastHandle: EmbeddedBlockHandle? = null
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
+
+    override fun onAppResumedOn(activity: Activity) = Unit
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         lastHandle = handle

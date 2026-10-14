@@ -1,11 +1,14 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -20,6 +23,14 @@ import kotlinx.coroutines.launch
 import java.io.Closeable
 import java.lang.ref.WeakReference
 
+internal data class EmbeddedPlaceAnswer(
+    val isByOperation: Boolean,
+    val selectionTime: Milliseconds,
+)
+
+internal val InAppType.Embedded.pageLayer: Layer.WebViewLayer?
+    get() = layers.filterIsInstance<Layer.WebViewLayer>().firstOrNull()
+
 /**
  * One registered block: how the registry talks back to a view.
  **/
@@ -27,13 +38,20 @@ internal interface EmbeddedBlockHandle {
 
     val isActive: Boolean
 
+    val isPausedForBackground: Boolean
+
     val isHoldingContent: Boolean
 
-    fun onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds)
+    @MainThread
+    fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer)
 
     fun onContentPending() {}
 
-    fun onConfigUnavailable()
+    @MainThread
+    fun onConfigUnavailable(answer: EmbeddedPlaceAnswer)
+
+    @MainThread
+    fun onAppResumedOn(activity: Activity)
 }
 
 internal interface EmbeddedBlocksRegistry {
@@ -43,6 +61,8 @@ internal interface EmbeddedBlocksRegistry {
     fun onBlockAppeared(placeSystemName: PlaceKey)
 
     fun onBlockContentDropped(placeSystemName: PlaceKey)
+
+    fun onAppResumedOn(activity: Activity)
 
     fun startListening()
 }
@@ -60,12 +80,26 @@ internal class EmbeddedBlocksRegistryImpl(
     private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
     private val resolvingPlaces = mutableSetOf<PlaceKey>()
 
-    private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, InAppEventType?>()
+    private class ResolvePass(
+        val trigger: InAppEventType?,
+        val includesNonOperation: Boolean = trigger == null,
+        val includesAppearance: Boolean = false,
+    ) {
+        fun mergedWith(newer: ResolvePass): ResolvePass = ResolvePass(
+            trigger = newer.trigger ?: trigger,
+            includesNonOperation = includesNonOperation || newer.includesNonOperation,
+            includesAppearance = includesAppearance || newer.includesAppearance,
+        )
+    }
+
+    private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, ResolvePass>()
+
+    private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
 
     private class PendingDelay(
         val job: Job,
         var winner: InAppType.Embedded,
-        val selectionTime: Milliseconds,
+        val answer: EmbeddedPlaceAnswer,
     ) {
         val isPending: Boolean get() = !job.isCancelled
     }
@@ -128,7 +162,7 @@ internal class EmbeddedBlocksRegistryImpl(
     override fun onBlockAppeared(placeSystemName: PlaceKey) {
         runOnMain {
             restartChannelsIfDead()
-            resolvePlace(placeSystemName)
+            resolvePlace(placeSystemName, ResolvePass(trigger = null, includesAppearance = true))
         }
     }
 
@@ -150,6 +184,18 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
+    override fun onAppResumedOn(activity: Activity) {
+        runOnMain {
+            forEachLiveHandle { handle -> handle.onAppResumedOn(activity) }
+        }
+    }
+
+    private fun forEachLiveHandle(action: (EmbeddedBlockHandle) -> Unit) {
+        handlesByPlace.keys.toList().forEach { place ->
+            liveHandles(place).forEach { handle -> loggingRunCatching { action(handle) } }
+        }
+    }
+
     private fun forgetPlaceIfEmpty(place: PlaceKey) {
         if (handlesByPlace[place]?.isEmpty() != true) return
         handlesByPlace.remove(place)
@@ -167,17 +213,20 @@ internal class EmbeddedBlocksRegistryImpl(
             mindboxLogI("[EmbeddedBlock] Operation matched paused place '$place', nowhere to display — skipping")
             return
         }
-        resolvePlace(place, triggerEvent)
+        resolvePlace(place, ResolvePass(trigger = triggerEvent))
     }
 
-    private fun resolvePlace(place: PlaceKey, triggerEvent: InAppEventType? = null) {
+    private fun resolvePlace(place: PlaceKey, pass: ResolvePass = ResolvePass(trigger = null)) {
         if (!resolvingPlaces.add(place)) {
             mindboxLogI(
                 "[EmbeddedBlock] Place '$place' is already resolving, queueing one more pass"
             )
-            reResolveQueuedPlaces[place] = triggerEvent ?: reResolveQueuedPlaces[place]
+            if (pass.includesAppearance) placesAppearedMidResolve.add(place)
+            reResolveQueuedPlaces.merge(place, pass)
             return
         }
+        val triggerEvent = pass.trigger
+        val isByOperation = triggerEvent != null && !pass.includesNonOperation
         val requestedAt = monotonicNow()
         val job = scopeProvider().launch {
             val resolved = try {
@@ -195,22 +244,31 @@ internal class EmbeddedBlocksRegistryImpl(
             }
             val selectionTime = Milliseconds(monotonicNow().interval - requestedAt.interval)
             runOnMain {
+                val hasAppearedMidResolve = placesAppearedMidResolve.remove(place)
+                val delivered = EmbeddedPlaceAnswer(
+                    isByOperation = isByOperation && !hasAppearedMidResolve,
+                    selectionTime = selectionTime,
+                )
                 resolved.fold(
-                    onSuccess = { result -> handleResolved(place, result, selectionTime) },
-                    onFailure = { handleResolveFailure(place, selectionTime) },
+                    onSuccess = { result -> handleResolved(place, result, delivered) },
+                    onFailure = { handleResolveFailure(place, delivered) },
                 )
             }
         }
         job.invokeOnCompletion {
             runOnMain {
                 resolvingPlaces.remove(place)
-                if (reResolveQueuedPlaces.containsKey(place)) {
-                    val queuedTrigger = reResolveQueuedPlaces.remove(place)
+                placesAppearedMidResolve.remove(place)
+                reResolveQueuedPlaces.remove(place)?.let { queued ->
                     mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
-                    resolvePlace(place, queuedTrigger)
+                    resolvePlace(place, queued)
                 }
             }
         }
+    }
+
+    private fun MutableMap<PlaceKey, ResolvePass>.merge(place: PlaceKey, pass: ResolvePass) {
+        this[place] = this[place]?.mergedWith(pass) ?: pass
     }
 
     private fun invalidateAll(reason: String) {
@@ -228,19 +286,19 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome, selectionTime: Milliseconds) {
+    private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome, answer: EmbeddedPlaceAnswer) {
         when (outcome) {
-            is EmbeddedResolveOutcome.Content -> handleContent(place, outcome, selectionTime)
-            EmbeddedResolveOutcome.Empty -> deliverNow(place, null, selectionTime)
-            EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place)
+            is EmbeddedResolveOutcome.Content -> handleContent(place, outcome, answer)
+            EmbeddedResolveOutcome.Empty -> deliverNow(place, null, answer)
+            EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place, answer)
         }
     }
 
-    private fun handleContent(place: PlaceKey, outcome: EmbeddedResolveOutcome.Content, selectionTime: Milliseconds) {
+    private fun handleContent(place: PlaceKey, outcome: EmbeddedResolveOutcome.Content, answer: EmbeddedPlaceAnswer) {
         val winner = outcome.variant
         val delayTime = outcome.delayTime?.takeIf { delay -> delay.interval > 0 }
         if (delayTime == null) {
-            deliverNow(place, winner, selectionTime)
+            deliverNow(place, winner, answer)
             return
         }
         val running = delayJobsByPlace[place]
@@ -266,20 +324,20 @@ internal class EmbeddedBlocksRegistryImpl(
                 val due = delayJobsByPlace[place]?.takeIf { pending -> pending.job === self } ?: return@runOnMain
                 delayJobsByPlace.remove(place)
                 inAppInteractor.markEmbeddedDelayWaitedOut(place, due.winner.inAppId)
-                deliver(place, due.winner, due.selectionTime)
+                deliver(place, due.winner, due.answer)
             }
         }
-        delayJobsByPlace[place] = PendingDelay(job, winner, selectionTime)
+        delayJobsByPlace[place] = PendingDelay(job, winner, answer)
     }
 
-    private fun handleResolveFailure(place: PlaceKey, selectionTime: Milliseconds) {
+    private fun handleResolveFailure(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
         if (keepsRunningDelay(place, "Resolving place '$place' failed")) return
-        deliver(place, null, selectionTime)
+        deliver(place, null, answer)
     }
 
-    private fun handleConfigUnavailable(place: PlaceKey) {
+    private fun handleConfigUnavailable(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
         if (keepsRunningDelay(place, "The SDK has no config to answer for place '$place'")) return
-        deliverConfigUnavailable(place)
+        deliverConfigUnavailable(place, answer)
     }
 
     private fun keepsRunningDelay(place: PlaceKey, what: String): Boolean {
@@ -289,21 +347,21 @@ internal class EmbeddedBlocksRegistryImpl(
         return true
     }
 
-    private fun deliverNow(place: PlaceKey, content: InAppType.Embedded?, selectionTime: Milliseconds) {
+    private fun deliverNow(place: PlaceKey, content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
         delayJobsByPlace.remove(place)?.job?.cancel()
-        deliver(place, content, selectionTime)
+        deliver(place, content, answer)
     }
 
-    private fun deliverConfigUnavailable(place: PlaceKey) {
+    private fun deliverConfigUnavailable(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
         inAppInteractor.releasePlaceShow(place)
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the answer")
             return
         }
-        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for place '$place', the blocks report a failure")
+        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for place '$place', telling its blocks")
         handles.forEach { handle ->
-            loggingRunCatching { handle.onConfigUnavailable() }
+            loggingRunCatching { handle.onConfigUnavailable(answer) }
         }
     }
 
@@ -313,7 +371,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun deliver(place: PlaceKey, content: InAppType.Embedded?, selectionTime: Milliseconds) {
+    private fun deliver(place: PlaceKey, content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")
@@ -327,14 +385,14 @@ internal class EmbeddedBlocksRegistryImpl(
                 if (!reserved) {
                     mindboxLogI(
                         "[EmbeddedBlock] In-app ${winner.inAppId} won place '$place' but the show " +
-                            "budgets are spent, the place stays empty"
+                            "budgets are spent, the place has nothing to show"
                     )
                 }
             }
         }
-        if (delivered == null) inAppInteractor.releasePlaceShow(place)
+        if (delivered?.pageLayer == null) inAppInteractor.releasePlaceShow(place)
         handles.forEach { handle ->
-            loggingRunCatching { handle.onContentResolved(delivered, selectionTime) }
+            loggingRunCatching { handle.onContentResolved(delivered, answer) }
         }
     }
 

@@ -121,7 +121,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
     }
 
     @Test
-    fun `a collapse after shown content still collapses and revives the same way`() {
+    fun `shown content the place no longer has stays on screen until the block leaves, then the block returns collapsed and revives the same way`() {
         val view = buildView()
         attach(view)
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
@@ -130,9 +130,14 @@ class MindboxEmbeddedBlockViewCollapseTest {
 
         blocksRegistry.lastHandle?.onContentResolved(null)
         idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
         assertEquals(View.GONE, view.visibility)
 
-        leaveAndReturn(view)
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
         assertEquals(View.GONE, view.visibility)
 
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
