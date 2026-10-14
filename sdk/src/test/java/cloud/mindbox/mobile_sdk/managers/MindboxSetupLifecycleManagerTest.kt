@@ -25,6 +25,9 @@ import io.mockk.spyk
 import io.mockk.unmockkAll
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -235,12 +238,32 @@ internal class MindboxSetupLifecycleManagerTest {
         withAppModule(sessionStorageManager = sessionStorageManager) {
             callAttachLifecycleCallbacks()
 
-            manager.callbacks?.onTrackVisitReady("link", "https://example.com/promo")
+            withIsolatedEventScope {
+                manager.callbacks?.onTrackVisitReady("link", "https://example.com/promo")
+            }
 
             val page = newSessionPages.single()
             assertEquals("link", page.get("trackVisitSource")?.asString)
             assertEquals("https://example.com/promo", page.get("trackVisitRequestUrl")?.asString)
         }
+    }
+
+    private fun withIsolatedEventScope(block: () -> Unit) {
+        val original = Mindbox.eventScope
+        val isolated = CoroutineScope(Job())
+        setEventScope(isolated)
+        try {
+            block()
+        } finally {
+            isolated.cancel()
+            setEventScope(original)
+        }
+    }
+
+    private fun setEventScope(scope: CoroutineScope) {
+        Mindbox::class.java.getDeclaredField("eventScope")
+            .apply { isAccessible = true }
+            .set(Mindbox, scope)
     }
 
     private fun pagePayload(sessionStorageManager: SessionStorageManager): JsonObject {
