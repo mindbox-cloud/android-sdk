@@ -19,7 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import java.io.Closeable
 
 /**
  * The store of contents kept for screens that left the window but not the back stack: who gets
@@ -27,21 +26,6 @@ import java.io.Closeable
  */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockContentStoreTest {
-
-    private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
-        var lastHandle: EmbeddedBlockHandle? = null
-
-        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
-            lastHandle = handle
-            return Closeable { lastHandle = null }
-        }
-
-        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
-
-        override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
-
-        override fun startListening() = Unit
-    }
 
     private class FakeProvider : EmbeddedContentProvider {
         override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
@@ -73,7 +57,7 @@ class EmbeddedBlockContentStoreTest {
     private class Kept(val controller: EmbeddedBlockContentController, val provider: FakeProvider)
 
     private fun readyContent(place: PlaceKey = PLACE): Kept {
-        val registry = FakeBlocksRegistry()
+        val registry = RecordingBlocksRegistry()
         lateinit var provider: FakeProvider
         val controller = EmbeddedBlockContentController(
             placeSystemName = place.value,

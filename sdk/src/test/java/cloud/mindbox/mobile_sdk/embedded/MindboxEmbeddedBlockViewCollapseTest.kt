@@ -6,14 +6,12 @@ import android.view.View
 import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import java.io.Closeable
 
 /**
  * The collapse rule: space once ceded to the host is not taken back for a placeholder — the block
@@ -21,21 +19,6 @@ import java.io.Closeable
  */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewCollapseTest {
-
-    private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
-        override fun onBlockContentDropped(placeSystemName: PlaceKey) {}
-
-        var lastHandle: EmbeddedBlockHandle? = null
-
-        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
-            lastHandle = handle
-            return Closeable { lastHandle = null }
-        }
-
-        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
-
-        override fun startListening() = Unit
-    }
 
     private class ReadyProvider(context: Activity) : EmbeddedContentProvider {
         override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
@@ -64,7 +47,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
     }
 
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-    private val blocksRegistry = FakeBlocksRegistry()
+    private val blocksRegistry = RecordingBlocksRegistry()
     private var lastProvider: EmbeddedContentProvider? = null
 
     private fun buildView(
@@ -74,6 +57,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
             activity,
             null,
             "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> provider().also { lastProvider = it } },
