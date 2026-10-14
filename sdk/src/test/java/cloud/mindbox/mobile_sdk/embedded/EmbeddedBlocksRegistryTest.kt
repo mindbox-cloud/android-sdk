@@ -1627,6 +1627,32 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an operation held for the session check of the app's return that ends the session rides the new session's ask, also when the reset lands before the check is reported over`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        currentSessionEpoch = 1L
+        returnCheckPending.value = false
+        controller.onReturnCheckOver()
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
     fun `an operation held for the session check of the app's return that starts no new session is answered as an operation, also after a new session began while the app was away`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
