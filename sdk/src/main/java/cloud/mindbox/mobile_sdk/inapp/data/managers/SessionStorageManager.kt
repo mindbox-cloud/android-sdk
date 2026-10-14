@@ -1,7 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +32,7 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
     val returnCheckPending: StateFlow<Boolean>
         get() = isReturnCheckPending
 
-    var lastTrackVisitData: TrackVisitData? = null
+    @Volatile var lastTrackVisitData: TrackVisitOrigin? = null
 
     val lastTrackVisitSendTime: AtomicLong = AtomicLong(0L)
 
@@ -46,6 +46,11 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     fun removeSessionExpirationListener(listener: SessionExpirationListener) {
         sessionExpirationListeners.remove(listener)
+    }
+
+    fun onTrackVisit(source: String?, requestUrl: String?) {
+        if (source != null || requestUrl != null) lastTrackVisitData = TrackVisitOrigin(source, requestUrl)
+        hasSessionExpired()
     }
 
     fun hasSessionExpired() {

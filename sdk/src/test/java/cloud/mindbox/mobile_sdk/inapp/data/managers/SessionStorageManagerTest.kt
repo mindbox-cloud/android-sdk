@@ -12,7 +12,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -198,18 +198,25 @@ class SessionStorageManagerTest {
 
     @Test
     fun `a session reset keeps the last visit's source for the pages of the new session`() {
-        val visit = TrackVisitData(
-            ianaTimeZone = "UTC",
-            endpointId = "endpoint-id",
+        val visit = TrackVisitOrigin(
             source = "link",
             requestUrl = "https://example.com/promo",
-            sdkVersionNumeric = 1,
         )
         sessionStorageManager.lastTrackVisitData = visit
 
         sessionStorageManager.clearSessionData()
 
         assertSame(visit, sessionStorageManager.lastTrackVisitData)
+    }
+
+    @Test
+    fun `a visit without a source of its own keeps the source of the previous visit for the pages`() {
+        setupSessionState(lastTrackTime = 1000L, sessionTime = 0L, currentTime = 2000L)
+
+        sessionStorageManager.onTrackVisit("link", "https://example.com/promo")
+        sessionStorageManager.onTrackVisit(null, null)
+
+        assertEquals(TrackVisitOrigin(source = "link", requestUrl = "https://example.com/promo"), sessionStorageManager.lastTrackVisitData)
     }
 
     @Test

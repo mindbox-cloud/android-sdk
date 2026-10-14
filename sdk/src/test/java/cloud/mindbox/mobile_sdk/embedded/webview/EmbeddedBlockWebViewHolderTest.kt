@@ -34,7 +34,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -1495,12 +1495,9 @@ class EmbeddedBlockWebViewHolderTest {
         every { MindboxDI.appModule.sessionStorageManager } returns sessionStorage
         rebuildHolder()
         renderAndCountTheFirstShow()
-        sessionStorage.lastTrackVisitData = TrackVisitData(
-            ianaTimeZone = "UTC",
-            endpointId = "endpoint-id",
+        sessionStorage.lastTrackVisitData = TrackVisitOrigin(
             source = "link",
             requestUrl = "https://example.com/promo",
-            sdkVersionNumeric = 1,
         )
         sessionStorage.clearSessionData()
 

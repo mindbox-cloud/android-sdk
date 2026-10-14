@@ -7,8 +7,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
-import cloud.mindbox.mobile_sdk.utils.Constants
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -128,12 +127,9 @@ class DataCollectorParamsTest {
         // In sync with iOS: what the page is told about the operation and the visit is measured
         // here, so a config that names those keys must not be able to rewrite them.
         val session = SessionStorageManager(mockk(relaxed = true)).apply {
-            lastTrackVisitData = TrackVisitData(
-                ianaTimeZone = "Europe/Moscow",
-                endpointId = "endpoint-id",
+            lastTrackVisitData = TrackVisitOrigin(
                 source = "link",
                 requestUrl = "https://mindbox.cloud/path",
-                sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
             )
         }
         val payload = collect(

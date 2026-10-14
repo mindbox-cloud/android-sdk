@@ -57,8 +57,9 @@ internal class DataCollector(
     private fun sdkMeasuredKeys(): Map<String, Provider> = buildMap {
         putIfPresent(KEY_OPERATION_NAME, operation?.name)
         putIfPresent(KEY_OPERATION_BODY, operation?.body)
-        putIfPresent(KEY_TRACK_VISIT_SOURCE, sessionStorageManager.lastTrackVisitData?.source)
-        putIfPresent(KEY_TRACK_VISIT_REQUEST_URL, sessionStorageManager.lastTrackVisitData?.requestUrl)
+        val visit = sessionStorageManager.lastTrackVisitData
+        putIfPresent(KEY_TRACK_VISIT_SOURCE, visit?.source)
+        putIfPresent(KEY_TRACK_VISIT_REQUEST_URL, visit?.requestUrl)
     }
 
     private fun MutableMap<String, Provider>.putIfPresent(key: String, value: String?) {

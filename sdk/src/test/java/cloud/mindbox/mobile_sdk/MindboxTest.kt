@@ -3,10 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
-import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
-import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
@@ -301,25 +298,5 @@ class MindboxTest {
         ).parse(Mindbox.getPushTokenSaveDate())?.time
 
         assertEquals(1736502000L, timestamp)
-    }
-
-    @Test
-    fun `a visit without a source of its own keeps the source of the previous visit for the pages`() {
-        val sessionStorageManager = SessionStorageManager(mockk(relaxed = true))
-        every { MindboxDI.appModule } returns mockk(relaxed = true) {
-            every { this@mockk.sessionStorageManager } returns sessionStorageManager
-        }
-        mockkObject(DbManager)
-        every { DbManager.getConfigurations() } returns mockk<Configuration> { every { endpointId } returns "endpoint" }
-        every { MindboxEventManager.appStarted(any(), any()) } just runs
-        val sendTrackVisitEvent = Mindbox::class.java
-            .getDeclaredMethod("sendTrackVisitEvent", Context::class.java, String::class.java, String::class.java)
-            .apply { isAccessible = true }
-
-        sendTrackVisitEvent.invoke(Mindbox, context, "link", "https://example.com/promo")
-        sendTrackVisitEvent.invoke(Mindbox, context, null, null)
-
-        assertEquals("link", sessionStorageManager.lastTrackVisitData?.source)
-        assertEquals("https://example.com/promo", sessionStorageManager.lastTrackVisitData?.requestUrl)
     }
 }
