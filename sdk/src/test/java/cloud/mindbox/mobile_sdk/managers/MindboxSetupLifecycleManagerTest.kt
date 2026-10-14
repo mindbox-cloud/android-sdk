@@ -9,6 +9,15 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.DataCollector
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppInsets
+import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -24,6 +33,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Tests for [Mindbox.setupLifecycleManager] and [Mindbox.attachLifecycleCallbacks].
@@ -207,6 +217,52 @@ internal class MindboxSetupLifecycleManagerTest {
 
             verify(exactly = 1) { blocksRegistry.onAppResumedOn(activity) }
         }
+    }
+
+    @Test
+    fun `a page built as soon as a visit starts a new session is told the source of that visit`() {
+        val timeProvider = mockk<TimeProvider> { every { currentTimeMillis() } returns 10_000L }
+        val sessionStorageManager = SessionStorageManager(timeProvider).apply {
+            lastTrackVisitSendTime.set(1_000L)
+            state.sessionTime = 1_000L.milliseconds
+        }
+        val newSessionPages = mutableListOf<JsonObject>()
+        sessionStorageManager.addSessionExpirationListener { newSessionPages += pagePayload(sessionStorageManager) }
+        mockkObject(DbManager)
+        every { DbManager.getConfigurations() } returns null
+        val manager = LifecycleManager(null, null, isAppInBackground = false)
+        LifecycleManager.instance = manager
+        withAppModule(sessionStorageManager = sessionStorageManager) {
+            callAttachLifecycleCallbacks()
+
+            manager.callbacks?.onTrackVisitReady("link", "https://example.com/promo")
+
+            val page = newSessionPages.single()
+            assertEquals("link", page.get("trackVisitSource")?.asString)
+            assertEquals("https://example.com/promo", page.get("trackVisitRequestUrl")?.asString)
+        }
+    }
+
+    private fun pagePayload(sessionStorageManager: SessionStorageManager): JsonObject {
+        val permissionManager = mockk<PermissionManager> {
+            every { getCameraPermissionStatus() } returns PermissionStatus.DENIED
+            every { getLocationPermissionStatus() } returns PermissionStatus.DENIED
+            every { getMicrophonePermissionStatus() } returns PermissionStatus.DENIED
+            every { getNotificationPermissionStatus() } returns PermissionStatus.DENIED
+            every { getPhotoLibraryPermissionStatus() } returns PermissionStatus.DENIED
+        }
+        val payload = DataCollector(
+            appContext = context,
+            sessionStorageManager = sessionStorageManager,
+            permissionManager = permissionManager,
+            configuration = mockk<Configuration>(relaxed = true),
+            params = emptyMap(),
+            inAppInsets = InAppInsets(),
+            gson = Gson(),
+            inAppId = "in-app-id",
+            operation = null,
+        ).get()
+        return JsonParser.parseString(payload).asJsonObject
     }
 
     private fun withAppModule(
