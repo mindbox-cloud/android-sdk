@@ -636,6 +636,10 @@ internal class EmbeddedBlockContentController(
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
                         if (isNewSession && appliedSessionEpoch == answer.sessionEpoch) appliedSessionEpoch = previousSessionEpoch
                     }
+                    isOfEndedSession(answer.sessionEpoch) -> mindboxLogI(
+                        "[EmbeddedBlock] The page of '$placeSystemName' did not take the data of a session that has ended, " +
+                            "keeping it until the new session answers"
+                    )
                     else -> {
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
                         recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
