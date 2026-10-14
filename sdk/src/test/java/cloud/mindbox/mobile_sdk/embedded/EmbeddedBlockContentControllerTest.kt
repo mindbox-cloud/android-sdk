@@ -1416,6 +1416,106 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 
+    private fun collapsedBlockAway(
+        tracker: InAppFailureTracker,
+        collapse: EmbeddedBlockHandle.() -> Unit,
+    ): EmbeddedBlockContentController {
+        val controller = controller(configTimeout = Milliseconds(50L), tracker = tracker)
+        controller.start()
+        blocksRegistry.lastHandle?.collapse()
+        controller.pause()
+        return controller
+    }
+
+    @Test
+    fun `a block that left with nothing on it and is refused again while away starts no wait for its place on its return`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onContentResolved(null) }
+        blocksRegistry.lastHandle?.onContentResolved(null)
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        verify(exactly = 0) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a block that left with nothing on it fails for the host on its return when the SDK could not answer while it was away, and starts no wait for its place`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onContentResolved(null) }
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `a block that left failed is collapsed for the host on its return when its place had nothing to show while it was away, and starts no wait for its place`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onConfigUnavailable() }
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `a block that left failed and could not be answered again while away stays failed on its return and starts no wait for its place`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onConfigUnavailable() }
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        verify(exactly = 2) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+    }
+
+    @Test
+    fun `a block that left with nothing on it waits for its place within its wait budget on its return when the answer parked for it is of an ended session`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onContentResolved(null) }
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        blocksRegistry.endedSessions = setOf(0L)
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, networkError), states.drop(reportedBeforeReturn))
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(50L), any()) }
+    }
+
+    @Test
+    fun `a block that left with nothing on it waits for its place within its wait budget on its return when the show of the winner parked for it can no longer be reserved in its session`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = collapsedBlockAway(tracker) { onContentResolved(null) }
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer().copy(isShowReserved = false))
+        blocksRegistry.reservation = PlaceShowReservation.STALE
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+        idleFor(Duration.ofMillis(51L))
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, networkError), states.drop(reportedBeforeReturn))
+        assertTrue(createdProviders.isEmpty())
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(50L), any()) }
+    }
+
     @Test
     fun `a block holding a collapse is not kept for its screen`() {
         val controller = controller()
