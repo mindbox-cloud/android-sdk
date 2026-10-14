@@ -187,14 +187,15 @@ internal class EmbeddedBlockContentController(
         val isBackAfterBeingLeftBehind = leftBehind
         leftBehind = false
         if (isBackAfterBeingLeftBehind) resumeAfterBeingLeftBehind()
-        parkedAnswer?.let { parked ->
+        val hasLandedCollapse = parkedAnswer?.let { parked ->
             if (parked.waitsForReturnCheck && blocksRegistry()?.deferUntilReturnChecked() == true) {
                 mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' is back before the session check of the app's return, its parked answer waits for it")
                 deferredParkedMayHold = isBackFromBackground
+                false
             } else {
-                applyParkedAnswer(mayHold = isBackFromBackground)
+                landParkedAnswer(mayHold = isBackFromBackground)
             }
-        }
+        } == true
 
         provider?.let { current ->
             current.onStateChange = ::onProviderState
@@ -206,7 +207,9 @@ internal class EmbeddedBlockContentController(
             beginWaitingForContent()
             return
         }
-        if (provider == null && !hasPendingContent) {
+        if (hasLandedCollapse) {
+            mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' is back collapsed by the answer parked for it, asking its place again")
+        } else if (provider == null && !hasPendingContent) {
             beginWaitingForContent()
         }
         blocksRegistry()?.onBlockAppeared(place)
@@ -330,6 +333,12 @@ internal class EmbeddedBlockContentController(
         val parked = parkedAnswer ?: return
         parkedAnswer = null
         applyParked(parked, mayHold)
+    }
+
+    private fun landParkedAnswer(mayHold: Boolean): Boolean {
+        val shownBefore = lastReportedState
+        applyParkedAnswer(mayHold)
+        return lastReportedState != shownBefore && lastReportedState?.nothingToShow == true
     }
 
     private fun isOfEndedSession(sessionEpoch: Long?): Boolean =

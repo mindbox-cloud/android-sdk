@@ -1904,7 +1904,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(
-            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty),
             states.drop(reportedBeforeReturn),
         )
     }
@@ -1955,7 +1955,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(
-            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty),
             states.drop(reportedBeforeReturn),
         )
         assertEquals(1, pages.single().releaseCount)
@@ -2182,7 +2182,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(
-            listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading, EmbeddedBlockState.Empty),
+            listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty),
             states.drop(reportedBeforeReturn),
         )
         assertEquals(1, pages.single().releaseCount)

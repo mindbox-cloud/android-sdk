@@ -1336,7 +1336,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
@@ -1396,7 +1396,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(null, controller.contentView)
     }
@@ -1902,7 +1902,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
 
         verify(exactly = 1) { tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
-        assertEquals(listOf(internalError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(internalError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(1, createdProviders.single().startCount)
         assertEquals(null, controller.contentView)
@@ -1942,7 +1942,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
@@ -2673,7 +2673,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
         assertEquals(1, providers.single().releaseCount)
         assertTrue(providers.single().sessionRefreshes.isEmpty())
     }
@@ -2762,7 +2762,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(EmbeddedBlockState.Empty, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
@@ -2774,7 +2774,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
     }
 
@@ -2785,7 +2785,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(internalError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(internalError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
     }
 
@@ -2932,7 +2932,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(networkError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 
