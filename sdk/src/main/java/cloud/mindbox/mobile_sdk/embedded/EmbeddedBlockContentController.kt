@@ -226,7 +226,6 @@ internal class EmbeddedBlockContentController(
             return
         }
         collapseHeldAnswer()
-        if (isHoldingContent && isOfEndedSession(appliedSessionEpoch)) leftBehind = true
     }
 
     fun release() {
@@ -341,7 +340,6 @@ internal class EmbeddedBlockContentController(
             parkedAnswer = null
             dropAnswerOfEndedSession()
         }
-        if (lastReportedState == EmbeddedBlockState.Loading) readyBudget.reset()
         if (parkedAnswer != null || !isOfEndedSession(appliedSessionEpoch)) return
         mindboxLogI(
             "[EmbeddedBlock] Block '$placeSystemName' is back on its screen, " +

@@ -36,8 +36,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -65,7 +65,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private val configState = MutableStateFlow<ConfigEntry?>(null)
+    private val configState = MutableStateFlow(ConfigState(current = null, lastPublished = null))
 
     private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -86,8 +86,6 @@ internal class MobileConfigRepositoryImpl(
     private var configGeneration = 0L
 
     private var publication: Publication = Publication.Open
-
-    @Volatile private var lastPublished: ConfigEntry? = null
 
     init {
         startListening()
@@ -194,8 +192,7 @@ internal class MobileConfigRepositoryImpl(
             config = updatedInAppConfig,
             isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
         )
-        configState.value = entry
-        lastPublished = entry
+        configState.value = ConfigState(current = entry, lastPublished = entry)
         configUpdates.tryEmit(Unit)
         // Prewarm stage 2: warm what the config's webview in-apps will need
         // (or release the warm instance when the config proves there are none).
@@ -205,7 +202,7 @@ internal class MobileConfigRepositoryImpl(
 
     override fun listenConfigUpdates(): Flow<Unit> = configUpdates
 
-    override fun hasConfig(): Boolean = configState.value != null
+    override fun hasConfig(): Boolean = configState.value.current != null
 
     override suspend fun getMonitoringSection() = getConfig().monitoring
 
@@ -217,15 +214,14 @@ internal class MobileConfigRepositoryImpl(
         awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
 
     override suspend fun getConfigForPageIfAvailable(): PageConfig? {
-        val published = lastPublished
-        val current = configState.value
-        val entry = current ?: published ?: return null
+        val state = configState.value
+        val entry = state.current ?: state.lastPublished ?: return null
         if (entry.isUnavailable) return null
-        return PageConfig(entry.config, isOfEndedSession = current == null && published != null)
+        return PageConfig(entry.config, isOfEndedSession = state.current == null)
     }
 
     override fun findInAppInCurrentConfig(id: String): InApp? =
-        configState.value?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
+        configState.value.current?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
 
     override suspend fun getABTests() = getConfig().abtests
 
@@ -233,7 +229,7 @@ internal class MobileConfigRepositoryImpl(
         synchronized(publicationLock) {
             configGeneration++
             publication = Publication.AwaitingDownload
-            configState.value = null
+            configState.value = ConfigState(current = null, lastPublished = configState.value.lastPublished)
         }
     }
 
@@ -420,7 +416,9 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
 
-    private suspend fun awaitConfigEntry(): ConfigEntry = configState.filterNotNull().first()
+    private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
 
     private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean)
+
+    private class ConfigState(val current: ConfigEntry?, val lastPublished: ConfigEntry?)
 }

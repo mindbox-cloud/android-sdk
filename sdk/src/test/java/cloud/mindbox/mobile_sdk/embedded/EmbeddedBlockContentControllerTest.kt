@@ -2548,7 +2548,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a page still loading when the app came back on another screen gets its whole page budget again on the block's return and takes the new session's answer`() {
+    fun `a page still loading when the app came back on another screen has only the rest of its page budget on the block's return`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false, hostActivity = { blockScreen }, readyTimeout = Milliseconds(7_000L))
         controller.start()
@@ -2557,17 +2557,17 @@ class EmbeddedBlockContentControllerTest {
         isAppInForeground = false
         controller.pause()
         controller.onAppResumedOn(otherScreen)
-        blocksRegistry.endedSessions = setOf(0L)
         isAppInForeground = true
+        assertTrue(controller.isLeftBehind)
 
         controller.start()
-        idleFor(Duration.ofMillis(1_000L))
+        idleFor(Duration.ofMillis(400L))
 
         assertEquals(EmbeddedBlockState.Loading, states.last())
 
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+        idleFor(Duration.ofMillis(200L))
 
-        assertEquals(2, providers.size)
+        assertTrue(states.last() is EmbeddedBlockState.Failed)
     }
 
     @Test
