@@ -497,6 +497,34 @@ internal class InAppMessageManagerTest {
     )
 
     @Test
+    fun `a new session begins even when the overlay on screen cannot be dismissed`() = runTest {
+        every { inAppMessageViewDisplayer.dismissCurrentInApp() } throws IllegalStateException("the overlay could not be dismissed")
+        every { inAppMessageInteractor.beginNewSession() } just runs
+        every { userVisitManager.saveUserVisit() } just runs
+        every { inAppMessageDelayedManager.clearSession() } just runs
+
+        createManager().handleSessionExpiration()
+        advanceUntilIdle()
+
+        verify(exactly = 1) { inAppMessageInteractor.beginNewSession() }
+        verify(exactly = 1) { inAppMessageDelayedManager.clearSession() }
+    }
+
+    @Test
+    fun `the new session's config is requested even when a step after the session wipe fails`() = runTest {
+        every { inAppMessageViewDisplayer.dismissCurrentInApp() } just runs
+        every { inAppMessageInteractor.beginNewSession() } just runs
+        every { userVisitManager.saveUserVisit() } throws IllegalStateException("the visit could not be saved")
+        every { inAppMessageDelayedManager.clearSession() } just runs
+        coEvery { inAppMessageInteractor.fetchMobileConfig() } just runs
+
+        createManager().handleSessionExpiration()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
+    }
+
+    @Test
     fun `showInAppById presents the variant now with its tags and the caller params`() = runTest {
         val inApp = InAppStub.getInApp().copy(id = "tap-id", tags = mapOf("key" to "value"))
         val variant = inApp.form.variants.first()

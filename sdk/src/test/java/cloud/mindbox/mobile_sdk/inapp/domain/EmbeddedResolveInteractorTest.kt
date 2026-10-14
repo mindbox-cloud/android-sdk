@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
@@ -39,11 +40,13 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkObject
 import io.mockk.spyk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -1227,4 +1230,66 @@ class EmbeddedResolveInteractorTest {
     }
 
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
+
+    @Test
+    fun `beginNewSession resets the config before the session moves on`() {
+        every { mobileConfigRepository.resetCurrentConfig() } just runs
+
+        interactor.beginNewSession()
+
+        verifyOrder {
+            mobileConfigRepository.resetCurrentConfig()
+            inAppRepository.clearInAppEvents()
+            sessionStorageManager.clearSessionData()
+        }
+    }
+
+    @Test
+    fun `beginNewSession wipes the session even when resetting the config fails`() {
+        every { mobileConfigRepository.resetCurrentConfig() } throws IllegalStateException("the config could not be reset")
+        every { inAppRepository.clearInAppEvents() } just runs
+
+        interactor.beginNewSession()
+
+        verify(exactly = 1) { sessionStorageManager.clearSessionData() }
+    }
+
+    @Test
+    fun `beginNewSession wipes the session even when clearing the in-app events fails`() {
+        every { mobileConfigRepository.resetCurrentConfig() } just runs
+        every { inAppRepository.clearInAppEvents() } throws IllegalStateException("the events could not be cleared")
+
+        interactor.beginNewSession()
+
+        verify(exactly = 1) { sessionStorageManager.clearSessionData() }
+    }
+
+    @Test
+    fun `filterShowableInAppIds refuses to answer when the config could not be fetched and nothing is cached`() = runTest {
+        coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns null
+
+        assertNull(interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds answered from the ended session's config while the new one downloads saves none of its in-apps into the new session`() = runTest {
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = true)
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 0) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds answers from one config, its ab-tests included`() = runTest {
+        val abtests = listOf(mockk<ABTest>())
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(
+            InAppConfig(inApps = listOf(modalInApp(id = "inapp-1")), monitoring = emptyList(), operations = emptyMap(), abtests = abtests),
+            isOfEndedSession = false,
+        )
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 1) { inAppABTestLogic.getInAppsPool(listOf("inapp-1"), abtests) }
+        coVerify(exactly = 0) { inAppABTestLogic.getInAppsPool(any()) }
+    }
 }

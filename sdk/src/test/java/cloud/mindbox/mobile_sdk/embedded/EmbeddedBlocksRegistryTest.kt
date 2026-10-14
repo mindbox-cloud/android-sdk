@@ -17,7 +17,9 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -31,6 +33,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.lang.ref.WeakReference
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * The central controller is deliberately dumb: a registry and a router. Both directions call
@@ -66,6 +71,7 @@ class EmbeddedBlocksRegistryTest {
     // A var, like the SDK scope it stands for: soft re-initialization cancels it and puts a fresh
     // one in its place.
     private var scope = TestScope(UnconfinedTestDispatcher())
+    private var workerScope: CoroutineScope? = null
 
     private val place = PlaceKey.of("main-screen-top")
     private val content = InAppStub.getEmbedded()
@@ -88,13 +94,22 @@ class EmbeddedBlocksRegistryTest {
         every { interactor.reservePlaceShow(any(), any()) } returns true
         return EmbeddedBlocksRegistryImpl(
             inAppInteractor = interactor,
-            scopeProvider = { scope },
+            scopeProvider = { workerScope ?: scope },
             monotonicNow = { clock },
         )
     }
 
     private fun idleMain() {
         shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    private fun awaitWorkPostedToMain(worker: ExecutorService) {
+        val deadline = System.currentTimeMillis() + 5_000L
+        while (shadowOf(Looper.getMainLooper()).isIdle) {
+            check(System.currentTimeMillis() < deadline) { "nothing reached the main thread" }
+            Thread.sleep(5L)
+        }
+        worker.submit {}.get(5L, TimeUnit.SECONDS)
     }
 
     @Test
@@ -823,5 +838,73 @@ class EmbeddedBlocksRegistryTest {
 
         // Once for the unregistration, once for the answer that found nobody to hear it.
         verify(exactly = 2) { interactor.releasePlaceShow(place) }
+    }
+
+    @Test
+    fun `a winner whose delay ran out keeps its delivery when a failure overtakes it on the way to the main thread`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns
+            winner(delay = Milliseconds(20L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        val worker = Executors.newSingleThreadExecutor()
+        workerScope = CoroutineScope(worker.asCoroutineDispatcher())
+        try {
+            controller.onBlockAppeared(place)
+            awaitWorkPostedToMain(worker)
+            idleMain()
+            awaitWorkPostedToMain(worker)
+            workerScope = null
+
+            controller.onBlockAppeared(place)
+
+            assertEquals(0, handle.unavailableCount)
+            idleMain()
+            assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+        } finally {
+            workerScope = null
+            worker.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `the same winner re-selected after its delay ran out but before its delivery reached the main thread is delivered once with the selection time that started the delay`() {
+        val refreshed = content.copy(
+            layers = listOf((content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]")))
+        )
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            selections++
+            if (selections == 1) {
+                advance(Milliseconds(320L))
+                winner(delay = Milliseconds(20L))
+            } else {
+                advance(Milliseconds(40L))
+                winner(variant = refreshed, delay = Milliseconds(20L))
+            }
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        val worker = Executors.newSingleThreadExecutor()
+        workerScope = CoroutineScope(worker.asCoroutineDispatcher())
+        try {
+            controller.onBlockAppeared(place)
+            awaitWorkPostedToMain(worker)
+            idleMain()
+            awaitWorkPostedToMain(worker)
+            workerScope = null
+
+            controller.onBlockAppeared(place)
+            idleMain()
+
+            assertEquals(listOf<InAppType.Embedded?>(refreshed), handle.received)
+            assertEquals(listOf(Milliseconds(320L)), handle.selectionTimes)
+        } finally {
+            workerScope = null
+            worker.shutdownNow()
+        }
     }
 }
