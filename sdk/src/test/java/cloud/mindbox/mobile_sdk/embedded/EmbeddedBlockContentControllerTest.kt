@@ -2276,6 +2276,37 @@ class EmbeddedBlockContentControllerTest {
         assertFalse(controller.isLeftBehind)
     }
 
+    @Test
+    fun `a block a new session left behind whose page renders nothing off screen is not left behind for the next new session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+        controller.pause()
+        controller.onSessionRenewed()
+        assertTrue(controller.isLeftBehind)
+
+        providers.single().rendersNothing = true
+        controller.onSessionRenewed()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertFalse(controller.isLeftBehind)
+    }
+
+    @Test
+    fun `a block the app's return left on another screen whose page renders nothing off screen is not left behind for a new session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
+        isAppInForeground = false
+        controller.pause()
+        controller.onAppResumedOn(otherScreen)
+        assertTrue(controller.isLeftBehind)
+
+        providers.single().rendersNothing = true
+        controller.onSessionRenewed()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertFalse(controller.isLeftBehind)
+    }
+
     private fun controllerWithEmptiedPageThroughBackground(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
         val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
         isAppInForeground = false
