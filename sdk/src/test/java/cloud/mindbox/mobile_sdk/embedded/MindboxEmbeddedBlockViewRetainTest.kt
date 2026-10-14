@@ -107,6 +107,17 @@ class MindboxEmbeddedBlockViewRetainTest {
         }
     }
 
+    class RootBlockFragment : Fragment() {
+        override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?,
+        ): View = BlockFragment.blockFactory(requireContext())
+
+        val block: MindboxEmbeddedBlockView
+            get() = requireView() as MindboxEmbeddedBlockView
+    }
+
     class DetailFragment : Fragment() {
         override fun onCreateView(
             inflater: LayoutInflater,
@@ -635,6 +646,46 @@ class MindboxEmbeddedBlockViewRetainTest {
         idle()
 
         assertEquals(appearedBeforeHiding + 1, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `a block that is its fragment's root view collapses its refused place as the fragment is hidden in foreground and asks its place again once shown`() {
+        val home = RootBlockFragment()
+        fragmentManager.beginTransaction().add(container.id, home).commitNow()
+        idle()
+        val block = home.block
+        show(block)
+        deliverContent()
+        refuseThePlace()
+        val appearedBeforeHiding = blocksRegistry.appearedCount
+
+        fragmentManager.beginTransaction().hide(home).commitNow()
+        idle()
+
+        assertEquals(listOf(block), empties)
+
+        fragmentManager.beginTransaction().show(home).commitNow()
+        idle()
+
+        assertEquals(appearedBeforeHiding + 1, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `a block that is the root view of a fragment added hidden starts once the fragment is shown`() {
+        val home = RootBlockFragment()
+        fragmentManager.beginTransaction().add(container.id, home).hide(home).commitNow()
+        idle()
+        val block = home.block
+        show(block)
+
+        assertEquals(0, blocksRegistry.appearedCount)
+
+        fragmentManager.beginTransaction().show(home).commitNow()
+        idle()
+        deliverContent()
+
+        assertEquals(1, blocksRegistry.appearedCount)
+        assertEquals(listOf(block), loads)
     }
 
     private companion object {
