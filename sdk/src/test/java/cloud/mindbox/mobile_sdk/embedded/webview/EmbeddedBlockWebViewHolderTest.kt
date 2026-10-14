@@ -55,6 +55,8 @@ import io.mockk.runs
 import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import org.json.JSONTokener
 import org.junit.After
@@ -1569,8 +1571,15 @@ class EmbeddedBlockWebViewHolderTest {
             }
         }
         startAndAwaitPageLoad()
+        val configurations = DbManager.listenConfigurations()
+        val renderAnswered = CompletableDeferred<Unit>()
+        every { DbManager.listenConfigurations() } returns flow {
+            renderAnswered.await()
+            emitAll(configurations)
+        }
 
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        renderAnswered.complete(Unit)
         answerThePush()
         postFromPage(request(action = "contentRendered", payload = """{"count":3}""", id = "after-refresh"))
 
