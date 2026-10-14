@@ -1439,6 +1439,70 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an operation held for the new session keeps its trigger when another new session begins before a screen of the app resumes`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+        currentSessionEpoch = 2L
+        sessionEpochs.value = 2L
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(2L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `an operation held for the new session is asked as an operation once a screen of the app resumes, also when its block left the screen with nothing on it`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        handle.isPausedForBackground = false
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
     fun `a place reserves its show at delivery only while one of its blocks is on screen or away in background`() {
         coEvery { interactor.selectInAppForPlace(any(), any()) } returns winner()
         val backgroundPlace = PlaceKey.of("background-place")

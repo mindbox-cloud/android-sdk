@@ -364,6 +364,23 @@ internal class MobileConfigRepositoryImplTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
+    fun `a published config is answered to the page as the live one, also after a reset once the new session's config is published`() = withStoredConfig {
+        val gateway = mockk<GatewayManager> { coEvery { fetchMobileConfig(any()) } returns "downloaded" }
+        val repository = createRepository(gatewayManager = gateway)
+        repository.startListening()
+        MindboxPreferences.inAppConfigFlow.emit("stored before the reset")
+
+        assertEquals(false, repository.getConfigForPageIfAvailable()?.isOfEndedSession)
+
+        repository.resetCurrentConfig()
+        repository.fetchMobileConfig()
+        MindboxPreferences.inAppConfigFlow.emit("downloaded")
+
+        assertEquals(false, repository.getConfigForPageIfAvailable()?.isOfEndedSession)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
     fun `in the window after a reset the page is refused at once when the config published before it is unavailable`() = withTestMindboxScope {
         val repository = createRepository(
             deserializedBlank = null,
