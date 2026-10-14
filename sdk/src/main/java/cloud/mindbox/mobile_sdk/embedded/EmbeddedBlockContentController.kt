@@ -704,7 +704,7 @@ internal class EmbeddedBlockContentController(
             lastReportedState == EmbeddedBlockState.Ready ||
             hasPendingContent
 
-    private val holdsLiveContent: Boolean
+    override val holdsLiveContent: Boolean
         get() = isHoldingContent && (hasPendingContent || provider?.isAttemptAlive != false)
 
     private fun onProviderState(state: EmbeddedBlockState) {

@@ -48,6 +48,9 @@ internal interface EmbeddedBlockHandle {
 
     val isHoldingContent: Boolean
 
+    @get:MainThread
+    val holdsLiveContent: Boolean
+
     @MainThread
     fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer)
 
@@ -124,6 +127,8 @@ internal class EmbeddedBlocksRegistryImpl(
                 compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
             ),
         )
+
+        fun withoutOperation(): ResolvePass = ResolvePass(trigger = null, includesAppearance = includesAppearance, renewal = renewal)
 
         fun askedAt(tick: Milliseconds): ResolvePass = ResolvePass(
             trigger = trigger,
@@ -294,6 +299,9 @@ internal class EmbeddedBlocksRegistryImpl(
     private val EmbeddedBlockHandle.mayStillBeSeen: Boolean
         get() = isActive || isPausedForBackground
 
+    private val EmbeddedBlockHandle.mayTakeNewSessionAnswer: Boolean
+        get() = isActive || isRenewedWhileAway || holdsLiveContent
+
     private fun forEachLiveHandle(action: (EmbeddedBlockHandle) -> Unit) {
         handlesByPlace.keys.toList().forEach { place ->
             liveHandles(place).forEach { handle -> loggingRunCatching { action(handle) } }
@@ -387,13 +395,20 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun resolveQueued(place: PlaceKey, queued: ResolvePass) {
-        val isOperationUnseen = queued.trigger != null && queued.renewal == null &&
-            liveHandles(place).none { handle -> handle.mayStillBeSeen }
+        val handles = liveHandles(place)
+        val isOperationUnseen = queued.trigger != null && when (queued.renewal) {
+            null -> handles.none { handle -> handle.mayStillBeSeen }
+            else -> handles.none { handle -> handle.mayTakeNewSessionAnswer }
+        }
         when {
             !isOperationUnseen -> resolvePlace(place, queued)
+            queued.renewal != null -> {
+                dropCarriedOperation(place)
+                resolvePlace(place, queued.withoutOperation())
+            }
             queued.includesNonOperation -> {
                 mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, its queued pass is asked without the operation queued with it")
-                resolvePlace(place, ResolvePass(trigger = null, includesAppearance = queued.includesAppearance))
+                resolvePlace(place, queued.withoutOperation())
             }
             else -> mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, dropping the operation queued for it")
         }
@@ -442,7 +457,7 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun dropCarriedOperation(place: PlaceKey) {
-        mindboxLogI("[EmbeddedBlock] A new session began with no block of place '$place' on screen, away in background or holding content, dropping the operation it carried")
+        mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen, away in background or holding content, dropping the operation carried into its new session's ask")
     }
 
     private fun releaseReturnCheckDeferrals() {

@@ -62,6 +62,7 @@ class EmbeddedBlocksRegistryTest {
         override var isLeftBehind: Boolean = false,
     ) : EmbeddedBlockHandle {
         override var isHoldingContent: Boolean = false
+        override var holdsLiveContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
         val selectionTimes = mutableListOf<Milliseconds>()
         val answers = mutableListOf<EmbeddedPlaceAnswer>()
@@ -752,6 +753,7 @@ class EmbeddedBlocksRegistryTest {
         override val isPausedForBackground: Boolean = false
         override val isLeftBehind: Boolean = false
         override val isHoldingContent: Boolean = true
+        override val holdsLiveContent: Boolean = true
 
         override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {}
 
