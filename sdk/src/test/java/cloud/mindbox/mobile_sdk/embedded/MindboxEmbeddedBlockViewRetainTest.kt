@@ -220,6 +220,11 @@ class MindboxEmbeddedBlockViewRetainTest {
         return handle
     }
 
+    private fun EmbeddedBlockHandle.refuseInNewSession() {
+        onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        idle()
+    }
+
     private fun refuseThePlace() {
         blocksRegistry.handles.single().onContentResolved(null)
         idle()
@@ -396,6 +401,71 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         assertEquals(0, store.size)
         assertTrue(blocksRegistry.handles.isEmpty())
+    }
+
+    @Test
+    fun `a block away in background whose fragment is replaced has left its screen and comes back collapsed before its first frame when its place was refused meanwhile`() {
+        val home = openHome()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        goForward()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+        assertEquals(1, store.size)
+
+        handle.refuseInNewSession()
+        isAppInForeground = true
+        goBack()
+        val returned = home.block
+        dispatchWindowVisibility(returned, View.VISIBLE)
+
+        assertEquals(View.GONE, returned.visibility)
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a block away in background whose fragment is hidden has left its screen, stays stopped while hidden and comes back collapsed before its first frame when its place was refused meanwhile`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        val handle = goToBackground(block)
+
+        fragmentManager.beginTransaction().hide(home).commitNow()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+
+        isAppInForeground = true
+        dispatchWindowVisibility(block, View.VISIBLE)
+        idle()
+
+        assertFalse(handle.isActive)
+
+        handle.refuseInNewSession()
+        fragmentManager.beginTransaction().show(home).commitNow()
+
+        assertEquals(View.GONE, block.visibility)
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a block let go by its wrapper while the app is in background leaves its screen once its view is taken out of the window`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        val handle = goToBackground(block)
+        fragmentManager.beginTransaction().setMaxLifecycle(home, Lifecycle.State.STARTED).commitNow()
+        block.releaseOrRetain()
+        assertEquals(1, store.size)
+        assertTrue(handle.isPausedForBackground)
+
+        (home.requireView() as ViewGroup).removeView(block)
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
     }
 
     @Test

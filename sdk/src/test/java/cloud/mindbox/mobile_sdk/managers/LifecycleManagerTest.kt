@@ -600,6 +600,23 @@ internal class LifecycleManagerTest {
     }
 
     @Test
+    fun `the app keeps a resumed screen while one of two resumed screens pauses`() {
+        val manager = createManager()
+        val first = buildActivityA()
+        val second = buildActivityB()
+        manager.onActivityResumed(first)
+        manager.onActivityResumed(second)
+
+        manager.onActivityPaused(first)
+
+        assertTrue(manager.hasResumedActivity)
+
+        manager.onActivityPaused(second)
+
+        assertFalse(manager.hasResumedActivity)
+    }
+
+    @Test
     fun `the app is in the foreground besides a screen while that screen is resumed or another of its screens is started`() {
         val manager = createManager()
         val host = buildActivityA()

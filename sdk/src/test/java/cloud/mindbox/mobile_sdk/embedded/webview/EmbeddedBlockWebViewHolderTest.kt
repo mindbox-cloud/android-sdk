@@ -12,7 +12,10 @@ import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.di.modules.DataModule
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockState
 import cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockFailReason
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.InAppInteractorImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
@@ -30,9 +33,11 @@ import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
@@ -69,6 +74,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The block holder against the real page protocol, driven through the real bridge
@@ -1372,6 +1378,210 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a page refreshed for a new session sends that session's show once it renders again`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `the new session's show waits for the render after the refresh, not for the page's answer to it`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        holder.pause()
+        holder.start()
+
+        letTheShowRecordingSettle()
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `the new session's show on screen is its selection time plus the time on screen since the refresh`() {
+        renderAndCountTheFirstShow()
+        elapsed = 3_600_000L
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(400L)) {}
+        answerThePush()
+        elapsed = 3_600_250L
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(650L), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a new session that began while the block was off screen leaves the time until its return out of the show`() {
+        renderAndCountTheFirstShow()
+        elapsed = 1_000L
+        holder.pause()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(400L)) {}
+        answerThePush()
+        elapsed = 1_801_000L
+        holder.start()
+        elapsed = 1_801_200L
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(600L), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a page refreshed for a new session while off screen counts no time until the block is back on screen`() {
+        renderAndCountTheFirstShow()
+        holder.pause()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(400L)) {}
+        answerThePush()
+        elapsed = 30_000L
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "after-refresh" }
+        elapsed = 1_800_000L
+        holder.start()
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(400L), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a refresh within the session the page already counted sends no second show`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 0L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "after-refresh" }
+
+        letTheShowRecordingSettle()
+        verify(exactly = 1) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a page refreshed for a new session from inside its first render counts only the new session's show`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        var isRefreshed = false
+        holder.onStateChange = { state ->
+            states.add(state)
+            if (state == EmbeddedBlockState.Ready && !isRefreshed) {
+                isRefreshed = true
+                holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+            }
+        }
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 0L) }
+    }
+
+    @Test
+    fun `a page still loading when a new session picks it again counts that session's show from its answer, the rest of its load included`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        rebuildHolder(selectionTime = Milliseconds(2_000L))
+        startAndAwaitPageLoad()
+        elapsed = 1_000L
+
+        holder.scheduleSessionRefresh(sessionEpoch = 1L, selectionTime = Milliseconds(500L))
+        elapsed = 3_000L
+        postFromPage(request(action = "contentRendered", payload = """{"count":1}"""))
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(500L)) {}
+        answerThePush()
+        elapsed = 3_250L
+        postFromPage(request(action = "contentRendered", payload = """{"count":1}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(2_750L), any(), 1L)
+        }
+        letTheShowRecordingSettle()
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 0L) }
+    }
+
+    @Test
+    fun `a show withheld while the place has nothing to show goes once the hold is lifted`() {
+        renderAndCountTheFirstShow()
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+
+        holder.withholdShow(true)
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "after-refresh" }
+        letTheShowRecordingSettle()
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
+
+        holder.withholdShow(false)
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a page drawn while away whose return finds the session over sends only the new session's show`() {
+        val clock = mockk<TimeProvider>(relaxed = true) {
+            every { currentTimestamp() } returns Timestamp(1L)
+        }
+        val inAppRepository = mockk<InAppRepository>(relaxed = true)
+        val sessionStorage = SessionStorageManager(clock).apply { addSessionExpirationListener {} }
+        val sessionInteractor = InAppInteractorImpl(
+            mobileConfigRepository = mockk(relaxed = true),
+            inAppRepository = inAppRepository,
+            inAppFilteringManager = mockk(relaxed = true),
+            inAppEventManager = mockk(relaxed = true),
+            inAppProcessingManager = mockk(relaxed = true),
+            inAppABTestLogic = mockk(relaxed = true),
+            inAppFrequencyManager = mockk(relaxed = true),
+            showBudgetManager = mockk(relaxed = true),
+            timeProvider = clock,
+            sessionStorageManager = sessionStorage,
+            inAppFailureTracker = mockk(relaxed = true),
+        )
+        val recorded = ConcurrentLinkedQueue<Pair<Long, Boolean>>()
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
+            sessionInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), secondArg(), thirdArg(), Milliseconds(0L), arg(4), arg(5))
+                .also { isSent -> recorded.add(arg<Long>(5) to isSent) }
+        }
+        startAndAwaitPageLoad()
+        holder.pause()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "contentRendered" }
+        sessionStorage.lastTrackVisitSendTime.set(1_000L)
+        sessionStorage.state.sessionTime = 500L.milliseconds
+        every { clock.currentTimeMillis() } returns 2_000L
+        sessionStorage.hasSessionExpired()
+
+        holder.start()
+        await { recorded.isNotEmpty() }
+        sessionStorage.clearSessionData()
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+        await { recorded.size == 2 }
+
+        assertEquals(listOf(0L to false, 1L to true), recorded.toList())
+        verify(exactly = 1) { inAppRepository.sendInAppShown("embedded-id", any(), any()) }
+    }
+
+    @Test
     fun `a show due while the app is away waits for the session check of its return`() {
         val returnChecked = CompletableDeferred<Unit>()
         every { inAppInteractor.returnCheckPending } returns MutableStateFlow(true)
@@ -1427,11 +1637,91 @@ class EmbeddedBlockWebViewHolderTest {
         }
     }
 
+    @Test
+    fun `a session refresh sent again for a session the page has not counted waits for the render that follows it`() {
+        renderAndCountTheFirstShow()
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        holder.withholdShow(true)
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "late-render"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "late-render" }
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        holder.withholdShow(false)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-resend"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a session refresh sent again for the same session keeps the selection time and the time on screen of the first refresh`() {
+        renderAndCountTheFirstShow()
+        elapsed = 3_600_000L
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(400L)) {}
+        answerThePush()
+        val firstPush = lastOutgoingMessage()?.get("id")
+        elapsed = 3_600_250L
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(50L)) {}
+        await { lastOutgoingMessage()?.get("id") != firstPush }
+        answerThePush()
+        elapsed = 3_600_350L
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-resend"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(750L), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a page refreshed for a new session tells the time it counted for that session so far and nothing for another session`() {
+        renderAndCountTheFirstShow()
+        elapsed = 1_000L
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(500L)) {}
+        elapsed = 8_000L
+
+        assertEquals(Milliseconds(7_500L), holder.timeToDisplaySoFar(1L))
+        assertNull(holder.timeToDisplaySoFar(0L))
+        assertNull(holder.timeToDisplaySoFar(2L))
+    }
+
+    @Test
+    fun `a page tells no time so far for a session whose show it already counted`() {
+        renderAndCountTheFirstShow()
+
+        assertNull(holder.timeToDisplaySoFar(0L))
+    }
+
     private fun pushDataTheShownPageRendersNothingFor() {
         holder.updateParams(mapOf("items" to "[]")) {}
         answerThePush()
         postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
         await { holder.rendersNothing }
+    }
+
+    @Test
+    fun `a shown page that renders nothing after a new session's data keeps the block shown, answers the page and sends no show`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-refresh"))
+        await { lastOutgoingMessage()?.get("id")?.asString == "after-refresh" }
+        letTheShowRecordingSettle()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(EmbeddedBlockState.Empty in states)
+        assertTrue(holder.contentView != null)
+        assertTrue(holder.rendersNothing)
+        assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
     }
 
     @Test
@@ -1443,6 +1733,22 @@ class EmbeddedBlockWebViewHolderTest {
         pushDataTheShownPageRendersNothingFor()
 
         assertEquals(1, emptiedReports)
+    }
+
+    @Test
+    fun `a page that renders content again after rendering nothing lets the new session's show go`() {
+        renderAndCountTheFirstShow()
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
+        await { holder.rendersNothing }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+        assertFalse(holder.rendersNothing)
     }
 
     @Test
