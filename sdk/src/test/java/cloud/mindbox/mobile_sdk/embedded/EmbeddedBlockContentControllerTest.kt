@@ -1402,7 +1402,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a block that left with nothing on it and is refused again while away waits for its place on its return`() {
+    fun `a block that left with nothing on it and is refused again while away stays collapsed on its return and asks its place again`() {
         val controller = controller()
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
@@ -1412,7 +1412,7 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
 

@@ -329,17 +329,14 @@ internal class EmbeddedBlockContentController(
         leftBehind = true
     }
 
-    private fun applyParkedAnswer(mayHold: Boolean) {
-        val parked = parkedAnswer ?: return
+    private fun applyParkedAnswer(mayHold: Boolean): Boolean {
+        val parked = parkedAnswer ?: return false
         parkedAnswer = null
-        applyParked(parked, mayHold)
+        return applyParked(parked, mayHold)
     }
 
-    private fun landParkedAnswer(mayHold: Boolean): Boolean {
-        val shownBefore = lastReportedState
-        applyParkedAnswer(mayHold)
-        return lastReportedState != shownBefore && lastReportedState?.nothingToShow == true
-    }
+    private fun landParkedAnswer(mayHold: Boolean): Boolean =
+        applyParkedAnswer(mayHold) && lastReportedState?.nothingToShow == true
 
     private fun isOfEndedSession(sessionEpoch: Long?): Boolean =
         sessionEpoch != null && blocksRegistry()?.isLiveSession(sessionEpoch) == false
@@ -356,14 +353,17 @@ internal class EmbeddedBlockContentController(
         )
     }
 
-    private fun applyParked(parked: ParkedAnswer, mayHold: Boolean) {
+    private fun applyParked(parked: ParkedAnswer, mayHold: Boolean): Boolean {
         if (isOfEndedSession(parked.answer.sessionEpoch)) {
             dropAnswerOfEndedSession()
-            return
+            return false
         }
-        when (parked) {
+        return when (parked) {
             is ParkedAnswer.Resolved -> applyAnswer(parked.content, parked.answer, mayHold)
-            is ParkedAnswer.ConfigUnavailable -> applyConfigUnavailable(parked.answer, mayHold)
+            is ParkedAnswer.ConfigUnavailable -> {
+                applyConfigUnavailable(parked.answer, mayHold)
+                true
+            }
         }
     }
 
@@ -381,12 +381,12 @@ internal class EmbeddedBlockContentController(
         }
     }
 
-    private fun applyAnswer(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean) {
+    private fun applyAnswer(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean): Boolean {
         val place = placeSystemName
         val unreserved = content?.takeIf { winner -> !answer.isShowReserved && winner.pageLayer != null }
         if (unreserved == null || place == null) {
             applyResolved(content, answer, mayHold)
-            return
+            return true
         }
         when (blocksRegistry()?.reserveShow(place, unreserved, answer) ?: PlaceShowReservation.RESERVED) {
             PlaceShowReservation.RESERVED -> applyResolved(content, answer, mayHold)
@@ -394,8 +394,12 @@ internal class EmbeddedBlockContentController(
                 mindboxLogI("[EmbeddedBlock] In-app ${unreserved.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
                 applyResolved(null, answer, mayHold)
             }
-            PlaceShowReservation.STALE -> dropAnswerOfEndedSession()
+            PlaceShowReservation.STALE -> {
+                dropAnswerOfEndedSession()
+                return false
+            }
         }
+        return true
     }
 
     override fun onContentPending() {
