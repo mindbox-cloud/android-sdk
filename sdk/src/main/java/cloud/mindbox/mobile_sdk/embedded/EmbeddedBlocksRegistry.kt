@@ -278,7 +278,7 @@ internal class EmbeddedBlocksRegistryImpl(
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
                         resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
                     }
-                    else -> renewal.pending?.let { pending -> askHeldOperation(place, pending) }
+                    else -> renewal.pending?.let { dropCarriedOperation(place) }
                 }
             }
         }
@@ -435,10 +435,14 @@ internal class EmbeddedBlocksRegistryImpl(
                     val held = HeldRenewal(renewalPass, pending)
                     placesAwaitingFirstResume[place] = placesAwaitingFirstResume[place]?.mergedWith(held) ?: held
                 }
-                pending != null -> askHeldOperation(place, pending)
+                pending != null -> dropCarriedOperation(place)
                 else -> Unit
             }
         }
+    }
+
+    private fun dropCarriedOperation(place: PlaceKey) {
+        mindboxLogI("[EmbeddedBlock] A new session began with no block of place '$place' on screen, away in background or holding content, dropping the operation it carried")
     }
 
     private fun releaseReturnCheckDeferrals() {
