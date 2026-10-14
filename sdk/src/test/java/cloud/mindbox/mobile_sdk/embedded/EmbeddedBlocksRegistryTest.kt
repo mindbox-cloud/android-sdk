@@ -1627,6 +1627,35 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an operation held for the session check of the app's return that starts no new session is answered as an operation, also after a new session began while the app was away`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        isAppPresent = true
+        returnCheckPending.value = false
+        controller.onReturnCheckOver()
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
     fun `an appearance that lands while an operation pass is in flight makes that pass's answer a non-operation answer`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val operationGate = CompletableDeferred<EmbeddedResolveOutcome>()
