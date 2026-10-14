@@ -1516,6 +1516,45 @@ class EmbeddedBlockContentControllerTest {
         verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(50L), any()) }
     }
 
+    private fun EmbeddedBlockContentController.comeBackBeforeTheReturnCheckThatEndsTheParkedContentsSession() {
+        isAppInForeground = false
+        pause()
+        blocksRegistry.lastHandle?.onContentResolved(content)
+        isAppInForeground = true
+        blocksRegistry.isReturnCheckPending = true
+        start()
+        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.isReturnCheckPending = false
+        onReturnChecked()
+        idleFor(Duration.ofMillis(51L))
+    }
+
+    @Test
+    fun `a block that left with nothing on it and is back before the session check of the app's return waits for its place within its wait budget when the check ends the session of the content parked for it`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(configTimeout = Milliseconds(50L), tracker = tracker)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        val reportedBeforeLeaving = states.size
+
+        controller.comeBackBeforeTheReturnCheckThatEndsTheParkedContentsSession()
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, networkError), states.drop(reportedBeforeLeaving))
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(50L), any()) }
+    }
+
+    @Test
+    fun `a block that left waiting for its first answer and is back before the session check of the app's return waits for its place within its wait budget when the check ends the session of the content parked for it`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val controller = controller(configTimeout = Milliseconds(50L), tracker = tracker)
+        controller.start()
+
+        controller.comeBackBeforeTheReturnCheckThatEndsTheParkedContentsSession()
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, networkError), states)
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(50L), any()) }
+    }
+
     @Test
     fun `a block holding a collapse is not kept for its screen`() {
         val controller = controller()
