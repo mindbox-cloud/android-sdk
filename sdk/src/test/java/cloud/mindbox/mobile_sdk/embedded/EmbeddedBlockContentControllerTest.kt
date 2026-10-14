@@ -2407,6 +2407,85 @@ class EmbeddedBlockContentControllerTest {
         assertFalse(controller.isLeftBehind)
     }
 
+    private class PageReportingOnScreen : EmbeddedContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View = View(RuntimeEnvironment.getApplication())
+        private var isShown = false
+        private var lastState: EmbeddedBlockState = EmbeddedBlockState.Loading
+
+        override val isAttemptAlive: Boolean
+            get() = lastState == EmbeddedBlockState.Loading || lastState == EmbeddedBlockState.Ready
+
+        override fun start() {
+            isShown = true
+            report(lastState)
+        }
+
+        override fun pause() {
+            isShown = false
+        }
+
+        override fun release() = Unit
+
+        fun report(state: EmbeddedBlockState) {
+            lastState = state
+            if (isShown) onStateChange?.invoke(state)
+        }
+    }
+
+    private fun controllerLoadingPage(pages: MutableList<PageReportingOnScreen>): EmbeddedBlockContentController {
+        val controller = controller(
+            hostActivity = { blockScreen },
+            providerFactory = { _, _ -> PageReportingOnScreen().also { page -> pages.add(page) } },
+        )
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer())
+        return controller
+    }
+
+    @Test
+    fun `a block whose page rendered nothing off screen after it left while loading is not left behind by a new session, also once the page renders later`() {
+        val pages = mutableListOf<PageReportingOnScreen>()
+        val controller = controllerLoadingPage(pages)
+        controller.pause()
+        pages.single().report(EmbeddedBlockState.Empty)
+
+        controller.onSessionRenewed()
+        assertFalse(controller.isLeftBehind)
+
+        pages.single().report(EmbeddedBlockState.Ready)
+        assertFalse(controller.isLeftBehind)
+    }
+
+    @Test
+    fun `a block whose page rendered nothing in background while loading is not left behind by the app's return on another screen, also once the page renders later`() {
+        val pages = mutableListOf<PageReportingOnScreen>()
+        val controller = controllerLoadingPage(pages)
+        isAppInForeground = false
+        controller.pause()
+        pages.single().report(EmbeddedBlockState.Empty)
+
+        controller.onAppResumedOn(otherScreen)
+        assertFalse(controller.isLeftBehind)
+
+        pages.single().report(EmbeddedBlockState.Ready)
+        assertFalse(controller.isLeftBehind)
+    }
+
+    @Test
+    fun `a block a new session left behind while its page loaded is not left behind any more once the page fails off screen`() {
+        val pages = mutableListOf<PageReportingOnScreen>()
+        val controller = controllerLoadingPage(pages)
+        controller.pause()
+        controller.onSessionRenewed()
+        assertTrue(controller.isLeftBehind)
+
+        pages.single().report(EmbeddedBlockState.Failed(FailureReason.WEBVIEW_LOAD_FAILED))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertFalse(controller.isLeftBehind)
+    }
+
     private fun controllerWithEmptiedPageThroughBackground(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
         val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
         isAppInForeground = false

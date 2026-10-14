@@ -1310,6 +1310,33 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a page that renders nothing while its block is away holds no live attempt, though the block hears it only once it is back`() {
+        startAndAwaitPageLoad()
+        assertTrue(holder.isAttemptAlive)
+        holder.pause()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}"""))
+
+        assertFalse(holder.isAttemptAlive)
+        assertFalse(EmbeddedBlockState.Empty in states)
+        holder.start()
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+    }
+
+    @Test
+    fun `a page whose content fails to load while its block is away holds no live attempt`() {
+        val fetched = CompletableDeferred<String>()
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers { fetched.await() }
+        holder.start()
+        holder.pause()
+
+        fetched.completeExceptionally(IllegalStateException("network down"))
+
+        await { !holder.isAttemptAlive }
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+    }
+
+    @Test
     fun `a page that rendered off screen counts its show when the block comes back`() {
         coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
         startAndAwaitPageLoad()
