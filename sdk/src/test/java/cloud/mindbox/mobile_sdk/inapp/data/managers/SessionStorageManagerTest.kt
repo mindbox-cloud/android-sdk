@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -193,6 +194,22 @@ class SessionStorageManagerTest {
         assertEquals(0L, sessionStorageManager.state.sessionTime.inWholeMilliseconds)
         assertEquals(InAppShowLimitsSettings(), sessionStorageManager.state.inAppShowLimitsSettings)
         assertTrue(sessionStorageManager.state.lastTargetingErrors.isEmpty())
+    }
+
+    @Test
+    fun `a session reset keeps the last visit's source for the pages of the new session`() {
+        val visit = TrackVisitData(
+            ianaTimeZone = "UTC",
+            endpointId = "endpoint-id",
+            source = "link",
+            requestUrl = "https://example.com/promo",
+            sdkVersionNumeric = 1,
+        )
+        sessionStorageManager.lastTrackVisitData = visit
+
+        sessionStorageManager.clearSessionData()
+
+        assertSame(visit, sessionStorageManager.lastTrackVisitData)
     }
 
     @Test

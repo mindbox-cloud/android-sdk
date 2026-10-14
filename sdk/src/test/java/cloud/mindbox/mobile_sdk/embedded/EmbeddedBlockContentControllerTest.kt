@@ -1489,6 +1489,24 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a page taking a new session's data in place keeps its block shown however long it takes to render again`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        providers.single().pushResult?.invoke(true)
+
+        idleFor(Duration.ofMillis(60_000L))
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+        assertEquals(1, providers.size)
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
     fun `the same content again within its session does not refresh the page`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
@@ -1546,6 +1564,27 @@ class EmbeddedBlockContentControllerTest {
         providers.single().render()
 
         assertEquals(1, providers.size)
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a page owed a new session's data that renders while its block is away gets the data once, after the block is back`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        isAppInForeground = false
+        controller.pause()
+
+        providers.single().render()
+
+        assertTrue(providers.single().sessionRefreshes.isEmpty())
+
+        isAppInForeground = true
+        controller.start()
+        providers.single().render()
+
         assertEquals(listOf(1L), providers.single().sessionRefreshes)
     }
 
@@ -1677,6 +1716,22 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(2, providers.size)
         assertEquals(listOf(1L), providers.last().confirmedSessions)
+    }
+
+    @Test
+    fun `another winner of a new session is built as a page of that session and gets no data push`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(2, providers.size)
+        assertEquals(listOf(1L), providers.last().confirmedSessions)
+        assertTrue(providers.last().sessionRefreshes.isEmpty())
+        assertTrue(providers.last().scheduledSessionRefreshes.isEmpty())
+        assertTrue(providers.last().paramUpdates.isEmpty())
     }
 
     @Test
@@ -2318,6 +2373,40 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(EmbeddedBlockState.Empty, states.last())
         assertEquals(1, providers.single().releaseCount)
         assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+    }
+
+    @Test
+    fun `a page that renders content again after rendering nothing keeps its block when the block leaves the screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerShowingPage(providers)
+        providers.single().rendersNothing = true
+
+        providers.single().rendersNothing = false
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(EmbeddedBlockState.Empty in states)
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a shown page that renders nothing after an operation's new-session data keeps its block until the block leaves the screen`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, isByOperation = true))
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+
+        providers.single().rendersNothing = true
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+
+        controller.pause()
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
     }
 
     @Test

@@ -34,6 +34,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.TrackVisitData
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -74,6 +75,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -557,6 +559,25 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
         assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `showInApp from a page whose block withholds its show opens what the user taps`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        givenShowPathCapturesOutcome()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        holder.withholdShow(true)
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1","params":{}}""", id = "tap"))
+        await { outcomes.isCaptured }
+        outcomes.captured.onOutcome(ShowInAppOutcome.Shown)
+        await { lastOutgoingMessage()?.get("id")?.asString == "tap" }
+
+        verify(exactly = 1) { inAppMessageManager.showInAppById("inapp-1", any(), any(), any()) }
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
     }
 
     @Test
@@ -1132,6 +1153,23 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a data push the page answers with an error fails at once, without waiting out its ack budget`() {
+        startAndAwaitPageLoad()
+        var updateResult: Boolean? = null
+        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+        val push = lastOutgoingMessage()!!
+
+        postFromPage(
+            """{"type":"error","action":"initDataUpdated","payload":"{\"error\":\"internal_error\"}",""" +
+                """"id":${push.get("id")},"version":1,"timestamp":2}"""
+        )
+
+        await(timeoutMs = 2_000L) { updateResult != null }
+        assertEquals(false, updateResult)
+    }
+
+    @Test
     fun `an action the block does not perform is acknowledged, not refused`() {
         startAndAwaitPageLoad()
 
@@ -1420,6 +1458,57 @@ class EmbeddedBlockWebViewHolderTest {
         verify(exactly = 1, timeout = 5_000L) {
             inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(650L), any(), 1L)
         }
+    }
+
+    @Test
+    fun `a page that renders long after it took the new session's data still sends that session's show`() {
+        renderAndCountTheFirstShow()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(400L)) {}
+        answerThePush()
+        elapsed = 60_000L
+        shadowOf(Looper.getMainLooper()).idleFor(60L, TimeUnit.SECONDS)
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(60_400L), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a page built for a new session counts that session's show on its own first render`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        holder.confirmForSession(1L)
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 0L) }
+    }
+
+    @Test
+    fun `a new session's data tells the page the source of the visit that started that session`() {
+        val sessionStorage = SessionStorageManager(mockk(relaxed = true))
+        every { MindboxDI.appModule.sessionStorageManager } returns sessionStorage
+        rebuildHolder()
+        renderAndCountTheFirstShow()
+        sessionStorage.lastTrackVisitData = TrackVisitData(
+            ianaTimeZone = "UTC",
+            endpointId = "endpoint-id",
+            source = "link",
+            requestUrl = "https://example.com/promo",
+            sdkVersionNumeric = 1,
+        )
+        sessionStorage.clearSessionData()
+
+        holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+        assertEquals("link", lastOutgoingPayload()!!.get("trackVisitSource").asString)
+        assertEquals("https://example.com/promo", lastOutgoingPayload()!!.get("trackVisitRequestUrl").asString)
     }
 
     @Test

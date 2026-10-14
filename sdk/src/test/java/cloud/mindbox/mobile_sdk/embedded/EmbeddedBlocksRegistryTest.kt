@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowRes
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
+import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
@@ -136,6 +137,16 @@ class EmbeddedBlocksRegistryTest {
     }
 
     private fun controller(): EmbeddedBlocksRegistryImpl {
+        stubInteractor()
+        return EmbeddedBlocksRegistryImpl(
+            inAppInteractor = interactor,
+            scopeProvider = { workerScope ?: scope },
+            monotonicNow = { clock },
+            isAppPresent = { isAppPresent },
+        )
+    }
+
+    private fun stubInteractor() {
         coEvery { interactor.listenEmbeddedPlaceEvents() } returns placeEvents
         coEvery { interactor.listenConfigUpdates() } returns configUpdates
         every { interactor.listenSessionEpoch() } returns sessionEpochs
@@ -145,12 +156,6 @@ class EmbeddedBlocksRegistryTest {
         every { interactor.markEmbeddedDelayWaitedOut(any(), any(), any()) } answers { isLive(thirdArg()) }
         every { interactor.isLiveSession(any()) } answers { isLive(firstArg()) }
         every { interactor.sessionEpoch } answers { currentSessionEpoch }
-        return EmbeddedBlocksRegistryImpl(
-            inAppInteractor = interactor,
-            scopeProvider = { workerScope ?: scope },
-            monotonicNow = { clock },
-            isAppPresent = { isAppPresent },
-        )
     }
 
     private fun screen(): Activity = Robolectric.buildActivity(Activity::class.java).get()
@@ -502,6 +507,25 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `a config update within a session asks no place whose blocks are away in background or left behind`() {
+        coEvery { interactor.selectInAppForPlace(any(), any()) } returns winner()
+        val backgroundPlace = PlaceKey.of("background-place")
+        val leftPlace = PlaceKey.of("left-place")
+        val controller = controller()
+        controller.register(place, RecordingHandle())
+        controller.register(backgroundPlace, RecordingHandle(isActive = false, isPausedForBackground = true))
+        controller.register(leftPlace, RecordingHandle(isActive = false, isLeftBehind = true))
+        idleMain()
+
+        scope.launch { configUpdates.emit(Unit) }
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(backgroundPlace, any()) }
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(leftPlace, any()) }
     }
 
     @Test
@@ -1064,6 +1088,40 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a feed on screen stays as it is through a new session's delay and takes that session's data once the delay has run`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen winner(delay = Milliseconds(5_000L))
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val registry = controller()
+        val block = liveBlock(registry, states, pages)
+        block.start()
+        idleMain()
+        val reportedBeforeRenewal = states.size
+
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+        scope.testScheduler.advanceTimeBy(4_999L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(reportedBeforeRenewal, states.size)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, pages.single().releaseCount)
+        assertTrue(pages.single().sessionRefreshes.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+
+        scope.testScheduler.advanceTimeBy(2L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(reportedBeforeRenewal, states.size)
+        assertEquals(0, pages.single().releaseCount)
+        assertEquals(listOf(1L), pages.single().sessionRefreshes.map { refresh -> refresh.first })
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 1L) }
+    }
+
+    @Test
     fun `a new session's failure is delivered at once instead of waiting for the ended session's timer`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns
             winner(delay = Milliseconds(5_000L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
@@ -1417,6 +1475,37 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a new session while the app has no resumed screen holds the ask of a block away in background until a screen resumes`() {
+        stubInteractor()
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val screen = screen()
+        val lifecycle = LifecycleManager(currentActivityName = null, currentIntent = null, isAppInBackground = false)
+        lifecycle.onActivityStarted(screen)
+        lifecycle.onActivityResumed(screen)
+        lifecycle.onActivityPaused(screen)
+        LifecycleManager.instance = lifecycle
+        try {
+            val controller = EmbeddedBlocksRegistryImpl(inAppInteractor = interactor, scopeProvider = { scope }, monotonicNow = { clock })
+            controller.register(place, RecordingHandle(isActive = false, isPausedForBackground = true))
+            idleMain()
+
+            currentSessionEpoch = 1L
+            sessionEpochs.value = 1L
+            idleMain()
+
+            coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+            lifecycle.onActivityResumed(screen)
+            controller.onAppResumedOn(screen)
+            idleMain()
+
+            coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        } finally {
+            LifecycleManager.instance = null
+        }
+    }
+
+    @Test
     fun `a new session's ask held for a block away in background is made once the app resumes on another screen, reserving no show for the block that left`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
         val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true).apply { leavesOnAppResumed = true }
@@ -1594,6 +1683,22 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `content delivered while the session check of the app's return runs reserves the show of a block on screen at once`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 0L) }
+        assertEquals(listOf(true), handle.answers.map { answer -> answer.isShowReserved })
     }
 
     @Test

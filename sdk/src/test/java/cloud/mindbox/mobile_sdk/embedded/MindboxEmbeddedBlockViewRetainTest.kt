@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
+import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.After
@@ -112,6 +113,16 @@ class MindboxEmbeddedBlockViewRetainTest {
             container: ViewGroup?,
             savedInstanceState: Bundle?,
         ): View = View(requireContext())
+    }
+
+    class NavigationHostFragment : Fragment() {
+        val childContainerId: Int = View.generateViewId()
+
+        override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?,
+        ): View = FragmentContainerView(requireContext()).apply { id = childContainerId }
     }
 
     private val controller: ActivityController<FragmentActivity> =
@@ -449,6 +460,70 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         assertEquals(View.GONE, block.visibility)
         assertEquals(1, providers.single().releaseCount)
+    }
+
+    private fun openHomeInsideNavigationHost(): Pair<NavigationHostFragment, BlockFragment> {
+        val host = NavigationHostFragment()
+        fragmentManager.beginTransaction().add(container.id, host).commitNow()
+        val home = BlockFragment()
+        host.childFragmentManager.beginTransaction().add(host.childContainerId, home).setPrimaryNavigationFragment(home).commitNow()
+        idle()
+        show(home.block)
+        return host to home
+    }
+
+    @Test
+    fun `a block away in background whose fragment a nested navigation host replaces has left its screen`() {
+        val (host, home) = openHomeInsideNavigationHost()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        host.childFragmentManager.beginTransaction().replace(host.childContainerId, DetailFragment()).addToBackStack(null).commit()
+        host.childFragmentManager.executePendingTransactions()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+    }
+
+    @Test
+    fun `a block away in background whose parent fragment is hidden has left its screen`() {
+        val (host, home) = openHomeInsideNavigationHost()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        fragmentManager.beginTransaction().hide(host).commitNow()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+    }
+
+    @Test
+    fun `a block built with its view's own controller knows its screen, so a pause while another screen of the app stays started is leaving it`() {
+        val otherScreen = Robolectric.buildActivity(Activity::class.java).get()
+        val lifecycle = LifecycleManager(currentActivityName = null, currentIntent = null, isAppInBackground = false)
+        lifecycle.onActivityStarted(activity)
+        lifecycle.onActivityResumed(activity)
+        lifecycle.onActivityStarted(otherScreen)
+        LifecycleManager.instance = lifecycle
+        try {
+            val block = MindboxEmbeddedBlockView(activity, PLACE)
+            activity.setContentView(FrameLayout(activity).apply { addView(block, 500, 300) })
+            show(block)
+            val handle = MindboxEmbeddedBlockView::class.java.getDeclaredField("contentController")
+                .apply { isAccessible = true }
+                .get(block) as EmbeddedBlockHandle
+
+            lifecycle.onActivityPaused(activity)
+            dispatchWindowVisibility(block, View.GONE)
+            idle()
+
+            assertFalse(handle.isActive)
+            assertFalse(handle.isPausedForBackground)
+        } finally {
+            LifecycleManager.instance = null
+        }
     }
 
     @Test
