@@ -1857,6 +1857,49 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf(1L), providers.last().confirmedSessions)
     }
 
+    private fun controllerWithRefreshOutlivingItsSession(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        isAppInForeground = false
+        controller.pause()
+        isAppInForeground = true
+        controller.start()
+        blocksRegistry.endedSessions = setOf(0L, 1L)
+        return controller
+    }
+
+    @Test
+    fun `a new session's refresh left unconfirmed past the end of that session keeps the page for the next session's answer`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        controllerWithRefreshOutlivingItsSession(providers)
+
+        providers.first().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, providers.size)
+        assertEquals(0, providers.single().releaseCount)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 2L))
+
+        assertEquals(listOf(1L, 2L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `the next session's refusal is held by the page whose refresh was left unconfirmed past the end of its session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        controllerWithRefreshOutlivingItsSession(providers)
+        providers.first().pushResult?.invoke(false)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 2L))
+
+        assertEquals(true, providers.first().withheldShows.last())
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+    }
+
     @Test
     fun `another winner of a new session is built as a page of that session and gets no data push`() {
         val providers = mutableListOf<SessionAwareProvider>()
