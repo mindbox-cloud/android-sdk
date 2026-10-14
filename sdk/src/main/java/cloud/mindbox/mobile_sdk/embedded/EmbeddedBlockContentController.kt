@@ -73,7 +73,7 @@ internal class EmbeddedBlockContentController(
         get() = isAwayInBackground && !isStarted && !isReleased
 
     override val isLeftBehind: Boolean
-        get() = leftBehind && isHoldingContent && !isStarted && !isReleased
+        get() = leftBehind && holdsLiveContent && !isStarted && !isReleased
 
     private var provider: EmbeddedContentProvider? = null
     private var failureTrackerCache: InAppFailureTracker? = null
@@ -305,7 +305,7 @@ internal class EmbeddedBlockContentController(
         applyParkedRefusal()
         collapseHeldAnswer()
         giveBackParkedShow()
-        leftBehind = isHoldingContent
+        leftBehind = holdsLiveContent
     }
 
     private fun applyParkedRefusal() {
@@ -324,7 +324,7 @@ internal class EmbeddedBlockContentController(
     }
 
     override fun onSessionRenewed() {
-        if (isStarted || isReleased || isAwayInBackground || !isHoldingContent) return
+        if (isStarted || isReleased || isAwayInBackground || !holdsLiveContent) return
         mindboxLogI("[EmbeddedBlock] A new session began while block '$placeSystemName' was off screen, its place is asked again and the answer waits for its return")
         leftBehind = true
     }
@@ -700,6 +700,9 @@ internal class EmbeddedBlockContentController(
         get() = lastReportedState is EmbeddedBlockState.Loading ||
             lastReportedState == EmbeddedBlockState.Ready ||
             hasPendingContent
+
+    private val holdsLiveContent: Boolean
+        get() = isHoldingContent && (hasPendingContent || provider?.isAttemptAlive != false)
 
     private fun onProviderState(state: EmbeddedBlockState) {
         if (state is EmbeddedBlockState.Ready && provider?.contentView == null) {

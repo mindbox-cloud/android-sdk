@@ -103,6 +103,9 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var lastState: EmbeddedBlockState = EmbeddedBlockState.Loading
 
+    override val isAttemptAlive: Boolean
+        get() = lastState == EmbeddedBlockState.Loading || lastState == EmbeddedBlockState.Ready
+
     @Volatile private var lastLoadedContent: WebViewHtmlContent? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())

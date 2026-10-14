@@ -9,6 +9,10 @@ internal interface EmbeddedContentProvider {
 
     val contentView: View?
 
+    @get:MainThread
+    val isAttemptAlive: Boolean
+        get() = true
+
     @MainThread
     fun start()
 
