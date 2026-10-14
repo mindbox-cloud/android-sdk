@@ -119,6 +119,9 @@ internal class EmbeddedBlockContentController(
     private val hasParkedShowableContent: Boolean
         get() = (parkedAnswer as? ParkedAnswer.Resolved)?.content.isShowable
 
+    private val hasNoContentComing: Boolean
+        get() = provider == null && !hasPendingContent
+
     private var heldCollapse: EmbeddedBlockState? = null
 
     private var appliedSessionEpoch: Long? = null
@@ -209,7 +212,7 @@ internal class EmbeddedBlockContentController(
         }
         if (hasLandedCollapse) {
             mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' is back collapsed by the answer parked for it, asking its place again")
-        } else if (provider == null && !hasPendingContent) {
+        } else if (hasNoContentComing) {
             beginWaitingForContent()
         }
         blocksRegistry()?.onBlockAppeared(place)
@@ -280,7 +283,7 @@ internal class EmbeddedBlockContentController(
     override fun onReturnChecked() {
         deferredParkedMayHold?.let { mayHold ->
             deferredParkedMayHold = null
-            if (isActive) applyParkedAnswer(mayHold)
+            if (isActive && !applyParkedAnswer(mayHold) && hasNoContentComing) beginWaitingForContent()
         }
         sendDueSessionRefresh()
     }
