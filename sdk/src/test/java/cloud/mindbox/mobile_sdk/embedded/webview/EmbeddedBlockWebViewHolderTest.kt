@@ -54,6 +54,7 @@ import org.json.JSONTokener
 import org.junit.After
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -67,6 +68,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * The block holder against the real page protocol, driven through the real bridge
@@ -1344,6 +1346,16 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals(statesBefore, states.size)
     }
 
+    private fun renderAndCountTheFirstShow() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
+        }
+    }
+
     private fun answerThePush() {
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
         val push = lastOutgoingMessage()!!
@@ -1359,11 +1371,78 @@ class EmbeddedBlockWebViewHolderTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
+    @Test
+    fun `a show due while the app is away waits for the session check of its return`() {
+        val returnChecked = CompletableDeferred<Unit>()
+        every { inAppInteractor.returnCheckPending } returns MutableStateFlow(true)
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        val recordedSessions = ConcurrentLinkedQueue<Long>()
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
+            recordedSessions.add(arg(5))
+            true
+        }
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+
+        returnChecked.complete(Unit)
+
+        await { recordedSessions.isNotEmpty() }
+        verify(exactly = 1) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
+        }
+    }
+
+    @Test
+    fun `a show waiting for the session check of the return does not go once the place lost its content meanwhile, and goes once content returns`() {
+        val returnChecked = CompletableDeferred<Unit>()
+        val isReturnCheckPending = MutableStateFlow(true)
+        every { inAppInteractor.returnCheckPending } returns isReturnCheckPending
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        val recordedSessions = ConcurrentLinkedQueue<Long>()
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
+            recordedSessions.add(arg(5))
+            true
+        }
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+
+        holder.withholdShow(true)
+        isReturnCheckPending.value = false
+        returnChecked.complete(Unit)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+
+        holder.withholdShow(false)
+
+        await { recordedSessions.isNotEmpty() }
+        verify(exactly = 1) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
+        }
+    }
+
     private fun pushDataTheShownPageRendersNothingFor() {
         holder.updateParams(mapOf("items" to "[]")) {}
         answerThePush()
         postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
         await { holder.rendersNothing }
+    }
+
+    @Test
+    fun `a shown page that renders nothing tells its block`() {
+        var emptiedReports = 0
+        holder.onRendersNothing = { emptiedReports++ }
+        renderAndCountTheFirstShow()
+
+        pushDataTheShownPageRendersNothingFor()
+
+        assertEquals(1, emptiedReports)
     }
 
     @Test
@@ -1383,6 +1462,36 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
 
         verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
+        }
+    }
+
+    @Test
+    fun `a show waiting for the session check of the return does not go once the page renders nothing meanwhile, and goes once it renders content`() {
+        val returnChecked = CompletableDeferred<Unit>()
+        val isReturnCheckPending = MutableStateFlow(true)
+        every { inAppInteractor.returnCheckPending } returns isReturnCheckPending
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        val recordedSessions = ConcurrentLinkedQueue<Long>()
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
+            recordedSessions.add(arg(5))
+            true
+        }
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        pushDataTheShownPageRendersNothingFor()
+
+        isReturnCheckPending.value = false
+        returnChecked.complete(Unit)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        await { recordedSessions.isNotEmpty() }
+        verify(exactly = 1) {
             inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 0L)
         }
     }

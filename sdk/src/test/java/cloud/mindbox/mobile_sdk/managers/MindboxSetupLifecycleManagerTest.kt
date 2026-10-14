@@ -15,6 +15,7 @@ import io.mockk.mockkObject
 import io.mockk.spyk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -145,6 +146,52 @@ internal class MindboxSetupLifecycleManagerTest {
         assertNotNull(first)
         assertNotNull(second)
         assertNotSame("each init call must install a fresh Callbacks instance", first, second)
+    }
+
+    @Test
+    fun `the app leaving the foreground makes block shows wait for the session check of its return`() {
+        val sessionStorageManager = mockk<SessionStorageManager>(relaxed = true)
+        val manager = LifecycleManager(null, null, isAppInBackground = false)
+        LifecycleManager.instance = manager
+        withAppModule(sessionStorageManager = sessionStorageManager) {
+            callAttachLifecycleCallbacks()
+
+            manager.callbacks?.onAppMovedToBackground()
+
+            verify(exactly = 1) { sessionStorageManager.onAppLeftForeground() }
+        }
+    }
+
+    @Test
+    fun `a handled return releases what waits for its session check`() {
+        val sessionStorageManager = mockk<SessionStorageManager>(relaxed = true)
+        val manager = LifecycleManager(null, null, isAppInBackground = true)
+        LifecycleManager.instance = manager
+        withAppModule(sessionStorageManager = sessionStorageManager) {
+            callAttachLifecycleCallbacks()
+
+            manager.callbacks?.onAppReturnHandled()
+
+            verify(exactly = 1) { sessionStorageManager.onReturnChecked() }
+        }
+    }
+
+    @Test
+    fun `a handled return tells the embedded blocks once the session check is marked over`() {
+        val sessionStorageManager = mockk<SessionStorageManager>(relaxed = true)
+        val blocksRegistry = mockk<EmbeddedBlocksRegistry>(relaxed = true)
+        val manager = LifecycleManager(null, null, isAppInBackground = true)
+        LifecycleManager.instance = manager
+        withAppModule(sessionStorageManager = sessionStorageManager, blocksRegistry = blocksRegistry) {
+            callAttachLifecycleCallbacks()
+
+            manager.callbacks?.onAppReturnHandled()
+
+            verifyOrder {
+                sessionStorageManager.onReturnChecked()
+                blocksRegistry.onReturnCheckOver()
+            }
+        }
     }
 
     @Test

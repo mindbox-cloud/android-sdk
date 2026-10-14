@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
@@ -901,6 +902,169 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an answer carries the session its resolve started in and the time its selection took`() {
+        currentSessionEpoch = 3L
+        clock = Milliseconds(1_000L)
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            clock = Milliseconds(1_300L)
+            winner()
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(3L, handle.answers.single().sessionEpoch)
+        assertEquals(Milliseconds(300L), handle.answers.single().selectionTime)
+    }
+
+    @Test
+    fun `a resolve a new session overtook is dropped and the queued pass delivers the new session's answer`() {
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstResolveGate.await() } andThen winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        controller.onBlockAppeared(place)
+        idleMain()
+        firstResolveGate.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+        assertEquals(1L, handle.answers.single().sessionEpoch)
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 0L) }
+    }
+
+    @Test
+    fun `an empty answer of an ended session gives back no hold and reaches no block`() {
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstResolveGate.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        assertTrue(handle.received.isEmpty())
+        verify(exactly = 0) { interactor.releasePlaceShow(place, any()) }
+    }
+
+    @Test
+    fun `an answer whose session ended before its hold was taken is dropped`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        every { interactor.reservePlaceShow(place, content, any()) } returns PlaceShowReservation.STALE
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertTrue(handle.received.isEmpty())
+        verify(exactly = 0) { interactor.releasePlaceShow(place, any()) }
+    }
+
+    @Test
+    fun `an empty answer whose session ended before its hold was given back is dropped`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty
+        val handle = RecordingHandle()
+        val controller = controller()
+        every { interactor.releasePlaceShow(place, any()) } returns false
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertTrue(handle.received.isEmpty())
+    }
+
+    @Test
+    fun `a delay timer of an ended session delivers nothing`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(delay = Milliseconds(5_000L))
+        val handle = RecordingHandle()
+        val controller = controller()
+        every { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId, 0L) } returns false
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        scope.testScheduler.advanceTimeBy(5_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertTrue(handle.received.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a new session picking the same delayed winner waits its delay again from the start`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(delay = Milliseconds(5_000L))
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.testScheduler.advanceTimeBy(3_000L)
+        scope.testScheduler.runCurrent()
+
+        currentSessionEpoch = 1L
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.testScheduler.advanceTimeBy(2_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+        assertTrue(handle.received.isEmpty())
+
+        scope.testScheduler.advanceTimeBy(3_000L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+        assertEquals(1L, handle.answers.single().sessionEpoch)
+    }
+
+    @Test
+    fun `a new session's failure is delivered at once instead of waiting for the ended session's timer`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns
+            winner(delay = Milliseconds(5_000L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(1, handle.unavailableCount)
+        scope.testScheduler.advanceTimeBy(5_001L)
+        scope.testScheduler.runCurrent()
+        idleMain()
+        assertTrue(handle.received.isEmpty())
+    }
+
+    @Test
     fun `a queued pass that took in a config update answers as a config pass, still with the operation's trigger`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
@@ -925,6 +1089,25 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an answer the SDK could not give in a session that has ended reaches no block`() {
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstResolveGate.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        firstResolveGate.complete(EmbeddedResolveOutcome.ConfigUnavailable)
+        idleMain()
+
+        assertEquals(0, handle.unavailableCount)
+        verify(exactly = 0) { interactor.releasePlaceShow(place, any()) }
+    }
+
+    @Test
     fun `an appearance queued with an operation answers as a non-operation pass, still with the operation's trigger`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
@@ -946,6 +1129,84 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `an operation that arrives while the session is ending reaches the new session's selection with its trigger`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        isSessionEnding = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
+    fun `an answer computed in a session that is ending reaches no block`() {
+        val resolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { resolveGate.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        isSessionEnding = true
+        resolveGate.complete(winner())
+        idleMain()
+
+        assertTrue(handle.received.isEmpty())
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+    }
+
+    private val winnerWithoutPage = content.copy(layers = emptyList())
+
+    private fun deliverWinnerWithoutPage(handle: RecordingHandle, reservation: PlaceShowReservation = PlaceShowReservation.RESERVED) {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(variant = winnerWithoutPage)
+        val controller = controller()
+        every { interactor.reservePlaceShow(place, winnerWithoutPage, any()) } returns reservation
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+    }
+
+    @Test
+    fun `a winner without a page gives the show it reserved back at once`() {
+        val handle = RecordingHandle()
+
+        deliverWinnerWithoutPage(handle)
+
+        verify(exactly = 1) { interactor.reservePlaceShow(place, winnerWithoutPage, 0L) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        assertEquals(listOf<InAppType.Embedded?>(winnerWithoutPage), handle.received)
+    }
+
+    @Test
+    fun `a winner without a page whose show budgets are spent empties the place without a failure`() {
+        val handle = RecordingHandle()
+
+        deliverWinnerWithoutPage(handle, PlaceShowReservation.REFUSED)
+
+        assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
+        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
     }
 
     @Test
@@ -1034,6 +1295,79 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an operation that arrives before the session check of the app's return is resolved once the check has run, after its blocks heard of it`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val handle = RecordingHandle()
+        var checksHeardBeforeAsk: Int? = null
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            checksHeardBeforeAsk = handle.returnCheckedCount
+            winner()
+        }
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+        val checksHeardBeforeReturn = handle.returnCheckedCount
+
+        returnCheckPending.value = false
+        controller.onReturnCheckOver()
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(checksHeardBeforeReturn + 1, checksHeardBeforeAsk)
+    }
+
+    @Test
+    fun `a block that appears before the session check of the app's return is asked at once`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `an operation that arrives during the session check of the app's return reaches the new session's selection with its trigger`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+        isSessionEnding = true
+        returnCheckPending.value = false
+        controller.onReturnCheckOver()
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
     fun `an appearance that lands while an operation pass is in flight makes that pass's answer a non-operation answer`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val operationGate = CompletableDeferred<EmbeddedResolveOutcome>()
@@ -1052,5 +1386,83 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `a new session's ask queued behind a resolve in flight counts its selection from the renewal`() {
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        var resolves = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (resolves++ == 0) firstResolveGate.await() else winner()
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        clock = Milliseconds(1_000L)
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        clock = Milliseconds(4_000L)
+        sessionEpochs.value = 1L
+        idleMain()
+        clock = Milliseconds(9_000L)
+        firstResolveGate.complete(winner())
+        idleMain()
+
+        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(Milliseconds(5_000L)), handle.answers.map { answer -> answer.selectionTime })
+    }
+
+    @Test
+    fun `an operation held for the session check of the app's return waits for the check to be reported over, not for the flag to flip back`() {
+        scope = TestScope(StandardTestDispatcher())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        scope.testScheduler.runCurrent()
+
+        returnCheckPending.value = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        scope.testScheduler.runCurrent()
+        idleMain()
+        returnCheckPending.value = false
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        controller.onReturnCheckOver()
+        scope.testScheduler.runCurrent()
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `channels that resubscribe after the session check of the app's return release what still waits for it`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        scope.cancel()
+        returnCheckPending.value = false
+        scope = TestScope(UnconfinedTestDispatcher())
+        controller.startListening()
+        idleMain()
+
+        assertEquals(1, handle.returnCheckedCount)
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
     }
 }

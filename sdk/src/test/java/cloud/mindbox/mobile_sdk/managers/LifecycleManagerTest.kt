@@ -523,6 +523,62 @@ internal class LifecycleManagerTest {
     }
 
     @Test
+    fun `ON_STOP tells the callbacks the app went to background`() {
+        val events = mutableListOf<String>()
+        val manager = createManagerNoCallbacks(isAppInBackground = false)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onAppMovedToBackground() {
+                events += "background"
+            }
+        }
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
+
+        assertEquals(listOf("background"), events)
+    }
+
+    @Test
+    fun `ON_START reports the return handled after its session check, even when the check fails`() {
+        val events = mutableListOf<String>()
+        val manager = LifecycleManager(currentActivityName = null, currentIntent = Intent(), isAppInBackground = true)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onTrackVisitReady(source: String?, requestUrl: String?) {
+                events += "session check"
+                throw IllegalStateException("the check failed")
+            }
+
+            override fun onAppReturnHandled() {
+                events += "return handled"
+            }
+        }
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+
+        assertEquals(listOf("session check", "return handled"), events)
+    }
+
+    @Test
+    fun `ON_START reports the return handled when its visit was already sent while the app was away`() {
+        val events = mutableListOf<String>()
+        val manager = LifecycleManager(currentActivityName = null, currentIntent = Intent(), isAppInBackground = true)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onTrackVisitReady(source: String?, requestUrl: String?) {
+                events += "session check"
+            }
+
+            override fun onAppReturnHandled() {
+                events += "return handled"
+            }
+        }
+        manager.onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")))
+        events.clear()
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+
+        assertEquals(listOf("return handled"), events)
+    }
+
+    @Test
     fun `the first screen resumed while none was is reported, one resumed alongside it is not`() {
         val firstResumed = mutableListOf<Activity>()
         val manager = createManagerNoCallbacks(isAppInBackground = false)

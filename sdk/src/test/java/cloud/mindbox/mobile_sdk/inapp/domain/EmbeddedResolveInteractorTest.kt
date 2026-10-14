@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
@@ -57,6 +58,10 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The MOBILE-333 resolve trio: content for a place (pull and push), content by id for the
@@ -1232,6 +1237,74 @@ class EmbeddedResolveInteractorTest {
     private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
 
     @Test
+    fun `recordBlockShow answers whether the show went out`() {
+        val first = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        val repeated = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+
+        assertTrue(first)
+        assertFalse(repeated)
+    }
+
+    @Test
+    fun `recordBlockShow of a session that has ended writes nothing, counts nothing and sends no show`() {
+        every { sessionStorageManager.sessionEpoch } returns 1L
+
+        val isSent = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+
+        assertFalse(isSent)
+        assertNull(sessionState.embeddedLastShownByPlace[place])
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `the same in-app shown again in a new session counts and commits the place's hold as at cold start`() {
+        val storage = SessionStorageManager(timeProvider)
+        val interactorOverRealSession = interactorOver(storage)
+        val counting = InAppStub.getInApp().frequency
+        interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, 0L)
+        storage.clearSessionData()
+
+        val isSent = interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, 1L)
+
+        assertTrue(isSent)
+        verify(exactly = 2) { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", counting, now) }
+        verify(exactly = 2) { inAppRepository.sendInAppShown("embedded-id", any(), any()) }
+    }
+
+    @Test
+    fun `reservePlaceShow for a session that has ended takes no hold`() {
+        every { sessionStorageManager.sessionEpoch } returns 1L
+
+        val reservation = interactor.reservePlaceShow(place, InAppStub.getEmbedded(), 0L)
+
+        assertEquals(PlaceShowReservation.STALE, reservation)
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+    }
+
+    @Test
+    fun `releasePlaceShow for a session that has ended gives back nothing`() {
+        every { sessionStorageManager.sessionEpoch } returns 1L
+
+        assertFalse(interactor.releasePlaceShow(place, 0L))
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+
+        assertTrue(interactor.releasePlaceShow(place, 1L))
+        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
+    }
+
+    @Test
+    fun `a delay waited out in a session that has ended does not spare the new session its wait`() {
+        every { sessionStorageManager.sessionEpoch } returns 1L
+
+        assertFalse(interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L))
+
+        assertTrue(sessionState.embeddedDelaysWaitedOut.isEmpty())
+    }
+
+    @Test
     fun `beginNewSession resets the config before the session moves on`() {
         every { mobileConfigRepository.resetCurrentConfig() } just runs
 
@@ -1242,6 +1315,131 @@ class EmbeddedResolveInteractorTest {
             inAppRepository.clearInAppEvents()
             sessionStorageManager.clearSessionData()
         }
+    }
+
+    @Test
+    fun `a session reset waits for a block show being recorded and leaves no trace of it in the new session`() {
+        val storage = SessionStorageManager(timeProvider)
+        val interactorOverRealSession = interactorOver(storage)
+        val entered = CountDownLatch(1)
+        val proceed = CountDownLatch(1)
+        every { showBudgetManager.commit(any(), any(), any(), any()) } answers {
+            entered.countDown()
+            proceed.await(5, TimeUnit.SECONDS)
+        }
+        val workers = Executors.newFixedThreadPool(2)
+        val record = workers.submit<Boolean> {
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
+        }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        val reset = workers.submit { storage.clearSessionData() }
+        Thread.sleep(150)
+        assertFalse(reset.isDone)
+
+        proceed.countDown()
+
+        assertTrue(record.get(5, TimeUnit.SECONDS))
+        reset.get(5, TimeUnit.SECONDS)
+        assertEquals(1L, storage.sessionEpoch)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        workers.shutdown()
+    }
+
+    private fun interactorOver(storage: SessionStorageManager): InAppInteractorImpl = InAppInteractorImpl(
+        mobileConfigRepository = mobileConfigRepository,
+        inAppRepository = inAppRepository,
+        inAppFilteringManager = InAppFilteringManagerImpl(inAppRepository),
+        inAppEventManager = InAppEventManagerImpl(),
+        inAppProcessingManager = inAppProcessingManager,
+        inAppABTestLogic = inAppABTestLogic,
+        inAppFrequencyManager = frequencyManager,
+        showBudgetManager = showBudgetManager,
+        timeProvider = timeProvider,
+        sessionStorageManager = storage,
+        inAppFailureTracker = inAppFailureTracker,
+    )
+
+    private fun <T> onceTheLockIsFree(storage: SessionStorageManager, change: () -> Unit, action: () -> T): T {
+        val workers = Executors.newSingleThreadExecutor()
+        try {
+            val result = synchronized(storage.showBudgetLock) {
+                val result = workers.submit<T> { action() }
+                Thread.sleep(150)
+                change()
+                result
+            }
+            return result.get(5, TimeUnit.SECONDS)
+        } finally {
+            workers.shutdown()
+        }
+    }
+
+    private fun recordShowOnceTheLockIsFree(storage: SessionStorageManager, sessionChange: () -> Unit): Boolean {
+        val interactorOverRealSession = interactorOver(storage)
+        return onceTheLockIsFree(storage, sessionChange) {
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
+        }
+    }
+
+    @Test
+    fun `a block show waiting for the lock while the session is found over is not counted`() {
+        val storage = SessionStorageManager(timeProvider)
+        storage.addSessionExpirationListener {}
+        storage.lastTrackVisitSendTime.set(1_000L)
+        storage.state.sessionTime = 500L.milliseconds
+        every { timeProvider.currentTimeMillis() } returns 2_000L
+
+        val isSent = recordShowOnceTheLockIsFree(storage) { storage.hasSessionExpired() }
+
+        assertFalse(isSent)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a block show waiting for the lock while the session is reset is not counted in either session`() {
+        val storage = SessionStorageManager(timeProvider)
+
+        val isSent = recordShowOnceTheLockIsFree(storage) { storage.clearSessionData() }
+
+        assertFalse(isSent)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a show committed while a place waits for the show budget lock refuses the place's reservation on frequency`() {
+        val storage = SessionStorageManager(timeProvider)
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        var isShown = false
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } answers { if (isShown) emptyList() else firstArg() }
+        val interactorOverRealSession = interactorOver(storage)
+
+        val reservation = onceTheLockIsFree(storage, change = { isShown = true }) {
+            interactorOverRealSession.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L)
+        }
+
+        assertEquals(PlaceShowReservation.REFUSED, reservation)
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a session found expired refuses the reservations, releases and delay marks of its answers`() {
+        val storage = SessionStorageManager(timeProvider).apply { addSessionExpirationListener {} }
+        storage.lastTrackVisitSendTime.set(1_000L)
+        storage.state.sessionTime = 500L.milliseconds
+        every { timeProvider.currentTimeMillis() } returns 2_000L
+        storage.hasSessionExpired()
+        val interactorOverEndingSession = interactorOver(storage)
+
+        assertEquals(PlaceShowReservation.STALE, interactorOverEndingSession.reservePlaceShow(place, InAppStub.getEmbedded(), 0L))
+        assertFalse(interactorOverEndingSession.releasePlaceShow(place, 0L))
+        assertFalse(interactorOverEndingSession.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L))
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
     }
 
     @Test
@@ -1273,8 +1471,32 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `a session read as ending before its epoch is not live even when the wipe lands between the two reads`() {
+        var isWiped = false
+        every { sessionStorageManager.isSessionEnding } answers { !isWiped }
+        every { sessionStorageManager.sessionEpoch } answers {
+            isWiped = true
+            0L
+        }
+
+        assertFalse(interactor.isLiveSession(0L))
+    }
+
+    @Test
     fun `filterShowableInAppIds answered from the ended session's config while the new one downloads saves none of its in-apps into the new session`() = runTest {
         coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = true)
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 0) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds saves nothing into a session that began while the page's config was read`() = runTest {
+        every { sessionStorageManager.sessionEpoch } returns 0L
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } coAnswers {
+            every { sessionStorageManager.sessionEpoch } returns 1L
+            PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = false)
+        }
 
         assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
         verify(exactly = 0) { inAppRepository.saveCurrentSessionInApps(any()) }
