@@ -231,6 +231,65 @@ class MindboxEmbeddedBlockViewCollapseTest {
     }
 
     @Test
+    fun `nothing to show that reached the block while it was away is told to the host when the block comes back, and the place is asked again`() {
+        val listener = RecordingListener()
+        val view = buildView()
+        view.setListener(listener)
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("load", "empty"), listener.events)
+        assertEquals(2, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `a winner without a page that reached the block while it was away fails it for the host when the block comes back`() {
+        val listener = RecordingListener()
+        val view = buildView()
+        view.setListener(listener)
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent().copy(layers = emptyList()))
+
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("load", "fail:internalError"), listener.events)
+        assertEquals(2, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `an answer the SDK could not give while the block was away fails it for the host when the block comes back`() {
+        val listener = RecordingListener()
+        val view = buildView()
+        view.setListener(listener)
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        blocksRegistry.lastHandle?.onConfigUnavailable()
+
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("load", "fail:networkError"), listener.events)
+    }
+
+    @Test
     fun `an error view given after the collapse does not reopen the space when the retry fails too`() {
         val view = buildView(provider = { FailingProvider(activity) })
         attach(view)

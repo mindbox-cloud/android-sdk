@@ -47,7 +47,11 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
         return Closeable { lastHandle = null }
     }
 
-    override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
+    var appearedCount = 0
+
+    override fun onBlockAppeared(placeSystemName: PlaceKey) {
+        appearedCount++
+    }
 
     override fun startListening() = Unit
 }
