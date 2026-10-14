@@ -380,9 +380,22 @@ internal class EmbeddedBlocksRegistryImpl(
                 placesAppearedMidResolve.remove(place)
                 reResolveQueuedPlaces.remove(place)?.let { queued ->
                     mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
-                    resolvePlace(place, queued)
+                    resolveQueued(place, queued)
                 }
             }
+        }
+    }
+
+    private fun resolveQueued(place: PlaceKey, queued: ResolvePass) {
+        val isOperationUnseen = queued.trigger != null && queued.renewal == null &&
+            liveHandles(place).none { handle -> handle.mayStillBeSeen }
+        when {
+            !isOperationUnseen -> resolvePlace(place, queued)
+            queued.includesNonOperation -> {
+                mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, its queued pass is asked without the operation queued with it")
+                resolvePlace(place, ResolvePass(trigger = null, includesAppearance = queued.includesAppearance))
+            }
+            else -> mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, dropping the operation queued for it")
         }
     }
 
