@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -71,12 +72,16 @@ internal class EmbeddedBlockContentController(
     override val isPausedForBackground: Boolean
         get() = isAwayInBackground && !isStarted && !isReleased
 
+    override val isLeftBehind: Boolean
+        get() = leftBehind && !isStarted && !isReleased
+
     private var provider: EmbeddedContentProvider? = null
     private var failureTrackerCache: InAppFailureTracker? = null
     private var isStarted = false
     private var isReleased = false
     private var hasGivenUp = false
     private var isAwayInBackground = false
+    private var leftBehind = false
 
     var lastReportedState: EmbeddedBlockState? = null
         private set
@@ -95,10 +100,13 @@ internal class EmbeddedBlockContentController(
 
     private sealed interface ParkedAnswer {
         val answer: EmbeddedPlaceAnswer
+        val selectedInAppId: String?
 
-        class Resolved(val content: InAppType.Embedded?, override val answer: EmbeddedPlaceAnswer) : ParkedAnswer
+        class Resolved(val content: InAppType.Embedded?, override val answer: EmbeddedPlaceAnswer) : ParkedAnswer {
+            override val selectedInAppId: String? = content?.inAppId
+        }
 
-        class ConfigUnavailable(override val answer: EmbeddedPlaceAnswer) : ParkedAnswer
+        class ConfigUnavailable(override val answer: EmbeddedPlaceAnswer, override val selectedInAppId: String?) : ParkedAnswer
     }
 
     private var parkedAnswer: ParkedAnswer? = null
@@ -112,6 +120,10 @@ internal class EmbeddedBlockContentController(
         get() = (parkedAnswer as? ParkedAnswer.Resolved)?.content.isShowable
 
     private var heldCollapse: EmbeddedBlockState? = null
+
+    private var appliedSessionEpoch: Long? = null
+
+    private var dueSessionRefresh: EmbeddedPlaceAnswer? = null
 
     /** What the shown page was built from — the "same content" dedup key. */
     private var appliedDescriptor: PageDescriptor? = null
@@ -172,6 +184,9 @@ internal class EmbeddedBlockContentController(
 
         val isBackFromBackground = isAwayInBackground
         isAwayInBackground = false
+        val isBackAfterBeingLeftBehind = leftBehind
+        leftBehind = false
+        if (isBackAfterBeingLeftBehind) resumeAfterBeingLeftBehind()
         parkedAnswer?.let { parked ->
             if (parked.waitsForReturnCheck && blocksRegistry()?.deferUntilReturnChecked() == true) {
                 mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' is back before the session check of the app's return, its parked answer waits for it")
@@ -211,6 +226,7 @@ internal class EmbeddedBlockContentController(
             return
         }
         collapseHeldAnswer()
+        if (isHoldingContent && isOfEndedSession(appliedSessionEpoch)) leftBehind = true
     }
 
     fun release() {
@@ -234,12 +250,13 @@ internal class EmbeddedBlockContentController(
             } else {
                 mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
             }
-            parkedAnswer = ParkedAnswer.Resolved(content, answer)
+            val earlierOfSameInApp = parkedAnswer?.takeIf { parked -> content != null && parked.selectedInAppId == content.inAppId }
+            parkedAnswer = ParkedAnswer.Resolved(content, keepingFirstSelectionOfNewSession(answer, earlierOfSameInApp?.answer))
             if (content.isShowable) supersedeHeldOutcome()
             return
         }
         dropContentWaitingForReturnCheck()
-        applyResolved(content, answer, mayHold = true)
+        applyAnswer(content, answer, mayHold = true)
     }
 
     private val ParkedAnswer.waitsForReturnCheck: Boolean
@@ -263,6 +280,7 @@ internal class EmbeddedBlockContentController(
             deferredParkedMayHold = null
             if (isActive) applyParkedAnswer(mayHold)
         }
+        sendDueSessionRefresh()
     }
 
     override fun onAppResumedOn(activity: Activity) {
@@ -284,6 +302,8 @@ internal class EmbeddedBlockContentController(
         isAwayInBackground = false
         applyParkedRefusal()
         collapseHeldAnswer()
+        giveBackParkedShow()
+        leftBehind = isHoldingContent
     }
 
     private fun applyParkedRefusal() {
@@ -291,6 +311,20 @@ internal class EmbeddedBlockContentController(
         if (parked.waitsForReturnCheck || isOfEndedSession(parked.answer.sessionEpoch)) return
         mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' has left the screen, applying the answer with nothing to show parked for it")
         applyParkedAnswer(mayHold = false)
+    }
+
+    private fun giveBackParkedShow() {
+        val parked = parkedAnswer as? ParkedAnswer.Resolved ?: return
+        val place = placeSystemName ?: return
+        if (!parked.answer.isShowReserved || !parked.content.isShowable) return
+        parkedAnswer = ParkedAnswer.Resolved(parked.content, parked.answer.copy(isShowReserved = false))
+        blocksRegistry()?.giveBackParkedShow(place, parked.answer.sessionEpoch)
+    }
+
+    override fun onSessionRenewed() {
+        if (isStarted || isReleased || isAwayInBackground || !isHoldingContent) return
+        mindboxLogI("[EmbeddedBlock] A new session began while block '$placeSystemName' was off screen, its place is asked again and the answer waits for its return")
+        leftBehind = true
     }
 
     private fun applyParkedAnswer(mayHold: Boolean) {
@@ -302,13 +336,26 @@ internal class EmbeddedBlockContentController(
     private fun isOfEndedSession(sessionEpoch: Long?): Boolean =
         sessionEpoch != null && blocksRegistry()?.isLiveSession(sessionEpoch) == false
 
+    private fun resumeAfterBeingLeftBehind() {
+        if (parkedAnswer?.let { parked -> isOfEndedSession(parked.answer.sessionEpoch) } == true) {
+            parkedAnswer = null
+            dropAnswerOfEndedSession()
+        }
+        if (lastReportedState == EmbeddedBlockState.Loading) readyBudget.reset()
+        if (parkedAnswer != null || !isOfEndedSession(appliedSessionEpoch)) return
+        mindboxLogI(
+            "[EmbeddedBlock] Block '$placeSystemName' is back on its screen, " +
+                "keeping its page of an ended session until the new session answers"
+        )
+    }
+
     private fun applyParked(parked: ParkedAnswer, mayHold: Boolean) {
         if (isOfEndedSession(parked.answer.sessionEpoch)) {
             dropAnswerOfEndedSession()
             return
         }
         when (parked) {
-            is ParkedAnswer.Resolved -> applyResolved(parked.content, parked.answer, mayHold)
+            is ParkedAnswer.Resolved -> applyAnswer(parked.content, parked.answer, mayHold)
             is ParkedAnswer.ConfigUnavailable -> applyConfigUnavailable(parked.answer, mayHold)
         }
     }
@@ -327,6 +374,23 @@ internal class EmbeddedBlockContentController(
         }
     }
 
+    private fun applyAnswer(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean) {
+        val place = placeSystemName
+        val unreserved = content?.takeIf { winner -> !answer.isShowReserved && winner.pageLayer != null }
+        if (unreserved == null || place == null) {
+            applyResolved(content, answer, mayHold)
+            return
+        }
+        when (blocksRegistry()?.reserveShow(place, unreserved, answer) ?: PlaceShowReservation.RESERVED) {
+            PlaceShowReservation.RESERVED -> applyResolved(content, answer, mayHold)
+            PlaceShowReservation.REFUSED -> {
+                mindboxLogI("[EmbeddedBlock] In-app ${unreserved.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
+                applyResolved(null, answer, mayHold)
+            }
+            PlaceShowReservation.STALE -> dropAnswerOfEndedSession()
+        }
+    }
+
     override fun onContentPending() {
         if (isReleased || hasGivenUp) return
         configBudget.reset()
@@ -335,6 +399,7 @@ internal class EmbeddedBlockContentController(
 
     override fun onConfigUnavailable(answer: EmbeddedPlaceAnswer) {
         if (!acceptAnswer("The SDK's answer")) return
+        val earlierParked = parkedAnswer
         parkedAnswer = null
         mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for '$placeSystemName', sending its wait failure")
         sendWaitBudgetExceeded(
@@ -343,7 +408,8 @@ internal class EmbeddedBlockContentController(
         )
         if (!takesAnswerNow(waitsForReturnCheck = false)) {
             mindboxLogI("[EmbeddedBlock] The failure for '$placeSystemName' arrived while paused, deferring it")
-            parkedAnswer = ParkedAnswer.ConfigUnavailable(answer)
+            val selectedInAppId = earlierParked?.takeIf { parked -> parked.answer.sessionEpoch == answer.sessionEpoch }?.selectedInAppId
+            parkedAnswer = ParkedAnswer.ConfigUnavailable(keepingFirstSelectionOfNewSession(answer, earlierParked?.answer), selectedInAppId)
             return
         }
         dropContentWaitingForReturnCheck()
@@ -372,6 +438,7 @@ internal class EmbeddedBlockContentController(
                 "keeping it until the block leaves the screen"
         )
         heldCollapse = state
+        dueSessionRefresh = null
         (provider as? EmbeddedUpdatableContentProvider)?.withholdShow(true)
     }
 
@@ -449,8 +516,12 @@ internal class EmbeddedBlockContentController(
         val current = provider
 
         if (current != null && descriptor == appliedDescriptor && lastReportedState?.nothingToShow != true) {
-            mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
             refreshMetricsSnapshot(current, content)
+            if (current is EmbeddedUpdatableContentProvider && isNewSessionFor(answer)) {
+                refreshForNewSession(current, answer)
+            } else {
+                mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
+            }
             releaseHeldCollapse()
             return
         }
@@ -474,6 +545,55 @@ internal class EmbeddedBlockContentController(
 
     private fun winnerWithoutPage(content: InAppType.Embedded): String = "Winner ${content.inAppId} has no webview layer"
 
+    private fun isNewSessionFor(answer: EmbeddedPlaceAnswer): Boolean =
+        appliedSessionEpoch?.let { pageSession -> answer.sessionEpoch > pageSession } == true
+
+    private fun keepingFirstSelectionOfNewSession(answer: EmbeddedPlaceAnswer, earlier: EmbeddedPlaceAnswer?): EmbeddedPlaceAnswer {
+        val first = earlier?.takeIf { held -> held.sessionEpoch == answer.sessionEpoch && isNewSessionFor(answer) } ?: return answer
+        return answer.copy(selectionTime = first.selectionTime)
+    }
+
+    private fun refreshForNewSession(current: EmbeddedUpdatableContentProvider, answer: EmbeddedPlaceAnswer) {
+        val content = appliedContent ?: return
+        val layer = content.pageLayer ?: return
+        if (lastReportedState != EmbeddedBlockState.Ready) {
+            mindboxLogI(
+                "[EmbeddedBlock] A new session picked ${content.inAppId} for '$placeSystemName' again while " +
+                    "its page loads, refreshing the page once it renders"
+            )
+            val due = keepingFirstSelectionOfNewSession(answer, dueSessionRefresh)
+            dueSessionRefresh = due
+            current.scheduleSessionRefresh(due.sessionEpoch, due.selectionTime)
+            return
+        }
+        mindboxLogI("[EmbeddedBlock] A new session picked ${content.inAppId} for '$placeSystemName' again, refreshing the page in place")
+        pushPageData(current, layer, content, answer)
+    }
+
+    private val isDueSessionRefreshSendable: Boolean
+        get() = dueSessionRefresh != null && isActive && lastReportedState == EmbeddedBlockState.Ready
+
+    private fun sendDueSessionRefreshOnceReturnChecked() {
+        if (!isDueSessionRefreshSendable) return
+        if (blocksRegistry()?.deferUntilReturnChecked() == true) {
+            mindboxLogI("[EmbeddedBlock] The page of '$placeSystemName' rendered before the session check of the app's return, its new session's data waits for the check")
+            return
+        }
+        sendDueSessionRefresh()
+    }
+
+    private fun sendDueSessionRefresh() {
+        if (!isDueSessionRefreshSendable) return
+        val answer = dueSessionRefresh ?: return
+        val current = provider as? EmbeddedUpdatableContentProvider ?: return
+        dueSessionRefresh = null
+        if (isOfEndedSession(answer.sessionEpoch)) {
+            mindboxLogI("[EmbeddedBlock] The session that picked the page of '$placeSystemName' again has ended before the page rendered, dropping its refresh")
+            return
+        }
+        refreshForNewSession(current, answer)
+    }
+
     private fun pushPageData(
         current: EmbeddedUpdatableContentProvider,
         layer: Layer.WebViewLayer,
@@ -482,6 +602,9 @@ internal class EmbeddedBlockContentController(
     ) {
         val descriptor = descriptorOf(content.inAppId, layer)
         val epoch = ++updateEpoch
+        val isNewSession = isNewSessionFor(answer)
+        val previousSessionEpoch = appliedSessionEpoch
+        if (isNewSession) appliedSessionEpoch = answer.sessionEpoch
         val onResult: (Boolean) -> Unit = { isUpdated ->
             mainHandler.post {
                 if (isReleased || provider !== current || epoch != updateEpoch) return@post
@@ -492,20 +615,35 @@ internal class EmbeddedBlockContentController(
                     }
                     heldOutcome != null -> {
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
+                        if (isNewSession && appliedSessionEpoch == answer.sessionEpoch) appliedSessionEpoch = previousSessionEpoch
                     }
                     else -> {
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
-                        recreateProvider(content, layer, answer)
+                        recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
                     }
                 }
             }
         }
         runCatching {
-            current.updateParams(layer.params, onResult)
+            if (isNewSession) {
+                current.refreshForSession(layer.params, answer.sessionEpoch, answer.selectionTime, onResult)
+            } else {
+                current.updateParams(layer.params, onResult)
+            }
         }.onFailure { error ->
             mindboxLogW("[EmbeddedBlock] In-place update crashed ($error), recreating the content")
-            recreateProvider(content, layer, answer)
+            recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
         }
+    }
+
+    private fun answerForRebuild(
+        failed: EmbeddedUpdatableContentProvider,
+        answer: EmbeddedPlaceAnswer,
+        isNewSession: Boolean,
+    ): EmbeddedPlaceAnswer {
+        if (!isNewSession) return answer
+        val counted = loggingRunCatching(defaultValue = null) { failed.timeToDisplaySoFar(answer.sessionEpoch) } ?: return answer
+        return answer.copy(selectionTime = counted)
     }
 
     private fun refreshMetricsSnapshot(current: EmbeddedContentProvider, content: InAppType.Embedded) {
@@ -529,6 +667,7 @@ internal class EmbeddedBlockContentController(
         provider = created
         appliedDescriptor = descriptorOf(content.inAppId, layer)
         appliedContent = content
+        appliedSessionEpoch = answer.sessionEpoch
         (created as? EmbeddedUpdatableContentProvider)?.let { page ->
             page.confirmForSession(answer.sessionEpoch)
             page.onRendersNothing = ::onPageEmptied
@@ -553,6 +692,7 @@ internal class EmbeddedBlockContentController(
             return
         }
         report(state)
+        if (state == EmbeddedBlockState.Ready) sendDueSessionRefreshOnceReturnChecked()
     }
 
     private fun report(state: EmbeddedBlockState) {
@@ -562,6 +702,7 @@ internal class EmbeddedBlockContentController(
         }
         if (state.nothingToShow) {
             heldCollapse = null
+            dueSessionRefresh = null
         }
         if (state == lastReportedState) return
         lastReportedState = state
@@ -707,6 +848,8 @@ internal class EmbeddedBlockContentController(
         readyBudget.reset()
         provider?.let { current -> loggingRunCatching { current.release() } }
         provider = null
+        appliedSessionEpoch = null
+        dueSessionRefresh = null
         heldCollapse = null
     }
 

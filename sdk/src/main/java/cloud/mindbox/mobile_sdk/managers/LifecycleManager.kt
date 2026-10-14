@@ -126,6 +126,10 @@ internal class LifecycleManager internal constructor(
 
     private var isResumeTracked = false
 
+    @get:MainThread
+    val hasResumedActivity: Boolean
+        get() = resumedActivities.isNotEmpty() || !isResumeTracked
+
     @MainThread
     fun isInForegroundBesides(host: Activity?): Boolean {
         if (!isResumeTracked) return true

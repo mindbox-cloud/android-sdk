@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
@@ -28,6 +29,7 @@ internal data class EmbeddedPlaceAnswer(
     val sessionEpoch: Long,
     val isByOperation: Boolean,
     val selectionTime: Milliseconds,
+    val isShowReserved: Boolean = true,
 )
 
 internal val InAppType.Embedded.pageLayer: Layer.WebViewLayer?
@@ -41,6 +43,8 @@ internal interface EmbeddedBlockHandle {
     val isActive: Boolean
 
     val isPausedForBackground: Boolean
+
+    val isLeftBehind: Boolean
 
     val isHoldingContent: Boolean
 
@@ -57,6 +61,9 @@ internal interface EmbeddedBlockHandle {
 
     @MainThread
     fun onReturnChecked()
+
+    @MainThread
+    fun onSessionRenewed()
 }
 
 internal interface EmbeddedBlocksRegistry {
@@ -68,6 +75,12 @@ internal interface EmbeddedBlocksRegistry {
     fun onBlockContentDropped(placeSystemName: PlaceKey)
 
     fun isLiveSession(sessionEpoch: Long): Boolean
+
+    @MainThread
+    fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation
+
+    @MainThread
+    fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long)
 
     @MainThread
     fun deferUntilReturnChecked(): Boolean
@@ -84,6 +97,9 @@ internal class EmbeddedBlocksRegistryImpl(
     // Read on every use, never captured: the SDK scope is recreated on a soft reinitialization.
     private val scopeProvider: () -> CoroutineScope = { Mindbox.mindboxScope },
     private val monotonicNow: () -> Milliseconds,
+    private val isAppPresent: () -> Boolean = {
+        loggingRunCatching(defaultValue = true) { LifecycleManager.instance?.hasResumedActivity != false }
+    },
 ) : EmbeddedBlocksRegistry {
 
     // Weak on purpose: a host with no lifecycle owner to say goodbye — a plain Dialog, a
@@ -108,6 +124,20 @@ internal class EmbeddedBlocksRegistryImpl(
                 compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
             ),
         )
+
+        fun askedAt(tick: Milliseconds): ResolvePass = ResolvePass(
+            trigger = trigger,
+            includesNonOperation = includesNonOperation,
+            includesAppearance = includesAppearance,
+            renewal = renewal?.let { held -> SessionRenewal(held.sessionEpoch, tick) },
+        )
+    }
+
+    private class HeldRenewal(val pass: ResolvePass, val pending: ResolvePass?) {
+        fun mergedWith(newer: HeldRenewal): HeldRenewal = HeldRenewal(
+            pass = pass.mergedWith(newer.pass),
+            pending = listOfNotNull(pending, newer.pending).reduceOrNull { held, next -> held.mergedWith(next) },
+        )
     }
 
     private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, ResolvePass>()
@@ -115,6 +145,8 @@ internal class EmbeddedBlocksRegistryImpl(
     private val placesAwaitingNewSession = mutableMapOf<PlaceKey, ResolvePass>()
 
     private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, ResolvePass>()
+
+    private val placesAwaitingFirstResume = mutableMapOf<PlaceKey, HeldRenewal>()
 
     private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
 
@@ -218,6 +250,17 @@ internal class EmbeddedBlocksRegistryImpl(
     override fun isLiveSession(sessionEpoch: Long): Boolean = inAppInteractor.isLiveSession(sessionEpoch)
 
     @MainThread
+    override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation =
+        inAppInteractor.reservePlaceShow(placeSystemName, content, answer.sessionEpoch)
+
+    @MainThread
+    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) {
+        if (liveHandles(placeSystemName).any { handle -> handle.mayStillBeSeen }) return
+        mindboxLogI("[EmbeddedBlock] The blocks of place '$placeSystemName' have left the screen, giving back the show reserved for the answer that waits for them")
+        inAppInteractor.releasePlaceShow(placeSystemName, sessionEpoch)
+    }
+
+    @MainThread
     override fun deferUntilReturnChecked(): Boolean {
         restartChannelsIfDead()
         return inAppInteractor.returnCheckPending.value
@@ -226,12 +269,30 @@ internal class EmbeddedBlocksRegistryImpl(
     override fun onAppResumedOn(activity: Activity) {
         runOnMain {
             forEachLiveHandle { handle -> handle.onAppResumedOn(activity) }
+            val held = placesAwaitingFirstResume.toMap()
+            placesAwaitingFirstResume.clear()
+            held.forEach { (place, renewal) ->
+                val handles = liveHandles(place)
+                when {
+                    handles.any { handle -> handle.isActive || handle.isRenewedWhileAway } -> {
+                        mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
+                        resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
+                    }
+                    else -> renewal.pending?.let { pending -> resolvePlace(place, pending) }
+                }
+            }
         }
     }
 
     override fun onReturnCheckOver() {
         runOnMain { releaseReturnCheckDeferrals() }
     }
+
+    private val EmbeddedBlockHandle.isRenewedWhileAway: Boolean
+        get() = isPausedForBackground || isLeftBehind
+
+    private val EmbeddedBlockHandle.mayStillBeSeen: Boolean
+        get() = isActive || isPausedForBackground
 
     private fun forEachLiveHandle(action: (EmbeddedBlockHandle) -> Unit) {
         handlesByPlace.keys.toList().forEach { place ->
@@ -245,6 +306,7 @@ internal class EmbeddedBlocksRegistryImpl(
         reResolveQueuedPlaces.remove(place)
         placesAwaitingNewSession.remove(place)
         placesAwaitingReturnCheck.remove(place)
+        placesAwaitingFirstResume.remove(place)
         inAppInteractor.releasePlaceShow(place)
     }
 
@@ -338,6 +400,8 @@ internal class EmbeddedBlocksRegistryImpl(
     private fun onSessionRenewed(renewal: SessionRenewal) {
         val awaiting = placesAwaitingNewSession.toMap()
         placesAwaitingNewSession.clear()
+        forEachLiveHandle { handle -> handle.onSessionRenewed() }
+        val isPresent = isAppPresent()
         handlesByPlace.keys.toList().forEach { place ->
             val handles = liveHandles(place)
             val pending = awaiting[place]
@@ -349,9 +413,14 @@ internal class EmbeddedBlocksRegistryImpl(
             )
             when {
                 handles.isEmpty() -> Unit
-                handles.any { handle -> handle.isActive } -> {
+                handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isRenewedWhileAway }) -> {
                     mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
                     resolvePlace(place, renewalPass)
+                }
+                handles.any { handle -> handle.isRenewedWhileAway } -> {
+                    mindboxLogI("[EmbeddedBlock] A new session began while no screen of the app is resumed, place '$place' is asked once one is")
+                    val held = HeldRenewal(renewalPass, pending)
+                    placesAwaitingFirstResume[place] = placesAwaitingFirstResume[place]?.mergedWith(held) ?: held
                 }
                 pending != null -> resolvePlace(place, pending)
                 else -> Unit
@@ -500,9 +569,12 @@ internal class EmbeddedBlocksRegistryImpl(
             inAppInteractor.releasePlaceShow(place, answer.sessionEpoch)
             return
         }
-        // The hold is taken here, where the content really goes to the blocks — after any delay,
-        // not at the resolve — so the check and the spend are one step against the overlay.
-        val delivered = when (content?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
+        val showable = content?.takeIf { winner -> winner.pageLayer != null }
+        val defersReservation = showable != null && handles.none { handle -> handle.mayStillBeSeen }
+        if (showable != null && defersReservation) {
+            mindboxLogI("[EmbeddedBlock] The blocks of place '$place' are all off screen, the show of ${showable.inAppId} is reserved once one is back")
+        }
+        val delivered = when (content?.takeUnless { defersReservation }?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
             PlaceShowReservation.RESERVED -> content
             PlaceShowReservation.REFUSED -> {
                 mindboxLogI(
@@ -521,8 +593,9 @@ internal class EmbeddedBlocksRegistryImpl(
             dropEndedSessionAnswer(place)
             return
         }
+        val deliveredAnswer = if (defersReservation) answer.copy(isShowReserved = false) else answer
         handles.forEach { handle ->
-            loggingRunCatching { handle.onContentResolved(delivered, answer) }
+            loggingRunCatching { handle.onContentResolved(delivered, deliveredAnswer) }
         }
     }
 

@@ -13,6 +13,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.findActivity
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.After
@@ -57,6 +59,11 @@ class MindboxEmbeddedBlockViewRetainTest {
         override fun deferUntilReturnChecked(): Boolean = false
 
         override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
+            PlaceShowReservation.RESERVED
+
+        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) = Unit
 
         override fun onReturnCheckOver() = Unit
     }

@@ -54,6 +54,7 @@ class EmbeddedBlocksRegistryTest {
     private class RecordingHandle(
         override var isActive: Boolean = true,
         override var isPausedForBackground: Boolean = false,
+        override var isLeftBehind: Boolean = false,
     ) : EmbeddedBlockHandle {
         override val isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
@@ -79,13 +80,24 @@ class EmbeddedBlocksRegistryTest {
 
         val resumedOn = mutableListOf<Activity>()
         var returnCheckedCount = 0
+        var leavesOnAppResumed = false
 
         override fun onAppResumedOn(activity: Activity) {
             resumedOn.add(activity)
+            if (leavesOnAppResumed) {
+                isPausedForBackground = false
+                isLeftBehind = true
+            }
         }
 
         override fun onReturnChecked() {
             returnCheckedCount++
+        }
+
+        var leavesOnSessionRenewed = false
+
+        override fun onSessionRenewed() {
+            if (leavesOnSessionRenewed) isLeftBehind = true
         }
     }
 
@@ -708,6 +720,7 @@ class EmbeddedBlocksRegistryTest {
     private class HoldingHandle : EmbeddedBlockHandle {
         override val isActive: Boolean = true
         override val isPausedForBackground: Boolean = false
+        override val isLeftBehind: Boolean = false
         override val isHoldingContent: Boolean = true
 
         override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {}
@@ -717,6 +730,8 @@ class EmbeddedBlocksRegistryTest {
         override fun onAppResumedOn(activity: Activity) = Unit
 
         override fun onReturnChecked() = Unit
+
+        override fun onSessionRenewed() = Unit
     }
 
     @Test

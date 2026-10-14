@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded.webview
 import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 
 /**
  * An updatable provider can refresh its content in place over the bridge (`initDataUpdated`)
@@ -14,7 +15,21 @@ internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
     fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit)
 
     @MainThread
+    fun refreshForSession(
+        params: Map<String, String>,
+        sessionEpoch: Long,
+        selectionTime: Milliseconds,
+        onResult: (Boolean) -> Unit,
+    )
+
+    @MainThread
+    fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds)
+
+    @MainThread
     fun confirmForSession(sessionEpoch: Long)
+
+    @MainThread
+    fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds?
 
     @MainThread
     fun withholdShow(isWithheld: Boolean)

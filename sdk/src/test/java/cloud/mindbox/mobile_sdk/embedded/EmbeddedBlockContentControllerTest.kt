@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded
 
 import android.app.Activity
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
@@ -70,6 +71,20 @@ class EmbeddedBlockContentControllerTest {
 
         override fun onAppResumedOn(activity: Activity) = Unit
 
+        val reservedShows = mutableListOf<Pair<String, Long>>()
+        var reservation = PlaceShowReservation.RESERVED
+
+        override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation {
+            reservedShows.add(content.inAppId to answer.sessionEpoch)
+            return reservation
+        }
+
+        val givenBackShows = mutableListOf<Pair<String, Long>>()
+
+        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) {
+            givenBackShows.add(placeSystemName.value to sessionEpoch)
+        }
+
         override fun onReturnCheckOver() = Unit
 
         fun pushContent(
@@ -113,7 +128,18 @@ class EmbeddedBlockContentControllerTest {
 
         override fun release() = Unit
 
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: Long,
+            selectionTime: Milliseconds,
+            onResult: (Boolean) -> Unit,
+        ) = updateParams(params, onResult)
+
+        override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) = Unit
+
         override fun confirmForSession(sessionEpoch: Long) = Unit
+
+        override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? = null
 
         override fun withholdShow(isWithheld: Boolean) = Unit
 
@@ -166,9 +192,14 @@ class EmbeddedBlockContentControllerTest {
     private class SessionAwareProvider(private val rendersOnStart: Boolean = true) : ReadyUpdatableProvider() {
         val confirmedSessions = mutableListOf<Long>()
         val withheldShows = mutableListOf<Boolean>()
+        val sessionRefreshes = mutableListOf<Long>()
+        val sessionRefreshSelectionTimes = mutableListOf<Milliseconds>()
+        val sessionRefreshParams = mutableListOf<Map<String, String>>()
+        val scheduledSessionRefreshes = mutableListOf<Pair<Long, Milliseconds>>()
         val paramUpdates = mutableListOf<Map<String, String>>()
         var pushResult: ((Boolean) -> Unit)? = null
         var releaseCount = 0
+        val timeToDisplayBySession = mutableMapOf<Long, Milliseconds>()
         override var rendersNothing = false
             set(value) {
                 field = value
@@ -188,9 +219,30 @@ class EmbeddedBlockContentControllerTest {
             pushResult = onResult
         }
 
+        var crashesOnSessionRefresh = false
+
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: Long,
+            selectionTime: Milliseconds,
+            onResult: (Boolean) -> Unit,
+        ) {
+            sessionRefreshes.add(sessionEpoch)
+            sessionRefreshSelectionTimes.add(selectionTime)
+            sessionRefreshParams.add(params)
+            check(!crashesOnSessionRefresh) { "the page crashed on the session refresh" }
+            pushResult = onResult
+        }
+
+        override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) {
+            scheduledSessionRefreshes.add(sessionEpoch to selectionTime)
+        }
+
         override fun confirmForSession(sessionEpoch: Long) {
             confirmedSessions.add(sessionEpoch)
         }
+
+        override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? = timeToDisplayBySession[sessionEpoch]
 
         override fun withholdShow(isWithheld: Boolean) {
             withheldShows.add(isWithheld)

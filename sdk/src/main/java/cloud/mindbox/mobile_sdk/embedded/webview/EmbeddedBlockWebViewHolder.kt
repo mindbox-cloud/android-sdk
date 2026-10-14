@@ -82,7 +82,7 @@ internal class EmbeddedBlockWebViewHolder(
     private val context: Context,
     @Volatile private var frequency: Frequency,
     @Volatile private var tags: Map<String, String>?,
-    private val selectionTime: Milliseconds,
+    private var selectionTime: Milliseconds,
     private val ackBudget: Milliseconds = Constants.WebView.readyTimeout,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
@@ -163,6 +163,10 @@ internal class EmbeddedBlockWebViewHolder(
 
     private var accountedSessionEpoch: Long? = null
 
+    private var isSessionRefreshDue = false
+
+    private var isRenderAwaitedForSession = false
+
     private var isShowWithheld = false
 
     override var rendersNothing = false
@@ -185,7 +189,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var renderedTimeToDisplay: Milliseconds? = null
 
-    private val onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() })
+    private var onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() })
 
     private val currentTimeToDisplay: Milliseconds
         get() = Milliseconds(selectionTime.interval + onScreenTime.elapsed.interval)
@@ -235,15 +239,58 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     @MainThread
+    override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) {
+        if (!isLaterSession(sessionEpoch)) return
+        confirmedSessionEpoch = sessionEpoch
+        restartShowTiming(selectionTime)
+        isSessionRefreshDue = true
+    }
+
+    @MainThread
     override fun confirmForSession(sessionEpoch: Long) {
         confirmedSessionEpoch = sessionEpoch
     }
+
+    @MainThread
+    override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? =
+        currentTimeToDisplay.takeIf { sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch }
 
     @MainThread
     override fun withholdShow(isWithheld: Boolean) {
         if (isShowWithheld == isWithheld) return
         isShowWithheld = isWithheld
         if (!isWithheld && lastState == EmbeddedBlockState.Ready && isActive) accountForShow()
+    }
+
+    @MainThread
+    override fun refreshForSession(
+        params: Map<String, String>,
+        sessionEpoch: Long,
+        selectionTime: Milliseconds,
+        onResult: (Boolean) -> Unit,
+    ) {
+        if (webViewController != null) {
+            if (isLaterSession(sessionEpoch)) {
+                confirmedSessionEpoch = sessionEpoch
+                restartShowTiming(selectionTime)
+            }
+            if (sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch) {
+                isSessionRefreshDue = false
+                isRenderAwaitedForSession = true
+            }
+        }
+        updateParams(params, onResult)
+    }
+
+    private fun isLaterSession(sessionEpoch: Long): Boolean =
+        confirmedSessionEpoch?.let { confirmed -> sessionEpoch > confirmed } ?: true
+
+    private fun restartShowTiming(selectionTime: Milliseconds) {
+        this.selectionTime = selectionTime
+        renderedTimeToDisplay = null
+        onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() }).also { stopwatch ->
+            if (isActive) stopwatch.resume()
+        }
     }
 
     override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
@@ -451,7 +498,10 @@ internal class EmbeddedBlockWebViewHolder(
         }
         rendersNothing = false
         didReportShownContent = true
-        renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
+        if (!isSessionRefreshDue) {
+            isRenderAwaitedForSession = false
+            renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
+        }
         report(EmbeddedBlockState.Ready)
         if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
@@ -477,7 +527,7 @@ internal class EmbeddedBlockWebViewHolder(
     @MainThread
     private fun accountForShow() {
         val sessionEpoch = confirmedSessionEpoch ?: return
-        if (sessionEpoch == accountedSessionEpoch) return
+        if (sessionEpoch == accountedSessionEpoch || isSessionRefreshDue || isRenderAwaitedForSession) return
         if (isShowWithheld) {
             mindboxLogI("[EmbeddedBlock] Its block withholds the show of this content until the place's next content applies")
             return
