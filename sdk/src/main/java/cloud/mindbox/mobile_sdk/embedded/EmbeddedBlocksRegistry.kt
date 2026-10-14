@@ -278,7 +278,7 @@ internal class EmbeddedBlocksRegistryImpl(
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
                         resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
                     }
-                    else -> renewal.pending?.let { pending -> resolvePlace(place, pending) }
+                    else -> renewal.pending?.let { pending -> askHeldOperation(place, pending) }
                 }
             }
         }
@@ -422,7 +422,7 @@ internal class EmbeddedBlocksRegistryImpl(
                     val held = HeldRenewal(renewalPass, pending)
                     placesAwaitingFirstResume[place] = placesAwaitingFirstResume[place]?.mergedWith(held) ?: held
                 }
-                pending != null -> resolvePlace(place, pending)
+                pending != null -> askHeldOperation(place, pending)
                 else -> Unit
             }
         }
@@ -440,9 +440,17 @@ internal class EmbeddedBlocksRegistryImpl(
                     mindboxLogI("[EmbeddedBlock] The session has ended, the operation held for place '$place' through the session check of the app's return is asked once the new session begins")
                     placesAwaitingNewSession.merge(place, pass)
                 }
-                else -> resolvePlace(place, pass)
+                else -> askHeldOperation(place, pass)
             }
         }
+    }
+
+    private fun askHeldOperation(place: PlaceKey, pass: ResolvePass) {
+        if (liveHandles(place).none { handle -> handle.mayStillBeSeen || handle.isHoldingContent }) {
+            mindboxLogI("[EmbeddedBlock] The blocks of place '$place' left the screen with nothing on them, dropping the operation held for it")
+            return
+        }
+        resolvePlace(place, pass)
     }
 
     private val isHandledSessionOver: Boolean

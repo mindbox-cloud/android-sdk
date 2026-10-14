@@ -1473,7 +1473,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `an operation held for the new session is asked as an operation once a screen of the app resumes, also when its block left the screen with nothing on it`() {
+    fun `an operation held for the new session is dropped once a screen of the app resumes when its block left the screen with nothing on it`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
         val handle = RecordingHandle()
@@ -1497,9 +1497,8 @@ class EmbeddedBlocksRegistryTest {
         controller.onAppResumedOn(screen())
         idleMain()
 
-        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
-        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+        assertTrue(handle.answers.isEmpty())
     }
 
     @Test
