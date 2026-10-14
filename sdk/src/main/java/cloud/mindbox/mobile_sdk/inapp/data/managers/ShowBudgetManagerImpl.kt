@@ -24,6 +24,9 @@ internal class ShowBudgetManagerImpl(
 
     private val lock: Any get() = sessionStorageManager.showBudgetLock
 
+    override fun holds(owner: ShowBudgetOwner, inAppId: String): Boolean =
+        synchronized(lock) { sessionStorageManager.state.showReservations[owner]?.inAppId == inAppId }
+
     override fun reserve(
         owner: ShowBudgetOwner,
         inAppId: String,
@@ -31,12 +34,12 @@ internal class ShowBudgetManagerImpl(
         isPriority: Boolean
     ): ShowReservationOutcome {
         synchronized(lock) {
-            val reservations = sessionStorageManager.state.showReservations
-            val held = reservations[owner]
-            if (held != null && held.inAppId == inAppId) {
+            if (holds(owner, inAppId)) {
                 mindboxLogI("$owner already holds a show reservation for in-app $inAppId")
                 return ShowReservationOutcome.ALREADY_HELD
             }
+            val reservations = sessionStorageManager.state.showReservations
+            val held = reservations[owner]
             if (held != null) {
                 mindboxLogI("$owner drops its reservation for in-app ${held.inAppId}: a newer candidate replaces it")
                 reservations.remove(owner)

@@ -6,6 +6,8 @@ import cloud.mindbox.mobile_sdk.models.Timestamp
 
 internal interface ShowBudgetManager {
 
+    fun holds(owner: ShowBudgetOwner, inAppId: String): Boolean
+
     fun reserve(
         owner: ShowBudgetOwner,
         inAppId: String,
