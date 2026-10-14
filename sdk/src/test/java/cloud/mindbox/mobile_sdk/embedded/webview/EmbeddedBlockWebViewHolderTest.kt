@@ -501,7 +501,7 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals("response", lastOutgoingMessage()!!.get("type").asString)
         verify(exactly = 0) {
-            MindboxDI.appModule.inAppFailureTracker.sendFailure(any(), any(), any(), any())
+            MindboxDI.appModule.inAppFailureTracker.sendBlockFailure(any(), any(), any(), any())
         }
     }
 
@@ -1260,12 +1260,12 @@ class EmbeddedBlockWebViewHolderTest {
         holder.pause()
         postFromPage(request(action = "contentRendered", payload = """{"count":"many"}"""))
 
-        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+        verify(exactly = 0) { inAppFailureTracker.sendBlockFailure(any(), any(), any(), any()) }
 
         holder.start()
 
         verify(exactly = 1) {
-            inAppFailureTracker.sendFailure("embedded-id", FailureReason.PRESENTATION_FAILED, any(), any())
+            inAppFailureTracker.sendBlockFailure("embedded-id", FailureReason.PRESENTATION_FAILED, any(), any())
         }
     }
 

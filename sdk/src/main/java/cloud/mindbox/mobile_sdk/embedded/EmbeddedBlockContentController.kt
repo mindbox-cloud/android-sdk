@@ -9,7 +9,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendBlockFailureWithContext
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
@@ -736,7 +736,7 @@ internal class EmbeddedBlockContentController(
         val failed = content ?: return false
         val tracker = resolveFailureTracker() ?: return false
         loggingRunCatching {
-            tracker.sendFailureWithContext(
+            tracker.sendBlockFailureWithContext(
                 inAppId = failed.inAppId,
                 failureReason = code,
                 errorDescription = description,

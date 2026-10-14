@@ -54,7 +54,7 @@ import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendBlockFailureWithContext
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -607,7 +607,7 @@ internal class EmbeddedBlockWebViewHolder(
             if (isActive) flushHeldFailure()
             return
         }
-        inAppFailureTracker.sendFailureWithContext(
+        inAppFailureTracker.sendBlockFailureWithContext(
             inAppId = inAppId,
             failureReason = failureReason,
             errorDescription = errorDescription,
@@ -618,7 +618,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun flushHeldFailure() {
         val held = heldFailure.getAndSet(null) ?: return
-        inAppFailureTracker.sendFailureWithContext(
+        inAppFailureTracker.sendBlockFailureWithContext(
             inAppId = inAppId,
             failureReason = held.failureReason,
             errorDescription = held.errorDescription,

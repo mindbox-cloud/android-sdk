@@ -472,7 +472,7 @@ class EmbeddedBlockContentControllerTest {
         idleFor(Duration.ofMillis(101L))
 
         verify(exactly = 1) {
-            tracker.sendFailure(
+            tracker.sendBlockFailure(
                 inAppId = "embedded-id",
                 failureReason = cloud.mindbox.mobile_sdk.models.operation.request.FailureReason.PRESENTATION_FAILED,
                 errorDetails = any(),
@@ -1213,7 +1213,7 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(internalError, states.last())
         verify(exactly = 1) {
-            tracker.sendFailure(
+            tracker.sendBlockFailure(
                 inAppId = "embedded-id",
                 failureReason = FailureReason.UNKNOWN_ERROR,
                 errorDetails = any(),
@@ -1232,7 +1232,7 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(internalError, states.last())
         verify(exactly = 1) {
-            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+            tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
         }
     }
 
@@ -1248,7 +1248,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(internalError, states.last())
         assertEquals(1, crashing.releaseCount)
         verify(exactly = 1) {
-            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+            tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
         }
     }
 
@@ -1273,7 +1273,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf(EmbeddedBlockState.Ready, internalError), states.takeLast(2))
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
         verify(exactly = 1) {
-            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+            tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
         }
     }
 
@@ -1291,7 +1291,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(1, viewless.releaseCount)
         assertEquals(null, controller.contentView)
         verify(exactly = 1) {
-            tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+            tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
         }
     }
 
@@ -1700,7 +1700,7 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals(0, createdProviders.single().releaseCount)
-        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+        verify(exactly = 1) { tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
 
         controller.pause()
 
@@ -1888,12 +1888,12 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
 
-        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+        verify(exactly = 1) { tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
         val reportedBeforeReturn = states.size
 
         controller.start()
 
-        verify(exactly = 1) { tracker.sendFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
+        verify(exactly = 1) { tracker.sendBlockFailure(inAppId = "embedded-id", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any()) }
         assertEquals(listOf(internalError, EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(1, createdProviders.single().startCount)
