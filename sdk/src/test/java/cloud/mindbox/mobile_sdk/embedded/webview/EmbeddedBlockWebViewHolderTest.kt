@@ -1337,4 +1337,47 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals(statesBefore, states.size)
     }
+
+    private fun answerThePush() {
+        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+        val push = lastOutgoingMessage()!!
+        postFromPage(
+            """{"type":"response","action":"initDataUpdated","payload":"{\"success\":true}",""" +
+                """"id":${push.get("id")},"version":1,"timestamp":2}"""
+        )
+    }
+
+    private fun letTheShowRecordingSettle() {
+        shadowOf(Looper.getMainLooper()).idle()
+        Thread.sleep(150)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    private fun pushDataTheShownPageRendersNothingFor() {
+        holder.updateParams(mapOf("items" to "[]")) {}
+        answerThePush()
+        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "emptied"))
+        await { holder.rendersNothing }
+    }
+
+    @Test
+    fun `a show the place lets go while the page renders nothing waits until the page renders content`() {
+        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) } just runs
+        startAndAwaitPageLoad()
+        holder.withholdShow(true)
+        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
+        await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        pushDataTheShownPageRendersNothingFor()
+
+        holder.withholdShow(false)
+        letTheShowRecordingSettle()
+
+        verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any()) }
+
+        postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "refilled"))
+
+        verify(exactly = 1, timeout = 5_000L) {
+            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any())
+        }
+    }
 }

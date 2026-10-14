@@ -31,6 +31,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.lang.ref.WeakReference
@@ -111,6 +112,8 @@ class EmbeddedBlocksRegistryTest {
             monotonicNow = { clock },
         )
     }
+
+    private fun screen(): Activity = Robolectric.buildActivity(Activity::class.java).get()
 
     private fun idleMain() {
         shadowOf(Looper.getMainLooper()).idle()
@@ -857,6 +860,71 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an answer tells whether an operation asked for it`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        assertEquals(listOf(false, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `a queued pass that took in a config update answers as a config pass, still with the operation's trigger`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() }
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        scope.launch { configUpdates.emit(Unit) }
+        idleMain()
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `an appearance queued with an operation answers as a non-operation pass, still with the operation's trigger`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() }
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
     fun `a winner whose delay ran out keeps its delivery when a failure overtakes it on the way to the main thread`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns
             winner(delay = Milliseconds(20L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
@@ -922,5 +990,43 @@ class EmbeddedBlocksRegistryTest {
             workerScope = null
             worker.shutdownNow()
         }
+    }
+
+    @Test
+    fun `the app resuming on a screen tells every block of every place`() {
+        val onScreen = RecordingHandle()
+        val inBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
+        val controller = controller()
+        controller.register(place, onScreen)
+        controller.register(PlaceKey.of("other-place"), inBackground)
+        idleMain()
+        val resumed = screen()
+
+        controller.onAppResumedOn(resumed)
+        idleMain()
+
+        assertEquals(listOf(resumed), onScreen.resumedOn)
+        assertEquals(listOf(resumed), inBackground.resumedOn)
+    }
+
+    @Test
+    fun `an appearance that lands while an operation pass is in flight makes that pass's answer a non-operation answer`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val operationGate = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, operation) } coAnswers { operationGate.await() }
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        operationGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
     }
 }

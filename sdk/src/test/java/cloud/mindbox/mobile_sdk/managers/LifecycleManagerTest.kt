@@ -523,6 +523,47 @@ internal class LifecycleManagerTest {
     }
 
     @Test
+    fun `the first screen resumed while none was is reported, one resumed alongside it is not`() {
+        val firstResumed = mutableListOf<Activity>()
+        val manager = createManagerNoCallbacks(isAppInBackground = false)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onFirstActivityResumed(activity: Activity) {
+                firstResumed += activity
+            }
+        }
+        val first = buildActivityA()
+        val second = buildActivityB()
+
+        manager.onActivityResumed(first)
+        manager.onActivityResumed(second)
+        manager.onActivityPaused(first)
+        manager.onActivityPaused(second)
+        manager.onActivityResumed(second)
+
+        assertEquals(listOf(first, second), firstResumed)
+    }
+
+    @Test
+    fun `the app is in the foreground besides a screen while that screen is resumed or another of its screens is started`() {
+        val manager = createManager()
+        val host = buildActivityA()
+        val other = buildActivityB()
+        manager.onActivityStarted(host)
+        manager.onActivityResumed(host)
+
+        assertTrue(manager.isInForegroundBesides(host))
+
+        manager.onActivityStarted(other)
+        manager.onActivityPaused(host)
+
+        assertTrue(manager.isInForegroundBesides(host))
+
+        manager.onActivityStopped(other)
+
+        assertFalse(manager.isInForegroundBesides(host))
+    }
+
+    @Test
     fun `other lifecycle events do not send trackVisit`() {
         val manager = createManager(currentIntent = Intent())
         val owner = mockOwner()

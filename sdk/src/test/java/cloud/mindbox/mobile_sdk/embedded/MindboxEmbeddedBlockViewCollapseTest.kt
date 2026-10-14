@@ -49,6 +49,7 @@ class MindboxEmbeddedBlockViewCollapseTest {
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     private val blocksRegistry = RecordingBlocksRegistry()
     private var lastProvider: EmbeddedContentProvider? = null
+    private var isAppInForeground = true
 
     private fun buildView(
         provider: () -> EmbeddedContentProvider = { ReadyProvider(activity) },
@@ -62,6 +63,8 @@ class MindboxEmbeddedBlockViewCollapseTest {
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> provider().also { lastProvider = it } },
                 blocksRegistry = { blocksRegistry },
+                isAppInForeground = { isAppInForeground },
+                hostActivity = { activity },
             ),
         )
 
@@ -143,6 +146,88 @@ class MindboxEmbeddedBlockViewCollapseTest {
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
         idle()
         assertEquals(View.VISIBLE, view.visibility)
+    }
+
+    @Test
+    fun `shown content the place no longer has survives the app going to background and collapses once the block leaves the screen inside the app`() {
+        val view = buildView()
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        idle()
+
+        isAppInForeground = false
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        isAppInForeground = true
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun `shown content the place no longer has collapses before its first frame when the app comes back from background on another screen`() {
+        val view = buildView()
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        idle()
+        isAppInForeground = false
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        blocksRegistry.lastHandle?.onAppResumedOn(Robolectric.buildActivity(Activity::class.java).get())
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+
+        isAppInForeground = true
+        dispatchWindowVisibility(view, View.VISIBLE)
+        idle()
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun `shown content the place no longer has collapses as soon as the host stops showing the block while the app is in background`() {
+        val view = buildView()
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+        idle()
+        isAppInForeground = false
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        assertEquals(View.VISIBLE, view.visibility)
+
+        view.setHostVisible(false)
+        idle()
+
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun `nothing to show that reached the block while it was away collapses it before it shows again`() {
+        val view = buildView()
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        dispatchWindowVisibility(view, View.GONE)
+        idle()
+        blocksRegistry.lastHandle?.onContentResolved(null)
+
+        dispatchWindowVisibility(view, View.VISIBLE)
+
+        assertEquals(View.GONE, view.visibility)
     }
 
     @Test
