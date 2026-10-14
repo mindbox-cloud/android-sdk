@@ -103,7 +103,10 @@ class EmbeddedBlocksRegistryTest {
         var leavesOnSessionRenewed = false
 
         override fun onSessionRenewed() {
-            if (leavesOnSessionRenewed) isLeftBehind = true
+            if (leavesOnSessionRenewed) {
+                isLeftBehind = true
+                holdsLiveContent = true
+            }
         }
     }
 
@@ -1274,35 +1277,17 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
     }
 
-    @Test
-    fun `a new session's ask queued behind a resolve in flight keeps the operation it carries for a block it left behind holding content`() {
-        val handle = RecordingHandle()
-        val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
-        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { firstResolveGate.await() } andThen winner()
-        val controller = controller()
-        controller.register(place, handle)
-        idleMain()
-        controller.onBlockAppeared(place)
-        idleMain()
-        isSessionEnding = true
+    private fun emitQueuedOperation() {
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, queuedOperation)) }
         idleMain()
+    }
 
-        handle.isActive = false
-        handle.leavesOnSessionRenewed = true
+    private fun renewTheSession(whileItEnds: () -> Unit = {}) {
+        isSessionEnding = true
+        whileItEnds()
         isSessionEnding = false
         currentSessionEpoch = 1L
         sessionEpochs.value = 1L
-        idleMain()
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
-        idleMain()
-
-        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
-        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
-    }
-
-    private fun emitQueuedOperation() {
-        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, queuedOperation)) }
         idleMain()
     }
 
@@ -1317,13 +1302,48 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         controller.onBlockAppeared(place)
         idleMain()
-        isSessionEnding = true
-        whileTheSessionEnds()
-        isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
-        idleMain()
+        renewTheSession(whileTheSessionEnds)
         return firstResolveGate
+    }
+
+    @Test
+    fun `a new session's ask queued behind a resolve in flight keeps the operation it carries for a block it left behind holding content`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueTheNewSessionAskBehindAResolveInFlight(handle) {
+            emitQueuedOperation()
+            handle.isActive = false
+            handle.leavesOnSessionRenewed = true
+        }
+
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
+    fun `a new session's ask queued behind a resolve in flight keeps the operation it carries for a block of its place on screen`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueTheNewSessionAskBehindAResolveInFlight(handle, whileTheSessionEnds = ::emitQueuedOperation)
+
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a new session's ask queued behind a resolve in flight keeps the operation it carries for a block of its place away in background with nothing on it`() {
+        val handle = RecordingHandle()
+        val firstResolveGate = queueTheNewSessionAskBehindAResolveInFlight(handle, whileTheSessionEnds = ::emitQueuedOperation)
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
     }
 
     @Test
@@ -1369,12 +1389,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         scope.launch { configUpdates.emit(Unit) }
         idleMain()
-        isSessionEnding = true
-        emitQueuedOperation()
-        isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
-        idleMain()
+        renewTheSession(whileItEnds = ::emitQueuedOperation)
 
         block.leaveForAnotherScreen()
         configPassAnswer.complete(EmbeddedResolveOutcome.Empty)
