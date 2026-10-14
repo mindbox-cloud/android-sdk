@@ -10,6 +10,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -28,6 +29,8 @@ import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import com.android.volley.VolleyError
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -68,6 +71,24 @@ internal class MobileConfigRepositoryImpl(
 
     private var configSubscription: Job? = null
 
+    private sealed interface Publication {
+        object Open : Publication
+
+        object AwaitingDownload : Publication
+
+        class AwaitingStoredDownload(val writesAtConclusion: Long) : Publication
+
+        object Stored : Publication
+    }
+
+    private val publicationLock = Any()
+
+    private var configGeneration = 0L
+
+    private var publication: Publication = Publication.Open
+
+    @Volatile private var lastPublished: ConfigEntry? = null
+
     init {
         startListening()
     }
@@ -83,52 +104,103 @@ internal class MobileConfigRepositoryImpl(
     }
 
     override suspend fun fetchMobileConfig() {
-        val configuration = DbManager.listenConfigurations().first()
-        MindboxPreferences.inAppConfig = gatewayManager.fetchMobileConfig(
-            configuration = configuration
-        )
-        MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
+        val generation = synchronized(publicationLock) { configGeneration }
+        val downloaded = try {
+            gatewayManager.fetchMobileConfig(configuration = DbManager.listenConfigurations().first())
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            concludeDownload(generation) { storeAfterFailedDownload(error) }
+            throw error
+        }
+        concludeDownload(generation) {
+            MindboxPreferences.inAppConfig = downloaded
+            MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
+        }
+    }
+
+    private inline fun concludeDownload(generation: Long, store: () -> Unit) = synchronized(publicationLock) {
+        if (generation != configGeneration) {
+            mindboxLogI("The config download of a session that has ended concluded, dropping its outcome")
+            return@synchronized
+        }
+        if (publication == Publication.AwaitingDownload) {
+            publication = Publication.AwaitingStoredDownload(MindboxPreferences.inAppConfigWrites)
+        }
+        store()
+    }
+
+    private fun storeAfterFailedDownload(error: Throwable) {
+        if (error is VolleyError && error.networkResponse?.statusCode == MobileConfigRepository.CONFIG_NOT_FOUND) {
+            MindboxPreferences.inAppConfig = ""
+            return
+        }
+        if (error is VolleyError) sessionStorageManager.state.configFetchingError = true
+        // needed to trigger flow event
+        MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
+    }
+
+    private fun isPublishable(inAppConfigString: String): Boolean = when (val current = publication) {
+        Publication.Open -> true
+        Publication.AwaitingDownload -> false
+        is Publication.AwaitingStoredDownload ->
+            MindboxPreferences.inAppConfigWrites > current.writesAtConclusion &&
+                inAppConfigString == MindboxPreferences.inAppConfig
+        Publication.Stored -> inAppConfigString == MindboxPreferences.inAppConfig
     }
 
     private suspend fun processConfigUpdate(inAppConfigString: String) {
         mutex.withLock {
-            this@MobileConfigRepositoryImpl.mindboxLogD(
-                message = "CachedConfig : $inAppConfigString"
-            )
-            val configBlank =
-                mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
-
-            val filteredConfig = InAppConfigResponse(
-                inApps = runCatching { getInApps(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get inApps $it")
-                },
-                monitoring = runCatching { getMonitoring(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get logs $it")
-                },
-                settings = runCatching { getSettings(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get settings $it")
-                },
-                abtests = runCatching { getABTests(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get abtests $it")
-                },
-            )
-
-            val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
-            mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
-            mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
-            inappSettingsManager.applySettings(config = filteredConfig)
-            featureToggleManager.applyToggles(config = filteredConfig)
-            persistOperationsDomain(filteredConfig)
-            configState.value = ConfigEntry(
-                config = updatedInAppConfig,
-                isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
-            )
-            configUpdates.tryEmit(Unit)
-            // Prewarm stage 2: warm what the config's webview in-apps will need
-            // (or release the warm instance when the config proves there are none).
-            inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
-            mindboxLogI(message = "Providing config: $updatedInAppConfig")
+            synchronized(publicationLock) {
+                if (!isPublishable(inAppConfigString)) {
+                    mindboxLogI("The config emitted is not the one the current session stored, not publishing it")
+                    return@withLock
+                }
+                if (publication != Publication.Open) publication = Publication.Stored
+                applyConfig(inAppConfigString)
+            }
         }
+    }
+
+    private fun applyConfig(inAppConfigString: String) {
+        this@MobileConfigRepositoryImpl.mindboxLogD(
+            message = "CachedConfig : $inAppConfigString"
+        )
+        val configBlank =
+            mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
+
+        val filteredConfig = InAppConfigResponse(
+            inApps = runCatching { getInApps(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get inApps $it")
+            },
+            monitoring = runCatching { getMonitoring(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get logs $it")
+            },
+            settings = runCatching { getSettings(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get settings $it")
+            },
+            abtests = runCatching { getABTests(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get abtests $it")
+            },
+        )
+
+        val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+        mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
+        inappSettingsManager.applySettings(config = filteredConfig)
+        featureToggleManager.applyToggles(config = filteredConfig)
+        persistOperationsDomain(filteredConfig)
+        val entry = ConfigEntry(
+            config = updatedInAppConfig,
+            isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
+        )
+        configState.value = entry
+        lastPublished = entry
+        configUpdates.tryEmit(Unit)
+        // Prewarm stage 2: warm what the config's webview in-apps will need
+        // (or release the warm instance when the config proves there are none).
+        inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
+        mindboxLogI(message = "Providing config: $updatedInAppConfig")
     }
 
     override fun listenConfigUpdates(): Flow<Unit> = configUpdates
@@ -144,13 +216,25 @@ internal class MobileConfigRepositoryImpl(
     override suspend fun getInAppsSectionIfAvailable(): List<InApp>? =
         awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
 
+    override suspend fun getConfigForPageIfAvailable(): PageConfig? {
+        val published = lastPublished
+        val current = configState.value
+        val entry = current ?: published ?: return null
+        if (entry.isUnavailable) return null
+        return PageConfig(entry.config, isOfEndedSession = current == null && published != null)
+    }
+
     override fun findInAppInCurrentConfig(id: String): InApp? =
         configState.value?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
 
     override suspend fun getABTests() = getConfig().abtests
 
     override fun resetCurrentConfig() {
-        configState.value = null
+        synchronized(publicationLock) {
+            configGeneration++
+            publication = Publication.AwaitingDownload
+            configState.value = null
+        }
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)

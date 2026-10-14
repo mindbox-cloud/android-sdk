@@ -66,7 +66,9 @@ internal class EmbeddedBlocksRegistryImpl(
         val job: Job,
         var winner: InAppType.Embedded,
         val selectionTime: Milliseconds,
-    )
+    ) {
+        val isPending: Boolean get() = !job.isCancelled
+    }
 
     private val delayJobsByPlace = mutableMapOf<PlaceKey, PendingDelay>()
 
@@ -242,7 +244,7 @@ internal class EmbeddedBlocksRegistryImpl(
             return
         }
         val running = delayJobsByPlace[place]
-        if (running != null && running.job.isActive && running.winner.inAppId == winner.inAppId) {
+        if (running != null && running.isPending && running.winner.inAppId == winner.inAppId) {
             mindboxLogI(
                 "[EmbeddedBlock] Winner ${winner.inAppId} for place '$place' is already " +
                     "waiting out its delay, keeping the running timer and its selection time for the fresh content"
@@ -281,7 +283,7 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun keepsRunningDelay(place: PlaceKey, what: String): Boolean {
-        val running = delayJobsByPlace[place]?.takeIf { pending -> pending.job.isActive } ?: return false
+        val running = delayJobsByPlace[place]?.takeIf { pending -> pending.isPending } ?: return false
         mindboxLogI("[EmbeddedBlock] $what while winner ${running.winner.inAppId} waits out its delay, keeping the running timer")
         notifyPending(place)
         return true

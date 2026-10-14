@@ -17,10 +17,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -127,6 +129,7 @@ class EmbeddedResolveInteractorTest {
         every { showBudgetManager.release(any()) } just runs
         every { showBudgetManager.recordCooldown(any(), any()) } just runs
         coEvery { inAppABTestLogic.getInAppsPool(any()) } answers { firstArg<List<String>>().toSet() }
+        every { inAppABTestLogic.getInAppsPool(any(), any()) } answers { firstArg<List<String>>().toSet() }
         coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } answers {
             firstArg<List<InApp>>().firstOrNull()
         }
@@ -161,7 +164,11 @@ class EmbeddedResolveInteractorTest {
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
         coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns inApps.toList()
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(*inApps), isOfEndedSession = false)
     }
+
+    private fun configOf(vararg inApps: InApp): InAppConfig =
+        InAppConfig(inApps = inApps.toList(), monitoring = emptyList(), operations = emptyMap(), abtests = emptyList())
 
     @Test
     fun `selectInAppForPlace returns embedded content for known place`() = runTest {
@@ -738,7 +745,7 @@ class EmbeddedResolveInteractorTest {
     @Test
     fun `filterShowableInAppIds cuts id outside ab pool`() = runTest {
         givenConfig(modalInApp(id = "in-pool"), modalInApp(id = "out-of-pool"))
-        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("in-pool")
+        every { inAppABTestLogic.getInAppsPool(any(), any()) } returns setOf("in-pool")
 
         assertEquals(
             listOf("in-pool"),
@@ -760,7 +767,7 @@ class EmbeddedResolveInteractorTest {
     fun `filterShowableInAppIds sends targeting for every asked id that matches, the ab-cut included`() = runTest {
         // The answer is cut by the pool; the offer is not — the cut branch keeps its denominator.
         givenConfig(modalInApp(id = "inapp-1"), modalInApp(id = "inapp-2"), modalInApp(id = "cut"))
-        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("inapp-1", "inapp-2")
+        every { inAppABTestLogic.getInAppsPool(any(), any()) } returns setOf("inapp-1", "inapp-2")
 
         val answer = interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-2", "cut"))
 

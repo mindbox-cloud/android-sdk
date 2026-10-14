@@ -73,7 +73,7 @@ internal interface InAppInteractor {
      * `host in-app + requested id` pair: a repeated request reports only the new ones. A tap
      * reports nothing here — the in-app is not shown yet.
      */
-    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>
+    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>?
 
     suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>>
 
@@ -115,7 +115,7 @@ internal interface InAppInteractor {
 
     suspend fun fetchMobileConfig()
 
-    fun resetInAppConfigAndEvents()
+    fun beginNewSession()
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 

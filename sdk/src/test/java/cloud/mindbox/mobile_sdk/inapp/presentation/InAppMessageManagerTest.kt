@@ -127,7 +127,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws non network error`() = runTest {
+    fun `a config fetch failing outside the network is logged as an error and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -151,8 +151,8 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
         }
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 
@@ -313,7 +313,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws network error non 404`() = runTest {
+    fun `a config fetch failing on the network is logged as an error and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -337,19 +337,21 @@ internal class InAppMessageManagerTest {
         }.answers {
             "test"
         }
+        val error = VolleyError(networkResponse)
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
-        }.throws(VolleyError(networkResponse))
+        }.throws(error)
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        assertTrue(sessionStorageManager.state.configFetchingError)
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        verify(exactly = 1) { MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error) }
+        assertFalse(sessionStorageManager.state.configFetchingError)
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 
     @Test
-    fun `in app config throws network error 404`() = runTest {
+    fun `a config fetch answered with 404 is logged as a warning and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -368,14 +370,16 @@ internal class InAppMessageManagerTest {
             isAccessible = true
             setInt(networkResponse, 404)
         }
+        val error = VolleyError(networkResponse)
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
-        }.throws(VolleyError(networkResponse))
+        }.throws(error)
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
+        verify(exactly = 1) { MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error) }
         assertFalse(sessionStorageManager.state.configFetchingError)
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 

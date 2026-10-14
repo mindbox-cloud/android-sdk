@@ -36,6 +36,7 @@ import cloud.mindbox.mobile_sdk.countsShows
 import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 
@@ -289,14 +290,19 @@ internal class InAppInteractorImpl(
         return InAppToShow(inApp, variant)
     }
 
-    override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String> {
+    override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>? {
         if (inAppIds.isEmpty()) return emptyList()
-        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
-            logI("Page of $hostInAppId asks about ${inAppIds.size} id(s) while the config is unavailable, cutting them all")
-            return emptyList()
+        val pageConfig = mobileConfigRepository.getConfigForPageIfAvailable() ?: run {
+            logI("The page of $hostInAppId asked which in-apps it may show, but the SDK has no config to answer from")
+            return null
         }
-        inAppRepository.saveCurrentSessionInApps(inApps)
-        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
+        val inApps = pageConfig.config.inApps
+        if (pageConfig.isOfEndedSession) {
+            logI("The page of $hostInAppId is answered from a config of an ended session, its in-apps are not saved into the new session")
+        } else {
+            inAppRepository.saveCurrentSessionInApps(inApps)
+        }
+        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id }, pageConfig.config.abtests)
         val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
             .map { inApp -> inApp.id }
             .toSet()
@@ -432,9 +438,10 @@ internal class InAppInteractorImpl(
         mobileConfigRepository.fetchMobileConfig()
     }
 
-    override fun resetInAppConfigAndEvents() {
-        mobileConfigRepository.resetCurrentConfig()
-        inAppRepository.clearInAppEvents()
+    override fun beginNewSession() {
+        loggingRunCatching { mobileConfigRepository.resetCurrentConfig() }
+        loggingRunCatching { inAppRepository.clearInAppEvents() }
+        sessionStorageManager.clearSessionData()
     }
 
     override fun isTimeDelayInapp(inAppId: String): Boolean {
