@@ -60,7 +60,7 @@ class EmbeddedBlocksRegistryTest {
         override var isPausedForBackground: Boolean = false,
         override var isLeftBehind: Boolean = false,
     ) : EmbeddedBlockHandle {
-        override val isHoldingContent: Boolean = false
+        override var isHoldingContent: Boolean = false
         val received = mutableListOf<InAppType.Embedded?>()
         val selectionTimes = mutableListOf<Milliseconds>()
         val answers = mutableListOf<EmbeddedPlaceAnswer>()
@@ -1678,6 +1678,88 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         assertEquals(listOf(1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    private fun EmbeddedBlocksRegistryImpl.holdOperationForTheReturnCheck(handle: RecordingHandle, operation: InAppEventType) {
+        register(place, handle)
+        idleMain()
+        returnCheckPending.value = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+    }
+
+    private fun EmbeddedBlocksRegistryImpl.finishTheReturnCheck() {
+        returnCheckPending.value = false
+        onReturnCheckOver()
+        idleMain()
+    }
+
+    @Test
+    fun `an operation held for the session check of the app's return is dropped once its blocks have left the screen with nothing on them`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, operation)
+
+        handle.isActive = false
+        controller.finishTheReturnCheck()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+        assertTrue(handle.answers.isEmpty())
+    }
+
+    @Test
+    fun `an operation held for the session check of the app's return is asked for a block that left the screen holding its content`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, operation)
+
+        handle.isActive = false
+        handle.isHoldingContent = true
+        controller.finishTheReturnCheck()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(0L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
+    fun `an operation held for the session check of the app's return is asked for a block still away in background with nothing on it`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, operation)
+
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        controller.finishTheReturnCheck()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+    }
+
+    @Test
+    fun `an operation carried into a new session is dropped when its blocks left the screen with nothing on them before the session began`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+
+        handle.isActive = false
+        isSessionEnding = false
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+        assertTrue(handle.answers.isEmpty())
     }
 
     @Test
