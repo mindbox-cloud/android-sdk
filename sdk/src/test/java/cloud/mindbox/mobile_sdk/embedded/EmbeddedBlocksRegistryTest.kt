@@ -1831,6 +1831,28 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an operation held for the session check of the app's return that ends the session rides the new session's ask for a block that left the screen holding its content`() {
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
+        val handle = RecordingHandle().apply { leavesOnSessionRenewed = true }
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, operation)
+
+        handle.isActive = false
+        handle.isHoldingContent = true
+        currentSessionEpoch = 1L
+        controller.finishTheReturnCheck()
+
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
+        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
     fun `an operation held for the session check of the app's return is asked for a block still away in background with nothing on it`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
