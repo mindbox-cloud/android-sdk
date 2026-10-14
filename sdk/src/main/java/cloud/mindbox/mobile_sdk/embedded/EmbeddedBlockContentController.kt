@@ -73,7 +73,7 @@ internal class EmbeddedBlockContentController(
         get() = isAwayInBackground && !isStarted && !isReleased
 
     override val isLeftBehind: Boolean
-        get() = leftBehind && !isStarted && !isReleased
+        get() = leftBehind && isHoldingContent && !isStarted && !isReleased
 
     private var provider: EmbeddedContentProvider? = null
     private var failureTrackerCache: InAppFailureTracker? = null
