@@ -1815,7 +1815,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `an operation held for the session check of the app's return is asked for a block that left the screen holding its content`() {
+    fun `an operation held for the session check of the app's return that keeps the session is dropped for a block that left the screen holding its content`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
         val handle = RecordingHandle()
@@ -1826,8 +1826,8 @@ class EmbeddedBlocksRegistryTest {
         handle.isHoldingContent = true
         controller.finishTheReturnCheck()
 
-        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
-        assertEquals(listOf(0L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
+        assertTrue(handle.answers.isEmpty())
     }
 
     @Test

@@ -446,8 +446,8 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun askHeldOperation(place: PlaceKey, pass: ResolvePass) {
-        if (liveHandles(place).none { handle -> handle.mayStillBeSeen || handle.isHoldingContent }) {
-            mindboxLogI("[EmbeddedBlock] The blocks of place '$place' left the screen with nothing on them, dropping the operation held for it")
+        if (liveHandles(place).none { handle -> handle.mayStillBeSeen }) {
+            mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, dropping the operation held for it")
             return
         }
         resolvePlace(place, pass)
