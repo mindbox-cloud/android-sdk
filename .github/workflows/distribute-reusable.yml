@@ -13,6 +13,8 @@ on:
     secrets:
       GITLAB_TRIGGER_TOKEN:
         required: true
+      GITLAB_HOST:
+        required: true
 
 permissions:
   contents: read
@@ -67,7 +69,7 @@ jobs:
 
       - name: Trigger build & send to FAD (override strict; else same->develop)
         env:
-          GITLAB_HOST: mindbox.gitlab.yandexcloud.net
+          GITLAB_HOST: ${{ secrets.GITLAB_HOST }}
           APP_PROJECT_ID: "900"
           DEFAULT_APP_REF: develop
 
@@ -79,6 +81,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          if [[ -z "${GITLAB_HOST:-}" ]]; then
+            echo "::error::Secret GITLAB_HOST is empty: set it to the GitLab host name, without https://"
+            exit 1
+          fi
 
           # Trim override so "   " becomes empty
           APP_REF_OVERRIDE="$(printf '%s' "${APP_REF_OVERRIDE:-}" | xargs)"
@@ -115,7 +122,7 @@ jobs:
             tmp_body="$(mktemp)"
 
             local code
-            code="$(curl -sS -o "$tmp_body" -w '%{http_code}' --location \
+            code="$(curl -sS -o "$tmp_body" -w '%{http_code}' \
               --retry 3 --retry-all-errors --retry-delay 2 \
               "https://${GITLAB_HOST}/api/v4/projects/${APP_PROJECT_ID}/trigger/pipeline" \
               --form "token=${GITLAB_TRIGGER_TOKEN}" \
@@ -131,7 +138,7 @@ jobs:
             echo "Response body:"
             echo "$body"
 
-            if [[ "$code" == "200" || "$code" == "201" ]]; then
+            if [[ "$code" == "201" ]]; then
               local web_url
               web_url="$(
                 printf '%s\n' "$body" |
