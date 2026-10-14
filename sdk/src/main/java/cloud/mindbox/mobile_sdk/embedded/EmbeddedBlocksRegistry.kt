@@ -434,9 +434,19 @@ internal class EmbeddedBlocksRegistryImpl(
         val awaiting = placesAwaitingReturnCheck.toMap()
         placesAwaitingReturnCheck.clear()
         awaiting.forEach { (place, pass) ->
-            if (handlesByPlace.containsKey(place)) resolvePlace(place, pass)
+            when {
+                !handlesByPlace.containsKey(place) -> Unit
+                isHandledSessionOver -> {
+                    mindboxLogI("[EmbeddedBlock] The session has ended, the operation held for place '$place' through the session check of the app's return is asked once the new session begins")
+                    placesAwaitingNewSession.merge(place, pass)
+                }
+                else -> resolvePlace(place, pass)
+            }
         }
     }
+
+    private val isHandledSessionOver: Boolean
+        get() = handledSessionEpoch?.let { handled -> !inAppInteractor.isLiveSession(handled) } == true
 
     private fun invalidateAll(reason: String) {
         handlesByPlace.keys.toList().forEach { place ->
