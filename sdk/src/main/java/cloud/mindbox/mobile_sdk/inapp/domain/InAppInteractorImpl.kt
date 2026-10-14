@@ -378,6 +378,10 @@ internal class InAppInteractorImpl(
             showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
             return PlaceShowReservation.RESERVED
         }
+        if (sessionStorageManager.state.showReservations[ShowBudgetOwner.Place(placeSystemName)]?.inAppId == content.inAppId) {
+            logI("Place '$placeSystemName' still holds the show of in-app ${content.inAppId}, no new show to reserve")
+            return PlaceShowReservation.RESERVED
+        }
         if (!isAllowedByFrequency(content.inAppId)) {
             logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place has nothing to show")
             return PlaceShowReservation.REFUSED
