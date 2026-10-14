@@ -2,6 +2,12 @@ package cloud.mindbox.mobile_sdk.embedded
 
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
+import cloud.mindbox.mobile_sdk.inapp.data.managers.InAppFailureTrackerImpl
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import io.mockk.every
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
@@ -1173,6 +1179,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(networkError, states.last())
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(null, controller.contentView)
+        verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
     }
 
     @Test
@@ -1706,6 +1713,7 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(internalError, states.last())
         assertEquals(1, createdProviders.single().releaseCount)
+        verify(exactly = 1) { tracker.sendBlockFailure(any(), any(), any(), any()) }
     }
 
     @Test
@@ -1898,6 +1906,25 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(1, createdProviders.single().startCount)
         assertEquals(null, controller.contentView)
+    }
+
+    @Test
+    fun `a winner without a page that fails a block on its return and wins the place again sends one show failure`() {
+        val time = mockk<TimeProvider> { every { currentTimeMillis() } returns 0L }
+        val repository = mockk<InAppRepository>(relaxed = true)
+        val toggles = mockk<FeatureToggleManager> { every { isEnabled(any()) } returns true }
+        val controller = controller(tracker = InAppFailureTrackerImpl(time, repository, toggles, SessionStorageManager(time)))
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = emptyList()), placeAnswer())
+
+        assertEquals(internalError, states.last())
+        assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
+        verify(exactly = 1) { repository.sendInAppShowErrors(any()) }
     }
 
     @Test
