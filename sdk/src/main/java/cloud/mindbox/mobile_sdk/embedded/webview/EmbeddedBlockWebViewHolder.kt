@@ -59,6 +59,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -67,6 +68,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
@@ -157,7 +159,9 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var hasPageAnswered = false
 
-    @Volatile private var didAccountForShow = false
+    private var confirmedSessionEpoch: Long? = null
+
+    private var accountedSessionEpoch: Long? = null
 
     private var isShowWithheld = false
 
@@ -228,6 +232,11 @@ internal class EmbeddedBlockWebViewHolder(
     override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) {
         this.frequency = frequency
         this.tags = tags
+    }
+
+    @MainThread
+    override fun confirmForSession(sessionEpoch: Long) {
+        confirmedSessionEpoch = sessionEpoch
     }
 
     @MainThread
@@ -465,14 +474,10 @@ internal class EmbeddedBlockWebViewHolder(
         report(EmbeddedBlockState.Failed(reason))
     }
 
-    /**
-     * The block drew something the user can see, so its in-app was shown. Reported once per
-     * content instance; the content-change rule lives in the interactor's place slot, where
-     * the session state is. Off screen the show waits — [start] re-asks when the block returns.
-     */
     @MainThread
     private fun accountForShow() {
-        if (didAccountForShow) return
+        val sessionEpoch = confirmedSessionEpoch ?: return
+        if (sessionEpoch == accountedSessionEpoch) return
         if (isShowWithheld) {
             mindboxLogI("[EmbeddedBlock] Its block withholds the show of this content until the place's next content applies")
             return
@@ -485,17 +490,35 @@ internal class EmbeddedBlockWebViewHolder(
             mindboxLogI("[EmbeddedBlock] Content rendered off screen, the show waits for the block to return")
             return
         }
-        didAccountForShow = true
+        val previouslyAccounted = accountedSessionEpoch
+        accountedSessionEpoch = sessionEpoch
         val timeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         mindboxLogI("[EmbeddedBlock] In-app $inAppId is shown, timeToDisplay=${timeToDisplay.interval} ms")
+        val shownFrequency = frequency
+        val shownTags = gatedTags()
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
-                inAppInteractor.recordBlockShow(placeSystemName, inAppId, frequency, timeToDisplay, gatedTags())
+                if (inAppInteractor.returnCheckPending.value) {
+                    inAppInteractor.awaitReturnChecked()
+                    if (!isShowStillDue(sessionEpoch, previouslyAccounted)) return@loggingRunCatchingSuspending
+                }
+                inAppInteractor.recordBlockShow(placeSystemName, inAppId, shownFrequency, timeToDisplay, shownTags, sessionEpoch)
             }
         }.invokeOnCompletion { cause ->
-            if (cause is CancellationException) didAccountForShow = false
+            if (cause !is CancellationException) return@invokeOnCompletion
+            mainHandler.post {
+                if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+            }
         }
     }
+
+    private suspend fun isShowStillDue(sessionEpoch: Long, previouslyAccounted: Long?): Boolean =
+        withContext(Dispatchers.Main) {
+            if (!isShowWithheld && !rendersNothing) return@withContext true
+            mindboxLogI("[EmbeddedBlock] The show of this content was withheld or its page emptied during the session check, the show waits again")
+            if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+            false
+        }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         val controller = webViewController ?: run {

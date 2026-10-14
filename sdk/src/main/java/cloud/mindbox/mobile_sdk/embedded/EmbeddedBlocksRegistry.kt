@@ -7,6 +7,7 @@ import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -24,6 +25,7 @@ import java.io.Closeable
 import java.lang.ref.WeakReference
 
 internal data class EmbeddedPlaceAnswer(
+    val sessionEpoch: Long,
     val isByOperation: Boolean,
     val selectionTime: Milliseconds,
 )
@@ -52,6 +54,9 @@ internal interface EmbeddedBlockHandle {
 
     @MainThread
     fun onAppResumedOn(activity: Activity)
+
+    @MainThread
+    fun onReturnChecked()
 }
 
 internal interface EmbeddedBlocksRegistry {
@@ -62,7 +67,14 @@ internal interface EmbeddedBlocksRegistry {
 
     fun onBlockContentDropped(placeSystemName: PlaceKey)
 
+    fun isLiveSession(sessionEpoch: Long): Boolean
+
+    @MainThread
+    fun deferUntilReturnChecked(): Boolean
+
     fun onAppResumedOn(activity: Activity)
+
+    fun onReturnCheckOver()
 
     fun startListening()
 }
@@ -80,21 +92,33 @@ internal class EmbeddedBlocksRegistryImpl(
     private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
     private val resolvingPlaces = mutableSetOf<PlaceKey>()
 
+    private class SessionRenewal(val sessionEpoch: Long, val tick: Milliseconds)
+
     private class ResolvePass(
         val trigger: InAppEventType?,
         val includesNonOperation: Boolean = trigger == null,
         val includesAppearance: Boolean = false,
+        val renewal: SessionRenewal? = null,
     ) {
         fun mergedWith(newer: ResolvePass): ResolvePass = ResolvePass(
             trigger = newer.trigger ?: trigger,
             includesNonOperation = includesNonOperation || newer.includesNonOperation,
             includesAppearance = includesAppearance || newer.includesAppearance,
+            renewal = listOfNotNull(renewal, newer.renewal).maxWithOrNull(
+                compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
+            ),
         )
     }
 
     private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, ResolvePass>()
 
+    private val placesAwaitingNewSession = mutableMapOf<PlaceKey, ResolvePass>()
+
+    private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, ResolvePass>()
+
     private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
+
+    private var handledSessionEpoch: Long? = null
 
     private class PendingDelay(
         val job: Job,
@@ -119,6 +143,7 @@ internal class EmbeddedBlocksRegistryImpl(
         if (!isFirstStart && channelJobs.all { job -> job.isActive }) return
         channelJobs.forEach { job -> job.cancel() }
 
+        if (handledSessionEpoch == null) handledSessionEpoch = inAppInteractor.sessionEpoch
         val scope = scopeProvider()
         channelJobs = listOf(
             scope.launch {
@@ -133,6 +158,11 @@ internal class EmbeddedBlocksRegistryImpl(
                     }
                 }
             },
+            scope.launch {
+                inAppInteractor.listenSessionEpoch().collect { sessionEpoch ->
+                    runOnMain { onSessionEpoch(sessionEpoch) }
+                }
+            },
         )
         if (isFirstStart) return
 
@@ -140,6 +170,7 @@ internal class EmbeddedBlocksRegistryImpl(
             "[EmbeddedBlock] Invalidation channels died with the previous SDK scope, resubscribed"
         )
         invalidateAll(reason = "channels resubscribed")
+        releaseReturnCheckDeferrals()
     }
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
@@ -184,10 +215,22 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
+    override fun isLiveSession(sessionEpoch: Long): Boolean = inAppInteractor.isLiveSession(sessionEpoch)
+
+    @MainThread
+    override fun deferUntilReturnChecked(): Boolean {
+        restartChannelsIfDead()
+        return inAppInteractor.returnCheckPending.value
+    }
+
     override fun onAppResumedOn(activity: Activity) {
         runOnMain {
             forEachLiveHandle { handle -> handle.onAppResumedOn(activity) }
         }
+    }
+
+    override fun onReturnCheckOver() {
+        runOnMain { releaseReturnCheckDeferrals() }
     }
 
     private fun forEachLiveHandle(action: (EmbeddedBlockHandle) -> Unit) {
@@ -200,6 +243,8 @@ internal class EmbeddedBlocksRegistryImpl(
         if (handlesByPlace[place]?.isEmpty() != true) return
         handlesByPlace.remove(place)
         reResolveQueuedPlaces.remove(place)
+        placesAwaitingNewSession.remove(place)
+        placesAwaitingReturnCheck.remove(place)
         inAppInteractor.releasePlaceShow(place)
     }
 
@@ -217,6 +262,17 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun resolvePlace(place: PlaceKey, pass: ResolvePass = ResolvePass(trigger = null)) {
+        if (pass.trigger != null && inAppInteractor.returnCheckPending.value) {
+            mindboxLogI("[EmbeddedBlock] The operation for place '$place' is resolved once the session check of the app's return has run")
+            placesAwaitingReturnCheck.merge(place, pass)
+            return
+        }
+        val sessionEpoch = inAppInteractor.sessionEpoch
+        if (!inAppInteractor.isLiveSession(sessionEpoch)) {
+            mindboxLogI("[EmbeddedBlock] The session is ending, place '$place' is asked once the new session begins")
+            placesAwaitingNewSession.merge(place, pass)
+            return
+        }
         if (!resolvingPlaces.add(place)) {
             mindboxLogI(
                 "[EmbeddedBlock] Place '$place' is already resolving, queueing one more pass"
@@ -227,7 +283,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
         val triggerEvent = pass.trigger
         val isByOperation = triggerEvent != null && !pass.includesNonOperation
-        val requestedAt = monotonicNow()
+        val requestedAt = pass.renewal?.takeIf { renewal -> renewal.sessionEpoch == sessionEpoch }?.tick ?: monotonicNow()
         val job = scopeProvider().launch {
             val resolved = try {
                 Result.success(
@@ -246,6 +302,7 @@ internal class EmbeddedBlocksRegistryImpl(
             runOnMain {
                 val hasAppearedMidResolve = placesAppearedMidResolve.remove(place)
                 val delivered = EmbeddedPlaceAnswer(
+                    sessionEpoch = sessionEpoch,
                     isByOperation = isByOperation && !hasAppearedMidResolve,
                     selectionTime = selectionTime,
                 )
@@ -271,6 +328,47 @@ internal class EmbeddedBlocksRegistryImpl(
         this[place] = this[place]?.mergedWith(pass) ?: pass
     }
 
+    private fun onSessionEpoch(sessionEpoch: Long) {
+        val handled = handledSessionEpoch
+        if (handled != null && sessionEpoch <= handled) return
+        handledSessionEpoch = sessionEpoch
+        onSessionRenewed(SessionRenewal(sessionEpoch, monotonicNow()))
+    }
+
+    private fun onSessionRenewed(renewal: SessionRenewal) {
+        val awaiting = placesAwaitingNewSession.toMap()
+        placesAwaitingNewSession.clear()
+        handlesByPlace.keys.toList().forEach { place ->
+            val handles = liveHandles(place)
+            val pending = awaiting[place]
+            val renewalPass = ResolvePass(
+                trigger = pending?.trigger,
+                includesNonOperation = true,
+                includesAppearance = pending?.includesAppearance == true,
+                renewal = renewal,
+            )
+            when {
+                handles.isEmpty() -> Unit
+                handles.any { handle -> handle.isActive } -> {
+                    mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
+                    resolvePlace(place, renewalPass)
+                }
+                pending != null -> resolvePlace(place, pending)
+                else -> Unit
+            }
+        }
+    }
+
+    private fun releaseReturnCheckDeferrals() {
+        if (inAppInteractor.returnCheckPending.value) return
+        forEachLiveHandle { handle -> handle.onReturnChecked() }
+        val awaiting = placesAwaitingReturnCheck.toMap()
+        placesAwaitingReturnCheck.clear()
+        awaiting.forEach { (place, pass) ->
+            if (handlesByPlace.containsKey(place)) resolvePlace(place, pass)
+        }
+    }
+
     private fun invalidateAll(reason: String) {
         handlesByPlace.keys.toList().forEach { place ->
             val handles = liveHandles(place)
@@ -287,11 +385,22 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome, answer: EmbeddedPlaceAnswer) {
+        if (isFromEndedSession(place, answer)) return
         when (outcome) {
             is EmbeddedResolveOutcome.Content -> handleContent(place, outcome, answer)
             EmbeddedResolveOutcome.Empty -> deliverNow(place, null, answer)
             EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place, answer)
         }
+    }
+
+    private fun isFromEndedSession(place: PlaceKey, answer: EmbeddedPlaceAnswer): Boolean {
+        if (inAppInteractor.isLiveSession(answer.sessionEpoch)) return false
+        dropEndedSessionAnswer(place)
+        return true
+    }
+
+    private fun dropEndedSessionAnswer(place: PlaceKey) {
+        mindboxLogI("[EmbeddedBlock] The answer for place '$place' was computed in a session that has ended, dropping it")
     }
 
     private fun handleContent(place: PlaceKey, outcome: EmbeddedResolveOutcome.Content, answer: EmbeddedPlaceAnswer) {
@@ -302,7 +411,9 @@ internal class EmbeddedBlocksRegistryImpl(
             return
         }
         val running = delayJobsByPlace[place]
-        if (running != null && running.isPending && running.winner.inAppId == winner.inAppId) {
+        if (running != null && running.isPending && running.winner.inAppId == winner.inAppId &&
+            running.answer.sessionEpoch == answer.sessionEpoch
+        ) {
             mindboxLogI(
                 "[EmbeddedBlock] Winner ${winner.inAppId} for place '$place' is already " +
                     "waiting out its delay, keeping the running timer and its selection time for the fresh content"
@@ -319,11 +430,15 @@ internal class EmbeddedBlocksRegistryImpl(
         notifyPending(place)
         val job = scopeProvider().launch {
             delay(delayTime.interval)
+            inAppInteractor.awaitReturnChecked()
             val self = coroutineContext[Job]
             runOnMain {
                 val due = delayJobsByPlace[place]?.takeIf { pending -> pending.job === self } ?: return@runOnMain
                 delayJobsByPlace.remove(place)
-                inAppInteractor.markEmbeddedDelayWaitedOut(place, due.winner.inAppId)
+                if (!inAppInteractor.markEmbeddedDelayWaitedOut(place, due.winner.inAppId, due.answer.sessionEpoch)) {
+                    dropEndedSessionAnswer(place)
+                    return@runOnMain
+                }
                 deliver(place, due.winner, due.answer)
             }
         }
@@ -331,17 +446,21 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun handleResolveFailure(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
-        if (keepsRunningDelay(place, "Resolving place '$place' failed")) return
-        deliver(place, null, answer)
+        if (isFromEndedSession(place, answer)) return
+        if (keepsRunningDelay(place, answer, "Resolving place '$place' failed")) return
+        deliverNow(place, null, answer)
     }
 
     private fun handleConfigUnavailable(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
-        if (keepsRunningDelay(place, "The SDK has no config to answer for place '$place'")) return
+        if (keepsRunningDelay(place, answer, "The SDK has no config to answer for place '$place'")) return
+        delayJobsByPlace.remove(place)?.job?.cancel()
         deliverConfigUnavailable(place, answer)
     }
 
-    private fun keepsRunningDelay(place: PlaceKey, what: String): Boolean {
-        val running = delayJobsByPlace[place]?.takeIf { pending -> pending.isPending } ?: return false
+    private fun keepsRunningDelay(place: PlaceKey, answer: EmbeddedPlaceAnswer, what: String): Boolean {
+        val running = delayJobsByPlace[place]
+            ?.takeIf { pending -> pending.isPending && pending.answer.sessionEpoch == answer.sessionEpoch }
+            ?: return false
         mindboxLogI("[EmbeddedBlock] $what while winner ${running.winner.inAppId} waits out its delay, keeping the running timer")
         notifyPending(place)
         return true
@@ -353,7 +472,10 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun deliverConfigUnavailable(place: PlaceKey, answer: EmbeddedPlaceAnswer) {
-        inAppInteractor.releasePlaceShow(place)
+        if (!inAppInteractor.releasePlaceShow(place, answer.sessionEpoch)) {
+            dropEndedSessionAnswer(place)
+            return
+        }
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the answer")
@@ -375,22 +497,30 @@ internal class EmbeddedBlocksRegistryImpl(
         val handles = liveHandles(place)
         if (handles.isEmpty()) {
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the content")
-            inAppInteractor.releasePlaceShow(place)
+            inAppInteractor.releasePlaceShow(place, answer.sessionEpoch)
             return
         }
         // The hold is taken here, where the content really goes to the blocks — after any delay,
         // not at the resolve — so the check and the spend are one step against the overlay.
-        val delivered = content?.takeIf { winner ->
-            inAppInteractor.reservePlaceShow(place, winner).also { reserved ->
-                if (!reserved) {
-                    mindboxLogI(
-                        "[EmbeddedBlock] In-app ${winner.inAppId} won place '$place' but the show " +
-                            "budgets are spent, the place has nothing to show"
-                    )
-                }
+        val delivered = when (content?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
+            PlaceShowReservation.RESERVED -> content
+            PlaceShowReservation.REFUSED -> {
+                mindboxLogI(
+                    "[EmbeddedBlock] In-app ${content?.inAppId} won place '$place' but the show " +
+                        "budgets are spent, the place has nothing to show"
+                )
+                null
             }
+            PlaceShowReservation.STALE -> {
+                dropEndedSessionAnswer(place)
+                return
+            }
+            null -> content
         }
-        if (delivered?.pageLayer == null) inAppInteractor.releasePlaceShow(place)
+        if (delivered?.pageLayer == null && !inAppInteractor.releasePlaceShow(place, answer.sessionEpoch)) {
+            dropEndedSessionAnswer(place)
+            return
+        }
         handles.forEach { handle ->
             loggingRunCatching { handle.onContentResolved(delivered, answer) }
         }

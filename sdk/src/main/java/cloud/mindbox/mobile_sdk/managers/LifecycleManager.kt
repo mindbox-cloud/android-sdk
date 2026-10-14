@@ -41,6 +41,10 @@ internal class LifecycleManager internal constructor(
 
         fun onTrackVisitReady(source: String?, requestUrl: String?) {}
 
+        fun onAppMovedToBackground() {}
+
+        fun onAppReturnHandled() {}
+
         fun onFirstActivityResumed(activity: Activity) {}
     }
 
@@ -269,9 +273,15 @@ internal class LifecycleManager internal constructor(
         pendingRequestUrl = null
         foregroundedWithoutIntent = false
         cancelKeepaliveTimer()
+        callbacks?.onAppMovedToBackground()
     }
 
-    private fun onMovedToForeground(): Unit = loggingRunCatching {
+    private fun onMovedToForeground() {
+        handleReturnToForeground()
+        loggingRunCatching { callbacks?.onAppReturnHandled() }
+    }
+
+    private fun handleReturnToForeground(): Unit = loggingRunCatching {
         mindboxLogI("onAppMovedToForeground")
         if (skipNextTrackVisit) {
             skipNextTrackVisit = false

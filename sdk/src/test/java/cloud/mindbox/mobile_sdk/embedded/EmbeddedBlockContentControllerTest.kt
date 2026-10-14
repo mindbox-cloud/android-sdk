@@ -56,7 +56,21 @@ class EmbeddedBlockContentControllerTest {
 
         override fun startListening() = Unit
 
+        var endedSessions = setOf<Long>()
+
+        override fun isLiveSession(sessionEpoch: Long): Boolean = sessionEpoch !in endedSessions
+
+        var isReturnCheckPending = false
+        var areChannelsDead = false
+
+        override fun deferUntilReturnChecked(): Boolean {
+            if (areChannelsDead && !isReturnCheckPending) lastHandle?.onReturnChecked()
+            return isReturnCheckPending
+        }
+
         override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun onReturnCheckOver() = Unit
 
         fun pushContent(
             placeSystemName: String,
@@ -98,6 +112,8 @@ class EmbeddedBlockContentControllerTest {
         override fun pause() = Unit
 
         override fun release() = Unit
+
+        override fun confirmForSession(sessionEpoch: Long) = Unit
 
         override fun withholdShow(isWithheld: Boolean) = Unit
 
@@ -148,6 +164,7 @@ class EmbeddedBlockContentControllerTest {
     private val content = InAppStub.getEmbedded()
 
     private class SessionAwareProvider(private val rendersOnStart: Boolean = true) : ReadyUpdatableProvider() {
+        val confirmedSessions = mutableListOf<Long>()
         val withheldShows = mutableListOf<Boolean>()
         val paramUpdates = mutableListOf<Map<String, String>>()
         var pushResult: ((Boolean) -> Unit)? = null
@@ -169,6 +186,10 @@ class EmbeddedBlockContentControllerTest {
         override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
             paramUpdates.add(params)
             pushResult = onResult
+        }
+
+        override fun confirmForSession(sessionEpoch: Long) {
+            confirmedSessions.add(sessionEpoch)
         }
 
         override fun withholdShow(isWithheld: Boolean) {

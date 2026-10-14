@@ -10,8 +10,19 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 internal interface InAppInteractor {
+
+    val sessionEpoch: Long
+
+    fun isLiveSession(sessionEpoch: Long): Boolean
+
+    fun listenSessionEpoch(): StateFlow<Long>
+
+    val returnCheckPending: StateFlow<Boolean>
+
+    suspend fun awaitReturnChecked()
 
     suspend fun listenToTargetingEvents()
 
@@ -98,14 +109,17 @@ internal interface InAppInteractor {
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-    )
+        sessionEpoch: Long,
+    ): Boolean
 
     /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
-    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String)
+    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: Long): Boolean
 
-    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean
+    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded, sessionEpoch: Long): PlaceShowReservation
 
     fun releasePlaceShow(placeSystemName: PlaceKey)
+
+    fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: Long): Boolean
 
     fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
 
@@ -121,6 +135,8 @@ internal interface InAppInteractor {
 
     fun saveInAppDismissTime(inApp: InApp, shownAt: Timestamp)
 }
+
+internal enum class PlaceShowReservation { RESERVED, REFUSED, STALE }
 
 internal data class InAppToShow(
     val inApp: InApp,

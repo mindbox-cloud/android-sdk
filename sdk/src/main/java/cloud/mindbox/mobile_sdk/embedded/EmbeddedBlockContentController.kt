@@ -103,6 +103,8 @@ internal class EmbeddedBlockContentController(
 
     private var parkedAnswer: ParkedAnswer? = null
 
+    private var deferredParkedMayHold: Boolean? = null
+
     private val hasPendingContent: Boolean
         get() = (parkedAnswer as? ParkedAnswer.Resolved)?.content != null
 
@@ -170,7 +172,14 @@ internal class EmbeddedBlockContentController(
 
         val isBackFromBackground = isAwayInBackground
         isAwayInBackground = false
-        applyParkedAnswer(mayHold = isBackFromBackground)
+        parkedAnswer?.let { parked ->
+            if (parked.waitsForReturnCheck && blocksRegistry()?.deferUntilReturnChecked() == true) {
+                mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' is back before the session check of the app's return, its parked answer waits for it")
+                deferredParkedMayHold = isBackFromBackground
+            } else {
+                applyParkedAnswer(mayHold = isBackFromBackground)
+            }
+        }
 
         provider?.let { current ->
             current.onStateChange = ::onProviderState
@@ -190,6 +199,7 @@ internal class EmbeddedBlockContentController(
 
     fun pause() {
         isStarted = false
+        deferredParkedMayHold = null
         isAwayInBackground = !isAppInForeground()
         // A pause, not a reset: leaving the screen does not cancel an attempt already started,
         // and the clocks stop with the user's waiting.
@@ -218,17 +228,42 @@ internal class EmbeddedBlockContentController(
     override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
         if (!acceptAnswer("Content")) return
         if (content != null && content.pageLayer == null) reportInternalFailure(content, winnerWithoutPage(content))
-        if (!isActive) {
-            mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
+        if (!takesAnswerNow(waitsForReturnCheck = content.isShowable)) {
+            if (isActive) {
+                mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' waits for the session check of the app's return")
+            } else {
+                mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
+            }
             parkedAnswer = ParkedAnswer.Resolved(content, answer)
             if (content.isShowable) supersedeHeldOutcome()
             return
         }
+        dropContentWaitingForReturnCheck()
         applyResolved(content, answer, mayHold = true)
     }
 
+    private val ParkedAnswer.waitsForReturnCheck: Boolean
+        get() = this is ParkedAnswer.Resolved && content.isShowable
+
     private val InAppType.Embedded?.isShowable: Boolean
         get() = this?.pageLayer != null
+
+    private fun takesAnswerNow(waitsForReturnCheck: Boolean): Boolean =
+        isActive && (deferredParkedMayHold == null || !waitsForReturnCheck)
+
+    private fun dropContentWaitingForReturnCheck() {
+        if (deferredParkedMayHold == null) return
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' has nothing to show before the session check of the app's return, dropping the content parked for it")
+        deferredParkedMayHold = null
+        parkedAnswer = null
+    }
+
+    override fun onReturnChecked() {
+        deferredParkedMayHold?.let { mayHold ->
+            deferredParkedMayHold = null
+            if (isActive) applyParkedAnswer(mayHold)
+        }
+    }
 
     override fun onAppResumedOn(activity: Activity) {
         if (!isPausedForBackground) return
@@ -252,7 +287,8 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun applyParkedRefusal() {
-        if (parkedAnswer == null || hasParkedShowableContent) return
+        val parked = parkedAnswer ?: return
+        if (parked.waitsForReturnCheck || isOfEndedSession(parked.answer.sessionEpoch)) return
         mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' has left the screen, applying the answer with nothing to show parked for it")
         applyParkedAnswer(mayHold = false)
     }
@@ -263,10 +299,31 @@ internal class EmbeddedBlockContentController(
         applyParked(parked, mayHold)
     }
 
+    private fun isOfEndedSession(sessionEpoch: Long?): Boolean =
+        sessionEpoch != null && blocksRegistry()?.isLiveSession(sessionEpoch) == false
+
     private fun applyParked(parked: ParkedAnswer, mayHold: Boolean) {
+        if (isOfEndedSession(parked.answer.sessionEpoch)) {
+            dropAnswerOfEndedSession()
+            return
+        }
         when (parked) {
             is ParkedAnswer.Resolved -> applyResolved(parked.content, parked.answer, mayHold)
             is ParkedAnswer.ConfigUnavailable -> applyConfigUnavailable(parked.answer, mayHold)
+        }
+    }
+
+    private fun dropAnswerOfEndedSession() {
+        if (isHoldingContent) {
+            mindboxLogI(
+                "[EmbeddedBlock] The answer parked for '$placeSystemName' was given in a session that has ended, " +
+                    "dropping it and keeping the content until the place answers again"
+            )
+        } else {
+            mindboxLogI(
+                "[EmbeddedBlock] The answer parked for '$placeSystemName' was given in a session that has ended, " +
+                    "dropping it; the block has nothing to show until the place answers again"
+            )
         }
     }
 
@@ -284,11 +341,12 @@ internal class EmbeddedBlockContentController(
             waited = attemptStartTick?.let(::elapsedSince) ?: Milliseconds(0L),
             phase = WaitBudgetPhase.CONFIG_MISSING,
         )
-        if (!isActive) {
+        if (!takesAnswerNow(waitsForReturnCheck = false)) {
             mindboxLogI("[EmbeddedBlock] The failure for '$placeSystemName' arrived while paused, deferring it")
             parkedAnswer = ParkedAnswer.ConfigUnavailable(answer)
             return
         }
+        dropContentWaitingForReturnCheck()
         applyConfigUnavailable(answer, mayHold = true)
     }
 
@@ -472,6 +530,7 @@ internal class EmbeddedBlockContentController(
         appliedDescriptor = descriptorOf(content.inAppId, layer)
         appliedContent = content
         (created as? EmbeddedUpdatableContentProvider)?.let { page ->
+            page.confirmForSession(answer.sessionEpoch)
             page.onRendersNothing = ::onPageEmptied
         }
         created.onStateChange = ::onProviderState

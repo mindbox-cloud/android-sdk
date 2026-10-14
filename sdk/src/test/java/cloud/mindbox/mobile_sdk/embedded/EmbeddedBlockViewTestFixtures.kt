@@ -11,9 +11,10 @@ import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 
 internal fun placeAnswer(
+    sessionEpoch: Long = 0L,
     isByOperation: Boolean = false,
     selectionTime: Milliseconds = Milliseconds(0L),
-): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(isByOperation, selectionTime)
+): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(sessionEpoch, isByOperation, selectionTime)
 
 internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) = onContentResolved(content, placeAnswer())
 
@@ -27,7 +28,13 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
+    override fun isLiveSession(sessionEpoch: Long): Boolean = true
+
+    override fun deferUntilReturnChecked(): Boolean = false
+
     override fun onAppResumedOn(activity: Activity) = Unit
+
+    override fun onReturnCheckOver() = Unit
 
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         lastHandle = handle

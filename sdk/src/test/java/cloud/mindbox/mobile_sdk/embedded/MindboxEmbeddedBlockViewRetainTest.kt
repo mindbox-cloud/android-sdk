@@ -52,7 +52,13 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         override fun startListening() = Unit
 
+        override fun isLiveSession(sessionEpoch: Long): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
         override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun onReturnCheckOver() = Unit
     }
 
     private class FakeProvider(context: Context) : EmbeddedContentProvider {

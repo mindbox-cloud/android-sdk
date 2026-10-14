@@ -682,6 +682,15 @@ public object Mindbox : MindboxLog {
                 inAppMessageManager.onStopCurrentActivity(activity)
             }
 
+            override fun onAppMovedToBackground() {
+                sessionStorageManager.onAppLeftForeground()
+            }
+
+            override fun onAppReturnHandled() {
+                sessionStorageManager.onReturnChecked()
+                embeddedBlocksRegistry?.onReturnCheckOver()
+            }
+
             override fun onFirstActivityResumed(activity: Activity) {
                 embeddedBlocksRegistry?.onAppResumedOn(activity)
             }

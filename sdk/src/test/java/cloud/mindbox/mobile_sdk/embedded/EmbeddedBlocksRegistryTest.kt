@@ -5,6 +5,7 @@ import android.os.Looper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.models.EventType
@@ -23,6 +24,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -74,9 +77,14 @@ class EmbeddedBlocksRegistryTest {
         }
 
         val resumedOn = mutableListOf<Activity>()
+        var returnCheckedCount = 0
 
         override fun onAppResumedOn(activity: Activity) {
             resumedOn.add(activity)
+        }
+
+        override fun onReturnChecked() {
+            returnCheckedCount++
         }
     }
 
@@ -95,6 +103,13 @@ class EmbeddedBlocksRegistryTest {
 
     private val placeEvents = MutableSharedFlow<EmbeddedPlaceEvent>()
     private val configUpdates = MutableSharedFlow<Unit>()
+    private val sessionEpochs = MutableStateFlow(0L)
+    private val returnCheckPending = MutableStateFlow(false)
+
+    private var currentSessionEpoch = 0L
+    private var isSessionEnding = false
+
+    private fun isLive(sessionEpoch: Long): Boolean = !isSessionEnding && sessionEpoch == currentSessionEpoch
 
     private var clock = Milliseconds(0L)
 
@@ -105,7 +120,13 @@ class EmbeddedBlocksRegistryTest {
     private fun controller(): EmbeddedBlocksRegistryImpl {
         coEvery { interactor.listenEmbeddedPlaceEvents() } returns placeEvents
         coEvery { interactor.listenConfigUpdates() } returns configUpdates
-        every { interactor.reservePlaceShow(any(), any()) } returns true
+        every { interactor.listenSessionEpoch() } returns sessionEpochs
+        every { interactor.returnCheckPending } returns returnCheckPending
+        every { interactor.reservePlaceShow(any(), any(), any()) } returns PlaceShowReservation.RESERVED
+        every { interactor.releasePlaceShow(any(), any()) } returns true
+        every { interactor.markEmbeddedDelayWaitedOut(any(), any(), any()) } answers { isLive(thirdArg()) }
+        every { interactor.isLiveSession(any()) } answers { isLive(firstArg()) }
+        every { interactor.sessionEpoch } answers { currentSessionEpoch }
         return EmbeddedBlocksRegistryImpl(
             inAppInteractor = interactor,
             scopeProvider = { workerScope ?: scope },
@@ -362,7 +383,7 @@ class EmbeddedBlocksRegistryTest {
 
         assertEquals(listOf<InAppType.Embedded?>(refreshed), handle.received)
         assertEquals(listOf(Milliseconds(320L)), handle.selectionTimes)
-        verify(exactly = 1) { interactor.reservePlaceShow(place, refreshed) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, refreshed, any()) }
     }
 
     @Test
@@ -417,7 +438,7 @@ class EmbeddedBlocksRegistryTest {
         scope.testScheduler.runCurrent()
         idleMain()
 
-        verify(exactly = 1) { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId) }
+        verify(exactly = 1) { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId, any()) }
         assertTrue(handle.received.isEmpty())
 
         controller.register(place, handle)
@@ -533,7 +554,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
-        verify(exactly = 1) { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId) }
+        verify(exactly = 1) { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId, any()) }
     }
 
     @Test
@@ -693,6 +714,8 @@ class EmbeddedBlocksRegistryTest {
         override fun onConfigUnavailable(answer: EmbeddedPlaceAnswer) {}
 
         override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun onReturnChecked() = Unit
     }
 
     @Test
@@ -708,7 +731,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, any()) }
         assertEquals(listOf<InAppType.Embedded?>(content), first.received)
         assertEquals(listOf<InAppType.Embedded?>(content), second.received)
     }
@@ -718,7 +741,7 @@ class EmbeddedBlocksRegistryTest {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         val handle = RecordingHandle()
         val controller = controller()
-        every { interactor.reservePlaceShow(place, content) } returns false
+        every { interactor.reservePlaceShow(place, content, any()) } returns PlaceShowReservation.REFUSED
         controller.register(place, handle)
         idleMain()
 
@@ -726,7 +749,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
-        verify { interactor.releasePlaceShow(place) }
+        verify { interactor.releasePlaceShow(place, any()) }
     }
 
     @Test
@@ -739,8 +762,8 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
-        verify { interactor.releasePlaceShow(place) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+        verify { interactor.releasePlaceShow(place, any()) }
     }
 
     @Test
@@ -755,13 +778,13 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
         // The hold would sit through the whole delay otherwise — the budget is asked at the delivery.
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
 
         scope.testScheduler.advanceTimeBy(5_001L)
         scope.testScheduler.runCurrent()
         idleMain()
 
-        verify(exactly = 1) { interactor.reservePlaceShow(place, content) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, any()) }
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
 
@@ -813,8 +836,8 @@ class EmbeddedBlocksRegistryTest {
 
         assertEquals(1, handle.unavailableCount)
         assertTrue(handle.received.isEmpty())
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any()) }
-        verify { interactor.releasePlaceShow(place) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+        verify { interactor.releasePlaceShow(place, any()) }
     }
 
     @Test
@@ -856,7 +879,8 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         // Once for the unregistration, once for the answer that found nobody to hear it.
-        verify(exactly = 2) { interactor.releasePlaceShow(place) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, any()) }
     }
 
     @Test

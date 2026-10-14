@@ -2,12 +2,14 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
@@ -55,6 +57,21 @@ internal class InAppInteractorImpl(
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
+
+    override val sessionEpoch: Long
+        get() = sessionStorageManager.sessionEpoch
+
+    override fun isLiveSession(sessionEpoch: Long): Boolean =
+        !sessionStorageManager.isSessionEnding && sessionEpoch == sessionStorageManager.sessionEpoch
+
+    override fun listenSessionEpoch(): StateFlow<Long> = sessionStorageManager.listenSessionEpoch()
+
+    override val returnCheckPending: StateFlow<Boolean>
+        get() = sessionStorageManager.returnCheckPending
+
+    override suspend fun awaitReturnChecked() {
+        sessionStorageManager.awaitReturnChecked()
+    }
 
     override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
@@ -196,9 +213,10 @@ internal class InAppInteractorImpl(
         return remembered
     }
 
-    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String) {
-        sessionStorageManager.state.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
-    }
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: Long): Boolean =
+        withinLiveSession(sessionEpoch) { state ->
+            state.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
+        } != null
 
     private fun waitedOutDelayKey(place: PlaceKey, inAppId: String): String = "$place|$inAppId"
 
@@ -292,15 +310,16 @@ internal class InAppInteractorImpl(
 
     override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>? {
         if (inAppIds.isEmpty()) return emptyList()
+        val sessionEpoch = sessionStorageManager.sessionEpoch
         val pageConfig = mobileConfigRepository.getConfigForPageIfAvailable() ?: run {
             logI("The page of $hostInAppId asked which in-apps it may show, but the SDK has no config to answer from")
             return null
         }
         val inApps = pageConfig.config.inApps
-        if (pageConfig.isOfEndedSession) {
+        val isSaved = !pageConfig.isOfEndedSession &&
+            withinLiveSession(sessionEpoch) { inAppRepository.saveCurrentSessionInApps(inApps) } != null
+        if (!isSaved) {
             logI("The page of $hostInAppId is answered from a config of an ended session, its in-apps are not saved into the new session")
-        } else {
-            inAppRepository.saveCurrentSessionInApps(inApps)
         }
         val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id }, pageConfig.config.abtests)
         val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
@@ -348,24 +367,36 @@ internal class InAppInteractorImpl(
         inAppProcessingManager.matchesRequestedTargeting(inApp)
             .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
 
-    override fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean {
+    override fun reservePlaceShow(
+        placeSystemName: PlaceKey,
+        content: InAppType.Embedded,
+        sessionEpoch: Long,
+    ): PlaceShowReservation = synchronized(sessionStorageManager.showBudgetLock) {
+        if (!isLiveSession(sessionEpoch)) return PlaceShowReservation.STALE
         if (sessionStorageManager.state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
             logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
             showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
-            return true
+            return PlaceShowReservation.RESERVED
         }
-        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == content.inAppId }
-        if (inApp != null && !inAppFrequencyManager.isAllowedByFrequency(inApp)) {
-            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place stays empty")
-            return false
+        if (!isAllowedByFrequency(content.inAppId)) {
+            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place has nothing to show")
+            return PlaceShowReservation.REFUSED
         }
-        return showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority) !=
-            ShowReservationOutcome.REFUSED
+        val outcome = showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority)
+        if (outcome == ShowReservationOutcome.REFUSED) PlaceShowReservation.REFUSED else PlaceShowReservation.RESERVED
+    }
+
+    private fun isAllowedByFrequency(inAppId: String): Boolean {
+        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == inAppId } ?: return true
+        return inAppFrequencyManager.isAllowedByFrequency(inApp)
     }
 
     override fun releasePlaceShow(placeSystemName: PlaceKey) {
         showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
     }
+
+    override fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: Long): Boolean =
+        withinLiveSession(sessionEpoch) { showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName)) } != null
 
     override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
         if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) return ShowReservationOutcome.REFUSED
@@ -385,16 +416,29 @@ internal class InAppInteractorImpl(
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-    ) {
-        val lastShown = sessionStorageManager.state.embeddedLastShownByPlace.put(placeSystemName, inAppId)
-        if (lastShown == inAppId) {
-            logI("Place '$placeSystemName': the block re-drew in-app $inAppId it already showed, nothing to report")
-            return
+        sessionEpoch: Long,
+    ): Boolean {
+        val isNewShow = withinLiveSession(sessionEpoch) { state ->
+            if (state.embeddedLastShownByPlace.put(placeSystemName, inAppId) == inAppId) {
+                logI("Place '$placeSystemName': the block re-drew in-app $inAppId it already showed, nothing to report")
+                return@withinLiveSession false
+            }
+            showBudgetManager.commit(ShowBudgetOwner.Place(placeSystemName), inAppId, frequency, timeProvider.currentTimestamp())
+            true
+        } ?: run {
+            logI("Place '$placeSystemName': in-app $inAppId was confirmed in a session that has ended, its show is not counted")
+            false
         }
-        showBudgetManager.commit(ShowBudgetOwner.Place(placeSystemName), inAppId, frequency, timeProvider.currentTimestamp())
+        if (!isNewShow) return false
         logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
+        return true
     }
+
+    private inline fun <T> withinLiveSession(sessionEpoch: Long, action: (SessionState) -> T): T? =
+        synchronized(sessionStorageManager.showBudgetLock) {
+            if (isLiveSession(sessionEpoch)) action(sessionStorageManager.state) else null
+        }
 
     override fun saveShownInApp(
         id: String,

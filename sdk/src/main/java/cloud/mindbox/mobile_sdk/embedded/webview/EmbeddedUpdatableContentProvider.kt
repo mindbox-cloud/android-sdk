@@ -14,6 +14,9 @@ internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
     fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit)
 
     @MainThread
+    fun confirmForSession(sessionEpoch: Long)
+
+    @MainThread
     fun withholdShow(isWithheld: Boolean)
 
     @get:MainThread

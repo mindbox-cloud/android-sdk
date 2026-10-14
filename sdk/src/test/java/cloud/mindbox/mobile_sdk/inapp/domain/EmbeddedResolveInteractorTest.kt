@@ -1,11 +1,11 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import app.cash.turbine.test
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
@@ -237,7 +237,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace hands out no delay once the winner waited it out this session`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id")
+        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L)
         val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
@@ -248,8 +248,8 @@ class EmbeddedResolveInteractorTest {
     fun `a waited-out delay is per place and per in-app`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id")
-        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app")
+        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id", 0L)
+        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app", 0L)
         val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals(7_200_000L, result?.delayTime?.interval)
@@ -884,7 +884,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow sends the Inapp Show, counts the show and moves the cooldown`() {
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"))
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"), 0L)
 
         verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
         // The place's hold turns into the show: counters and cooldown move in the manager's one commit.
@@ -895,16 +895,16 @@ class EmbeddedResolveInteractorTest {
     fun `recordBlockShow stays silent while the place slot holds the same content`() {
         // A rotation or a recreated page draws the same content again — no second pair, no
         // second count. A changed in-app writes the slot over and speaks again.
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
 
         verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
         verify(exactly = 1) { showBudgetManager.commit(any(), any(), any(), any()) }
         // The silent repeat touches no hold: a hold under this place could only be a newer winner's.
         verify(exactly = 0) { showBudgetManager.release(any()) }
 
-        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null)
+        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
 
         // 1 -> 2 -> 1 is three shows: the slot compares with the last shown, not a session set.
         verify(exactly = 3) { inAppRepository.sendInAppShown(any(), any(), any()) }
@@ -912,7 +912,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() {
-        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null)
+        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null, 0L)
 
         verify { inAppRepository.sendInAppShown(any(), any(), any()) }
         // Unlimited writes no counters — the manager decides that from the frequency it is handed.
@@ -924,7 +924,7 @@ class EmbeddedResolveInteractorTest {
         // The config may have moved on since the resolve — the user still saw this content.
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
 
-        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null)
+        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
 
         verify(exactly = 1) { inAppRepository.sendInAppShown("gone-from-config", any(), any()) }
     }
@@ -1005,7 +1005,7 @@ class EmbeddedResolveInteractorTest {
     fun `reservePlaceShow skips the budget for content the place already shows`() {
         sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
 
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
     }
@@ -1017,7 +1017,7 @@ class EmbeddedResolveInteractorTest {
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
         sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
 
         verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
@@ -1029,10 +1029,10 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
-        assertTrue(interactor.reservePlaceShow(place, content))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, content, 0L))
 
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
-        assertFalse(interactor.reservePlaceShow(place, content))
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, content, 0L))
     }
 
     @Test
@@ -1043,13 +1043,13 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
 
-        assertFalse(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
 
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
 
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
-        assertTrue(interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id")))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
     }
 
     @Test
