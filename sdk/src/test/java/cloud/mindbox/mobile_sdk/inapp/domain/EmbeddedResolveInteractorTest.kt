@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
@@ -1055,6 +1056,20 @@ class EmbeddedResolveInteractorTest {
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
         assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+    }
+
+    @Test
+    fun `reservePlaceShow keeps the show the place still holds for the same in-app even when its frequency was spent since`() {
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+        sessionState.showReservations[ShowBudgetOwner.Place(place)] = ShowReservation("embedded-id", now)
+
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+        assertEquals(ShowReservation("embedded-id", now), sessionState.showReservations[ShowBudgetOwner.Place(place)])
     }
 
     @Test
