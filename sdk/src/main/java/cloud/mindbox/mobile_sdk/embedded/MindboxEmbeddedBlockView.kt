@@ -407,8 +407,9 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (changedView === this) return
-        isScreenHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
+        val isHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
+        if (isHidden == isScreenHidden) return
+        isScreenHidden = isHidden
         updateContentActivity()
     }
 
