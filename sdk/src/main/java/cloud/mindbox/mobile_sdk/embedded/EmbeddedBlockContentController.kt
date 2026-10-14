@@ -258,7 +258,7 @@ internal class EmbeddedBlockContentController(
             return
         }
         dropContentWaitingForReturnCheck()
-        applyAnswer(content, answer, mayHold = true)
+        applyAnswer(content, answer, mayHold = true, isParked = false)
     }
 
     private val ParkedAnswer.waitsForReturnCheck: Boolean
@@ -359,7 +359,7 @@ internal class EmbeddedBlockContentController(
             return false
         }
         return when (parked) {
-            is ParkedAnswer.Resolved -> applyAnswer(parked.content, parked.answer, mayHold)
+            is ParkedAnswer.Resolved -> applyAnswer(parked.content, parked.answer, mayHold, isParked = true)
             is ParkedAnswer.ConfigUnavailable -> {
                 applyConfigUnavailable(parked.answer, mayHold)
                 true
@@ -381,17 +381,22 @@ internal class EmbeddedBlockContentController(
         }
     }
 
-    private fun applyAnswer(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean): Boolean {
+    private fun applyAnswer(
+        content: InAppType.Embedded?,
+        answer: EmbeddedPlaceAnswer,
+        mayHold: Boolean,
+        isParked: Boolean,
+    ): Boolean {
         val place = placeSystemName
-        val unreserved = content?.takeIf { winner -> !answer.isShowReserved && winner.pageLayer != null }
-        if (unreserved == null || place == null) {
+        val toReserve = content?.takeIf { winner -> (isParked || !answer.isShowReserved) && winner.pageLayer != null }
+        if (toReserve == null || place == null) {
             applyResolved(content, answer, mayHold)
             return true
         }
-        when (blocksRegistry()?.reserveShow(place, unreserved, answer) ?: PlaceShowReservation.RESERVED) {
+        when (blocksRegistry()?.reserveShow(place, toReserve, answer) ?: PlaceShowReservation.RESERVED) {
             PlaceShowReservation.RESERVED -> applyResolved(content, answer, mayHold)
             PlaceShowReservation.REFUSED -> {
-                mindboxLogI("[EmbeddedBlock] In-app ${unreserved.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
+                mindboxLogI("[EmbeddedBlock] In-app ${toReserve.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
                 applyResolved(null, answer, mayHold)
             }
             PlaceShowReservation.STALE -> {
