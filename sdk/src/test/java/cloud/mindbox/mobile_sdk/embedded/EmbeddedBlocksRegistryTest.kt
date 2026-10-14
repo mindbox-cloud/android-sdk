@@ -2569,4 +2569,72 @@ class EmbeddedBlocksRegistryTest {
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
         verify(atLeast = 1) { interactor.releasePlaceShow(place) }
     }
+
+    private val givenBackWinner = content.copy(inAppId = "given-back-winner")
+
+    private fun blockOnAnotherScreenWhoseSiblingGaveBackTheShow(
+        states: MutableList<EmbeddedBlockState>,
+        pages: MutableList<ShownPage>,
+    ): EmbeddedBlockContentController {
+        val answerInBackground = CompletableDeferred<EmbeddedResolveOutcome>()
+        val reAsk = CompletableDeferred<EmbeddedResolveOutcome>()
+        var resolves = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            when (resolves++) {
+                0 -> winner()
+                1 -> answerInBackground.await()
+                else -> reAsk.await()
+            }
+        }
+        val registry = controller()
+        val onAnotherScreen = liveBlock(registry, states, pages)
+        onAnotherScreen.start()
+        idleMain()
+        onAnotherScreen.leaveForAnotherScreen()
+        val onScreen = liveBlock(registry, mutableListOf())
+        onScreen.start()
+        idleMain()
+        onScreen.leaveForBackground()
+        answerInBackground.complete(winner(givenBackWinner))
+        idleMain()
+        verify(exactly = 1) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+
+        isAppPresent = true
+        registry.onAppResumedOn(screen())
+        idleMain()
+
+        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        isAppInForeground = true
+        return onAnotherScreen
+    }
+
+    @Test
+    fun `a block on another screen of the app takes the show again for content its place got while the app was away once the return gives that show back, and shows it`() {
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val block = blockOnAnotherScreenWhoseSiblingGaveBackTheShow(states, pages)
+
+        block.start()
+        idleMain()
+
+        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(2, pages.size)
+    }
+
+    @Test
+    fun `a block on another screen of the app leaves its place empty for content its place got while the app was away when the show the return gave back is spent by then`() {
+        val states = mutableListOf<EmbeddedBlockState>()
+        val pages = mutableListOf<ShownPage>()
+        val block = blockOnAnotherScreenWhoseSiblingGaveBackTheShow(states, pages)
+        every { interactor.reservePlaceShow(place, givenBackWinner, 0L) } returns PlaceShowReservation.REFUSED
+
+        block.start()
+        idleMain()
+
+        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, pages.size)
+        assertEquals(1, pages.single().releaseCount)
+    }
 }
