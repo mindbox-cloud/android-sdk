@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.async
@@ -27,6 +28,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
 import io.mockk.*
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -48,9 +50,29 @@ internal class MobileConfigRepositoryImplTest {
 
     private lateinit var repository: MobileConfigRepositoryImpl
 
+    private val originalMindboxScope = Mindbox.mindboxScope
+
+    private val installedMindboxScopes = mutableListOf<CoroutineScope>()
+
+    private val configCollectorsBefore = MindboxPreferences.inAppConfigFlow.subscriptionCount.value
+
     @Before
     fun setUp() {
+        installMindboxScope(CoroutineScope(Dispatchers.Unconfined))
         repository = createRepository()
+    }
+
+    @After
+    fun tearDown() {
+        installedMindboxScopes.forEach { scope -> scope.cancel() }
+        setMindboxScope(originalMindboxScope)
+        MindboxPreferences.inAppConfigFlow.resetReplayCache()
+        assertEquals(configCollectorsBefore, MindboxPreferences.inAppConfigFlow.subscriptionCount.value)
+    }
+
+    private fun installMindboxScope(scope: CoroutineScope) {
+        installedMindboxScopes.add(scope)
+        setMindboxScope(scope)
     }
 
     @Test
@@ -173,7 +195,7 @@ internal class MobileConfigRepositoryImplTest {
 
         // The soft reinitialization: the scope dies with the subscription inside it.
         Mindbox.mindboxScope.cancel()
-        setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        installMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
 
         revived.startListening()
         MindboxPreferences.inAppConfigFlow.emit("{}")
@@ -199,15 +221,9 @@ internal class MobileConfigRepositoryImplTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun withTestMindboxScope(block: suspend TestScope.() -> Unit) = runTest {
-        val originalScope = Mindbox.mindboxScope
-        try {
-            MindboxPreferences.inAppConfigFlow.resetReplayCache()
-            setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
-            block()
-        } finally {
-            setMindboxScope(originalScope)
-            MindboxPreferences.inAppConfigFlow.resetReplayCache()
-        }
+        MindboxPreferences.inAppConfigFlow.resetReplayCache()
+        installMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        block()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -545,7 +561,7 @@ internal class MobileConfigRepositoryImplTest {
         runCurrent()
 
         Mindbox.mindboxScope.cancel()
-        setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        installMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
         repository.startListening()
         if (repository.abandonAwaitedDownload()) repository.fetchMobileConfig()
         MindboxPreferences.inAppConfigFlow.emit("downloaded again")
