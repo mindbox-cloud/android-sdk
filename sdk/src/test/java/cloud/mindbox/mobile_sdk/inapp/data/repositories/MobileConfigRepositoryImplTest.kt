@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -205,12 +206,6 @@ internal class MobileConfigRepositoryImplTest {
             setMindboxScope(originalScope)
             MindboxPreferences.inAppConfigFlow.resetReplayCache()
         }
-    }
-
-    private fun setMindboxScope(scope: CoroutineScope) {
-        Mindbox::class.java.getDeclaredField("mindboxScope")
-            .apply { isAccessible = true }
-            .set(Mindbox, scope)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

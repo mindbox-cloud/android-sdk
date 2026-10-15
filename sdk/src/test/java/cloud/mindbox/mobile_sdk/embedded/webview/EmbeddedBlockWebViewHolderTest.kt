@@ -39,6 +39,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
@@ -382,12 +383,6 @@ class EmbeddedBlockWebViewHolderTest {
         } finally {
             setMindboxScope(originalScope)
         }
-    }
-
-    private fun setMindboxScope(scope: CoroutineScope) {
-        Mindbox::class.java.getDeclaredField("mindboxScope")
-            .apply { isAccessible = true }
-            .set(Mindbox, scope)
     }
 
     @Test

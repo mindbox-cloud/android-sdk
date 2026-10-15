@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -354,11 +355,5 @@ class MindboxTest {
             setMindboxScope(originalScope)
             unmockkObject(DbManager, BackgroundWorkManager)
         }
-    }
-
-    private fun setMindboxScope(scope: CoroutineScope) {
-        Mindbox::class.java.getDeclaredField("mindboxScope")
-            .apply { isAccessible = true }
-            .set(Mindbox, scope)
     }
 }
