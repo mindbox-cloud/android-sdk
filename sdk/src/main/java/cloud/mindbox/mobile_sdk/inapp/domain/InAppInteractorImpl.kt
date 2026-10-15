@@ -375,24 +375,23 @@ internal class InAppInteractorImpl(
         placeSystemName: PlaceKey,
         content: InAppType.Embedded,
         sessionEpoch: SessionEpoch,
-    ): PlaceShowReservation = synchronized(sessionStorageManager.showBudgetLock) {
-        if (!isLiveSession(sessionEpoch)) return PlaceShowReservation.STALE
-        if (sessionStorageManager.state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
+    ): PlaceShowReservation = withinLiveSession(sessionEpoch) { state ->
+        if (state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
             logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
             showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
-            return PlaceShowReservation.RESERVED
+            return@withinLiveSession PlaceShowReservation.RESERVED
         }
         if (showBudgetManager.holds(ShowBudgetOwner.Place(placeSystemName), content.inAppId)) {
             logI("Place '$placeSystemName' still holds the show of in-app ${content.inAppId}, no new show to reserve")
-            return PlaceShowReservation.RESERVED
+            return@withinLiveSession PlaceShowReservation.RESERVED
         }
         if (!isAllowedByFrequency(content.inAppId)) {
             logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place has nothing to show")
-            return PlaceShowReservation.REFUSED
+            return@withinLiveSession PlaceShowReservation.REFUSED
         }
         val outcome = showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority)
         if (outcome == ShowReservationOutcome.REFUSED) PlaceShowReservation.REFUSED else PlaceShowReservation.RESERVED
-    }
+    } ?: PlaceShowReservation.STALE
 
     private fun isAllowedByFrequency(inAppId: String): Boolean {
         val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == inAppId } ?: return true
