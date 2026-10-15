@@ -1402,8 +1402,10 @@ public object Mindbox : MindboxLog {
         BackgroundWorkManager.cancelAllWork(context)
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()
-        MindboxDI.appModule.mobileConfigRepositoryIfCreated?.startListening()
+        val mobileConfigRepository = MindboxDI.appModule.mobileConfigRepositoryIfCreated
+        mobileConfigRepository?.startListening()
         MindboxDI.appModule.embeddedBlocksRegistryIfCreated?.startListening()
+        if (mobileConfigRepository?.abandonAwaitedDownload() == true) inAppMessageManager.requestConfig()
     }
 
     private fun sendTrackVisitEvent(

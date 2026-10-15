@@ -35,6 +35,8 @@ internal interface MobileConfigRepository {
 
     fun resetCurrentConfig()
 
+    fun abandonAwaitedDownload(): Boolean
+
     companion object {
         const val CONFIG_NOT_FOUND = 404
     }

@@ -119,7 +119,7 @@ internal class MobileConfigRepositoryImpl(
 
     private inline fun concludeDownload(generation: Long, store: () -> Unit) = synchronized(publicationLock) {
         if (generation != configGeneration) {
-            mindboxLogI("The config download of a session that has ended concluded, dropping its outcome")
+            mindboxLogI("A config download that is no longer awaited concluded, dropping its outcome")
             return@synchronized
         }
         if (publication == Publication.AwaitingDownload) {
@@ -231,6 +231,13 @@ internal class MobileConfigRepositoryImpl(
             publication = Publication.AwaitingDownload
             configState.value = ConfigState(current = null, lastPublished = configState.value.lastPublished)
         }
+    }
+
+    override fun abandonAwaitedDownload(): Boolean = synchronized(publicationLock) {
+        if (publication != Publication.AwaitingDownload) return@synchronized false
+        configGeneration++
+        mindboxLogI("The awaited config download was abandoned, its outcome will be dropped")
+        true
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
