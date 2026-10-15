@@ -1974,6 +1974,33 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a new session's ask held until a screen of the app resumes is made once the block's return the resume left it to reads no config`() {
+        val failingReturn = CompletableDeferred<Unit>()
+        failTheFirstSelection(after = failingReturn)
+        val handle = RecordingHandle(isActive = false, isPausedForBackground = true)
+        isAppPresent = false
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        controller.onBlockAppeared(place)
+        idleMain()
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+
+        failingReturn.complete(Unit)
+        idleMain()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+    }
+
+    @Test
     fun `a block that registers at a place forgotten while its pass flew is asked by the new session that pass was asked in`() {
         val startedPass = CompletableDeferred<EmbeddedResolveOutcome>()
         var selections = 0
