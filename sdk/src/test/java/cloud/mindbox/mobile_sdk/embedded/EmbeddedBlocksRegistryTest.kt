@@ -1865,6 +1865,61 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a new session asks again a place whose block started in it before the new session was announced when that start reads no config after the announcement`() {
+        val failingStart = CompletableDeferred<Unit>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) {
+                failingStart.await()
+                throw IllegalStateException("the selection read no config")
+            }
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        failingStart.complete(Unit)
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+    }
+
+    @Test
+    fun `an operation queued behind a start that stood for the new session's ask and then read no config answers as the new session's pass`() {
+        val failingStart = CompletableDeferred<Unit>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
+            failingStart.await()
+            throw IllegalStateException("the selection read no config")
+        }
+        coEvery { interactor.selectInAppForPlace(place, queuedOperation) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        emitQueuedOperation()
+
+        failingStart.complete(Unit)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+        assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
     fun `a new session's ask held until a screen of the app resumes is made when the app resumes while the block's return that read no config is still finishing`() {
         failTheFirstSelection()
         val handle = RecordingHandle(isActive = false, isPausedForBackground = true)
@@ -2081,6 +2136,29 @@ class EmbeddedBlocksRegistryTest {
         cancelTheSdkScopeAndResubscribe(controller)
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a start that stood for the new session's ask and was cancelled with the sdk scope leaves its place to the resubscription's ask`() {
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) awaitCancellation()
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        cancelTheSdkScopeAndResubscribe(controller)
+
+        assertEquals(2, selections)
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
 
     @Test
