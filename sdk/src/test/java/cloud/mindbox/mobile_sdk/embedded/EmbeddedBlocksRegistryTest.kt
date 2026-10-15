@@ -77,10 +77,13 @@ class EmbeddedBlocksRegistryTest {
         var pendingCount = 0
         var unavailableCount = 0
 
+        var whenResolved: () -> Unit = {}
+
         override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
             received.add(content)
             selectionTimes.add(answer.selectionTime)
             answers.add(answer)
+            whenResolved()
         }
 
         override fun onContentPending() {
@@ -1833,6 +1836,58 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    private fun failTheFirstSelection() {
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) throw IllegalStateException("the selection read no config")
+            winner(configVersion = newerConfig)
+        }
+    }
+
+    @Test
+    fun `a new session asks again a place whose block started in it before the new session was announced when that start read no config`() {
+        failTheFirstSelection()
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+    }
+
+    @Test
+    fun `a new session's ask held until a screen of the app resumes is made when the app resumes while the block's return that read no config is still finishing`() {
+        failTheFirstSelection()
+        val handle = RecordingHandle(isActive = false, isPausedForBackground = true)
+        isAppPresent = false
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        val resumed = screen()
+        handle.whenResolved = {
+            isAppPresent = true
+            controller.onAppResumedOn(resumed)
+        }
+
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
     }
 
     @Test
