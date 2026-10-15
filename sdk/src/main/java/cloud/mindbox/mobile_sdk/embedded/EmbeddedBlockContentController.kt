@@ -127,7 +127,7 @@ internal class EmbeddedBlockContentController(
 
     private var appliedSessionEpoch: Long? = null
 
-    private class DataPush(val sessionEpoch: Long?)
+    private class DataPush(val descriptor: PageDescriptor, val sessionEpoch: Long?)
 
     private var dataPush: DataPush? = null
 
@@ -544,13 +544,16 @@ internal class EmbeddedBlockContentController(
         }
         val descriptor = descriptorOf(content.inAppId, layer)
         val current = provider
+        val sentPush = liveDataPush
 
-        if (current != null && descriptor == appliedDescriptor && lastReportedState?.nothingToShow != true) {
+        if (current != null && descriptor == (sentPush?.descriptor ?: appliedDescriptor) && lastReportedState?.nothingToShow != true) {
             refreshMetricsSnapshot(current, content)
-            if (current is EmbeddedUpdatableContentProvider && isNewSessionFor(answer)) {
-                refreshForNewSession(current, answer)
-            } else {
-                mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
+            when {
+                current is EmbeddedUpdatableContentProvider && isNewSessionFor(answer) -> refreshForNewSession(current, answer, content)
+                sentPush != null -> mindboxLogI(
+                    "[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName' with the params already on their way to its page, sending nothing"
+                )
+                else -> mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName', keeping the content")
             }
             releaseHeldCollapse()
             return
@@ -583,8 +586,11 @@ internal class EmbeddedBlockContentController(
         return answer.copy(selectionTime = first.selectionTime)
     }
 
-    private fun refreshForNewSession(current: EmbeddedUpdatableContentProvider, answer: EmbeddedPlaceAnswer) {
-        val content = appliedContent ?: return
+    private fun refreshForNewSession(
+        current: EmbeddedUpdatableContentProvider,
+        answer: EmbeddedPlaceAnswer,
+        content: InAppType.Embedded,
+    ) {
         val layer = content.pageLayer ?: return
         if (lastReportedState != EmbeddedBlockState.Ready) {
             mindboxLogI(
@@ -621,7 +627,7 @@ internal class EmbeddedBlockContentController(
             mindboxLogI("[EmbeddedBlock] The session that picked the page of '$placeSystemName' again has ended before the page rendered, dropping its refresh")
             return
         }
-        refreshForNewSession(current, answer)
+        refreshForNewSession(current, answer, appliedContent ?: return)
     }
 
     private fun pushPageData(
@@ -633,7 +639,7 @@ internal class EmbeddedBlockContentController(
         val descriptor = descriptorOf(content.inAppId, layer)
         val epoch = ++updateEpoch
         val isNewSession = isNewSessionFor(answer)
-        val push = DataPush(sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
+        val push = DataPush(descriptor, sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
         dataPush = push
         val onResult: (DataPushOutcome) -> Unit = { outcome ->
             mainHandler.post {
