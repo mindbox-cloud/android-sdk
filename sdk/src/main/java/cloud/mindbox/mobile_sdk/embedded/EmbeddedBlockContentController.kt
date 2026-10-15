@@ -299,7 +299,7 @@ internal class EmbeddedBlockContentController(
     fun onLeftScreen() {
         if (!isPausedForBackground) return
         if (hostActivity()?.isChangingConfigurations == true) return
-        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' was taken off its screen while the app was in background, it has left the screen")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' left its screen before it was shown again after the app went to background")
         leaveScreenPausedForBackground()
     }
 
