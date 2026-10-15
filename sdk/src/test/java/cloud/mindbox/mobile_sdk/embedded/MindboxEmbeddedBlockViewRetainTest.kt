@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import cloud.mindbox.mobile_sdk.findActivity
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
@@ -18,6 +19,9 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowRes
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -196,6 +200,7 @@ class MindboxEmbeddedBlockViewRetainTest {
     @After
     fun tearDown() {
         BlockFragment.blockFactory = { context -> MindboxEmbeddedBlockView(context) }
+        unmockkAll()
     }
 
     private fun idle() {
@@ -686,6 +691,23 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         assertEquals(1, blocksRegistry.appearedCount)
         assertEquals(listOf(block), loads)
+    }
+
+    @Test
+    fun `a block outside any fragment looks for one once as it is attached, not again as its own or its parents' visibility changes`() {
+        mockkStatic(FragmentManager::class)
+        val block = newBlock(activity)
+        val parent = FrameLayout(activity).apply { addView(block, 500, 300) }
+        activity.setContentView(parent)
+        show(block)
+        deliverContent()
+
+        parent.visibility = View.GONE
+        parent.visibility = View.VISIBLE
+        idle()
+
+        assertEquals(View.VISIBLE, block.visibility)
+        verify(exactly = 1) { FragmentManager.findFragment<Fragment>(block) }
     }
 
     private companion object {
