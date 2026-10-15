@@ -176,6 +176,10 @@ class EmbeddedBlocksRegistryTest {
         every { interactor.sessionEpoch } answers { currentSessionEpoch }
     }
 
+    private val keptAliveHandles = mutableListOf<EmbeddedBlockHandle>()
+
+    private fun <T : EmbeddedBlockHandle> keptAlive(handle: T): T = handle.also { keptAliveHandles.add(it) }
+
     private fun screen(): Activity = Robolectric.buildActivity(Activity::class.java).get()
 
     private fun idleMain() {
@@ -327,7 +331,7 @@ class EmbeddedBlocksRegistryTest {
         // the controller touches are selectInAppForPlace and the push flow subscription.
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         val controller = controller()
-        controller.register(place, RecordingHandle())
+        controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
 
         controller.onBlockAppeared(place)
@@ -534,9 +538,9 @@ class EmbeddedBlocksRegistryTest {
         val backgroundPlace = PlaceKey.of("background-place")
         val leftPlace = PlaceKey.of("left-place")
         val controller = controller()
-        controller.register(place, RecordingHandle())
-        controller.register(backgroundPlace, RecordingHandle(isActive = false, isPausedForBackground = true))
-        controller.register(leftPlace, RecordingHandle(isActive = false, isLeftBehind = true))
+        controller.register(place, keptAlive(RecordingHandle()))
+        controller.register(backgroundPlace, keptAlive(RecordingHandle(isActive = false, isPausedForBackground = true)))
+        controller.register(leftPlace, keptAlive(RecordingHandle(isActive = false, isLeftBehind = true)))
         idleMain()
 
         scope.launch { configVersions.emit(newerConfig) }
@@ -751,7 +755,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `startListening leaves live channels alone`() {
         val controller = controller()
-        controller.register(place, RecordingHandle())
+        controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
 
         controller.startListening()
@@ -822,7 +826,7 @@ class EmbeddedBlocksRegistryTest {
     fun `nothing to show over an active hold gives the hold back`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val controller = controller()
-        controller.register(place, RecordingHandle())
+        controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
 
         controller.onBlockAppeared(place)
@@ -879,7 +883,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `the last block leaving the place gives the hold back`() {
         val controller = controller()
-        val registration = controller.register(place, RecordingHandle())
+        val registration = controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
 
         registration.close()
@@ -936,7 +940,7 @@ class EmbeddedBlocksRegistryTest {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val controller = controller()
-        val registration = controller.register(place, RecordingHandle())
+        val registration = controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
         registration.close()
         idleMain()
@@ -2008,7 +2012,7 @@ class EmbeddedBlocksRegistryTest {
             if (selections++ == 0) startedPass.await() else winner(configVersion = newerConfig)
         }
         val controller = controller()
-        val registration = controller.register(place, RecordingHandle())
+        val registration = controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
         currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
@@ -2239,7 +2243,7 @@ class EmbeddedBlocksRegistryTest {
             winner(configVersion = newerConfig)
         }
         val controller = controller()
-        controller.register(place, RecordingHandle())
+        controller.register(place, keptAlive(RecordingHandle()))
         idleMain()
         val worker = Executors.newSingleThreadExecutor()
         try {
@@ -2452,7 +2456,7 @@ class EmbeddedBlocksRegistryTest {
         LifecycleManager.instance = lifecycle
         try {
             val controller = EmbeddedBlocksRegistryImpl(inAppInteractor = interactor, scopeProvider = { scope }, monotonicNow = { clock })
-            controller.register(place, RecordingHandle(isActive = false, isPausedForBackground = true))
+            controller.register(place, keptAlive(RecordingHandle(isActive = false, isPausedForBackground = true)))
             idleMain()
 
             currentSessionEpoch = SessionEpoch(1L)
@@ -2591,9 +2595,9 @@ class EmbeddedBlocksRegistryTest {
         val onScreen = RecordingHandle()
         val leftBesideOnScreen = RecordingHandle(isActive = false, isLeftBehind = true)
         val controller = controller()
-        controller.register(place, RecordingHandle(isActive = false, isLeftBehind = true))
-        controller.register(sharedPlace, RecordingHandle(isActive = false, isLeftBehind = true))
-        controller.register(sharedPlace, RecordingHandle(isActive = false, isPausedForBackground = true))
+        controller.register(place, keptAlive(RecordingHandle(isActive = false, isLeftBehind = true)))
+        controller.register(sharedPlace, keptAlive(RecordingHandle(isActive = false, isLeftBehind = true)))
+        controller.register(sharedPlace, keptAlive(RecordingHandle(isActive = false, isPausedForBackground = true)))
         controller.register(placeOnScreen, onScreen)
         controller.register(placeOnScreen, leftBesideOnScreen)
         idleMain()
