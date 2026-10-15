@@ -467,7 +467,7 @@ internal class EmbeddedBlocksRegistryImpl(
                         val isAskedAgain = isAnsweredFromOlderConfig || isNewSessionLeftUnanswered
                         resolveQueued(place, if (isAskedAgain) queued.mergedWith(ResolvePass(trigger = null)) else queued)
                     }
-                    isNewSessionLeftUnanswered && handlesByPlace.containsKey(place) -> {
+                    isNewSessionLeftUnanswered && liveHandles(place).any { handle -> handle.mayTakeNewSessionAnswer } -> {
                         mindboxLogI("[EmbeddedBlock] Place '$place': its pass stood for the new session's ask and read no config — asking again")
                         resolvePlace(place)
                     }
