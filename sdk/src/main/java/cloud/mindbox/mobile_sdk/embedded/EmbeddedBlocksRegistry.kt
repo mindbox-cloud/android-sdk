@@ -21,6 +21,7 @@ import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -392,7 +393,7 @@ internal class EmbeddedBlocksRegistryImpl(
         val triggerEvent = pass.trigger
         val isByOperation = triggerEvent != null && !pass.includesNonOperation
         val requestedAt = pass.renewal?.takeIf { renewal -> renewal.sessionEpoch == sessionEpoch }?.tick ?: monotonicNow()
-        val job = scopeProvider().launch {
+        val job = scopeProvider().launch(start = CoroutineStart.LAZY) {
             val resolved = try {
                 Result.success(
                     inAppInteractor.selectInAppForPlace(
@@ -422,7 +423,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 )
             }
         }
-        job.invokeOnCompletion {
+        job.invokeOnCompletion { cause ->
             runOnMain {
                 resolvingPlaces.remove(place)
                 val isAnsweredFromOlderConfig = inFlight.isAnsweredFromConfigOlderThan(newestConfigVersion)
@@ -432,7 +433,7 @@ internal class EmbeddedBlocksRegistryImpl(
                         mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
                         resolveQueued(place, if (isAnsweredFromOlderConfig) queued.mergedWith(ResolvePass(trigger = null)) else queued)
                     }
-                    isAnsweredFromOlderConfig && handlesByPlace.containsKey(place) -> {
+                    isAnsweredFromOlderConfig && cause !is CancellationException && handlesByPlace.containsKey(place) -> {
                         val answeredFrom = inFlight.answer?.configVersion?.number?.toString() ?: "no config"
                         mindboxLogI("[EmbeddedBlock] Place '$place': answered from config $answeredFrom, older than ${newestConfigVersion?.number} — asking again")
                         resolvePlace(place)
@@ -440,6 +441,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 }
             }
         }
+        job.start()
     }
 
     private fun resolveQueued(place: PlaceKey, queued: ResolvePass) {
