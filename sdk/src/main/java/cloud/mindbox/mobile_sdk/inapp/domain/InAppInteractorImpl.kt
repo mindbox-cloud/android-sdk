@@ -27,6 +27,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -151,9 +152,11 @@ internal class InAppInteractorImpl(
         triggerEvent: InAppEventType,
         isRetryAfterSessionReset: Boolean,
     ): EmbeddedResolveOutcome {
-        val inApps = mobileConfigRepository.getInAppsSectionIfAvailable() ?: run {
+        val section = mobileConfigRepository.getInAppsSectionIfAvailable()
+        val configVersion = section.configVersion
+        val inApps = section.inApps ?: run {
             logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
-            return EmbeddedResolveOutcome.ConfigUnavailable
+            return EmbeddedResolveOutcome.ConfigUnavailable(configVersion)
         }
         val session = sessionStorageManager.state
         inAppRepository.saveCurrentSessionInApps(inApps)
@@ -184,17 +187,17 @@ internal class InAppInteractorImpl(
         if (winner == null) {
             logI("Place '$placeSystemName': nothing to show")
             inAppFailureTracker.sendCollectedFailures()
-            return EmbeddedResolveOutcome.Empty
+            return EmbeddedResolveOutcome.Empty(configVersion)
         }
         inAppFailureTracker.clearFailures()
-        val variant = winner.embeddedVariantFor(placeSystemName) ?: return EmbeddedResolveOutcome.Empty
+        val variant = winner.embeddedVariantFor(placeSystemName) ?: return EmbeddedResolveOutcome.Empty(configVersion)
         val delayTime = winner.delayTime?.takeIf { delay ->
             delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.state.embeddedDelaysWaitedOut
         }
         if (winner.delayTime != null && delayTime == null) {
             logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
         }
-        return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime)
+        return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime, configVersion = configVersion)
     }
 
     private suspend fun resolveAgainForNewSession(placeSystemName: PlaceKey, moment: String): EmbeddedResolveOutcome {
@@ -276,7 +279,7 @@ internal class InAppInteractorImpl(
         return inAppProcessingManager.chooseInAppToShow(showable.sortByPriority(), triggerEvent, selectVariant)
     }
 
-    override fun listenConfigUpdates(): Flow<Unit> = mobileConfigRepository.listenConfigUpdates()
+    override fun listenConfigVersions(): Flow<ConfigVersion> = mobileConfigRepository.listenConfigVersions()
 
     override fun listenEmbeddedPlaceEvents(): Flow<EmbeddedPlaceEvent> = flow {
         inAppRepository.listenLiveInAppEvents()

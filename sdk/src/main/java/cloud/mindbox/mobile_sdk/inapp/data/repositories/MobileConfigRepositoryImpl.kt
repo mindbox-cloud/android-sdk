@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppsSection
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
@@ -24,6 +25,7 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
@@ -67,7 +69,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val configState = MutableStateFlow(ConfigState(current = null, lastPublished = null))
 
-    private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val configVersions = MutableSharedFlow<ConfigVersion>(extraBufferCapacity = 1)
 
     private var configSubscription: Job? = null
 
@@ -185,16 +187,17 @@ internal class MobileConfigRepositoryImpl(
         val entry = ConfigEntry(
             config = updatedInAppConfig,
             isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
+            version = configState.value.lastPublished?.version?.next() ?: ConfigVersion.FIRST,
         )
         configState.value = ConfigState(current = entry, lastPublished = entry)
-        configUpdates.tryEmit(Unit)
+        configVersions.tryEmit(entry.version)
         // Prewarm stage 2: warm what the config's webview in-apps will need
         // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
         mindboxLogI(message = "Providing config: $updatedInAppConfig")
     }
 
-    override fun listenConfigUpdates(): Flow<Unit> = configUpdates
+    override fun listenConfigVersions(): Flow<ConfigVersion> = configVersions
 
     override fun hasConfig(): Boolean = configState.value.current != null
 
@@ -204,8 +207,10 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun getInAppsSection() = getConfig().inApps
 
-    override suspend fun getInAppsSectionIfAvailable(): List<InApp>? =
-        awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
+    override suspend fun getInAppsSectionIfAvailable(): InAppsSection {
+        val entry = awaitConfigEntry()
+        return InAppsSection(inApps = entry.config.inApps.takeUnless { entry.isUnavailable }, configVersion = entry.version)
+    }
 
     override suspend fun getConfigForPageIfAvailable(): PageConfig? {
         val state = configState.value
@@ -419,7 +424,7 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
 
-    private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean)
+    private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean, val version: ConfigVersion)
 
     private class ConfigState(val current: ConfigEntry?, val lastPublished: ConfigEntry?)
 }

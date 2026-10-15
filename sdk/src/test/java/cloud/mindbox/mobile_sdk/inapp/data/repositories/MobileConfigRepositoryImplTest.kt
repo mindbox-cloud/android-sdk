@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.SdkVersion
@@ -221,7 +222,7 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("")
 
         assertTrue(repository.hasConfig())
-        assertNull(repository.getInAppsSectionIfAvailable())
+        assertNull(repository.getInAppsSectionIfAvailable().inApps)
 
         repository.resetCurrentConfig()
 
@@ -237,7 +238,7 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("")
 
         assertTrue(repository.hasConfig())
-        assertNotNull(repository.getInAppsSectionIfAvailable())
+        assertNotNull(repository.getInAppsSectionIfAvailable().inApps)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -249,7 +250,7 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("{}")
 
         assertTrue(repository.hasConfig())
-        assertNotNull(repository.getInAppsSectionIfAvailable())
+        assertNotNull(repository.getInAppsSectionIfAvailable().inApps)
     }
 
     private class StoredConfig {
@@ -424,9 +425,9 @@ internal class MobileConfigRepositoryImplTest {
     fun `after a reset the newest stored config stays published when an older write is emitted late`() = withStoredConfig {
         val gateway = mockk<GatewayManager> { coEvery { fetchMobileConfig(any()) } returns "first" }
         val repository = createRepository(gatewayManager = gateway)
-        val publications = mutableListOf<Unit>()
+        val publications = mutableListOf<ConfigVersion>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.listenConfigUpdates().collect { publication -> publications.add(publication) }
+            repository.listenConfigVersions().collect { publication -> publications.add(publication) }
         }
         repository.startListening()
         repository.resetCurrentConfig()
@@ -508,7 +509,7 @@ internal class MobileConfigRepositoryImplTest {
         runCurrent()
 
         assertTrue(reader.isCompleted)
-        assertNotNull(reader.await())
+        assertNotNull(reader.await().inApps)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

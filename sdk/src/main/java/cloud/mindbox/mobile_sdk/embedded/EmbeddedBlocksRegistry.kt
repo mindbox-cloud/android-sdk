@@ -184,7 +184,7 @@ internal class EmbeddedBlocksRegistryImpl(
         val scope = scopeProvider()
         channelJobs = listOf(
             scope.launch {
-                inAppInteractor.listenConfigUpdates().collect {
+                inAppInteractor.listenConfigVersions().collect {
                     runOnMain { invalidateAll(reason = "config update") }
                 }
             },
@@ -507,8 +507,8 @@ internal class EmbeddedBlocksRegistryImpl(
         if (isFromEndedSession(place, answer)) return
         when (outcome) {
             is EmbeddedResolveOutcome.Content -> handleContent(place, outcome, answer)
-            EmbeddedResolveOutcome.Empty -> deliverNow(place, null, answer)
-            EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place, answer)
+            is EmbeddedResolveOutcome.Empty -> deliverNow(place, null, answer)
+            is EmbeddedResolveOutcome.ConfigUnavailable -> handleConfigUnavailable(place, answer)
         }
     }
 

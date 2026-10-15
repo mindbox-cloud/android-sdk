@@ -5,13 +5,16 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlinx.coroutines.flow.Flow
 
 internal class PageConfig(val config: InAppConfig, val isOfEndedSession: Boolean)
 
+internal class InAppsSection(val inApps: List<InApp>?, val configVersion: ConfigVersion)
+
 internal interface MobileConfigRepository {
-    fun listenConfigUpdates(): Flow<Unit>
+    fun listenConfigVersions(): Flow<ConfigVersion>
 
     fun startListening()
 
@@ -21,7 +24,7 @@ internal interface MobileConfigRepository {
 
     suspend fun getInAppsSection(): List<InApp>
 
-    suspend fun getInAppsSectionIfAvailable(): List<InApp>?
+    suspend fun getInAppsSectionIfAvailable(): InAppsSection
 
     suspend fun getConfigForPageIfAvailable(): PageConfig?
 

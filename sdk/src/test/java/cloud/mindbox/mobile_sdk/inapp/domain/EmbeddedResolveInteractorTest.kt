@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManag
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppsSection
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
@@ -26,6 +27,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
@@ -108,6 +110,8 @@ class EmbeddedResolveInteractorTest {
 
     private val place = PlaceKey.of("main-screen-top")
 
+    private val configVersion = ConfigVersion.FIRST
+
     @Before
     fun setUp() {
         every { sessionStorageManager.state } returns sessionState
@@ -172,7 +176,7 @@ class EmbeddedResolveInteractorTest {
 
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
-        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns inApps.toList()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns InAppsSection(inApps.toList(), configVersion)
         coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(*inApps), isOfEndedSession = false)
     }
 
@@ -213,7 +217,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace is empty for unknown place`() = runTest {
         givenConfig(embeddedInApp(), modalInApp())
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
     }
 
     @Test
@@ -265,7 +269,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace skips candidate with directCall`() = runTest {
         givenConfig(embeddedInApp().copy(displayConditions = DisplayConditions.DIRECT_CALL))
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
     }
 
     @Test
@@ -274,7 +278,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" }) }
     }
 
@@ -301,7 +305,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
@@ -568,7 +572,7 @@ class EmbeddedResolveInteractorTest {
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, triggerEvent = operation))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, triggerEvent = operation))
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
         coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
@@ -1094,11 +1098,11 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `selectInAppForPlace has no answer when the config could not be fetched and nothing is cached`() = runTest {
-        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns null
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns InAppsSection(inApps = null, configVersion = configVersion)
 
         val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
-        assertEquals(EmbeddedResolveOutcome.ConfigUnavailable, outcome)
+        assertEquals(EmbeddedResolveOutcome.ConfigUnavailable(configVersion), outcome)
         verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
     }
 
@@ -1107,7 +1111,7 @@ class EmbeddedResolveInteractorTest {
         givenConfig(embeddedInApp())
         coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
 
-        assertEquals(EmbeddedResolveOutcome.Empty, interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
     }
 
     private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content

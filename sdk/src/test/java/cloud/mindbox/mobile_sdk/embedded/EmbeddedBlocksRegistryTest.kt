@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
@@ -121,11 +122,17 @@ class EmbeddedBlocksRegistryTest {
     private val place = PlaceKey.of("main-screen-top")
     private val content = InAppStub.getEmbedded()
 
-    private fun winner(variant: InAppType.Embedded = content, delay: Milliseconds? = null): EmbeddedResolveOutcome.Content =
-        EmbeddedResolveOutcome.Content(variant, delay)
+    private val olderConfig = ConfigVersion.FIRST
+    private val newerConfig = olderConfig.next()
+
+    private fun winner(
+        variant: InAppType.Embedded = content,
+        delay: Milliseconds? = null,
+        configVersion: ConfigVersion = olderConfig,
+    ): EmbeddedResolveOutcome.Content = EmbeddedResolveOutcome.Content(variant, delay, configVersion)
 
     private val placeEvents = MutableSharedFlow<EmbeddedPlaceEvent>()
-    private val configUpdates = MutableSharedFlow<Unit>()
+    private val configVersions = MutableSharedFlow<ConfigVersion>()
     private val sessionEpochs = MutableStateFlow(0L)
     private val returnCheckPending = MutableStateFlow(false)
 
@@ -153,7 +160,7 @@ class EmbeddedBlocksRegistryTest {
 
     private fun stubInteractor() {
         coEvery { interactor.listenEmbeddedPlaceEvents() } returns placeEvents
-        coEvery { interactor.listenConfigUpdates() } returns configUpdates
+        coEvery { interactor.listenConfigVersions() } returns configVersions
         every { interactor.listenSessionEpoch() } returns sessionEpochs
         every { interactor.returnCheckPending } returns returnCheckPending
         every { interactor.reservePlaceShow(any(), any(), any()) } returns PlaceShowReservation.RESERVED
@@ -322,7 +329,7 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
         coVerify(exactly = 1) { interactor.listenEmbeddedPlaceEvents() }
-        coVerify(exactly = 1) { interactor.listenConfigUpdates() }
+        coVerify(exactly = 1) { interactor.listenConfigVersions() }
         coVerify(exactly = 0) { interactor.getInAppToShowById(any()) }
         coVerify(exactly = 0) { interactor.filterShowableInAppIds(any(), any()) }
     }
@@ -436,7 +443,7 @@ class EmbeddedBlocksRegistryTest {
 
         controller.onBlockAppeared(place)
         idleMain()
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
         configLoaded.complete(Unit)
         idleMain()
@@ -508,7 +515,7 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
@@ -525,7 +532,7 @@ class EmbeddedBlocksRegistryTest {
         controller.register(leftPlace, RecordingHandle(isActive = false, isLeftBehind = true))
         idleMain()
 
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
@@ -541,7 +548,7 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
         // Nothing resolves in the background for a paused block.
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
@@ -681,7 +688,7 @@ class EmbeddedBlocksRegistryTest {
         // WITH its trigger — a triggerless second pass would never match operation-targetings.
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
@@ -707,7 +714,7 @@ class EmbeddedBlocksRegistryTest {
 
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
 
         // Push and config invalidation are both alive again on the new scope.
@@ -746,7 +753,7 @@ class EmbeddedBlocksRegistryTest {
 
         // One subscription per channel, and no re-resolve: the channels never died.
         coVerify(exactly = 1) { interactor.listenEmbeddedPlaceEvents() }
-        coVerify(exactly = 1) { interactor.listenConfigUpdates() }
+        coVerify(exactly = 1) { interactor.listenConfigVersions() }
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
     }
 
@@ -806,7 +813,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `nothing to show over an active hold gives the hold back`() {
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val controller = controller()
         controller.register(place, RecordingHandle())
         idleMain()
@@ -877,7 +884,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `an answer the SDK could not give is delivered to the blocks as such and gives the hold back`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveOutcome.ConfigUnavailable
+            EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -896,7 +903,7 @@ class EmbeddedBlocksRegistryTest {
     fun `an answer the SDK could not give while a winner waits out its delay keeps the running timer`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             winner(delay = Milliseconds(5_000L)) andThen
-            EmbeddedResolveOutcome.ConfigUnavailable
+            EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -920,7 +927,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `an answer the SDK could not give for a place nobody listens to is dropped with the hold`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
-            EmbeddedResolveOutcome.ConfigUnavailable
+            EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val controller = controller()
         val registration = controller.register(place, RecordingHandle())
         idleMain()
@@ -1007,7 +1014,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         currentSessionEpoch = 1L
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         assertTrue(handle.received.isEmpty())
@@ -1032,7 +1039,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `an empty answer whose session ended before its hold was given back is dropped`() {
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         every { interactor.releasePlaceShow(place, any()) } returns false
@@ -1130,7 +1137,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a new session's failure is delivered at once instead of waiting for the ended session's timer`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns
-            winner(delay = Milliseconds(5_000L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
+            winner(delay = Milliseconds(5_000L)) andThen EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -1154,7 +1161,7 @@ class EmbeddedBlocksRegistryTest {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() }
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -1162,11 +1169,11 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
@@ -1185,7 +1192,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         currentSessionEpoch = 1L
-        firstResolveGate.complete(EmbeddedResolveOutcome.ConfigUnavailable)
+        firstResolveGate.complete(EmbeddedResolveOutcome.ConfigUnavailable(olderConfig))
         idleMain()
 
         assertEquals(0, handle.unavailableCount)
@@ -1197,7 +1204,7 @@ class EmbeddedBlocksRegistryTest {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val firstResolveGate = CompletableDeferred<EmbeddedResolveOutcome>()
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { firstResolveGate.await() }
-        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, operation) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -1209,7 +1216,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         controller.onBlockAppeared(place)
         idleMain()
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
@@ -1242,7 +1249,7 @@ class EmbeddedBlocksRegistryTest {
         val firstResolveGate = queueOperationBehindAResolveInFlight(handle)
 
         handle.isActive = false
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1256,7 +1263,7 @@ class EmbeddedBlocksRegistryTest {
 
         handle.isActive = false
         handle.isPausedForBackground = true
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1266,12 +1273,12 @@ class EmbeddedBlocksRegistryTest {
     fun `a queued pass that took in a config update is asked without the operation queued with it when no block of its place is on screen or away in background`() {
         val handle = RecordingHandle()
         val firstResolveGate = queueOperationBehindAResolveInFlight(handle) {
-            scope.launch { configUpdates.emit(Unit) }
+            scope.launch { configVersions.emit(newerConfig) }
             idleMain()
         }
 
         handle.isActive = false
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1316,7 +1323,7 @@ class EmbeddedBlocksRegistryTest {
             handle.leavesOnSessionRenewed = true
         }
 
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1328,7 +1335,7 @@ class EmbeddedBlocksRegistryTest {
         val handle = RecordingHandle()
         val firstResolveGate = queueTheNewSessionAskBehindAResolveInFlight(handle, whileTheSessionEnds = ::emitQueuedOperation)
 
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1341,7 +1348,7 @@ class EmbeddedBlocksRegistryTest {
 
         handle.isActive = false
         handle.isPausedForBackground = true
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1354,7 +1361,7 @@ class EmbeddedBlocksRegistryTest {
 
         handle.isActive = false
         advance(Milliseconds(300L))
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1372,7 +1379,7 @@ class EmbeddedBlocksRegistryTest {
         emitQueuedOperation()
 
         handle.isActive = false
-        firstResolveGate.complete(EmbeddedResolveOutcome.Empty)
+        firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1388,12 +1395,12 @@ class EmbeddedBlocksRegistryTest {
         val block = liveBlock(registry, mutableListOf())
         block.start()
         idleMain()
-        scope.launch { configUpdates.emit(Unit) }
+        scope.launch { configVersions.emit(newerConfig) }
         idleMain()
         renewTheSession(whileItEnds = ::emitQueuedOperation)
 
         block.leaveForAnotherScreen()
-        configPassAnswer.complete(EmbeddedResolveOutcome.Empty)
+        configPassAnswer.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
@@ -1552,7 +1559,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a winner whose delay ran out keeps its delivery when a failure overtakes it on the way to the main thread`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns
-            winner(delay = Milliseconds(20L)) andThen EmbeddedResolveOutcome.ConfigUnavailable
+            winner(delay = Milliseconds(20L)) andThen EmbeddedResolveOutcome.ConfigUnavailable(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -1922,7 +1929,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `an operation held for the session check of the app's return that ends the session rides the new session's ask, also when the reset lands before the check is reported over`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -2083,7 +2090,7 @@ class EmbeddedBlocksRegistryTest {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         val operationGate = CompletableDeferred<EmbeddedResolveOutcome>()
         coEvery { interactor.selectInAppForPlace(place, operation) } coAnswers { operationGate.await() }
-        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns EmbeddedResolveOutcome.Empty(olderConfig)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -2093,7 +2100,7 @@ class EmbeddedBlocksRegistryTest {
 
         controller.onBlockAppeared(place)
         idleMain()
-        operationGate.complete(EmbeddedResolveOutcome.Empty)
+        operationGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
@@ -2284,7 +2291,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `a feed the new session refuses is gone before its first frame when the user comes back to it from the screen the app returned on`() {
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty(olderConfig)
         val states = mutableListOf<EmbeddedBlockState>()
         val registry = controller()
         val block = liveBlock(registry, states)
@@ -2331,7 +2338,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `a feed taken off its screen inside its activity while the app was in background is gone before its first frame when the user comes back to it and the new session refuses it, with no show reserved meanwhile`() {
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty(olderConfig)
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val registry = controller()
@@ -2397,7 +2404,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `a feed the new session refuses stays on screen until the user leaves it when the app comes back on its own screen`() {
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty(olderConfig)
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val registry = controller()
@@ -2441,7 +2448,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a feed the user comes back to before the new session answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
         val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
-        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty)
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty(olderConfig))
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val registry = controller()
@@ -2455,7 +2462,7 @@ class EmbeddedBlocksRegistryTest {
         isAppInForeground = true
         block.start()
         idleMain()
-        renewalAnswer.complete(EmbeddedResolveOutcome.Empty)
+        renewalAnswer.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
@@ -2560,7 +2567,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `a feed left for another screen and refused by a new session begun meanwhile is gone before its first frame when the user comes back to it`() {
-        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty(olderConfig)
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val registry = controller()
@@ -2623,7 +2630,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a feed the user comes back to from another screen before a new session begun meanwhile answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
         val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
-        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty)
+        answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty(olderConfig))
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val registry = controller()
@@ -2636,7 +2643,7 @@ class EmbeddedBlocksRegistryTest {
 
         block.start()
         idleMain()
-        renewalAnswer.complete(EmbeddedResolveOutcome.Empty)
+        renewalAnswer.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))

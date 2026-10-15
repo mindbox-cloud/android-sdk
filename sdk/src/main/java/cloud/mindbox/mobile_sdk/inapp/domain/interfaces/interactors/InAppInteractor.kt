@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
@@ -27,10 +28,10 @@ internal interface InAppInteractor {
     suspend fun listenToTargetingEvents()
 
     /**
-     * Emits after every parsed config update — unlike the raw preference flow, this fires only
-     * when the new config is actually applied, so a re-resolve never reads the previous one.
+     * Emits the version of every config once it is applied — unlike the raw preference flow, this
+     * fires only after the config is readable, so a pass asked on the emission reads that version or a newer one.
      */
-    fun listenConfigUpdates(): Flow<Unit>
+    fun listenConfigVersions(): Flow<ConfigVersion>
 
     /**
      * Resolves content for an embedded place. The targeting pass runs first — place filter,
@@ -146,18 +147,24 @@ internal data class InAppToShow(
 /** What the pass of a place ended with — the registry's input for the delivery to the blocks. */
 internal sealed class EmbeddedResolveOutcome {
 
+    abstract val configVersion: ConfigVersion
+
     /**
      * A resolved place: the content to render and the winner's show delay — the campaign's choice,
      * applied by the registry before the delivery.
      */
-    data class Content(val variant: InAppType.Embedded, val delayTime: Milliseconds?) : EmbeddedResolveOutcome()
+    data class Content(
+        val variant: InAppType.Embedded,
+        val delayTime: Milliseconds?,
+        override val configVersion: ConfigVersion,
+    ) : EmbeddedResolveOutcome()
 
     /** Nothing to show: no campaign for the place, or every candidate was left out. */
-    data object Empty : EmbeddedResolveOutcome()
+    data class Empty(override val configVersion: ConfigVersion) : EmbeddedResolveOutcome()
 
     /**
      * The SDK could not decide: the config fetch failed and nothing is cached, so the place has no
      * answer rather than nothing to show.
      */
-    data object ConfigUnavailable : EmbeddedResolveOutcome()
+    data class ConfigUnavailable(override val configVersion: ConfigVersion) : EmbeddedResolveOutcome()
 }
