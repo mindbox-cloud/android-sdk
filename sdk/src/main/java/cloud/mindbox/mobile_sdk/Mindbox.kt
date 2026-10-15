@@ -16,6 +16,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
 import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
@@ -1405,7 +1406,15 @@ public object Mindbox : MindboxLog {
         val mobileConfigRepository = MindboxDI.appModule.mobileConfigRepositoryIfCreated
         mobileConfigRepository?.startListening()
         MindboxDI.appModule.embeddedBlocksRegistryIfCreated?.startListening()
-        if (mobileConfigRepository?.abandonAwaitedDownload() == true) inAppMessageManager.requestConfig()
+        restartAwaitedConfigDownload(mobileConfigRepository) { inAppMessageManager }
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun restartAwaitedConfigDownload(
+        repository: MobileConfigRepository?,
+        inAppManager: () -> InAppMessageManager,
+    ) {
+        if (repository?.abandonAwaitedDownload() == true) inAppManager().requestConfig()
     }
 
     private fun sendTrackVisitEvent(
