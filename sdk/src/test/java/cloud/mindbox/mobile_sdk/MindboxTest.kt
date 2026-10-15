@@ -5,6 +5,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -14,7 +15,10 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import io.mockk.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -315,19 +319,46 @@ class MindboxTest {
     @Test
     fun `a soft re-init requests no config when no download is awaited`() {
         val repository = mockk<MobileConfigRepository> { every { abandonAwaitedDownload() } returns false }
-        val inAppManager = mockk<InAppMessageManager>(relaxed = true)
 
-        Mindbox.restartAwaitedConfigDownload(repository) { inAppManager }
-
-        verify(exactly = 0) { inAppManager.requestConfig() }
+        Mindbox.restartAwaitedConfigDownload(repository) { error("resolved without an abandoned download") }
     }
 
     @Test
     fun `a soft re-init before the config repository exists requests no config`() {
+        Mindbox.restartAwaitedConfigDownload(null) { error("resolved without an abandoned download") }
+    }
+
+    @Test
+    fun `a soft re-init requests the abandoned config once after the repository listens again`() {
+        val repository = mockk<MobileConfigRepository>(relaxed = true) { every { abandonAwaitedDownload() } returns true }
         val inAppManager = mockk<InAppMessageManager>(relaxed = true)
+        val appModule = MindboxDI.appModule
+        every { appModule.mobileConfigRepositoryIfCreated } returns repository
+        every { appModule.inAppMessageManager } returns inAppManager
+        every { MindboxPreferences.resetAppInfoUpdated() } just runs
+        mockkObject(DbManager, BackgroundWorkManager)
+        val originalScope = Mindbox.mindboxScope
+        try {
+            every { DbManager.removeAllEventsFromQueue() } just runs
+            every { BackgroundWorkManager.cancelAllWork(any()) } returns mockk()
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
-        Mindbox.restartAwaitedConfigDownload(null) { inAppManager }
+            Mindbox.softReinitialization(context)
 
-        verify(exactly = 0) { inAppManager.requestConfig() }
+            verify(exactly = 1) { inAppManager.requestConfig() }
+            verifyOrder {
+                repository.startListening()
+                inAppManager.requestConfig()
+            }
+        } finally {
+            setMindboxScope(originalScope)
+            unmockkObject(DbManager, BackgroundWorkManager)
+        }
+    }
+
+    private fun setMindboxScope(scope: CoroutineScope) {
+        Mindbox::class.java.getDeclaredField("mindboxScope")
+            .apply { isAccessible = true }
+            .set(Mindbox, scope)
     }
 }
