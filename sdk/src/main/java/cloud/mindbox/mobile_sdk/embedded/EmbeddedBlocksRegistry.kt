@@ -136,7 +136,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
         override fun standsForTheAskOf(sessionEpoch: SessionEpoch): Boolean = answer?.standsForTheAskOf(sessionEpoch) ?: super.standsForTheAskOf(sessionEpoch)
 
-        fun standsInForTheAskOf(sessionEpoch: SessionEpoch): Boolean {
+        fun takeOverTheAskOf(sessionEpoch: SessionEpoch): Boolean {
             if (!standsForTheAskOf(sessionEpoch)) return false
             if (answer == null) hasStoodInUnanswered = true
             return true
@@ -549,7 +549,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: SessionEpoch): Boolean {
         val inFlight = resolvingPlaces[place]
-        val isAnswered = inFlight?.standsInForTheAskOf(sessionEpoch) ?: answeredPasses[place]?.standsForTheAskOf(sessionEpoch) ?: false
+        val isAnswered = inFlight?.takeOverTheAskOf(sessionEpoch) ?: answeredPasses[place]?.standsForTheAskOf(sessionEpoch) ?: false
         if (!isAnswered) return false
         mindboxLogI("[EmbeddedBlock] Place '$place': a new session, and its pass in flight or its last answer was asked in it with no operation — its answer is the new session's")
         return true
