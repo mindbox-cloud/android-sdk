@@ -1722,6 +1722,116 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a new session asks the operation carried into it for a place whose block started in it before the new session was announced`() {
+        val startedPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { startedPass.await() }
+        coEvery { interactor.selectInAppForPlace(place, queuedOperation) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        emitQueuedOperation()
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        startedPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a new session's ask held until a screen of the app resumes asks the operation it carries once the block's return has asked its place in that session`() {
+        val returnPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { returnPass.await() }
+        coEvery { interactor.selectInAppForPlace(place, queuedOperation) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        emitQueuedOperation()
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        controller.onBlockAppeared(place)
+        idleMain()
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        returnPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a new session does not ask again a place whose block started in it before the new session was announced, also when a start waited for that session`() {
+        val startedPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { startedPass.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        controller.onBlockAppeared(place)
+        idleMain()
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        startedPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a new session's ask held until a screen of the app resumes is not made once the block's return has asked its place in that session, also when a start waited for that session`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        isSessionEnding = true
+        controller.onBlockAppeared(place)
+        idleMain()
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        controller.onBlockAppeared(place)
+        idleMain()
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
     fun `a place whose pass already read the config announced while it flies is not asked again for it`() {
         val secondPass = CompletableDeferred<EmbeddedResolveOutcome>()
         var selections = 0
