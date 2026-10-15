@@ -257,7 +257,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @MainThread
     override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? =
-        currentTimeToDisplay.takeIf { sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch }
+        currentTimeToDisplay.takeIf { isConfirmedAndUnaccounted(sessionEpoch) }
 
     @MainThread
     override fun withholdShow(isWithheld: Boolean) {
@@ -278,7 +278,7 @@ internal class EmbeddedBlockWebViewHolder(
                 confirmedSessionEpoch = sessionEpoch
                 restartShowTiming(selectionTime)
             }
-            if (sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch) {
+            if (isConfirmedAndUnaccounted(sessionEpoch)) {
                 isSessionRefreshDue = false
                 isRenderAwaitedForSession = true
             }
@@ -288,6 +288,9 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun isLaterSession(sessionEpoch: SessionEpoch): Boolean =
         confirmedSessionEpoch?.let { confirmed -> sessionEpoch > confirmed } ?: true
+
+    private fun isConfirmedAndUnaccounted(sessionEpoch: SessionEpoch): Boolean =
+        sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch
 
     private fun restartShowTiming(selectionTime: Milliseconds) {
         this.selectionTime = selectionTime
@@ -547,7 +550,7 @@ internal class EmbeddedBlockWebViewHolder(
     @MainThread
     private fun accountForShow() {
         val sessionEpoch = confirmedSessionEpoch ?: return
-        if (sessionEpoch == accountedSessionEpoch || isSessionRefreshDue || isRenderAwaitedForSession) return
+        if (!isConfirmedAndUnaccounted(sessionEpoch) || isSessionRefreshDue || isRenderAwaitedForSession) return
         if (isShowWithheld) {
             mindboxLogI("[EmbeddedBlock] Its block withholds the show of this content until the place's next content applies")
             return
@@ -577,7 +580,7 @@ internal class EmbeddedBlockWebViewHolder(
         }.invokeOnCompletion { cause ->
             if (cause !is CancellationException) return@invokeOnCompletion
             mainHandler.post {
-                if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+                rollBackAccounting(sessionEpoch, previouslyAccounted)
             }
         }
     }
@@ -586,9 +589,14 @@ internal class EmbeddedBlockWebViewHolder(
         withContext(Dispatchers.Main) {
             if (!isShowWithheld && !rendersNothing) return@withContext true
             mindboxLogI("[EmbeddedBlock] The show of this content was withheld or its page emptied during the session check, the show waits again")
-            if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+            rollBackAccounting(sessionEpoch, previouslyAccounted)
             false
         }
+
+    @MainThread
+    private fun rollBackAccounting(sessionEpoch: SessionEpoch, previouslyAccounted: SessionEpoch?) {
+        if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
+    }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         val controller = webViewController ?: run {
