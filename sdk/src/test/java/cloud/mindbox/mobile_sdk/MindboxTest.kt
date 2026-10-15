@@ -3,6 +3,8 @@ package cloud.mindbox.mobile_sdk
 import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -298,5 +300,34 @@ class MindboxTest {
         ).parse(Mindbox.getPushTokenSaveDate())?.time
 
         assertEquals(1736502000L, timestamp)
+    }
+
+    @Test
+    fun `a soft re-init that abandons the awaited config download requests the config once`() {
+        val repository = mockk<MobileConfigRepository> { every { abandonAwaitedDownload() } returns true }
+        val inAppManager = mockk<InAppMessageManager>(relaxed = true)
+
+        Mindbox.restartAwaitedConfigDownload(repository) { inAppManager }
+
+        verify(exactly = 1) { inAppManager.requestConfig() }
+    }
+
+    @Test
+    fun `a soft re-init requests no config when no download is awaited`() {
+        val repository = mockk<MobileConfigRepository> { every { abandonAwaitedDownload() } returns false }
+        val inAppManager = mockk<InAppMessageManager>(relaxed = true)
+
+        Mindbox.restartAwaitedConfigDownload(repository) { inAppManager }
+
+        verify(exactly = 0) { inAppManager.requestConfig() }
+    }
+
+    @Test
+    fun `a soft re-init before the config repository exists requests no config`() {
+        val inAppManager = mockk<InAppMessageManager>(relaxed = true)
+
+        Mindbox.restartAwaitedConfigDownload(null) { inAppManager }
+
+        verify(exactly = 0) { inAppManager.requestConfig() }
     }
 }
