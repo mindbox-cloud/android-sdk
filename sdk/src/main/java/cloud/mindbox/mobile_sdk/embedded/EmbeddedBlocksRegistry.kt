@@ -148,7 +148,12 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private var newestConfigVersion: ConfigVersion? = null
 
-    private class SessionRenewal(val sessionEpoch: SessionEpoch, val tick: Milliseconds)
+    private class SessionRenewal(val sessionEpoch: SessionEpoch, val tick: Milliseconds) {
+        companion object {
+            val newestSessionFirstTick: Comparator<SessionRenewal> =
+                compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
+        }
+    }
 
     private class ResolvePass(
         val trigger: InAppEventType?,
@@ -160,35 +165,49 @@ internal class EmbeddedBlocksRegistryImpl(
             trigger = newer.trigger ?: trigger,
             includesNonOperation = includesNonOperation || newer.includesNonOperation,
             includesAppearance = includesAppearance || newer.includesAppearance,
-            renewal = listOfNotNull(renewal, newer.renewal).maxWithOrNull(
-                compareBy<SessionRenewal> { request -> request.sessionEpoch }.thenByDescending { request -> request.tick.interval }
-            ),
+            renewal = listOfNotNull(renewal, newer.renewal).maxWithOrNull(SessionRenewal.newestSessionFirstTick),
         )
 
         fun withoutOperation(): ResolvePass = ResolvePass(trigger = null, includesAppearance = includesAppearance, renewal = renewal)
+    }
 
-        fun askedAt(tick: Milliseconds): ResolvePass = ResolvePass(
-            trigger = trigger,
-            includesNonOperation = includesNonOperation,
-            includesAppearance = includesAppearance,
-            renewal = renewal?.let { held -> SessionRenewal(held.sessionEpoch, tick) },
+    private class NewSessionAsk(val renewal: SessionRenewal, val carried: List<ResolvePass>) {
+        val carriesOperation: Boolean
+            get() = carried.firstOrNull()?.trigger != null
+
+        val pass: ResolvePass
+            get() = ResolvePass(
+                trigger = carried.firstOrNull()?.trigger,
+                includesNonOperation = true,
+                includesAppearance = carried.firstOrNull()?.includesAppearance == true,
+                renewal = renewal,
+            )
+
+        val following: List<ResolvePass>
+            get() = carried.drop(1)
+
+        fun askedAt(tick: Milliseconds): NewSessionAsk = NewSessionAsk(SessionRenewal(renewal.sessionEpoch, tick), carried)
+
+        fun mergedWith(newer: NewSessionAsk): NewSessionAsk = NewSessionAsk(
+            renewal = maxOf(renewal, newer.renewal, SessionRenewal.newestSessionFirstTick),
+            carried = newer.carried.fold(carried) { held, pass -> held.holding(pass) },
         )
     }
 
-    private class HeldRenewal(val pass: ResolvePass, val pending: ResolvePass?) {
-        fun mergedWith(newer: HeldRenewal): HeldRenewal = HeldRenewal(
-            pass = pass.mergedWith(newer.pass),
-            pending = listOfNotNull(pending, newer.pending).reduceOrNull { held, next -> held.mergedWith(next) },
-        )
+    private companion object {
+        fun List<ResolvePass>.holding(pass: ResolvePass): List<ResolvePass> {
+            val newest = lastOrNull() ?: return listOf(pass)
+            return if (newest.trigger != null && pass.trigger != null) this + pass else dropLast(1) + newest.mergedWith(pass)
+        }
     }
 
     private val reResolveQueuedPlaces = mutableMapOf<PlaceKey, ResolvePass>()
 
-    private val placesAwaitingNewSession = mutableMapOf<PlaceKey, ResolvePass>()
+    private val placesAwaitingNewSession = mutableMapOf<PlaceKey, List<ResolvePass>>()
 
-    private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, ResolvePass>()
+    private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, List<ResolvePass>>()
 
-    private val placesAwaitingResumedScreen = mutableMapOf<PlaceKey, HeldRenewal>()
+    private val placesAwaitingResumedScreen = mutableMapOf<PlaceKey, NewSessionAsk>()
 
     private var handledSessionEpoch: SessionEpoch? = null
 
@@ -313,16 +332,15 @@ internal class EmbeddedBlocksRegistryImpl(
             forEachLiveHandle { handle -> handle.onAppResumedOn(activity) }
             val held = placesAwaitingResumedScreen.toMap()
             placesAwaitingResumedScreen.clear()
-            held.forEach { (place, renewal) ->
+            held.forEach { (place, ask) ->
                 val handles = liveHandles(place)
-                val renewedSession = renewal.pass.renewal?.sessionEpoch
                 when {
-                    renewal.pending?.trigger == null && renewedSession != null && isAnsweredInNewSession(place, renewedSession) -> Unit
+                    !ask.carriesOperation && isAnsweredInNewSession(place, ask.renewal.sessionEpoch) -> Unit
                     handles.any { handle -> handle.isActive || handle.isRenewedWhileAway } -> {
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
-                        resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
+                        askInNewSession(place, ask.askedAt(monotonicNow()))
                     }
-                    else -> renewal.pending?.let { dropCarriedOperation(place) }
+                    ask.carried.isNotEmpty() -> dropCarriedOperation(place)
                 }
             }
         }
@@ -374,13 +392,13 @@ internal class EmbeddedBlocksRegistryImpl(
     private fun resolvePlace(place: PlaceKey, pass: ResolvePass = ResolvePass(trigger = null)) {
         if (pass.trigger != null && inAppInteractor.returnCheckPending.value) {
             mindboxLogI("[EmbeddedBlock] The operation for place '$place' is resolved once the session check of the app's return has run")
-            placesAwaitingReturnCheck.merge(place, pass)
+            placesAwaitingReturnCheck.hold(place, pass)
             return
         }
         val sessionEpoch = inAppInteractor.sessionEpoch
         if (!inAppInteractor.isLiveSession(sessionEpoch)) {
             mindboxLogI("[EmbeddedBlock] The session is ending, place '$place' is asked once the new session begins")
-            placesAwaitingNewSession.merge(place, pass)
+            placesAwaitingNewSession.hold(place, pass)
             return
         }
         val running = resolvingPlaces[place]
@@ -472,6 +490,10 @@ internal class EmbeddedBlocksRegistryImpl(
         this[place] = this[place]?.mergedWith(pass) ?: pass
     }
 
+    private fun MutableMap<PlaceKey, List<ResolvePass>>.hold(place: PlaceKey, pass: ResolvePass) {
+        this[place] = this[place].orEmpty().holding(pass)
+    }
+
     private fun onSessionEpoch(sessionEpoch: SessionEpoch) {
         val handled = handledSessionEpoch
         if (handled != null && sessionEpoch <= handled) return
@@ -486,29 +508,27 @@ internal class EmbeddedBlocksRegistryImpl(
         val isPresent = isAppPresent()
         handlesByPlace.keys.toList().forEach { place ->
             val handles = liveHandles(place)
-            val pending = awaiting[place]
-            val renewalPass = ResolvePass(
-                trigger = pending?.trigger,
-                includesNonOperation = true,
-                includesAppearance = pending?.includesAppearance == true,
-                renewal = renewal,
-            )
+            val ask = NewSessionAsk(renewal, awaiting[place].orEmpty())
             when {
                 handles.isEmpty() -> Unit
-                pending?.trigger == null && isAnsweredInNewSession(place, renewal.sessionEpoch) -> Unit
+                !ask.carriesOperation && isAnsweredInNewSession(place, renewal.sessionEpoch) -> Unit
                 handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isRenewedWhileAway }) -> {
                     mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
-                    resolvePlace(place, renewalPass)
+                    askInNewSession(place, ask)
                 }
                 handles.any { handle -> handle.isRenewedWhileAway } -> {
                     mindboxLogI("[EmbeddedBlock] A new session began while no screen of the app is resumed, place '$place' is asked once one is")
-                    val held = HeldRenewal(renewalPass, pending)
-                    placesAwaitingResumedScreen[place] = placesAwaitingResumedScreen[place]?.mergedWith(held) ?: held
+                    placesAwaitingResumedScreen[place] = placesAwaitingResumedScreen[place]?.mergedWith(ask) ?: ask
                 }
-                pending != null -> dropCarriedOperation(place)
+                ask.carried.isNotEmpty() -> dropCarriedOperation(place)
                 else -> Unit
             }
         }
+    }
+
+    private fun askInNewSession(place: PlaceKey, ask: NewSessionAsk) {
+        resolvePlace(place, ask.pass)
+        ask.following.forEach { operation -> resolvePlace(place, operation) }
     }
 
     private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: SessionEpoch): Boolean {
@@ -527,24 +547,24 @@ internal class EmbeddedBlocksRegistryImpl(
         forEachLiveHandle { handle -> handle.onReturnChecked() }
         val awaiting = placesAwaitingReturnCheck.toMap()
         placesAwaitingReturnCheck.clear()
-        awaiting.forEach { (place, pass) ->
+        awaiting.forEach { (place, passes) ->
             when {
                 !handlesByPlace.containsKey(place) -> Unit
                 isHandledSessionOver -> {
-                    mindboxLogI("[EmbeddedBlock] The session has ended, the operation held for place '$place' through the session check of the app's return is asked once the new session begins")
-                    placesAwaitingNewSession.merge(place, pass)
+                    mindboxLogI("[EmbeddedBlock] The session has ended, the operations held for place '$place' through the session check of the app's return are asked once the new session begins")
+                    passes.forEach { pass -> placesAwaitingNewSession.hold(place, pass) }
                 }
-                else -> askHeldOperation(place, pass)
+                else -> askHeldOperations(place, passes)
             }
         }
     }
 
-    private fun askHeldOperation(place: PlaceKey, pass: ResolvePass) {
+    private fun askHeldOperations(place: PlaceKey, passes: List<ResolvePass>) {
         if (liveHandles(place).none { handle -> handle.mayStillBeSeen }) {
-            mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, dropping the operation held for it")
+            mindboxLogI("[EmbeddedBlock] No block of place '$place' is on screen or away in background, dropping the operations held for it")
             return
         }
-        resolvePlace(place, pass)
+        passes.forEach { pass -> resolvePlace(place, pass) }
     }
 
     private val isHandledSessionOver: Boolean
