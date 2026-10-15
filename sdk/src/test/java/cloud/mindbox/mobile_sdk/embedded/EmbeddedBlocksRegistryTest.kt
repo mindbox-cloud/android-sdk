@@ -2944,6 +2944,50 @@ class EmbeddedBlocksRegistryTest {
         )
     }
 
+    private fun EmbeddedBlocksRegistryImpl.holdTwoOperationsForTheReturnCheckWhileAPassOfTheirPlaceFlies(handle: RecordingHandle) {
+        holdOperationForTheReturnCheck(handle, firstHeldOperation)
+        emitOperation(secondHeldOperation)
+        onBlockAppeared(place)
+        idleMain()
+    }
+
+    @Test
+    fun `of two operations held for the session check of the app's return that keeps the session, only the second is asked when a pass of their place is in flight as the check ends`() {
+        val passInFlight = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = passInFlight)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdTwoOperationsForTheReturnCheckWhileAPassOfTheirPlaceFlies(handle)
+
+        controller.finishTheReturnCheck()
+        passInFlight.complete(winner())
+        idleMain()
+
+        assertEquals(listOf(InAppEventType.EmbeddedPlaceRequested(place), secondHeldOperation), asked)
+        assertEquals(listOf(false, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `of two operations held for the session check of the app's return that ends the session, only the second rides the new session's ask when a pass of their place is in flight as the check ends`() {
+        val passInFlight = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = passInFlight)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdTwoOperationsForTheReturnCheckWhileAPassOfTheirPlaceFlies(handle)
+        isSessionEnding = true
+        controller.finishTheReturnCheck()
+
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        passInFlight.complete(winner())
+        idleMain()
+
+        assertEquals(listOf(InAppEventType.EmbeddedPlaceRequested(place), secondHeldOperation), asked)
+        assertEquals(listOf(SessionEpoch(1L) to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
     @Test
     fun `an operation carried into a new session is dropped when its blocks left the screen with nothing on them before the session began`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
